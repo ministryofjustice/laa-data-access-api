@@ -5,7 +5,7 @@ on:
     branches-ignore:
       - main
       - 'feature-dev/*'
-      - 'feature-test/*'
+      - 'feature-uat/*'
 
 jobs:
   build-and-publish-snapshot:
