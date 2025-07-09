@@ -3,6 +3,70 @@ info:
   title: Generated API from Excel Spec
   version: 1.0.0
 paths:
+  /api/v2/draft-applications/{id}:
+    get:
+      summary: Get a draft by id
+      operationId: getDraftApplicationById
+      tags:
+        - draftapplication
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The id of the application to retrieve
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftApplication"
+        '400':
+          description: 'Bad request'
+        '401':
+          description: 'Unauthorized'
+        '403':
+          description: 'Forbidden'
+        '404':
+          description: 'Not found'
+        '500':
+          description: 'Internal server error'
+    patch:
+      tags:
+        - draftapplication
+      summary: Update an application
+      operationId: updateDraftApplication
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The id of the application to updated
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: update an existing item
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DraftApplication'
+      responses:
+        '204':
+          description: No content
+        '400':
+          description: 'Bad request'
+        '401':
+          description: 'Unauthorized'
+        '403':
+          description: 'Forbidden'
+        '404':
+          description: 'Not found'
+        '500':
+          description: 'Internal server error'
+
   /api/v2/draft-applications:
     post:
       summary: Submit a draft application

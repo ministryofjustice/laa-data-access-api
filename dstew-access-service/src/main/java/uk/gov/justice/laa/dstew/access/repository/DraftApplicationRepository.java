@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import uk.gov.justice.laa.dstew.access.entity.DraftApplicationEntity;
 
-
 /**
  * Repository for managing draft application entities.
  */

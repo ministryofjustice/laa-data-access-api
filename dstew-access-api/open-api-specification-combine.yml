@@ -18,6 +18,8 @@ paths:
     $ref: "./open-api-specification-new.yml#/paths/~1api~1v2~1applications"
   /api/v2/draft-applications:
     $ref: "./open-api-draftapplication-specification.yml#/paths/~1api~1v2~1draft-applications"
+  /api/v2/draft-applications/{id}:
+    $ref: "./open-api-draftapplication-specification.yml#/paths/~1api~1v2~1draft-applications~1{id}"
 
 components:
   schemas:
