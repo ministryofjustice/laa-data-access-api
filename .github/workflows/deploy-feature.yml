@@ -67,8 +67,8 @@ jobs:
     with:
       helm_charts_repository: 'laa-data-stewardship-helm-charts'
       helm_charts_branch: 'development'
-      service_name: 'laa-ccms-caab-service'
-      subchart_name: 'caab-api'
+      service_name: 'laa-data-stewardship-shared'
+      subchart_name: 'laa-data-stewardship-access'
       application_version: ${{ needs.ecr-publish-image.outputs.published_image_version }}
       feature_branch: ${{ github.ref_name }}
       github_bot_username: 'laa-data-stewardship'
