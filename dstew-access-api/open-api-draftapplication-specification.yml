@@ -96,7 +96,6 @@ components:
   schemas:
     DraftApplication:
       type: object
-      additionalProperties: true
       properties:
             id:
               type: string
@@ -110,9 +109,12 @@ components:
               type: string
               format: uuid
               description: Unique ID of the provider
+            additional_data:
+                type: object
+                additionalProperties: true
+                description: A JSON representation of the additional data sent to the resource
     DraftApplicationUpdateReq:
       type: object
-      additionalProperties: true
       properties:
         id:
           type: string
@@ -126,9 +128,12 @@ components:
           type: string
           format: uuid
           description: Unique ID of the provider
+        additional_data:
+          type: object
+          additionalProperties: true
+          description: A JSON representation of the additional data sent to the resource
     DraftApplicationCreateReq:
       type: object
-      additionalProperties: true
       properties:
         provider_id:
           type: string
@@ -136,3 +141,7 @@ components:
         client_id:
           type: string
           format: uuid
+        additional_data:
+          type: object
+          additionalProperties: true
+          description: A JSON representation of the additional data sent to the resource

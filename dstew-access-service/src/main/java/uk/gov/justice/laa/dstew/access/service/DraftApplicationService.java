@@ -48,7 +48,7 @@ public class DraftApplicationService {
   public UUID createApplication(DraftApplicationCreateReq draftApplicationCreateReq) {
     applicationValidations.checkCreateRequest(draftApplicationCreateReq);
     var applicationEntity = applicationMapper.toDraftApplicationEntity(draftApplicationCreateReq);
-    applicationEntity.setAdditionalData(draftApplicationCreateReq.getAdditionalProperties());
+    applicationEntity.setAdditionalData(draftApplicationCreateReq.getAdditionalData());
     var savedEntity = draftApplicationRepository.save(applicationEntity);
 
     return savedEntity.getId();
@@ -84,7 +84,7 @@ public class DraftApplicationService {
     var applicationEntity = checkIfApplicationExists(id);
 
     applicationValidations.checkDraftApplicationUpdateRequest(applicationUpdateReq, applicationEntity);
-    applicationEntity.setAdditionalData(applicationUpdateReq.getAdditionalProperties());
+    applicationEntity.setAdditionalData(applicationUpdateReq.getAdditionalData());
     applicationMapper.updateApplicationEntity(applicationEntity, applicationUpdateReq);
 
     draftApplicationRepository.save(applicationEntity);

@@ -49,7 +49,7 @@ public class DraftApplicationControllerIntegrationTest {
                 .perform(
                         post("/api/v2/draft-applications")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"additionalProperties\": {" +
+                                .content("{\"additional_data\": {" +
                                         "\"keyA\": \"valueA\"," +
                                         "\"keyB\": \"valueB\"," +
                                         "\"keyD\": {" +
