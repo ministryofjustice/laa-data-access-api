@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.DraftApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.DraftApplication;
 import uk.gov.justice.laa.dstew.access.model.DraftApplicationCreateReq;
+import uk.gov.justice.laa.dstew.access.model.DraftApplicationUpdateReq;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 /**
@@ -23,9 +24,6 @@ public class DraftApplicationValidations {
    * */
   public void checkCreateRequest(final DraftApplicationCreateReq dto) {
     final var state = ValidationErrors.empty();
-    state.addIf(dto.getClientId() == null
-                    && dto.getProviderId() == null,
-            "Insufficient data provided for draft application creation");
     state.throwIfAny();
   }
 
@@ -35,7 +33,7 @@ public class DraftApplicationValidations {
    * @param dto     DTO to validate.
    * @param current existing persisted entity.
    */
-  public void checkDraftApplicationUpdateRequest(final DraftApplication dto,
+  public void checkDraftApplicationUpdateRequest(final DraftApplicationUpdateReq dto,
                                                 final DraftApplicationEntity current) {
     ValidationErrors.empty()
         .addIf(dto.getClientId() != null

@@ -8,6 +8,7 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.DraftApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.DraftApplication;
 import uk.gov.justice.laa.dstew.access.model.DraftApplicationCreateReq;
+import uk.gov.justice.laa.dstew.access.model.DraftApplicationUpdateReq;
 import uk.gov.justice.laa.dstew.access.repository.DraftApplicationRepository;
 import uk.gov.justice.laa.dstew.access.validation.DraftApplicationValidations;
 
@@ -47,7 +48,7 @@ public class DraftApplicationService {
   public UUID createApplication(DraftApplicationCreateReq draftApplicationCreateReq) {
     applicationValidations.checkCreateRequest(draftApplicationCreateReq);
     var applicationEntity = applicationMapper.toDraftApplicationEntity(draftApplicationCreateReq);
-
+    applicationEntity.setAdditionalData(draftApplicationCreateReq.getAdditionalProperties());
     var savedEntity = draftApplicationRepository.save(applicationEntity);
 
     return savedEntity.getId();
@@ -79,11 +80,11 @@ public class DraftApplicationService {
    * @param applicationUpdateReq the DTO containing the change.
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public void updateApplication(UUID id, DraftApplication applicationUpdateReq) {
+  public void updateApplication(UUID id, DraftApplicationUpdateReq applicationUpdateReq) {
     var applicationEntity = checkIfApplicationExists(id);
 
     applicationValidations.checkDraftApplicationUpdateRequest(applicationUpdateReq, applicationEntity);
-
+    applicationEntity.setAdditionalData(applicationUpdateReq.getAdditionalProperties());
     applicationMapper.updateApplicationEntity(applicationEntity, applicationUpdateReq);
 
     draftApplicationRepository.save(applicationEntity);

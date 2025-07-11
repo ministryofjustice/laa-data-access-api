@@ -52,7 +52,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DraftApplication'
+              $ref: '#/components/schemas/DraftApplicationUpdateReq'
       responses:
         '204':
           description: No content
@@ -110,6 +110,22 @@ components:
               type: string
               format: uuid
               description: Unique ID of the provider
+    DraftApplicationUpdateReq:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique ID of the application
+        client_id:
+          type: string
+          format: uuid
+          description: Unique client identifier
+        provider_id:
+          type: string
+          format: uuid
+          description: Unique ID of the provider
     DraftApplicationCreateReq:
       type: object
       additionalProperties: true

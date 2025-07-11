@@ -8,6 +8,7 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 import uk.gov.justice.laa.dstew.access.entity.DraftApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.DraftApplication;
 import uk.gov.justice.laa.dstew.access.model.DraftApplicationCreateReq;
+import uk.gov.justice.laa.dstew.access.model.DraftApplicationUpdateReq;
 
 /**
  * The mapper between DraftApplication and DraftApplicationEntity.
@@ -15,7 +16,7 @@ import uk.gov.justice.laa.dstew.access.model.DraftApplicationCreateReq;
 @Mapper(componentModel = "spring")
 public interface DraftApplicationMapper {
 
-  /**1
+  /**
    * Maps the given application to an application entity.
    *
    * @param draftApplicationCreateReq the application
@@ -23,6 +24,15 @@ public interface DraftApplicationMapper {
   */
   @Mapping(target = "id", ignore = true)
   DraftApplicationEntity toDraftApplicationEntity(DraftApplicationCreateReq draftApplicationCreateReq);
+
+  /**
+   * Maps the given application to an application entity.
+   *
+   * @param draftApplicationUpdateReq the application
+   * @return the application entity
+   */
+  @Mapping(target = "id", ignore = true)
+  DraftApplicationEntity toDraftApplicationEntity(DraftApplicationUpdateReq draftApplicationUpdateReq);
 
   /**
    * Maps the given application entity to an application.
@@ -42,5 +52,5 @@ public interface DraftApplicationMapper {
   @Mapping(target = "id", ignore = true)
   void updateApplicationEntity(
           @MappingTarget DraftApplicationEntity applicationEntity,
-          DraftApplication applicationUpdateReq);
+          DraftApplicationUpdateReq applicationUpdateReq);
 }
