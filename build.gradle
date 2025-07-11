@@ -1,3 +1,20 @@
+plugins {
+    id 'net.researchgate.release' version '3.1.0'
+}
+
 subprojects {
     group = 'uk.gov.justice.laa.dstew.access'
+
+    release {
+        tagTemplate = '$name-$version'
+    }
+
+    // Force version of Checkstyle to one without CVEs to avoid Snyk complaints.
+    afterEvaluate {
+        if (plugins.hasPlugin('checkstyle')) {
+            checkstyle {
+                toolVersion = '10.26.0'
+            }
+        }
+    }
 }

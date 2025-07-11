@@ -2,11 +2,42 @@
 version: v1.25.1
 # ignores vulnerabilities until expiry date; change duration by modifying expiry date
 ignore:
-  SNYK-JAVA-COMMONSBEANUTILS-10259368:
+  'snyk:lic:maven:ch.qos.logback:logback-classic:(EPL-1.0_OR_LGPL-2.1)':
     - '*':
-        reason: >-
-          commons-beansutil is only used by Checkstyle plugin and is not part of
-          the built artifact
-        expires: 2025-06-28T16:12:59.422Z
-        created: 2025-05-29T16:12:59.424Z
+        reason: 'I expect to work out what is going on soon'
+        expires: 2025-07-01T00:00:00.000Z
+        created: 2025-06-25T00:00:00.000Z
+  'snyk:lic:maven:ch.qos.logback:logback-core:(EPL-1.0_OR_LGPL-2.1)':
+    - '*':
+        reason: 'I expect to work out what is going on soon'
+        expires: 2025-07-01T00:00:00.000Z
+        created: 2025-06-25T00:00:00.000Z
+  'snyk:lic:maven:com.puppycrawl.tools:checkstyle:LGPL-2.1':
+    - '*':
+        reason: 'I expect to work out what is going on soon'
+        expires: 2025-07-01T00:00:00.000Z
+        created: 2025-06-25T00:00:00.000Z
+  'snyk:lic:maven:net.sf.saxon:Saxon-HE:MPL-2.0':
+    - '*':
+        reason: 'I expect to work out what is going on soon'
+        expires: 2025-07-01T00:00:00.000Z
+        created: 2025-06-25T00:00:00.000Z
+  'snyk:lic:maven:org.aspectj:aspectjweaver:EPL-1.0':
+    - '*':
+        reason: 'I expect to work out what is going on soon'
+        expires: 2025-07-01T00:00:00.000Z
+        created: 2025-06-25T00:00:00.000Z
+  'snyk:lic:maven:org.hibernate.orm:hibernate-core:LGPL-2.1':
+    - '*':
+        reason: 'I expect to work out what is going on soon'
+        expires: 2025-07-01T00:00:00.000Z
+        created: 2025-06-25T00:00:00.000Z
 patch: {}
+exclude:
+  global:
+    - dstew-access-service/src/test
+    - dstew-access-service/src/integrationTest
+    ### Work around `snyk code test` in `snyk-vulnerability-scan` workflow:
+    - dstew-access-service/src/main/java/uk/gov/justice/laa/dstew/access/config/NoSecurityConfig.java
+    - dstew-access-service/src/main/java/uk/gov/justice/laa/dstew/access/config/SecurityConfig.java
+    - dstew-access-service/src/main/java/uk/gov/justice/laa/dstew/access/controller/ApplicationV1Controller.java

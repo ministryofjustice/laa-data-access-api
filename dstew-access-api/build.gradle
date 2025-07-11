@@ -16,6 +16,14 @@ dependencies {
     implementation 'org.openapitools:jackson-databind-nullable:0.2.6'
 }
 
+publishing {
+    publications {
+        gpr(MavenPublication) {
+            from(components.java)
+        }
+    }
+}
+
 sourceSets.main.java.srcDirs += ['generated/src/main/java']
 
 checkstyleMain.exclude("*")
