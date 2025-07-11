@@ -68,7 +68,7 @@ jobs:
       helm_charts_repository: 'laa-data-stewardship-helm-charts'
       helm_charts_branch: 'dev'
       service_name: 'laa-data-stewardship'
-      subchart_name: 'dstew-access-service'
+      subchart_name: 'civapp'
       application_version: ${{ needs.ecr-publish-image.outputs.published_image_version }}
       feature_branch: ${{ github.ref_name }}
       github_bot_username: 'laa-data-stewardship'
