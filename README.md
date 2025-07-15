@@ -40,6 +40,13 @@ Note that completing the build and unit tests currently requires:
 
 ### Run application dependencies via Docker
 `docker compose up`
+Failure to start Docker and run this command prior to running application (including debugging) will give a Postgres connectivity error. 
+
+### Dropping database tables (may not be applicable)
+You may need to drop database tables manually prior to running app so Flyway can create the latest schema. To do this:
+- Start up a Postgres management tool e.g. pgadmin
+- Go to the laa_db database
+- Drop the tables
 
 ## Application endpoints
 
