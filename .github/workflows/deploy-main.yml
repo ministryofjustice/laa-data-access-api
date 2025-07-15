@@ -44,9 +44,9 @@ jobs:
     uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/update-helm-chart.yml@v1
     with:
       helm_charts_repository: 'laa-data-stewardship-helm-charts'
-      helm_charts_branch: 'main' # no 'development' branch
-      service_name: 'laa-data-stewardship-shared'
-      subchart_name: 'laa-data-stewardship-access'
+      helm_charts_branch: 'dev'
+      service_name: 'laa-data-stewardship'
+      subchart_name: 'civapp'
       application_version: ${{ needs.ecr-publish-image.outputs.published_image_version }}
       github_bot_username: 'laa-data-stewardship'
     secrets:

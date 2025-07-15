@@ -66,14 +66,14 @@ jobs:
     uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/update-helm-chart.yml@v1
     with:
       helm_charts_repository: 'laa-data-stewardship-helm-charts'
-      helm_charts_branch: 'development'
-      service_name: 'laa-ccms-caab-service'
-      subchart_name: 'caab-api'
+      helm_charts_branch: 'dev'
+      service_name: 'laa-data-stewardship'
+      subchart_name: 'civapp'
       application_version: ${{ needs.ecr-publish-image.outputs.published_image_version }}
       feature_branch: ${{ github.ref_name }}
       github_bot_username: 'laa-data-stewardship'
     secrets:
       gh_token: ${{ secrets.GITHUB_TOKEN }}
-      github_app_id: ${{ vars.GITHUBAPP_ID }}
+      github_app_id: ${{ secrets.GITHUBAPP_ID }}
       github_app_private_key: ${{ secrets.GITHUBAPP_PRIVATE_KEY }}
       github_app_organisation: 'ministryofjustice'
