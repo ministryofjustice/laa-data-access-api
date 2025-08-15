@@ -4,11 +4,11 @@ info:
   version: 1.0.0
 
 paths:
-  /api/v1/applications/{application-id}/history:
+  /api/v2/applications/{application-id}/history:
     $ref: "./open-api-application-history-specification.yml#/paths/~1api~1v2~1applications~1{application-id}~1history"
-  /api/v1/applications/{application-id}/history/{id}:
+  /api/v2/applications/{application-id}/history/{id}:
     $ref: "./open-api-application-history-specification.yml#/paths/~1api~1v2~1applications~1{application-id}~1history~1{id}"
-  /api/v1/applications/{application-id}/history/latest:
+  /api/v2/applications/{application-id}/history/latest:
     $ref: "./open-api-application-history-specification.yml#/paths/~1api~1v2~1applications~1{application-id}~1history~1latest"
   /api/v2/applications:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v2~1applications"
