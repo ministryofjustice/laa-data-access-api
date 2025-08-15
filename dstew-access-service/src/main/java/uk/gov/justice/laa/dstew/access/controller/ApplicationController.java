@@ -20,7 +20,7 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
  */
 @RequiredArgsConstructor
 @RestController
-public class ApplicationV2Controller implements ApplicationApi {
+public class ApplicationController implements ApplicationApi {
 
   private final ApplicationService service;
 
