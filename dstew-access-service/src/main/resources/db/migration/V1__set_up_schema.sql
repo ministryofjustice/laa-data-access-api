@@ -47,3 +47,11 @@ CREATE TABLE application_history (
                                      CONSTRAINT fk_application_history_application FOREIGN KEY (application_id)
                                          REFERENCES applications(id) ON DELETE CASCADE
 );
+
+-- Draft Application Table
+CREATE TABLE draft_applications (
+                                    id UUID PRIMARY KEY,
+                                    provider_id UUID NULL,
+                                    client_id UUID NULL,
+                                    additional_data JSONB NULL
+);

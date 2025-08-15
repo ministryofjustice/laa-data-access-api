@@ -4,10 +4,6 @@ info:
   version: 1.0.0
 
 paths:
-  /api/v1/applications:
-    $ref: "./open-api-specification.yml#/paths/~1api~1v1~1applications"
-  /api/v1/applications/{id}:
-    $ref: "./open-api-specification.yml#/paths/~1api~1v1~1applications~1{id}"
   /api/v1/applications/{application-id}/history:
     $ref: "./open-api-specification.yml#/paths/~1api~1v1~1applications~1{application-id}~1history"
   /api/v1/applications/{application-id}/history/{id}:
@@ -16,6 +12,8 @@ paths:
     $ref: "./open-api-specification.yml#/paths/~1api~1v1~1applications~1{application-id}~1history~1latest"
   /api/v2/applications:
     $ref: "./open-api-specification-new.yml#/paths/~1api~1v2~1applications"
+  /api/v2/applications/{id}:
+    $ref: "./open-api-specification-new.yml#/paths/~1api~1v2~1applications~1{id}"
   /api/v2/draft-applications:
     $ref: "./open-api-draftapplication-specification.yml#/paths/~1api~1v2~1draft-applications"
   /api/v2/draft-applications/{id}:
@@ -23,21 +21,19 @@ paths:
 
 components:
   schemas:
-    ApplicationV1:
-      $ref: "./open-api-specification.yml#/components/schemas/ApplicationV1"
-    ApplicationV1CreateReq:
-      $ref: "./open-api-specification.yml#/components/schemas/ApplicationV1CreateReq"
-    ApplicationV1UpdateReq:
-      $ref: "./open-api-specification.yml#/components/schemas/ApplicationV1UpdateReq"
-    ApplicationV1Collection:
-      $ref: "./open-api-specification.yml#/components/schemas/ApplicationV1Collection"
     ApplicationV1History:
       $ref: "./open-api-specification.yml#/components/schemas/ApplicationV1History"
     ApplicationV1HistoryCreateReq:
       $ref: "./open-api-specification.yml#/components/schemas/ApplicationV1HistoryCreateReq"
     ApplicationV1HistoryCollection:
       $ref: "./open-api-specification.yml#/components/schemas/ApplicationV1HistoryCollection"
-    ApplicationV2:
-      $ref: "./open-api-specification-new.yml#/components/schemas/ApplicationV2"
+    Application:
+      $ref: "./open-api-specification-new.yml#/components/schemas/Application"
+    ApplicationCreateRequest:
+      $ref: "./open-api-specification-new.yml#/components/schemas/ApplicationCreateRequest"
+    ApplicationUpdateRequest:
+      $ref: "./open-api-specification-new.yml#/components/schemas/ApplicationUpdateRequest"
+    ApplicationCollection:
+      $ref: "./open-api-specification-new.yml#/components/schemas/ApplicationCollection"
     DraftApplication:
       $ref: "./open-api-draftapplication-specification.yml#/components/schemas/DraftApplication"

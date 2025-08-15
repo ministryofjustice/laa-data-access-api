@@ -21,6 +21,7 @@ public class ApplicationV1HistoryController implements ApplicationV1HistoryApi {
 
   private final ApplicationService service;
 
+
   @Override
   @LogMethodResponse
   @LogMethodArguments

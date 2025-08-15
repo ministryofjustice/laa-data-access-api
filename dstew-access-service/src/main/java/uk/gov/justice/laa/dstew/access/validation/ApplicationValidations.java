@@ -1,12 +1,10 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
-import static uk.gov.justice.laa.dstew.access.validation.ValidationUtils.notNull;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationV1CreateReq;
-import uk.gov.justice.laa.dstew.access.model.ApplicationV1UpdateReq;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 /**
@@ -20,16 +18,15 @@ public class ApplicationValidations {
   private final EffectiveAuthorizationProvider entra;
 
   /**
-   * Validate an ApplicationV1CreateReq instance.
+   * Validate an ApplicationCreateReq instance.
    *
    * @param dto DTO to validate.
    */
-  public void checkApplicationV1CreateReq(final ApplicationV1CreateReq dto) {
+  public void checkApplicationCreateReq(final ApplicationCreateRequest dto) {
     final var state = ValidationErrors.empty();
-    state.addIf(dto.getProviderOfficeId() == null
-            && !(notNull(dto.getIsEmergencyApplication())
-            && "NEW".equals(dto.getStatusCode())),
-        "BRR-01: Provider office id is required (unless unsubmitted ECT)");
+
+    state.addIf(dto.getApplication().getProviderOfficeId() == null,
+            "BRR-01: Provider office id is required (unless unsubmitted ECT)");
     state.throwIfAny();
   }
 
@@ -39,7 +36,7 @@ public class ApplicationValidations {
    * @param dto     DTO to validate.
    * @param current existing persisted entity.
    */
-  public void checkApplicationV1UpdateReq(final ApplicationV1UpdateReq dto,
+  public void checkApplicationV1UpdateReq(final ApplicationUpdateRequest dto,
                                                 final ApplicationEntity current) {
     ValidationErrors.empty()
         .addIf(dto.getClientId() != null
