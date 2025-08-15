@@ -5,12 +5,12 @@ info:
 paths:
 
 
-  /api/v1/applications/{application-id}/history:
+  /api/v2/applications/{application-id}/history:
     post:
       summary: Record an application history entry
       operationId: recordApplicationHistory
       tags:
-        - applicationV1-history
+        - application-history
       parameters:
         - name: application-id
           in: path
@@ -25,7 +25,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ApplicationV1HistoryCreateReq'
+              $ref: '#/components/schemas/ApplicationHistoryCreateRequest'
       responses:
         '201':
           description: 'Created'
@@ -43,7 +43,7 @@ paths:
       summary: Get history for an application
       operationId: getApplicationHistory
       tags:
-        - applicationV1-history
+        - application-history
       parameters:
         - name: application-id
           in: path
@@ -58,7 +58,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApplicationV1HistoryCollection"
+                $ref: "#/components/schemas/ApplicationHistoryCollection"
         '400':
           description: 'Bad request'
         '401':
@@ -69,12 +69,12 @@ paths:
           description: 'Not found'
         '500':
           description: 'Internal server error'
-  /api/v1/applications/{application-id}/history/{id}:
+  /api/v2/applications/{application-id}/history/{id}:
     get:
       summary: Get a specific history record for an application
       operationId: getApplicationHistoryById
       tags:
-        - applicationV1-history
+        - application-history
       parameters:
         - name: application-id
           in: path
@@ -96,7 +96,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApplicationV1History"
+                $ref: "#/components/schemas/ApplicationHistory"
         '400':
           description: 'Bad request'
         '401':
@@ -107,12 +107,12 @@ paths:
           description: 'Not found'
         '500':
           description: 'Internal server error'
-  /api/v1/applications/{application-id}/history/latest:
+  /api/v2/applications/{application-id}/history/latest:
     get:
       summary: Get the latest history record for an application
       operationId: getLatestApplicationHistory
       tags:
-        - applicationV1-history
+        - application-history
       parameters:
         - name: application-id
           in: path
@@ -127,7 +127,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApplicationV1History"
+                $ref: "#/components/schemas/ApplicationHistory"
         '400':
           description: 'Bad request'
         '401':
@@ -141,7 +141,7 @@ paths:
 
 components:
   schemas:
-    ApplicationV1HistoryCreateReq:
+    ApplicationHistoryCreateRequest:
       required:
         - user_id
         - action
@@ -162,9 +162,9 @@ components:
         timestamp:
           type: string
           format: date-time
-    ApplicationV1HistoryMessage:
+    ApplicationHistoryMessage:
       allOf:
-        - $ref: "#/components/schemas/ApplicationV1HistoryCreateReq"
+        - $ref: "#/components/schemas/ApplicationHistoryCreateRequest"
       required:
         - user_id
         - application_id
@@ -177,9 +177,9 @@ components:
           type: string
           format: uuid
 
-    ApplicationV1History:
+    ApplicationHistory:
       allOf:
-        - $ref: "#/components/schemas/ApplicationV1HistoryMessage"
+        - $ref: "#/components/schemas/ApplicationHistoryMessage"
         - type: object
           properties:
             id:
@@ -189,10 +189,10 @@ components:
               type: object
               additionalProperties: true
               description: A JSON representation of the application at the time of the action
-    ApplicationV1HistoryCollection:
+    ApplicationHistoryCollection:
       type: array
       items:
-        $ref: "#/components/schemas/ApplicationV1History"
+        $ref: "#/components/schemas/ApplicationHistory"
 
     ResourceType:
       type: string

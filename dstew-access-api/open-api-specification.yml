@@ -5,11 +5,11 @@ info:
 
 paths:
   /api/v1/applications/{application-id}/history:
-    $ref: "./open-api-application-history-specification.yml#/paths/~1api~1v1~1applications~1{application-id}~1history"
+    $ref: "./open-api-application-history-specification.yml#/paths/~1api~1v2~1applications~1{application-id}~1history"
   /api/v1/applications/{application-id}/history/{id}:
-    $ref: "./open-api-application-history-specification.yml#/paths/~1api~1v1~1applications~1{application-id}~1history~1{id}"
+    $ref: "./open-api-application-history-specification.yml#/paths/~1api~1v2~1applications~1{application-id}~1history~1{id}"
   /api/v1/applications/{application-id}/history/latest:
-    $ref: "./open-api-application-history-specification.yml#/paths/~1api~1v1~1applications~1{application-id}~1history~1latest"
+    $ref: "./open-api-application-history-specification.yml#/paths/~1api~1v2~1applications~1{application-id}~1history~1latest"
   /api/v2/applications:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v2~1applications"
   /api/v2/applications/{id}:
@@ -21,12 +21,12 @@ paths:
 
 components:
   schemas:
-    ApplicationV1History:
-      $ref: "./open-api-specification.yml#/components/schemas/ApplicationV1History"
+    ApplicationHistory:
+      $ref: "./open-api-specification.yml#/components/schemas/ApplicationHistory"
     ApplicationV1HistoryCreateReq:
-      $ref: "./open-api-specification.yml#/components/schemas/ApplicationV1HistoryCreateReq"
+      $ref: "./open-api-application-history-specification.yml#/components/schemas/ApplicationHistoryCreateRequest"
     ApplicationV1HistoryCollection:
-      $ref: "./open-api-specification.yml#/components/schemas/ApplicationV1HistoryCollection"
+      $ref: "./open-api-application-history-specification.yml#/components/schemas/ApplicationHistoryCollection"
     Application:
       $ref: "./open-api-application-specification.yml#/components/schemas/Application"
     ApplicationCreateRequest:

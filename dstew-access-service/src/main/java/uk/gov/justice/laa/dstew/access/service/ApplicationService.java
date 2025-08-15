@@ -28,11 +28,11 @@ import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.ActionType;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationHistory;
+import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryMessage;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationV1History;
-import uk.gov.justice.laa.dstew.access.model.ApplicationV1HistoryCreateReq;
-import uk.gov.justice.laa.dstew.access.model.ApplicationV1HistoryMessage;
 import uk.gov.justice.laa.dstew.access.model.ResourceType;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationHistoryRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
@@ -158,7 +158,7 @@ public class ApplicationService {
         .convertValue(applicationMapper.toApplication(applicationEntity),
             new TypeReference<Map<String, Object>>() {});
 
-    var message = ApplicationV1HistoryMessage.builder()
+    var message = ApplicationHistoryMessage.builder()
         .userId(applicationEntity.getUpdatedBy())
         .action(UPDATED)
         .resourceTypeChanged(ResourceType.APPLICATION)
@@ -177,7 +177,7 @@ public class ApplicationService {
    * @return the list of history for an application
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<ApplicationV1History> getAllApplicationHistory(UUID applicationId) {
+  public List<ApplicationHistory> getAllApplicationHistory(UUID applicationId) {
     return null;
     //    return applicationHistoryRepository.findByApplicationId(applicationId)
     //        .stream().map(applicationMapper::toApplicationHistory).toList();
@@ -188,7 +188,7 @@ public class ApplicationService {
         .convertValue(applicationMapper.toApplication(applicationEntity),
             new TypeReference<Map<String, Object>>() {});
 
-    var historyMessage = ApplicationV1HistoryMessage.builder()
+    var historyMessage = ApplicationHistoryMessage.builder()
         .resourceTypeChanged(ResourceType.APPLICATION)
         .applicationId(applicationEntity.getId())
         .historicSnapshot(historicSnapshot)
@@ -205,7 +205,7 @@ public class ApplicationService {
    * @return the latest history for the application.
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public ApplicationV1History getApplicationsLatestHistory(UUID applicationId) {
+  public ApplicationHistory getApplicationsLatestHistory(UUID applicationId) {
     checkIfApplicationExists(applicationId);
 
     var latestEntry = applicationHistoryRepository
@@ -225,7 +225,7 @@ public class ApplicationService {
    * @return a unique identifier for the history.
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public UUID createApplicationHistory(UUID applicationId, ApplicationV1HistoryCreateReq applicationHistoryCreateReq) {
+  public UUID createApplicationHistory(UUID applicationId, ApplicationHistoryCreateRequest applicationHistoryCreateReq) {
     var applicationHistoryEntity = new ApplicationHistoryEntity();
     applicationHistoryEntity.setApplicationId(applicationId);
     applicationHistoryEntity.setUserId(applicationHistoryCreateReq.getUserId());
