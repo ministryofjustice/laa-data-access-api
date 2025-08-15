@@ -29,7 +29,7 @@ Includes the following subprojects:
 `./gradlew clean build`
 
 Note that completing the build and unit tests currently requires:
-- GitHub token with `read:packages` access - used by [`laa-ccms-spring-boot-gradle-plugin`](#gradle-plugin-used)
+- GitHub token with `read:packages` access - used by [`laa-spring-boot-gradle-plugin`](#gradle-plugin-used)
 - Running `docker compose up -d` to start up PostgreSQL and LocalStack - used by unit tests
 
 ### Run integration tests
@@ -76,7 +76,7 @@ The following actuator endpoints have been configured:
 - [H2](https://www.h2database.com/html/main.html) - used to provide an example database and should not be used in production.
 
 ### Gradle plugin used
-The project uses the `laa-ccms-spring-boot-gradle-plugin` Gradle plugin which provides
+The project uses the `laa-spring-boot-gradle-plugin` Gradle plugin which provides
 sensible defaults for the following plugins:
 
 - [Checkstyle](https://docs.gradle.org/current/userguide/checkstyle_plugin.html)
@@ -88,5 +88,5 @@ sensible defaults for the following plugins:
 - [Test Logger](https://github.com/radarsh/gradle-test-logger-plugin)
 - [Versions](https://github.com/ben-manes/gradle-versions-plugin)
 
-The plugin is provided by [laa-ccms-spring-boot-common](https://github.com/ministryofjustice/laa-ccms-spring-boot-common), where you can find
+The plugin is provided by [laa-spring-boot-common](https://github.com/ministryofjustice/laa-spring-boot-common), where you can find
 more information regarding (required) setup and usage.
