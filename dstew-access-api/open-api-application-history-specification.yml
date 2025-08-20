@@ -1,0 +1,210 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Applications API
+paths:
+
+
+  /api/v2/applications/{application-id}/history:
+    post:
+      summary: Record an application history entry
+      operationId: recordApplicationHistory
+      tags:
+        - application-history
+      parameters:
+        - name: application-id
+          in: path
+          required: true
+          description: The ID of the application the history relates to
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Record a change in the application's history
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationHistoryCreateRequest'
+      responses:
+        '201':
+          description: 'Created'
+        '400':
+          description: 'Bad request'
+        '401':
+          description: 'Unauthorized'
+        '403':
+          description: 'Forbidden'
+        '404':
+          description: 'Not found'
+        '500':
+          description: 'Internal server error'
+    get:
+      summary: Get history for an application
+      operationId: getApplicationHistory
+      tags:
+        - application-history
+      parameters:
+        - name: application-id
+          in: path
+          required: true
+          description: The ID of the application
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationHistoryCollection"
+        '400':
+          description: 'Bad request'
+        '401':
+          description: 'Unauthorized'
+        '403':
+          description: 'Forbidden'
+        '404':
+          description: 'Not found'
+        '500':
+          description: 'Internal server error'
+  /api/v2/applications/{application-id}/history/{id}:
+    get:
+      summary: Get a specific history record for an application
+      operationId: getApplicationHistoryById
+      tags:
+        - application-history
+      parameters:
+        - name: application-id
+          in: path
+          required: true
+          description: The ID of the application
+          schema:
+            type: string
+            format: uuid
+        - name: id
+          in: path
+          required: true
+          description: The ID of the history record
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationHistory"
+        '400':
+          description: 'Bad request'
+        '401':
+          description: 'Unauthorized'
+        '403':
+          description: 'Forbidden'
+        '404':
+          description: 'Not found'
+        '500':
+          description: 'Internal server error'
+  /api/v2/applications/{application-id}/history/latest:
+    get:
+      summary: Get the latest history record for an application
+      operationId: getLatestApplicationHistory
+      tags:
+        - application-history
+      parameters:
+        - name: application-id
+          in: path
+          required: true
+          description: The ID of the application
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationHistory"
+        '400':
+          description: 'Bad request'
+        '401':
+          description: 'Unauthorized'
+        '403':
+          description: 'Forbidden'
+        '404':
+          description: 'Not found'
+        '500':
+          description: 'Internal server error'
+
+components:
+  schemas:
+    ApplicationHistoryCreateRequest:
+      required:
+        - user_id
+        - action
+        - resource_type_changed
+        - historic_snapshot
+        - timestamp
+      properties:
+        user_id:
+          type: string
+        action:
+          $ref: "#/components/schemas/ActionType"
+        resource_type_changed:
+          $ref: "#/components/schemas/ResourceType"
+        historic_snapshot:
+          type: object
+          additionalProperties: true
+          description: A JSON representation of the change made to the resource
+        timestamp:
+          type: string
+          format: date-time
+    ApplicationHistoryMessage:
+      allOf:
+        - $ref: "#/components/schemas/ApplicationHistoryCreateRequest"
+      required:
+        - user_id
+        - application_id
+        - action
+        - resource_type_changed
+        - historic_snapshot
+        - timestamp
+      properties:
+        application_id:
+          type: string
+          format: uuid
+
+    ApplicationHistory:
+      allOf:
+        - $ref: "#/components/schemas/ApplicationHistoryMessage"
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            application_snapshot:
+              type: object
+              additionalProperties: true
+              description: A JSON representation of the application at the time of the action
+    ApplicationHistoryCollection:
+      type: array
+      items:
+        $ref: "#/components/schemas/ApplicationHistory"
+
+    ResourceType:
+      type: string
+      description: The type of resource (e.g., APPLICATION, PROCEEDING)
+      enum:
+        - APPLICATION
+        - PROCEEDING
+        - LIABLE_PARTY
+    ActionType:
+      type: string
+      description: The type of action performed (e.g., CREATED, UPDATED, DELETED)
+      enum:
+        - CREATED
+        - UPDATED
+        - DELETED
