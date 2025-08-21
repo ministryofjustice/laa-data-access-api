@@ -116,7 +116,7 @@ public class ApplicationService {
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public UUID createApplication(ApplicationCreateRequest applicationCreateReq) {
-    applicationValidations.checkApplicationCreateReq(applicationCreateReq);
+    applicationValidations.checkApplicationCreateRequest(applicationCreateReq);
 
     var applicationEntity = applicationMapper.toApplicationEntity(applicationCreateReq);
 
@@ -145,7 +145,7 @@ public class ApplicationService {
   public void updateApplication(UUID id, ApplicationUpdateRequest applicationUpdateReq) {
     var applicationEntity = checkIfApplicationExists(id);
 
-    applicationValidations.checkApplicationV1UpdateReq(applicationUpdateReq, applicationEntity);
+    applicationValidations.checkApplicationUpdateRequest(applicationUpdateReq, applicationEntity);
 
     applicationMapper.updateApplicationEntity(applicationEntity, applicationUpdateReq);
     if (applicationEntity.getProceedings() != null) {

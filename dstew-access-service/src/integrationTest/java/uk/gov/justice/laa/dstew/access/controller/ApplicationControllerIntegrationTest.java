@@ -27,17 +27,61 @@ public class ApplicationControllerIntegrationTest {
   private MockMvc mockMvc;
 
   @Test
-  void shouldUpdateItem() throws Exception {
+  void shouldCreateItem() throws Exception {
+    String request = "{" +
+            "\"providerOfficeId\": \"office-201\"," +
+            "\"application\": {" +
+            "\"client\": {" +
+            "\"individualId\": \"individualId\"," +
+            "\"employmentStatusCode\": \"employmentStatusCode\"" +
+            "}" +
+            "}" +
+            "}";
+
     mockMvc
             .perform(
-                    patch("/api/v2/applications/123e4567-e89b-12d3-a456-426614174000")
+                    post("/api/v2/applications")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"status_code\": \"IN_PROGRESS\"}")
+                            .content(request)
+                            .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isCreated());
+  }
+
+  @Test
+  void shouldUpdateItem() throws Exception {
+    String createRequest = "{" +
+            "\"providerOfficeId\": \"office-301\"," +
+            "\"application\": {" +
+            "\"client\": {" +
+            "\"individualId\": \"individualId\"," +
+            "\"employmentStatusCode\": \"employmentStatusCode\"" +
+            "}" +
+            "}" +
+            "}";
+
+    String returnUri = mockMvc
+            .perform(
+                    post("/api/v2/applications")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(createRequest)
+                            .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getHeader("Location");
+
+    String updateRequest = "{" +
+            "\"providerOfficeId\": \"office-302\"" +
+            "}";
+    mockMvc
+            .perform(
+                    patch(returnUri)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(updateRequest)
                             .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isNoContent());
   }
 
-  /*
   @Test
   void shouldGetAllItems() throws Exception {
     mockMvc
@@ -47,6 +91,7 @@ public class ApplicationControllerIntegrationTest {
             .andExpect(jsonPath("$.*", hasSize(1)));
   }
 
+/*
   @Test
   void shouldGetItem() throws Exception {
     mockMvc.perform(get("/api/v2/applications/123e4567-e89b-12d3-a456-426614174000"))
@@ -56,30 +101,31 @@ public class ApplicationControllerIntegrationTest {
             .andExpect(jsonPath("$.client_id").isNotEmpty())
             .andExpect(jsonPath("$.statement_of_case").isNotEmpty());
   }
+*/
 
   @Test
   void shouldDeleteItem() throws Exception {
-    mockMvc.perform(delete("/api/v2/applications/345e6789-eabb-34d5-a678-426614174333")).andExpect(status().isNoContent());
-  }
+    String createRequest = "{" +
+            "\"providerOfficeId\": \"office-401\"," +
+            "\"application\": {" +
+            "\"client\": {" +
+            "\"individualId\": \"individualId\"," +
+            "\"employmentStatusCode\": \"employmentStatusCode\"" +
+            "}" +
+            "}" +
+            "}";
 
-  @Test
-  void shouldCreateItem() throws Exception {
-    String request = "{\"application\": {" +
-                      "\"providerOfficeId\": \"office-201\"," +
-                      "\"client\": {" +
-                      "\"individualId\": \"individualId\"," +
-                      "\"employmentStatusCode\": \"employmentStatusCode\"" +
-                      "}" +
-                      "}" +
-                      "}";
+    String returnUri = mockMvc
+            .perform(
+                    post("/api/v2/applications")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(createRequest)
+                            .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getHeader("Location");
 
-    mockMvc
-        .perform(
-            post("/api/v2/applications")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(request)
-                .accept(MediaType.APPLICATION_JSON))
-        .andExpect(status().isCreated());
+    mockMvc.perform(delete(returnUri)).andExpect(status().isNoContent());
   }
-*/
 }

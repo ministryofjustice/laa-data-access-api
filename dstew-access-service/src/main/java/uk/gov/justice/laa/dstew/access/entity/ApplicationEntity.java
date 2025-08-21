@@ -37,13 +37,13 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(columnDefinition = "UUID")
   private UUID id;
 
-  @Column(name = "provider_firm_id", nullable = false)
+  @Column(name = "provider_firm_id")
   private String providerFirmId;
 
-  @Column(name = "provider_office_id", nullable = false)
+  @Column(name = "provider_office_id")
   private String providerOfficeId;
 
-  @Column(name = "client_id", nullable = false)
+  @Column(name = "client_id")
   private UUID clientId;
 
   @Column(name = "status_code")

@@ -179,24 +179,27 @@ components:
         $ref: "#/components/schemas/Application"
 
     ApplicationUpdateRequest:
+      type: object
       properties:
-        provider_firm_id:
+        providerOfficeId:
           type: string
-        provider_office_id:
-          type: string
-        client_id:
-          type: string
-          format: uuid
-        status_code:
-          type: string
-        statement_of_case:
-          type: string
-        is_emergency_application:
-          type: boolean
-        proceedings:
-          type: array
-          items:
-            $ref: "#/components/schemas/ApplicationProceedingUpdateRequest"
+          description: Unique ID of the provider office
+        application:
+          type: object
+          properties:
+            client:
+              type: object
+              properties:
+                individualId:
+                  type: string
+                  description: Unique client identifier
+                employmentStatusCode:
+                  type: string
+                  description: Employment status code
+            proceedings:
+              type: array
+              items:
+                $ref: "#/components/schemas/ApplicationProceedingUpdateRequest"
 
     ApplicationProceedingUpdateRequest:
       required:
@@ -213,12 +216,12 @@ components:
     ApplicationCreateRequest:
       type: object
       properties:
+        providerOfficeId:
+          type: string
+          description: Unique ID of the provider office
         application:
           type: object
           properties:
-            providerOfficeId:
-              type: string
-              description: Unique ID of the provider office
             client:
               type: object
               properties:

@@ -24,36 +24,6 @@ public class ApplicationController implements ApplicationApi {
 
   private final ApplicationService service;
 
-  @Override
-  @LogMethodResponse
-  @LogMethodArguments
-  public ResponseEntity<Void> updateApplication(UUID id, ApplicationUpdateRequest applicationUpdateReq) {
-    //service.updateApplication(id, applicationUpdateReq);
-    return ResponseEntity.noContent().build();
-  }
-
-  @Override
-  @LogMethodResponse
-  @LogMethodArguments
-  public ResponseEntity<List<Application>> getApplications() {
-    return null; //ResponseEntity.ok(service.getAllApplications());
-  }
-
-  @Override
-  @LogMethodResponse
-  @LogMethodArguments
-  public ResponseEntity<Application> getApplicationById(UUID id) {
-    return null; //ResponseEntity.ok(service.getApplication(id));
-  }
-
-  @Override
-  @LogMethodResponse
-  @LogMethodArguments
-  public ResponseEntity<Void> deleteApplication(UUID id) {
-    //service.deleteItem(id);
-    return ResponseEntity.noContent().build();
-  }
-
   @LogMethodArguments
   @LogMethodResponse
   @Override
@@ -63,4 +33,58 @@ public class ApplicationController implements ApplicationApi {
     URI uri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
     return ResponseEntity.created(uri).build();
   }
+
+  @Override
+  @LogMethodResponse
+  @LogMethodArguments
+  public ResponseEntity<Void> updateApplication(UUID id, ApplicationUpdateRequest applicationUpdateReq) {
+    service.updateApplication(id, applicationUpdateReq);
+    return ResponseEntity.noContent().build();
+  }
+
+  @Override
+  @LogMethodResponse
+  @LogMethodArguments
+  public ResponseEntity<List<Application>> getApplications() {
+    return ResponseEntity.ok(service.getAllApplications());
+  }
+
+  @Override
+  @LogMethodResponse
+  @LogMethodArguments
+  public ResponseEntity<Application> getApplicationById(UUID id) {
+    return null;
+  }
+
+  @Override
+  @LogMethodResponse
+  @LogMethodArguments
+  public ResponseEntity<Void> deleteApplication(UUID id) {
+    return ResponseEntity.noContent().build();
+  }
+
+  /*
+
+  @Override
+  @LogMethodResponse
+  @LogMethodArguments
+  public ResponseEntity<List<Application>> getApplications() {
+    return ResponseEntity.ok(service.getAllApplications());
+  }
+
+  @Override
+  @LogMethodResponse
+  @LogMethodArguments
+  public ResponseEntity<Application> getApplicationById(UUID id) {
+    return ResponseEntity.ok(service.getApplication(id));
+  }
+
+  @Override
+  @LogMethodResponse
+  @LogMethodArguments
+  public ResponseEntity<Void> deleteApplication(UUID id) {
+    //service.deleteItem(id);
+    return ResponseEntity.noContent().build();
+  }
+*/
 }

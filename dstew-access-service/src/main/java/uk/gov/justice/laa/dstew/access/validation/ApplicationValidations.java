@@ -22,10 +22,10 @@ public class ApplicationValidations {
    *
    * @param dto DTO to validate.
    */
-  public void checkApplicationCreateReq(final ApplicationCreateRequest dto) {
+  public void checkApplicationCreateRequest(final ApplicationCreateRequest dto) {
     final var state = ValidationErrors.empty();
 
-    state.addIf(dto.getApplication().getProviderOfficeId() == null,
+    state.addIf(dto.getProviderOfficeId() == null,
             "BRR-01: Provider office id is required (unless unsubmitted ECT)");
     state.throwIfAny();
   }
@@ -36,13 +36,12 @@ public class ApplicationValidations {
    * @param dto     DTO to validate.
    * @param current existing persisted entity.
    */
-  public void checkApplicationV1UpdateReq(final ApplicationUpdateRequest dto,
+  public void checkApplicationUpdateRequest(final ApplicationUpdateRequest dto,
                                                 final ApplicationEntity current) {
-    ValidationErrors.empty()
-        .addIf(dto.getClientId() != null
-                && entra.hasAppRole("Provider")
-                && !entra.hasAnyAppRole("Caseworker", "Administrator"),
-            "BRR-03: Provider role cannot update the client date of birth or NI number")
-        .throwIfAny();
+    final var state = ValidationErrors.empty();
+
+    state.addIf(dto.getProviderOfficeId() == null,
+            "BRR-01: Provider office id is required (unless unsubmitted ECT)");
+    state.throwIfAny();
   }
 }

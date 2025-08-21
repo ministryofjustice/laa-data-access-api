@@ -43,9 +43,10 @@ public interface ApplicationMapper {
       @MappingTarget ApplicationEntity applicationEntity,
       ApplicationUpdateRequest applicationUpdateReq);
 
+  /*
   @BeanMapping(nullValuePropertyMappingStrategy =  NullValuePropertyMappingStrategy.IGNORE)
   void updateApplicationEntity(
       @MappingTarget Application application,
-      ApplicationUpdateRequest     applicationUpdateReq);
-
+      ApplicationUpdateRequest applicationUpdateReq);
+  */
 }
