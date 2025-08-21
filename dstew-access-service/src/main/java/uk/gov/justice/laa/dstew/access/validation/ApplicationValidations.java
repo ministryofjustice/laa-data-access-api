@@ -25,7 +25,7 @@ public class ApplicationValidations {
   public void checkApplicationCreateRequest(final ApplicationCreateRequest dto) {
     final var state = ValidationErrors.empty();
 
-    state.addIf(dto.getProviderOfficeId() == null,
+    state.addIf(dto.getApplication().getProviderOfficeId() == null,
             "BRR-01: Provider office id is required (unless unsubmitted ECT)");
     state.throwIfAny();
   }

@@ -53,29 +53,6 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<Application> getApplicationById(UUID id) {
-    return null;
-  }
-
-  @Override
-  @LogMethodResponse
-  @LogMethodArguments
-  public ResponseEntity<Void> deleteApplication(UUID id) {
-    return ResponseEntity.noContent().build();
-  }
-
-  /*
-
-  @Override
-  @LogMethodResponse
-  @LogMethodArguments
-  public ResponseEntity<List<Application>> getApplications() {
-    return ResponseEntity.ok(service.getAllApplications());
-  }
-
-  @Override
-  @LogMethodResponse
-  @LogMethodArguments
-  public ResponseEntity<Application> getApplicationById(UUID id) {
     return ResponseEntity.ok(service.getApplication(id));
   }
 
@@ -83,8 +60,6 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<Void> deleteApplication(UUID id) {
-    //service.deleteItem(id);
     return ResponseEntity.noContent().build();
   }
-*/
 }

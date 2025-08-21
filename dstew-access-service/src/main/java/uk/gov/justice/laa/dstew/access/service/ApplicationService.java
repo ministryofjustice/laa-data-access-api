@@ -120,13 +120,6 @@ public class ApplicationService {
 
     var applicationEntity = applicationMapper.toApplicationEntity(applicationCreateReq);
 
-    //set the application entity id to null to ensure a new entity is created
-    if (applicationEntity.getProceedings() != null) {
-      applicationEntity.getProceedings().forEach(proceeding -> {
-        proceeding.setApplication(applicationEntity);
-      });
-    }
-
     var savedEntity = applicationRepository.save(applicationEntity);
 
     // create history message for the created application
@@ -148,9 +141,6 @@ public class ApplicationService {
     applicationValidations.checkApplicationUpdateRequest(applicationUpdateReq, applicationEntity);
 
     applicationMapper.updateApplicationEntity(applicationEntity, applicationUpdateReq);
-    if (applicationEntity.getProceedings() != null) {
-      applicationEntity.getProceedings().forEach(p -> p.setApplication(applicationEntity));
-    }
 
     applicationRepository.save(applicationEntity);
 
