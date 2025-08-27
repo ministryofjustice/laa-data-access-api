@@ -4,28 +4,28 @@ info:
   version: 1.0.0
 
 paths:
-  /api/v2/applications/{application-id}/history:
-    $ref: "./open-api-application-history-specification.yml#/paths/~1api~1v2~1applications~1{application-id}~1history"
-  /api/v2/applications/{application-id}/history/{id}:
-    $ref: "./open-api-application-history-specification.yml#/paths/~1api~1v2~1applications~1{application-id}~1history~1{id}"
-  /api/v2/applications/{application-id}/history/latest:
-    $ref: "./open-api-application-history-specification.yml#/paths/~1api~1v2~1applications~1{application-id}~1history~1latest"
-  /api/v2/applications:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v2~1applications"
-  /api/v2/applications/{id}:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v2~1applications~1{id}"
-  /api/v2/draft-applications:
-    $ref: "./open-api-draftapplication-specification.yml#/paths/~1api~1v2~1draft-applications"
-  /api/v2/draft-applications/{id}:
-    $ref: "./open-api-draftapplication-specification.yml#/paths/~1api~1v2~1draft-applications~1{id}"
+  /api/v0/applications/{application-id}/history:
+    $ref: "./open-api-application-history-specification.yml#/paths/~1api~1v0~1applications~1{application-id}~1history"
+  /api/v0/applications/{application-id}/history/{id}:
+    $ref: "./open-api-application-history-specification.yml#/paths/~1api~1v0~1applications~1{application-id}~1history~1{id}"
+  /api/v0/applications/{application-id}/history/latest:
+    $ref: "./open-api-application-history-specification.yml#/paths/~1api~1v0~1applications~1{application-id}~1history~1latest"
+  /api/v0/applications:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications"
+  /api/v0/applications/{id}:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}"
+  /api/v0/draft-applications:
+    $ref: "./open-api-draftapplication-specification.yml#/paths/~1api~1v0~1draft-applications"
+  /api/v0/draft-applications/{id}:
+    $ref: "./open-api-draftapplication-specification.yml#/paths/~1api~1v0~1draft-applications~1{id}"
 
 components:
   schemas:
     ApplicationHistory:
       $ref: "./open-api-specification.yml#/components/schemas/ApplicationHistory"
-    ApplicationV1HistoryCreateReq:
+    ApplicationHistoryCreateReq:
       $ref: "./open-api-application-history-specification.yml#/components/schemas/ApplicationHistoryCreateRequest"
-    ApplicationV1HistoryCollection:
+    ApplicationHistoryCollection:
       $ref: "./open-api-application-history-specification.yml#/components/schemas/ApplicationHistoryCollection"
     Application:
       $ref: "./open-api-application-specification.yml#/components/schemas/Application"

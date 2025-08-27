@@ -1,5 +1,7 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
+import static uk.gov.justice.laa.dstew.access.validation.ValidationUtils.notNull;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -18,30 +20,32 @@ public class ApplicationValidations {
   private final EffectiveAuthorizationProvider entra;
 
   /**
-   * Validate an ApplicationCreateReq instance.
+   * Validate an ApplicationCreateRequest instance.
    *
    * @param dto DTO to validate.
    */
   public void checkApplicationCreateRequest(final ApplicationCreateRequest dto) {
     final var state = ValidationErrors.empty();
-
-    state.addIf(dto.getApplication().getProviderOfficeId() == null,
+    state.addIf(dto.getProviderOfficeId() == null
+                    && !(notNull(dto.getIsEmergencyApplication())
+                    && "NEW".equals(dto.getStatusCode())),
             "BRR-01: Provider office id is required (unless unsubmitted ECT)");
     state.throwIfAny();
   }
 
   /**
-   * Validate an ApplicationV1UpdateReq instance.
+   * Validate an ApplicationUpdateRequest instance.
    *
    * @param dto     DTO to validate.
    * @param current existing persisted entity.
    */
   public void checkApplicationUpdateRequest(final ApplicationUpdateRequest dto,
-                                                final ApplicationEntity current) {
-    final var state = ValidationErrors.empty();
-
-    state.addIf(dto.getProviderOfficeId() == null,
-            "BRR-01: Provider office id is required (unless unsubmitted ECT)");
-    state.throwIfAny();
+                                          final ApplicationEntity current) {
+    ValidationErrors.empty()
+            .addIf(dto.getClientId() != null
+                            && entra.hasAppRole("Provider")
+                            && !entra.hasAnyAppRole("Caseworker", "Administrator"),
+                    "BRR-03: Provider role cannot update the client date of birth or NI number")
+            .throwIfAny();
   }
 }

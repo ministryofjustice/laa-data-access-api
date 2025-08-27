@@ -1,43 +1,57 @@
-
-openapi: 3.0.0
+openapi: "3.0.0"
 info:
-  title: Generated API from Excel Spec
   version: 1.0.0
+  title: Applications API
 paths:
-  /api/v2/applications/{id}:
-    patch:
-        tags:
-          - application
-        summary: Update an application
-        operationId: updateApplication
-        parameters:
-          - name: id
-            in: path
-            required: true
-            description: The id of the application to updated
-            schema:
-              type: string
-              format: uuid
-        requestBody:
-          description: update an existing item
+  /api/v0/applications:
+    get:
+      tags:
+        - application
+      summary: Get applications
+      operationId: getApplications
+      responses:
+        '200':
+          description: 'Success'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApplicationUpdateRequest'
-        responses:
-          '204':
-            description: No content
-          '400':
-            description: 'Bad request'
-          '401':
-            description: 'Unauthorized'
-          '403':
-            description: 'Forbidden'
-          '404':
-            description: 'Not found'
-          '500':
-            description: 'Internal server error'
+                $ref: "#/components/schemas/ApplicationCollection"
+        '400':
+          description: 'Bad request'
+        '401':
+          description: 'Unauthorized'
+        '403':
+          description: 'Forbidden'
+        '404':
+          description: 'Not found'
+        '500':
+          description: 'Internal server error'
+    post:
+      tags:
+        - application
+      summary: Create an application
+      operationId: createApplication
+      requestBody:
+        description: create an application
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationCreateRequest'
+      responses:
+        '201':
+          description: 'Created'
+        '400':
+          description: 'Bad request'
+        '401':
+          description: 'Unauthorized'
+        '403':
+          description: 'Forbidden'
+        '404':
+          description: 'Not found'
+        '500':
+          description: 'Internal server error'
 
+  /api/v0/applications/{id}:
     get:
       summary: Get application by id
       operationId: getApplicationById
@@ -68,7 +82,38 @@ paths:
           description: 'Not found'
         '500':
           description: 'Internal server error'
-
+    patch:
+      tags:
+        - application
+      summary: Update an application
+      operationId: updateApplication
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The id of the application to updated
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: update an existing item
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationUpdateRequest'
+      responses:
+        '204':
+          description: No content
+        '400':
+          description: 'Bad request'
+        '401':
+          description: 'Unauthorized'
+        '403':
+          description: 'Forbidden'
+        '404':
+          description: 'Not found'
+        '500':
+          description: 'Internal server error'
     delete:
       summary: Delete application by id
       operationId: deleteApplication
@@ -96,19 +141,30 @@ paths:
         '500':
           description: 'Internal server error'
 
-  /api/v2/applications:
-    get:
+  /api/v0/applications/{application-id}/history:
+    post:
+      summary: Record an application history entry
+      operationId: recordApplicationHistory
       tags:
-        - application
-      summary: Get applications
-      operationId: getApplications
+        - application-history
+      parameters:
+        - name: application-id
+          in: path
+          required: true
+          description: The ID of the application the history relates to
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Record a change in the application's history
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationHistoryCreateRequest'
       responses:
-        '200':
-          description: 'Success'
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApplicationCollection"
+        '201':
+          description: 'Created'
         '400':
           description: 'Bad request'
         '401':
@@ -119,70 +175,166 @@ paths:
           description: 'Not found'
         '500':
           description: 'Internal server error'
-    post:
-      summary: Submit application
-      operationId: createApplication
+    get:
+      summary: Get history for an application
+      operationId: getApplicationHistory
       tags:
-        - application
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ApplicationCreateRequest'
+        - application-history
+      parameters:
+        - name: application-id
+          in: path
+          required: true
+          description: The ID of the application
+          schema:
+            type: string
+            format: uuid
       responses:
-        '201':
-          description: 'Created'
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationHistoryCollection"
         '400':
           description: 'Bad request'
         '401':
           description: 'Unauthorized'
         '403':
           description: 'Forbidden'
+        '404':
+          description: 'Not found'
+        '500':
+          description: 'Internal server error'
+  /api/v0/applications/{application-id}/history/{id}:
+    get:
+      summary: Get a specific history record for an application
+      operationId: getApplicationHistoryById
+      tags:
+        - application-history
+      parameters:
+        - name: application-id
+          in: path
+          required: true
+          description: The ID of the application
+          schema:
+            type: string
+            format: uuid
+        - name: id
+          in: path
+          required: true
+          description: The ID of the history record
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationHistory"
+        '400':
+          description: 'Bad request'
+        '401':
+          description: 'Unauthorized'
+        '403':
+          description: 'Forbidden'
+        '404':
+          description: 'Not found'
+        '500':
+          description: 'Internal server error'
+  /api/v0/applications/{application-id}/history/latest:
+    get:
+      summary: Get the latest history record for an application
+      operationId: getLatestApplicationHistory
+      tags:
+        - application-history
+      parameters:
+        - name: application-id
+          in: path
+          required: true
+          description: The ID of the application
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationHistory"
+        '400':
+          description: 'Bad request'
+        '401':
+          description: 'Unauthorized'
+        '403':
+          description: 'Forbidden'
+        '404':
+          description: 'Not found'
         '500':
           description: 'Internal server error'
 
 components:
   schemas:
     Application:
-      type: object
-      properties:
-        application:
-          type: object
-          properties:
-            providerOfficeId:
-              type: string
-              description: Unique ID of the provider office
-            client:
-              type: object
-              properties:
-                individualId:
-                  type: string
-                  description: Unique client identifier
-                employmentStatusCode:
-                  type: string
-                  description: Employment status code
-                proceedings:
-                  type: array
-                  items:
-                    $ref: "#/components/schemas/ApplicationProceeding"
-
-    ApplicationProceeding:
+      required:
+        - id
+        - provider_firm_id
+        - provider_office_id
+        - client_id
       properties:
         id:
           type: string
           format: uuid
-
-    ApplicationCollection:
-      type: array
-      items:
-        $ref: "#/components/schemas/Application"
-
+        provider_firm_id:
+          type: string
+        provider_office_id:
+          type: string
+        client_id:
+          type: string
+          format: uuid
+        status_code:
+          type: string
+        statement_of_case:
+          type: string
+        is_emergency_application:
+          type: boolean
+        proceedings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicationProceeding"
+      allOf:
+        - $ref: "#/components/schemas/RecordHistory"
+    ApplicationCreateRequest:
+      required:
+        - provider_firm_id
+        - provider_office_id
+        - client_id
+      properties:
+        provider_firm_id:
+          type: string
+        provider_office_id:
+          type: string
+        client_id:
+          type: string
+          format: uuid
+        status_code:
+          type: string
+        statement_of_case:
+          type: string
+        is_emergency_application:
+          type: boolean
+        proceedings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicationProceedingCreateRequest"
     ApplicationUpdateRequest:
       properties:
-        providerOfficeId:
+        provider_firm_id:
           type: string
-          description: Unique ID of the provider office
+        provider_office_id:
+          type: string
         client_id:
           type: string
           format: uuid
@@ -196,7 +348,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationProceedingUpdateRequest"
-
+    ApplicationProceeding:
+      properties:
+        id:
+          type: string
+          format: uuid
+        proceeding_code:
+          type: string
+        level_of_service_code:
+          type: string
+      allOf:
+        - $ref: "#/components/schemas/RecordHistory"
+    ApplicationProceedingCreateRequest:
+      required:
+        - proceeding_code
+      properties:
+        proceeding_code:
+          type: string
+        level_of_service_code:
+          type: string
     ApplicationProceedingUpdateRequest:
       required:
         - proceeding_code
@@ -208,41 +378,93 @@ components:
           type: string
         level_of_service_code:
           type: string
-
-    ApplicationCreateRequest:
-      type: object
-      properties:
-        providerOfficeId:
-          type: string
-          description: Unique ID of the provider office
-        application:
-          type: object
-          properties:
-            providerOfficeId:
-              type: string
-              description: Unique ID of the provider office
-            client:
-              type: object
-              properties:
-                individualId:
-                  type: string
-                  description: Unique client identifier
-                employmentStatusCode:
-                  type: string
-                  description: Employment status code
-            proceedings:
-              type: array
-              items:
-                $ref: "#/components/schemas/ApplicationProceedingCreateRequest"
-
-    ApplicationProceedingCreateRequest:
+    RecordHistory:
       required:
-        - proceeding_code
+        - created_at
+        - created_by
+        - updated_at
+        - updated_by
       properties:
-        id:
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+        updated_by:
+          type: string
+
+    ApplicationCollection:
+      type: array
+      items:
+        $ref: "#/components/schemas/Application"
+
+    ApplicationHistoryCreateRequest:
+      required:
+        - user_id
+        - action
+        - resource_type_changed
+        - historic_snapshot
+        - timestamp
+      properties:
+        user_id:
+          type: string
+        action:
+          $ref: "#/components/schemas/ActionType"
+        resource_type_changed:
+          $ref: "#/components/schemas/ResourceType"
+        historic_snapshot:
+          type: object
+          additionalProperties: true
+          description: A JSON representation of the change made to the resource
+        timestamp:
+          type: string
+          format: date-time
+    ApplicationHistoryMessage:
+      allOf:
+        - $ref: "#/components/schemas/ApplicationHistoryCreateRequest"
+      required:
+        - user_id
+        - application_id
+        - action
+        - resource_type_changed
+        - historic_snapshot
+        - timestamp
+      properties:
+        application_id:
           type: string
           format: uuid
-        proceeding_code:
-          type: string
-        level_of_service_code:
-          type: string
+
+    ApplicationHistory:
+      allOf:
+        - $ref: "#/components/schemas/ApplicationHistoryMessage"
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            application_snapshot:
+              type: object
+              additionalProperties: true
+              description: A JSON representation of the application at the time of the action
+    ApplicationHistoryCollection:
+      type: array
+      items:
+        $ref: "#/components/schemas/ApplicationHistory"
+
+    ResourceType:
+      type: string
+      description: The type of resource (e.g., APPLICATION, PROCEEDING)
+      enum:
+        - APPLICATION
+        - PROCEEDING
+        - LIABLE_PARTY
+    ActionType:
+      type: string
+      description: The type of action performed (e.g., CREATED, UPDATED, DELETED)
+      enum:
+        - CREATED
+        - UPDATED
+        - DELETED

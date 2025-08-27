@@ -37,11 +37,29 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(columnDefinition = "UUID")
   private UUID id;
 
-  @Column(name = "provider_office_id")
+  @Column(name = "provider_firm_id", nullable = false)
+  private String providerFirmId;
+
+  @Column(name = "provider_office_id", nullable = false)
   private String providerOfficeId;
+
+  @Column(name = "client_id", nullable = false)
+  private UUID clientId;
 
   @Column(name = "status_code")
   private String statusCode;
+
+  @Column(name = "statement_of_case", length = 1000)
+  private String statementOfCase;
+
+  @Column(name = "is_emergency_application")
+  private Boolean isEmergencyApplication;
+
+  @OneToMany(mappedBy = "application",
+          cascade = CascadeType.ALL,
+          orphanRemoval = true,
+          fetch = FetchType.EAGER)
+  private List<ApplicationProceedingEntity> proceedings;
 
   @Embedded
   private EmbeddedRecordHistoryEntity recordHistory = new EmbeddedRecordHistoryEntity();

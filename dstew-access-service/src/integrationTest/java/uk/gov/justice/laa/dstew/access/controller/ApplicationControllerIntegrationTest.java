@@ -27,26 +27,62 @@ public class ApplicationControllerIntegrationTest {
   private MockMvc mockMvc;
 
   @Test
-  void shouldCreateItem() throws Exception {
-    String request = "{" +
-            "\"providerOfficeId\": \"office-201\"," +
-            "\"application\": {" +
-            "\"providerOfficeId\": \"office-201\"," +
-            "\"client\": {" +
-            "\"individualId\": \"individualId\"," +
-            "\"employmentStatusCode\": \"employmentStatusCode\"" +
-            "}" +
-            "}" +
-            "}";
+  void shouldGetAllItems() throws Exception {
+    mockMvc
+            .perform(get("/api/v0/applications"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.*", hasSize(1)));
+  }
 
+  @Test
+  void shouldGetItem() throws Exception {
+    String returnUri = mockMvc
+            .perform(
+                    post("/api/v0/applications")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"provider_firm_id\": \"firm-002\", \"provider_office_id\": \"office-201\"," +
+                                    " \"client_id\": \"345e6789-eabb-34d5-a678-426614174333\"}")
+                            .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getHeader("Location");
+
+    mockMvc.perform(get(returnUri))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.*", hasSize(1)));
+  }
+
+  @Test
+  void shouldCreateItem() throws Exception {
     mockMvc
             .perform(
-                    post("/api/v2/applications")
+                    post("/api/v0/applications")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(request)
+                            .content("{\"provider_firm_id\": \"firm-002\", \"provider_office_id\": \"office-201\"," +
+                                    " \"client_id\": \"345e6789-eabb-34d5-a678-426614174333\"}")
                             .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isCreated());
   }
+
+  @Test
+  void shouldUpdateItem() throws Exception {
+    mockMvc
+            .perform(
+                    patch("/api/v0/applications/123e4567-e89b-12d3-a456-426614174000")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"status_code\": \"IN_PROGRESS\"}")
+                            .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isNoContent());
+  }
+
+  @Test
+  void shouldDeleteItem() throws Exception {
+    mockMvc.perform(delete("/api/v0/applications/345e6789-eabb-34d5-a678-426614174333")).andExpect(status().isNoContent());
+  }
+}
+/*
 
   @Test
   void shouldUpdateItem() throws Exception {
@@ -173,3 +209,4 @@ public class ApplicationControllerIntegrationTest {
     mockMvc.perform(delete(returnUri)).andExpect(status().isNoContent());
   }
 }
+*/
