@@ -26,13 +26,13 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationHistoryEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.ActionType;
-import uk.gov.justice.laa.dstew.access.model.ApplicationV1;
-import uk.gov.justice.laa.dstew.access.model.ApplicationV1CreateReq;
-import uk.gov.justice.laa.dstew.access.model.ApplicationV1History;
-import uk.gov.justice.laa.dstew.access.model.ApplicationV1HistoryCreateReq;
-import uk.gov.justice.laa.dstew.access.model.ApplicationV1HistoryMessage;
-import uk.gov.justice.laa.dstew.access.model.ApplicationV1Proceeding;
-import uk.gov.justice.laa.dstew.access.model.ApplicationV1UpdateReq;
+import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationHistory;
+import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryMessage;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.ResourceType;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationHistoryRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
@@ -69,12 +69,12 @@ public class ApplicationService {
    * @param objectMapper JSON mapper to serialize the history.
    */
   public ApplicationService(
-      final ApplicationRepository applicationRepository,
-      final ApplicationHistoryRepository applicationHistoryRepository,
-      final ApplicationMapper applicationMapper,
-      final ApplicationValidations applicationValidations,
-      final SqsProducer sqsProducer,
-      final ObjectMapper objectMapper) {
+          final ApplicationRepository applicationRepository,
+          final ApplicationHistoryRepository applicationHistoryRepository,
+          final ApplicationMapper applicationMapper,
+          final ApplicationValidations applicationValidations,
+          final SqsProducer sqsProducer,
+          final ObjectMapper objectMapper) {
     this.applicationRepository = applicationRepository;
     this.applicationHistoryRepository = applicationHistoryRepository;
     this.applicationMapper = applicationMapper;
@@ -92,8 +92,8 @@ public class ApplicationService {
    * @return the list of applications
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<ApplicationV1> getAllApplications() {
-    return applicationRepository.findAll().stream().map(applicationMapper::toApplicationV1).toList();
+  public List<Application> getAllApplications() {
+    return applicationRepository.findAll().stream().map(applicationMapper::toApplication).toList();
   }
 
   /**
@@ -103,9 +103,9 @@ public class ApplicationService {
    * @return the requested application
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public ApplicationV1 getApplication(UUID id) {
+  public Application getApplication(UUID id) {
     var applicationEntity = checkIfApplicationExists(id);
-    return applicationMapper.toApplicationV1(applicationEntity);
+    return applicationMapper.toApplication(applicationEntity);
   }
 
   /**
@@ -115,8 +115,8 @@ public class ApplicationService {
    * @return the id of the created application
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public UUID createApplication(ApplicationV1CreateReq applicationCreateReq) {
-    applicationValidations.checkApplicationV1CreateReq(applicationCreateReq);
+  public UUID createApplication(ApplicationCreateRequest applicationCreateReq) {
+    applicationValidations.checkApplicationCreateRequest(applicationCreateReq);
 
     var applicationEntity = applicationMapper.toApplicationEntity(applicationCreateReq);
 
@@ -142,10 +142,10 @@ public class ApplicationService {
    * @param applicationUpdateReq the DTO containing the change.
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public void updateApplication(UUID id, ApplicationV1UpdateReq applicationUpdateReq) {
+  public void updateApplication(UUID id, ApplicationUpdateRequest applicationUpdateReq) {
     var applicationEntity = checkIfApplicationExists(id);
 
-    applicationValidations.checkApplicationV1UpdateReq(applicationUpdateReq, applicationEntity);
+    applicationValidations.checkApplicationUpdateRequest(applicationUpdateReq, applicationEntity);
 
     applicationMapper.updateApplicationEntity(applicationEntity, applicationUpdateReq);
     if (applicationEntity.getProceedings() != null) {
@@ -155,17 +155,17 @@ public class ApplicationService {
     applicationRepository.save(applicationEntity);
 
     var snapshot = objectMapper
-        .convertValue(applicationMapper.toApplicationV1(applicationEntity),
-            new TypeReference<Map<String, Object>>() {});
+            .convertValue(applicationMapper.toApplication(applicationEntity),
+                    new TypeReference<Map<String, Object>>() {});
 
-    var message = ApplicationV1HistoryMessage.builder()
-        .userId(applicationEntity.getUpdatedBy())
-        .action(UPDATED)
-        .resourceTypeChanged(ResourceType.APPLICATION)
-        .applicationId(applicationEntity.getId())
-        .historicSnapshot(snapshot)
-        .timestamp(OffsetDateTime.now())
-        .build();
+    var message = ApplicationHistoryMessage.builder()
+            .userId(applicationEntity.getUpdatedBy())
+            .action(UPDATED)
+            .resourceTypeChanged(ResourceType.APPLICATION)
+            .applicationId(applicationEntity.getId())
+            .historicSnapshot(snapshot)
+            .timestamp(OffsetDateTime.now())
+            .build();
 
     sqsProducer.createHistoricRecord(message);
   }
@@ -177,22 +177,22 @@ public class ApplicationService {
    * @return the list of history for an application
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<ApplicationV1History> getAllApplicationHistory(UUID applicationId) {
+  public List<ApplicationHistory> getAllApplicationHistory(UUID applicationId) {
     return applicationHistoryRepository.findByApplicationId(applicationId)
-        .stream().map(applicationMapper::toApplicationV1History).toList();
+            .stream().map(applicationMapper::toApplicationHistory).toList();
   }
 
   protected void createAndSendHistoricRecord(ApplicationEntity applicationEntity, ActionType actionType) {
     var historicSnapshot = objectMapper
-        .convertValue(applicationMapper.toApplicationV1(applicationEntity),
-            new TypeReference<Map<String, Object>>() {});
+            .convertValue(applicationMapper.toApplication(applicationEntity),
+                    new TypeReference<Map<String, Object>>() {});
 
-    var historyMessage = ApplicationV1HistoryMessage.builder()
-        .resourceTypeChanged(ResourceType.APPLICATION)
-        .applicationId(applicationEntity.getId())
-        .historicSnapshot(historicSnapshot)
-        .timestamp(applicationEntity.getCreatedAt().atOffset(ZoneOffset.UTC))
-        .build();
+    var historyMessage = ApplicationHistoryMessage.builder()
+            .resourceTypeChanged(ResourceType.APPLICATION)
+            .applicationId(applicationEntity.getId())
+            .historicSnapshot(historicSnapshot)
+            .timestamp(applicationEntity.getCreatedAt().atOffset(ZoneOffset.UTC))
+            .build();
 
     sqsProducer.createHistoricRecord(historyMessage);
   }
@@ -204,15 +204,15 @@ public class ApplicationService {
    * @return the latest history for the application.
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public ApplicationV1History getApplicationsLatestHistory(UUID applicationId) {
+  public ApplicationHistory getApplicationsLatestHistory(UUID applicationId) {
     checkIfApplicationExists(applicationId);
 
     var latestEntry = applicationHistoryRepository
-        .findFirstByApplicationIdOrderByTimestampDesc(applicationId)
-        .orElseThrow(() ->
-            new ApplicationNotFoundException("No history found for application id: " + applicationId));
+            .findFirstByApplicationIdOrderByTimestampDesc(applicationId)
+            .orElseThrow(() ->
+                    new ApplicationNotFoundException("No history found for application id: " + applicationId));
 
-    return applicationMapper.toApplicationV1History(latestEntry);
+    return applicationMapper.toApplicationHistory(latestEntry);
   }
 
   /**
@@ -223,7 +223,7 @@ public class ApplicationService {
    * @return a unique identifier for the history.
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public UUID createApplicationHistory(UUID applicationId, ApplicationV1HistoryCreateReq applicationHistoryCreateReq) {
+  public UUID createApplicationHistory(UUID applicationId, ApplicationHistoryCreateRequest applicationHistoryCreateReq) {
     var applicationHistoryEntity = new ApplicationHistoryEntity();
     applicationHistoryEntity.setApplicationId(applicationId);
     applicationHistoryEntity.setUserId(applicationHistoryCreateReq.getUserId());
@@ -238,16 +238,16 @@ public class ApplicationService {
       } else if (applicationHistoryCreateReq.getAction() == ActionType.UPDATED) {
         var currentApplicationHistory = getApplicationsLatestHistory(applicationId);
         var oldVersion = objectMapper
-            .convertValue(currentApplicationHistory.getApplicationSnapshot(),
-                new TypeReference<ApplicationV1>() {});
+                .convertValue(currentApplicationHistory.getApplicationSnapshot(),
+                        new TypeReference<Application>() {});
         var newVersion = objectMapper
-            .convertValue(applicationHistoryCreateReq.getHistoricSnapshot(),
-                new TypeReference<ApplicationV1>() {});
+                .convertValue(applicationHistoryCreateReq.getHistoricSnapshot(),
+                        new TypeReference<Application>() {});
         Diff diff = javers.compare(oldVersion, newVersion);
 
         var changesByObject = new LinkedHashMap<Object, Map<String, Object>>();
-        var applicationChanges = new ApplicationV1();
-        var updatedProceedings = new ArrayList<ApplicationV1Proceeding>();
+        var applicationChanges = new Application();
+        var updatedProceedings = new ArrayList<ApplicationProceeding>();
 
         for (var change : diff.getChangesByType(ValueChange.class)) {
           if (change.getAffectedObject().isPresent()) {
@@ -266,10 +266,10 @@ public class ApplicationService {
           var target = entry.getKey();
           var fields = entry.getValue();
 
-          if (target instanceof ApplicationV1) {
+          if (target instanceof Application) {
             populateFields(applicationChanges, fields);
-          } else if (target instanceof ApplicationV1Proceeding) {
-            var proceeding = new ApplicationV1Proceeding();
+          } else if (target instanceof ApplicationProceeding) {
+            var proceeding = new ApplicationProceeding();
             populateFields(proceeding, fields);
             updatedProceedings.add(proceeding);
           }
@@ -281,7 +281,7 @@ public class ApplicationService {
 
         // Convert to map for historic snapshot
         var snapshot = objectMapper
-            .convertValue(applicationChanges, new TypeReference<Map<String, Object>>() {});
+                .convertValue(applicationChanges, new TypeReference<Map<String, Object>>() {});
         applicationHistoryEntity.setHistoricSnapshot(snapshot);
       }
     }
@@ -291,16 +291,16 @@ public class ApplicationService {
 
   protected ApplicationEntity checkIfApplicationExists(UUID id) {
     return applicationRepository
-        .findById(id)
-        .orElseThrow(
-            () -> new ApplicationNotFoundException(String.format("No application found with id: %s", id)));
+            .findById(id)
+            .orElseThrow(
+                    () -> new ApplicationNotFoundException(String.format("No application found with id: %s", id)));
   }
 
   protected ApplicationHistoryEntity checkIfApplicationHistoryExists(UUID id) {
     return applicationHistoryRepository
-        .findById(id)
-        .orElseThrow(
-            () -> new ApplicationNotFoundException(String.format("No application history found with id: %s", id)));
+            .findById(id)
+            .orElseThrow(
+                    () -> new ApplicationNotFoundException(String.format("No application history found with id: %s", id)));
   }
 
   private Object getObjectId(Object object) {

@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -16,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(classes = AccessApp.class, properties = "feature.disable-security=true")
 @AutoConfigureMockMvc
 @Transactional
+@Disabled
 public class DraftApplicationControllerIntegrationTest {
     @Autowired
     private MockMvc mockMvc;

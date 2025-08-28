@@ -56,9 +56,9 @@ public class ApplicationEntity implements AuditableEntity {
   private Boolean isEmergencyApplication;
 
   @OneToMany(mappedBy = "application",
-      cascade = CascadeType.ALL,
-      orphanRemoval = true,
-      fetch = FetchType.EAGER)
+          cascade = CascadeType.ALL,
+          orphanRemoval = true,
+          fetch = FetchType.EAGER)
   private List<ApplicationProceedingEntity> proceedings;
 
   @Embedded

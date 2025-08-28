@@ -30,7 +30,7 @@ checkstyleMain.exclude("*")
 
 openApiGenerate {
     generatorName = "spring"
-    inputSpec = "$rootDir/dstew-access-api/open-api-specification-combine.yml".toString()
+    inputSpec = "$rootDir/dstew-access-api/open-api-specification.yml".toString()
     outputDir = "$rootDir/dstew-access-api/generated".toString()
     apiPackage = "uk.gov.justice.laa.dstew.access.api"
     invokerPackage = "uk.gov.justice.laa.dstew.access.invoker"

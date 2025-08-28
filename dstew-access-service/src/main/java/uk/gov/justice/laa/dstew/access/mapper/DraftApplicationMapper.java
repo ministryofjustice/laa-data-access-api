@@ -7,8 +7,8 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import uk.gov.justice.laa.dstew.access.entity.DraftApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.DraftApplication;
-import uk.gov.justice.laa.dstew.access.model.DraftApplicationCreateReq;
-import uk.gov.justice.laa.dstew.access.model.DraftApplicationUpdateReq;
+import uk.gov.justice.laa.dstew.access.model.DraftApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.DraftApplicationUpdateRequest;
 
 /**
  * The mapper between DraftApplication and DraftApplicationEntity.
@@ -23,7 +23,7 @@ public interface DraftApplicationMapper {
    * @return the application entity
   */
   @Mapping(target = "id", ignore = true)
-  DraftApplicationEntity toDraftApplicationEntity(DraftApplicationCreateReq draftApplicationCreateReq);
+  DraftApplicationEntity toDraftApplicationEntity(DraftApplicationCreateRequest draftApplicationCreateReq);
 
   /**
    * Maps the given application to an application entity.
@@ -32,7 +32,7 @@ public interface DraftApplicationMapper {
    * @return the application entity
    */
   @Mapping(target = "id", ignore = true)
-  DraftApplicationEntity toDraftApplicationEntity(DraftApplicationUpdateReq draftApplicationUpdateReq);
+  DraftApplicationEntity toDraftApplicationEntity(DraftApplicationUpdateRequest draftApplicationUpdateReq);
 
   /**
    * Maps the given application entity to an application.
@@ -52,5 +52,5 @@ public interface DraftApplicationMapper {
   @Mapping(target = "id", ignore = true)
   void updateApplicationEntity(
           @MappingTarget DraftApplicationEntity applicationEntity,
-          DraftApplicationUpdateReq applicationUpdateReq);
+          DraftApplicationUpdateRequest applicationUpdateReq);
 }

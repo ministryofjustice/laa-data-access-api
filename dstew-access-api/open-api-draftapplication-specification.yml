@@ -3,7 +3,7 @@ info:
   title: Generated API from Excel Spec
   version: 1.0.0
 paths:
-  /api/v2/draft-applications/{id}:
+  /api/v0/draft-applications/{id}:
     get:
       summary: Get a draft by id
       operationId: getDraftApplicationById
@@ -52,7 +52,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DraftApplicationUpdateReq'
+              $ref: '#/components/schemas/DraftApplicationUpdateRequest'
       responses:
         '204':
           description: No content
@@ -67,7 +67,7 @@ paths:
         '500':
           description: 'Internal server error'
 
-  /api/v2/draft-applications:
+  /api/v0/draft-applications:
     post:
       summary: Submit a draft application
       operationId: createDraftApplication
@@ -78,7 +78,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DraftApplicationCreateReq'
+              $ref: '#/components/schemas/DraftApplicationCreateRequest'
 
       responses:
         '201':
@@ -113,7 +113,7 @@ components:
                 type: object
                 additionalProperties: true
                 description: A JSON representation of the additional data sent to the resource
-    DraftApplicationUpdateReq:
+    DraftApplicationUpdateRequest:
       type: object
       properties:
         id:
@@ -132,7 +132,7 @@ components:
           type: object
           additionalProperties: true
           description: A JSON representation of the additional data sent to the resource
-    DraftApplicationCreateReq:
+    DraftApplicationCreateRequest:
       type: object
       properties:
         provider_id:
