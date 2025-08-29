@@ -6,7 +6,7 @@ services:
 #      - "8080:8080"
 
   localstack:
-    image: localstack/localstack:3
+    image: localstack/localstack:2022-07-25
     ports:
       - 4566:4566
     environment:
@@ -18,7 +18,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
   postgres:
-    image: postgres:14.3
+    image: postgres:17.6
     container_name: laa-postgres
     restart: unless-stopped
     ports:
