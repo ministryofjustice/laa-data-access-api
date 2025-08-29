@@ -35,7 +35,7 @@ public class ApplicationControllerIntegrationTest {
                     post("/api/v0/applications")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"provider_firm_id\": \"firm-002\", \"provider_office_id\": \"office-201\"," +
-                                    " \"client_id\": \"345e6789-eabb-34d5-a678-426614174333\"}")
+                                    " \"client_id\": \"4eae6789-eabb-34d5-a678-426614174643\"}")
                             .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isCreated());
 
@@ -43,26 +43,17 @@ public class ApplicationControllerIntegrationTest {
             .perform(get("/api/v0/applications"))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.*", hasSize(1)));
+            .andExpect(jsonPath("$.*", hasSize(2)));
   }
 
   @Test
   void shouldGetItem() throws Exception {
-    String returnUri = mockMvc
-            .perform(
-                    post("/api/v0/applications")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"provider_firm_id\": \"firm-002\", \"provider_office_id\": \"office-201\"," +
-                                    " \"client_id\": \"345e6789-eabb-34d5-a678-426614174333\"}")
-                            .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isCreated())
-            .andReturn()
-            .getResponse()
-            .getHeader("Location");
-
-    mockMvc.perform(get(returnUri))
+    mockMvc.perform(get("/api/v0/applications/123e4567-e89b-12d3-a456-426614174000"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.*", hasSize(1)));
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.id").value("123e4567-e89b-12d3-a456-426614174000"))
+            .andExpect(jsonPath("$.client_id").isNotEmpty())
+            .andExpect(jsonPath("$.statement_of_case").isNotEmpty());
   }
 
   @Test
