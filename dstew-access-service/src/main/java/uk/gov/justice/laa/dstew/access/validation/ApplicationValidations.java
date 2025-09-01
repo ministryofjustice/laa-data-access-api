@@ -26,9 +26,10 @@ public class ApplicationValidations {
    */
   public void checkApplicationCreateRequest(final ApplicationCreateRequest dto) {
     final var state = ValidationErrors.empty();
-    state.addIf(dto.getProviderOfficeId() == null
-                    && !(notNull(dto.getIsEmergencyApplication())
-                    && "NEW".equals(dto.getStatusCode())),
+    state.addIf(
+              (dto.getProviderOfficeId() == null)
+                    && (!(notNull(dto.getIsEmergencyApplication()) && (dto.getStatusCode().contentEquals("NEW")))
+              ),
             "BRR-01: Provider office id is required (unless unsubmitted ECT)");
     state.throwIfAny();
   }
@@ -42,9 +43,9 @@ public class ApplicationValidations {
   public void checkApplicationUpdateRequest(final ApplicationUpdateRequest dto,
                                           final ApplicationEntity current) {
     ValidationErrors.empty()
-            .addIf(dto.getClientId() != null
-                            && entra.hasAppRole("Provider")
-                            && !entra.hasAnyAppRole("Caseworker", "Administrator"),
+            .addIf(entra.hasAppRole("Provider")
+                            && !entra.hasAnyAppRole("Caseworker", "Administrator")
+                            && (dto.getClientId() != null),
                     "BRR-03: Provider role cannot update the client date of birth or NI number")
             .throwIfAny();
   }
