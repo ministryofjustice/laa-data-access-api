@@ -9,7 +9,6 @@ import uk.gov.justice.laa.dstew.access.model.DraftApplication;
 import uk.gov.justice.laa.dstew.access.model.DraftApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.DraftApplicationUpdateRequest;
 
-import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
