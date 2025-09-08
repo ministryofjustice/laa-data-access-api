@@ -35,7 +35,7 @@ public class ApplicationHistoryController implements ApplicationHistoryApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<List<ApplicationHistory>> getApplicationHistory(final UUID applicationId) {
-    return null; //ResponseEntity.ok(service.getAllApplicationHistory(applicationId));
+    return ResponseEntity.ok(service.getAllApplicationHistory(applicationId));
   }
 
   @LogMethodResponse
