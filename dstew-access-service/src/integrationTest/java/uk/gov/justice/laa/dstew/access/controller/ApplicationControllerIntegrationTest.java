@@ -22,7 +22,6 @@ import uk.gov.justice.laa.dstew.access.AccessApp;
 @SpringBootTest(classes = AccessApp.class, properties = "feature.disable-security=true")
 @AutoConfigureMockMvc
 @Transactional
-@Disabled
 public class ApplicationControllerIntegrationTest {
 
   @Autowired
@@ -43,17 +42,28 @@ public class ApplicationControllerIntegrationTest {
             .perform(get("/api/v0/applications"))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.*", hasSize(2)));
+            .andExpect(jsonPath("$.*", hasSize(1)));
   }
 
   @Test
   void shouldGetItem() throws Exception {
-    mockMvc.perform(get("/api/v0/applications/123e4567-e89b-12d3-a456-426614174000"))
+    String returnUri = mockMvc
+            .perform(
+                    post("/api/v0/applications")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"provider_firm_id\": \"firm-002\", \"provider_office_id\": \"office-201\"," +
+                                    " \"client_id\": \"345e6789-eabb-34d5-a678-426614174333\"}")
+                            .accept(MediaType.APPLICATION_JSON))
+            .andReturn()
+            .getResponse()
+            .getHeader("Location");
+
+    mockMvc.perform(get(returnUri))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.id").value("123e4567-e89b-12d3-a456-426614174000"))
-            .andExpect(jsonPath("$.client_id").isNotEmpty())
-            .andExpect(jsonPath("$.statement_of_case").isNotEmpty());
+            .andExpect(jsonPath("$.provider_firm_id").value("firm-002"))
+            .andExpect(jsonPath("$.client_id").value("345e6789-eabb-34d5-a678-426614174333"))
+            .andExpect(jsonPath("$.id").isNotEmpty());
   }
 
   @Test
@@ -70,9 +80,20 @@ public class ApplicationControllerIntegrationTest {
 
   @Test
   void shouldUpdateItem() throws Exception {
+    String returnUri = mockMvc
+            .perform(
+                    post("/api/v0/applications")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"provider_firm_id\": \"firm-002\", \"provider_office_id\": \"office-201\"," +
+                                    " \"client_id\": \"345e6789-eabb-34d5-a678-426614174333\"}")
+                            .accept(MediaType.APPLICATION_JSON))
+            .andReturn()
+            .getResponse()
+            .getHeader("Location");
+
     mockMvc
             .perform(
-                    patch("/api/v0/applications/123e4567-e89b-12d3-a456-426614174000")
+                    patch(returnUri)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"status_code\": \"IN_PROGRESS\"}")
                             .accept(MediaType.APPLICATION_JSON))
