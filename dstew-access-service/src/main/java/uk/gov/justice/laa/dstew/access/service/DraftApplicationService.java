@@ -80,13 +80,13 @@ public class DraftApplicationService {
    * @param applicationUpdateReq the DTO containing the change.
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public void updateApplication(UUID id, DraftApplicationUpdateRequest applicationUpdateReq) {
+  public DraftApplicationEntity updateApplication(UUID id, DraftApplicationUpdateRequest applicationUpdateReq) {
     var applicationEntity = checkIfApplicationExists(id);
 
     applicationValidations.checkDraftApplicationUpdateRequest(applicationUpdateReq, applicationEntity);
     applicationEntity.setAdditionalData(applicationUpdateReq.getAdditionalData());
     applicationMapper.updateApplicationEntity(applicationEntity, applicationUpdateReq);
 
-    draftApplicationRepository.save(applicationEntity);
+    return draftApplicationRepository.save(applicationEntity);
   }
 }

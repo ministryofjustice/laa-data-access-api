@@ -17,7 +17,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(classes = AccessApp.class, properties = "feature.disable-security=true")
 @AutoConfigureMockMvc
 @Transactional
-@Disabled
 public class DraftApplicationControllerIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
@@ -26,7 +25,7 @@ public class DraftApplicationControllerIntegrationTest {
     void shouldCreateEmptyItem() throws Exception {
         mockMvc
                 .perform(
-                        post("/api/v2/draft-applications")
+                        post("/api/v0/draft-applications")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{}")
                                 .accept(MediaType.APPLICATION_JSON))
@@ -37,7 +36,7 @@ public class DraftApplicationControllerIntegrationTest {
     void shouldCreateItemWithIdOnly() throws Exception {
         mockMvc
                 .perform(
-                        post("/api/v2/draft-applications")
+                        post("/api/v0/draft-applications")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"provider_id\": \"79976a7e-a8f6-416a-8b95-370e983cd802\"," +
                                         " \"client_id\": \"1bb8028a-676d-4348-93b4-72987ad7b183\"}")
@@ -49,7 +48,7 @@ public class DraftApplicationControllerIntegrationTest {
     void shouldCreateItem() throws Exception {
         mockMvc
                 .perform(
-                        post("/api/v2/draft-applications")
+                        post("/api/v0/draft-applications")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"additional_data\": {" +
                                         "\"keyA\": \"valueA\"," +
@@ -69,7 +68,7 @@ public class DraftApplicationControllerIntegrationTest {
     void shouldUpdateItem() throws Exception {
         String returnUri = mockMvc
                 .perform(
-                        post("/api/v2/draft-applications")
+                        post("/api/v0/draft-applications")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"provider_id\": \"79976a7e-a8f6-416a-8b95-370e983cd802\"," +
                                         " \"client_id\": \"1bb8028a-676d-4348-93b4-72987ad7b183\"}")
@@ -92,7 +91,7 @@ public class DraftApplicationControllerIntegrationTest {
     void shouldGetItem() throws Exception {
         String returnUri = mockMvc
                 .perform(
-                        post("/api/v2/draft-applications")
+                        post("/api/v0/draft-applications")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"provider_id\": \"29976a7e-a8f6-416a-8b95-370e983cd802\"," +
                                         " \"client_id\": \"2bb8028a-676d-4348-93b4-72987ad7b183\"}")

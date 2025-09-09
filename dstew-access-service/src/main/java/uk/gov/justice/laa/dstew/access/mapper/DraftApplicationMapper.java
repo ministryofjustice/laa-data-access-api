@@ -26,15 +26,6 @@ public interface DraftApplicationMapper {
   DraftApplicationEntity toDraftApplicationEntity(DraftApplicationCreateRequest draftApplicationCreateReq);
 
   /**
-   * Maps the given application to an application entity.
-   *
-   * @param draftApplicationUpdateReq the application
-   * @return the application entity
-   */
-  @Mapping(target = "id", ignore = true)
-  DraftApplicationEntity toDraftApplicationEntity(DraftApplicationUpdateRequest draftApplicationUpdateReq);
-
-  /**
    * Maps the given application entity to an application.
    *
    * @param draftApplicationEntity the application entity

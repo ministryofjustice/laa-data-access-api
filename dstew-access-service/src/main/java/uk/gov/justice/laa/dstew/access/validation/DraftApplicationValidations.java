@@ -35,9 +35,9 @@ public class DraftApplicationValidations {
   public void checkDraftApplicationUpdateRequest(final DraftApplicationUpdateRequest dto,
                                                 final DraftApplicationEntity current) {
     ValidationErrors.empty()
-        .addIf(dto.getClientId() != null
-                && entra.hasAppRole("Provider")
-                && !entra.hasAnyAppRole("Caseworker", "Administrator"),
+        .addIf(entra.hasAppRole("Provider")
+                && !entra.hasAnyAppRole("Caseworker", "Administrator")
+                && (dto.getClientId() != null),
             "BRR-03: Provider role cannot update the client date of birth or NI number")
         .throwIfAny();
   }
