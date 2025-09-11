@@ -1,4 +1,4 @@
-# laa-data-stewardship-access
+# laa-data-access-api
 
 ## Overview
 
