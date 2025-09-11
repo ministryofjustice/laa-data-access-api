@@ -38,11 +38,11 @@ jobs:
       integration_test_task: "integrationTest --tests '*IntegrationTest'"
       publish_package: 'true'
       override_version: ${{ needs.define-feature-version.outputs.feature_version }}
-      junit_results_path: 'dstew-access-service/build/test-results'
-      junit_report_path: 'dstew-access-service/build/reports/tests'
-      checkstyle_report_path: 'dstew-access-service/build/reports/checkstyle'
+      junit_results_path: 'data-access-service/build/test-results'
+      junit_report_path: 'data-access-service/build/reports/tests'
+      checkstyle_report_path: 'data-access-service/build/reports/checkstyle'
       jacoco_coverage_report: 'false'
-      jacoco_coverage_report_path: 'dstew-access-service/build/reports/jacoco'
+      jacoco_coverage_report_path: 'data-access-service/build/reports/jacoco'
     secrets:
       gh_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -54,7 +54,7 @@ jobs:
       id-token: write
     with:
       image_version: ${{ format('{0}-{1}', vars.IMAGE_PREFIX, needs.build-and-publish-snapshot.outputs.published_artifact_version) }}
-      jar_subproject: 'dstew-access-service'
+      jar_subproject: 'data-access-service'
     secrets:
       gh_token: ${{ secrets.GITHUB_TOKEN }}
       ecr_repository: ${{ vars.ECR_REPOSITORY }}
