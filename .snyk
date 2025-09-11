@@ -50,11 +50,11 @@ ignore:
 patch: {}
 exclude:
   global:
-    - dstew-access-service/src/test
-    - dstew-access-service/src/integrationTest
+    - data-access-service/src/test
+    - data-access-service/src/integrationTest
     - >-
-      dstew-access-service/src/main/java/uk/gov/justice/laa/dstew/access/config/NoSecurityConfig.java
+      data-access-service/src/main/java/uk/gov/justice/laa/dstew/access/config/NoSecurityConfig.java
     - >-
-      dstew-access-service/src/main/java/uk/gov/justice/laa/dstew/access/config/SecurityConfig.java
+      data-access-service/src/main/java/uk/gov/justice/laa/dstew/access/config/SecurityConfig.java
     - >-
-      dstew-access-service/src/main/java/uk/gov/justice/laa/dstew/access/controller/ApplicationV1Controller.java
+      data-access-service/src/main/java/uk/gov/justice/laa/dstew/access/controller/ApplicationV1Controller.java

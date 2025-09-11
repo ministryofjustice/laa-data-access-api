@@ -40,8 +40,8 @@ jacocoTestCoverageVerification {
 }
 
 dependencies {
-    implementation project(':dstew-access-api')
-    implementation project(':dstew-access-shared')
+    implementation project(':data-access-api')
+    implementation project(':data-access-shared')
 
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'

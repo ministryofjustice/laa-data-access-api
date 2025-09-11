@@ -30,8 +30,8 @@ checkstyleMain.exclude("*")
 
 openApiGenerate {
     generatorName = "spring"
-    inputSpec = "$rootDir/dstew-access-api/open-api-specification.yml".toString()
-    outputDir = "$rootDir/dstew-access-api/generated".toString()
+    inputSpec = "$rootDir/data-access-api/open-api-specification.yml".toString()
+    outputDir = "$rootDir/data-access-api/generated".toString()
     apiPackage = "uk.gov.justice.laa.dstew.access.api"
     invokerPackage = "uk.gov.justice.laa.dstew.access.invoker"
     modelPackage = "uk.gov.justice.laa.dstew.access.model"
@@ -53,7 +53,7 @@ openApiGenerate {
 compileJava.dependsOn('openApiGenerate')
 
 clean {
-    delete("$rootDir/dstew-access-api/generated")
+    delete("$rootDir/data-access-api/generated")
 }
 
 // disable for overall project when running a build

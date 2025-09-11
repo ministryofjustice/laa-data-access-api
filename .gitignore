@@ -5,7 +5,7 @@ build/
 !**/src/test/**/build/
 .DS_Store
 
-dstew-access-api/generated
+data-access-api/generated
 access-datastore-api/generated
 
 ### IntelliJ IDEA ###
