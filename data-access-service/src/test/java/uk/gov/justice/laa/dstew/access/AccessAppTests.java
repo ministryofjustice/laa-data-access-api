@@ -9,7 +9,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationHistoryRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
-import uk.gov.justice.laa.dstew.access.repository.DraftApplicationRepository;
 
 // `feature.security=false` prevents Entra auto-configuration failing context initialization
 // (temporary until figure out a better solution).
@@ -24,13 +23,7 @@ class AccessAppTests {
   private ApplicationRepository applicationRepository;
 
   @MockitoBean
-  private DraftApplicationRepository draftApplicationRepository;
-
-  @MockitoBean
   private ApplicationHistoryRepository applicationHistoryRepository;
-
-  //@MockitoBean
-  //private SqsAsyncClient sqsAsyncClient;
 
   @Test
   void contextLoads() {
