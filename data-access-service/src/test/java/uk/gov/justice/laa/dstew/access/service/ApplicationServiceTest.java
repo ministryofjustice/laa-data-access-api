@@ -9,13 +9,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.config.SqsProducer;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationHistoryEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationProceedingEntity;
 import uk.gov.justice.laa.dstew.access.entity.EmbeddedRecordHistoryEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.*;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationHistoryRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
@@ -36,8 +34,6 @@ public class ApplicationServiceTest {
     @Mock
     private ApplicationRepository repository;
     @Mock
-    private ApplicationHistoryRepository history;
-    @Mock
     private ApplicationMapper mapper;
     @Mock
     private ApplicationValidations validator;
@@ -45,53 +41,6 @@ public class ApplicationServiceTest {
     private SqsProducer sqsProducer;
     @Mock
     private ObjectMapper objectMapper;
-
-    @Test
-    void shouldThrowExceptionWhenApplicationHistoryNotFound() {
-        ApplicationUpdateRequest request = new ApplicationUpdateRequest();
-        request.setIsEmergencyApplication(true);
-        request.setClientId(UUID.randomUUID());
-
-        when(repository.findById(any())).thenThrow(ApplicationNotFoundException.class);
-
-        assertThrows(ApplicationNotFoundException.class,
-                () -> classUnderTest.getApplicationsLatestHistory(UUID.randomUUID()));
-
-    }
-
-    @Test
-    void shouldGetApplicationsLatestHistory() {
-
-        UUID applicationId = UUID.randomUUID();
-
-        EmbeddedRecordHistoryEntity recordHistoryEntity = new EmbeddedRecordHistoryEntity();
-        recordHistoryEntity.setUpdatedAt(Instant.now());
-        recordHistoryEntity.setUpdatedBy("user");
-
-        ApplicationHistoryEntity foundEntity = new ApplicationHistoryEntity();
-        foundEntity.setApplicationId(applicationId);
-        foundEntity.setAction("CREATED");
-        foundEntity.setId(UUID.randomUUID());
-
-        ApplicationHistory mappedHistory = new ApplicationHistory();
-        mappedHistory.setApplicationId(applicationId);
-        mappedHistory.setAction(ActionType.CREATED);
-        mappedHistory.setId(UUID.randomUUID());
-
-        ApplicationEntity foundApplicationEntity = new ApplicationEntity();
-        foundApplicationEntity.setIsEmergencyApplication(true);
-        foundApplicationEntity.setClientId(UUID.randomUUID());
-        foundEntity.setId(applicationId);
-
-        when(repository.findById(any())).thenReturn(Optional.of(foundApplicationEntity));
-        when(history.findFirstByApplicationIdOrderByTimestampDesc(any())).thenReturn(Optional.of(foundEntity));
-        when(mapper.toApplicationHistory(any())).thenReturn(mappedHistory);
-
-        ApplicationHistory result = classUnderTest.getApplicationsLatestHistory(applicationId);
-        assertThat(result.getApplicationId()).isEqualTo(mappedHistory.getApplicationId());
-        assertThat(result.getAction()).isEqualTo(ActionType.CREATED);
-        assertThat(result.getId()).isEqualTo(mappedHistory.getId());
-    }
 
     @Test
     void shouldThrowExceptionWhenApplicationNotFound() {
@@ -118,32 +67,21 @@ public class ApplicationServiceTest {
         request.setIsEmergencyApplication(true);
         request.setClientId(UUID.randomUUID());
 
-        EmbeddedRecordHistoryEntity recordHistoryEntity = new EmbeddedRecordHistoryEntity();
-        recordHistoryEntity.setUpdatedAt(Instant.now());
-        recordHistoryEntity.setUpdatedBy("user");
-
         ApplicationEntity foundEntity = new ApplicationEntity();
         foundEntity.setIsEmergencyApplication(request.getIsEmergencyApplication());
         foundEntity.setClientId(request.getClientId());
         foundEntity.setId(applicationId);
-        foundEntity.setRecordHistory(recordHistoryEntity);
 
         ApplicationEntity savedEntity = new ApplicationEntity();
         savedEntity.setIsEmergencyApplication(foundEntity.getIsEmergencyApplication());
         savedEntity.setClientId(foundEntity.getClientId());
         savedEntity.setId(applicationId);
 
-        Map<String, Object> historicSnapshot =  new HashMap<>();
-        historicSnapshot.put("field", "value");
-
         doNothing().when(validator).checkApplicationUpdateRequest(any(), any());
         doNothing().when(mapper).updateApplicationEntity(any(ApplicationEntity.class), any(ApplicationUpdateRequest.class));
         when(repository.findById(any())).thenReturn(Optional.of(foundEntity));
         when(repository.save(any())).thenReturn(savedEntity);
-        when(objectMapper.convertValue(any(), any(TypeReference.class))).thenReturn(historicSnapshot);
-        doNothing().when(sqsProducer).createHistoricRecord(any());
         classUnderTest.updateApplication(applicationId, request);
-        verify(sqsProducer).createHistoricRecord(any());
     }
 
     @Test
@@ -156,22 +94,14 @@ public class ApplicationServiceTest {
         mappedEntity.setIsEmergencyApplication(request.getIsEmergencyApplication());
         mappedEntity.setClientId(request.getClientId());
 
-        EmbeddedRecordHistoryEntity recordHistoryEntity = new EmbeddedRecordHistoryEntity();
-        recordHistoryEntity.setCreatedAt(Instant.now());
         ApplicationEntity savedEntity = new ApplicationEntity();
         savedEntity.setIsEmergencyApplication(mappedEntity.getIsEmergencyApplication());
         savedEntity.setClientId(mappedEntity.getClientId());
-        savedEntity.setRecordHistory(recordHistoryEntity);
         savedEntity.setId(UUID.randomUUID());
-
-        Map<String, Object> historicSnapshot =  new HashMap<>();
-        historicSnapshot.put("field", "value");
 
         doNothing().when(validator).checkApplicationCreateRequest(any());
         when(mapper.toApplicationEntity(any())).thenReturn(mappedEntity);
         when(repository.save(any())).thenReturn(savedEntity);
-        when(objectMapper.convertValue(any(), any(TypeReference.class))).thenReturn(historicSnapshot);
-        doNothing().when(sqsProducer).createHistoricRecord(any());
 
         UUID result = classUnderTest.createApplication(request);
 

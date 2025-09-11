@@ -7,7 +7,6 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationHistoryRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 
 // `feature.security=false` prevents Entra auto-configuration failing context initialization
@@ -21,9 +20,6 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 class AccessAppTests {
   @MockitoBean
   private ApplicationRepository applicationRepository;
-
-  @MockitoBean
-  private ApplicationHistoryRepository applicationHistoryRepository;
 
   @Test
   void contextLoads() {

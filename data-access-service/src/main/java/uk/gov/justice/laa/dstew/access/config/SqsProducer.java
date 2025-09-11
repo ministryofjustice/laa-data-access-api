@@ -6,7 +6,6 @@ import java.util.concurrent.CompletableFuture;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryMessage;
 
 /**
  * Sends messages to a queue.
@@ -34,18 +33,6 @@ public class SqsProducer {
    *
    * @param message the object to serialize and send.
    */
-  public void createHistoricRecord(ApplicationHistoryMessage message) {
-    try {
-      String json = objectMapper.writeValueAsString(message);
-      SendMessageRequest request = SendMessageRequest.builder()
-          .queueUrl(queueUrl)
-          .messageBody(json)
-          .build();
-
-      CompletableFuture<?> future = sqsAsyncClient.sendMessage(request);
-      future.thenAccept(result -> System.out.println("Message sent! ID: " + result));
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException("Failed to serialize message", e);
-    }
+  public void createHistoricRecord(Object message) {
   }
 }
