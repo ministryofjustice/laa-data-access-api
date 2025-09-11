@@ -5,7 +5,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationHistoryEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationProceedingEntity;
 import uk.gov.justice.laa.dstew.access.entity.EmbeddedRecordHistoryEntity;
 
@@ -284,34 +283,6 @@ public class ApplicationMapperTest {
         assertThat(result.getProceedingCode()).isEqualTo("proceedingCode");
         assertThat(result.getLevelOfServiceCode()).isEqualTo("levelCode");
         assertThat(result.getCreatedBy()).isNull();
-    }
-
-    @Test
-    void shouldMapApplicationHistoryEntityToApplicationHistory() {
-
-        UUID id = UUID.randomUUID();
-        UUID applicationId = UUID.randomUUID();
-
-        ApplicationHistoryEntity entity = new ApplicationHistoryEntity();
-        entity.setId(id);
-        entity.setApplicationId(applicationId);
-        entity.setUserId("user");
-        entity.setResourceTypeChanged("PROCEEDING");
-        entity.setAction("UPDATED");
-        entity.setTimestamp(Instant.now());
-        entity.setHistoricSnapshot(Map.of("key1", "value1"));
-        entity.setApplicationSnapshot(Map.of("key2", "value2"));
-
-        ApplicationHistory result = applicationMapper.toApplicationHistory(entity);
-
-        assertThat(result).isNotNull();
-        assertThat(result.getId()).isEqualTo(id);
-        assertThat(result.getApplicationId()).isEqualTo(applicationId);
-        assertThat(result.getUserId()).isEqualTo("user");
-        assertThat(result.getResourceTypeChanged().toString()).isEqualTo("PROCEEDING");
-        assertThat(result.getAction().toString()).isEqualTo("UPDATED");
-        assertThat(result.getHistoricSnapshot().get("key1")).isEqualTo("value1");
-        assertThat(result.getApplicationSnapshot().get("key2")).isEqualTo("value2");
     }
 
 }
