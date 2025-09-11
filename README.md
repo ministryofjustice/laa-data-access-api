@@ -1,4 +1,4 @@
-# laa-data-stewardship-access
+# laa-data-access-api
 
 ## Overview
 
@@ -23,10 +23,10 @@ Go back to Github to authorize MOJ for SSO
 ### Project structure
 Includes the following subprojects:
 
-- `dstew-access-shared` - common Java classes packaged into a library to avoid unexpected dependencies - can depend
+- `data-access-shared` - common Java classes packaged into a library to avoid unexpected dependencies - can depend
   on Spring Web, but must not depend on Spring Data (nor any database code)
-- `dstew-access-api` - OpenAPI specification used for generating API stub interfaces and documentation.
-- `dstew-access-service` - example REST API service with CRUD operations interfacing a JPA repository with PostgreSQL.
+- `data-access-api` - OpenAPI specification used for generating API stub interfaces and documentation.
+- `data-access-service` - example REST API service with CRUD operations interfacing a JPA repository with PostgreSQL.
 
 ### To do items
 - Continue to update this `README.md` file to include information such as what this project does.

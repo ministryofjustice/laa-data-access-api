@@ -1,5 +1,5 @@
 spring:
-  application.name: LAA Access Data Stewardship API
+  application.name: LAA Data Stewardship Access - Access Application Data
 
   datasource:
     url: jdbc:postgresql://localhost:5432/laa_db
@@ -27,8 +27,8 @@ spring:
 
 info:
   app:
-    name: Access
-    description: LAA Access Data Stewardship REST API
+    name: LAA Data Stewardship Access - Access Application Data
+    description: LAA Data Stewardship Access - Access Application Data that provides APIs to Legal Aid Application related data.
     version: 1.0.0
 
 logging:
