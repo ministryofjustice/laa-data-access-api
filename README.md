@@ -1,6 +1,6 @@
 # laa-data-access-api
 
-## Overview
+## Over view
 
 Source code for LAA Digital's Access Data Stewardship API, owned by the Access Data Stewardship team.
 
