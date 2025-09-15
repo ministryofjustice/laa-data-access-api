@@ -437,23 +437,6 @@ components:
           type: string
           format: uuid
 
-    ApplicationHistory:
-      allOf:
-        - $ref: "#/components/schemas/ApplicationHistoryMessage"
-        - type: object
-          properties:
-            id:
-              type: string
-              format: uuid
-            application_snapshot:
-              type: object
-              additionalProperties: true
-              description: A JSON representation of the application at the time of the action
-    ApplicationHistoryCollection:
-      type: array
-      items:
-        $ref: "#/components/schemas/ApplicationHistory"
-
     ResourceType:
       type: string
       description: The type of resource (e.g., APPLICATION, PROCEEDING)
