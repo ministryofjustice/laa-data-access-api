@@ -20,7 +20,7 @@ jobs:
       checkstyle_report_path: 'data-access-service/build/reports/checkstyle'
       jacoco_coverage_report: 'false'
       jacoco_coverage_report_path: 'data-access-service/build/reports/jacoco'
-      github_bot_username: 'laa-data-access'
+      github_bot_username: 'laa-data-stewardship'
     secrets:
       gh_token: ${{ secrets.GITHUB_TOKEN }}
       github_app_id: ${{ secrets.GITHUBAPP_ID }}
