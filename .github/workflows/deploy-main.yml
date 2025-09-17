@@ -45,7 +45,7 @@ jobs:
     with:
       helm_charts_repository: 'laa-data-stewardship-helm-charts'
       helm_charts_branch: 'dev'
-      service_name: 'laa-data-stewardship'
+      service_name: 'laa-data-access-api'
       subchart_name: 'civapp'
       application_version: ${{ needs.ecr-publish-image.outputs.published_image_version }}
       github_bot_username: 'laa-data-stewardship'
