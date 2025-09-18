@@ -43,6 +43,7 @@ dependencies {
     implementation project(':data-access-api')
     implementation project(':data-access-shared')
 
+    implementation 'org.springframework:spring-core:6.2.11'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
