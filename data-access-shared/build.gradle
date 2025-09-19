@@ -29,7 +29,6 @@ dependencies {
     implementation('org.springframework.boot:spring-boot-starter-web') {
         exclude group: 'com.google.code.gson', module: 'gson'
     }
-    implementation 'org.springframework:spring-aspects'
     implementation 'org.springframework.security:spring-security-core'
 
     // Test
