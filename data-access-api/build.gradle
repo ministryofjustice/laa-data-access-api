@@ -1,6 +1,6 @@
 plugins {
     id 'org.openapi.generator' version '7.13.0'
-    id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin'
+    id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin' version '1.0.4'
 }
 
 repositories {
@@ -12,8 +12,10 @@ dependencies {
         exclude group: 'com.google.code.gson', module: 'gson'
     }
 
+    implementation 'org.springframework.security:spring-security-core:6.5.5'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8'
     implementation 'org.openapitools:jackson-databind-nullable:0.2.6'
+    implementation 'org.springframework:spring-core:6.2.11'
 }
 
 publishing {
