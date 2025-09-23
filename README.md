@@ -2,7 +2,7 @@
 
 ## Overview
 
-Source code for LAA Digital's Access Data Stewardship API, owned by the Access Data Stewardship team.
+Source code for LAA Digital's Access Data Stewardship API, owned by the Access Data Stewardship team..
 
 This API will provide a trusted API source of truth for the Civil Applications and Civil Decide projects for data
 related to applications, proceedings, delegated functions, scope limitations, cost limitations and level of service.
