@@ -19,8 +19,6 @@ dependencies {
 
     implementation 'com.nimbusds:nimbus-jose-jwt:10.0.2'
     implementation 'io.netty:netty-codec:4.1.125.Final'
-    implementation 'io.netty:netty-codec-http:4.1.125.Final'
-    implementation 'org.apache.commons:commons-lang3:3.18.0'
 }
 
 publishing {
