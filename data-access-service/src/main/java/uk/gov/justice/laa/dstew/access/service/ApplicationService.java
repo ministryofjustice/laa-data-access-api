@@ -26,6 +26,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.specification.ApplicationSpecification;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
 /**
@@ -78,7 +79,7 @@ public class ApplicationService {
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public List<Application> getAllApplications() {
-    return applicationRepository.findAll().stream().map(applicationMapper::toApplication).toList();
+    return applicationRepository.findAll(ApplicationSpecification.isPending()).stream().map(applicationMapper::toApplication).toList();
   }
 
   /**

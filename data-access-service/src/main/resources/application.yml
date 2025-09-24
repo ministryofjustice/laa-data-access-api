@@ -34,6 +34,7 @@ info:
 logging:
   level:
     com.azure.spring: INFO
+    sql: TRACE
 
 management:
   endpoints.web.exposure.include: health,info
