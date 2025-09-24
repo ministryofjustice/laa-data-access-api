@@ -16,6 +16,11 @@ dependencies {
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8'
     implementation 'org.openapitools:jackson-databind-nullable:0.2.6'
     implementation 'org.springframework:spring-core:6.2.11'
+
+    implementation 'com.nimbusds:nimbus-jose-jwt:10.0.2'
+    implementation 'io.netty:netty-codec:4.1.125.Final'
+    implementation 'io.netty:netty-codec-http:4.1.125.Final'
+    implementation 'org.apache.commons:commons-lang3:3.18.0'
 }
 
 publishing {
