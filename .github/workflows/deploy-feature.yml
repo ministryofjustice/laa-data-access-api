@@ -48,7 +48,7 @@ jobs:
 
   ecr-publish-image:
     needs: [ build-and-publish-snapshot ]
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@v1
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@main
     #uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/ecr-publish-image.yml@v1
     permissions:
       contents: read
