@@ -56,7 +56,7 @@ jobs:
     with:
       app_name: 'laa-data-access-api'
       image_version: ${{ format('{0}-{1}', vars.IMAGE_PREFIX, needs.build-and-publish-snapshot.outputs.published_artifact_version) }}
-      jar_subproject: 'data-access-service'
+      #jar_subproject: 'data-access-service'
     secrets:
       gh_token: ${{ secrets.GITHUB_TOKEN }}
       ecr_repository: ${{ vars.ECR_REPOSITORY }}
