@@ -19,6 +19,7 @@ subprojects {
     }
 }
 
+/*
 configurations.configureEach {
     resolutionStrategy {
         // Force the fixed versions for all projects
@@ -26,4 +27,4 @@ configurations.configureEach {
         force 'io.netty:netty-codec-http:4.1.125.Final'
         force 'org.apache.commons:commons-lang3:3.18.0'
     }
-}
+}*/

@@ -25,8 +25,8 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.netty:netty-codec:4.1.125.Final'
-    implementation 'io.netty:netty-codec-http:4.1.125.Final'
+    //implementation 'io.netty:netty-codec:4.1.125.Final'
+    //implementation 'io.netty:netty-codec-http:4.1.125.Final'
     // Spring
     implementation('org.springframework.boot:spring-boot-starter-web') {
         exclude group: 'com.google.code.gson', module: 'gson'
