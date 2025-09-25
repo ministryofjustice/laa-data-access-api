@@ -105,10 +105,10 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GITHUB_TOKEN: ${{ secrets.gh_token }}
-      AWS_REGION: ${{ secrets.aws_region }}
-      GITHUB_APP_ID: ${{ secrets.githubapp_id }}
-      GITHUB_APP_PRIVATE_KEY: ${{ secrets.githubapp_private_key }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      AWS_REGION: 'eu-west-2'
+      GITHUB_APP_ID: ${{ secrets.GITHUBAPP_ID }}
+      GITHUB_APP_PRIVATE_KEY: ${{ secrets.GITHUBAPP_PRIVATE_KEY }}
 
     outputs:
       published_artifact_version: ${{ steps.capture_published_version.outputs.published_artifact_version }}
