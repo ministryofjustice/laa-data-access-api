@@ -55,7 +55,7 @@ jobs:
       id-token: write
     with:
       app_name: 'laa-data-access-api'
-      image_version: ${{ format('{0}-{1}', vars.IMAGE_PREFIX, needs.build-and-publish-snapshot.outputs.published_artifact_version) }}
+      #image_version: ${{ format('{0}-{1}', vars.IMAGE_PREFIX, needs.build-and-publish-snapshot.outputs.published_artifact_version) }}
       #jar_subproject: 'data-access-service'
     #secrets:
     #  gh_token: ${{ secrets.GITHUB_TOKEN }}
