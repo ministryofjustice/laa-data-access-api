@@ -57,11 +57,11 @@ jobs:
       app_name: 'laa-data-access-api'
       image_version: ${{ format('{0}-{1}', vars.IMAGE_PREFIX, needs.build-and-publish-snapshot.outputs.published_artifact_version) }}
       #jar_subproject: 'data-access-service'
-    secrets:
-      gh_token: ${{ secrets.GITHUB_TOKEN }}
-      ecr_repository: ${{ vars.ECR_REPOSITORY }}
-      ecr_region: ${{ vars.ECR_REGION }}
-      ecr_role_to_assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+    #secrets:
+    #  gh_token: ${{ secrets.GITHUB_TOKEN }}
+    #  ecr_repository: ${{ vars.ECR_REPOSITORY }}
+    #  ecr_region: ${{ vars.ECR_REGION }}
+    #  ecr_role_to_assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
 
   update-helm-chart:
     needs: [ ecr-publish-image ]
