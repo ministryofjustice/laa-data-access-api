@@ -12,7 +12,7 @@ Generate a Github PAT (Personal Access Token) to access the required plugin, via
 
 Specify the Note field, e.g. “Token to allow access to LAA Gradle plugin”
 
-If you haven’t got a gradle.properties file create one under `~/.gradle/gradle.properties`
+If you don't already have one, create a `gradle.properties` file in your home directory at `~/.gradle/gradle.properties`.
 
 Add the following properties to `~/.gradle/gradle.properties` and replace the placeholder values as follows:
 
