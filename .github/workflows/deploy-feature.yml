@@ -84,16 +84,17 @@ jobs:
           git config user.name "${{ inputs.github_bot_username || 'github-actions-bot' }}[bot]"
 
           APP_VERSION="${{ needs.ecr-publish-image.outputs.published_image_version }}"
-          CURRENT_CHART_VERSION=$(yq e '.version' .helm/data-access-api/Chart.yaml)
-          IFS='.' read -r major minor patch <<< "$CURRENT_CHART_VERSION"
-          NEW_PATCH=$((patch + 1))
-          NEW_CHART_VERSION="$major.$minor.$NEW_PATCH"
-
-          yq e ".appVersion = \"$APP_VERSION\" | .version = \"$NEW_CHART_VERSION\"" -i .helm/data-access-api/Chart.yaml
+          CHART_PATH=".helm/data-access-api/Chart.yaml"
           
-          git add .helm/data-access-api/Chart.yaml
-          git commit -m "chore: Update data-access-api appVersion to $APP_VERSION"
+          CURRENT_VERSION=$(yq e '.version' "$CHART_PATH" | tr -d '\n\r')
+          IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+          NEW_VERSION="$major.$minor.$((patch + 1))"
+
+          yq e ".appVersion = \"$APP_VERSION\" | .version = \"$NEW_VERSION\"" -i "$CHART_PATH"
+          
+          git add "$CHART_PATH"
+          git commit -m "chore: Update data-access-api appVersion to $APP_VERSION and chart version to $NEW_VERSION"
           
           git push origin HEAD:${{ github.ref_name }}
           
-          echo "Helm chart 'data-access-api' appVersion updated to $APP_VERSION"
+          echo "Helm chart 'data-access-api' appVersion updated to $APP_VERSION and chart version updated to $NEW_VERSION"
