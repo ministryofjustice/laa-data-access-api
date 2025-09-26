@@ -80,18 +80,13 @@ jobs:
 
       - name: Update Helm Chart Version
         run: |
-          # 1. Configure Git with the bot user
           git config user.email "${{ inputs.github_bot_username || 'github-actions-bot' }}[bot]@users.noreply.github.com"
           git config user.name "${{ inputs.github_bot_username || 'github-actions-bot' }}[bot]"
           
-          # 2. Get the new image version
-          APP_VERSION="${{ needs.ecr-publish-image.outputs.published_image_version }}"
+          APP_VERSION="${{ needs.ecr-publish-image.outputs.published_image_version }}"          
+          yq e ".appVersion = \"$APP_VERSION\"" -i .helm/data-access-api/Chart.yaml
           
-          # 3. Update the appVersion field in your local Chart.yaml
-          yq e ".appVersion = \"$APP_VERSION\"" -i helm/data-access-api/Chart.yaml
-          
-          # 4. Commit and Push the updated Chart file
-          git add helm/data-access-api/Chart.yaml
+          git add .helm/data-access-api/Chart.yaml
           git commit -m "chore: Update data-access-api appVersion to $APP_VERSION"
           
           git push origin HEAD:${{ github.ref_name }}
