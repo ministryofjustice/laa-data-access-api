@@ -60,20 +60,3 @@ jobs:
       ecr_repository: ${{ vars.ECR_REPOSITORY }}
       ecr_region: ${{ vars.ECR_REGION }}
       ecr_role_to_assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-
-  update-helm-chart:
-    needs: [ ecr-publish-image ]
-    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/update-helm-chart.yml@v1
-    with:
-      helm_charts_repository: 'laa-data-stewardship-helm-charts'
-      helm_charts_branch: 'dev'
-      service_name: 'laa-data-stewardship'
-      subchart_name: 'civapp'
-      application_version: ${{ needs.ecr-publish-image.outputs.published_image_version }}
-      feature_branch: ${{ github.ref_name }}
-      github_bot_username: 'laa-data-stewardship'
-    secrets:
-      gh_token: ${{ secrets.GITHUB_TOKEN }}
-      github_app_id: ${{ secrets.GITHUBAPP_ID }}
-      github_app_private_key: ${{ secrets.GITHUBAPP_PRIVATE_KEY }}
-      github_app_organisation: 'ministryofjustice'
