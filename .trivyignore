@@ -18,6 +18,10 @@ CVE-2025-58056
 ### SM @2025-09-26 - commons-lang: Uncontrolled Recursion vulnerability in Apache (MEDIUM)
 CVE-2025-48924
 
+### SM @2025-09-26 - nimbus-jose-jwt: Connect2id Nimbus JOSE + JWT (MEDIUM)
+### Fixed in version 10.0.2, 9.37.4
+CVE-2025-53864
+
 ### SM @2025-09-26 - libc6 glibc: Double free in glibc (MEDIUM)
 ### Can be removed when Paketo build packs update Ubuntu
 CVE-2025-8058
