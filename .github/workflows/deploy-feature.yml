@@ -86,11 +86,15 @@ jobs:
           APP_VERSION="${{ needs.ecr-publish-image.outputs.published_image_version }}"
           CHART_PATH=".helm/data-access-api/Chart.yaml"
           
-          CURRENT_VERSION=$(yq e '.version' "$CHART_PATH" | tr -d '\n\r')
+          CURRENT_VERSION=$(yq e '.version' "$CHART_PATH" | tr -d '\n\r' | tr -d '"')
           IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
           NEW_VERSION="$major.$minor.$((patch + 1))"
 
-          yq e ".appVersion = \"$APP_VERSION\" | .version = \"$NEW_VERSION\"" -i "$CHART_PATH"
+          yq e --arg appVer "$APP_VERSION" \
+               --arg chartVer "$NEW_VERSION" \
+               '.appVersion = $appVer | .version = $chartVer' \
+               -i "$CHART_PATH"
+           
           
           git add "$CHART_PATH"
           git commit -m "chore: Update data-access-api appVersion to $APP_VERSION and chart version to $NEW_VERSION"
