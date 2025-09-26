@@ -18,7 +18,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
   postgres:
-    image: postgres:17.6
+    image: postgres:18.0
     container_name: laa-postgres
     restart: unless-stopped
     ports:
