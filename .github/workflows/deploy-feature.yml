@@ -63,17 +63,37 @@ jobs:
 
   update-helm-chart:
     needs: [ ecr-publish-image ]
-    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/update-helm-chart.yml@v1
-    with:
-      helm_charts_repository: 'laa-data-stewardship-helm-charts'
-      helm_charts_branch: 'dev'
-      service_name: 'laa-data-stewardship'
-      subchart_name: 'civapp'
-      application_version: ${{ needs.ecr-publish-image.outputs.published_image_version }}
-      feature_branch: ${{ github.ref_name }}
-      github_bot_username: 'laa-data-stewardship'
-    secrets:
-      gh_token: ${{ secrets.GITHUB_TOKEN }}
-      github_app_id: ${{ secrets.GITHUBAPP_ID }}
-      github_app_private_key: ${{ secrets.GITHUBAPP_PRIVATE_KEY }}
-      github_app_organisation: 'ministryofjustice'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository (Full Clone)
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install yq
+        run: |
+          sudo apt-get update && sudo apt-get install -y yq
+
+      - name: Update Helm Chart Version
+        run: |
+          # 1. Configure Git with the bot user
+          git config user.email "${{ inputs.github_bot_username || 'github-actions-bot' }}[bot]@users.noreply.github.com"
+          git config user.name "${{ inputs.github_bot_username || 'github-actions-bot' }}[bot]"
+          
+          # 2. Get the new image version
+          APP_VERSION="${{ needs.ecr-publish-image.outputs.published_image_version }}"
+          
+          # 3. Update the appVersion field in your local Chart.yaml
+          yq e ".appVersion = \"$APP_VERSION\"" -i helm/data-access-api/Chart.yaml
+          
+          # 4. Commit and Push the updated Chart file
+          git add helm/data-access-api/Chart.yaml
+          git commit -m "chore: Update data-access-api appVersion to $APP_VERSION"
+          
+          git push origin HEAD:${{ github.ref_name }}
+          
+          echo "Helm chart 'data-access-api' appVersion updated to $APP_VERSION"
