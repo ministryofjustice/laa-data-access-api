@@ -82,9 +82,14 @@ jobs:
         run: |
           git config user.email "${{ inputs.github_bot_username || 'github-actions-bot' }}[bot]@users.noreply.github.com"
           git config user.name "${{ inputs.github_bot_username || 'github-actions-bot' }}[bot]"
-          
-          APP_VERSION="${{ needs.ecr-publish-image.outputs.published_image_version }}"          
-          yq e ".appVersion = \"$APP_VERSION\"" -i .helm/data-access-api/Chart.yaml
+
+          APP_VERSION="${{ needs.ecr-publish-image.outputs.published_image_version }}"
+          CURRENT_CHART_VERSION=$(yq e '.version' .helm/data-access-api/Chart.yaml)
+          IFS='.' read -r major minor patch <<< "$CURRENT_CHART_VERSION"
+          NEW_PATCH=$((patch + 1))
+          NEW_CHART_VERSION="$major.$minor.$NEW_PATCH"
+
+          yq e ".appVersion = \"$APP_VERSION\" | .version = \"$NEW_CHART_VERSION\"" -i .helm/data-access-api/Chart.yaml
           
           git add .helm/data-access-api/Chart.yaml
           git commit -m "chore: Update data-access-api appVersion to $APP_VERSION"
