@@ -84,7 +84,7 @@ jobs:
           git config user.name "${{ inputs.github_bot_username || 'github-actions-bot' }}[bot]"
           
           APP_VERSION="${{ needs.ecr-publish-image.outputs.published_image_version }}"          
-          yq e ".appVersion = \"$APP_VERSION\"" -i .helm/data-access-api/Chart.yaml
+          yq e '.appVersion = "$APP_VERSION"' -i .helm/data-access-api/Chart.yaml
           
           git add .helm/data-access-api/Chart.yaml
           git commit -m "chore: Update data-access-api appVersion to $APP_VERSION"
