@@ -1,0 +1,24 @@
+### DC @2025-08-16 - Spring Boot Paketo build pack helper uses OpenSSL (LOW)
+### No fix currently available (but app is unaffected anyway, so false positive).
+CVE-2024-41996
+
+### DC @2025-09-22 - Spring Security updated needed (HIGH)
+### Can be removed when Spring Boot 3.5.6 or later is available
+CVE-2025-41248
+
+### DC @2025-09-22 - Spring Framework Annotation updated needed (HIGH)
+### Can be removed when Spring Boot 3.5.6 or later is available
+CVE-2025-41249
+
+### SM @2025-09-26 - Added for Netty codec / codec-http (MEDIUM / LOW)
+### Can be removed when Spring Boot 3.5.6 or later is available
+CVE-2025-58057
+CVE-2025-58056
+
+### SM @2025-09-26 - commons-lang: Uncontrolled Recursion vulnerability in Apache (MEDIUM)
+CVE-2025-48924
+
+### SM @2025-09-26 - libc6 glibc: Double free in glibc (MEDIUM)
+### Can be removed when Paketo build packs update Ubuntu
+CVE-2025-8058
+
