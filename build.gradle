@@ -3,7 +3,7 @@ plugins {
 }
 
 subprojects {
-    group = 'uk.gov.justice.laa.dstew.access'
+    group = 'uk.gov.justice.laa.data.access'
 
     release {
         tagTemplate = '$name-$version'
