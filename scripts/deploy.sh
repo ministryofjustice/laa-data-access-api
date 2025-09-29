@@ -12,7 +12,7 @@ deploy_branch() {
   IDENTIFIER="$BRANCH_RELEASE_NAME-laa-data-access-api-$K8S_NAMESPACE-green"
   echo "Deploying commit: $GITHUB_SHA under release name: '$BRANCH_RELEASE_NAME'..."
 
-  helm upgrade "$BRANCH_RELEASE_NAME" .helm/. \
+  helm upgrade "$BRANCH_RELEASE_NAME" .helm/data-access-api/. \
                 --install --wait \
                 --namespace="${K8S_NAMESPACE}" \
                 --values .helm/data-access-api/values/"$ENVIRONMENT".yaml \
@@ -44,7 +44,7 @@ deploy_branch() {
 deploy_main() {
   RELEASE_HOST="laa-data-access-api-$ENVIRONMENT.cloud-platform.service.justice.gov.uk"
   AUTH_REDIRECT_URL="https://$RELEASE_HOST/auth/redirect"
-  helm upgrade laa-data-access-api .helm/. \
+  helm upgrade laa-data-access-api .helm/data-access-api/. \
                           --install --wait \
                           --namespace="${K8S_NAMESPACE}" \
                           --values .helm/data-access-api/values/"$ENVIRONMENT".yaml \
