@@ -12,10 +12,10 @@ deploy_branch() {
   IDENTIFIER="$BRANCH_RELEASE_NAME-laa-data-access-api-$K8S_NAMESPACE-green"
   echo "Deploying commit: $GITHUB_SHA under release name: '$BRANCH_RELEASE_NAME'..."
 
-  helm upgrade "$BRANCH_RELEASE_NAME" .helm/. \
+  helm upgrade "$BRANCH_RELEASE_NAME" ./helm/. \
                 --install --wait \
                 --namespace="${K8S_NAMESPACE}" \
-                --values .helm/values/"$ENVIRONMENT".yaml \
+                --values ./helm/data-access-api/values/"$ENVIRONMENT".yaml \
                 --set image.repository="$REGISTRY/$REPOSITORY" \
                 --set image.tag="$IMAGE_TAG" \
                 --set ingress.annotations."external-dns\.alpha\.kubernetes\.io/set-identifier"="$IDENTIFIER" \
@@ -44,10 +44,10 @@ deploy_branch() {
 deploy_main() {
   RELEASE_HOST="laa-data-access-api-$ENVIRONMENT.cloud-platform.service.justice.gov.uk"
   AUTH_REDIRECT_URL="https://$RELEASE_HOST/auth/redirect"
-  helm upgrade laa-data-access-api .helm/. \
+  helm upgrade laa-data-access-api ./helm/. \
                           --install --wait \
                           --namespace="${K8S_NAMESPACE}" \
-                          --values .helm/values/"$ENVIRONMENT".yaml \
+                          --values ./helm/data-access-api/values/"$ENVIRONMENT".yaml \
                           --set image.repository="$REGISTRY/$REPOSITORY" \
                           --set image.tag="$IMAGE_TAG" \
                           --set env.AUTH_DIRECTORY_URL="$AUTH_DIRECTORY_URL" \
