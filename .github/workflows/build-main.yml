@@ -27,6 +27,9 @@ jobs:
       github_app_private_key: ${{ secrets.GITHUBAPP_PRIVATE_KEY }}
       github_app_organisation: 'ministryofjustice'
 
+  vulnerability-report2:
+    uses: ./.github/actions/vulnerability_report
+
   vulnerability-report:
     if: ${{ github.event.pull_request.merged == true }}
     uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/snyk-vulnerability-report.yml@v1
