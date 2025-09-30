@@ -46,8 +46,8 @@ jobs:
           #severity: 'HIGH,CRITICAL'
           exit-code: 1
         env:
-          TRIVY_SKIP_DB_UPDATE: true
-          TRIVY_SKIP_JAVA_DB_UPDATE: true
+          TRIVY_SKIP_DB_UPDATE: false
+          TRIVY_SKIP_JAVA_DB_UPDATE: false
 
       # Build image in order to scan it before merging to `main` branch and pushing it to ECR for deployment.
       - name: Build Docker image
@@ -75,8 +75,8 @@ jobs:
           ECR_REGISTRY: dummyregistry
           ECR_REPOSITORY: dummyrepository
           IMAGE_TAG: ${{ steps.build_project.outputs.current_version }}
-          TRIVY_SKIP_DB_UPDATE: true
-          TRIVY_SKIP_JAVA_DB_UPDATE: true
+          TRIVY_SKIP_DB_UPDATE: false
+          TRIVY_SKIP_JAVA_DB_UPDATE: false
 
       - name: Send build check failure Slack message
         if: ${{ failure() }}

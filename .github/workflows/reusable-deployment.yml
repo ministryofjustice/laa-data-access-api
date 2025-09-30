@@ -182,8 +182,8 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ vars[format('{0}',inputs.ecr-repository)] }}
           IMAGE_TAG: ${{ steps.determine-tag.outputs.tag_name }}
-          TRIVY_SKIP_DB_UPDATE: true
-          TRIVY_SKIP_JAVA_DB_UPDATE: true
+          TRIVY_SKIP_DB_UPDATE: false
+          TRIVY_SKIP_JAVA_DB_UPDATE: false
 
       - name: Push Docker image to ECR
         working-directory: data-access-service
