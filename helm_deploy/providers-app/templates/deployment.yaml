@@ -1,0 +1,183 @@
+{{/*
+deployment.yaml
+Defines the Kubernetes Deployment for the providers-app application.
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "providers-app.fullname" . }}
+  labels:
+    {{- include "providers-app.labels" . | nindent 4 }}
+spec:
+  {{- if not (.Values.autoscaling).enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "providers-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "providers-app.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "providers-app.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: {{ .Values.javaToolOptions | quote }}
+            - name: TZ  # Old Dockerfile had `ENV TZ=Europe/London`, despite Cloud Platform documentation.
+              # https://user-guide.cloud-platform.service.justice.gov.uk/documentation/monitoring-an-app/application-metrics.html#assumptions
+              # https://user-guide.cloud-platform.service.justice.gov.uk/documentation/deploying-an-app/container-repositories/requirements.html#setting-utc-timezone-inside-your-container
+              value: UTC
+            - name: CWA_DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: CWA_DB_URL
+            - name: CWA_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: CWA_DB_USER
+            - name: CWA_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: CWA_DB_PASSWORD
+            - name: CCMS_DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: CCMS_DB_URL
+            - name: CCMS_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: CCMS_DB_USER
+            - name: CCMS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: CCMS_DB_PASSWORD
+            - name: SLACK_WEBHOOK
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: SLACK_WEBHOOK
+            - name: REDIS_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: app-redis
+                  key: APP_REDIS_ENDPOINT
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-redis
+                  key: APP_REDIS_PASSWORD
+            - name: AUTHORIZED_CLIENTS
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AUTHORIZED_CLIENTS
+            - name: AUTHORIZED_ROLES
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AUTHORIZED_ROLES
+            - name: UNPROTECTED_URIS
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: UNPROTECTED_URIS
+            - name: APP_CCMS_MAPPINGS
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: APP_CCMS_MAPPINGS
+                  optional: true
+            - name: APP_SCHEDULE_CACHECHECK
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: APP_SCHEDULE_CACHECHECK
+                  optional: true
+            - name: APP_SCHEDULE_CACHELOAD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: APP_SCHEDULE_CACHELOAD
+                  optional: true
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            {{- if and .Values.spring .Values.spring.profiles .Values.spring.profiles.active }}
+            - name: SPRING_PROFILES_ACTIVE
+              value: "{{ .Values.spring.profiles.active }}"
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

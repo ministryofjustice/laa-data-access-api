@@ -1,0 +1,55 @@
+{{/*
+ingress-internal.yaml
+Defines how the service is exposed to the internal cluster (only release app).
+Note `providers-app-internal-laa-data-provider-data-staging-green` is already 59 chars,
+so be very careful about naming if adding internal ingresses to preview apps.
+*/}}
+{{ if not .Values.previewDeploy }}
+{{ if (.Values.ingressInternal).enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "providers-app.fullname" . }}-internal
+  labels:
+    {{- include "providers-app.labels" . | nindent 4 }}
+  annotations:
+    external-dns.alpha.kubernetes.io/set-identifier: {{ include "providers-app.fullname" . }}-internal-{{ .Release.Namespace }}-green
+    external-dns.alpha.kubernetes.io/aws-weight: "100"
+    {{/* We don't use an IP allowlist for the internal ingress. */}}
+    {{- with .Values.ingressInternal.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.ingressInternal.secretAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- with .Values.ingressInternal.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if .Values.ingressInternal.tls }}
+  tls:
+    {{- range .Values.ingressInternal.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      {{- with .secretName }}
+      secretName: {{ . }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingressInternal.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ include "providers-app.fullname" $ }}
+                port:
+                  number: {{ $.Values.service.port }}
+    {{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,22 @@
+# values-prod.yaml
+# UAT environment override values for the providers-app chart.
+
+spring:
+  profiles:
+    active: uat
+
+prometheus:
+  metricsQualifier: "uat"
+
+ingressInternal:
+  enabled: true
+  hosts:
+    - host: "laa-data-provider-data-uat.internal-non-prod.cloud-platform.service.justice.gov.uk"
+
+ingress:
+  enabled: true
+  hosts:
+    - host: "laa-data-provider-data-uat.apps.cloud-platform.service.justice.gov.uk"
+  tls:
+    - hosts:
+        - "laa-data-provider-data-uat.apps.cloud-platform.service.justice.gov.uk"

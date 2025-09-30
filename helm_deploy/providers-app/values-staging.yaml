@@ -1,0 +1,22 @@
+# values-staging.yaml
+# Staging environment override values for the providers-app chart.
+
+spring:
+  profiles:
+    active: staging
+
+prometheus:
+  metricsQualifier: "staging"
+
+ingressInternal:
+  enabled: true
+  hosts:
+    - host: "laa-data-provider-data-staging.internal-non-prod.cloud-platform.service.justice.gov.uk"
+
+ingress:
+  enabled: true
+  hosts:
+    - host: "laa-data-provider-data-staging.apps.cloud-platform.service.justice.gov.uk"
+  tls:
+    - hosts:
+        - "laa-data-provider-data-staging.apps.cloud-platform.service.justice.gov.uk"

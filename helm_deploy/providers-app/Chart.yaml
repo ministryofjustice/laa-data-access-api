@@ -1,0 +1,18 @@
+# Chart.yaml
+# Contains metadata about the Helm chart.
+
+apiVersion: v2
+name: providers-app
+description: "Provider data: the data API for provider firms, offices, contracts and schedules"
+
+# This is a chart for an application.
+# Application charts are a collection of templates that can be packaged into versioned archives
+# to be deployed.
+type: application
+
+# The version of the Helm chart itself.
+version: 0.1.0
+
+# The version of the application this chart deploys.
+# This will be used as the default image tag if not overridden.
+appVersion: "1.16.0"
