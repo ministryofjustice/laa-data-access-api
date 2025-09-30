@@ -21,12 +21,12 @@ runs:
         echo "Upgrade Helm chart - image: [${{ inputs.image }}], tag: [${{ inputs.tag }}], environmentSuffix: [${{ inputs.environmentSuffix }}]"
         IP_ALLOWLIST="$(kubectl get secret app-secrets -o json | jq -r '.data["IP_ALLOWLIST"] | @base64d')"
         HELM_OPTS=( \
-            -f "./helm_deploy/providers-app/values.yaml"
-            -f "./helm_deploy/providers-app/values-${{ inputs.environmentSuffix }}.yaml"
+            -f "./helm_deploy/data-access-service/values.yaml"
+            -f "./helm_deploy/data-access-service/values-${{ inputs.environmentSuffix }}.yaml"
             --set-string "image.repository=${{ inputs.image }}" \
             --set-string "image.tag=${{ inputs.tag }}" \
             --set-string "ingress.allowlist=${IP_ALLOWLIST//,/\\,}" \
         )
-        helm upgrade --install "providers-app" "./helm_deploy/providers-app" "${HELM_OPTS[@]}" --debug --dry-run=server
+        helm upgrade --install "data-access-service" "./helm_deploy/data-access-service" "${HELM_OPTS[@]}" --debug --dry-run=server
         # If the dry-run succeeded, do the real thing
-        helm upgrade --install "providers-app" "./helm_deploy/providers-app" "${HELM_OPTS[@]}"
+        helm upgrade --install "data-access-service" "./helm_deploy/data-access-service" "${HELM_OPTS[@]}"

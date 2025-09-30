@@ -51,7 +51,7 @@ jobs:
 
       # Build image in order to scan it before merging to `main` branch and pushing it to ECR for deployment.
       - name: Build Docker image
-        working-directory: providers-app
+        working-directory: data-access-service
         run: |
           cd ..
           echo "building Docker image with tag [${{ env.IMAGE_TAG }}]"

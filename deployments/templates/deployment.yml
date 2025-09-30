@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laa-pda-api-deployment
+  labels:
+    app: laa-pda-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: laa-pda-api-pod
+  template:
+    metadata:
+      labels:
+        app: laa-pda-api-pod
+    spec:
+      containers:
+        - name: laa-pda-api-container
+          image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
+          imagePullPolicy: Always
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          ports:
+            - containerPort: 8080
+          env:
+            - name: CWA_DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: laa-provider-details-api-secrets
+                  key: CWA_DB_URL
+            - name: CWA_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: laa-provider-details-api-secrets
+                  key: CWA_DB_USER
+            - name: CWA_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: laa-provider-details-api-secrets
+                  key: CWA_DB_PASSWORD
+            - name: CCMS_DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: laa-provider-details-api-secrets
+                  key: CCMS_DB_URL
+            - name: CCMS_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: laa-provider-details-api-secrets
+                  key: CCMS_DB_USER
+            - name: CCMS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: laa-provider-details-api-secrets
+                  key: CCMS_DB_PASSWORD
+            - name: SLACK_WEBHOOK
+              valueFrom:
+                secretKeyRef:
+                  name: laa-provider-details-api-secrets
+                  key: SLACK_WEBHOOK
+            - name: REDIS_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: laa-provider-details-api-redis-secrets
+                  key: primary_endpoint_address
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: laa-provider-details-api-redis-secrets
+                  key: auth_token
+            - name: AUTHORIZED_CLIENTS
+              valueFrom:
+                secretKeyRef:
+                  name: laa-provider-details-api-secrets
+                  key: AUTHORIZED_CLIENTS
+            - name: AUTHORIZED_ROLES
+              valueFrom:
+                secretKeyRef:
+                  name: laa-provider-details-api-secrets
+                  key: AUTHORIZED_ROLES
+            - name: UNPROTECTED_URIS
+              valueFrom:
+                secretKeyRef:
+                  name: laa-provider-details-api-secrets
+                  key: UNPROTECTED_URIS
+            - name: APP_CCMS_MAPPINGS
+              valueFrom:
+                secretKeyRef:
+                  name: laa-provider-details-api-secrets
+                  key: APP_CCMS_MAPPINGS
+                  optional: true
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            runAsUser: 10001
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3

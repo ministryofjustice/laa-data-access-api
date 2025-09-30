@@ -20,10 +20,10 @@ runs:
         set -euo pipefail
         echo "Upgrade Helm chart - image: [${{ inputs.image }}], tag: [${{ inputs.tag }}], preview: [${{ inputs.preview }}]"
         IP_ALLOWLIST="$(kubectl get secret app-secrets -o json | jq -r '.data["IP_ALLOWLIST"] | @base64d')"
-        PREVIEW_HOST="laa-data-provider-data-${{ inputs.preview }}.apps.cloud-platform.service.justice.gov.uk"
+        PREVIEW_HOST="laa-data-access-api-${{ inputs.preview }}.apps.cloud-platform.service.justice.gov.uk"
         HELM_OPTS=( \
-            -f "./helm_deploy/providers-app/values.yaml"
-            -f "./helm_deploy/providers-app/values-uat.yaml"
+            -f "./helm_deploy/data-access-service/values.yaml"
+            -f "./helm_deploy/data-access-service/values-uat.yaml"
             --set previewDeploy=true \
             --set-string "image.repository=${{ inputs.image }}" \
             --set-string "image.tag=${{ inputs.tag }}" \
@@ -32,6 +32,6 @@ runs:
             --set-string "ingress.hosts[0].host=${PREVIEW_HOST}" \
             --set-string "ingress.tls[0].hosts[0]=${PREVIEW_HOST}" \
         )
-        helm upgrade --install "${{ inputs.preview }}" "./helm_deploy/providers-app" "${HELM_OPTS[@]}" --debug --dry-run=server
+        helm upgrade --install "${{ inputs.preview }}" "./helm_deploy/data-access-service" "${HELM_OPTS[@]}" --debug --dry-run=server
         # If the dry-run succeeded, do the real thing
-        helm upgrade --install "${{ inputs.preview }}" "./helm_deploy/providers-app" "${HELM_OPTS[@]}"
+        helm upgrade --install "${{ inputs.preview }}" "./helm_deploy/data-access-service" "${HELM_OPTS[@]}"

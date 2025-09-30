@@ -44,7 +44,7 @@ jobs:
       ENV:     "uat"
     environment:
       name: uat-preview
-      url:  https://laa-data-provider-data-pr-${{ (github.event_name == 'pull_request' && github.event.pull_request.number) || inputs.prnum }}.apps.cloud-platform.service.justice.gov.uk
+      url:  https://laa-data-access-api-pr-${{ (github.event_name == 'pull_request' && github.event.pull_request.number) || inputs.prnum }}.apps.cloud-platform.service.justice.gov.uk
     steps:
       - uses: actions/checkout@v5
 
@@ -61,8 +61,8 @@ jobs:
           set -euo pipefail
           if [[ -n "${{ secrets.DPD_KUBE_CERT }}" && -n "${{ secrets.DPD_KUBE_TOKEN }}" ]]; then
             echo "Uninstall Helm chart - env: \"$ENV\", preview: \"$PREVIEW\""
-            helm status "$PREVIEW" -n "laa-data-provider-data-$ENV" >/dev/null 2>&1 && \
-                helm uninstall "$PREVIEW" -n "laa-data-provider-data-$ENV" || true
+            helm status "$PREVIEW" -n "laa-data-access-service-$ENV" >/dev/null 2>&1 && \
+                helm uninstall "$PREVIEW" -n "laa-data-access-service-$ENV" || true
           else
             echo "Did not helm uninstall as Kubernetes credentials were empty"
           fi

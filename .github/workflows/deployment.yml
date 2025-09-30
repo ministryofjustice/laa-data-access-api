@@ -19,13 +19,13 @@ jobs:
     with:
       environment: dev
       environment-prefix: Dev
-      ecr-repository: DEV_ECR_REPOSITORY
-      ecr-region: DEV_ECR_REGION
+      ecr-repository: ECR_REPOSITORY
+      ecr-region: ECR_REGION
       branch-name: main
       prometheus_severity: laa-provider-data-api-alerts-nonprod
       spring_profile: dev
     secrets:
-      ecr-role-to-assume: ${{ secrets.DEV_ECR_ROLE_TO_ASSUME }}
+      ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
       kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
       kube_cluster: ${{ secrets.KUBE_CLUSTER }}
       kube_token: ${{ secrets.KUBE_TOKEN }}
@@ -42,13 +42,13 @@ jobs:
     with:
       environment: uat
       environment-prefix: Uat
-      ecr-repository: UAT_ECR_REPOSITORY
-      ecr-region: UAT_ECR_REGION
+      ecr-repository: ECR_REPOSITORY
+      ecr-region: ECR_REGION
       branch-name: main
       prometheus_severity: laa-provider-data-api-alerts-nonprod
       spring_profile: uat
     secrets:
-      ecr-role-to-assume: ${{ secrets.UAT_ECR_ROLE_TO_ASSUME }}
+      ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
       kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
       kube_cluster: ${{ secrets.KUBE_CLUSTER }}
       kube_token: ${{ secrets.KUBE_TOKEN }}
@@ -65,13 +65,13 @@ jobs:
     with:
       environment: preprod
       environment-prefix: Preprod
-      ecr-repository: PREPROD_ECR_REPOSITORY
-      ecr-region: PREPROD_ECR_REGION
+      ecr-repository: ECR_REPOSITORY
+      ecr-region: ECR_REGION
       branch-name: main
       prometheus_severity: laa-provider-data-api-alerts-nonprod
       spring_profile: preprod
     secrets:
-      ecr-role-to-assume: ${{ secrets.PREPROD_ECR_ROLE_TO_ASSUME }}
+      ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
       kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
       kube_cluster: ${{ secrets.KUBE_CLUSTER }}
       kube_token: ${{ secrets.KUBE_TOKEN }}
@@ -88,13 +88,13 @@ jobs:
     with:
       environment: prod
       environment-prefix: Prod
-      ecr-repository: PROD_ECR_REPOSITORY
-      ecr-region: PROD_ECR_REGION
+      ecr-repository: ECR_REPOSITORY
+      ecr-region: ECR_REGION
       branch-name: main
       prometheus_severity: laa-provider-details-api-alerts-prod
       spring_profile: prod
     secrets:
-      ecr-role-to-assume: ${{ secrets.PROD_ECR_ROLE_TO_ASSUME }}
+      ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
       kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
       kube_cluster: ${{ secrets.KUBE_CLUSTER }}
       kube_token: ${{ secrets.KUBE_TOKEN }}

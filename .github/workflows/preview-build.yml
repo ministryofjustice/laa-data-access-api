@@ -47,7 +47,7 @@ jobs:
 
       - run: |
           ### Check the Helm chart lints OK
-          helm lint ./helm_deploy/providers-app --quiet --strict
+          helm lint ./helm_deploy/data-access-service --quiet --strict
 
   build:
     name: "Build OCI image"
@@ -73,31 +73,31 @@ jobs:
         run: |
           ./gradlew clean build integrationTest
 
-      - name: "Upload Checkstyle report for providers-app"
+      - name: "Upload Checkstyle report for data-access-service"
         uses: actions/upload-artifact@v4
         with:
           name: checkstyle-report
-          path: providers-app/build/reports/checkstyle
+          path: data-access-service/build/reports/checkstyle
           retention-days: 7
 
-      - name: "Upload test report for providers-app"
+      - name: "Upload test report for data-access-service"
         uses: actions/upload-artifact@v4
         with:
           name: test-report
-          path: providers-app/build/reports/tests
+          path: data-access-service/build/reports/tests
           retention-days: 7
 
       - name: "Authenticate with Amazon ECR"
         id:   ecr-auth
         uses: ./.github/actions/cp-ecr-auth
         with:
-          ecr-region:         "${{ vars.DPD_ECR_REGION }}"
-          ecr-role-to-assume: "${{ secrets.DPD_ECR_ROLE_TO_ASSUME }}"
+          ecr-region:         "${{ vars.ECR_REGION }}"
+          ecr-role-to-assume: "${{ secrets.ECR_ROLE_TO_ASSUME }}"
 
       - name: "Build and push image"
         uses: ./.github/actions/build-push-image
         with:
-          image: "${{ steps.ecr-auth.outputs.ecr-registry }}/${{ vars.DPD_ECR_REPOSITORY }}"
+          image: "${{ steps.ecr-auth.outputs.ecr-registry }}/${{ vars.ECR_REPOSITORY }}"
           itag:  "${{ needs.plan.outputs.itag }}"
           mtag:  "pr-${{ needs.plan.outputs.prnum }}"
 

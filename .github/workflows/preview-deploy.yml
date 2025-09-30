@@ -44,7 +44,7 @@ jobs:
     permissions: { contents: read, id-token: write }
     environment:
       name: uat-preview
-      url:  "https://laa-data-provider-data-pr-${{ inputs.prnum }}.apps.cloud-platform.service.justice.gov.uk"
+      url:  "https://laa-data-access-api-pr-${{ inputs.prnum }}.apps.cloud-platform.service.justice.gov.uk"
     steps:
       - uses: actions/checkout@v5
 
@@ -52,20 +52,20 @@ jobs:
         id:   ecr-auth
         uses: ./.github/actions/cp-ecr-auth
         with:
-          ecr-region:         "${{ vars.DPD_ECR_REGION }}"
-          ecr-role-to-assume: "${{ secrets.DPD_ECR_ROLE_TO_ASSUME }}"
+          ecr-region:         "${{ vars.ECR_REGION }}"
+          ecr-role-to-assume: "${{ secrets.ECR_ROLE_TO_ASSUME }}"
 
       - name: "Authenticate with Kubernetes cluster"
         uses: ./.github/actions/cp-kube-auth
         with:
-          kube-cert:      "${{ secrets.DPD_KUBE_CERT }}"
-          kube-cluster:   "${{ secrets.DPD_KUBE_CLUSTER }}"
-          kube-namespace: "${{ secrets.DPD_KUBE_NAMESPACE }}"
-          kube-token:     "${{ secrets.DPD_KUBE_TOKEN }}"
+          kube-cert:      "${{ secrets.KUBE_CERT }}"
+          kube-cluster:   "${{ secrets.KUBE_CLUSTER }}"
+          kube-namespace: "${{ secrets.KUBE_NAMESPACE }}"
+          kube-token:     "${{ secrets.KUBE_TOKEN }}"
 
       - name: "Install preview app"
         uses: ./.github/actions/preview-install
         with:
-          image:   "${{ steps.ecr-auth.outputs.ecr-registry }}/${{ vars.DPD_ECR_REPOSITORY }}"
+          image:   "${{ steps.ecr-auth.outputs.ecr-registry }}/${{ vars.ECR_REPOSITORY }}"
           tag:     "${{ (github.event_name == 'workflow_dispatch' && format('pr-{0}', inputs.prnum)) || inputs.tag }}"
           preview: "pr-${{ inputs.prnum }}"

@@ -1,60 +1,61 @@
-name: Provider - Seed Release (latest main)
+# DB - disabled as we're not doing pact stuff yet
+# name: Provider - Seed Release (latest main)
 
-on:
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: "Broker environment to release to (e.g., test, staging, prod)"
-        required: true
-        default: "test"
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       environment:
+#         description: "Broker environment to release to (e.g., test, staging, prod)"
+#         required: true
+#         default: "test"
 
-jobs:
-  seed:
-    runs-on: ubuntu-latest
-    environment: dev
-    env:
-      PARTICIPANT: provider-data-api
-      TARGET_ENV:  ${{ inputs.environment }}
-      PACTBROKER_URL: https://laa-data-pact-broker.apps.live.cloud-platform.service.justice.gov.uk
-      KUBE_CERT: ${{ secrets.kube_cert }}
-      KUBE_CLUSTER: ${{ secrets.kube_cluster }}
-      KUBE_NAMESPACE: ${{ secrets.kube_namespace }}
-      KUBE_TOKEN: ${{ secrets.kube_token }}
+# jobs:
+#   seed:
+#     runs-on: ubuntu-latest
+#     environment: dev
+#     env:
+#       PARTICIPANT: provider-data-api
+#       TARGET_ENV:  ${{ inputs.environment }}
+#       PACTBROKER_URL: https://laa-data-pact-broker.apps.live.cloud-platform.service.justice.gov.uk
+#       KUBE_CERT: ${{ secrets.kube_cert }}
+#       KUBE_CLUSTER: ${{ secrets.kube_cluster }}
+#       KUBE_NAMESPACE: ${{ secrets.kube_namespace }}
+#       KUBE_TOKEN: ${{ secrets.kube_token }}
 
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: main
+#     steps:
+#       - uses: actions/checkout@v5
+#         with:
+#           ref: main
 
-      - name: Authenticate kubectl
-        run: |
-          echo "${KUBE_CERT}" > ca.crt
-          kubectl config set-cluster "${KUBE_CLUSTER}" --certificate-authority=./ca.crt --server="https://${KUBE_CLUSTER}"
-          kubectl config set-credentials deploy-user --token="${KUBE_TOKEN}"
-          kubectl config set-context "${KUBE_CLUSTER}" --cluster="${KUBE_CLUSTER}" --user=deploy-user --namespace="${KUBE_NAMESPACE}"
-          kubectl config use-context "${KUBE_CLUSTER}"
+#       - name: Authenticate kubectl
+#         run: |
+#           echo "${KUBE_CERT}" > ca.crt
+#           kubectl config set-cluster "${KUBE_CLUSTER}" --certificate-authority=./ca.crt --server="https://${KUBE_CLUSTER}"
+#           kubectl config set-credentials deploy-user --token="${KUBE_TOKEN}"
+#           kubectl config set-context "${KUBE_CLUSTER}" --cluster="${KUBE_CLUSTER}" --user=deploy-user --namespace="${KUBE_NAMESPACE}"
+#           kubectl config use-context "${KUBE_CLUSTER}"
 
-      - name: Compute short SHA from main
-        run: |
-          SHORT_SHA=$(git rev-parse --short HEAD)
-          echo "SHORT_SHA=$SHORT_SHA" >> "$GITHUB_ENV"
-          echo "Using SHORT_SHA=$SHORT_SHA from main"
+#       - name: Compute short SHA from main
+#         run: |
+#           SHORT_SHA=$(git rev-parse --short HEAD)
+#           echo "SHORT_SHA=$SHORT_SHA" >> "$GITHUB_ENV"
+#           echo "Using SHORT_SHA=$SHORT_SHA from main"
 
-      - name: Install Pact Broker CLI (Ruby)
-        run: |
-          sudo gem install pact_broker-client --no-document
-          pact-broker version
+#       - name: Install Pact Broker CLI (Ruby)
+#         run: |
+#           sudo gem install pact_broker-client --no-document
+#           pact-broker version
 
-      - name: Record provider RELEASE in Broker
-        run: |
-          PACTBROKER_USERNAME=$(kubectl get secret laa-provider-details-api-secrets -n ${KUBE_NAMESPACE} -o jsonpath='{.data.PACT_BROKER_BASIC_AUTH_USERNAME}' | base64 --decode)
-          PACTBROKER_PASSWORD=$(kubectl get secret laa-provider-details-api-secrets -n ${KUBE_NAMESPACE} -o jsonpath='{.data.PACT_BROKER_BASIC_AUTH_PASSWORD}' | base64 --decode)
+#       - name: Record provider RELEASE in Broker
+#         run: |
+#           PACTBROKER_USERNAME=$(kubectl get secret laa-provider-details-api-secrets -n ${KUBE_NAMESPACE} -o jsonpath='{.data.PACT_BROKER_BASIC_AUTH_USERNAME}' | base64 --decode)
+#           PACTBROKER_PASSWORD=$(kubectl get secret laa-provider-details-api-secrets -n ${KUBE_NAMESPACE} -o jsonpath='{.data.PACT_BROKER_BASIC_AUTH_PASSWORD}' | base64 --decode)
           
-          echo "Releasing $PARTICIPANT version $SHORT_SHA to $TARGET_ENV"
-          pact-broker record-release \
-            --pacticipant "$PARTICIPANT" \
-            --version "$SHORT_SHA" \
-            --environment "$TARGET_ENV" \
-            --broker-base-url "$PACTBROKER_URL" \
-            --broker-username "$PACTBROKER_USERNAME" \
-            --broker-password "$PACTBROKER_PASSWORD"
+#           echo "Releasing $PARTICIPANT version $SHORT_SHA to $TARGET_ENV"
+#           pact-broker record-release \
+#             --pacticipant "$PARTICIPANT" \
+#             --version "$SHORT_SHA" \
+#             --environment "$TARGET_ENV" \
+#             --broker-base-url "$PACTBROKER_URL" \
+#             --broker-username "$PACTBROKER_USERNAME" \
+#             --broker-password "$PACTBROKER_PASSWORD"
