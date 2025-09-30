@@ -1,20 +1,20 @@
 {{/*
 deployment.yaml
-Defines the Kubernetes Deployment for the providers-app application.
+Defines the Kubernetes Deployment for the data-access-api application.
 */}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "providers-app.fullname" . }}
+  name: {{ include "data-access-api.fullname" . }}
   labels:
-    {{- include "providers-app.labels" . | nindent 4 }}
+    {{- include "data-access-api.labels" . | nindent 4 }}
 spec:
   {{- if not (.Values.autoscaling).enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "providers-app.selectorLabels" . | nindent 6 }}
+      {{- include "data-access-api.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -22,7 +22,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "providers-app.labels" . | nindent 8 }}
+        {{- include "data-access-api.labels" . | nindent 8 }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -31,7 +31,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "providers-app.serviceAccountName" . }}
+      serviceAccountName: {{ include "data-access-api.serviceAccountName" . }}
       {{- with .Values.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}

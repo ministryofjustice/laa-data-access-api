@@ -6,11 +6,11 @@ Defines how the service is exposed to the internet.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "providers-app.fullname" . }}
+  name: {{ include "data-access-api.fullname" . }}
   labels:
-    {{- include "providers-app.labels" . | nindent 4 }}
+    {{- include "data-access-api.labels" . | nindent 4 }}
   annotations:
-    external-dns.alpha.kubernetes.io/set-identifier: {{ include "providers-app.fullname" . }}-{{ .Release.Namespace }}-green
+    external-dns.alpha.kubernetes.io/set-identifier: {{ include "data-access-api.fullname" . }}-{{ .Release.Namespace }}-green
     external-dns.alpha.kubernetes.io/aws-weight: "100"
     {{- if .Values.ingress.allowlist }}
     nginx.ingress.kubernetes.io/allowlist-source-range: {{ .Values.ingress.allowlist | quote }}
@@ -47,7 +47,7 @@ spec:
             pathType: ImplementationSpecific
             backend:
               service:
-                name: {{ include "providers-app.fullname" $ }}
+                name: {{ include "data-access-api.fullname" $ }}
                 port:
                   number: {{ $.Values.service.port }}
     {{- end }}

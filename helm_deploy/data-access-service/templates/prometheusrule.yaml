@@ -7,10 +7,10 @@ Prometheus Operator-defined CRD used to trigger alerts based on metrics.
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: prometheus-custom-rules-providers-app
+  name: prometheus-custom-rules-data-access-api
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "providers-app.appLabels" . | nindent 4 }}
+    {{- include "data-access-api.appLabels" . | nindent 4 }}
     role: alert-rules
 spec:
   groups:

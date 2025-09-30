@@ -80,7 +80,7 @@ data:
               </div>
               <div class="header-proposition">
               <div class="content">
-                <a href="#" id="proposition-name">Provider data API</a>
+                <a href="#" id="proposition-name">Data access API</a>
               </div>
             </div>
             </div>

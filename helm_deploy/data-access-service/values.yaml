@@ -67,7 +67,7 @@ ingressInternal:
   hosts:
     # The host value will be overridden in the environment values file (for release deployments),
     # or by a command-line argument (for preview deployments):
-    - host: "laa-data-provider-data.internal-non-prod.cloud-platform.service.justice.gov.uk"
+    - host: "laa-data-access-api.internal-non-prod.cloud-platform.service.justice.gov.uk"
 
 # Configuration for Ingress to expose the service outside the cluster.
 ingress:
@@ -87,9 +87,9 @@ ingress:
   hosts:
     # The host value will be overridden in the environment values file (for release deployments),
     # or by a command-line argument (for preview deployments):
-    - host: "laa-data-provider-data.apps.cloud-platform.service.justice.gov.uk"
+    - host: "laa-data-access-api.apps.cloud-platform.service.justice.gov.uk"
   tls:
     - hosts:
         # The TLS hosts value will be overridden in the environment values file (for release deployments),
         # or by a command-line argument (for preview deployments):
-        - "laa-data-provider-data.apps.cloud-platform.service.justice.gov.uk"
+        - "laa-data-access-api.apps.cloud-platform.service.justice.gov.uk"

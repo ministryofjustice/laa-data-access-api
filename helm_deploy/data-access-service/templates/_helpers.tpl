@@ -6,7 +6,7 @@ This file contains Helm template helpers that can be reused throughout the chart
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "providers-app.name" -}}
+{{- define "data-access-api.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -15,7 +15,7 @@ Create a default fully qualified app name (release name + chart name unless full
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "providers-app.fullname" -}}
+{{- define "data-access-api.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -31,44 +31,44 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "providers-app.chart" -}}
+{{- define "data-access-api.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels (note that the Selector labels are included in here)
 */}}
-{{- define "providers-app.labels" -}}
-{{ include "providers-app.selectorLabels" . }}
+{{- define "data-access-api.labels" -}}
+{{ include "data-access-api.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
-helm.sh/chart: {{ include "providers-app.chart" . }}
+helm.sh/chart: {{ include "data-access-api.chart" . }}
 helm.sh/revision: {{ .Release.Revision | quote }}
 {{- end }}
 
 {{/*
 Selector labels (identify this instance of the appliction)
 */}}
-{{- define "providers-app.selectorLabels" -}}
-{{ include "providers-app.appLabels" . }}
+{{- define "data-access-api.selectorLabels" -}}
+{{ include "data-access-api.appLabels" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 App selector labels (identify all instances of the application)
 */}}
-{{- define "providers-app.appLabels" -}}
-app.kubernetes.io/name: {{ include "providers-app.name" . }}
+{{- define "data-access-api.appLabels" -}}
+app.kubernetes.io/name: {{ include "data-access-api.name" . }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "providers-app.serviceAccountName" -}}
+{{- define "data-access-api.serviceAccountName" -}}
 {{- if (.Values.serviceAccount).create }}
-{{- default (include "providers-app.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "data-access-api.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" (.Values.serviceAccount).name }}
 {{- end }}

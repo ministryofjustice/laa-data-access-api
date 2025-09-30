@@ -7,13 +7,13 @@ Prometheus Operator-defined CRD for how to collect metrics from service pods.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: providers-app-monitor
+  name: data-access-api-monitor
   labels:
-    {{- include "providers-app.labels" . | nindent 4 }}
+    {{- include "data-access-api.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      {{- include "providers-app.selectorLabels" . | nindent 6 }}
+      {{- include "data-access-api.selectorLabels" . | nindent 6 }}
   endpoints:
     - port: http  # this is the port name from the running service
       interval: 15s

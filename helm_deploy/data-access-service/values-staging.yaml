@@ -11,12 +11,12 @@ prometheus:
 ingressInternal:
   enabled: true
   hosts:
-    - host: "laa-data-provider-data-staging.internal-non-prod.cloud-platform.service.justice.gov.uk"
+    - host: "laa-data-access-api-staging.internal-non-prod.cloud-platform.service.justice.gov.uk"
 
 ingress:
   enabled: true
   hosts:
-    - host: "laa-data-provider-data-staging.apps.cloud-platform.service.justice.gov.uk"
+    - host: "laa-data-access-api-staging.apps.cloud-platform.service.justice.gov.uk"
   tls:
     - hosts:
-        - "laa-data-provider-data-staging.apps.cloud-platform.service.justice.gov.uk"
+        - "laa-data-access-api-staging.apps.cloud-platform.service.justice.gov.uk"

@@ -6,14 +6,14 @@ Policy for auto-scaling (if enabled).
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "providers-app.fullname" . }}
+  name: {{ include "data-access-api.fullname" . }}
   labels:
-    {{- include "providers-app.labels" . | nindent 4 }}
+    {{- include "data-access-api.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "providers-app.fullname" . }}
+    name: {{ include "data-access-api.fullname" . }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:

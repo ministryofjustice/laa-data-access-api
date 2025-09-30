@@ -13,13 +13,13 @@ ingressInternal:
   enabled: true
   className: "internal"
   hosts:
-    - host: "laa-data-provider-data-prod.internal.cloud-platform.service.justice.gov.uk"
+    - host: "laa-data-access-api-prod.internal.cloud-platform.service.justice.gov.uk"
 
 ingress:
   enabled: true
   className: "modsec"
   hosts:
-    - host: "laa-data-provider-data-prod.apps.cloud-platform.service.justice.gov.uk"
+    - host: "laa-data-access-api-prod.apps.cloud-platform.service.justice.gov.uk"
   tls:
     - hosts:
-        - "laa-data-provider-data-prod.apps.cloud-platform.service.justice.gov.uk"
+        - "laa-data-access-api-prod.apps.cloud-platform.service.justice.gov.uk"
