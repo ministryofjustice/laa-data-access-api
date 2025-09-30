@@ -186,7 +186,7 @@ jobs:
           TRIVY_SKIP_JAVA_DB_UPDATE: true
 
       - name: Push Docker image to ECR
-        working-directory: providers-app
+        working-directory: data-access-service
         run: |
           echo "pushing Docker image with tag [${{ env.IMAGE_TAG }}]"
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}"
@@ -212,7 +212,7 @@ jobs:
       # Maybe the IP_ALLOWLIST belongs in a GitHub secret, not AWS/Kubernetes?
       - name: Prepare deployments
         run: |
-          export IP_ALLOWLIST="$(kubectl -n "${NAMESPACE}" get secret laa-provider-details-api-secrets -o json | jq -r '.data["IP_ALLOWLIST"] | @base64d')"
+          export IP_ALLOWLIST="$(kubectl -n "${NAMESPACE}" get secret laa-access-details-api-secrets -o json | jq -r '.data["IP_ALLOWLIST"] | @base64d')"
           cat deployments/templates/deployment.yml | envsubst > deployments/deployment.yml
           cat deployments/templates/ingress.yml | envsubst > deployments/ingress.yml
           cat deployments/templates/service.yml | envsubst > deployments/service.yml
@@ -261,7 +261,7 @@ jobs:
       # So we can tell which version is deployed in which environment.
       - name: Create Git tag
         run: |
-          cd providers-app
+          cd data-access-service
           ENV_TAG="${{ steps.determine-tag.outputs.tag_name }}"
           git tag "$ENV_TAG"
           echo "pushing Git tag [$ENV_TAG] for deployment to environment ${{ inputs.environment }}"

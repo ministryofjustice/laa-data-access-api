@@ -1684,8 +1684,7 @@ data:
       "tags": [
         "api",
         "LAA",
-        "LAA Provider Details Api",
-        "LAA Provider Data API",
+        "LAA Access Data API",
         "CWA"
       ],
       "templating": {
@@ -1727,8 +1726,8 @@ data:
         ]
       },
       "timezone": "browser",
-      "title": "LAA Provider Data API Dashboard ${ENV_NAME}",
-      "uid": "laa-pda-api-${ENV_NAME}-dashboard",
+      "title": "LAA Access Data API Dashboard ${ENV_NAME}",
+      "uid": "laa-access-api-${ENV_NAME}-dashboard",
       "version": 1,
       "weekStart": ""
     }

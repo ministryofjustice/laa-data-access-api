@@ -1,5 +1,5 @@
 # values-prod.yaml
-# Production environment override values for the providers-app chart.
+# Production environment override values for the Data-Access-app chart.
 
 spring:
   profiles:

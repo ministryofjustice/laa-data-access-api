@@ -1,5 +1,5 @@
 # values-staging.yaml
-# Staging environment override values for the providers-app chart.
+# Staging environment override values for the data access api chart.
 
 spring:
   profiles:

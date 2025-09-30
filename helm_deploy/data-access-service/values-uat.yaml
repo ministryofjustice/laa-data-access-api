@@ -1,5 +1,5 @@
 # values-prod.yaml
-# UAT environment override values for the providers-app chart.
+# UAT environment override values for Data Access-app chart.
 
 spring:
   profiles:

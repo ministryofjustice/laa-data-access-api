@@ -1691,8 +1691,7 @@ data:
       "tags": [
         "api",
         "LAA",
-        "LAA Provider Details Api",
-        "LAA Provider Data API",
+        "LAA Access Data API",
         "CWA"
       ],
       "templating": {
@@ -1734,8 +1733,8 @@ data:
         ]
       },
       "timezone": "browser",
-      "title": "LAA Provider Data API - {{ .Values.prometheus.metricsQualifier }}",
-      "uid": "laa-data-provider-data-{{ .Values.prometheus.metricsQualifier }}-overview",
+      "title": "LAA Access Data API - {{ .Values.prometheus.metricsQualifier }}",
+      "uid": "laa-data-access-data-{{ .Values.prometheus.metricsQualifier }}-overview",
       "version": 1,
       "weekStart": ""
     }
