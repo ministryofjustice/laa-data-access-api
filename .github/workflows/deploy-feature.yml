@@ -61,38 +61,59 @@ jobs:
       ecr_region: ${{ vars.ECR_REGION }}
       ecr_role_to_assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
 
+  #deploy-uat:
+  #  if: ${{ !contains(github.actor, '[bot]') }}
+  #  needs: [ ecr-publish-image ]
+  #  environment: uat
+  #  runs-on: ubuntu-latest
+  #  steps:
+  #    - name: Checkout
+  #      uses: actions/checkout@v5.0.0
+  #
+  #    - name: Deploy to UAT
+  #      uses: ./.github/actions/deploy
+  #      with:
+  #        ecr-repository: ${{ vars.ECR_REPOSITORY }}
+  #        ecr-registry_url: ${{ secrets.ECR_REGISTRY_URL }}
+  #        auth_directory_url: ${{ secrets.AUTH_DIRECTORY_URL }}
+  #        auth_client_id: ${{ secrets.AUTH_CLIENT_ID }}
+   #       auth_client_secret: ${{ secrets.AUTH_CLIENT_SECRET }}
+    #      kube-cert: ${{ secrets.KUBE_CERT }}
+     #     kube-token: ${{ secrets.KUBE_TOKEN }}
+      #    kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+       #   kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+        #  data_store_base_url: ${{ secrets.DATA_STORE_BASE_URL }}
+        #  app-environment: uat
+        #  session_secret: ${{ secrets.SESSION_SECRET }}
+        #  service_name: ${{ vars.SERVICE_NAME }}
+        #  service_phase: ${{ vars.SERVICE_PHASE }}
+        #  department_name: ${{ vars.DEPARTMENT_NAME }}
+        #  department_url: ${{ vars.DEPARTMENT_URL }}
+        #  contact_email: ${{ vars.CONTACT_EMAIL }}
+        #  service_url: ${{ vars.SERVICE_URL }}
+        #  session_name: ${{ vars.SESSION_NAME}}
+        #  ratelimit_headers_enabled: ${{ vars.RATELIMIT_HEADERS_ENABLED }}
+        #  ratelimit_storage_uri: ${{ vars.RATELIMIT_STORAGE_URI }}
+        #  ratelimit_max: ${{ vars.RATE_LIMIT_MAX }}
+        #  ratewindow_ms: ${{ vars.RATE_WINDOW_MS }}
+
   deploy-uat:
     if: ${{ !contains(github.actor, '[bot]') }}
     needs: [ ecr-publish-image ]
     environment: uat
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5.0.0
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-deplopy.yml@main
+    with:
+      environment: "uat"
+      image_repo: ${{ secrets.ECR_REPOSITORY }}
+      image_registry: ${{ secrets.ECR_REGISTRY_URL }}
+      image_tag: ${{ format('{0}-{1}', vars.IMAGE_PREFIX, needs.build-and-publish-snapshot.outputs.published_artifact_version) }}
 
-      - name: Deploy to UAT
-        uses: ./.github/actions/deploy
-        with:
-          ecr-repository: ${{ vars.ECR_REPOSITORY }}
-          ecr-registry_url: ${{ secrets.ECR_REGISTRY_URL }}
-          auth_directory_url: ${{ secrets.AUTH_DIRECTORY_URL }}
-          auth_client_id: ${{ secrets.AUTH_CLIENT_ID }}
-          auth_client_secret: ${{ secrets.AUTH_CLIENT_SECRET }}
-          kube-cert: ${{ secrets.KUBE_CERT }}
-          kube-token: ${{ secrets.KUBE_TOKEN }}
-          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
-          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-          data_store_base_url: ${{ secrets.DATA_STORE_BASE_URL }}
-          app-environment: uat
-          session_secret: ${{ secrets.SESSION_SECRET }}
-          service_name: ${{ vars.SERVICE_NAME }}
-          service_phase: ${{ vars.SERVICE_PHASE }}
-          department_name: ${{ vars.DEPARTMENT_NAME }}
-          department_url: ${{ vars.DEPARTMENT_URL }}
-          contact_email: ${{ vars.CONTACT_EMAIL }}
-          service_url: ${{ vars.SERVICE_URL }}
-          session_name: ${{ vars.SESSION_NAME}}
-          ratelimit_headers_enabled: ${{ vars.RATELIMIT_HEADERS_ENABLED }}
-          ratelimit_storage_uri: ${{ vars.RATELIMIT_STORAGE_URI }}
-          ratelimit_max: ${{ vars.RATE_LIMIT_MAX }}
-          ratewindow_ms: ${{ vars.RATE_WINDOW_MS }}
+      helm_release_name: 'data-access-api'
+      helm_values_path: '../.helm/data-access-api/values/uat.yaml'
+      helm_chart: '../.helm/Chart.yaml'
+
+    secrets:
+      KUBE_CERT: ${{ secrets.KUBE_CERT }}
+      KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
+      KUBE_CLUSTER: ${{ secrets.KUBE_CLUSTER }}
+      KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
