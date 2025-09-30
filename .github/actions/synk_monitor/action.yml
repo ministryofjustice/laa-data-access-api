@@ -1,10 +1,13 @@
 name: Synk Monitor
-on: push
+on:
+  workflow_call:
+    secrets:
+      snyk_token:
 jobs:
   security:
     runs-on: ubuntu-latest
     steps:
-      - name: Run Snyk to check for vulnerabilities
+      - name: Run Snyk monitor to check for vulnerabilities
       - uses: actions/checkout@master
       - uses: snyk/actions/setup@master
       - uses: snyk/actions/gradle@master       
@@ -12,7 +15,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --sarif-file-output=snyk_test.sarif 
+          args: --sarif-file-output=snyk_monitor.sarif 
                 --severity-threshold=high
           command: monitor
       - name: Upload result to GitHub Code Scanning

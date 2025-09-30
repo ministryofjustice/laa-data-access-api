@@ -27,17 +27,20 @@ jobs:
       github_app_private_key: ${{ secrets.GITHUBAPP_PRIVATE_KEY }}
       github_app_organisation: 'ministryofjustice'
 
-  vulnerability-report:
+  synk-test:
     if: ${{ github.event.pull_request.merged == true }}
-    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/snyk-vulnerability-report.yml@v1
+    uses: ./.github/actions/synk_test/action.yml
     permissions:
       contents: read
       security-events: write
-    with:
-      snyk_organisation: 'legal-aid-agency'
-      snyk_test_exclude: 'build'
-      snyk_target_reference: 'main'
-      github_code_scanning_report: 'true'
     secrets:
-      gh_token: ${{ secrets.GITHUB_TOKEN }}
+      snyk_token: ${{ secrets.SNYK_TOKEN }}
+
+  synk-monitor:
+    if: ${{ github.event.pull_request.merged == true }}
+    uses: ./.github/actions/synk_monitor/action.yml
+    permissions:
+      contents: read
+      security-events: write
+    secrets:
       snyk_token: ${{ secrets.SNYK_TOKEN }}
