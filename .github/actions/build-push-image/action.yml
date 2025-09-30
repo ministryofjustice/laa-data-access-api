@@ -1,0 +1,63 @@
+name: Build and publish to ECR
+description: Build Spring Boot app and push an image to Amazon ECR with OIDC
+inputs:
+  image:
+    description: Image name to publish (e.g. hostname/namespace/repository)
+    required: true
+  itag:
+    description: Immutable image tag (e.g. v1.2.3 or pr-123-d2a094ef)
+    required: true
+  mtag:
+    description: Optional mutable image tag to publish (e.g. pr-123)
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Build OCI image with Gradle and push immutable tag to ECR
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        ITAG:  ${{ inputs.itag }}
+      run: |
+        set -euo pipefail
+        ./gradlew bootBuildImage --imageName="${IMAGE}:${ITAG}"
+        docker push "${IMAGE}:${ITAG}"
+
+    - name: Add mutable alias tag and push
+      if: ${{ inputs.mtag != '' }}
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        ITAG:  ${{ inputs.itag }}
+        MTAG:  ${{ inputs.mtag }}
+      run: |
+        set -euo pipefail
+        docker tag "${IMAGE}:${ITAG}" "${IMAGE}:${MTAG}"
+        docker push "${IMAGE}:${MTAG}"
+
+    - name: Scan fs dependencies with Trivy scanner
+      uses: aquasecurity/trivy-action@0.32.0
+      env:
+        TRIVY_SKIP_DB_UPDATE: true
+        TRIVY_SKIP_JAVA_DB_UPDATE: true
+      with:
+        scan-type: 'rootfs'
+        scan-ref: '.'
+        format: 'table'
+        severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'  # 'HIGH,CRITICAL'
+        exit-code: 1
+
+    - name: Scan OCI image with Trivy scanner
+      uses: aquasecurity/trivy-action@0.32.0
+      env:
+        TRIVY_SKIP_DB_UPDATE: true
+        TRIVY_SKIP_JAVA_DB_UPDATE: true
+      with:
+        image-ref: "${{ inputs.image }}:${{ inputs.itag }}"
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        format: 'table'
+        severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'  # 'HIGH,CRITICAL'
+        exit-code: '1'

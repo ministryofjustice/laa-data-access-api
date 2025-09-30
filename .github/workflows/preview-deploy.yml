@@ -1,0 +1,71 @@
+name: "Preview Deploy"
+
+on:
+  workflow_call:
+    inputs:
+      prnum:  { type: string,  required: true }
+      tag:    { type: string,  required: true }
+  workflow_dispatch:
+    inputs:
+      prnum:  { type: number,  required: true,  description: "Pull request #"}
+
+concurrency:
+  group: "preview-deploy-pr-${{ inputs.prnum }}"
+  cancel-in-progress: true
+
+env:
+  TAG: ${{ (github.event_name == 'workflow_dispatch' && format('pr-{0}', inputs.prnum)) || inputs.tag }}
+
+jobs:
+  plan:
+    name: "Plan"
+    permissions: { contents: read }
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Determine variable values"
+        id:   vars
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "- github.event_name=${{ github.event_name }}"
+          echo "- inputs.prnum=${{ inputs.prnum }}"
+          echo "- env.TAG=$TAG"
+          PATTERN='^[1-9][0-9]*$'
+          PRNUM='${{ inputs.prnum }}'
+          if [[ ! "$PRNUM" =~ $PATTERN ]]; then
+            echo "PR number does not have expected format"
+            exit 1
+          fi
+
+  deploy:
+    name: "Deploy pr-${{ inputs.prnum }} preview"
+    needs: [plan]
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
+    environment:
+      name: uat-preview
+      url:  "https://laa-data-provider-data-pr-${{ inputs.prnum }}.apps.cloud-platform.service.justice.gov.uk"
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: "Authenticate with Amazon ECR"  # to get ecr-registry
+        id:   ecr-auth
+        uses: ./.github/actions/cp-ecr-auth
+        with:
+          ecr-region:         "${{ vars.DPD_ECR_REGION }}"
+          ecr-role-to-assume: "${{ secrets.DPD_ECR_ROLE_TO_ASSUME }}"
+
+      - name: "Authenticate with Kubernetes cluster"
+        uses: ./.github/actions/cp-kube-auth
+        with:
+          kube-cert:      "${{ secrets.DPD_KUBE_CERT }}"
+          kube-cluster:   "${{ secrets.DPD_KUBE_CLUSTER }}"
+          kube-namespace: "${{ secrets.DPD_KUBE_NAMESPACE }}"
+          kube-token:     "${{ secrets.DPD_KUBE_TOKEN }}"
+
+      - name: "Install preview app"
+        uses: ./.github/actions/preview-install
+        with:
+          image:   "${{ steps.ecr-auth.outputs.ecr-registry }}/${{ vars.DPD_ECR_REPOSITORY }}"
+          tag:     "${{ (github.event_name == 'workflow_dispatch' && format('pr-{0}', inputs.prnum)) || inputs.tag }}"
+          preview: "pr-${{ inputs.prnum }}"

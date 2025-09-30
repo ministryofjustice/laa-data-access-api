@@ -1,0 +1,87 @@
+name: Build check
+permissions:
+  contents: read
+  packages: read
+  security-events: write
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [ main ]
+
+jobs:
+  test-build-check:
+    name: Build, test and vulnerability scan
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # Build project and output the version, so can use it to tag later.
+      - name: Build with Gradle
+        id: build_project
+        run: |
+          ./gradlew clean test assemble
+          VERSION="$(awk -F'=' '/version/ {print $2}' gradle.properties)"
+          echo "step output is [current_version=$VERSION] from gradle.properties after build"
+          echo "current_version=$VERSION" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Scan dependencies with Trivy vulnerability scanner in rootfs mode
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: 'rootfs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'
+          #severity: 'HIGH,CRITICAL'
+          exit-code: 1
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
+
+      # Build image in order to scan it before merging to `main` branch and pushing it to ECR for deployment.
+      - name: Build Docker image
+        working-directory: providers-app
+        run: |
+          cd ..
+          echo "building Docker image with tag [${{ env.IMAGE_TAG }}]"
+          docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}" .
+        env:
+          ECR_REGISTRY: dummyregistry
+          ECR_REPOSITORY: dummyrepository
+          IMAGE_TAG: ${{ steps.build_project.outputs.current_version }}
+
+      - name: Scan Docker image with Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ${{env.ECR_REGISTRY}}/${{env.ECR_REPOSITORY}}:${{env.IMAGE_TAG}}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'
+          #severity: 'HIGH,CRITICAL'
+        env:
+          ECR_REGISTRY: dummyregistry
+          ECR_REPOSITORY: dummyrepository
+          IMAGE_TAG: ${{ steps.build_project.outputs.current_version }}
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
+
+      - name: Send build check failure Slack message
+        if: ${{ failure() }}
+        run: |
+          REPO_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          SLACK_MESSAGE=" :x: FAILED build check. Check log: ${REPO_URL}"
+          curl -X POST -H "Content-Type: application/json" \
+            --data "{\"text\": \"${SLACK_MESSAGE}\"}" "${{ secrets.slack_webhook }}"

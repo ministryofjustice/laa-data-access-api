@@ -1,0 +1,289 @@
+name: Reusable deployment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      environment-prefix:
+        type: string
+        required: true
+      ecr-region:
+        type: string
+        required: true
+      ecr-repository:
+        type: string
+        required: true
+      branch-name:
+        type: string
+        required: true
+      prometheus_severity:
+        type: string
+        required: true
+      spring_profile:
+        type: string
+        required: false
+    secrets:
+      ecr-role-to-assume:
+        required: true
+      kube_namespace:
+        required: true
+      kube_cluster:
+        required: true
+      kube_token:
+        required: true
+      kube_cert:
+        required: true
+      slack_webhook:
+        required: true
+      GITHUBAPP_ID:
+        required: true
+      GITHUBAPP_PRIVATE_KEY:
+        required: true
+
+jobs:
+  deployment:
+    name: Deploying to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: write
+      packages: read
+      id-token: write
+      security-events: write
+    steps:
+      - name: Send deployment started message
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+               -d '{"text": " :rocket: Started deployment to environment ${{ inputs.environment }}."}' "${{ secrets.slack_webhook }}"
+
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: ${{env.BRANCH_NAME}}
+          persist-credentials: false  # without this, later `git remote set-url` don't work
+        env:
+          BRANCH_NAME: ${{ vars[format('{0}',inputs.branch-name)] }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Determine which version part to increment
+        shell: bash
+        id: version_part
+        run: |
+          pwd
+          echo "branch being merged FROM: -> ${{ github.head_ref }}"
+          echo "branch being merged INTO: -> ${GITHUB_REF}"
+          if [[ "${{ github.head_ref }}" == *"major"* ]]; then
+            echo "step output is [version_part=major] because FROM matched *major*"
+            echo "version_part=major" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.head_ref }}" == *"feat"* || "${{ github.head_ref }}" == *"feature"* ]]; then
+            echo "step output is [version_part=minor] because FROM matched *feat* or *feature*"
+            echo "version_part=minor" >> $GITHUB_OUTPUT
+          else
+            echo "step output is [version_part=patch] because FROM did not match"
+            echo "version_part=patch" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Increment version locally
+        run: |
+          echo "found [version_part=${VERSION_PART}] from previous step"
+          VERSION="$(awk -F'=' '/version/ {print $2}' gradle.properties)"
+          echo "found [version=$VERSION] from gradle.properties before incrementing"
+          ./gradlew incrementVersion -Ppart="${VERSION_PART}"
+          VERSION="$(awk -F'=' '/version/ {print $2}' gradle.properties)"
+          echo "found [version=$VERSION] from gradle.properties after incrementing"
+        env:
+          VERSION_PART: ${{ steps.version_part.outputs.version_part}}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build project and output the version, so can use it to tag later.
+      - name: Build with Gradle
+        id: build_project
+        run: |
+          ./gradlew clean test assemble
+          VERSION="$(awk -F'=' '/version/ {print $2}' gradle.properties)"
+          echo "step output is [current_version=$VERSION] from gradle.properties after build"
+          echo "current_version=$VERSION" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Scan dependencies with Trivy vulnerability scanner in rootfs mode
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: 'rootfs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'
+          # severity: 'HIGH,CRITICAL'
+          exit-code: 1
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.ecr-role-to-assume }}
+          aws-region: ${{ vars[format('{0}',inputs.ecr-region)] }}
+
+      - name: Log in to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+        id: login-ecr
+
+      - name: Determine tag name
+        id: determine-tag
+        run: |
+          VERSION="$(awk -F'=' '/version/ {print $2}' gradle.properties)"
+          ENV_TAG="${VERSION}-${ENVIRONMENT}"
+          
+          # Need credentials for `git ls-remote --tags origin`
+          git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
+          # Check if the tag already exists on the remote
+          if git ls-remote --tags origin | grep -q "refs/tags/$ENV_TAG"; then
+            # Tag exists, so append the short SHA to create a unique tag
+            GIT_SHA="$(git rev-parse --short HEAD)"
+            echo "found Git tag [$ENV_TAG] already exists, will use [${ENV_TAG}-${GIT_SHA}] instead"
+            ENV_TAG="${ENV_TAG}-${GIT_SHA}"
+          fi
+          
+          # Output the determined tag name using $GITHUB_OUTPUT
+          echo "step output is [tag_name=$ENV_TAG] for deployment to environment $ENVIRONMENT"
+          echo "tag_name=$ENV_TAG" >> $GITHUB_OUTPUT
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+
+      - name: Build Docker image
+        run: |
+          echo "building Docker image with tag [${{ env.IMAGE_TAG }}]"
+          docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}" .
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ vars[format('{0}',inputs.ecr-repository)] }}
+          IMAGE_TAG: ${{ steps.determine-tag.outputs.tag_name }}
+
+      # Scan before pushing to ECR.
+      - name: Scan Docker image with Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ${{env.ECR_REGISTRY}}/${{env.ECR_REPOSITORY}}:${{env.IMAGE_TAG}}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'
+          #severity: 'HIGH,CRITICAL'
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ vars[format('{0}',inputs.ecr-repository)] }}
+          IMAGE_TAG: ${{ steps.determine-tag.outputs.tag_name }}
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
+
+      - name: Push Docker image to ECR
+        working-directory: providers-app
+        run: |
+          echo "pushing Docker image with tag [${{ env.IMAGE_TAG }}]"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}"
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ vars[format('{0}',inputs.ecr-repository)] }}
+          IMAGE_TAG: ${{ steps.determine-tag.outputs.tag_name }}
+
+      - name: Authenticate kubectl
+        run: |
+          echo "${KUBE_CERT}" > ca.crt
+          kubectl config set-cluster "${KUBE_CLUSTER}" --certificate-authority=./ca.crt --server="https://${KUBE_CLUSTER}"
+          kubectl config set-credentials deploy-user --token="${KUBE_TOKEN}"
+          kubectl config set-context "${KUBE_CLUSTER}" --cluster="${KUBE_CLUSTER}" --user=deploy-user --namespace="${KUBE_NAMESPACE}"
+          kubectl config use-context "${KUBE_CLUSTER}"
+        env:
+          KUBE_CERT: ${{ secrets.kube_cert }}
+          KUBE_CLUSTER: ${{ secrets.kube_cluster }}
+          KUBE_NAMESPACE: ${{ secrets.kube_namespace }}
+          KUBE_TOKEN: ${{ secrets.kube_token }}
+
+      # Substitute all environment variables in `deployments` files.
+      # Maybe the IP_ALLOWLIST belongs in a GitHub secret, not AWS/Kubernetes?
+      - name: Prepare deployments
+        run: |
+          export IP_ALLOWLIST="$(kubectl -n "${NAMESPACE}" get secret laa-provider-details-api-secrets -o json | jq -r '.data["IP_ALLOWLIST"] | @base64d')"
+          cat deployments/templates/deployment.yml | envsubst > deployments/deployment.yml
+          cat deployments/templates/ingress.yml | envsubst > deployments/ingress.yml
+          cat deployments/templates/service.yml | envsubst > deployments/service.yml
+          cat deployments/templates/service-monitor.yml | envsubst > deployments/service-monitor.yml
+          cat deployments/templates/network-policy.yml | envsubst > deployments/network-policy.yml
+          cat deployments/templates/grafana-dashboard.json | envsubst '$ENV_NAME,$NAMESPACE' > deployments/grafana-dashboard.json
+          cat deployments/templates/prometheus-rules.yml | envsubst '$PROMETHEUS_SEVERITY,$NAMESPACE' > deployments/prometheus-rules.yml
+          cat deployments/templates/maintenance.yml  > deployments/maintenance.yml
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ vars[format('{0}',inputs.ecr-repository)] }}
+          ENV_NAME: ${{ inputs.environment-prefix }}
+          IMAGE_TAG: ${{ steps.determine-tag.outputs.tag_name }}
+          NAMESPACE: ${{ secrets.kube_namespace }}
+          PROMETHEUS_SEVERITY: ${{ inputs.prometheus_severity }}
+          SPRING_PROFILES_ACTIVE: ${{ inputs.spring_profile }}
+
+      # Deploy to Cloud Platform.
+      - name: Apply deployments
+        run: |
+          kubectl -n "${KUBE_NAMESPACE}" apply -f deployments/
+        env:
+          KUBE_NAMESPACE: ${{ secrets.kube_namespace }}
+
+      - name: Create GitHub App token
+        uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.GITHUBAPP_ID }}
+          private-key: ${{ secrets.GITHUBAPP_PRIVATE_KEY }}
+
+      - name: Change Git identity and credentials
+        run: |
+          git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}"
+          git config --global user.email "217595160+laa-data-stewardship[bot]@users.noreply.github.com"
+          git config --global user.name "laa-data-stewardship[bot]"
+
+      - name: Commit and push version increment changes
+        if: ${{ inputs.environment  == 'dev' }}
+        run: |
+          git add gradle.properties
+          git commit -m "ci(bot): Increment ${{ steps.version_part.outputs.version_part}} version to ${{ steps.build_project.outputs.current_version }} for ${{ github.head_ref }}"
+          echo "pushing Git gradle.properties [version=${{ steps.build_project.outputs.current_version }}] for deployment to environment ${{ inputs.environment }}"
+          git push origin "HEAD:${{ github.ref }}"
+
+      # So we can tell which version is deployed in which environment.
+      - name: Create Git tag
+        run: |
+          cd providers-app
+          ENV_TAG="${{ steps.determine-tag.outputs.tag_name }}"
+          git tag "$ENV_TAG"
+          echo "pushing Git tag [$ENV_TAG] for deployment to environment ${{ inputs.environment }}"
+          git push origin "$ENV_TAG"
+
+      - name: Send deployment successful Slack message
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+               -d '{"text": " :tada: Finished deployment to environment ${{ inputs.environment }} successfully."}'  "${{ secrets.slack_webhook }}"
+
+      - name: Send deployment failure Slack message
+        if: ${{ failure() }}
+        run: |
+          REPO_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          SLACK_MESSAGE=" :x: FAILED deployment to environment ${{ inputs.environment }}. Check log: ${REPO_URL}"
+          curl -X POST -H "Content-Type: application/json" \
+            --data "{\"text\": \"${SLACK_MESSAGE}\"}" "${{ secrets.slack_webhook }}"
+
+      - name: Send deployment cancelled Slack message
+        if: ${{ job.status == 'cancelled' }}
+        run: |
+          REPO_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          SLACK_MESSAGE=" :x: CANCELLED deployment to environment ${{ inputs.environment }}"
+          curl -X POST -H "Content-Type: application/json" \
+            --data "{\"text\": \"${SLACK_MESSAGE}\"}" "${{ secrets.slack_webhook }}"
