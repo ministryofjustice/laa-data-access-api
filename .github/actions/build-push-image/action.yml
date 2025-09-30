@@ -40,8 +40,8 @@ runs:
     - name: Scan fs dependencies with Trivy scanner
       uses: aquasecurity/trivy-action@0.32.0
       env:
-        TRIVY_SKIP_DB_UPDATE: true
-        TRIVY_SKIP_JAVA_DB_UPDATE: true
+        TRIVY_SKIP_DB_UPDATE: false
+        TRIVY_SKIP_JAVA_DB_UPDATE: false
       with:
         scan-type: 'rootfs'
         scan-ref: '.'
@@ -52,8 +52,8 @@ runs:
     - name: Scan OCI image with Trivy scanner
       uses: aquasecurity/trivy-action@0.32.0
       env:
-        TRIVY_SKIP_DB_UPDATE: true
-        TRIVY_SKIP_JAVA_DB_UPDATE: true
+        TRIVY_SKIP_DB_UPDATE: false
+        TRIVY_SKIP_JAVA_DB_UPDATE: false
       with:
         image-ref: "${{ inputs.image }}:${{ inputs.itag }}"
         ignore-unfixed: true

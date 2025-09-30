@@ -123,8 +123,8 @@ jobs:
           # severity: 'HIGH,CRITICAL'
           exit-code: 1
         env:
-          TRIVY_SKIP_DB_UPDATE: true
-          TRIVY_SKIP_JAVA_DB_UPDATE: true
+          TRIVY_SKIP_DB_UPDATE: false
+          TRIVY_SKIP_JAVA_DB_UPDATE: false
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
