@@ -65,14 +65,16 @@ jobs:
     if: ${{ !contains(github.actor, '[bot]') }}
     needs: [ ecr-publish-image, build-and-publish-snapshot ]
     uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-deplopy.yml@main
-    with:
-      environment: "uat"
-      image_repo: ${{ secrets.ECR_REPOSITORY }}
-      image_registry: ${{ secrets.ECR_REGISTRY_URL }}
-      image_tag: ${{ format('{0}-{1}', vars.IMAGE_PREFIX, needs.build-and-publish-snapshot.outputs.published_artifact_version) }}
-      helm_release_name: 'data-access-api'
-      helm_values_path: '../.helm/data-access-api/values/uat.yaml'
-      helm_chart: '../.helm/Chart.yaml'
+    #environment: uat
+    #runs-on: ubuntu-latest
+    #`with:
+      #environment: "uat"
+      #image_repo: ${{ secrets.ECR_REPOSITORY }}
+      #image_registry: ${{ secrets.ECR_REGISTRY_URL }}
+      #image_tag: ${{ format('{0}-{1}', vars.IMAGE_PREFIX, needs.build-and-publish-snapshot.outputs.published_artifact_version) }}
+      #helm_release_name: 'data-access-api'
+      #helm_values_path: '../.helm/data-access-api/values/uat.yaml'
+      #helm_chart: '../.helm/Chart.yaml'
     secrets:
       KUBE_CERT: ${{ secrets.KUBE_CERT }}
       KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
