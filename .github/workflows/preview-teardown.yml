@@ -51,15 +51,15 @@ jobs:
       - name: "Authenticate with Kubernetes cluster"
         uses: ./.github/actions/cp-kube-auth
         with:
-          kube-cert:      "${{ secrets.DPD_KUBE_CERT }}"
-          kube-cluster:   "${{ secrets.DPD_KUBE_CLUSTER }}"
-          kube-namespace: "${{ secrets.DPD_KUBE_NAMESPACE }}"
-          kube-token:     "${{ secrets.DPD_KUBE_TOKEN }}"
+          kube-cert:      "${{ secrets.KUBE_CERT }}"
+          kube-cluster:   "${{ secrets.KUBE_CLUSTER }}"
+          kube-namespace: "${{ secrets.KUBE_NAMESPACE }}"
+          kube-token:     "${{ secrets.KUBE_TOKEN }}"
 
       - name: "Uninstall Helm chart"
         run: |
           set -euo pipefail
-          if [[ -n "${{ secrets.DPD_KUBE_CERT }}" && -n "${{ secrets.DPD_KUBE_TOKEN }}" ]]; then
+          if [[ -n "${{ secrets.KUBE_CERT }}" && -n "${{ secrets.KUBE_TOKEN }}" ]]; then
             echo "Uninstall Helm chart - env: \"$ENV\", preview: \"$PREVIEW\""
             helm status "$PREVIEW" -n "laa-data-access-service-$ENV" >/dev/null 2>&1 && \
                 helm uninstall "$PREVIEW" -n "laa-data-access-service-$ENV" || true
