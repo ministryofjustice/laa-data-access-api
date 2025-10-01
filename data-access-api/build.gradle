@@ -65,9 +65,8 @@ tasks.named('bootJar') {
 
 tasks.named('bootRun') {
     enabled = false
-
-    tasks.named('bootBuildImage') {
-    enabled = false
 }
 
+tasks.named('bootBuildImage') {
+    enabled = false
 }
