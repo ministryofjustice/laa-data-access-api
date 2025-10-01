@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: { contents: read, id-token: write }
     environment:
-      name: uat-preview
+      name: uat
       url:  "https://laa-data-access-api-pr-${{ inputs.prnum }}.apps.cloud-platform.service.justice.gov.uk"
     steps:
       - uses: actions/checkout@v5

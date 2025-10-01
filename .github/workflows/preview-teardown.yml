@@ -43,7 +43,7 @@ jobs:
       PREVIEW: "pr-${{ (github.event_name == 'pull_request' && github.event.pull_request.number) || inputs.prnum }}"
       ENV:     "uat"
     environment:
-      name: uat-preview
+      name: uat
       url:  https://laa-data-access-api-pr-${{ (github.event_name == 'pull_request' && github.event.pull_request.number) || inputs.prnum }}.apps.cloud-platform.service.justice.gov.uk
     steps:
       - uses: actions/checkout@v5
