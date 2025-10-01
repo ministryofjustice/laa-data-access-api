@@ -37,3 +37,16 @@ dependencies {
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
+
+// disable for overall project when running a build
+tasks.named('bootJar') {
+    enabled = false
+}
+
+tasks.named('bootRun') {
+    enabled = false
+}
+
+tasks.named('bootBuildImage') {
+    enabled = false
+}
