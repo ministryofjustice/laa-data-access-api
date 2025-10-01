@@ -19,7 +19,7 @@ runs:
       run: |
         set -euo pipefail
         echo "Upgrade Helm chart - image: [${{ inputs.image }}], tag: [${{ inputs.tag }}], preview: [${{ inputs.preview }}]"
-        IP_ALLOWLIST="$(kubectl get secret app-secrets -o json | jq -r '.data["IP_ALLOWLIST"] | @base64d')"
+        IP_ALLOWLIST="$(kubectl get secret laa-data-access-api-secrets -o json | jq -r '.data["IP_ALLOWLIST"] | @base64d')"
         PREVIEW_HOST="laa-data-access-api-${{ inputs.preview }}.apps.cloud-platform.service.justice.gov.uk"
         HELM_OPTS=( \
             -f "./helm_deploy/data-access-service/values.yaml"
