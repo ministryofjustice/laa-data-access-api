@@ -73,11 +73,11 @@ spec:
             {{- end }}
           livenessProbe:
             httpGet:
-              path: /actuator/health/liveness
+              path: /actuator/health/
               port: http
           readinessProbe:
             httpGet:
-              path: /actuator/health/readiness
+              path: /actuator/health/
               port: http
           {{- with .Values.resources }}
           resources:
