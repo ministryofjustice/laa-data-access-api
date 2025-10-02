@@ -28,6 +28,16 @@ spec:
           ports:
             - containerPort: 8080
           env:
+          - name: db_identifier
+              valueFrom: 
+                secretKeyRef: 
+                  name: rds-postgresql-instance-output
+                  key: db_identifier
+            - name: rds_instance_address
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key: rds_instance_address 
             - name: rds_instance_endpoint
               valueFrom:
                 secretKeyRef:
