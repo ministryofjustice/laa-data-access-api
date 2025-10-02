@@ -55,6 +55,31 @@ spec:
               # https://user-guide.cloud-platform.service.justice.gov.uk/documentation/monitoring-an-app/application-metrics.html#assumptions
               # https://user-guide.cloud-platform.service.justice.gov.uk/documentation/deploying-an-app/container-repositories/requirements.html#setting-utc-timezone-inside-your-container
               value: UTC
+            - name: rds_instance_endpoint
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key: rds_instance_endpoint
+            - name: rds_instance_port
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key:  rds_instance_port
+            - name: database_name
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key: database_name
+            - name: database_username
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key: database_username
+            - name: database_password
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key: database_password
             - name: POD_NAME
               valueFrom:
                 fieldRef:
