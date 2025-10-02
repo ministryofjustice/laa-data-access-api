@@ -21,6 +21,7 @@ spring:
       sqs.endpoint: http://localhost:4566
 
     azure:
+      enabled: false
       active-directory:
         profile.tenant-id: ${ENTRA_TENANT_ID}
         app-id-uri: ${ENTRA_APP_ID_URI}
