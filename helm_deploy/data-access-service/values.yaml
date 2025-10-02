@@ -1,0 +1,95 @@
+# values.yaml
+# Default configuration values for the providers-app chart.
+
+replicaCount: 3
+
+image:
+  pullPolicy: IfNotPresent
+  # The Docker image and tag values will be overridden by command-line arguments (for all deployments):
+  repository: "registry/repository"
+  tag: "latest"
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  #readOnlyRootFilesystem: true  # Caused Tomcat exception writing to /tmp.
+  capabilities:
+    drop: ["ALL"]
+
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "500m"
+  limits:
+    memory: "1Gi"
+    cpu: "1000m"
+
+# Specify if this is a preview (previewDeploy=true) or release (previewDeploy=false) deployment.
+# The previewDeploy value will be overridden by a command-line argument (for preview deployments):
+previewDeploy: false
+
+# Old Dockerfile had `ENV JAVA_TOOL_OPTION="-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=80.0"`.
+# `-XX:MaxDirectMemorySize` is needed for Lettuce (Redis client) because the Paketo buildpack defaults to just `10M`.
+# Mem calc => `-Xmx158M -Xss1M -XX:MaxDirectMemorySize=10M -XX:MaxMetaspaceSize=120M -XX:ReservedCodeCacheSize=240M`.
+javaToolOptions: >-
+  -Xms512M -Xmx512M -Xss256K
+  -XX:MaxDirectMemorySize=120M
+  -XX:MaxMetaspaceSize=120M
+  -XX:ReservedCodeCacheSize=120M
+
+prometheus:
+  metricsEnabled: true
+  # The metrics qualifier value will be overridden in the environment values file (for all deployments):
+  metricsQualifier: "placeholder"
+  alertsEnabled: false
+  # The (alerts) severity value will be overridden in the environment values file (for production deployments):
+  severity: "laa-provider-data-api-alerts-nonprod"
+
+# Configuration for the Kubernetes Service that exposes the application.
+service:
+  type: ClusterIP
+  port: 8080
+
+# Configuration for Ingress to expose the service within the cluster.
+# The internal ingress is currently only used by release apps.
+ingressInternal:
+  enabled: false  # The enabled value will be overridden in the environment values file.
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+    nginx.ingress.kubernetes.io/limit-rpm: "100"
+    nginx.ingress.kubernetes.io/limit-conn-status-code: "429"
+    nginx.ingress.kubernetes.io/limit-req-status-code: "429"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  className: "internal-non-prod"
+  hosts:
+    # The host value will be overridden in the environment values file (for release deployments),
+    # or by a command-line argument (for preview deployments):
+    - host: "laa-data-access-api.internal-non-prod.cloud-platform.service.justice.gov.uk"
+
+# Configuration for Ingress to expose the service outside the cluster.
+ingress:
+  enabled: false  # The enabled value will be overridden in the environment values file.
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+    nginx.ingress.kubernetes.io/limit-rpm: "100"
+    nginx.ingress.kubernetes.io/limit-conn-status-code: "429"
+    nginx.ingress.kubernetes.io/limit-req-status-code: "429"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+    nginx.ingress.kubernetes.io/modsecurity-snippet: |
+      SecRuleEngine On
+      SecDefaultAction "phase:2,pass,log,tag:github_team=laa-cwa-data-api-admin-team"
+  # The ingress className value will be overridden in the environment values file (for production deployments):
+  className: "modsec-non-prod"
+  hosts:
+    # The host value will be overridden in the environment values file (for release deployments),
+    # or by a command-line argument (for preview deployments):
+    - host: "laa-data-access-api.apps.cloud-platform.service.justice.gov.uk"
+  tls:
+    - hosts:
+        # The TLS hosts value will be overridden in the environment values file (for release deployments),
+        # or by a command-line argument (for preview deployments):
+        - "laa-data-access-api.apps.cloud-platform.service.justice.gov.uk"

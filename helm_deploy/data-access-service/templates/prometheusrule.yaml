@@ -1,0 +1,97 @@
+{{/*
+prometheusrule.yaml (release-only)
+Prometheus Operator-defined CRD used to trigger alerts based on metrics.
+*/}}
+{{ if not .Values.previewDeploy }}
+{{ if (.Values.prometheus).alertsEnabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: prometheus-custom-rules-data-access-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "data-access-api.appLabels" . | nindent 4 }}
+    role: alert-rules
+spec:
+  groups:
+    - name: application-rules
+      rules:
+        - alert: KubePodCrashLooping
+          annotations:
+            message: {{ "Pod {{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container}}) is restarting {{ printf \"%.2f\" $value }} times / 5 minutes." }}
+            runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepodcrashlooping
+          expr: rate(kube_pod_container_status_restarts_total{job="kube-state-metrics",namespace="{{ .Release.Namespace }}"}[15m]) * 60 * 5 > 0
+          for: 1m
+          labels:
+            severity: {{ .Values.prometheus.severity }}
+        - alert: KubeContainerOOMKilled
+          annotations:
+            message: {{ "Container {{ $labels.container }} in pod {{ $labels.namespace }}/{{ $labels.pod }} has been OOM Killed (out of memory) {{ $value }} times in the last 10 minutes." }}
+            summary: {{ "Kubernetes container OOM killed (instance {{ $labels.instance }})" }}
+          expr: ((kube_pod_container_status_restarts_total{job="kube-state-metrics",namespace="{{ .Release.Namespace }}"} - kube_pod_container_status_restarts_total{job="kube-state-metrics",namespace="{{ .Release.Namespace }}"} offset 10m >= 1) and ignoring (reason) min_over_time(kube_pod_container_status_last_terminated_reason{job="kube-state-metrics",namespace="{{ .Release.Namespace }}",reason="OOMKilled"}[10m]) == 1)
+          for: 1m
+          labels:
+            severity: {{ .Values.prometheus.severity }}
+        - alert: KubePodNotReady
+          annotations:
+            message: {{ "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in a non-ready state for longer than 15 minutes." }}
+            summary: Pod has been in a non-ready state for more than 15 minutes.
+          expr: sum by (namespace, pod) (kube_pod_status_phase{job="kube-state-metrics",namespace="{{ .Release.Namespace }}",phase=~"Pending|Unknown"}) > 0
+          for: 15m
+          labels:
+            severity: {{ .Values.prometheus.severity }}
+        - alert: KubeDeploymentGenerationMismatch
+          annotations:
+            message: {{ "Deployment generation for {{ $labels.namespace }}/{{ $labels.deployment }} does not match, this indicates that the Deployment has failed but has not been rolled back." }}
+            summary: Deployment generation mismatch due to possible roll-back
+          expr: (kube_deployment_status_observed_generation{job="kube-state-metrics",namespace="{{ .Release.Namespace }}"} != kube_deployment_metadata_generation{job="kube-state-metrics",namespace="{{ .Release.Namespace }}"})
+          for: 15m
+          labels:
+            severity: {{ .Values.prometheus.severity }}
+        - alert: KubeDeploymentReplicasMismatch
+          annotations:
+            message: {{ "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has not matched the expected number of replicas for longer 15 minutes." }}
+            summary: Deployment has not matched the expected number of replicas.
+          expr: (kube_deployment_spec_replicas{job="kube-state-metrics",namespace="{{ .Release.Namespace }}"} != kube_deployment_status_replicas_available{job="kube-state-metrics",namespace="{{ .Release.Namespace }}"})
+          for: 15m
+          labels:
+            severity: {{ .Values.prometheus.severity }}
+        - alert: KubeQuotaExceeded
+          annotations:
+            message: {{ "Namespace {{ $labels.namespace }} is using {{ printf \"%0.0f\" $value }}% of its {{ $labels.resource }} quota." }}
+            summary: Namespace quota has exceeded the limits.
+          expr: (100 * kube_resourcequota{job="kube-state-metrics",namespace="{{ .Release.Namespace }}",type="used"} / ignoring (instance, job, type) (kube_resourcequota{job="kube-state-metrics",namespace="{{ .Release.Namespace }}",type="hard"} > 0) > 90)
+          for: 15m
+          labels:
+            severity: {{ .Values.prometheus.severity }}
+        - alert: 5xxErrorResponses
+          annotations:
+            message: {{ "Ingress {{ $labels.exported_namespace }}/{{ $labels.ingress }} is serving 5xx responses." }}
+            summary: 5xx server errors.
+          expr: avg by (ingress, exported_namespace) (rate(nginx_ingress_controller_requests{exported_namespace="{{ .Release.Namespace }}",status=~"5.*"}[1m]) > 0)
+          for: 1m
+          labels:
+            severity: {{ .Values.prometheus.severity }}
+        - alert: RatelimitBlocking
+          annotations:
+            message: {{ "Rate limit is being applied on ingress {{ $labels.exported_namespace }}/{{ $labels.ingress }}." }}
+          expr: avg by (ingress, exported_namespace) (rate(nginx_ingress_controller_requests{exported_namespace="{{ .Release.Namespace }}",status="429"}[1m]) > 0)
+          for: 1m
+          labels:
+            severity: {{ .Values.prometheus.severity }}
+        - alert: UnAuthorisedRequests-Threshold-Reached
+          annotations:
+            message: More than ten UnAuthorised Requests (401) errors in one day
+          expr: sum(rate(nginx_ingress_controller_requests{exported_namespace="{{ .Release.Namespace }}",status="401"}[1d])) * 86400 > 10
+          for: 1m
+          labels:
+            severity: {{ .Values.prometheus.severity }}
+        - alert: DeploymentObserved
+          annotations:
+            message: {{ "Deployment observed in namespace`{{ $labels.namespace }}`" }}
+          expr: increase(kube_deployment_status_observed_generation{namespace="{{ .Release.Namespace }}"}[1m]) > 0
+          for: 1m
+          labels:
+            severity: info-{{ .Values.prometheus.severity }}
+{{- end }}
+{{- end }}

@@ -23,6 +23,12 @@ test {
     finalizedBy(jacocoTestReport)
 }
 
+//so that we load properties from gradle properties
+task copyFileFromRootProject(type: Copy) {
+    from "${rootProject.projectDir}/gradle.properties"
+    into 'build/resources/main'
+}
+
 jacocoTestReport {
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {

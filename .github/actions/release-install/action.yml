@@ -1,0 +1,32 @@
+name: Release Install
+description: Install a release app into a given environment
+inputs:
+  image:
+    description: Docker image URL to deploy (e.g. registry/repository)
+    required: true
+  tag:
+    description: Docker image tag to deploy (e.g. 1.2.3 or pr-123-d2a094ef)
+    required: true
+  environmentSuffix:
+    description: Which environment values file to take overrides from (`uat`, `staging` or `prod`)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Upgrade Helm chart
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "Upgrade Helm chart - image: [${{ inputs.image }}], tag: [${{ inputs.tag }}], environmentSuffix: [${{ inputs.environmentSuffix }}]"
+        IP_ALLOWLIST="$(kubectl get secret laa-data-access-api-secrets -o json | jq -r '.data["IP_ALLOWLIST"] | @base64d')"
+        HELM_OPTS=( \
+            -f "./helm_deploy/data-access-service/values.yaml"
+            -f "./helm_deploy/data-access-service/values-${{ inputs.environmentSuffix }}.yaml"
+            --set-string "image.repository=${{ inputs.image }}" \
+            --set-string "image.tag=${{ inputs.tag }}" \
+            --set-string "ingress.allowlist=${IP_ALLOWLIST//,/\\,}" \
+        )
+        helm upgrade --install "data-access-service" "./helm_deploy/data-access-service" "${HELM_OPTS[@]}" --debug --dry-run=server
+        # If the dry-run succeeded, do the real thing
+        helm upgrade --install "data-access-service" "./helm_deploy/data-access-service" "${HELM_OPTS[@]}"

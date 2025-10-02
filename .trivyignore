@@ -26,3 +26,6 @@ CVE-2025-53864
 ### Can be removed when Paketo build packs update Ubuntu
 CVE-2025-8058
 
+### DB @2025-10-01 - libssl3t64, openssl: An application trying to decrypt CMS messages encrypted (MEDIUM)
+### will be fixed when latest ubuntu release includes fix versino
+CVE-2025-9230

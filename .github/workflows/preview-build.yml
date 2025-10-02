@@ -1,0 +1,131 @@
+name: "Preview Build & Push"
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+concurrency:
+  group: "preview-build-pr-${{ github.event.pull_request.number }}"
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    name: "Plan"
+    permissions: { contents: read }
+    runs-on: ubuntu-latest
+    outputs:
+      prnum:  "${{ steps.vars.outputs.prnum }}"   # pull request number (e.g. `835`)
+      itag:   "${{ steps.vars.outputs.itag }}"    # image immutable tag (e.g. `pr-835-0fe21ac`)
+      deploy: "${{ steps.vars.outputs.deploy }}"  # deploy a preview app (e.g. `true`)
+    steps:
+      - name: "Determine variable values"
+        id:   vars
+        shell: bash
+        run: |
+          set -euo pipefail
+          PRNUM="${{ github.event.pull_request.number }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"   # PR head, not merge SHA
+          SHORT="${HEAD_SHA::7}"
+          ITAG="pr-${{ github.event.pull_request.number }}-${SHORT}"
+          DEPLOY=$(jq -r 'all(.name!="no-preview")' <<< '${{ toJson(github.event.pull_request.labels) }}')
+          echo "- github.event_name=${{ github.event_name }}"
+          echo "- github.event.pull_request.number=${{ github.event.pull_request.number }}"
+          echo "- github.event.pull_request.head.sha=${{ github.event.pull_request.head.sha }}"
+          echo "- outputs.prnum=$PRNUM"
+          echo "- outputs.itag=$ITAG"
+          echo "- outputs.deploy=$DEPLOY"
+          echo "prnum=$PRNUM" >> $GITHUB_OUTPUT
+          echo "itag=$ITAG" >> $GITHUB_OUTPUT
+          echo "deploy=$DEPLOY" >> $GITHUB_OUTPUT
+
+  source:
+    name: "Source scan"
+    needs: [plan]
+    runs-on: ubuntu-latest
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@v5
+
+      - run: |
+          ### Check the Helm chart lints OK
+          helm lint ./helm_deploy/data-access-service --quiet --strict
+
+  build:
+    name: "Build OCI image"
+    needs: [plan]
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write, packages: read }
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: "Set up Java 21 (Temurin distro)"
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: "Build and test app"
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          ./gradlew clean build integrationTest
+
+      - name: "Upload Checkstyle report for data-access-service"
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkstyle-report
+          path: data-access-service/build/reports/checkstyle
+          retention-days: 7
+
+      - name: "Upload test report for data-access-service"
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: data-access-service/build/reports/tests
+          retention-days: 7
+
+      - name: "Authenticate with Amazon ECR"
+        id:   ecr-auth
+        uses: ./.github/actions/cp-ecr-auth
+        with:
+          ecr-region:         "${{ vars.ECR_REGION }}"
+          ecr-role-to-assume: "${{ secrets.ECR_ROLE_TO_ASSUME }}"
+
+      - name: "Build and push image"
+        uses: ./.github/actions/build-push-image
+        with:
+          image: "${{ steps.ecr-auth.outputs.ecr-registry }}/${{ vars.ECR_REPOSITORY }}"
+          itag:  "${{ needs.plan.outputs.itag }}"
+          mtag:  "pr-${{ needs.plan.outputs.prnum }}"
+
+      - name: "Send failure Slack message"
+        if:   ${{ failure() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          MESSAGE=" :github-failure:  Failed to build pull request #${{ needs.plan.outputs.prnum }}. View run log at ${RUN_URL}"
+          curl -X POST -H "Content-Type: application/json" --data "{\"text\": \"${MESSAGE}\"}" "${{ secrets.SLACK_WEBHOOK }}"
+
+      - name: "Check deploy"
+        shell: bash
+        run: |
+          echo "call-deploy:"
+          echo "  if:   ${{ needs.plan.outputs.deploy == true || needs.plan.outputs.deploy == 'true' }}"
+          echo "  with:"
+          echo "    prnum:  ${{ needs.plan.outputs.prnum }}"
+          echo "    tag:    ${{ needs.plan.outputs.itag }}"
+
+  call-deploy:
+    name: "Call deploy"
+    if:   ${{ needs.plan.outputs.deploy == true || needs.plan.outputs.deploy == 'true' }}
+    needs: [plan, source, build]
+    permissions: { contents: read, id-token: write }
+    uses: ./.github/workflows/preview-deploy.yml
+    with:
+      prnum:   "${{ needs.plan.outputs.prnum }}"
+      tag:     "${{ needs.plan.outputs.itag }}"
+    secrets: inherit

@@ -1,0 +1,25 @@
+# values-prod.yaml
+# Production environment override values for the Data-Access-app chart.
+
+spring:
+  profiles:
+    active: prod
+
+prometheus:
+  metricsQualifier: "prod"
+  severity: "laa-provider-details-api-alerts-prod"
+
+ingressInternal:
+  enabled: true
+  className: "internal"
+  hosts:
+    - host: "laa-data-access-api-prod.internal.cloud-platform.service.justice.gov.uk"
+
+ingress:
+  enabled: true
+  className: "modsec"
+  hosts:
+    - host: "laa-data-access-api-prod.apps.cloud-platform.service.justice.gov.uk"
+  tls:
+    - hosts:
+        - "laa-data-access-api-prod.apps.cloud-platform.service.justice.gov.uk"

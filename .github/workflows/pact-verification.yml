@@ -1,0 +1,56 @@
+# DB - disable for now as we don't have pact
+
+# name: Pact Triggered Workflow
+# permissions:
+#   contents: read
+#   packages: read
+#   security-events: write
+
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       consumer:
+#         description: Consumer name (e.g., laa-microservice)
+#         required: true
+#       consumerBranch:
+#         description: Consumer branch (e.g., main)
+#         required: true
+
+
+# jobs:
+#   pact-trigger:
+#     runs-on: ubuntu-latest
+#     environment: dev
+#     env:
+#       # Broker creds (read by Gradle)
+#       PACTBROKER_URL: https://laa-data-pact-broker.apps.live.cloud-platform.service.justice.gov.uk
+#       # Webhook → Gradle switch
+#       PACT_CONSUMER: ${{ github.event.inputs.consumer }}
+#       PACT_CONSUMER_BRANCH: ${{ github.event.inputs.consumerBranch }}
+#       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#       KUBE_CERT: ${{ secrets.kube_cert }}
+#       KUBE_CLUSTER: ${{ secrets.kube_cluster }}
+#       KUBE_NAMESPACE: ${{ secrets.kube_namespace }}
+#       KUBE_TOKEN: ${{ secrets.kube_token }}
+
+#     steps:
+#       - uses: actions/checkout@v5
+
+#       - name: Authenticate kubectl
+#         run: |
+#           echo "${KUBE_CERT}" > ca.crt
+#           kubectl config set-cluster "${KUBE_CLUSTER}" --certificate-authority=./ca.crt --server="https://${KUBE_CLUSTER}"
+#           kubectl config set-credentials deploy-user --token="${KUBE_TOKEN}"
+#           kubectl config set-context "${KUBE_CLUSTER}" --cluster="${KUBE_CLUSTER}" --user=deploy-user --namespace="${KUBE_NAMESPACE}"
+#           kubectl config use-context "${KUBE_CLUSTER}"
+
+#       - uses: actions/setup-java@v5
+#         with:
+#           distribution: temurin
+#           java-version: '21'
+
+#       - name: Verify Pact contracts
+#         run: |
+#           PACTBROKER_USERNAME=$(kubectl get secret laa-provider-details-api-secrets -n ${KUBE_NAMESPACE} -o jsonpath='{.data.PACT_BROKER_BASIC_AUTH_USERNAME}'  | base64 --decode)
+#           PACTBROKER_PASSWORD=$(kubectl get secret laa-provider-details-api-secrets -n ${KUBE_NAMESPACE} -o jsonpath='{.data.PACT_BROKER_BASIC_AUTH_PASSWORD}'  | base64 --decode)
+#           ./gradlew :providers-app:pactVerify -PbrokerUser=$PACTBROKER_USERNAME -PbrokerPass=$PACTBROKER_PASSWORD
