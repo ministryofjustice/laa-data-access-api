@@ -2,7 +2,7 @@ spring:
   application.name: LAA Data Stewardship Access - Access Application Data
 
   datasource:
-    url: jdbc:postgresql://${rds_instance_endpoint}:${rds_instance_port}/${database_name}
+    url: jdbc:postgresql://${rds_instance_address}:${rds_instance_port}/${database_name}
     username: ${database_name}
     password: ${database_password}
 
