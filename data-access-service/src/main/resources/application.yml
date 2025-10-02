@@ -2,9 +2,9 @@ spring:
   application.name: LAA Data Stewardship Access - Access Application Data
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/laa_db
-    username: laa_user
-    password: laa_password
+    url: jdbc:postgresql://${rds_instance_endpoint}/${database_name}
+    username: ${database_username}
+    password: ${database_password}
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
