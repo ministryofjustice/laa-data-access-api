@@ -51,7 +51,7 @@ prometheus:
 # Configuration for the Kubernetes Service that exposes the application.
 service:
   type: ClusterIP
-  port: 8081
+  port: 8080
 
 # Configuration for Ingress to expose the service within the cluster.
 # The internal ingress is currently only used by release apps.
