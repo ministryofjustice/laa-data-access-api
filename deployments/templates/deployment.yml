@@ -26,7 +26,7 @@ spec:
               memory: "1Gi"
               cpu: "1000m"
           ports:
-            - containerPort: 8080
+            - containerPort: 8081
           env:
           - name: db_identifier
               valueFrom: 
@@ -88,14 +88,14 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health/
-              port: 8080
+              port: 8081
             initialDelaySeconds: 10
             periodSeconds: 30
             failureThreshold: 5
           livenessProbe:
             httpGet:
               path: /actuator/health/
-              port: 8080
+              port: 8081
             initialDelaySeconds: 10
             periodSeconds: 30
             failureThreshold: 3
