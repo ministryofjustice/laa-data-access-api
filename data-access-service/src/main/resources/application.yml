@@ -20,6 +20,12 @@ info:
 
 logging:
   level:
+    tomcat: TRACE
+    root: TRACE
+    org:
+      springframework:
+        web: TRACE
+      hibernate: TRACE
     com.azure.spring: INFO
 
 management:
