@@ -17,7 +17,6 @@ import org.javers.core.diff.Diff;
 import org.javers.core.diff.changetype.ValueChange;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
-import uk.gov.justice.laa.dstew.access.config.SqsProducer;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
@@ -40,8 +39,6 @@ public class ApplicationService {
 
   private final ApplicationValidations applicationValidations;
 
-  private final SqsProducer sqsProducer;
-
   private final ObjectMapper objectMapper;
 
   private final Javers javers;
@@ -52,19 +49,16 @@ public class ApplicationService {
    * @param applicationRepository the repository of such applications.
    * @param applicationMapper the mapper between entity and DTOs.
    * @param applicationValidations the validation methods for request DTOs.
-   * @param sqsProducer the sender of messages to the queue.
    * @param objectMapper JSON mapper to serialize the history.
    */
   public ApplicationService(
           final ApplicationRepository applicationRepository,
           final ApplicationMapper applicationMapper,
           final ApplicationValidations applicationValidations,
-          final SqsProducer sqsProducer,
           final ObjectMapper objectMapper) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
-    this.sqsProducer = sqsProducer;
     this.javers = JaversBuilder.javers().build();
 
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
