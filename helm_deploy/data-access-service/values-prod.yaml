@@ -7,7 +7,7 @@ spring:
 
 prometheus:
   metricsQualifier: "prod"
-  severity: "laa-provider-details-api-alerts-prod"
+  severity: "laa-data-access-api-alerts-prod"
 
 ingressInternal:
   enabled: true

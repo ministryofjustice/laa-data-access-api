@@ -6,7 +6,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app: laa-pda-api-pod
+      app: laa-data-access-api-pod
   policyTypes:
     - Ingress
   ingress:

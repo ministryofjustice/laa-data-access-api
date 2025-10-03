@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access;
 
-import io.awspring.cloud.autoconfigure.sqs.SqsAutoConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -15,7 +14,6 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 @ImportAutoConfiguration(exclude = {
     DataSourceAutoConfiguration.class,
     HibernateJpaAutoConfiguration.class,
-    SqsAutoConfiguration.class
 })
 class AccessAppTests {
   @MockitoBean
