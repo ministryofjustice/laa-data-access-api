@@ -1,14 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: laa-pda-api-deployment
+  name: laa-data-access-api-deployment
   labels:
-    app: laa-pda-api
+    app: laa-data-access-api
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: laa-pda-api-pod
+      app: laa-data-access-api-pod
   template:
     metadata:
       labels:

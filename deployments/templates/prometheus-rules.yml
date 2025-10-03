@@ -4,7 +4,7 @@ metadata:
   namespace: ${NAMESPACE}
   labels:
     role: alert-rules
-  name: prometheus-custom-rules-laa-pda-api
+  name: prometheus-custom-rules-laa-data-access-api
 spec:
   groups:
     - name: application-rules
