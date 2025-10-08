@@ -20,13 +20,13 @@ info:
 
 logging:
   level:
-    tomcat: DEBUG
-    root: DEBUG
+    tomcat: INFO
+    root: INFO
     org:
       springframework:
-        web: DEBUG
-      hibernate: DEBUG
-    com.azure.spring: DEBUG
+        web: INFO
+      hibernate: INFO
+    com.azure.spring: INFO
 
 management:
   endpoints.web.exposure.include: health,info
