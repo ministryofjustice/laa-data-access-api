@@ -20,13 +20,13 @@ info:
 
 logging:
   level:
-    tomcat: INFO
-    root: INFO
+    tomcat: TRACE
+    root: TRACE
     org:
       springframework:
-        web: INFO
-      hibernate: INFO
-    com.azure.spring: INFO
+        web: TRACE
+      hibernate: TRACE
+    com.azure.spring: TRACE
 
 management:
   endpoints.web.exposure.include: health,info
