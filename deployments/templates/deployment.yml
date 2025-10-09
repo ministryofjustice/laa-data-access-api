@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: laa-pda-api-deployment
+  name: laa-data-access-api-deployment
   labels:
-    app: laa-pda-api
+    app: laa-data-access-api
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: laa-pda-api-pod
+      app: laa-data-access-api-pod
   template:
     metadata:
       labels:
-        app: laa-pda-api-pod
+        app: laa-data-access-api-pod
     spec:
       containers:
-        - name: laa-pda-api-container
+        - name: laa-data-access-api-container
           image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
           imagePullPolicy: Always
           resources:
@@ -28,72 +28,41 @@ spec:
           ports:
             - containerPort: 8080
           env:
-            - name: CWA_DB_URL
+          - name: db_identifier
+              valueFrom: 
+                secretKeyRef: 
+                  name: rds-postgresql-instance-output
+                  key: db_identifier
+            - name: rds_instance_address
               valueFrom:
                 secretKeyRef:
-                  name: laa-provider-details-api-secrets
-                  key: CWA_DB_URL
-            - name: CWA_DB_USER
+                  name: rds-postgresql-instance-output
+                  key: rds_instance_address 
+            - name: rds_instance_endpoint
               valueFrom:
                 secretKeyRef:
-                  name: laa-provider-details-api-secrets
-                  key: CWA_DB_USER
-            - name: CWA_DB_PASSWORD
+                  name: rds-postgresql-instance-output
+                  key: rds_instance_endpoint
+            - name: rds_instance_port
               valueFrom:
                 secretKeyRef:
-                  name: laa-provider-details-api-secrets
-                  key: CWA_DB_PASSWORD
-            - name: CCMS_DB_URL
+                  name: rds-postgresql-instance-output
+                  key:  rds_instance_port
+            - name: database_name
               valueFrom:
                 secretKeyRef:
-                  name: laa-provider-details-api-secrets
-                  key: CCMS_DB_URL
-            - name: CCMS_DB_USER
+                  name: rds-postgresql-instance-output
+                  key: database_name
+            - name: database_username
               valueFrom:
                 secretKeyRef:
-                  name: laa-provider-details-api-secrets
-                  key: CCMS_DB_USER
-            - name: CCMS_DB_PASSWORD
+                  name: rds-postgresql-instance-output
+                  key: database_username
+            - name: database_password
               valueFrom:
                 secretKeyRef:
-                  name: laa-provider-details-api-secrets
-                  key: CCMS_DB_PASSWORD
-            - name: SLACK_WEBHOOK
-              valueFrom:
-                secretKeyRef:
-                  name: laa-provider-details-api-secrets
-                  key: SLACK_WEBHOOK
-            - name: REDIS_ENDPOINT
-              valueFrom:
-                secretKeyRef:
-                  name: laa-provider-details-api-redis-secrets
-                  key: primary_endpoint_address
-            - name: REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: laa-provider-details-api-redis-secrets
-                  key: auth_token
-            - name: AUTHORIZED_CLIENTS
-              valueFrom:
-                secretKeyRef:
-                  name: laa-provider-details-api-secrets
-                  key: AUTHORIZED_CLIENTS
-            - name: AUTHORIZED_ROLES
-              valueFrom:
-                secretKeyRef:
-                  name: laa-provider-details-api-secrets
-                  key: AUTHORIZED_ROLES
-            - name: UNPROTECTED_URIS
-              valueFrom:
-                secretKeyRef:
-                  name: laa-provider-details-api-secrets
-                  key: UNPROTECTED_URIS
-            - name: APP_CCMS_MAPPINGS
-              valueFrom:
-                secretKeyRef:
-                  name: laa-provider-details-api-secrets
-                  key: APP_CCMS_MAPPINGS
-                  optional: true
+                  name: rds-postgresql-instance-output
+                  key: database_password
             - name: POD_NAME
               valueFrom:
                 fieldRef:
@@ -118,14 +87,14 @@ spec:
               type: RuntimeDefault
           readinessProbe:
             httpGet:
-              path: /actuator/health/
+              path: /actuator/health
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 30
             failureThreshold: 5
           livenessProbe:
             httpGet:
-              path: /actuator/health/
+              path: /actuator/health
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 30

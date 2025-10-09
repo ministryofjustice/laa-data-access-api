@@ -1,9 +1,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: laa-pda-api-ingress
+  name: laa-data-access-api-ingress
   annotations:
-    external-dns.alpha.kubernetes.io/set-identifier: laa-pda-api-ingress-${NAMESPACE}-green
+    external-dns.alpha.kubernetes.io/set-identifier: laa-data-access-api-ingress-${NAMESPACE}-green
     external-dns.alpha.kubernetes.io/aws-weight: "100"
     nginx.ingress.kubernetes.io/whitelist-source-range: "${IP_ALLOWLIST}"
     nginx.ingress.kubernetes.io/limit-rps: "10"
@@ -27,6 +27,6 @@ spec:
             pathType: ImplementationSpecific
             backend:
               service:
-                name: laa-pda-api-service
+                name: laa-data-access-api-service
                 port:
                   number: 8080
