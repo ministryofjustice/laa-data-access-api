@@ -2,15 +2,28 @@ spring:
   application.name: LAA Data Stewardship Access - Access Application Data
 
   datasource:
-    url: jdbc:postgresql://${RDS_INSTANCE_ENDPOINT}/${DATABASE_NAME}
-    username: ${DATABASE_USERNAME}
-    password: ${DATABASE_PASSWORD}
+    url: jdbc:postgresql://localhost:5432/laa_data_access_api
+    username: laa_user
+    password: laa_password
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate.ddl-auto: none  # Use Flyway for DB schema.
 
   sql.init.mode: never # Use Flyway for DB schema.
+
+  cloud:
+    aws:
+      region.static: us-east-1
+      credentials:
+        access-key: test
+        secret-key: test
+      sqs.endpoint: http://localhost:4566
+
+    azure:
+      active-directory:
+        profile.tenant-id: ${ENTRA_TENANT_ID}
+        app-id-uri: ${ENTRA_APP_ID_URI}
 
 info:
   app:
@@ -20,12 +33,6 @@ info:
 
 logging:
   level:
-    tomcat: INFO
-    root: INFO
-    org:
-      springframework:
-        web: INFO
-      hibernate: INFO
     com.azure.spring: INFO
 
 management:

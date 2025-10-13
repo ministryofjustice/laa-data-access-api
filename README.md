@@ -66,6 +66,14 @@ To start up Localstack and Postgres
 
 `docker compose up -d`
 
+Or if you want to use a different name or credentials
+
+`docker compose run -p 5432:5432 -e POSTGRES_DB={database name} POSTGRES_USER={username} POSTGRES_PASSWORD={password} postgres`
+
+followed by
+
+`docker compose run -p 4566:4566 localstack`
+
 Then execute
 
 `./gradlew bootRun`
@@ -73,7 +81,7 @@ Then execute
 ### Dropping database tables (may not be applicable)
 You may need to drop database tables manually prior to running app so Flyway can create the latest schema. To do this:
 - Start up a Postgres management tool e.g. pgadmin
-- Go to the laa_db database
+- Go to the laa database
 - Drop the tables
 
 ### API documentation

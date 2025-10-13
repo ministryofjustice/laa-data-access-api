@@ -7,7 +7,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import uk.gov.justice.laa.dstew.access.config.SqsProducer;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationProceedingEntity;
 import uk.gov.justice.laa.dstew.access.entity.EmbeddedRecordHistoryEntity;
@@ -37,8 +36,6 @@ public class ApplicationServiceTest {
     private ApplicationMapper mapper;
     @Mock
     private ApplicationValidations validator;
-    @Mock
-    private SqsProducer sqsProducer;
     @Mock
     private ObjectMapper objectMapper;
 

@@ -46,7 +46,7 @@ prometheus:
   metricsQualifier: "placeholder"
   alertsEnabled: false
   # The (alerts) severity value will be overridden in the environment values file (for production deployments):
-  severity: "laa-provider-data-api-alerts-nonprod"
+  severity: "laa-data-access-api-alerts-nonprod"
 
 # Configuration for the Kubernetes Service that exposes the application.
 service:
@@ -86,7 +86,7 @@ ingress:
   className: "modsec-non-prod"
   hosts:
     # The host value will be overridden in the environment values file (for release deployments),
-    # or by a command-line argument (for preview deployments):
+    # or by a commanddoc-line argument (for preview deployments):
     - host: "laa-data-access-api.apps.cloud-platform.service.justice.gov.uk"
   tls:
     - hosts:

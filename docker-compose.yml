@@ -24,7 +24,7 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: laa_db
+      POSTGRES_DB: laa_data_access_api
       POSTGRES_USER: laa_user
       POSTGRES_PASSWORD: laa_password
     volumes:
