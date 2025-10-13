@@ -73,7 +73,7 @@ Then execute
 ### Dropping database tables (may not be applicable)
 You may need to drop database tables manually prior to running app so Flyway can create the latest schema. To do this:
 - Start up a Postgres management tool e.g. pgadmin
-- Go to the laa_db database
+- Go to the laa database
 - Drop the tables
 
 ### API documentation

@@ -2,7 +2,7 @@ spring:
   application.name: LAA Data Stewardship Access - Access Application Data
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/laa_db
+    url: jdbc:postgresql://localhost:5432/laa_data_access_api
     username: laa_user
     password: laa_password
 
