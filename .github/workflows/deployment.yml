@@ -20,7 +20,7 @@ jobs:
       ecr-repository: ECR_REPOSITORY
       ecr-region: ECR_REGION
       branch-name: main
-      prometheus_severity: laa-provider-data-api-alerts-nonprod
+      prometheus_severity: laa-data-claims-api-alerts-staging
       spring_profile: uat
     secrets:
       ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
@@ -42,7 +42,7 @@ jobs:
       ecr-repository: ECR_REPOSITORY
       ecr-region: ECR_REGION
       branch-name: main
-      prometheus_severity: laa-provider-data-api-alerts-nonprod
+      prometheus_severity: laa-data-claims-api-alerts-staging
       spring_profile: staging
     secrets:
       ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
@@ -65,7 +65,7 @@ jobs:
       ecr-repository: ECR_REPOSITORY
       ecr-region: ECR_REGION
       branch-name: main
-      prometheus_severity: laa-provider-details-api-alerts-prod
+      prometheus_severity: laa-data-claims-api-alerts-staging
       spring_profile: prod
     secrets:
       ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
