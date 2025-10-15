@@ -65,7 +65,7 @@ spec:
                 secretKeyRef:
                   name: rds-postgresql-instance-output
                   key: rds_instance_address 
-            - name: rds_instance_endpoint
+            - name: RDS_INSTANCE_ENDPOINT
               valueFrom:
                 secretKeyRef:
                   name: rds-postgresql-instance-output
@@ -75,17 +75,17 @@ spec:
                 secretKeyRef:
                   name: rds-postgresql-instance-output
                   key:  rds_instance_port
-            - name: database_name
+            - name: DATABASE_NAME
               valueFrom:
                 secretKeyRef:
                   name: rds-postgresql-instance-output
                   key: database_name
-            - name: database_username
+            - name: DATABASE_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: rds-postgresql-instance-output
                   key: database_username
-            - name: database_password
+            - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: rds-postgresql-instance-output
