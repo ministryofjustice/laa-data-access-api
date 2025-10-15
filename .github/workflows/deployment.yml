@@ -8,12 +8,10 @@ permissions:
 on:
   workflow_dispatch:
   pull_request:
-  push:
-    branches:
-      - main
-      - feature/**
+    branches: [ feature/** ]
 
 jobs:
+
   uat-deployment:
     name: UAT deployment
     uses: ./.github/workflows/reusable-deployment.yml
@@ -35,18 +33,19 @@ jobs:
       GITHUBAPP_ID: ${{ secrets.GITHUBAPP_ID }}
       GITHUBAPP_PRIVATE_KEY: ${{ secrets.GITHUBAPP_PRIVATE_KEY }}
 
-  staging-deployment:
-    name: Staging deployment
+  preprod-deployment:
+    name: Preprod deployment
     needs: uat-deployment
+    if: github.event.pull_request.merged == true && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/reusable-deployment.yml
     with:
-      environment: staging
-      environment-prefix: Staging
+      environment: preprod
+      environment-prefix: Preprod
       ecr-repository: ECR_REPOSITORY
       ecr-region: ECR_REGION
       branch-name: main
       prometheus_severity: laa-provider-data-api-alerts-nonprod
-      spring_profile: staging
+      spring_profile: preprod
     secrets:
       ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
       kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
@@ -59,7 +58,8 @@ jobs:
 
   prod-deployment:
     name: Prod deployment
-    needs: staging-deployment
+    needs: preprod-deployment
+    if: github.event.pull_request.merged == true && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/reusable-deployment.yml
     with:
       environment: prod
@@ -67,7 +67,7 @@ jobs:
       ecr-repository: ECR_REPOSITORY
       ecr-region: ECR_REGION
       branch-name: main
-      prometheus_severity: laa-data-access-api-alerts-prod
+      prometheus_severity: laa-provider-details-api-alerts-prod
       spring_profile: prod
     secrets:
       ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
