@@ -67,24 +67,20 @@ afterEvaluate {
                 sourceDirectories.from dir
             }
 
-            def filteredClassFiles = project.fileTree(dir: javaExtension.sourceSets.main.output.classesDirs)
-            filteredClassFiles.exclude('**/AccessApp.class')
-            filteredClassFiles.exclude('**/generated/**')
-            filteredClassFiles.exclude('**/config/*')
+            def allClassFiles = javaExtension.sourceSets.main.output.classesDirs.collect { dir ->
+                project.fileTree(dir: dir) {
+                    exclude('**/AccessApp.class')
+                    exclude('**/generated/**')
+                    exclude('**/config/*')
+                }
+            }
 
-            classDirectories.from filteredClassFiles
+            classDirectories.from allClassFiles
+
             executionData.from project.fileTree(
                     dir: "${project.buildDir}/jacoco",
                     includes: ["*.exec"]
             )
-            def projectClasses = project.extensions.getByType(SourceSetContainer).main.output.classesDirs.files
-            def projectExecutionData = project.fileTree(
-                    dir: "${project.buildDir}/jacoco",
-                    includes: ["*.exec"]
-            )
-
-            classDirectories.from projectClasses
-            executionData.from projectExecutionData
         }
 
         reports {
