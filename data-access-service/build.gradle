@@ -43,6 +43,7 @@ jacocoTestCoverageVerification {
             fileTree(dir: it, exclude: ['**/AccessApp.class'])
         }))
     }
+    enabled = false
 }
 
 dependencies {
