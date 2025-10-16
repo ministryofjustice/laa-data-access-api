@@ -12,6 +12,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      packages: read
 
     steps:
       - name: Checkout Repository
@@ -29,6 +30,8 @@ jobs:
 
       - name: Run Tests and Generate Aggregated Report
         run: ./gradlew clean build jacocoAggregatedReport --continue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish Report to PR Comment
         uses: madrapps/jacoco-report@v1.6.1
