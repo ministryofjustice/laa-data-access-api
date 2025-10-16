@@ -1,12 +1,32 @@
 plugins {
+    // Apply JaCoCo plugin at the root for aggregation
+    id 'jacoco'
+    // Release Management Plugin
     id 'net.researchgate.release' version '3.1.0'
 }
 
 subprojects {
+    apply plugin: 'jacoco'
     group = 'uk.gov.justice.laa.data.access'
 
-    release {
+    release {3444
         tagTemplate = '$name-$version'
+    }
+
+    test {
+        useJUnitPlatform()
+        finalizedBy jacocoTestReport
+    }
+    jacoco {
+        toolVersion = "0.8.12"
+    }
+
+    jacocoTestReport {
+        reports {
+            xml.required = true
+            csv.required = false
+            html.required = true
+        }
     }
 
     // Force version of Checkstyle to one without CVEs to avoid Snyk complaints.
