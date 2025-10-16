@@ -40,32 +40,32 @@ subprojects {
         }
     }
 }
+afterEvaluate {
+    jacoco {
+        toolVersion = "0.8.12"
+    }
 
-jacoco {
-    toolVersion = "0.8.12"
-}
+    tasks.register('jacocoAggregatedReport', JacocoReport) {
+        description = 'Generates an aggregated JaCoCo report for all modules.'
+        group = 'verification'
 
-tasks.register('jacocoAggregatedReport', JacocoReport) {
-    description = 'Generates aggregated JaCoCo report for all modules.'
-    group = 'verification'
+        dependsOn subprojects.map { it.tasks.withType(Test) }
 
-    dependsOn = subprojects.jacocoTestReport
+        subprojects.each { project ->
+            def projectClasses = project.extensions.getByType(SourceSetContainer).main.output.classesDirs.files
+            def projectExecutionData = project.fileTree(
+                    dir: "${project.buildDir}/jacoco",
+                    includes: ["*.exec"]
+            )
 
-    classDirectories.from = files(subprojects.collect {
-        it.extensions.getByType(JacocoTaskExtension).destinationFile.exists() ? it.sourceSets.main.output : []
-    })
-    sourceDirectories.from = files(subprojects.collect {
-        it.sourceSets.main.allSource
-    })
+            classDirectories.from projectClasses
+            executionData.from projectExecutionData
+        }
 
-    executionData.from = files(subprojects.collect {
-        it.jacocoTestReport.executionData
-    })
-
-    reports {
-        xml.required = true
-        html.required = true
-        html.outputLocation = layout.buildDirectory.dir('reports/jacoco/aggregatedHtml')
-        xml.outputLocation = layout.buildDirectory.file('reports/jacoco/aggregated.xml')
+        reports {
+            xml.required = true
+            csv.required = false
+            html.required = true
+        }
     }
 }
