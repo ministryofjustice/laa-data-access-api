@@ -13,10 +13,11 @@ subprojects {
         tagTemplate = '$name-$version'
     }
 
-    test {
+    tasks.withType(Test).configureEach {
         useJUnitPlatform()
         finalizedBy jacocoTestReport
     }
+
     jacoco {
         toolVersion = "0.8.12"
     }
