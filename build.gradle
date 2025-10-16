@@ -49,7 +49,7 @@ afterEvaluate {
         description = 'Generates an aggregated JaCoCo report for all modules.'
         group = 'verification'
 
-        dependsOn subprojects.map { it.tasks.withType(Test) }
+        dependsOn subprojects.collectMany { it.tasks.withType(Test) }
 
         subprojects.each { project ->
             def projectClasses = project.extensions.getByType(SourceSetContainer).main.output.classesDirs.files
