@@ -49,7 +49,7 @@ afterEvaluate {
     }
 
     tasks.register('jacocoAggregatedReport', JacocoReport) {
-        ddescription = 'Generates an aggregated JaCoCo report for all modules.'
+        description = 'Generates an aggregated JaCoCo report for all modules.'
         group = 'verification'
 
         dependsOn subprojects.collectMany { it.tasks.withType(Test) }
