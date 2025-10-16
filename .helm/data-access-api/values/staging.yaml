@@ -9,7 +9,7 @@ image:
   tag: null
 
 service_account:
-  name: laa-data-access-api-staging-service-account
+  name: laa-data-access-staging-service-account
 
 service:
   type: ClusterIP
