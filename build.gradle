@@ -49,39 +49,43 @@ afterEvaluate {
     }
 
     tasks.register('jacocoAggregatedReport', JacocoReport) {
-        description = 'Generates an aggregated JaCoCo report for all modules.'
+        ddescription = 'Generates an aggregated JaCoCo report for all modules.'
         group = 'verification'
 
         dependsOn subprojects.collectMany { it.tasks.withType(Test) }
 
-        subprojects.each { project ->
-            def javaExtension = project.extensions.findByType(JavaPluginExtension)
-            if (!javaExtension || project.name == 'data-access-api') {
-                return
-            }
-            if (project.name == 'data-access-api') {
-                return
-            }
-
-            javaExtension.sourceSets.main.allSource.srcDirs.each { dir ->
-                sourceDirectories.from dir
-            }
-
-            def classOutputDirs = javaExtension.sourceSets.main.output.classesDirs.files
-            def allClassFiles = project.files(classOutputDirs.collect { dir ->
-                project.fileTree(dir: dir as File) {
-                    exclude('**/AccessApp.class')
-                    exclude('**/generated/**')
-                    exclude('**/config/*')
+        sourceDirectories.from {
+            subprojects.collect { project ->
+                def javaExtension = project.extensions.findByType(JavaPluginExtension)
+                if (javaExtension && project.name != 'data-access-api') {
+                    return javaExtension.sourceSets.main.allSource.srcDirs
                 }
-            })
+            }.flatten().findAll()
+        }
 
-            classDirectories.from files(allClassFiles)
+        classDirectories.from {
+            subprojects.collect { project ->
+                def javaExtension = project.extensions.findByType(JavaPluginExtension)
 
-            executionData.from project.fileTree(
-                    dir: "${project.buildDir}/jacoco",
-                    includes: ["*.exec"]
-            )
+                if (javaExtension && project.name != 'data-access-api') {
+                    return javaExtension.sourceSets.main.output.classesDirs.getFiles().collect { dir ->
+                        project.fileTree(dir: dir) {
+                            exclude('**/AccessApp.class')
+                            exclude('**/generated/**')
+                            exclude('**/config/*')
+                        }
+                    }
+                }
+            }.flatten().findAll()
+        }
+
+        executionData.from {
+            subprojects.collect { project ->
+                project.fileTree(
+                        dir: "${project.buildDir}/jacoco",
+                        includes: ["*.exec"]
+                )
+            }.flatten().findAll()
         }
 
         reports {
