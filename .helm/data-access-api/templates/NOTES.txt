@@ -1,0 +1,10 @@
+Application hosts
+
+URL(s):
+{{- range .Values.ingress.hosts }}
+  External hostname: https://{{ . }}
+{{- end }}
+
+{{- range .Values.ingressInternal.hosts }}
+  Internal hostname: https://{{ . }}
+{{- end }}
