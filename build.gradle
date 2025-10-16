@@ -55,18 +55,19 @@ afterEvaluate {
         dependsOn subprojects.collectMany { it.tasks.withType(Test) }
 
         subprojects.each { project ->
-            if (!project.plugins.hasPlugin('java')) {
+            def javaExtension = project.extensions.findByType(JavaPluginExtension)
+            if (!javaExtension || project.name == 'data-access-api') {
                 return
             }
             if (project.name == 'data-access-api') {
                 return
             }
 
-            sourceSets.main.allSource.srcDirs.each { dir ->
+            javaExtension.sourceSets.main.allSource.srcDirs.each { dir ->
                 sourceDirectories.from dir
             }
 
-            def filteredClassFiles = project.fileTree(dir: project.sourceSets.main.output.classesDirs)
+            def filteredClassFiles = project.fileTree(dir: javaExtension.sourceSets.main.output.classesDirs)
             filteredClassFiles.exclude('**/AccessApp.class')
             filteredClassFiles.exclude('**/generated/**')
             filteredClassFiles.exclude('**/config/*')
