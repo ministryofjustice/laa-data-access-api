@@ -22,20 +22,50 @@ subprojects {
         toolVersion = "0.8.12"
     }
 
-    tasks.named('jacocoTestReport', JacocoReport).configure {
-        reports {
-            xml.required = true
-            csv.required = false
-            html.required = true
+    tasks.withType(JacocoReport).configureEach { reportTask ->
+        if (reportTask.name == 'jacocoTestReport') {
+            reports {
+                xml.required = true
+                csv.required = false
+                html.required = true
+            }
         }
     }
 
-    // Force version of Checkstyle to one without CVEs to avoid Snyk complaints.
     afterEvaluate {
         if (plugins.hasPlugin('checkstyle')) {
             checkstyle {
                 toolVersion = '10.26.0'
             }
         }
+    }
+}
+
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+tasks.register('jacocoAggregatedReport', JacocoReport) {
+    description = 'Generates aggregated JaCoCo report for all modules.'
+    group = 'verification'
+
+    dependsOn = subprojects.jacocoTestReport
+
+    classDirectories.from = files(subprojects.collect {
+        it.extensions.getByType(JacocoTaskExtension).destinationFile.exists() ? it.sourceSets.main.output : []
+    })
+    sourceDirectories.from = files(subprojects.collect {
+        it.sourceSets.main.allSource
+    })
+
+    executionData.from = files(subprojects.collect {
+        it.jacocoTestReport.executionData
+    })
+
+    reports {
+        xml.required = true
+        html.required = true
+        html.outputLocation = layout.buildDirectory.dir('reports/jacoco/aggregatedHtml')
+        xml.outputLocation = layout.buildDirectory.file('reports/jacoco/aggregated.xml')
     }
 }
