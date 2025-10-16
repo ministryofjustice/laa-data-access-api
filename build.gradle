@@ -55,6 +55,24 @@ afterEvaluate {
         dependsOn subprojects.collectMany { it.tasks.withType(Test) }
 
         subprojects.each { project ->
+            if (project.name == 'data-access-api') {
+                return
+            }
+
+            sourceSets.main.allSource.srcDirs.each { dir ->
+                sourceDirectories.from dir
+            }
+
+            def filteredClassFiles = project.fileTree(dir: project.sourceSets.main.output.classesDirs)
+            filteredClassFiles.exclude('**/AccessApp.class')
+            filteredClassFiles.exclude('**/generated/**')
+            filteredClassFiles.exclude('**/config/*')
+
+            classDirectories.from filteredClassFiles
+            executionData.from project.fileTree(
+                    dir: "${project.buildDir}/jacoco",
+                    includes: ["*.exec"]
+            )
             def projectClasses = project.extensions.getByType(SourceSetContainer).main.output.classesDirs.files
             def projectExecutionData = project.fileTree(
                     dir: "${project.buildDir}/jacoco",
