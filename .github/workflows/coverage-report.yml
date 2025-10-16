@@ -36,7 +36,7 @@ jobs:
       - name: Publish Report to PR Comment
         uses: madrapps/jacoco-report@v1.6.1
         with:
-          path: build/reports/jacoco/aggregated.xml
+          paths: build/reports/jacoco/aggregated.xml
           token: ${{ secrets.GITHUB_TOKEN }}
           title: 'JaCoCo Code Coverage Report'
           min-coverage-overall: 60
