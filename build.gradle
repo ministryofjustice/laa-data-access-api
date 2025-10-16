@@ -66,15 +66,8 @@ afterEvaluate {
         classDirectories.from {
             subprojects.collect { project ->
                 def javaExtension = project.extensions.findByType(JavaPluginExtension)
-
                 if (javaExtension && project.name != 'data-access-api') {
-                    return javaExtension.sourceSets.main.output.classesDirs.getFiles().collect { dir ->
-                        project.fileTree(dir: dir) {
-                            exclude('**/AccessApp.class')
-                            exclude('**/generated/**')
-                            exclude('**/config/*')
-                        }
-                    }
+                    return javaExtension.sourceSets.main.output.classesDirs
                 }
             }.flatten().findAll()
         }
@@ -87,6 +80,12 @@ afterEvaluate {
                 )
             }.flatten().findAll()
         }
+
+        classDirectories.setFrom(classDirectories.getAsFileTree().matching {
+            exclude('**/AccessApp.class')
+            exclude('**/generated/**')
+            exclude('**/config/*')
+        })
 
         reports {
             xml.required = true
