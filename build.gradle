@@ -67,13 +67,14 @@ afterEvaluate {
                 sourceDirectories.from dir
             }
 
-            def allClassFiles = javaExtension.sourceSets.main.output.classesDirs.collect { dir ->
-                project.fileTree(dir: dir) {
+            def classOutputDirs = javaExtension.sourceSets.main.output.classesDirs.files
+            def allClassFiles = project.files(classOutputDirs.collect { dir ->
+                project.fileTree(dir: dir as File) {
                     exclude('**/AccessApp.class')
                     exclude('**/generated/**')
                     exclude('**/config/*')
                 }
-            }
+            })
 
             classDirectories.from files(allClassFiles)
 
