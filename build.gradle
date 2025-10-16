@@ -75,7 +75,7 @@ afterEvaluate {
                 }
             }
 
-            classDirectories.from allClassFiles
+            classDirectories.from files(allClassFiles)
 
             executionData.from project.fileTree(
                     dir: "${project.buildDir}/jacoco",
