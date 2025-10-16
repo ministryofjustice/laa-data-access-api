@@ -29,6 +29,8 @@ jobs:
 
       - name: Run Tests and Generate Aggregated Report
         run: ./gradlew clean build jacocoAggregatedReport --continue
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish Report to PR Comment
         uses: madrapps/jacoco-report@v1.6.1
