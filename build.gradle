@@ -55,6 +55,9 @@ afterEvaluate {
         dependsOn subprojects.collectMany { it.tasks.withType(Test) }
 
         subprojects.each { project ->
+            if (!project.plugins.hasPlugin('java')) {
+                return
+            }
             if (project.name == 'data-access-api') {
                 return
             }
