@@ -22,7 +22,7 @@ subprojects {
         toolVersion = "0.8.12"
     }
 
-    jacocoTestReport {
+    tasks.named('jacocoTestReport', JacocoReport).configure {
         reports {
             xml.required = true
             csv.required = false
