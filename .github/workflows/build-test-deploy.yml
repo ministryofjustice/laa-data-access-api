@@ -30,7 +30,7 @@ jobs:
       - name: Build and test
         run: ./gradlew build
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}s
 
       #- name: Test coverage verification
       #  run: ./gradlew jacocoTestCoverageVerification

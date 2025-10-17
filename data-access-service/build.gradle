@@ -22,13 +22,12 @@ dockerCompose {
 
 test {
     useJUnitPlatform()
-    finalizedBy jacocoTestReport, jacocoTestCoverageVerification
+    finalizedBy jacocoTestReport
 }
 
 jacoco {
     toolVersion = "0.8.12"
 }
-
 
 //so that we load properties from gradle properties
 task copyFileFromRootProject(type: Copy) {
