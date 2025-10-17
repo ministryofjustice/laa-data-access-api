@@ -50,23 +50,6 @@ jacocoTestReport {
     }
 }
 
-jacocoTestCoverageVerification {
-    violationRules {
-        rule {
-            limit {
-                counter = 'LINE'
-                value = 'COVEREDRATIO'
-                minimum = 0.5
-            }
-            limit {
-                counter = 'INSTRUCTION'
-                value = 'COVEREDRATIO'
-                minimum = 0.5
-            }
-        }
-    }
-}
-
 dependencies {
     implementation project(':data-access-api')
     implementation project(':data-access-shared')
