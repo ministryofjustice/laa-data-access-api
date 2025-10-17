@@ -31,19 +31,19 @@ tasks.register('jacocoAggregatedReport', JacocoReport) {
     group = 'verification'
 
     dependsOn ':data-access-service:test'
-    jacocoClasspath.set(configurations.jacocoAnt)
+
+    jacocoClasspath = configurations.jacocoAnt
+
     def serviceProject = project(':data-access-service')
 
-    sourceDirectories.setFrom files(
-            "${serviceProject.projectDir}/src/main/java"
-    )
+    sourceDirectories = files("${serviceProject.projectDir}/src/main/java")
 
-    classDirectories.setFrom fileTree(
+    classDirectories = fileTree(
             dir: "${serviceProject.buildDir}/classes/java/main",
             excludes: ['**/AccessApp.class', '**/generated/**', '**/config/**']
     )
 
-    executionData.setFrom fileTree(
+    executionData = fileTree(
             dir: "${serviceProject.buildDir}/jacoco",
             includes: ["test.exec", "*.exec"]
     )
