@@ -15,6 +15,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(MockitoExtension.class)
@@ -284,5 +287,106 @@ public class ApplicationMapperTest {
         assertThat(result.getLevelOfServiceCode()).isEqualTo("levelCode");
         assertThat(result.getCreatedBy()).isNull();
     }
+
+    @Test
+    void toOffsetDateTime_shouldReturnNull_whenInstantIsNull() {
+        OffsetDateTime result = applicationMapper.toOffsetDateTime(null);
+        assertThat(result).isNull();
+    }
+
+    @Test
+    void toOffsetDateTime_shouldConvertInstantToOffsetDateTime_whenInstantIsNotNull() {
+        Instant now = Instant.parse("2023-01-01T12:00:00Z");
+        OffsetDateTime result = applicationMapper.toOffsetDateTime(now);
+
+        assertThat(result).isEqualTo(now.atOffset(ZoneOffset.UTC));
+    }
+
+    @Test
+    void shouldNotOverwriteFieldsWhenUpdateRequestHasNulls_applicationEntity() {
+        ApplicationEntity existing = new ApplicationEntity();
+        UUID originalClientId = UUID.randomUUID();
+        existing.setClientId(originalClientId);
+        existing.setProviderFirmId("existingFirmId");
+        existing.setProviderOfficeId("existingOfficeId");
+        existing.setStatementOfCase("existingStatement");
+        existing.setStatusCode("EXISTING");
+
+        ApplicationUpdateRequest updateRequest = ApplicationUpdateRequest.builder()
+                .clientId(null)
+                .providerFirmId(null)
+                .providerOfficeId(null)
+                .statementOfCase(null)
+                .statusCode(null)
+                .build();
+
+        applicationMapper.updateApplicationEntity(existing, updateRequest);
+
+        assertThat(existing.getClientId()).isEqualTo(originalClientId);
+        assertThat(existing.getProviderFirmId()).isEqualTo("existingFirmId");
+        assertThat(existing.getProviderOfficeId()).isEqualTo("existingOfficeId");
+        assertThat(existing.getStatementOfCase()).isEqualTo("existingStatement");
+        assertThat(existing.getStatusCode()).isEqualTo("EXISTING");
+    }
+
+    @Test
+    void shouldNotOverwriteFieldsWhenUpdateRequestHasNulls_applicationDto() {
+        Application existing = new Application();
+        UUID originalClientId = UUID.randomUUID();
+        existing.setClientId(originalClientId);
+        existing.setProviderFirmId("existingFirmId");
+        existing.setProviderOfficeId("existingOfficeId");
+        existing.setStatementOfCase("existingStatement");
+        existing.setStatusCode("EXISTING");
+
+        ApplicationUpdateRequest updateRequest = ApplicationUpdateRequest.builder()
+                .clientId(null)
+                .providerFirmId(null)
+                .providerOfficeId(null)
+                .statementOfCase(null)
+                .statusCode(null)
+                .build();
+
+        applicationMapper.updateApplicationEntity(existing, updateRequest);
+
+        assertThat(existing.getClientId()).isEqualTo(originalClientId);
+        assertThat(existing.getProviderFirmId()).isEqualTo("existingFirmId");
+        assertThat(existing.getProviderOfficeId()).isEqualTo("existingOfficeId");
+        assertThat(existing.getStatementOfCase()).isEqualTo("existingStatement");
+        assertThat(existing.getStatusCode()).isEqualTo("EXISTING");
+    }
+
+    @Test
+    void shouldHandleEmptyProceedingsListOnCreateRequest() {
+        ApplicationCreateRequest createRequest = ApplicationCreateRequest.builder()
+                .clientId(UUID.randomUUID())
+                .isEmergencyApplication(false)
+                .providerFirmId("firm")
+                .providerOfficeId("office")
+                .statusCode("NEW")
+                .statementOfCase("some statement")
+                .proceedings(List.of()) // empty list
+                .build();
+
+        ApplicationEntity result = applicationMapper.toApplicationEntity(createRequest);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getProceedings()).isNull(); // should be ignored
+    }
+
+    @Test
+    void shouldHandleNullProceedingsListOnUpdateRequest() {
+        ApplicationEntity existing = new ApplicationEntity();
+        existing.setProceedings(null); // default
+
+        ApplicationUpdateRequest updateRequest = ApplicationUpdateRequest.builder()
+                .proceedings(null)
+                .build();
+
+        applicationMapper.updateApplicationEntity(existing, updateRequest);
+
+        assertThat(existing.getProceedings()).isNull(); // still null
+    }
+
 
 }
