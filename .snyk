@@ -47,11 +47,6 @@ ignore:
         reason: Wait until update Gradle plugin
         expires: 2025-08-01T00:00:00.000Z
         created: 2025-07-11T00:00:00.000Z
-  SNYK-JAVA-ORGAPACHECOMMONS-10734078:
-    - '*':
-        reason: Wait until update Gradle plugin
-        expires: 2025-11-17T00:00:00.000Z
-        created: 2025-10-17T00:00:00.000Z
 patch: {}
 exclude:
   global:
