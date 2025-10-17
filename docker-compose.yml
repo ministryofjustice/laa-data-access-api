@@ -1,6 +1,6 @@
 services:
   localstack:
-    image: localstack/localstack:4
+    image: localstack/localstack:2022-07-25
     ports:
       - 4566:4566
     environment:
@@ -12,7 +12,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
   postgres:
-    image: postgres:17
+    image: postgres:18
     container_name: laa-postgres
     restart: unless-stopped
     ports:
