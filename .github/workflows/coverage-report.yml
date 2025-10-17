@@ -36,7 +36,36 @@ jobs:
       - name: Show Coverage Summary in Terminal
         run: |
           echo "Coverage Summary (from XML):"
-          grep -A 5 '<counter type="INSTRUCTION"' build/reports/jacoco/aggregated.xml || echo "Could not read coverage summary."
+          XML_FILE="build/reports/jacoco/aggregated.xml"
+          
+          if [ -f "$XML_FILE" ]; then
+            # Try LINE coverage first
+            LINE_COVERED=$(xmllint --xpath "string(//report/counter[@type='LINE']/@covered)" "$XML_FILE" 2>/dev/null)
+            LINE_MISSED=$(xmllint --xpath "string(//report/counter[@type='LINE']/@missed)" "$XML_FILE" 2>/dev/null)
+          
+            # Fallback to INSTRUCTION if LINE not found
+            if [ -z "$LINE_COVERED" ] || [ -z "$LINE_MISSED" ]; then
+              LINE_COVERED=$(xmllint --xpath "string(//report/counter[@type='INSTRUCTION']/@covered)" "$XML_FILE" 2>/dev/null)
+              LINE_MISSED=$(xmllint --xpath "string(//report/counter[@type='INSTRUCTION']/@missed)" "$XML_FILE" 2>/dev/null)
+              TYPE="Instruction"
+            else
+              TYPE="Line"
+            fi
+          
+            if [ -n "$LINE_COVERED" ] && [ -n "$LINE_MISSED" ]; then
+              TOTAL=$((LINE_COVERED + LINE_MISSED))
+              if [ "$TOTAL" -gt 0 ]; then
+                PERCENT=$(awk "BEGIN { printf \"%.2f\", ($LINE_COVERED / $TOTAL) * 100 }")
+                echo "✅ $TYPE Coverage: $LINE_COVERED / $TOTAL = $PERCENT%"
+              else
+                echo "⚠️ $TYPE Coverage: No data available (0 total)"
+              fi
+            else
+              echo "❌ Could not parse coverage values from XML."
+            fi
+          else
+            echo "❌ Could not read coverage summary. File does not exist: $XML_FILE"
+          fi
 
       - name: Publish PR Coverage Comment
         if: github.event_name == 'pull_request'
@@ -45,5 +74,8 @@ jobs:
           paths: build/reports/jacoco/aggregated.xml
           token: ${{ secrets.GITHUB_TOKEN }}
           title: 'JaCoCo Code Coverage Report'
+          update-comment: true
+          pass-emoji: ':white_check_mark:'
+          fail-emoji: ':x:'
           min-coverage-overall: 0
           min-coverage-changed-files: 0
