@@ -22,7 +22,7 @@ dockerCompose {
 
 test {
     useJUnitPlatform()
-    finalizedBy(jacocoTestReport)
+    finalizedBy jacocoTestReport, jacocoTestCoverageVerification
 }
 
 jacoco {
@@ -47,6 +47,18 @@ jacocoTestReport {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, exclude: ['**/AccessApp.class'])
         }))
+    }
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.70
+            }
+        }
     }
 }
 
