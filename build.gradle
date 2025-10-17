@@ -53,7 +53,6 @@ afterEvaluate {
         group = 'verification'
 
         dependsOn subprojects.collectMany { it.tasks.withType(Test) }
-
         sourceDirectories.from {
             subprojects.collect { project ->
                 def javaExtension = project.extensions.findByType(JavaPluginExtension)
@@ -63,22 +62,18 @@ afterEvaluate {
             }.flatten().findAll()
         }
 
-        classDirectories.from {
-            subprojects.collect { project ->
-                def javaExtension = project.extensions.findByType(JavaPluginExtension)
-                if (javaExtension && project.name != 'data-access-api') {
-                    return javaExtension.sourceSets.main.output.classesDirs
-                }
-            }.flatten().findAll()
+        classDirectories.from subprojects.files { project ->
+            def javaExtension = project.extensions.findByType(JavaPluginExtension)
+            if (javaExtension && project.name != 'data-access-api') {
+                return javaExtension.sourceSets.main.output.classesDirs
+            }
         }
 
-        executionData.from {
-            subprojects.collect { project ->
-                project.fileTree(
-                        dir: "${project.buildDir}/jacoco",
-                        includes: ["*.exec"]
-                )
-            }.flatten().findAll()
+        executionData.from subprojects.files { project ->
+            project.fileTree(
+                    dir: "${project.buildDir}/jacoco",
+                    includes: ["*.exec"]
+            )
         }
 
         classDirectories.setFrom(classDirectories.getAsFileTree().matching {
