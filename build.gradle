@@ -2,6 +2,14 @@ plugins {
     id 'net.researchgate.release' version '3.1.0'
 }
 
+configurations {
+    jacocoAnt
+}
+
+dependencies {
+    jacocoAnt "org.jacoco:org.jacoco.ant:0.8.12"
+}
+
 subprojects {
     group = 'uk.gov.justice.laa.data.access'
 
@@ -23,7 +31,7 @@ tasks.register('jacocoAggregatedReport', JacocoReport) {
     group = 'verification'
 
     dependsOn ':data-access-service:test'
-
+    jacocoClasspath.set(configurations.jacocoAnt)
     def serviceProject = project(':data-access-service')
 
     sourceDirectories.setFrom files(
@@ -42,7 +50,9 @@ tasks.register('jacocoAggregatedReport', JacocoReport) {
 
     reports {
         xml.required = true
+        xml.outputLocation = layout.buildDirectory.file("reports/jacoco/aggregated.xml").get().asFile
         html.required = true
+        html.outputLocation = layout.buildDirectory.dir("reports/jacoco/html").get().asFile
         csv.required = false
     }
 }
