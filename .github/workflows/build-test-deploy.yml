@@ -79,59 +79,58 @@ jobs:
           path: data-access-service/build/reports/jacoco
           retention-days: 14
 
-  # TODO: Re-enable vulnerability scanning
-  # vulnerability-scan-app:
-  #   runs-on: ubuntu-latest
-  #   needs:
-  #     - build-test
-  #   env:
-  #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-  #     SNYK_TEST_EXCLUDE: build,generated
-  #     SNYK_TARGET_REFERENCE: main
-  #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #   steps:
-  #     - uses: actions/checkout@v5
+  vulnerability-scan-app:
+    runs-on: ubuntu-latest
+    needs:
+      - build-test
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      SNYK_TEST_EXCLUDE: build,generated
+      SNYK_TARGET_REFERENCE: main
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
 
-  #     - name: Run Snyk to check app for vulnerabilities
-  #       uses: snyk/actions/gradle@master
-  #       with:
-  #         command: code test
-  #         args: --severity-threshold=high
+      - name: Run Snyk to check app for vulnerabilities
+        uses: snyk/actions/gradle@master
+        with:
+          command: code test
+          args: --severity-threshold=high
 
-  # vulnerability-scan-docker:
-  #   runs-on: ubuntu-latest
-  #   needs:
-  #     - build-test
-  #   env:
-  #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-  #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #   steps:
-  #     - uses: actions/checkout@v5
+  vulnerability-scan-docker:
+    runs-on: ubuntu-latest
+    needs:
+      - build-test
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
 
-  #     - name: Set up JDK 21
-  #       uses: actions/setup-java@v5
-  #       with:
-  #         java-version: 21
-  #         distribution: 'corretto'
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: 21
+          distribution: 'corretto'
 
-  #     - name: Set up Gradle
-  #       uses: gradle/actions/setup-gradle@v5
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
 
-  #     - name: Build app jar with gradle
-  #       run: ./gradlew build
+      - name: Build app jar with gradle
+        run: ./gradlew build
 
-  #     - name: Build local Docker image
-  #       run: |
-  #         docker build -t data-access-service-scan .
-  #         docker save data-access-service-scan -o image.tar
+      - name: Build local Docker image
+        run: |
+          docker build -t data-access-service-scan .
+          docker save data-access-service-scan -o image.tar
 
-  #     - name: Run Snyk to scan Docker image from tarball
-  #       uses: snyk/actions/docker@master
-  #       with:
-  #         image: image.tar
-  #         args: --docker --severity-threshold=high
-  #       env:
-  #         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Run Snyk to scan Docker image from tarball
+        uses: snyk/actions/docker@master
+        with:
+          image: image.tar
+          args: --docker --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
   build-push-docker:
     name: build and push docker image
@@ -174,9 +173,8 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-push-docker
-      # TODO: Re-enable vulnerability scanning
-      # - vulnerability-scan-app
-      # - vulnerability-scan-docker
+      - vulnerability-scan-app
+      - vulnerability-scan-docker
     environment: uat
     permissions:
       id-token: write
@@ -205,9 +203,8 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-push-docker
-      # TODO: Re-enable vulnerability scanning
-      # - vulnerability-scan-app
-      # - vulnerability-scan-docker
+      - vulnerability-scan-app
+      - vulnerability-scan-docker
     environment: staging
     permissions:
       id-token: write
