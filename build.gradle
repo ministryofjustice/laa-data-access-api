@@ -9,12 +9,40 @@ subprojects {
         tagTemplate = '$name-$version'
     }
 
-    // Force version of Checkstyle to one without CVEs to avoid Snyk complaints.
     afterEvaluate {
         if (plugins.hasPlugin('checkstyle')) {
             checkstyle {
                 toolVersion = '10.26.0'
             }
         }
+    }
+}
+
+tasks.register('jacocoAggregatedReport', JacocoReport) {
+    description = 'Generates JaCoCo report from data-access-service module'
+    group = 'verification'
+
+    dependsOn ':data-access-service:test'
+
+    def serviceProject = project(':data-access-service')
+
+    sourceDirectories.setFrom files(
+            "${serviceProject.projectDir}/src/main/java"
+    )
+
+    classDirectories.setFrom fileTree(
+            dir: "${serviceProject.buildDir}/classes/java/main",
+            excludes: ['**/AccessApp.class', '**/generated/**', '**/config/**']
+    )
+
+    executionData.setFrom fileTree(
+            dir: "${serviceProject.buildDir}/jacoco",
+            includes: ["test.exec", "*.exec"]
+    )
+
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
     }
 }
