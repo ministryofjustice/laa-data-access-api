@@ -2,6 +2,18 @@ plugins {
     id 'net.researchgate.release' version '3.1.0'
 }
 
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    jacocoAnt
+}
+
+dependencies {
+    jacocoAnt "org.jacoco:org.jacoco.ant:0.8.12"
+}
+
 subprojects {
     group = 'uk.gov.justice.laa.data.access'
 
@@ -9,12 +21,42 @@ subprojects {
         tagTemplate = '$name-$version'
     }
 
-    // Force version of Checkstyle to one without CVEs to avoid Snyk complaints.
     afterEvaluate {
         if (plugins.hasPlugin('checkstyle')) {
             checkstyle {
                 toolVersion = '10.26.0'
             }
         }
+    }
+}
+
+tasks.register('jacocoAggregatedReport', JacocoReport) {
+    description = 'Generates JaCoCo report from data-access-service module'
+    group = 'verification'
+
+    dependsOn ':data-access-service:test'
+
+    jacocoClasspath = configurations.jacocoAnt
+
+    def serviceProject = project(':data-access-service')
+
+    sourceDirectories = files("${serviceProject.projectDir}/src/main/java")
+
+    classDirectories = fileTree(
+            dir: "${serviceProject.buildDir}/classes/java/main",
+            excludes: ['**/AccessApp.class', '**/generated/**', '**/config/**']
+    )
+
+    executionData = fileTree(
+            dir: "${serviceProject.buildDir}/jacoco",
+            includes: ["test.exec", "*.exec"]
+    )
+
+    reports {
+        xml.required = true
+        xml.outputLocation = layout.buildDirectory.file("reports/jacoco/aggregated.xml").get().asFile
+        html.required = true
+        html.outputLocation = layout.buildDirectory.dir("reports/jacoco/html").get().asFile
+        csv.required = false
     }
 }

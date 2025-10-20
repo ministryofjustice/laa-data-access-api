@@ -1,0 +1,47 @@
+name: Code Coverage
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      packages: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x gradlew
+
+      - name: Run Tests and Generate Aggregated Report
+        run: ./gradlew clean build jacocoAggregatedReport --continue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish PR Coverage Comment
+        if: github.event_name == 'pull_request'
+        uses: madrapps/jacoco-report@v1.6.1
+        with:
+          paths: build/reports/jacoco/aggregated.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: 'JaCoCo Code Coverage Report'
+          update-comment: true
+          pass-emoji: ':white_check_mark:'
+          fail-emoji: ':x:'
+          min-coverage-overall: 0
+          min-coverage-changed-files: 0
