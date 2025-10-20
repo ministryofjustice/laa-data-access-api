@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS application(
   application_content JSONB NOT NULL,
   schema_version INTEGER,
   CONSTRAINT application_pkey PRIMARY KEY (ID),
-  CONSTRAINT application_status_code_lookup_fkey FOREIGN KEY(status_id) REFERENCES status_code_lookup(ID)
+  CONSTRAINT application_status_id_fkey FOREIGN KEY(status_id) REFERENCES status_code_lookup(ID)
 )
 
 -- INSERT INTO public.application(

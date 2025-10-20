@@ -5,8 +5,8 @@ CREATE TABLE IF NOT EXISTS linked_individual(
   individual_id UUID NOT NULL,
 
   CONSTRAINT linked_individual_pkey PRIMARY KEY (ID),
-  CONSTRAINT linked_individual_application_fkey FOREIGN KEY(application_id) REFERENCES application(ID),
-  CONSTRAINT linked_individual_individual_fkey FOREIGN KEY (individual_id) REFERENCES individual(ID)
+  CONSTRAINT linked_individual_application_id_fkey FOREIGN KEY(application_id) REFERENCES application(ID),
+  CONSTRAINT linked_individual_individual_id_fkey FOREIGN KEY (individual_id) REFERENCES individual(ID)
 )
 
 -- INSERT INTO public.linked_individual(
