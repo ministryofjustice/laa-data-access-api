@@ -1,4 +1,6 @@
 plugins {
+    id 'java'
+    id 'jacoco'
     id 'io.freefair.lombok' version '8.13.1'
     id "com.gorylenko.gradle-git-properties" version "2.4.1"
     id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin' version '1.0.6'
@@ -20,7 +22,11 @@ dockerCompose {
 
 test {
     useJUnitPlatform()
-    finalizedBy(jacocoTestReport)
+    finalizedBy jacocoTestReport
+}
+
+jacoco {
+    toolVersion = "0.8.12"
 }
 
 //so that we load properties from gradle properties
@@ -30,27 +36,24 @@ task copyFileFromRootProject(type: Copy) {
 }
 
 jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, exclude: ['**/AccessApp.class'])
         }))
     }
-}
-
-jacocoTestCoverageVerification {
-    afterEvaluate {
-        classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it, exclude: ['**/AccessApp.class'])
-        }))
-    }
-    enabled = false
 }
 
 dependencies {
     implementation project(':data-access-api')
     implementation project(':data-access-shared')
 
-implementation 'org.springframework.security:spring-security-core:6.5.5'
+    implementation 'org.springframework.security:spring-security-core:6.5.5'
     implementation 'org.springframework:spring-core:6.2.11'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -65,14 +68,15 @@ implementation 'org.springframework.security:spring-security-core:6.5.5'
 
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
-    implementation 'org.javers:javers-core:7.8.0' // instead of `implementation 'org.javers:javers-persistence-sql:7.8.0'`
+    implementation 'org.javers:javers-core:7.8.0'
 
     runtimeOnly 'org.postgresql:postgresql'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
     //developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    // Security fix for SNYK-JAVA-ORGAPACHECOMMONS-10734078 (CVE-2025-48924)
+    implementation 'org.apache.commons:commons-lang3:3.18.0'
 }
