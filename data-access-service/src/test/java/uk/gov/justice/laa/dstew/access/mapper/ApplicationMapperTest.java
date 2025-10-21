@@ -12,7 +12,6 @@ import uk.gov.justice.laa.dstew.access.model.*;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import java.time.OffsetDateTime;
@@ -113,8 +112,8 @@ public class ApplicationMapperTest {
                 createEmbeddedRecordHistoryEntity(Instant.now(), "admin", Instant.now(), "admin");
 
         ApplicationEntity applicationEntity = createApplicationEntity(
-            id,
-            clientId,
+                id,
+                clientId,
                 "firm-001",
                 "office-001",
                 "NEW",
@@ -122,18 +121,18 @@ public class ApplicationMapperTest {
                 "statementofcase",
                 recordHistory,
                 List.of(
-                    createApplicationProceedingEntity(
-                        UUID.randomUUID(),
-        "code1",
-        "proceedingcode1",
-                        recordHistory,
-        null),
-                    createApplicationProceedingEntity(
-                        UUID.randomUUID(),
-                        "code2",
-                        "proceedingcode2",
-                        recordHistory,
-                        null)
+                        createApplicationProceedingEntity(
+                                UUID.randomUUID(),
+                                "code1",
+                                "proceedingcode1",
+                                recordHistory,
+                                null),
+                        createApplicationProceedingEntity(
+                                UUID.randomUUID(),
+                                "code2",
+                                "proceedingcode2",
+                                recordHistory,
+                                null)
                 )
         );
 
@@ -165,15 +164,15 @@ public class ApplicationMapperTest {
                 .proceedings(
                         List.of(
                                 createApplicationProceedingCreateRequest(
-                                "servicecode1",
-                                "proceedingcode1"
+                                        "servicecode1",
+                                        "proceedingcode1"
                                 ),
                                 createApplicationProceedingCreateRequest(
-                                "servicecode2",
-                                "proceedingcode2"
+                                        "servicecode2",
+                                        "proceedingcode2"
                                 )
-                            )
                         )
+                )
                 .build();
 
         ApplicationEntity result = applicationMapper.toApplicationEntity(applicationRequest);
@@ -185,7 +184,7 @@ public class ApplicationMapperTest {
         assertThat(result.getProviderOfficeId()).isEqualTo("providerOfficeId");
         assertThat(result.getStatementOfCase()).isEqualTo("statementOfCase");
         assertThat(result.getStatusCode()).isEqualTo("statusCode");
-        assertThat(result.getProceedings()).isNull();
+        assertThat(result.getProceedings()).isEmpty();
     }
 
     @Test
@@ -204,12 +203,12 @@ public class ApplicationMapperTest {
                                         UUID.randomUUID(),
                                         "servicecode1",
                                         "proceedingcode1"
-                                        ),
+                                ),
                                 createApplicationProceedingUpdateRequest(
                                         UUID.randomUUID(),
                                         "servicecode2",
                                         "proceedingcode2"
-                                        )
+                                )
                         )
                 )
                 .build();
@@ -225,7 +224,7 @@ public class ApplicationMapperTest {
         assertThat(result.getStatementOfCase()).isEqualTo("statementOfCase");
         assertThat(result.getStatusCode()).isEqualTo("statusCode");
         assertThat(result.getUpdatedAt()).isNull();
-        assertThat(result.getProceedings()).isNull();
+        assertThat(result.getProceedings()).isEmpty();
     }
 
     @Test
@@ -275,9 +274,9 @@ public class ApplicationMapperTest {
     void shouldMapApplicationProceedingUpdateRequestToApplicationProceeding() {
         ApplicationProceedingUpdateRequest applicationRequest =
                 createApplicationProceedingUpdateRequest(
-                UUID.randomUUID(),
-                "proceedingCode",
-                "levelCode"
+                        UUID.randomUUID(),
+                        "proceedingCode",
+                        "levelCode"
                 );
 
         ApplicationProceeding result = applicationMapper.toApplicationProceeding(applicationRequest);
@@ -365,27 +364,26 @@ public class ApplicationMapperTest {
                 .providerOfficeId("office")
                 .statusCode("NEW")
                 .statementOfCase("some statement")
-                .proceedings(List.of()) // empty list
+                .proceedings(List.of())
                 .build();
 
         ApplicationEntity result = applicationMapper.toApplicationEntity(createRequest);
 
         assertThat(result).isNotNull();
-        assertThat(result.getProceedings()).isNull(); // should be ignored
+        assertThat(result.getProceedings()).isEmpty();
     }
 
     @Test
     void shouldHandleNullProceedingsListOnUpdateRequest() {
         ApplicationEntity existing = new ApplicationEntity();
-        existing.setProceedings(null); // default
+        existing.setProceedings(List.of());
 
         ApplicationUpdateRequest updateRequest = ApplicationUpdateRequest.builder()
                 .proceedings(null)
                 .build();
 
         applicationMapper.updateApplicationEntity(existing, updateRequest);
-
-        assertThat(existing.getProceedings()).isNull(); // still null
+        assertThat(existing.getProceedings()).isEmpty();
     }
 
 
