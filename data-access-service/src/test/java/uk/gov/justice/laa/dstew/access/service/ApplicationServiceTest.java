@@ -172,35 +172,6 @@ public class ApplicationServiceTest {
     }
 
     @Test
-    void shouldReturnObjectIdUsingReflection() throws Exception {
-        class TestObject {
-            private final UUID id = UUID.randomUUID();
-        }
-        TestObject testObject = new TestObject();
-
-        // Use reflection to invoke private method getObjectId
-        var method = ApplicationService.class.getDeclaredMethod("getObjectId", Object.class);
-        method.setAccessible(true);
-        Object id = method.invoke(classUnderTest, testObject);
-
-        assertThat(id).isEqualTo(testObject.id);
-    }
-
-    @Test
-    void shouldReturnNullObjectIdIfNoIdField() throws Exception {
-        class NoIdObject {
-            private String name = "test";
-        }
-        NoIdObject noIdObject = new NoIdObject();
-
-        var method = ApplicationService.class.getDeclaredMethod("getObjectId", Object.class);
-        method.setAccessible(true);
-        Object id = method.invoke(classUnderTest, noIdObject);
-
-        assertThat(id).isNull();
-    }
-
-    @Test
     void shouldPopulateFieldsOnObject() throws Exception {
         class Target {
             private String name;
