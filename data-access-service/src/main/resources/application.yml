@@ -14,6 +14,11 @@ spring:
 
   sql.init.mode: never # Use Flyway for DB schema.
 
+  cloud:
+    azure:
+      active-directory:
+        enabled: false
+
 info:
   app:
     name: LAA Data Stewardship Access - Access Application Data
