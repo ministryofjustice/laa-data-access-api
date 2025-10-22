@@ -170,4 +170,53 @@ public class ApplicationServiceTest {
         assertThrows(ApplicationNotFoundException.class,
                 () -> classUnderTest.getApplication(firstEntity.getId()));
     }
+
+    @Test
+    void shouldPopulateFieldsOnObject() throws Exception {
+        class Target {
+            private String name;
+            private Integer count;
+        }
+        Target target = new Target();
+
+        var method = ApplicationService.class.getDeclaredMethod("populateFields", Object.class, Map.class);
+        method.setAccessible(true);
+
+        Map<String, Object> fields = Map.of(
+                "name", "updatedName",
+                "count", 42,
+                "nonExistent", "ignored"
+        );
+
+        method.invoke(classUnderTest, target, fields);
+
+        assertThat(target.name).isEqualTo("updatedName");
+        assertThat(target.count).isEqualTo(42);
+    }
+
+    @Test
+    void shouldUpdateApplicationAndCreateSnapshot() {
+        UUID applicationId = UUID.randomUUID();
+        ApplicationUpdateRequest request = new ApplicationUpdateRequest();
+        request.setIsEmergencyApplication(true);
+        request.setClientId(UUID.randomUUID());
+
+        ApplicationEntity foundEntity = new ApplicationEntity();
+        foundEntity.setId(applicationId);
+        foundEntity.setIsEmergencyApplication(false);
+        foundEntity.setClientId(UUID.randomUUID());
+
+        doNothing().when(validator).checkApplicationUpdateRequest(any(), any());
+        doNothing().when(mapper).updateApplicationEntity(any(ApplicationEntity.class), any(ApplicationUpdateRequest.class));
+        when(repository.findById(any())).thenReturn(Optional.of(foundEntity));
+        when(repository.save(any())).thenReturn(foundEntity);
+        when(mapper.toApplication(any())).thenReturn(new Application());
+
+        classUnderTest.updateApplication(applicationId, request);
+
+        verify(repository).save(foundEntity);
+        verify(mapper).updateApplicationEntity(foundEntity, request);
+    }
+
+
 }

@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.Getter;
@@ -59,7 +60,7 @@ public class ApplicationEntity implements AuditableEntity {
           cascade = CascadeType.ALL,
           orphanRemoval = true,
           fetch = FetchType.EAGER)
-  private List<ApplicationProceedingEntity> proceedings;
+  private List<ApplicationProceedingEntity> proceedings = new ArrayList<>();
 
   @Embedded
   private EmbeddedRecordHistoryEntity recordHistory = new EmbeddedRecordHistoryEntity();
