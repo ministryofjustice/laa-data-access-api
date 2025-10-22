@@ -11,7 +11,7 @@ import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationPro
 /**
  * Spring Security configuration if security is disabled (e.g. for development).
  */
-@ConditionalOnProperty(prefix = "feature", name = "disable-security", havingValue = "true")
+@ConditionalOnProperty(name = "spring.cloud.azure.active-directory.enabled", havingValue = "false", matchIfMissing = false)
 @Configuration
 class NoSecurityConfig {
   /**

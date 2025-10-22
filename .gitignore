@@ -7,6 +7,8 @@ build/
 
 data-access-api/generated
 access-datastore-api/generated
+
+data-access-api/bin/
 data-access-service/bin/
 
 ### IntelliJ IDEA ###

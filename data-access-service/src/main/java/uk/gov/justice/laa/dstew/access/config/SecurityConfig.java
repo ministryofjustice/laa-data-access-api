@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.config;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
+import com.azure.spring.cloud.autoconfigure.implementation.aad.security.AadResourceServerHttpSecurityConfigurer;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -21,7 +22,7 @@ import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationPro
 /**
  * Spring Security configuration if security is not disabled.
  */
-@ConditionalOnProperty(prefix = "feature", name = "disable-security", havingValue = "false", matchIfMissing = true)
+@ConditionalOnProperty(name = "spring.cloud.azure.active-directory.enabled", havingValue = "true", matchIfMissing = true)
 @Configuration
 @EnableMethodSecurity
 @EnableWebSecurity
@@ -41,7 +42,7 @@ class SecurityConfig {
             .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
             .requestMatchers("/api/**").permitAll()
             .anyRequest().authenticated())
-        // .with(AadResourceServerHttpSecurityConfigurer.aadResourceServer(), withDefaults())
+         .with(AadResourceServerHttpSecurityConfigurer.aadResourceServer(), withDefaults())
         .csrf(AbstractHttpConfigurer::disable);
     return http.build();
   }
