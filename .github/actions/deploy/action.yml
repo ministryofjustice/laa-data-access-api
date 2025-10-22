@@ -1,0 +1,74 @@
+name: "Deploy"
+description: 'Deploy docker image to namespace'
+inputs:
+  ecr-repository:
+    description: "ECR repository"
+    required: true
+  ecr-region:
+    description: "ECR region"
+    required: true
+  ecr-role-to-assume:
+    description: "ECR role to assume"
+    required: true
+  kube-cert:
+    description: "Kubernetes cluster authentication certificate"
+    required: true
+  kube-token:
+    description: "Kubernetes cluster authentication token"
+    required: true
+  kube-cluster:
+    description: "Kubernetes cluster name"
+    required: true
+  kube-namespace:
+    description: "Kubernetes cluster namespace"
+    required: true
+  app-environment:
+    description: "environment to which the app is being deployed [staging, production, etc]"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: Authenticate to the cluster
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
+      with:
+        kube-cert: ${{ inputs.kube-cert }}
+        kube-token: ${{ inputs.kube-token }}
+        kube-cluster: ${{ inputs.kube-cluster }}
+        kube-namespace: ${{ inputs.kube-namespace }}
+
+    - name: Assume role in Cloud Platform
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.ecr-role-to-assume }}
+        aws-region: ${{ inputs.ecr-region }}
+
+    - name: Docker login to ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+      with:
+        mask-password: 'true'
+
+    - name: Helm deployment
+      shell: bash
+      env:
+        ECR_REPOSITORY: ${{ inputs.ecr-repository }}
+        ECR_REGION: ${{ inputs.ecr-region }}
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        GIT_SHA: ${{ github.sha }}
+        KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+        VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
+      run: |
+        LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
+
+        helm upgrade laa-data-access-api .helm/data-access-api \
+          --namespace ${KUBE_NAMESPACE} \
+          --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
+          --set image.tag="${GIT_SHA}" \
+          --set ingress.annotations."nginx\.ingress\.kubernetes\.io/whitelist-source-range"="$LAA_IPS" \
+          --set spring.profile="main" \
+          --set aws.region="${ECR_REGION}" \
+          --values ${VALUES_FILE} \
+          --install \
+          --wait

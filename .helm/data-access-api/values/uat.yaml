@@ -1,0 +1,50 @@
+# Default values for data-access-api.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: null
+  tag: null
+
+service_account:
+  name: laa-data-access-uat-service-account
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: modsec-non-prod
+  annotations:
+    external-dns.alpha.kubernetes.io/aws-weight: "100"
+    nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+    nginx.ingress.kubernetes.io/modsecurity-snippet: |
+      SecRuleEngine On
+      SecAction "id:900200,phase:1,nolog,pass,t:none,setvar:tx.allowed_methods=GET HEAD POST OPTIONS PUT PATCH DELETE"
+      SecDefaultAction "phase:2,pass,log,tag:github_team=laa-data-stewardship-access-team,tag:namespace=laa-data-access-api-uat"
+  hosts: []
+
+ingressInternal:
+  enabled: true
+  className: internal-non-prod
+  annotations:
+    external-dns.alpha.kubernetes.io/aws-weight: "100"
+  hosts: []
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1G
+  requests:
+    cpu: 25m
+    memory: 1G
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80

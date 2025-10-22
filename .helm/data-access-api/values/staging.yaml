@@ -1,0 +1,43 @@
+# Default values for data-access-api.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 2
+
+image:
+  repository: null
+  tag: null
+
+service_account:
+  name: laa-data-access-staging-service-account
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+
+ingressInternal:
+  enabled: true
+  className: internal-non-prod
+  annotations:
+    external-dns.alpha.kubernetes.io/set-identifier: "laa-data-access-api-internal-laa-data-access-api-staging-green"
+    external-dns.alpha.kubernetes.io/aws-weight: "100"
+  hosts: 
+    - "laa-data-access-api-staging.internal-non-prod.cloud-platform.service.justice.gov.uk"
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1G
+  requests:
+    cpu: 25m
+    memory: 1G
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 60
+  targetMemoryUtilizationPercentage: 70
