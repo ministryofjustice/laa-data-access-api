@@ -16,7 +16,7 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 
 /**
- * Controller for handling /api/v2/applications requests.
+ * Controller for handling /api/v0/applications requests.
  */
 @RequiredArgsConstructor
 @RestController
