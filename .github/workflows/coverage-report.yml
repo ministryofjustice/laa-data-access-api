@@ -43,5 +43,5 @@ jobs:
           update-comment: true
           pass-emoji: ':white_check_mark:'
           fail-emoji: ':x:'
-          min-coverage-overall: 0
-          min-coverage-changed-files: 0
+          min-coverage-overall: 80
+          min-coverage-changed-files: 80
