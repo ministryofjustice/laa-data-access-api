@@ -3,7 +3,7 @@ info:
   version: 1.0.0
   title: Applications API
 paths:
-  /api/v0/applications:
+  /api/v1/applications:
     get:
       tags:
         - application
@@ -15,7 +15,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApplicationCollection"
+                $ref: "#/components/schemas/ApplicationSummaryCollection"
         '400':
           description: 'Bad request'
         '401':
@@ -26,6 +26,8 @@ paths:
           description: 'Not found'
         '500':
           description: 'Internal server error'
+
+  /api/v0/applications:
     post:
       tags:
         - application
@@ -262,11 +264,6 @@ components:
         updated_by:
           type: string
 
-    ApplicationCollection:
-      type: array
-      items:
-        $ref: "#/components/schemas/Application"
-
     ApplicationHistoryCreateRequest:
       required:
         - user_id
@@ -317,3 +314,30 @@ components:
         - CREATED
         - UPDATED
         - DELETED
+
+    ApplicationSummary:
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+        application_status:
+          type: string
+        application_type:
+          type: string
+        submitted_at:
+          type: string
+        last_updated_at:
+          type: string
+        category_of_law:
+          type: string
+        matter_types:
+          type: string
+        assigned_to:
+          type: string
+
+    ApplicationSummaryCollection:
+        type: array
+        items:
+          $ref: "#/components/schemas/ApplicationSummary"

@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 
 import java.util.ArrayList;
@@ -80,19 +81,19 @@ public class ApplicationControllerTest {
 
     @Test
     void shouldGetAllApplications() throws Exception {
-        List<Application> applications = new ArrayList<>();
+        List<ApplicationSummary> applications = new ArrayList<>();
         applications.add(
-                Application.builder()
+                ApplicationSummary.builder()
                     .id(UUID.randomUUID())
                     .build());
         applications.add(
-                Application.builder()
+                ApplicationSummary.builder()
                     .id(UUID.randomUUID())
                     .build());
 
         when (applicationService.getAllApplications()).thenReturn(applications);
         mockMvc
-                .perform(get("/api/v0/applications"))
+                .perform(get("/api/v1/applications"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.*", hasSize(2)));

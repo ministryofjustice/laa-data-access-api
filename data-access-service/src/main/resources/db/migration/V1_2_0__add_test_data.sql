@@ -1,1 +1,13 @@
-INSERT INTO status_code_lookup(ID, code, description) VALUES('019a0c3d-ddac-7f2e-ae26-6c442956a8c5','code1','description for code1');
+INSERT INTO status_code_lookup(ID, code, description) VALUES('019a0c3d-ddac-7f2e-ae26-6c442956a801','code1','description for code1');
+INSERT INTO status_code_lookup(ID, code, description) VALUES('019a0c3d-ddac-7f2e-ae26-6c442956a802','code2','description for code2');
+INSERT INTO status_code_lookup(ID, code, description) VALUES('019a0c3d-ddac-7f2e-ae26-6c442956a803','code3','description for code3');
+INSERT INTO application(ID, status_id, schema_version, application_content) VALUES('019a0c4c-92c6-7421-b62a-b6416e2a8400','019a0c3d-ddac-7f2e-ae26-6c442956a801',1,'{"data":"application1"}');
+INSERT INTO application(ID, status_id, schema_version, application_content) VALUES('019a0c4c-92c6-7421-b62a-b6416e2a8401','019a0c3d-ddac-7f2e-ae26-6c442956a802',1,'{"data":"application2"}');
+INSERT INTO application(ID, status_id, schema_version, application_content) VALUES('019a0c4c-92c6-7421-b62a-b6416e2a8402','019a0c3d-ddac-7f2e-ae26-6c442956a803',1,'{"data":"application3"}');
+INSERT INTO application(ID, status_id, schema_version, application_content) VALUES('019a0c4c-92c6-7421-b62a-b6416e2a8403','019a0c3d-ddac-7f2e-ae26-6c442956a801',1,'{"data":"application4"}');
+INSERT INTO individual(ID, first_name, last_name, individual_content) VALUES('019a1005-ffb7-707d-afd9-463cf847b201', 'Adam', 'Blue', '{"data":"individual1"}');
+INSERT INTO individual(ID, first_name, last_name, individual_content) VALUES('019a1005-ffb7-707d-afd9-463cf847b202', 'Jane', 'Green', '{"data":"individual2"}');
+INSERT INTO  linked_individual(ID, application_id, individual_id) VALUES('019a1008-f498-7855-bdf7-362b382bfb00', '019a0c4c-92c6-7421-b62a-b6416e2a8400', '019a1005-ffb7-707d-afd9-463cf847b201');
+INSERT INTO  linked_individual(ID, application_id, individual_id) VALUES('019a1008-f498-7855-bdf7-362b382bfb01', '019a0c4c-92c6-7421-b62a-b6416e2a8401', '019a1005-ffb7-707d-afd9-463cf847b201');
+INSERT INTO  linked_individual(ID, application_id, individual_id) VALUES('019a1008-f498-7855-bdf7-362b382bfb02', '019a0c4c-92c6-7421-b62a-b6416e2a8402', '019a1005-ffb7-707d-afd9-463cf847b202');
+INSERT INTO  linked_individual(ID, application_id, individual_id) VALUES('019a1008-f498-7855-bdf7-362b382bfb03', '019a0c4c-92c6-7421-b62a-b6416e2a8403', '019a1005-ffb7-707d-afd9-463cf847b202');

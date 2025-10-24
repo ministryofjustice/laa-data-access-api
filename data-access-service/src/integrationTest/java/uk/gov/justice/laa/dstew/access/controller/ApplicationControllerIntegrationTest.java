@@ -41,7 +41,7 @@ public class ApplicationControllerIntegrationTest {
             .andExpect(status().isCreated());
 
     mockMvc
-            .perform(get("/api/v0/applications"))
+            .perform(get("/api/v1/applications"))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.*", hasSize(1)));

@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -9,10 +8,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationProceedingEntity;
-import uk.gov.justice.laa.dstew.access.entity.EmbeddedRecordHistoryEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
-import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
@@ -113,32 +115,30 @@ public class ApplicationServiceTest {
         firstEntity.setId(UUID.randomUUID());
         firstEntity.setProceedings(List.of(new ApplicationProceedingEntity(), new ApplicationProceedingEntity()));
 
-        Application firstApplication = new Application();
+        ApplicationSummary firstApplication = new ApplicationSummary();
         firstApplication.setId(firstEntity.getId());
-        firstApplication.setIsEmergencyApplication(firstEntity.getIsEmergencyApplication());
-        firstApplication.setProceedings(List.of(new ApplicationProceeding(), new ApplicationProceeding()));
+        firstApplication.setApplicationStatus("status1");
+        firstApplication.setApplicationType("type1");
 
         ApplicationEntity secondEntity = new ApplicationEntity();
         secondEntity.setIsEmergencyApplication(false);
         secondEntity.setId(UUID.randomUUID());
         secondEntity.setProceedings(List.of(new ApplicationProceedingEntity()));
 
-        Application secondApplication = new Application();
+        ApplicationSummary secondApplication = new ApplicationSummary();
         secondApplication.setId(secondEntity.getId());
-        secondApplication.setIsEmergencyApplication(secondEntity.getIsEmergencyApplication());
-        secondApplication.setProceedings(List.of(new ApplicationProceeding()));
+        secondApplication.setApplicationStatus("status2");
+        secondApplication.setApplicationType("type2");
 
         when(repository.findAll()).thenReturn(List.of(firstEntity, secondEntity));
-        when(mapper.toApplication(firstEntity)).thenReturn(firstApplication);
-        when(mapper.toApplication(secondEntity)).thenReturn(secondApplication);
+        when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstApplication);
+        when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondApplication);
 
-        List<Application> result = classUnderTest.getAllApplications();
+        List<ApplicationSummary> result = classUnderTest.getAllApplications();
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getId()).isEqualTo(firstEntity.getId());
-        assertThat(result.get(0).getProceedings()).hasSize(2);
         assertThat(result.get(1).getId()).isEqualTo(secondEntity.getId());
-        assertThat(result.get(1).getProceedings()).hasSize(1);
 
     }
 

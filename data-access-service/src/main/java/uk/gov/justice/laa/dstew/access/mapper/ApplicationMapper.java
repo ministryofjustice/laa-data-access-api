@@ -13,6 +13,7 @@ import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 
 /**
@@ -20,6 +21,14 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
  */
 @Mapper(componentModel = "spring")
 public interface ApplicationMapper {
+
+  /**
+   * Maps the given application entity to an application.
+   *
+   * @param applicationEntity the application entity
+   * @return the application
+   */
+  ApplicationSummary toApplicationSummary(ApplicationEntity applicationEntity);
 
   /**
    * Maps the given application entity to an application.
