@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.exception;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
@@ -75,5 +76,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     pd.setTitle("Internal server error");
     pd.setDetail(logMessage);
     return ResponseEntity.internalServerError().body(pd);
+  }
+
+  /**
+   * The handler for Exception.
+   *
+   * @param exception the exception.
+   * @return the response with correct error code.
+   */
+  @ExceptionHandler(AuthorizationDeniedException.class)
+  public ResponseEntity<ProblemDetail> handleAuthorizationDeniedException(AuthorizationDeniedException exception) {
+    final var pd = ProblemDetail.forStatus(FORBIDDEN);
+    pd.setTitle("Not authorized");
+    pd.setDetail("User does not have the required app roles.");
+    return new ResponseEntity<ProblemDetail>(pd, FORBIDDEN);
   }
 }
