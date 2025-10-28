@@ -13,10 +13,4 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
  */
 @Repository
 public interface ApplicationSummaryRepository extends JpaRepository<ApplicationSummaryEntity, UUID> {
-
-  @Query(value = "SELECT a.id, s.description as 'application_status', a.created_at, a.modified_at "
-                  + "FROM application a, status_code_lookup s"
-                  + "WHERE a.status_id = s.id",
-      nativeQuery = true)
-  List<ApplicationSummaryEntity> getAllApplications();
 }

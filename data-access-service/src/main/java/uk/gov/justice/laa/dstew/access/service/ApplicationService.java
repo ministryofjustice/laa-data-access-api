@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Field;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.javers.core.Javers;
@@ -56,16 +55,6 @@ public class ApplicationService {
 
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
-  }
-
-  /**
-   * Gets all applications.
-   *
-   * @return the list of applications
-   */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<Application> getAllApplications() {
-    return applicationRepository.findAll().stream().map(applicationMapper::toApplication).toList();
   }
 
   /**

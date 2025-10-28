@@ -9,6 +9,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
@@ -23,12 +24,15 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 public interface ApplicationMapper {
 
   /**
-   * Maps the given application entity to an application.
+   * Maps the given application summary entity to an application summary.
    *
-   * @param applicationEntity the application entity
-   * @return the application
+   * @param applicationSummaryEntity the application summary entity
+   * @return the application summary
    */
-  ApplicationSummary toApplicationSummary(ApplicationEntity applicationEntity);
+  @Mapping(target = "submittedAt", source = "createdAt")
+  @Mapping(target = "lastUpdatedAt", source = "modifiedAt")
+  @Mapping(target = "applicationStatus", source = "statusCodeLookupEntity.description")
+  ApplicationSummary toApplicationSummary(ApplicationSummaryEntity applicationSummaryEntity);
 
   /**
    * Maps the given application entity to an application.

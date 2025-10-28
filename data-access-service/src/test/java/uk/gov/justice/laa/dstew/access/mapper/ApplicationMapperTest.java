@@ -4,11 +4,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationProceedingEntity;
-import uk.gov.justice.laa.dstew.access.entity.EmbeddedRecordHistoryEntity;
+import uk.gov.justice.laa.dstew.access.entity.*;
 
 import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
 import java.time.Instant;
 import java.util.List;
@@ -386,5 +385,26 @@ public class ApplicationMapperTest {
         assertThat(existing.getProceedings()).isEmpty();
     }
 
+    @Test
+    void shouldMapApplicationSummaryEntityToApplicationSummary() {
+
+        StatusCodeLookupEntity statusCodeLookupEntity = new StatusCodeLookupEntity();
+        statusCodeLookupEntity.setCode("code");
+        statusCodeLookupEntity.setDescription("description");
+        statusCodeLookupEntity.setId(UUID.randomUUID());
+        statusCodeLookupEntity.setCreatedAt(Instant.now());
+        ApplicationSummaryEntity applicationSummaryEntity = new ApplicationSummaryEntity();
+        applicationSummaryEntity.setCreatedAt(Instant.now());
+        applicationSummaryEntity.setModifiedAt(Instant.now());
+        applicationSummaryEntity.setId(UUID.randomUUID());
+        applicationSummaryEntity.setStatusCodeLookupEntity(statusCodeLookupEntity);
+        ApplicationSummary result = applicationMapper.toApplicationSummary(applicationSummaryEntity);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo(applicationSummaryEntity.getId());
+        assertThat(result.getApplicationStatus()).isEqualTo(applicationSummaryEntity.getStatusCodeLookupEntity().getDescription());
+        assertThat(result.getLastUpdatedAt()).isEqualTo(applicationSummaryEntity.getModifiedAt().toString());
+        assertThat(result.getSubmittedAt()).isEqualTo(applicationSummaryEntity.getCreatedAt().toString());
+    }
 
 }

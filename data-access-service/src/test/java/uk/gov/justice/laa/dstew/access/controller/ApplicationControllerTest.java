@@ -14,6 +14,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
+import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +41,9 @@ public class ApplicationControllerTest {
 
     @MockitoBean
     private ApplicationService applicationService;
+
+    @MockitoBean
+    private ApplicationSummaryService applicationSummaryService;
 
     @Test
     public void shouldCreateApplication() throws Exception {
@@ -91,7 +95,7 @@ public class ApplicationControllerTest {
                     .id(UUID.randomUUID())
                     .build());
 
-        when (applicationService.getAllApplications()).thenReturn(applications);
+        when (applicationSummaryService.getAllApplications()).thenReturn(applications);
         mockMvc
                 .perform(get("/api/v1/applications"))
                 .andExpect(status().isOk())

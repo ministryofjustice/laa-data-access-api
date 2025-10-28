@@ -13,6 +13,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
+import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 
@@ -24,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 public class ApplicationController implements ApplicationApi {
 
   private final ApplicationService service;
+  private final ApplicationSummaryService summaryService;
 
   @LogMethodArguments
   @LogMethodResponse
@@ -47,7 +49,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<List<ApplicationSummary>> getApplications() {
-    return ResponseEntity.ok(service.getAllApplications());
+    return ResponseEntity.ok(summaryService.getAllApplications());
   }
 
   @Override

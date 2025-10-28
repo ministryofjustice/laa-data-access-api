@@ -32,19 +32,10 @@ public class ApplicationControllerIntegrationTest {
   @Test
   void shouldGetAllItems() throws Exception {
     mockMvc
-            .perform(
-                    post("/api/v0/applications")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"provider_firm_id\": \"firm-002\", \"provider_office_id\": \"office-201\"," +
-                                    " \"client_id\": \"4eae6789-eabb-34d5-a678-426614174643\"}")
-                            .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isCreated());
-
-    mockMvc
             .perform(get("/api/v1/applications"))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.*", hasSize(1)));
+            .andExpect(jsonPath("$.*", hasSize(4)));
   }
 
   @Test
