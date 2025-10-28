@@ -16,7 +16,6 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
@@ -65,8 +64,8 @@ public class ApplicationService {
    * @return the list of applications
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<ApplicationSummary> getAllApplications() {
-    return applicationRepository.findAll().stream().map(applicationMapper::toApplicationSummary).toList();
+  public List<Application> getAllApplications() {
+    return applicationRepository.findAll().stream().map(applicationMapper::toApplication).toList();
   }
 
   /**
