@@ -105,7 +105,7 @@ components:
       properties:
         id:
           type: string
-          format: uuid
+          format: UUIDv7
         statusId:
           type: string
           format: uuid
