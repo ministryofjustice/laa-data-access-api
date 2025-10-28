@@ -93,6 +93,12 @@ public class ApplicationControllerIntegrationTest {
   }
 
   @Test
+  void getItem_should_return_401_when_missing_credentials() throws Exception {
+        mockMvc.perform(get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
+               .andExpect(status().isUnauthorized());
+  }
+
+  @Test
   @WithMockUser()
   void getItem_should_return_403_when_user_does_not_have_required_roles() throws Exception {
         mockMvc.perform(get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
