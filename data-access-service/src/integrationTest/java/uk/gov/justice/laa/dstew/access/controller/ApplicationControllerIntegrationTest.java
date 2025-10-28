@@ -92,6 +92,15 @@ public class ApplicationControllerIntegrationTest {
     assertFalse(existingApplicationUri.isEmpty());
   }
 
+  @WithMockUser(authorities = {"APPROLE_ApplicationReader", "APPROLE_ApplicationWriter"})
+  void getItem_should_return_404_when_application_does_not_exist() throws Exception{
+        mockMvc.perform(get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
+               .andExpect(status().isNotFound())
+               .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+               .andExpect(jsonPath("$.title").value("Not found"))
+               .andExpect(jsonPath("$.detail").value("No application found with id: 019a2b5e-d126-71c7-89c2-500363c172f1"));
+  }
+
   @Test
   @Order(4)
   @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
