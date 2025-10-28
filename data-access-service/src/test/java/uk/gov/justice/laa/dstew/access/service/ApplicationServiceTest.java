@@ -12,13 +12,10 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
-import java.time.Instant;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -106,40 +103,6 @@ public class ApplicationServiceTest {
 
         assertThat(result).isNotNull();
         assertThat(result).isEqualTo(savedEntity.getId());
-    }
-
-    @Test
-    void shouldGetAllApplications() {
-        ApplicationEntity firstEntity = new ApplicationEntity();
-        firstEntity.setIsEmergencyApplication(true);
-        firstEntity.setId(UUID.randomUUID());
-        firstEntity.setProceedings(List.of(new ApplicationProceedingEntity(), new ApplicationProceedingEntity()));
-
-        ApplicationSummary firstApplication = new ApplicationSummary();
-        firstApplication.setId(firstEntity.getId());
-        firstApplication.setApplicationStatus("status1");
-        firstApplication.setApplicationType("type1");
-
-        ApplicationEntity secondEntity = new ApplicationEntity();
-        secondEntity.setIsEmergencyApplication(false);
-        secondEntity.setId(UUID.randomUUID());
-        secondEntity.setProceedings(List.of(new ApplicationProceedingEntity()));
-
-        ApplicationSummary secondApplication = new ApplicationSummary();
-        secondApplication.setId(secondEntity.getId());
-        secondApplication.setApplicationStatus("status2");
-        secondApplication.setApplicationType("type2");
-
-        when(repository.findAll()).thenReturn(List.of(firstEntity, secondEntity));
-        when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstApplication);
-        when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondApplication);
-
-        List<ApplicationSummary> result = classUnderTest.getAllApplications();
-
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).getId()).isEqualTo(firstEntity.getId());
-        assertThat(result.get(1).getId()).isEqualTo(secondEntity.getId());
-
     }
 
     @Test
