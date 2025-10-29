@@ -64,7 +64,16 @@ dependencies {
         exclude group: 'com.google.code.gson', module: 'gson'
     }
 
+    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-12485149
+    implementation 'io.netty:netty-codec-http:4.1.125.Final'
+    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-12485150
+    implementation 'io.netty:netty-codec-http2:4.1.125.Final'
+    //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-13733966
+    implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.48'
+
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8'
+
+    implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:5.22.0'
 
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
@@ -74,6 +83,7 @@ dependencies {
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     //developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
