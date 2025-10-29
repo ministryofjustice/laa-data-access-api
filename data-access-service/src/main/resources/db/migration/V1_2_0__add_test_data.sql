@@ -1,6 +1,7 @@
-INSERT INTO status_code_lookup(ID, code, description) VALUES('019a0c3d-ddac-7f2e-ae26-6c442956a801','code1','description for code1');
-INSERT INTO status_code_lookup(ID, code, description) VALUES('019a0c3d-ddac-7f2e-ae26-6c442956a802','code2','description for code2');
-INSERT INTO status_code_lookup(ID, code, description) VALUES('019a0c3d-ddac-7f2e-ae26-6c442956a803','code3','description for code3');
+INSERT INTO status_code_lookup(ID, code, description) VALUES('019a0c3d-ddac-7f2e-ae26-6c442956a801','pending','description for pending');
+INSERT INTO status_code_lookup(ID, code, description) VALUES('019a0c3d-ddac-7f2e-ae26-6c442956a802','granted','description for granted');
+INSERT INTO status_code_lookup(ID, code, description) VALUES('019a0c3d-ddac-7f2e-ae26-6c442956a803','partially granted','description for partially granted');
+INSERT INTO status_code_lookup(ID, code, description) VALUES('019a0c3d-ddac-7f2e-ae26-6c442956a804','refused','description for refused');
 INSERT INTO application(ID, status_id, schema_version, application_content) VALUES('019a0c4c-92c6-7421-b62a-b6416e2a8400','019a0c3d-ddac-7f2e-ae26-6c442956a801',1,'{"data":"application1"}');
 INSERT INTO application(ID, status_id, schema_version, application_content) VALUES('019a0c4c-92c6-7421-b62a-b6416e2a8401','019a0c3d-ddac-7f2e-ae26-6c442956a802',1,'{"data":"application2"}');
 INSERT INTO application(ID, status_id, schema_version, application_content) VALUES('019a0c4c-92c6-7421-b62a-b6416e2a8402','019a0c3d-ddac-7f2e-ae26-6c442956a803',1,'{"data":"application3"}');

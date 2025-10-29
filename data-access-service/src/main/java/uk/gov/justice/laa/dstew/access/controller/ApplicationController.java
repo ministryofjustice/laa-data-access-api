@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import java.net.URI;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -10,7 +9,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryCollectionResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
@@ -48,8 +47,10 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodResponse
   @LogMethodArguments
-  public ResponseEntity<List<ApplicationSummary>> getApplications() {
-    return ResponseEntity.ok(summaryService.getAllApplications());
+  public ResponseEntity<ApplicationSummaryCollectionResponse> getApplications() {
+    ApplicationSummaryCollectionResponse response = new ApplicationSummaryCollectionResponse();
+    response.setApplications(summaryService.getAllApplications());
+    return ResponseEntity.ok(response);
   }
 
   @Override

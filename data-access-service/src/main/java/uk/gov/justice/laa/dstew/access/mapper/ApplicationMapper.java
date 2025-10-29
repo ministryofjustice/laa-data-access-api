@@ -31,7 +31,8 @@ public interface ApplicationMapper {
    */
   @Mapping(target = "submittedAt", source = "createdAt")
   @Mapping(target = "lastUpdatedAt", source = "modifiedAt")
-  @Mapping(target = "applicationStatus", source = "statusCodeLookupEntity.description")
+  @Mapping(target = "applicationId", source = "id")
+  @Mapping(target = "applicationStatus", source = "statusCodeLookupEntity.code")
   ApplicationSummary toApplicationSummary(ApplicationSummaryEntity applicationSummaryEntity);
 
   /**

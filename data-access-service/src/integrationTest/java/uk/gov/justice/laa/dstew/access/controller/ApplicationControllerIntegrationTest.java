@@ -35,7 +35,7 @@ public class ApplicationControllerIntegrationTest {
             .perform(get("/api/v1/applications"))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.*", hasSize(4)));
+            .andExpect(jsonPath("$.*", hasSize(1)));
   }
 
   @Test

@@ -45,11 +45,11 @@ public class ApplicationSummaryServiceTest {
         secondEntity.setStatusCodeLookupEntity(secondStatusCodeLookupEntity);
 
         ApplicationSummary firstSummary = new ApplicationSummary();
-        firstSummary.setId(firstEntity.getId());
-        firstSummary.setApplicationStatus("status1");
+        firstSummary.setApplicationId(firstEntity.getId());
+        firstSummary.setApplicationStatus(ApplicationSummary.ApplicationStatusEnum.GRANTED);
         ApplicationSummary secondSummary = new ApplicationSummary();
-        secondSummary.setId(secondEntity.getId());
-        secondSummary.setApplicationStatus("status2");
+        secondSummary.setApplicationId(secondEntity.getId());
+        secondSummary.setApplicationStatus(ApplicationSummary.ApplicationStatusEnum.GRANTED);
 
         when(repository.findAll()).thenReturn(List.of(firstEntity, secondEntity));
         when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
@@ -58,8 +58,8 @@ public class ApplicationSummaryServiceTest {
         List<ApplicationSummary> result = classUnderTest.getAllApplications();
 
         assertThat(result).hasSize(2);
-        assertThat(result.get(0).getId()).isEqualTo(firstEntity.getId());
-        assertThat(result.get(1).getId()).isEqualTo(secondEntity.getId());
+        assertThat(result.get(0).getApplicationId()).isEqualTo(firstEntity.getId());
+        assertThat(result.get(1).getApplicationId()).isEqualTo(secondEntity.getId());
 
     }
 }
