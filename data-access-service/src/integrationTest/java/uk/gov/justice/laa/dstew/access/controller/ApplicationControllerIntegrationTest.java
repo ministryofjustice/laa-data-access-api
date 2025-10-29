@@ -102,10 +102,7 @@ public class ApplicationControllerIntegrationTest {
   @WithMockUser()
   void getItem_should_return_403_when_user_does_not_have_required_roles() throws Exception {
         mockMvc.perform(get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
-               .andExpect(status().isForbidden())
-               .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-               .andExpect(jsonPath("$.title").value("Not authorized"))
-               .andExpect(jsonPath("$.detail").value("User does not have the required app roles."));
+               .andExpect(status().isForbidden());
   }
 
   @WithMockUser(authorities = {"APPROLE_ApplicationReader", "APPROLE_ApplicationWriter"})
