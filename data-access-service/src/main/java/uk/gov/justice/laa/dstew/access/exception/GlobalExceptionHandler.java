@@ -2,11 +2,13 @@ package uk.gov.justice.laa.dstew.access.exception;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.springframework.http.HttpStatus.I_AM_A_TEAPOT;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
@@ -46,6 +48,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     pd.setDetail(exception.getMessage());
     pd.setProperty("errors", exception.errors());
     return ResponseEntity.badRequest().body(pd);
+  }
+
+  /**
+   * The handler for ViolationException.
+   *
+   * @param exception the exception.
+   * @return the response with errors.
+   */
+  @ExceptionHandler(AuthorizationDeniedException.class)
+  public ResponseEntity<ProblemDetail> handleAuthorizationDeniedException(AuthorizationDeniedException exception) 
+      throws AuthorizationDeniedException {
+    throw exception; //rely on Spring ExceptionTranslationFilter to differ between 403 and 401 return codes
   }
 
   /**
