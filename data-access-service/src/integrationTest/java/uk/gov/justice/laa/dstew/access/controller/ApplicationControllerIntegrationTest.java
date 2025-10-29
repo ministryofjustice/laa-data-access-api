@@ -1,6 +1,9 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.isNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -9,8 +12,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,26 +29,19 @@ import uk.gov.justice.laa.dstew.access.AccessApp;
 
 @SpringBootTest(classes = AccessApp.class)
 @AutoConfigureMockMvc
-@Transactional
-@ActiveProfiles("test") 
+@ActiveProfiles("test")
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ApplicationControllerIntegrationTest {
 
   @Autowired
   private MockMvc mockMvc;
+  private static String existingApplicationUri;
 
   @Test
-  @WithMockUser(authorities = {"APPROLE_ApplicationReader", "APPROLE_ApplicationWriter"})
+  @WithMockUser(authorities = {"APPROLE_ApplicationReader"})
+  @Order(2)
   void shouldGetAllItems() throws Exception {
-    mockMvc
-            .perform(
-                    post("/api/v0/applications")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"provider_firm_id\": \"firm-002\", \"provider_office_id\": \"office-201\"," +
-                                    " \"client_id\": \"4eae6789-eabb-34d5-a678-426614174643\"}")
-                            .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isCreated());
-
-    mockMvc
+        mockMvc
             .perform(get("/api/v0/applications"))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -52,6 +50,7 @@ public class ApplicationControllerIntegrationTest {
 
   @Test
   @WithAnonymousUser
+  @Order(2)
   void when_no_auth_present_getAllItems_should_return_401() throws Exception {
         mockMvc
         .perform(get("/api/v0/applications"))
@@ -60,6 +59,7 @@ public class ApplicationControllerIntegrationTest {
 
   @Test 
   @WithMockUser
+  @Order(2)
   void when_incorrect_authorities_getAllItems_should_return_403() throws Exception{
         mockMvc
         .perform(get("/api/v0/applications"))
@@ -67,20 +67,10 @@ public class ApplicationControllerIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = {"APPROLE_ApplicationReader", "APPROLE_ApplicationWriter"})
+  @WithMockUser(authorities = {"APPROLE_ApplicationReader"})
+  @Order(2)
   void shouldGetItem() throws Exception {
-    String returnUri = mockMvc
-            .perform(
-                    post("/api/v0/applications")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"provider_firm_id\": \"firm-002\", \"provider_office_id\": \"office-201\"," +
-                                    " \"client_id\": \"345e6789-eabb-34d5-a678-426614174333\"}")
-                            .accept(MediaType.APPLICATION_JSON))
-            .andReturn()
-            .getResponse()
-            .getHeader("Location");
-
-    mockMvc.perform(get(returnUri))
+    mockMvc.perform(get(existingApplicationUri))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.provider_firm_id").value("firm-002"))
@@ -89,35 +79,30 @@ public class ApplicationControllerIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = {"APPROLE_ApplicationWriter", "APPROLE_ApplicationWriter"})
+  @Order(1)
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
   void shouldCreateItem() throws Exception {
-    mockMvc
+    existingApplicationUri = mockMvc
             .perform(
                     post("/api/v0/applications")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"provider_firm_id\": \"firm-002\", \"provider_office_id\": \"office-201\"," +
                                     " \"client_id\": \"345e6789-eabb-34d5-a678-426614174333\"}")
                             .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isCreated());
-  }
-
-  @Test
-  @WithMockUser(authorities = {"APPROLE_ApplicationReader", "APPROLE_ApplicationWriter"})
-  void shouldUpdateItem() throws Exception {
-    String returnUri = mockMvc
-            .perform(
-                    post("/api/v0/applications")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"provider_firm_id\": \"firm-002\", \"provider_office_id\": \"office-201\"," +
-                                    " \"client_id\": \"345e6789-eabb-34d5-a678-426614174333\"}")
-                            .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isCreated())
             .andReturn()
             .getResponse()
             .getHeader("Location");
+    assertFalse(existingApplicationUri.isEmpty());
+  }
 
+  @Test
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  @Order(2)
+  void shouldUpdateItem() throws Exception {
     mockMvc
             .perform(
-                    patch(returnUri)
+                    patch(existingApplicationUri)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"status_code\": \"IN_PROGRESS\"}")
                             .accept(MediaType.APPLICATION_JSON))
