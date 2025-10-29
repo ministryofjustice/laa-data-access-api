@@ -64,8 +64,10 @@ dependencies {
         exclude group: 'com.google.code.gson', module: 'gson'
     }
 
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-12485150
+    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-12485149
     implementation 'io.netty:netty-codec-http:4.1.125.Final'
+    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-12485150
+    implementation 'io.netty:netty-codec-http2:4.1.125.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-13733966
     implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.48'
 
