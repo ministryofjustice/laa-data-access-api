@@ -148,6 +148,7 @@ public class ApplicationMapperTest {
         assertThat(result.getCreatedBy()).isEqualTo("admin");
         assertThat(result.getStatusCode()).isEqualTo("NEW");
         assertThat(result.getProceedings().size()).isEqualTo(2);
+
     }
 
     @Test

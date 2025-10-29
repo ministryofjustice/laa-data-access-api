@@ -1,7 +1,8 @@
 openapi: "3.0.0"
 info:
-  version: 1.0.0
   title: Applications API
+  version: 1.0.0
+
 paths:
   /api/v0/applications:
     get:
@@ -33,6 +34,7 @@ paths:
       operationId: createApplication
       requestBody:
         description: create an application
+        required: true
         content:
           application/json:
             schema:
@@ -91,12 +93,13 @@ paths:
         - name: id
           in: path
           required: true
-          description: The id of the application to updated
+          description: The id of the application to update
           schema:
             type: string
             format: uuid
       requestBody:
         description: update an existing item
+        required: true
         content:
           application/json:
             schema:
@@ -172,6 +175,7 @@ components:
             $ref: "#/components/schemas/ApplicationProceeding"
       allOf:
         - $ref: "#/components/schemas/RecordHistory"
+
     ApplicationCreateRequest:
       required:
         - provider_firm_id
@@ -195,6 +199,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationProceedingCreateRequest"
+
     ApplicationUpdateRequest:
       properties:
         provider_firm_id:
@@ -214,6 +219,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationProceedingUpdateRequest"
+
     ApplicationProceeding:
       properties:
         id:
@@ -225,6 +231,7 @@ components:
           type: string
       allOf:
         - $ref: "#/components/schemas/RecordHistory"
+
     ApplicationProceedingCreateRequest:
       required:
         - proceeding_code
@@ -233,6 +240,7 @@ components:
           type: string
         level_of_service_code:
           type: string
+
     ApplicationProceedingUpdateRequest:
       required:
         - proceeding_code
@@ -244,6 +252,7 @@ components:
           type: string
         level_of_service_code:
           type: string
+
     RecordHistory:
       required:
         - created_at
@@ -266,54 +275,3 @@ components:
       type: array
       items:
         $ref: "#/components/schemas/Application"
-
-    ApplicationHistoryCreateRequest:
-      required:
-        - user_id
-        - action
-        - resource_type_changed
-        - historic_snapshot
-        - timestamp
-      properties:
-        user_id:
-          type: string
-        action:
-          $ref: "#/components/schemas/ActionType"
-        resource_type_changed:
-          $ref: "#/components/schemas/ResourceType"
-        historic_snapshot:
-          type: object
-          additionalProperties: true
-          description: A JSON representation of the change made to the resource
-        timestamp:
-          type: string
-          format: date-time
-    ApplicationHistoryMessage:
-      allOf:
-        - $ref: "#/components/schemas/ApplicationHistoryCreateRequest"
-      required:
-        - user_id
-        - application_id
-        - action
-        - resource_type_changed
-        - historic_snapshot
-        - timestamp
-      properties:
-        application_id:
-          type: string
-          format: uuid
-
-    ResourceType:
-      type: string
-      description: The type of resource (e.g., APPLICATION, PROCEEDING)
-      enum:
-        - APPLICATION
-        - PROCEEDING
-        - LIABLE_PARTY
-    ActionType:
-      type: string
-      description: The type of action performed (e.g., CREATED, UPDATED, DELETED)
-      enum:
-        - CREATED
-        - UPDATED
-        - DELETED
