@@ -54,10 +54,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
    * The handler for ViolationException.
    *
    * @param exception the exception.
-   * @return the response with errors.
    */
   @ExceptionHandler(AuthorizationDeniedException.class)
-  public ResponseEntity<ProblemDetail> handleAuthorizationDeniedException(AuthorizationDeniedException exception) 
+  public void handleAuthorizationDeniedException(AuthorizationDeniedException exception) 
       throws AuthorizationDeniedException {
     throw exception; //rely on Spring ExceptionTranslationFilter to differ between 403 and 401 return codes
   }
