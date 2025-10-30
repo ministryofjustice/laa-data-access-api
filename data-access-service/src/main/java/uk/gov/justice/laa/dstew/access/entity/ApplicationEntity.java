@@ -2,34 +2,29 @@ package uk.gov.justice.laa.dstew.access.entity;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
-import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+
 /**
- * Represents an application for legal aid.
+ * Entity representing an application.
  */
 @Getter
 @Setter
 @RequiredArgsConstructor
 @Entity
 @EntityListeners(AuditingEntityListener.class)
-@Table(name = "applications")
+@Table(name = "application")
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class ApplicationEntity implements AuditableEntity {
 
@@ -47,8 +42,14 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "client_id", nullable = false)
   private UUID clientId;
 
+  @Column(name = "status_id")
+  private UUID statusId; // foreign key to status_code_lookup
+
   @Column(name = "status_code")
   private String statusCode;
+
+  @Column(name = "application_reference")
+  private String applicationReference;
 
   @Column(name = "statement_of_case", length = 1000)
   private String statementOfCase;
@@ -56,32 +57,38 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "is_emergency_application")
   private Boolean isEmergencyApplication;
 
-  @OneToMany(mappedBy = "application",
-          cascade = CascadeType.ALL,
-          orphanRemoval = true,
-          fetch = FetchType.EAGER)
-  private List<ApplicationProceedingEntity> proceedings = new ArrayList<>();
+  @Column(name = "schema_version")
+  private Integer schemaVersion;
 
-  @Embedded
-  private EmbeddedRecordHistoryEntity recordHistory = new EmbeddedRecordHistoryEntity();
+  @Column(name = "created_at", updatable = false)
+  private Instant createdAt;
+
+  @Column(name = "created_by", updatable = false)
+  private String createdBy;
+
+  @Column(name = "modified_at")
+  private Instant updatedAt;
+
+  @Column(name = "modified_by")
+  private String updatedBy;
 
   @Override
   public Instant getCreatedAt() {
-    return recordHistory.getCreatedAt();
+    return createdAt;
   }
 
   @Override
   public String getCreatedBy() {
-    return recordHistory.getCreatedBy();
+    return createdBy;
   }
 
   @Override
   public Instant getUpdatedAt() {
-    return recordHistory.getUpdatedAt();
+    return updatedAt;
   }
 
   @Override
   public String getUpdatedBy() {
-    return recordHistory.getUpdatedBy();
+    return updatedBy;
   }
 }
