@@ -21,36 +21,36 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 @Mapper(componentModel = "spring")
 public interface ApplicationMapper {
 
-    Application toApplication(ApplicationEntity applicationEntity);
+  Application toApplication(ApplicationEntity applicationEntity);
 
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "proceedings", ignore = true)
-    @Mapping(target = "recordHistory", ignore = true)
-    ApplicationEntity toApplicationEntity(ApplicationCreateRequest applicationCreateReq);
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "proceedings", ignore = true)
+  @Mapping(target = "recordHistory", ignore = true)
+  ApplicationEntity toApplicationEntity(ApplicationCreateRequest applicationCreateReq);
 
-    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "proceedings", ignore = true)
-    @Mapping(target = "recordHistory", ignore = true)
-    void updateApplicationEntity(@MappingTarget ApplicationEntity applicationEntity,
-                                 ApplicationUpdateRequest applicationUpdateReq);
+  @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "proceedings", ignore = true)
+  @Mapping(target = "recordHistory", ignore = true)
+  void updateApplicationEntity(@MappingTarget ApplicationEntity applicationEntity,
+                               ApplicationUpdateRequest applicationUpdateReq);
 
-    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "createdBy", ignore = true)
-    @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "updatedBy", ignore = true)
-    void updateApplicationEntity(@MappingTarget Application application,
-                                 ApplicationUpdateRequest applicationUpdateReq);
+  @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "createdAt", ignore = true)
+  @Mapping(target = "createdBy", ignore = true)
+  @Mapping(target = "updatedAt", ignore = true)
+  @Mapping(target = "updatedBy", ignore = true)
+  void updateApplicationEntity(@MappingTarget Application application,
+                               ApplicationUpdateRequest applicationUpdateReq);
 
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "createdBy", ignore = true)
-    @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "updatedBy", ignore = true)
-    ApplicationProceeding toApplicationProceeding(ApplicationProceedingUpdateRequest applicationProceedingUpdateReq);
+  @Mapping(target = "createdAt", ignore = true)
+  @Mapping(target = "createdBy", ignore = true)
+  @Mapping(target = "updatedAt", ignore = true)
+  @Mapping(target = "updatedBy", ignore = true)
+  ApplicationProceeding toApplicationProceeding(ApplicationProceedingUpdateRequest applicationProceedingUpdateReq);
 
-    default OffsetDateTime toOffsetDateTime(Instant instant) {
-        return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
-    }
+  default OffsetDateTime toOffsetDateTime(Instant instant) {
+    return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
+  }
 }
