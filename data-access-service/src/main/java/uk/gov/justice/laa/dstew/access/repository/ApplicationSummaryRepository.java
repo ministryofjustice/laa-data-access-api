@@ -12,5 +12,5 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
  */
 @Repository
 public interface ApplicationSummaryRepository extends JpaRepository<ApplicationSummaryEntity, UUID> {
-  List<ApplicationSummaryEntity> findByStatusCodeLookupEntity_CodeContaining(String status);
+  List<ApplicationSummaryEntity> findByStatusCodeLookupEntity_Code(String status);
 }

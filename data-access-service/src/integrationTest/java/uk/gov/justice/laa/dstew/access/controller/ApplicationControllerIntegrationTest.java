@@ -49,6 +49,17 @@ public class ApplicationControllerIntegrationTest {
   }
 
   @Test
+  @WithMockUser(authorities = {"APPROLE_ApplicationReader"})
+  @Order(2)
+  void shouldGetAllGrantedItems() throws Exception {
+    mockMvc
+            .perform(get("/api/v1/applications?status=granted"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.*", hasSize(1)));
+  }
+
+  @Test
   @WithAnonymousUser
   @Order(2)
   void when_no_auth_present_getAllItems_should_return_401() throws Exception {

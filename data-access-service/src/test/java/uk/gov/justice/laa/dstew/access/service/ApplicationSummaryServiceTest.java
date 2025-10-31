@@ -52,7 +52,7 @@ public class ApplicationSummaryServiceTest {
         secondSummary.setApplicationId(secondEntity.getId());
         secondSummary.setApplicationStatus("granted");
 
-        when(repository.findAll()).thenReturn(List.of(firstEntity, secondEntity));
+        when(repository.findByStatusCodeLookupEntity_Code(any())).thenReturn(List.of(firstEntity, secondEntity));
         when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
         when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);
 
