@@ -4,14 +4,19 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.HashMap;
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
+
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class ApplicationValidationsTest {
@@ -22,12 +27,12 @@ public class ApplicationValidationsTest {
   @InjectMocks
   ApplicationValidations classUnderTest;
 
-  @Test
-  void shouldNotThrowCreateRequestValidationErrorWhenContentIsValid() {
-    ApplicationCreateRequest request = new ApplicationCreateRequest();
-    request.setApplicationContent(new HashMap<>());
+  // --- ApplicationCreateRequest tests ---
 
-    assertDoesNotThrow(() -> classUnderTest.checkApplicationCreateRequest(request));
+  @Test
+  void shouldThrowCreateRequestValidationErrorWhenRequestIsNull() {
+    assertThrows(ValidationException.class,
+        () -> classUnderTest.checkApplicationCreateRequest(null));
   }
 
   @Test
@@ -40,11 +45,30 @@ public class ApplicationValidationsTest {
   }
 
   @Test
-  void shouldNotThrowUpdateRequestValidationErrorWhenContentIsValid() {
-    ApplicationUpdateRequest request = new ApplicationUpdateRequest();
+  void shouldThrowCreateRequestValidationErrorWhenContentIsEmpty() {
+    ApplicationCreateRequest request = new ApplicationCreateRequest();
     request.setApplicationContent(new HashMap<>());
 
-    assertDoesNotThrow(() -> classUnderTest.checkApplicationUpdateRequest(request, null));
+    assertThrows(ValidationException.class,
+        () -> classUnderTest.checkApplicationCreateRequest(request));
+  }
+
+  @Test
+  void shouldNotThrowCreateRequestValidationErrorWhenContentIsValid() {
+    ApplicationCreateRequest request = new ApplicationCreateRequest();
+    Map<String, Object> content = new HashMap<>();
+    content.put("foo", "bar");
+    request.setApplicationContent(content);
+
+    assertDoesNotThrow(() -> classUnderTest.checkApplicationCreateRequest(request));
+  }
+
+  // --- ApplicationUpdateRequest tests ---
+
+  @Test
+  void shouldThrowUpdateRequestValidationErrorWhenRequestIsNull() {
+    assertThrows(ValidationException.class,
+        () -> classUnderTest.checkApplicationUpdateRequest(null, null));
   }
 
   @Test
@@ -54,5 +78,66 @@ public class ApplicationValidationsTest {
 
     assertThrows(ValidationException.class,
         () -> classUnderTest.checkApplicationUpdateRequest(request, null));
+  }
+
+  @Test
+  void shouldThrowUpdateRequestValidationErrorWhenProviderCannotUpdate() {
+    when(mockEntra.hasAppRole("Provider")).thenReturn(true);
+    when(mockEntra.hasAnyAppRole("Caseworker", "Administrator")).thenReturn(false);
+
+    ApplicationUpdateRequest request = new ApplicationUpdateRequest();
+    Map<String, Object> content = new HashMap<>();
+    content.put("foo", "bar");
+    request.setApplicationContent(content);
+
+    assertThrows(ValidationException.class,
+        () -> classUnderTest.checkApplicationUpdateRequest(request, null));
+  }
+
+  @Test
+  void shouldNotThrowUpdateRequestValidationErrorWhenProviderCanUpdate() {
+    when(mockEntra.hasAppRole("Provider")).thenReturn(true);
+    when(mockEntra.hasAnyAppRole("Caseworker", "Administrator")).thenReturn(true);
+
+    ApplicationUpdateRequest request = new ApplicationUpdateRequest();
+    Map<String, Object> content = new HashMap<>();
+    content.put("foo", "bar");
+    request.setApplicationContent(content);
+
+    assertDoesNotThrow(() -> classUnderTest.checkApplicationUpdateRequest(request, null));
+  }
+
+  @Test
+  void shouldNotThrowUpdateRequestValidationErrorWhenNotProvider() {
+    when(mockEntra.hasAppRole("Provider")).thenReturn(false);
+
+    ApplicationUpdateRequest request = new ApplicationUpdateRequest();
+    Map<String, Object> content = new HashMap<>();
+    content.put("foo", "bar");
+    request.setApplicationContent(content);
+
+    assertDoesNotThrow(() -> classUnderTest.checkApplicationUpdateRequest(request, null));
+  }
+
+  // --- ValidationUtils tests ---
+
+  @Test
+  void notNullBooleanShouldReturnFalseWhenNull() {
+    assert !ValidationUtils.notNull((Boolean) null);
+  }
+
+  @Test
+  void notNullBooleanShouldReturnTrueWhenTrue() {
+    assert ValidationUtils.notNull(true);
+  }
+
+  @Test
+  void notNullStringShouldReturnEmptyStringWhenNull() {
+    assert ValidationUtils.notNull((String) null).equals("");
+  }
+
+  @Test
+  void notNullStringShouldReturnSameStringWhenNotNull() {
+    assert ValidationUtils.notNull("hello").equals("hello");
   }
 }
