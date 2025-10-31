@@ -53,7 +53,7 @@ public class ApplicationControllerIntegrationTest {
   @Order(2)
   void when_no_auth_present_getAllItems_should_return_401() throws Exception {
         mockMvc
-        .perform(get("/api/v0/applications"))
+        .perform(get("/api/v1/applications"))
         .andExpect(status().isUnauthorized());
   }
 
@@ -62,7 +62,7 @@ public class ApplicationControllerIntegrationTest {
   @Order(2)
   void when_incorrect_authorities_getAllItems_should_return_403() throws Exception{
         mockMvc
-        .perform(get("/api/v0/applications"))
+        .perform(get("/api/v1/applications"))
         .andExpect(status().isForbidden());
   }
 
