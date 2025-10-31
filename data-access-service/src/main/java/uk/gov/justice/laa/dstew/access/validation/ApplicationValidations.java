@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
-import static uk.gov.justice.laa.dstew.access.validation.ValidationUtils.notNull;
-
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -10,13 +9,13 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 /**
- * Validations for a particular domain (Applications).
- * Currently, this avoids any kind of validation framework apart from a holder for validation errors (ValidationState)
- * and an exception that wraps those errors (ValidationException).
+ * Validations for Application DTOs using JSONB applicationContent.
+ * Only validates that applicationContent exists and is a JSON object.
  */
 @Component
 @RequiredArgsConstructor
 public class ApplicationValidations {
+
   private final EffectiveAuthorizationProvider entra;
 
   /**
@@ -26,11 +25,14 @@ public class ApplicationValidations {
    */
   public void checkApplicationCreateRequest(final ApplicationCreateRequest dto) {
     final var state = ValidationErrors.empty();
-    state.addIf(
-              (dto.getProviderOfficeId() == null)
-                    && (!(notNull(dto.getIsEmergencyApplication()) && (dto.getStatusCode().contentEquals("NEW")))
-              ),
-            "BRR-01: Provider office id is required (unless unsubmitted ECT)");
+
+    Map<String, Object> content = dto.getApplicationContent();
+    if (content == null) {
+      state.add("BRR-00: applicationContent must not be null");
+    } else if (!(content instanceof Map)) {
+      state.add("BRR-01: applicationContent must be a valid JSON object");
+    }
+
     state.throwIfAny();
   }
 
@@ -41,12 +43,16 @@ public class ApplicationValidations {
    * @param current existing persisted entity.
    */
   public void checkApplicationUpdateRequest(final ApplicationUpdateRequest dto,
-                                          final ApplicationEntity current) {
-    ValidationErrors.empty()
-            .addIf(entra.hasAppRole("Provider")
-                            && !entra.hasAnyAppRole("Caseworker", "Administrator")
-                            && (dto.getClientId() != null),
-                    "BRR-03: Provider role cannot update the client date of birth or NI number")
-            .throwIfAny();
+                                            final ApplicationEntity current) {
+    final var state = ValidationErrors.empty();
+
+    Map<String, Object> content = dto.getApplicationContent();
+    if (content == null) {
+      state.add("BRR-00: applicationContent must not be null");
+    } else if (!(content instanceof Map)) {
+      state.add("BRR-01: applicationContent must be a valid JSON object");
+    }
+
+    state.throwIfAny();
   }
 }

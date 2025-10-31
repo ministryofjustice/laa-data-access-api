@@ -4,17 +4,11 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Field;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.javers.core.Javers;
 import org.javers.core.JaversBuilder;
-import org.javers.core.diff.Diff;
-import org.javers.core.diff.changetype.ValueChange;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -22,152 +16,144 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
 /**
- * Service class for handling items requests.
+ * Service class for managing Applications.
  */
 @Service
 public class ApplicationService {
 
   private final ApplicationRepository applicationRepository;
-
   private final ApplicationMapper applicationMapper;
-
   private final ApplicationValidations applicationValidations;
-
   private final ObjectMapper objectMapper;
-
   private final Javers javers;
 
   /**
-   * Create a service for applications for legal aid.
+   * Constructs an ApplicationService with required dependencies.
    *
-   * @param applicationRepository the repository of such applications.
-   * @param applicationMapper the mapper between entity and DTOs.
-   * @param applicationValidations the validation methods for request DTOs.
-   * @param objectMapper JSON mapper to serialize the history.
+   * @param applicationRepository the repository
+   * @param applicationMapper the mapper between entity and DTO
+   * @param applicationValidations validations for requests
+   * @param objectMapper Jackson ObjectMapper for JSONB
    */
-  public ApplicationService(
-          final ApplicationRepository applicationRepository,
-          final ApplicationMapper applicationMapper,
-          final ApplicationValidations applicationValidations,
-          final ObjectMapper objectMapper) {
+  public ApplicationService(final ApplicationRepository applicationRepository,
+                            final ApplicationMapper applicationMapper,
+                            final ApplicationValidations applicationValidations,
+                            final ObjectMapper objectMapper) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
     this.javers = JaversBuilder.javers().build();
-
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
   }
 
   /**
-   * Gets all applications.
+   * Retrieve all applications.
    *
-   * @return the list of applications
+   * @return list of applications
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public List<Application> getAllApplications() {
-    return applicationRepository.findAll().stream().map(applicationMapper::toApplication).toList();
+    return applicationRepository.findAll().stream()
+        .map(applicationMapper::toApplication)
+        .toList();
   }
 
   /**
-   * Gets an application for a given id.
+   * Retrieve a single application by ID.
    *
-   * @param id the application id
-   * @return the requested application
+   * @param id application UUID
+   * @return application DTO
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public Application getApplication(UUID id) {
-    var applicationEntity = checkIfApplicationExists(id);
-    return applicationMapper.toApplication(applicationEntity);
+  public Application getApplication(final UUID id) {
+    final ApplicationEntity entity = checkIfApplicationExists(id);
+    return applicationMapper.toApplication(entity);
   }
 
   /**
-   * Creates an application.
+   * Create a new application.
    *
-   * @param applicationCreateReq the application to be created
-   * @return the id of the created application
+   * @param req DTO containing creation fields
+   * @return UUID of the created application
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public UUID createApplication(ApplicationCreateRequest applicationCreateReq) {
-    applicationValidations.checkApplicationCreateRequest(applicationCreateReq);
+  public UUID createApplication(final ApplicationCreateRequest req) {
+    applicationValidations.checkApplicationCreateRequest(req);
 
-    var applicationEntity = applicationMapper.toApplicationEntity(applicationCreateReq);
+    final ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
+    final ApplicationEntity saved = applicationRepository.save(entity);
 
-    //set the application entity id to null to ensure a new entity is created
-    if (applicationEntity.getProceedings() != null) {
-      applicationEntity.getProceedings().forEach(proceeding -> {
-        proceeding.setApplication(applicationEntity);
-      });
-    }
+    createAndSendHistoricRecord(saved, null);
 
-    var savedEntity = applicationRepository.save(applicationEntity);
-
-    // create history message for the created application
-    createAndSendHistoricRecord(savedEntity, null);
-
-    return savedEntity.getId();
+    return saved.getId();
   }
 
   /**
-   * Update an application for legal aid, keeping history.
+   * Update an existing application.
    *
-   * @param id the unique identifier of the application.
-   * @param applicationUpdateReq the DTO containing the change.
+   * @param id application UUID
+   * @param req DTO with update fields
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public void updateApplication(UUID id, ApplicationUpdateRequest applicationUpdateReq) {
-    var applicationEntity = checkIfApplicationExists(id);
+  public void updateApplication(final UUID id, final ApplicationUpdateRequest req) {
+    final ApplicationEntity entity = checkIfApplicationExists(id);
 
-    applicationValidations.checkApplicationUpdateRequest(applicationUpdateReq, applicationEntity);
+    applicationValidations.checkApplicationUpdateRequest(req, entity);
+    applicationMapper.updateApplicationEntity(entity, req);
 
-    applicationMapper.updateApplicationEntity(applicationEntity, applicationUpdateReq);
-    if (applicationEntity.getProceedings() != null) {
-      applicationEntity.getProceedings().forEach(p -> p.setApplication(applicationEntity));
-    }
+    applicationRepository.save(entity);
 
-    applicationRepository.save(applicationEntity);
-
-    var snapshot = objectMapper
-            .convertValue(applicationMapper.toApplication(applicationEntity),
-                    new TypeReference<Map<String, Object>>() {});
+    // Optional: create snapshot for audit/history
+    objectMapper.convertValue(
+        applicationMapper.toApplication(entity),
+        new TypeReference<Map<String, Object>>() {}
+    );
   }
 
-  protected void createAndSendHistoricRecord(ApplicationEntity applicationEntity, Object actionType) {
+  /**
+   * Placeholder for historic/audit record creation.
+   *
+   * @param entity application entity
+   * @param actionType optional action type
+   */
+  protected void createAndSendHistoricRecord(final ApplicationEntity entity, final Object actionType) {
+    // Implement audit/history publishing if required
   }
 
-  protected ApplicationEntity checkIfApplicationExists(UUID id) {
-    return applicationRepository
-            .findById(id)
-            .orElseThrow(
-                    () -> new ApplicationNotFoundException(String.format("No application found with id: %s", id)));
+  /**
+   * Check existence of an application by ID.
+   *
+   * @param id UUID of application
+   * @return found entity
+   */
+  protected ApplicationEntity checkIfApplicationExists(final UUID id) {
+    return applicationRepository.findById(id)
+        .orElseThrow(() -> new ApplicationNotFoundException(
+            String.format("No application found with id: %s", id)
+        ));
   }
 
-  private Object getObjectId(Object object) {
-    try {
-      Field idField = object.getClass().getDeclaredField("id");
-      idField.setAccessible(true);
-      return idField.get(object);
-    } catch (NoSuchFieldException | IllegalAccessException e) {
-      return null;
-    }
-  }
-
-  private void populateFields(Object target, Map<String, Object> fieldValues) {
+  /**
+   * Populate target object with field values from a map.
+   *
+   * @param target object to populate
+   * @param fieldValues map of field names to values
+   */
+  private void populateFields(final Object target, final Map<String, Object> fieldValues) {
     fieldValues.forEach((name, value) -> {
       try {
-        Field field = target.getClass().getDeclaredField(name);
+        final Field field = target.getClass().getDeclaredField(name);
         field.setAccessible(true);
         field.set(target, value);
-      } catch (NoSuchFieldException | IllegalAccessException e) {
-        // Optionally log or ignore unknown fields
+      } catch (NoSuchFieldException | IllegalAccessException ignored) {
+        // Ignore unknown or inaccessible fields
       }
     });
   }
-
 }

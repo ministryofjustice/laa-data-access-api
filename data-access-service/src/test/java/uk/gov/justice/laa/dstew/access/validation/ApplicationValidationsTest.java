@@ -9,86 +9,52 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
-import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class ApplicationValidationsTest {
 
-    @Mock
-    EffectiveAuthorizationProvider mockEntra;
+  @Mock
+  EffectiveAuthorizationProvider mockEntra;
 
-    @InjectMocks
-    ApplicationValidations classUnderTest;
+  @InjectMocks
+  ApplicationValidations classUnderTest;
 
-    @Test
-    void shouldNotThrowUpdateRequestValidationErrorWhenClientIdIsNull() {
-        when(mockEntra.hasAppRole("Provider")).thenReturn(true);
-        when(mockEntra.hasAnyAppRole("Caseworker", "Administrator")).thenReturn(false);
+  @Test
+  void shouldNotThrowCreateRequestValidationErrorWhenContentIsValid() {
+    ApplicationCreateRequest request = new ApplicationCreateRequest();
+    request.setApplicationContent(new HashMap<>());
 
-        ApplicationUpdateRequest request = new ApplicationUpdateRequest();
-        request.setClientId(null);
+    assertDoesNotThrow(() -> classUnderTest.checkApplicationCreateRequest(request));
+  }
 
-        assertDoesNotThrow(() -> classUnderTest.checkApplicationUpdateRequest(request, null));
-    }
+  @Test
+  void shouldThrowCreateRequestValidationErrorWhenContentIsNull() {
+    ApplicationCreateRequest request = new ApplicationCreateRequest();
+    request.setApplicationContent(null);
 
-    @Test
-    void shouldThrowUpdateRequestValidationErrorWhenClientIdIsNotNull() {
-        when(mockEntra.hasAppRole("Provider")).thenReturn(true);
-        when(mockEntra.hasAnyAppRole("Caseworker", "Administrator")).thenReturn(false);
+    assertThrows(ValidationException.class,
+        () -> classUnderTest.checkApplicationCreateRequest(request));
+  }
 
-        ApplicationUpdateRequest request = new ApplicationUpdateRequest();
-        request.setClientId(UUID.randomUUID());
+  @Test
+  void shouldNotThrowUpdateRequestValidationErrorWhenContentIsValid() {
+    ApplicationUpdateRequest request = new ApplicationUpdateRequest();
+    request.setApplicationContent(new HashMap<>());
 
-        assertThrows(ValidationException.class,
-                () -> classUnderTest.checkApplicationUpdateRequest(request, null));
-    }
+    assertDoesNotThrow(() -> classUnderTest.checkApplicationUpdateRequest(request, null));
+  }
 
-    @Test
-    void shouldNotThrowUpdateRequestValidationErrorWhenAppRoleIsNotProvider() {
-        when(mockEntra.hasAppRole("Provider")).thenReturn(false);
-        ApplicationUpdateRequest request = new ApplicationUpdateRequest();
-        request.setClientId(null);
-        assertDoesNotThrow(() -> classUnderTest.checkApplicationUpdateRequest(request, null));
-    }
+  @Test
+  void shouldThrowUpdateRequestValidationErrorWhenContentIsNull() {
+    ApplicationUpdateRequest request = new ApplicationUpdateRequest();
+    request.setApplicationContent(null);
 
-    @Test
-    void shouldNotThrowUpdateRequestValidationErrorWhenCaseWorkerOrAdministrator() {
-        when(mockEntra.hasAppRole("Provider")).thenReturn(true);
-        when(mockEntra.hasAnyAppRole("Caseworker", "Administrator")).thenReturn(true);
-        ApplicationUpdateRequest request = new ApplicationUpdateRequest();
-        request.setClientId(UUID.randomUUID());
-        assertDoesNotThrow(() -> classUnderTest.checkApplicationUpdateRequest(request, null));
-    }
-
-    @Test
-    void shouldThrowCreateRequestValidationErrorWhenAllConditionsSet() {
-        ApplicationCreateRequest request = new ApplicationCreateRequest();
-        request.setProviderOfficeId(null);
-        request.setIsEmergencyApplication(false);
-        request.setStatusCode("NEW");
-        assertThrows(ValidationException.class,
-                () -> classUnderTest.checkApplicationCreateRequest(request));
-    }
-
-    @Test
-    void shouldNotThrowCreateRequestValidationErrorWhenProviderOfficeId() {
-        ApplicationCreateRequest request = new ApplicationCreateRequest();
-        request.setProviderOfficeId("Provider");
-        request.setIsEmergencyApplication(false);
-        request.setStatusCode("NEW");
-        assertDoesNotThrow(() -> classUnderTest.checkApplicationCreateRequest(request));
-    }
-
-    @Test
-    void shouldNotThrowCreateRequestValidationErrorWhenNotEmergencyApplication() {
-        ApplicationCreateRequest request = new ApplicationCreateRequest();
-        request.setProviderOfficeId(null);
-        request.setIsEmergencyApplication(true);
-        request.setStatusCode("NEW");
-        assertDoesNotThrow(() -> classUnderTest.checkApplicationCreateRequest(request));
-    }
+    assertThrows(ValidationException.class,
+        () -> classUnderTest.checkApplicationUpdateRequest(request, null));
+  }
 }
