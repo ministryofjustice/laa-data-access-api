@@ -1,15 +1,15 @@
 package uk.gov.justice.laa.dstew.access.config;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
-
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class SecurityConfigTest {
 

@@ -9,7 +9,6 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authorization.AuthorizationDeniedException;
-
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class GlobalExceptionHandlerTest {
