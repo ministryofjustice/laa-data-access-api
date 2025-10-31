@@ -8,12 +8,18 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
+/**
+ * Class that runs validations for Access.
+ */
 @Component
 @RequiredArgsConstructor
 public class ApplicationValidations {
 
   private final EffectiveAuthorizationProvider entra;
 
+  /**
+   * Validates an incoming POST.
+   */
   public void checkApplicationCreateRequest(final ApplicationCreateRequest dto) {
     if (dto == null || dto.getApplicationContent() == null) {
       throw new ValidationException(
@@ -28,6 +34,9 @@ public class ApplicationValidations {
     }
   }
 
+  /**
+   * Validates an incoming PATCH.
+   */
   public void checkApplicationUpdateRequest(final ApplicationUpdateRequest dto,
                                             final ApplicationEntity current) {
     if (dto == null || dto.getApplicationContent() == null) {
