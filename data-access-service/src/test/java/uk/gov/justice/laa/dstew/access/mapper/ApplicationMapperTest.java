@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
 import java.util.Map;
@@ -27,10 +28,7 @@ public class ApplicationMapperTest {
     entity.setId(id);
     entity.setStatusId(UUID.randomUUID());
     entity.setSchemaVersion(1);
-    entity.setApplicationContent(Map.of(
-        "foo", "bar",
-        "baz", 123
-    ));
+    entity.setApplicationContent(Map.of("foo", "bar", "baz", 123));
     entity.setCreatedAt(Instant.now());
     entity.setModifiedAt(Instant.now());
 
@@ -39,6 +37,12 @@ public class ApplicationMapperTest {
     assertThat(result).isNotNull();
     assertThat(result.getId()).isEqualTo(id);
     assertThat(result.getStatusId()).isEqualTo(entity.getStatusId());
+    assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
+  }
+
+  @Test
+  void shouldReturnNullWhenMappingNullEntity() {
+    assertThat(applicationMapper.toApplication(null)).isNull();
   }
 
   @Test
@@ -47,13 +51,19 @@ public class ApplicationMapperTest {
     ApplicationCreateRequest req = new ApplicationCreateRequest();
     req.setStatusId(statusId);
     req.setSchemaVersion(1);
+    req.setApplicationContent(Map.of("foo", "bar"));
 
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
 
     assertThat(result).isNotNull();
     assertThat(result.getStatusId()).isEqualTo(statusId);
     assertThat(result.getSchemaVersion()).isEqualTo(1);
-    assertThat(result.getApplicationContent()).isNotNull();
+    assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
+  }
+
+  @Test
+  void shouldReturnNullWhenMappingNullCreateRequest() {
+    assertThat(applicationMapper.toApplicationEntity(null)).isNull();
   }
 
   @Test
@@ -68,5 +78,55 @@ public class ApplicationMapperTest {
 
     assertThat(entity.getStatusId()).isEqualTo(originalStatusId);
     assertThat(entity.getSchemaVersion()).isEqualTo(1);
+  }
+
+  @Test
+  void shouldUpdateApplicationEntityWithNewValues() {
+    ApplicationEntity entity = new ApplicationEntity();
+    entity.setStatusId(UUID.randomUUID());
+    entity.setSchemaVersion(1);
+    entity.setApplicationContent(Map.of("oldKey", "oldValue"));
+
+    ApplicationUpdateRequest req = new ApplicationUpdateRequest();
+    req.setStatusId(UUID.randomUUID());
+    req.setSchemaVersion(2);
+    req.setApplicationContent(Map.of("newKey", "newValue"));
+
+    applicationMapper.updateApplicationEntity(entity, req);
+
+    assertThat(entity.getStatusId()).isEqualTo(req.getStatusId());
+    assertThat(entity.getSchemaVersion()).isEqualTo(2);
+    assertThat(entity.getApplicationContent()).containsEntry("newKey", "newValue");
+  }
+
+  @Test
+  void shouldThrowWhenApplicationCreateRequestContentCannotBeSerialized() {
+    ApplicationCreateRequest req = new ApplicationCreateRequest();
+    req.setStatusId(UUID.randomUUID());
+    req.setApplicationContent(Map.of("key", new Object() {
+      // Jackson cannot serialize anonymous object by default
+    }));
+
+    assertThrows(IllegalArgumentException.class, () -> applicationMapper.toApplicationEntity(req));
+  }
+
+  @Test
+  void shouldThrowWhenApplicationUpdateRequestContentCannotBeSerialized() {
+    ApplicationEntity entity = new ApplicationEntity();
+    entity.setStatusId(UUID.randomUUID());
+
+    ApplicationUpdateRequest req = new ApplicationUpdateRequest();
+    req.setApplicationContent(Map.of("key", new Object() {}));
+
+    assertThrows(IllegalArgumentException.class, () -> applicationMapper.updateApplicationEntity(entity, req));
+  }
+
+  @Test
+  void shouldThrowWhenApplicationEntityContentCannotBeDeserialized() {
+    ApplicationEntity entity = new ApplicationEntity();
+    entity.setStatusId(UUID.randomUUID());
+    entity.setApplicationContent(Map.of("key", new Object() {}));
+
+    assertThrows(IllegalArgumentException.class, () -> applicationMapper.toApplication(entity));
   }
 }
