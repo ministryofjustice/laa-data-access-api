@@ -47,9 +47,9 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodResponse
   @LogMethodArguments
-  public ResponseEntity<ApplicationSummaryCollectionResponse> getApplications() {
+  public ResponseEntity<ApplicationSummaryCollectionResponse> getApplications(String status) {
     ApplicationSummaryCollectionResponse response = new ApplicationSummaryCollectionResponse();
-    response.setApplications(summaryService.getAllApplications());
+    response.setApplications(summaryService.getAllApplications(status));
     return ResponseEntity.ok(response);
   }
 

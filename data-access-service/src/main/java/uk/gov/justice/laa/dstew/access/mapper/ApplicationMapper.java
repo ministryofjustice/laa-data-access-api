@@ -29,8 +29,6 @@ public interface ApplicationMapper {
    * @param applicationSummaryEntity the application summary entity
    * @return the application summary
    */
-  @Mapping(target = "submittedAt", source = "createdAt")
-  @Mapping(target = "lastUpdatedAt", source = "modifiedAt")
   @Mapping(target = "applicationId", source = "id")
   @Mapping(target = "applicationStatus", source = "statusCodeLookupEntity.code")
   ApplicationSummary toApplicationSummary(ApplicationSummaryEntity applicationSummaryEntity);

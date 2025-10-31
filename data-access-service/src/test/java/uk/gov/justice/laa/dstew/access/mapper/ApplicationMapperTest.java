@@ -388,10 +388,6 @@ public class ApplicationMapperTest {
     @Test
     void shouldMapApplicationSummaryEntityToApplicationSummary() {
 
-        ApplicationSummary.ApplicationStatusEnum d = ApplicationSummary.ApplicationStatusEnum.GRANTED;
-        String s = d.getValue();
-        String e = d.name();
-        ApplicationSummary.ApplicationStatusEnum x = ApplicationSummary.ApplicationStatusEnum.fromValue("granted");
         StatusCodeLookupEntity statusCodeLookupEntity = new StatusCodeLookupEntity();
         statusCodeLookupEntity.setCode("pending");
         statusCodeLookupEntity.setDescription("description");
@@ -401,14 +397,16 @@ public class ApplicationMapperTest {
         applicationSummaryEntity.setCreatedAt(Instant.now());
         applicationSummaryEntity.setModifiedAt(Instant.now());
         applicationSummaryEntity.setId(UUID.randomUUID());
+        applicationSummaryEntity.setApplicationReference("applicationReference");
         applicationSummaryEntity.setStatusCodeLookupEntity(statusCodeLookupEntity);
         ApplicationSummary result = applicationMapper.toApplicationSummary(applicationSummaryEntity);
 
         assertThat(result).isNotNull();
         assertThat(result.getApplicationId()).isEqualTo(applicationSummaryEntity.getId());
-        assertThat(result.getApplicationStatus()).isEqualTo(ApplicationSummary.ApplicationStatusEnum.PENDING);
-        assertThat(result.getLastUpdatedAt()).isEqualTo(applicationSummaryEntity.getModifiedAt().toString());
-        assertThat(result.getSubmittedAt()).isEqualTo(applicationSummaryEntity.getCreatedAt().toString());
+        assertThat(result.getApplicationStatus()).isEqualTo("pending");
+        assertThat(result.getCreatedAt()).isEqualTo(applicationSummaryEntity.getCreatedAt().toString());
+        assertThat(result.getModifiedAt()).isEqualTo(applicationSummaryEntity.getModifiedAt().toString());
+        assertThat(result.getApplicationReference()).isEqualTo(applicationSummaryEntity.getApplicationReference());
     }
 
 }

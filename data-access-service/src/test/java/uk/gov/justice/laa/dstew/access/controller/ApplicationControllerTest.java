@@ -98,7 +98,7 @@ public class ApplicationControllerTest {
                     .build());
         applicationSummaryCollectionResponse.setApplications(applications);
 
-        when (applicationSummaryService.getAllApplications()).thenReturn(applications);
+        when (applicationSummaryService.getAllApplications(any())).thenReturn(applications);
         mockMvc
                 .perform(get("/api/v1/applications"))
                 .andExpect(status().isOk())

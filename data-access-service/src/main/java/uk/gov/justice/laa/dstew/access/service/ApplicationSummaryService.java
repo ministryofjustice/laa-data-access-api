@@ -1,10 +1,8 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import java.util.ArrayList;
 import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
@@ -31,7 +29,8 @@ public class ApplicationSummaryService {
    * @return the list of applications
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<ApplicationSummary> getAllApplications() {
-    return applicationSummaryRepository.findAll().stream().map(applicationMapper::toApplicationSummary).toList();
+  public List<ApplicationSummary> getAllApplications(String applicationStatus) {
+    return applicationSummaryRepository.findAll()
+            .stream().map(applicationMapper::toApplicationSummary).toList();
   }
 }

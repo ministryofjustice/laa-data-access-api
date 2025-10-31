@@ -34,6 +34,9 @@ public class ApplicationSummaryEntity {
   @JoinColumn(name = "status_id", referencedColumnName = "id")
   private StatusCodeLookupEntity statusCodeLookupEntity;
 
+  @Column(name = "application_reference")
+  private String applicationReference;
+
   @Column(name = "created_at")
   private Instant createdAt;
 

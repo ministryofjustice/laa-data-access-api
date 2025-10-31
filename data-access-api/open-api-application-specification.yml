@@ -9,6 +9,18 @@ paths:
         - application
       summary: Get applications
       operationId: getApplications
+      parameters:
+        - in: query
+          name: status
+          description: The current overall status of the applications' decision.
+          schema:
+            type: string
+            enum:
+              - pending
+              - granted
+              - partially granted
+              - refused
+            default: pending
       responses:
         '200':
           description: 'Success'
@@ -322,54 +334,23 @@ components:
         application_id:
           type: string
           format: uuid
-          example: LAA1
           description: The unique reference used to identify the application.
         application_status:
           type: string
-          enum: [pending, granted, partially granted, refused]
-        application_type:
+        application_reference:
           type: string
-          enum: [initial]
-          description: UNKNOWN VALUES - Type of application.
-        submitted_at:
+        created_at:
           type: string
           format: date-time
           description: This is the date that the application was submitted. It is used for MI and prioritisation.
-        last_updated_at:
+        modified_at:
           type: string
           format: date-time
-        category_of_law:
-          type: string
-          enum: [family]
-          description: UNKNOWN VALUES - Lists the categories of law from all of the application's proceedings.
-        matter_types:
-          type: string
-          enum: [special children's act]
-          description: UNKNOWN VALUES - Derived from proceedings.
-        delegated_functions_used:
-          type: boolean
-          example: true
-        assigned_to:
-          type: string
-          format: uuid
-          example: null
-          description: The ID of the user/caseworker that the application is currently assigned to. Can be null if no one currently working on it (i.e. application is open).
-        overall_means_decision:
-          type: string
-          example: passported
-          enum:
-            - pending
-            - granted
-            - partially granted
-            - refused
-            - passported
-          description: Not sure if this should be derived from proceedings too, but putting here for purpose of displaying as in the prototype design
 
     ApplicationSummaryCollection:
         type: array
         items:
           $ref: "#/components/schemas/ApplicationSummary"
-
 
     ApplicationSummaryCollectionResponse:
       properties:

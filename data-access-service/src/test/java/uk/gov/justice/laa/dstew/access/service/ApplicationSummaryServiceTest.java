@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,16 +47,16 @@ public class ApplicationSummaryServiceTest {
 
         ApplicationSummary firstSummary = new ApplicationSummary();
         firstSummary.setApplicationId(firstEntity.getId());
-        firstSummary.setApplicationStatus(ApplicationSummary.ApplicationStatusEnum.GRANTED);
+        firstSummary.setApplicationStatus("granted");
         ApplicationSummary secondSummary = new ApplicationSummary();
         secondSummary.setApplicationId(secondEntity.getId());
-        secondSummary.setApplicationStatus(ApplicationSummary.ApplicationStatusEnum.GRANTED);
+        secondSummary.setApplicationStatus("granted");
 
         when(repository.findAll()).thenReturn(List.of(firstEntity, secondEntity));
         when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
         when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);
 
-        List<ApplicationSummary> result = classUnderTest.getAllApplications();
+        List<ApplicationSummary> result = classUnderTest.getAllApplications("granted");
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getApplicationId()).isEqualTo(firstEntity.getId());
