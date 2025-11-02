@@ -13,7 +13,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryCollectionResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 
@@ -86,7 +86,7 @@ public class ApplicationControllerTest {
 
     @Test
     void shouldGetAllApplications() throws Exception {
-        ApplicationSummaryCollectionResponse applicationSummaryCollectionResponse = new ApplicationSummaryCollectionResponse();
+        ApplicationSummaryResponse applicationSummaryCollectionResponse = new ApplicationSummaryResponse();
         List<ApplicationSummary> applications = new ArrayList<>();
         applications.add(
                 ApplicationSummary.builder()

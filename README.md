@@ -41,11 +41,7 @@ Includes the following subprojects:
 ### Developing application within Intellij
 Java version 21 is recommended
 
-Set the security environment variable as follows
-If you want to run it locally
-`FEATURE_DISABLESECURITY=true`
-
-If you want to run integration tests
+Set the security environment variable as follows (note this is different value when running application)
 `FEATURE_DISABLESECURITY=false`
 
 ### Build application

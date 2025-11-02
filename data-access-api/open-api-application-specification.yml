@@ -27,7 +27,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApplicationSummaryCollectionResponse"
+                $ref: "#/components/schemas/ApplicationSummaryResponse"
         '400':
           description: 'Bad request'
         '401':
@@ -347,13 +347,10 @@ components:
           type: string
           format: date-time
 
-    ApplicationSummaryCollection:
-        type: array
-        items:
-          $ref: "#/components/schemas/ApplicationSummary"
-
-    ApplicationSummaryCollectionResponse:
+    ApplicationSummaryResponse:
+      type: object
       properties:
         applications:
-          $ref: "#/components/schemas/ApplicationSummaryCollection"
-
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicationSummary"

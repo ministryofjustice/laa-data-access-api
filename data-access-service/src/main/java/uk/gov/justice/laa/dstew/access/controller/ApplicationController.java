@@ -9,7 +9,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryCollectionResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
@@ -47,8 +47,8 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodResponse
   @LogMethodArguments
-  public ResponseEntity<ApplicationSummaryCollectionResponse> getApplications(String status) {
-    ApplicationSummaryCollectionResponse response = new ApplicationSummaryCollectionResponse();
+  public ResponseEntity<ApplicationSummaryResponse> getApplications(String status) {
+    ApplicationSummaryResponse response = new ApplicationSummaryResponse();
     response.setApplications(summaryService.getAllApplications(status));
     return ResponseEntity.ok(response);
   }
