@@ -15,11 +15,6 @@ paths:
           description: The current overall status of the applications' decision.
           schema:
             type: string
-            enum:
-              - pending
-              - granted
-              - partially granted
-              - refused
             default: pending
         - in: query
           name: page
