@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -9,7 +10,9 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponsePaging;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
@@ -48,8 +51,16 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<ApplicationSummaryResponse> getApplications(String status, Integer page, Integer pageSize) {
+    List<ApplicationSummary> applicationsReturned =
+            summaryService.getAllApplications(status, page, pageSize);
+
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
-    response.setApplications(summaryService.getAllApplications(status, page, pageSize));
+    ApplicationSummaryResponsePaging responsePageDetails = new ApplicationSummaryResponsePaging();
+    response.setPaging(responsePageDetails);
+    response.setApplications(applicationsReturned);
+    responsePageDetails.setPage(page);
+    responsePageDetails.pageSize(pageSize);
+    responsePageDetails.itemsReturned(applicationsReturned.size());
     return ResponseEntity.ok(response);
   }
 

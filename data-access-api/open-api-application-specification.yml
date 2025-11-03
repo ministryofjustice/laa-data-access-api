@@ -357,6 +357,15 @@ components:
     ApplicationSummaryResponse:
       type: object
       properties:
+        paging:
+          type: object
+          properties:
+            page:
+              type: integer
+            page_size:
+              type: integer
+            items_returned:
+              type: integer
         applications:
           type: array
           items:

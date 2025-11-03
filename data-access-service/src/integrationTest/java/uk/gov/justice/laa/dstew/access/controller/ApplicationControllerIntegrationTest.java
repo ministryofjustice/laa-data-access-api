@@ -45,7 +45,7 @@ public class ApplicationControllerIntegrationTest {
             .perform(get("/api/v1/applications"))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.*", hasSize(1)));
+            .andExpect(jsonPath("$.*", hasSize(2)));
   }
 
   @Test
@@ -56,7 +56,7 @@ public class ApplicationControllerIntegrationTest {
             .perform(get("/api/v1/applications?status=granted"))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.*", hasSize(1)));
+            .andExpect(jsonPath("$.*", hasSize(2)));
   }
 
   @Test
