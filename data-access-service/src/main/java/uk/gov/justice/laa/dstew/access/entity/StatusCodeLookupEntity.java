@@ -18,7 +18,7 @@ import lombok.Setter;
 @Setter
 @Table(name = "status_code_lookup")
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class StatusEntity {
+public class StatusCodeLookupEntity {
   @Id
   @Column(columnDefinition = "UUID")
   private UUID id;
