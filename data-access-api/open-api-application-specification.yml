@@ -21,6 +21,18 @@ paths:
               - partially granted
               - refused
             default: pending
+        - in: query
+          name: page
+          description: page number of data to be returned
+          schema:
+            type: integer
+            default: 0
+        - in: query
+          name: pagesize
+          description: number of applications in a page
+          schema:
+            type: integer
+            default: 10
       responses:
         '200':
           description: 'Success'

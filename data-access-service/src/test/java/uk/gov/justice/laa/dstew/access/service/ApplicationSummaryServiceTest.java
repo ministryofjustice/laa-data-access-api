@@ -52,11 +52,11 @@ public class ApplicationSummaryServiceTest {
         secondSummary.setApplicationId(secondEntity.getId());
         secondSummary.setApplicationStatus("granted");
 
-        when(repository.findByStatusCodeLookupEntity_Code(any())).thenReturn(List.of(firstEntity, secondEntity));
+        when(repository.findByStatusCodeLookupEntity_Code(any(), any())).thenReturn(List.of(firstEntity, secondEntity));
         when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
         when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);
 
-        List<ApplicationSummary> result = classUnderTest.getAllApplications("granted");
+        List<ApplicationSummary> result = classUnderTest.getAllApplications("granted", 1,1);
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getApplicationId()).isEqualTo(firstEntity.getId());
