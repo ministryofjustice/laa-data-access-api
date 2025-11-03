@@ -23,7 +23,7 @@ public class EmbeddedRecordHistoryEntity {
   @CreatedDate  //@CreationTimestamp
   private Instant createdAt;
 
-  @Column(name = "updated_at")
+  @Column(name = "modified_at")
   @LastModifiedDate  //@UpdateTimestamp
   private Instant updatedAt;
 }
