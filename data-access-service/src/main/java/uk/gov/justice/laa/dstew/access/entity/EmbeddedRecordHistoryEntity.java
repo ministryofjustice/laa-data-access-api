@@ -23,16 +23,7 @@ public class EmbeddedRecordHistoryEntity {
   @CreatedDate  //@CreationTimestamp
   private Instant createdAt;
 
-  @CreatedBy
-  @Column(name = "created_by", updatable = false)
-  private String createdBy;
-
   @Column(name = "updated_at")
   @LastModifiedDate  //@UpdateTimestamp
   private Instant updatedAt;
-
-  @LastModifiedBy
-  @Column(name = "updated_by")
-  private String updatedBy;
-
 }
