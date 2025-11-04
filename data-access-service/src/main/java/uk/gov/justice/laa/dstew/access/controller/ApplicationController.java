@@ -55,10 +55,4 @@ public class ApplicationController implements ApplicationApi {
   public ResponseEntity<Application> getApplicationById(UUID id) {
     return ResponseEntity.ok(service.getApplication(id));
   }
-
-  @LogMethodResponse
-  @LogMethodArguments
-  public ResponseEntity<Void> deleteApplication(UUID id) {
-    return ResponseEntity.noContent().build();
-  }
 }
