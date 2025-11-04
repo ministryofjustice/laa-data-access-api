@@ -366,6 +366,8 @@ components:
               type: integer
             items_returned:
               type: integer
+            total_records:
+              type: integer
         applications:
           type: array
           items:

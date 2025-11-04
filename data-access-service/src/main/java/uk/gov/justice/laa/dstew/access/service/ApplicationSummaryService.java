@@ -33,7 +33,19 @@ public class ApplicationSummaryService {
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public List<ApplicationSummary> getAllApplications(String applicationStatus, Integer page, Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
+
     return applicationSummaryRepository.findByStatusCodeLookupEntity_Code(applicationStatus, pageDetails)
             .stream().map(applicationMapper::toApplicationSummary).toList();
   }
+
+  /**
+   * Gets all application summaries.
+   *
+   * @return the total of list of applications
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+  public Integer getAllApplicationsTotal(String applicationStatus) {
+    return applicationSummaryRepository.countByStatusCodeLookupEntity_Code(applicationStatus);
+  }
+
 }
