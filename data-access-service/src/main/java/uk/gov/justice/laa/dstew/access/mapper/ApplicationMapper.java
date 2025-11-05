@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.mapper;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.uuid.Generators;
 import java.util.Map;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -30,6 +31,7 @@ public interface ApplicationMapper {
     }
 
     ApplicationEntity entity = new ApplicationEntity();
+    entity.setId(Generators.timeBasedEpochGenerator().generate());
     entity.setStatusId(req.getStatusId());
     entity.setSchemaVersion(req.getSchemaVersion());
 
