@@ -81,6 +81,15 @@ public class ApplicationValidationsTest {
   }
 
   @Test
+  void shouldThrowUpdateRequestValidationErrorWhenContentIsEmpty() {
+    ApplicationUpdateRequest request = new ApplicationUpdateRequest();
+    request.setApplicationContent(new HashMap<>());
+
+    assertThrows(ValidationException.class,
+        () -> classUnderTest.checkApplicationUpdateRequest(request, null));
+  }
+
+  @Test
   void shouldThrowUpdateRequestValidationErrorWhenProviderCannotUpdate() {
     when(mockEntra.hasAppRole("Provider")).thenReturn(true);
     when(mockEntra.hasAnyAppRole("Caseworker", "Administrator")).thenReturn(false);

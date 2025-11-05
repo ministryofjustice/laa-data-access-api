@@ -45,6 +45,12 @@ public class ApplicationValidations {
       );
     }
 
+    if (dto.getApplicationContent().isEmpty()) {
+      throw new ValidationException(
+          List.of("Application content cannot be empty")
+      );
+    }
+
     if (entra.hasAppRole("Provider")
         && !entra.hasAnyAppRole("Caseworker", "Administrator")
         && !dto.getApplicationContent().isEmpty()) {
