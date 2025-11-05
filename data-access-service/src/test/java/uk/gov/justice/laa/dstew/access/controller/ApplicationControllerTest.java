@@ -24,6 +24,7 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
@@ -64,15 +65,8 @@ class ApplicationControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(validRequestBody)
                 .accept(MediaType.APPLICATION_JSON))
+        .andExpect(MockMvcResultMatchers.status().is2xxSuccessful())
         .andReturn();
-
-    int status = mvcResult.getResponse().getStatus();
-    System.out.println("Response status: " + status);
-    System.out.println("Response body: " + mvcResult.getResponse().getContentAsString());
-
-    assertThat(status)
-        .withFailMessage("Expected 201 Created, got %s", status)
-        .isIn(200, 201);
 
     String returnUri = mvcResult.getResponse().getHeader("Location");
     if (returnUri != null) {
