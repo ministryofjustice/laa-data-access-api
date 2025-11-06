@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.StatusCodeLookupEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
@@ -26,7 +27,9 @@ public class ApplicationMapperTest {
     UUID id = UUID.randomUUID();
     ApplicationEntity entity = new ApplicationEntity();
     entity.setId(id);
-    entity.setStatusId(UUID.randomUUID());
+    StatusCodeLookupEntity status = new StatusCodeLookupEntity();
+    status.setCode("Pending");
+    entity.setStatusEntity(status);
     entity.setSchemaVersion(1);
     entity.setApplicationContent(Map.of("foo", "bar", "baz", 123));
     entity.setCreatedAt(Instant.now());
@@ -36,7 +39,7 @@ public class ApplicationMapperTest {
 
     assertThat(result).isNotNull();
     assertThat(result.getId()).isEqualTo(id);
-    assertThat(result.getStatusId()).isEqualTo(entity.getStatusId());
+    assertThat(result.getApplicationStatus()).isEqualTo("Pending");
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
   }
 
@@ -57,7 +60,7 @@ public class ApplicationMapperTest {
 
     assertThat(result).isNotNull();
     assertThat(result.getId()).isNotNull();
-    assertThat(result.getStatusId()).isEqualTo(statusId);
+    assertThat(result.getStatusEntity().getId()).isEqualTo(statusId);
     assertThat(result.getSchemaVersion()).isEqualTo(1);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
   }
@@ -77,7 +80,7 @@ public class ApplicationMapperTest {
     ApplicationUpdateRequest req = new ApplicationUpdateRequest(); // all nulls
     applicationMapper.updateApplicationEntity(entity, req);
 
-    assertThat(entity.getStatusId()).isEqualTo(originalStatusId);
+    assertThat(entity.getStatusEntity().getId()).isEqualTo(originalStatusId);
     assertThat(entity.getSchemaVersion()).isEqualTo(1);
   }
 
@@ -95,7 +98,7 @@ public class ApplicationMapperTest {
 
     applicationMapper.updateApplicationEntity(entity, req);
 
-    assertThat(entity.getStatusId()).isEqualTo(req.getStatusId());
+    assertThat(entity.getStatusEntity().getId()).isEqualTo(req.getStatusId());
     assertThat(entity.getSchemaVersion()).isEqualTo(2);
     assertThat(entity.getApplicationContent()).containsEntry("newKey", "newValue");
   }

@@ -31,7 +31,7 @@ class ApplicationEntityTest {
     entity.setModifiedAt(modifiedAt);
 
     assertThat(entity.getId()).isEqualTo(id);
-    assertThat(entity.getStatusId()).isEqualTo(statusId);
+    assertThat(entity.getStatusEntity().getId()).isEqualTo(statusId);
     assertThat(entity.getApplicationContent()).isEqualTo(content);
     assertThat(entity.getSchemaVersion()).isEqualTo(schemaVersion);
     assertThat(entity.getCreatedAt()).isEqualTo(createdAt);
