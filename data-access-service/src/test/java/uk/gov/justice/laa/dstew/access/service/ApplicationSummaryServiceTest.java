@@ -2,14 +2,9 @@ package uk.gov.justice.laa.dstew.access.service;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.StatusCodeLookupEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
@@ -57,15 +52,7 @@ public class ApplicationSummaryServiceTest {
         secondSummary.setApplicationId(secondEntity.getId());
         secondSummary.setApplicationStatus("granted");
 
-        Page<ApplicationSummaryEntity> pagedResponse =
-                new PageImpl<ApplicationSummaryEntity>(List.of(firstEntity, secondEntity));
-
-        when(repository.findAll(
-                    ArgumentMatchers.<Specification<ApplicationSummaryEntity>> any(),
-                    any(Pageable.class)
-                ))
-                .thenReturn(pagedResponse);
-
+        when(repository.findByStatusCodeLookupEntity_Code(any(), any())).thenReturn(List.of(firstEntity, secondEntity));
         when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
         when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);
 
@@ -76,4 +63,5 @@ public class ApplicationSummaryServiceTest {
         assertThat(result.get(1).getApplicationId()).isEqualTo(secondEntity.getId());
 
     }
+
 }
