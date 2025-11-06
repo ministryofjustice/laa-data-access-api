@@ -38,17 +38,8 @@ public class ApplicationSummaryService {
   public List<ApplicationSummary> getAllApplications(String applicationStatus, Integer page, Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
 
-    Page<ApplicationSummaryEntity> applicationSummaryPage = applicationSummaryRepository
-              .findAll(ApplicationSummarySpecification.isStatus(applicationStatus), pageDetails);
-
-    List<ApplicationSummaryEntity> allApplications =
-            applicationSummaryPage.hasContent() ? applicationSummaryPage.getContent() : Collections.emptyList();
-
-    List<ApplicationSummary> x = allApplications.stream().map(applicationMapper::toApplicationSummary).toList();
-    return x;
-    //  return applicationSummaryRepository
-    //          .findAll(ApplicationSummarySpecification.isStatus(applicationStatus), pageDetails)
-    //          .stream().map(applicationMapper::toApplicationSummary).toList();
+    return applicationSummaryRepository.findByStatusCodeLookupEntity_Code(applicationStatus, pageDetails)
+            .stream().map(applicationMapper::toApplicationSummary).toList();
   }
 
   /**
@@ -58,9 +49,7 @@ public class ApplicationSummaryService {
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public Integer getAllApplicationsTotal(String applicationStatus) {
-    return applicationSummaryRepository
-            .findAll(ApplicationSummarySpecification.isStatus(applicationStatus))
-            .size();
+    return applicationSummaryRepository.countByStatusCodeLookupEntity_Code(applicationStatus);
   }
 
 }
