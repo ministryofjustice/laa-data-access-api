@@ -49,7 +49,6 @@ public class ApplicationControllerIntegrationTest {
   @Test
   @Order(1)
   @WithAnonymousUser
-  @Disabled("Skipping because permitAll")
   void whenNoAuth_shouldReturn401() throws Exception {
     mockMvc.perform(MockMvcRequestBuilders.get("/api/v0/applications"))
         .andExpect(MockMvcResultMatchers.status().isUnauthorized());
@@ -82,7 +81,7 @@ public class ApplicationControllerIntegrationTest {
   @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
   @Disabled("Skipping until persistence is fixed to avoid optimistic locking")
   void shouldCreateItem() throws Exception {
-    String payload = buildApplicationJson(); // new fresh UUID
+    String payload = buildApplicationJson();
     String location = mockMvc.perform(
             MockMvcRequestBuilders.post("/api/v0/applications")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -122,7 +121,6 @@ public class ApplicationControllerIntegrationTest {
   @Test
   @Order(7)
   @WithMockUser
-  @Disabled("Skipping because permitAll")
   void when_incorrect_authorities_getAllItems_should_return_403() throws Exception {
     mockMvc.perform(MockMvcRequestBuilders.get("/api/v0/applications"))
         .andExpect(MockMvcResultMatchers.status().isForbidden());
