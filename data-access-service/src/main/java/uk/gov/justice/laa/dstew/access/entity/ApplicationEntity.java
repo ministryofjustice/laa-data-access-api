@@ -15,7 +15,9 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Type;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 /**
@@ -44,8 +46,10 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "schema_version")
   private Integer schemaVersion;
   @Column(name = "created_at")
+  @CreationTimestamp
   private Instant createdAt;
   @Column(name = "modified_at")
+  @UpdateTimestamp
   private Instant modifiedAt;
 
   // getters and setters
