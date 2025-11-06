@@ -33,7 +33,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 public class ApplicationEntity implements AuditableEntity {
 
   @Id
-  @GeneratedValue
   @Column(columnDefinition = "UUID")
   private UUID id;
 

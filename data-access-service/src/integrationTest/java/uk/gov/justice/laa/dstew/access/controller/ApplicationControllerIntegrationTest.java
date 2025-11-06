@@ -3,31 +3,30 @@ package uk.gov.justice.laa.dstew.access.controller;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.util.UUID;
-
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
-
 import uk.gov.justice.laa.dstew.access.AccessApp;
 
 @SpringBootTest(classes = AccessApp.class)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class ApplicationControllerIntegrationTest {
 
   private static String existingApplicationUri;
@@ -35,8 +34,23 @@ public class ApplicationControllerIntegrationTest {
   @Autowired
   private MockMvc mockMvc;
 
+  @Autowired
+  private JdbcTemplate jdbcTemplate;
+
+  // Pre-insert a valid status code
+  @BeforeAll
+  void setupStatusCode() {
+    jdbcTemplate.update(
+        "INSERT INTO status_code_lookup (id, code, description) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
+        UUID.fromString("123e4567-e89b-12d3-a456-426614174000"),
+        "SUBMITTED",
+        "Submitted"
+    );
+  }
+
   private String buildApplicationJson() {
     return "{"
+        + "\"id\": \"" + UUID.randomUUID() + "\","
         + "\"statusId\": \"123e4567-e89b-12d3-a456-426614174000\","
         + "\"applicationContent\": {"
         + "\"first_name\": \"John\","
@@ -65,21 +79,22 @@ public class ApplicationControllerIntegrationTest {
   @Test
   @Order(3)
   @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
-  @Disabled("Skipping until persistence is fixed to avoid optimistic locking")
   void shouldCreateApplication() throws Exception {
     existingApplicationUri = mockMvc.perform(
             MockMvcRequestBuilders.post("/api/v0/applications")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(buildApplicationJson()))
         .andExpect(MockMvcResultMatchers.status().isCreated())
-        .andReturn().getResponse().getHeader("Location");
+        .andReturn()
+        .getResponse()
+        .getHeader("Location");
+
     assertFalse(existingApplicationUri.isEmpty());
   }
 
   @Test
   @Order(4)
   @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
-  @Disabled("Skipping until persistence is fixed to avoid optimistic locking")
   void shouldCreateItem() throws Exception {
     String payload = buildApplicationJson();
     String location = mockMvc.perform(
@@ -88,7 +103,10 @@ public class ApplicationControllerIntegrationTest {
                 .content(payload)
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(MockMvcResultMatchers.status().isCreated())
-        .andReturn().getResponse().getHeader("Location");
+        .andReturn()
+        .getResponse()
+        .getHeader("Location");
+
     assertFalse(location.isEmpty());
   }
 
@@ -97,9 +115,18 @@ public class ApplicationControllerIntegrationTest {
   @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
   void shouldUpdateApplication() throws Exception {
     if (existingApplicationUri != null) {
+      String updatePayload = "{"
+          + "\"statusId\": \"123e4567-e89b-12d3-a456-426614174000\","
+          + "\"applicationContent\": {"
+          + "\"first_name\": \"John\","
+          + "\"last_name\": \"Doe\","
+          + "\"application_id\": \"" + UUID.randomUUID() + "\""
+          + "},"
+          + "\"schemaVersion\": 1"
+          + "}";
       mockMvc.perform(MockMvcRequestBuilders.patch(existingApplicationUri)
               .contentType(MediaType.APPLICATION_JSON)
-              .content("{\"statusId\": \"123e4567-e89b-12d3-a456-426614174000\"}"))
+              .content(updatePayload))
           .andExpect(MockMvcResultMatchers.status().isNoContent());
     }
   }
