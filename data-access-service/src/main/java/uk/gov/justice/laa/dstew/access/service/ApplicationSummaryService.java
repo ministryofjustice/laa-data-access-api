@@ -1,13 +1,17 @@
 package uk.gov.justice.laa.dstew.access.service;
 
+import java.util.Collections;
 import java.util.List;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
+import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
 
 /**
  * Service class for handling application summary requests.
@@ -34,8 +38,17 @@ public class ApplicationSummaryService {
   public List<ApplicationSummary> getAllApplications(String applicationStatus, Integer page, Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
 
-    return applicationSummaryRepository.findByStatusCodeLookupEntity_Code(applicationStatus, pageDetails)
-            .stream().map(applicationMapper::toApplicationSummary).toList();
+    Page<ApplicationSummaryEntity> applicationSummaryPage = applicationSummaryRepository
+              .findAll(ApplicationSummarySpecification.isStatus(applicationStatus), pageDetails);
+
+    List<ApplicationSummaryEntity> allApplications =
+            applicationSummaryPage.hasContent() ? applicationSummaryPage.getContent() : Collections.emptyList();
+
+    List<ApplicationSummary> x = allApplications.stream().map(applicationMapper::toApplicationSummary).toList();
+    return x;
+    //  return applicationSummaryRepository
+    //          .findAll(ApplicationSummarySpecification.isStatus(applicationStatus), pageDetails)
+    //          .stream().map(applicationMapper::toApplicationSummary).toList();
   }
 
   /**
@@ -45,7 +58,9 @@ public class ApplicationSummaryService {
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public Integer getAllApplicationsTotal(String applicationStatus) {
-    return applicationSummaryRepository.countByStatusCodeLookupEntity_Code(applicationStatus);
+    return applicationSummaryRepository
+            .findAll(ApplicationSummarySpecification.isStatus(applicationStatus))
+            .size();
   }
 
 }
