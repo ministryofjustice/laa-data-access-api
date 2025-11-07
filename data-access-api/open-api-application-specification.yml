@@ -100,15 +100,15 @@ components:
       type: object
       required:
         - id
-        - statusId
+        - applicationStatus
         - applicationContent
       properties:
         id:
           type: string
           format: uuid
-        statusId:
+          description: UUIDv7 format
+        applicationStatus:
           type: string
-          format: uuid
         schemaVersion:
           type: integer
         applicationContent:

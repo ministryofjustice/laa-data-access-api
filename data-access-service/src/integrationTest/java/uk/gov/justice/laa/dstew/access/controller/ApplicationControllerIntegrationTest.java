@@ -22,7 +22,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import uk.gov.justice.laa.dstew.access.AccessApp;
 
-@SpringBootTest(classes = AccessApp.class)
+@SpringBootTest(classes = AccessApp.class, properties = "feature.disable-security=false")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -90,6 +90,28 @@ public class ApplicationControllerIntegrationTest {
         .getHeader("Location");
 
     assertFalse(existingApplicationUri.isEmpty());
+  }
+
+  @Test
+  void getItem_should_return_401_when_missing_credentials() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
+               .andExpect(MockMvcResultMatchers.status().isUnauthorized());
+  }
+
+  @Test
+  @WithMockUser()
+  void getItem_should_return_403_when_user_does_not_have_required_roles() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
+               .andExpect(MockMvcResultMatchers.status().isForbidden());
+  }
+
+  @WithMockUser(authorities = {"APPROLE_ApplicationReader", "APPROLE_ApplicationWriter"})
+  void getItem_should_return_404_when_application_does_not_exist() throws Exception{
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
+               .andExpect(MockMvcResultMatchers.status().isNotFound())
+               .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+               .andExpect(MockMvcResultMatchers.jsonPath("$.title").value("Not found"))
+               .andExpect(MockMvcResultMatchers.jsonPath("$.detail").value("No application found with id: 019a2b5e-d126-71c7-89c2-500363c172f1"));
   }
 
   @Test

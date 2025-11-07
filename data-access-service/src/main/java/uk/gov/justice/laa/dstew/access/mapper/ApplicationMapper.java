@@ -77,7 +77,7 @@ public interface ApplicationMapper {
     try {
       Application app = new Application();
       app.setId(entity.getId());
-      app.setStatusId(entity.getStatusId());
+      app.setApplicationStatus(entity.getStatusEntity().getCode());
       app.setSchemaVersion(entity.getSchemaVersion());
 
       // Deserialize JSONB content
