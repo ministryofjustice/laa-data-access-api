@@ -1,390 +1,136 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationProceedingEntity;
-import uk.gov.justice.laa.dstew.access.entity.EmbeddedRecordHistoryEntity;
-
-import uk.gov.justice.laa.dstew.access.model.*;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import uk.gov.justice.laa.dstew.access.entity.StatusCodeLookupEntity;
+import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 
 @ExtendWith(MockitoExtension.class)
 public class ApplicationMapperTest {
 
-    @InjectMocks
-    private ApplicationMapper applicationMapper = new ApplicationMapperImpl();
+  @InjectMocks
+  private ApplicationMapper applicationMapper = new ApplicationMapperImpl();
 
-    private EmbeddedRecordHistoryEntity createEmbeddedRecordHistoryEntity(
-            Instant createdAt,
-            String createdBy,
-            Instant updatedAt,
-            String updatedBy
-    ) {
-        EmbeddedRecordHistoryEntity entity = new EmbeddedRecordHistoryEntity();
-        entity.setCreatedAt(createdAt);
-        entity.setCreatedBy(createdBy);
-        entity.setUpdatedAt(updatedAt);
-        entity.setUpdatedBy(updatedBy);
-        return entity;
-    }
+  @Test
+  void shouldMapApplicationEntityToApplication() {
+    UUID id = UUID.randomUUID();
+    ApplicationEntity entity = new ApplicationEntity();
+    entity.setId(id);
+    StatusCodeLookupEntity status = new StatusCodeLookupEntity();
+    status.setCode("Pending");
+    entity.setStatusEntity(status);
+    entity.setSchemaVersion(1);
+    entity.setApplicationContent(Map.of("foo", "bar", "baz", 123));
+    entity.setCreatedAt(Instant.now());
+    entity.setModifiedAt(Instant.now());
 
-    private ApplicationProceedingEntity createApplicationProceedingEntity(
-            UUID id,
-            String levelServiceCode,
-            String proceedingCode,
-            EmbeddedRecordHistoryEntity recordHistory,
-            ApplicationEntity applicationEntity
-    ) {
-        ApplicationProceedingEntity entity = new ApplicationProceedingEntity();
-        entity.setId(id);
-        entity.setApplication(applicationEntity);
-        entity.setLevelOfServiceCode(levelServiceCode);
-        entity.setProceedingCode(proceedingCode);
-        entity.setRecordHistory(recordHistory);
-        entity.setApplication(applicationEntity);
-        return entity;
-    }
+    Application result = applicationMapper.toApplication(entity);
 
-    private ApplicationEntity createApplicationEntity(
-            UUID id,
-            UUID clientId,
-            String firmId,
-            String officeId,
-            String statusCode,
-            Boolean isEmergency,
-            String statement,
-            EmbeddedRecordHistoryEntity recordHistory,
-            List<ApplicationProceedingEntity> proceedings
-    ) {
-        ApplicationEntity applicationEntity = new ApplicationEntity();
-        applicationEntity.setId(id);
-        applicationEntity.setClientId(clientId);
-        applicationEntity.setProviderFirmId(firmId);
-        applicationEntity.setProviderOfficeId(officeId);
-        applicationEntity.setStatusCode(statusCode);
-        applicationEntity.setIsEmergencyApplication(isEmergency);
-        applicationEntity.setStatementOfCase(statement);
-        applicationEntity.setRecordHistory(recordHistory);
-        applicationEntity.setProceedings(proceedings);
-        return applicationEntity;
-    }
+    assertThat(result).isNotNull();
+    assertThat(result.getId()).isEqualTo(id);
+    assertThat(result.getApplicationStatus()).isEqualTo("Pending");
+    assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
+  }
 
-    private ApplicationProceedingUpdateRequest createApplicationProceedingUpdateRequest(
-            UUID id,
-            String proceedingCode,
-            String levelOfServiceCode
-    ) {
-        return ApplicationProceedingUpdateRequest.builder()
-                .id(id)
-                .proceedingCode(proceedingCode)
-                .levelOfServiceCode(levelOfServiceCode)
-                .build();
-    }
+  @Test
+  void shouldReturnNullWhenMappingNullEntity() {
+    assertThat(applicationMapper.toApplication(null)).isNull();
+  }
 
-    private ApplicationProceedingCreateRequest createApplicationProceedingCreateRequest(
-            String proceedingCode,
-            String levelOfServiceCode
-    ) {
-        return ApplicationProceedingCreateRequest.builder()
-                .proceedingCode(proceedingCode)
-                .levelOfServiceCode(levelOfServiceCode)
-                .build();
-    }
+  @Test
+  void shouldMapApplicationCreateRequestToApplicationEntity() {
+    UUID statusId = UUID.randomUUID();
+    ApplicationCreateRequest req = new ApplicationCreateRequest();
+    req.setStatusId(statusId);
+    req.setSchemaVersion(1);
+    req.setApplicationContent(Map.of("foo", "bar"));
 
-    @Test
-    void shouldMapApplicationEntityToApplication() {
+    ApplicationEntity result = applicationMapper.toApplicationEntity(req);
 
-        UUID id = UUID.randomUUID();
-        UUID clientId = UUID.randomUUID();
+    assertThat(result).isNotNull();
+    assertThat(result.getId()).isNotNull();
+    assertThat(result.getStatusEntity().getId()).isEqualTo(statusId);
+    assertThat(result.getSchemaVersion()).isEqualTo(1);
+    assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
+  }
 
-        EmbeddedRecordHistoryEntity recordHistory =
-                createEmbeddedRecordHistoryEntity(Instant.now(), "admin", Instant.now(), "admin");
+  @Test
+  void shouldReturnNullWhenMappingNullCreateRequest() {
+    assertThat(applicationMapper.toApplicationEntity(null)).isNull();
+  }
 
-        ApplicationEntity applicationEntity = createApplicationEntity(
-                id,
-                clientId,
-                "firm-001",
-                "office-001",
-                "NEW",
-                true,
-                "statementofcase",
-                recordHistory,
-                List.of(
-                        createApplicationProceedingEntity(
-                                UUID.randomUUID(),
-                                "code1",
-                                "proceedingcode1",
-                                recordHistory,
-                                null),
-                        createApplicationProceedingEntity(
-                                UUID.randomUUID(),
-                                "code2",
-                                "proceedingcode2",
-                                recordHistory,
-                                null)
-                )
-        );
+  @Test
+  void shouldUpdateApplicationEntityWithoutOverwritingNulls() {
+    ApplicationEntity entity = new ApplicationEntity();
+    UUID originalStatusId = UUID.randomUUID();
+    entity.setStatusId(originalStatusId);
+    entity.setSchemaVersion(1);
 
-        Application result = applicationMapper.toApplication(applicationEntity);
+    ApplicationUpdateRequest req = new ApplicationUpdateRequest(); // all nulls
+    applicationMapper.updateApplicationEntity(entity, req);
 
-        assertThat(result).isNotNull();
-        assertThat(result.getId()).isEqualTo(id);
-        assertThat(result.getClientId()).isEqualTo(clientId);
-        assertThat(result.getIsEmergencyApplication()).isTrue();
-        assertThat(result.getProviderFirmId()).isEqualTo("firm-001");
-        assertThat(result.getProviderOfficeId()).isEqualTo("office-001");
-        assertThat(result.getStatementOfCase()).isEqualTo("statementofcase");
-        assertThat(result.getCreatedBy()).isEqualTo("admin");
-        assertThat(result.getStatusCode()).isEqualTo("NEW");
-        assertThat(result.getProceedings().size()).isEqualTo(2);
-    }
+    assertThat(entity.getStatusEntity().getId()).isEqualTo(originalStatusId);
+    assertThat(entity.getSchemaVersion()).isEqualTo(1);
+  }
 
-    @Test
-    void shouldMapApplicationCreateRequestToApplicationEntity() {
-        UUID clientId = UUID.randomUUID();
+  @Test
+  void shouldUpdateApplicationEntityWithNewValues() {
+    ApplicationEntity entity = new ApplicationEntity();
+    entity.setStatusId(UUID.randomUUID());
+    entity.setSchemaVersion(1);
+    entity.setApplicationContent(Map.of("oldKey", "oldValue"));
 
-        ApplicationCreateRequest applicationRequest = ApplicationCreateRequest.builder()
-                .clientId(clientId)
-                .isEmergencyApplication(true)
-                .providerFirmId("providerFirmId")
-                .providerOfficeId("providerOfficeId")
-                .statementOfCase("statementOfCase")
-                .statusCode("statusCode")
-                .proceedings(
-                        List.of(
-                                createApplicationProceedingCreateRequest(
-                                        "servicecode1",
-                                        "proceedingcode1"
-                                ),
-                                createApplicationProceedingCreateRequest(
-                                        "servicecode2",
-                                        "proceedingcode2"
-                                )
-                        )
-                )
-                .build();
+    ApplicationUpdateRequest req = new ApplicationUpdateRequest();
+    req.setStatusId(UUID.randomUUID());
+    req.setSchemaVersion(2);
+    req.setApplicationContent(Map.of("newKey", "newValue"));
 
-        ApplicationEntity result = applicationMapper.toApplicationEntity(applicationRequest);
+    applicationMapper.updateApplicationEntity(entity, req);
 
-        assertThat(result).isNotNull();
-        assertThat(result.getClientId()).isEqualTo(clientId);
-        assertThat(result.getIsEmergencyApplication()).isTrue();
-        assertThat(result.getProviderFirmId()).isEqualTo("providerFirmId");
-        assertThat(result.getProviderOfficeId()).isEqualTo("providerOfficeId");
-        assertThat(result.getStatementOfCase()).isEqualTo("statementOfCase");
-        assertThat(result.getStatusCode()).isEqualTo("statusCode");
-        assertThat(result.getProceedings()).isEmpty();
-    }
+    assertThat(entity.getStatusEntity().getId()).isEqualTo(req.getStatusId());
+    assertThat(entity.getSchemaVersion()).isEqualTo(2);
+    assertThat(entity.getApplicationContent()).containsEntry("newKey", "newValue");
+  }
 
-    @Test
-    void shouldMapApplicationUpdateRequestToApplicationEntity() {
-        UUID clientId = UUID.randomUUID();
+  @Test
+  void shouldThrowWhenApplicationCreateRequestContentCannotBeSerialized() {
+    ApplicationCreateRequest req = new ApplicationCreateRequest();
+    req.setStatusId(UUID.randomUUID());
+    req.setApplicationContent(Map.of("key", new Object() {
+      // Jackson cannot serialize anonymous object by default
+    }));
 
-        ApplicationUpdateRequest applicationRequest = ApplicationUpdateRequest.builder()
-                .clientId(clientId)
-                .isEmergencyApplication(true)
-                .providerFirmId("providerFirmId")
-                .providerOfficeId("providerOfficeId")
-                .statementOfCase("statementOfCase")
-                .statusCode("statusCode")
-                .proceedings(
-                        List.of(createApplicationProceedingUpdateRequest(
-                                        UUID.randomUUID(),
-                                        "servicecode1",
-                                        "proceedingcode1"
-                                ),
-                                createApplicationProceedingUpdateRequest(
-                                        UUID.randomUUID(),
-                                        "servicecode2",
-                                        "proceedingcode2"
-                                )
-                        )
-                )
-                .build();
+    assertThrows(IllegalArgumentException.class, () -> applicationMapper.toApplicationEntity(req));
+  }
 
-        ApplicationEntity result = new ApplicationEntity();
-        applicationMapper.updateApplicationEntity(result, applicationRequest);
+  @Test
+  void shouldThrowWhenApplicationUpdateRequestContentCannotBeSerialized() {
+    ApplicationEntity entity = new ApplicationEntity();
+    entity.setStatusId(UUID.randomUUID());
 
-        assertThat(result).isNotNull();
-        assertThat(result.getClientId()).isEqualTo(clientId);
-        assertThat(result.getIsEmergencyApplication()).isTrue();
-        assertThat(result.getProviderFirmId()).isEqualTo("providerFirmId");
-        assertThat(result.getProviderOfficeId()).isEqualTo("providerOfficeId");
-        assertThat(result.getStatementOfCase()).isEqualTo("statementOfCase");
-        assertThat(result.getStatusCode()).isEqualTo("statusCode");
-        assertThat(result.getUpdatedAt()).isNull();
-        assertThat(result.getProceedings()).isEmpty();
-    }
+    ApplicationUpdateRequest req = new ApplicationUpdateRequest();
+    req.setApplicationContent(Map.of("key", new Object() {}));
 
-    @Test
-    void shouldMapApplicationUpdateRequestToApplication() {
-        UUID clientId = UUID.randomUUID();
+    assertThrows(IllegalArgumentException.class, () -> applicationMapper.updateApplicationEntity(entity, req));
+  }
 
-        ApplicationUpdateRequest applicationRequest = ApplicationUpdateRequest.builder()
-                .clientId(clientId)
-                .isEmergencyApplication(true)
-                .providerFirmId("firm-001")
-                .providerOfficeId("office-001")
-                .statementOfCase("statementOfCase")
-                .statusCode("NEW")
-                .proceedings(
-                        List.of(
-                                ApplicationProceedingUpdateRequest
-                                        .builder()
-                                        .id(UUID.randomUUID())
-                                        .levelOfServiceCode("servicecode1")
-                                        .proceedingCode("proceedingcode1")
-                                        .build(),
-                                ApplicationProceedingUpdateRequest
-                                        .builder()
-                                        .id(UUID.randomUUID())
-                                        .levelOfServiceCode("servicecode2")
-                                        .proceedingCode("proceedingcode2")
-                                        .build()
-                        )
-                )
-                .build();
+  @Test
+  void shouldThrowWhenApplicationEntityContentCannotBeDeserialized() {
+    ApplicationEntity entity = new ApplicationEntity();
+    entity.setStatusId(UUID.randomUUID());
+    entity.setApplicationContent(Map.of("key", new Object() {}));
 
-        Application result = new Application();
-        applicationMapper.updateApplicationEntity(result, applicationRequest);
-
-        assertThat(result).isNotNull();
-        assertThat(result.getClientId()).isEqualTo(clientId);
-        assertThat(result.getIsEmergencyApplication()).isTrue();
-        assertThat(result.getProviderFirmId()).isEqualTo("firm-001");
-        assertThat(result.getProviderOfficeId()).isEqualTo("office-001");
-        assertThat(result.getStatementOfCase()).isEqualTo("statementOfCase");
-        assertThat(result.getCreatedBy()).isNull();
-        assertThat(result.getStatusCode()).isEqualTo("NEW");
-        assertThat(result.getProceedings().size()).isEqualTo(2);
-    }
-
-    @Test
-    void shouldMapApplicationProceedingUpdateRequestToApplicationProceeding() {
-        ApplicationProceedingUpdateRequest applicationRequest =
-                createApplicationProceedingUpdateRequest(
-                        UUID.randomUUID(),
-                        "proceedingCode",
-                        "levelCode"
-                );
-
-        ApplicationProceeding result = applicationMapper.toApplicationProceeding(applicationRequest);
-
-        assertThat(result).isNotNull();
-        assertThat(result.getProceedingCode()).isEqualTo("proceedingCode");
-        assertThat(result.getLevelOfServiceCode()).isEqualTo("levelCode");
-        assertThat(result.getCreatedBy()).isNull();
-    }
-
-    @Test
-    void toOffsetDateTime_shouldReturnNull_whenInstantIsNull() {
-        OffsetDateTime result = applicationMapper.toOffsetDateTime(null);
-        assertThat(result).isNull();
-    }
-
-    @Test
-    void toOffsetDateTime_shouldConvertInstantToOffsetDateTime_whenInstantIsNotNull() {
-        Instant now = Instant.parse("2023-01-01T12:00:00Z");
-        OffsetDateTime result = applicationMapper.toOffsetDateTime(now);
-
-        assertThat(result).isEqualTo(now.atOffset(ZoneOffset.UTC));
-    }
-
-    @Test
-    void shouldNotOverwriteFieldsWhenUpdateRequestHasNulls_applicationEntity() {
-        ApplicationEntity existing = new ApplicationEntity();
-        UUID originalClientId = UUID.randomUUID();
-        existing.setClientId(originalClientId);
-        existing.setProviderFirmId("existingFirmId");
-        existing.setProviderOfficeId("existingOfficeId");
-        existing.setStatementOfCase("existingStatement");
-        existing.setStatusCode("EXISTING");
-
-        ApplicationUpdateRequest updateRequest = ApplicationUpdateRequest.builder()
-                .clientId(null)
-                .providerFirmId(null)
-                .providerOfficeId(null)
-                .statementOfCase(null)
-                .statusCode(null)
-                .build();
-
-        applicationMapper.updateApplicationEntity(existing, updateRequest);
-
-        assertThat(existing.getClientId()).isEqualTo(originalClientId);
-        assertThat(existing.getProviderFirmId()).isEqualTo("existingFirmId");
-        assertThat(existing.getProviderOfficeId()).isEqualTo("existingOfficeId");
-        assertThat(existing.getStatementOfCase()).isEqualTo("existingStatement");
-        assertThat(existing.getStatusCode()).isEqualTo("EXISTING");
-    }
-
-    @Test
-    void shouldNotOverwriteFieldsWhenUpdateRequestHasNulls_applicationDto() {
-        Application existing = new Application();
-        UUID originalClientId = UUID.randomUUID();
-        existing.setClientId(originalClientId);
-        existing.setProviderFirmId("existingFirmId");
-        existing.setProviderOfficeId("existingOfficeId");
-        existing.setStatementOfCase("existingStatement");
-        existing.setStatusCode("EXISTING");
-
-        ApplicationUpdateRequest updateRequest = ApplicationUpdateRequest.builder()
-                .clientId(null)
-                .providerFirmId(null)
-                .providerOfficeId(null)
-                .statementOfCase(null)
-                .statusCode(null)
-                .build();
-
-        applicationMapper.updateApplicationEntity(existing, updateRequest);
-
-        assertThat(existing.getClientId()).isEqualTo(originalClientId);
-        assertThat(existing.getProviderFirmId()).isEqualTo("existingFirmId");
-        assertThat(existing.getProviderOfficeId()).isEqualTo("existingOfficeId");
-        assertThat(existing.getStatementOfCase()).isEqualTo("existingStatement");
-        assertThat(existing.getStatusCode()).isEqualTo("EXISTING");
-    }
-
-    @Test
-    void shouldHandleEmptyProceedingsListOnCreateRequest() {
-        ApplicationCreateRequest createRequest = ApplicationCreateRequest.builder()
-                .clientId(UUID.randomUUID())
-                .isEmergencyApplication(false)
-                .providerFirmId("firm")
-                .providerOfficeId("office")
-                .statusCode("NEW")
-                .statementOfCase("some statement")
-                .proceedings(List.of())
-                .build();
-
-        ApplicationEntity result = applicationMapper.toApplicationEntity(createRequest);
-
-        assertThat(result).isNotNull();
-        assertThat(result.getProceedings()).isEmpty();
-    }
-
-    @Test
-    void shouldHandleNullProceedingsListOnUpdateRequest() {
-        ApplicationEntity existing = new ApplicationEntity();
-        existing.setProceedings(List.of());
-
-        ApplicationUpdateRequest updateRequest = ApplicationUpdateRequest.builder()
-                .proceedings(null)
-                .build();
-
-        applicationMapper.updateApplicationEntity(existing, updateRequest);
-        assertThat(existing.getProceedings()).isEmpty();
-    }
-
-
+    assertThrows(IllegalArgumentException.class, () -> applicationMapper.toApplication(entity));
+  }
 }

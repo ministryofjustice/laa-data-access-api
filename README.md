@@ -41,8 +41,7 @@ Includes the following subprojects:
 ### Developing application within Intellij
 Java version 21 is recommended
 
-Set the security environment variable
-`FEATURE_DISABLESECURITY=true`
+Set the security environment variable `FEATURE_DISABLESECURITY=true`
 
 ### Build application
 Execute

@@ -1,78 +1,101 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.uuid.Generators;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Map;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
-import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 
 /**
- * The mapper between Application and ApplicationEntity.
+ * Mapper between ApplicationEntity and DTOs.
+ * Handles JSONB content for applicationContent.
  */
 @Mapper(componentModel = "spring")
 public interface ApplicationMapper {
 
-  /**
-   * Maps the given application entity to an application.
-   *
-   * @param applicationEntity the application entity
-   * @return the application
-   */
-  Application toApplication(ApplicationEntity applicationEntity);
+  ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   /**
-   * Maps the given application to an application entity.
-   *
-   * @param applicationCreateReq the application
-   * @return the application entity
+   * Convert a create request into an ApplicationEntity, storing the content in JSONB.
    */
-  @Mapping(target = "id", ignore = true)
-  @Mapping(target = "proceedings", ignore = true)
-  @Mapping(target = "recordHistory", ignore = true)
-  ApplicationEntity toApplicationEntity(ApplicationCreateRequest applicationCreateReq);
+  default ApplicationEntity toApplicationEntity(ApplicationCreateRequest req) {
+    if (req == null) {
+      return null;
+    }
+
+    ApplicationEntity entity = new ApplicationEntity();
+    entity.setId(Generators.timeBasedEpochGenerator().generate());
+    entity.setStatusId(req.getStatusId());
+    entity.setSchemaVersion(req.getSchemaVersion());
+
+    try {
+      // Store all fields inside applicationContent
+      entity.setApplicationContent(OBJECT_MAPPER.convertValue(req.getApplicationContent(), Map.class));
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Failed to serialize ApplicationCreateRequest.applicationContent", e);
+    }
+
+    return entity;
+  }
 
   /**
-   * Maps the given application request to an application entity.
-   *
-   * @param applicationEntity the application entity
-   * @param applicationUpdateReq the application update request
+   * Apply updates from an update request into an existing ApplicationEntity.
    */
-  @BeanMapping(nullValuePropertyMappingStrategy =  NullValuePropertyMappingStrategy.IGNORE)
-  @Mapping(target = "id", ignore = true)
-  @Mapping(target = "proceedings", ignore = true)
-  @Mapping(target = "recordHistory", ignore = true)
-  void updateApplicationEntity(
-          @MappingTarget ApplicationEntity applicationEntity,
-          ApplicationUpdateRequest applicationUpdateReq);
+  @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+  default void updateApplicationEntity(@MappingTarget ApplicationEntity entity, ApplicationUpdateRequest req) {
+    if (req.getStatusId() != null) {
+      entity.setStatusId(req.getStatusId());
+    }
+    if (req.getSchemaVersion() != null) {
+      entity.setSchemaVersion(req.getSchemaVersion());
+    }
 
-  @BeanMapping(nullValuePropertyMappingStrategy =  NullValuePropertyMappingStrategy.IGNORE)
-  @Mapping(target = "id", ignore = true)
-  @Mapping(target = "createdAt", ignore = true)
-  @Mapping(target = "createdBy", ignore = true)
-  @Mapping(target = "updatedAt", ignore = true)
-  @Mapping(target = "updatedBy", ignore = true)
-  void updateApplicationEntity(
-          @MappingTarget Application application,
-          ApplicationUpdateRequest applicationUpdateReq);
+    if (req.getApplicationContent() != null) {
+      try {
+        // Merge or replace content
+        entity.setApplicationContent(OBJECT_MAPPER.convertValue(req.getApplicationContent(), Map.class));
+      } catch (Exception e) {
+        throw new IllegalArgumentException("Failed to serialize ApplicationUpdateRequest.applicationContent", e);
+      }
+    }
+  }
 
   /**
-   * This mapping exists solely so we can declare the ignored fields, to avoid a warning on the
-   * updateApplicationEntity mapping method which targets an Application instance.
+   * Convert ApplicationEntity into an Application DTO, deserializing JSONB content.
    */
-  @Mapping(target = "createdAt", ignore = true)
-  @Mapping(target = "createdBy", ignore = true)
-  @Mapping(target = "updatedAt", ignore = true)
-  @Mapping(target = "updatedBy", ignore = true)
-  ApplicationProceeding toApplicationProceeding(ApplicationProceedingUpdateRequest applicationProceedingUpdateReq);
+  default Application toApplication(ApplicationEntity entity) {
+    if (entity == null) {
+      return null;
+    }
+    try {
+      Application app = new Application();
+      app.setId(entity.getId());
+      app.setApplicationStatus(entity.getStatusEntity().getCode());
+      app.setSchemaVersion(entity.getSchemaVersion());
+
+      // Deserialize JSONB content
+      var contentMap = OBJECT_MAPPER.convertValue(
+          entity.getApplicationContent(),
+          new TypeReference<java.util.Map<String, Object>>() {
+          }
+      );
+      app.setApplicationContent(contentMap);
+
+      return app;
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
+    }
+  }
 
   default OffsetDateTime toOffsetDateTime(Instant instant) {
     return instant == null ? null : instant.atOffset(ZoneOffset.UTC);

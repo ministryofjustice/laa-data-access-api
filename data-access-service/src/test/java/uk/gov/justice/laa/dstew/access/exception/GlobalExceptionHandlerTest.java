@@ -1,12 +1,14 @@
 package uk.gov.justice.laa.dstew.access.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatException;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class GlobalExceptionHandlerTest {
@@ -41,5 +43,11 @@ class GlobalExceptionHandlerTest {
     assertThat(result.getStatusCode()).isEqualTo(INTERNAL_SERVER_ERROR);
     assertThat(result.getBody()).isNotNull();
     assertThat(result.getBody().getDetail()).isEqualTo("An unexpected application error has occurred.");
+  }
+
+  @Test void handleAuthorizationDeniedException_throwsException_for_ExceptionTranslationFilter_to_handle() {
+    assertThatException()
+      .isThrownBy(() -> globalExceptionHandler.handleAuthorizationDeniedException(new AuthorizationDeniedException("")))
+      .isInstanceOf(AuthorizationDeniedException.class);
   }
 }
