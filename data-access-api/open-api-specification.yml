@@ -17,5 +17,7 @@ components:
       $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationCreateRequest"
     ApplicationUpdateRequest:
       $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationUpdateRequest"
-    ApplicationCollection:
-      $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationCollection"
+    ApplicationSummaryResponse:
+      $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationSummaryResponse"
+    ApplicationSummary:
+      $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationSummary"

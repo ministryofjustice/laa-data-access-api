@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,7 +28,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
+import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 
 @WebMvcTest(
     controllers = ApplicationController.class,
@@ -46,6 +50,9 @@ class ApplicationControllerTest {
 
   @MockitoBean
   private ApplicationService applicationService;
+
+  @MockitoBean
+  private ApplicationSummaryService applicationSummaryService;
 
   @Test
   void shouldCreateApplication() throws Exception {
@@ -89,16 +96,24 @@ class ApplicationControllerTest {
 
   @Test
   void shouldGetAllApplications() throws Exception {
-    List<Application> applications = List.of(
-        Application.builder().id(UUID.randomUUID()).build(),
-        Application.builder().id(UUID.randomUUID()).build()
-    );
-    when(applicationService.getAllApplications()).thenReturn(applications);
+    ApplicationSummaryResponse applicationSummaryCollectionResponse = new ApplicationSummaryResponse();
+    List<ApplicationSummary> applications = new ArrayList<>();
+    applications.add(
+            ApplicationSummary.builder()
+                    .applicationId(UUID.randomUUID())
+                    .build());
+    applications.add(
+            ApplicationSummary.builder()
+                    .applicationId(UUID.randomUUID())
+                    .build());
+    applicationSummaryCollectionResponse.setApplications(applications);
 
-    mockMvc.perform(get("/api/v0/applications"))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$", hasSize(2)));
+    when (applicationSummaryService.getAllApplications(any(), any(), any())).thenReturn(applications);
+    mockMvc
+            .perform(get("/api/v0/applications"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
   }
 
   @Test

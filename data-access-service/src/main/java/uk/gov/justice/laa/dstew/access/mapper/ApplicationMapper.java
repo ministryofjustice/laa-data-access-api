@@ -3,6 +3,9 @@ package uk.gov.justice.laa.dstew.access.mapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.uuid.Generators;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Map;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -92,5 +95,9 @@ public interface ApplicationMapper {
     } catch (Exception e) {
       throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
     }
+  }
+
+  default OffsetDateTime toOffsetDateTime(Instant instant) {
+    return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
   }
 }
