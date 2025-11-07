@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
 /**
  * Feature flag implementation using Spring properties named `feature.*`.

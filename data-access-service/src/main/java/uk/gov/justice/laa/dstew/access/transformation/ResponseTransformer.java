@@ -1,8 +1,5 @@
 package uk.gov.justice.laa.dstew.access.transformation;
 
-import java.util.Collection;
-import org.springframework.security.core.GrantedAuthority;
-
 /**
  * If a response transformer uses app roles, it can request an instance of `EffectiveAuthorizationProvider` to be
  * injected from the Spring application context.

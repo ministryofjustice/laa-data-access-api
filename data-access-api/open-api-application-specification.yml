@@ -2,87 +2,55 @@ openapi: "3.0.0"
 info:
   version: 1.0.0
   title: Applications API
+
 paths:
-  /api/v1/applications:
+  /api/v0/applications:
     get:
       tags:
         - application
-      summary: Get applications
+      summary: Get all applications
       operationId: getApplications
-      parameters:
-        - in: query
-          name: status
-          description: The current overall status of the applications' decision.
-          schema:
-            type: string
-            default: pending
-        - in: query
-          name: page
-          description: page number of data to be returned
-          schema:
-            type: integer
-            default: 0
-        - in: query
-          name: pagesize
-          description: number of applications in a page
-          schema:
-            type: integer
-            default: 10
       responses:
         '200':
-          description: 'Success'
+          description: Success
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApplicationSummaryResponse"
-        '400':
-          description: 'Bad request'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'
-        '404':
-          description: 'Not found'
-        '500':
-          description: 'Internal server error'
-
-  /api/v0/applications:
+                $ref: "#/components/schemas/ApplicationCollection"
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
     post:
       tags:
         - application
       summary: Create an application
       operationId: createApplication
       requestBody:
-        description: create an application
+        description: Create an application (all fields inside `applicationContent`)
+        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ApplicationCreateRequest'
+              $ref: "#/components/schemas/ApplicationCreateRequest"
       responses:
-        '201':
-          description: 'Created'
-        '400':
-          description: 'Bad request'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'
-        '404':
-          description: 'Not found'
-        '500':
-          description: 'Internal server error'
+        '201': { description: Created }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '500': { description: Internal server error }
 
   /api/v0/applications/{id}:
     get:
-      summary: Get application by id
-      operationId: getApplicationById
       tags:
         - application
+      summary: Get an application by id
+      operationId: getApplicationById
       parameters:
         - name: id
           in: path
           required: true
-          description: The id of the application to retrieve
           schema:
             type: string
             format: uuid
@@ -93,16 +61,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Application"
-        '400':
-          description: 'Bad request'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'
-        '404':
-          description: 'Not found'
-        '500':
-          description: 'Internal server error'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
+
     patch:
       tags:
         - application
@@ -112,263 +76,76 @@ paths:
         - name: id
           in: path
           required: true
-          description: The id of the application to updated
           schema:
             type: string
             format: uuid
       requestBody:
-        description: update an existing item
+        description: Partial update of application (all fields inside `applicationContent`)
+        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ApplicationUpdateRequest'
+              $ref: "#/components/schemas/ApplicationUpdateRequest"
       responses:
-        '204':
-          description: No content
-        '400':
-          description: 'Bad request'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'
-        '404':
-          description: 'Not found'
-        '500':
-          description: 'Internal server error'
-    delete:
-      summary: Delete application by id
-      operationId: deleteApplication
-      tags:
-        - application
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The id of the application to be deleted
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: No content
-        '400':
-          description: 'Bad request'
-        '401':
-          description: 'Unauthorized'
-        '403':
-          description: 'Forbidden'
-        '404':
-          description: 'Not found'
-        '500':
-          description: 'Internal server error'
+        '204': { description: No content }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
 
 components:
   schemas:
     Application:
+      type: object
       required:
         - id
-        - provider_firm_id
-        - provider_office_id
-        - client_id
+        - applicationStatus
+        - applicationContent
       properties:
         id:
           type: string
           format: uuid
-        provider_firm_id:
+          description: UUIDv7 format
+        applicationStatus:
           type: string
-        provider_office_id:
-          type: string
-        client_id:
-          type: string
-          format: uuid
-        status_code:
-          type: string
-        statement_of_case:
-          type: string
-        is_emergency_application:
-          type: boolean
-        proceedings:
-          type: array
-          items:
-            $ref: "#/components/schemas/ApplicationProceeding"
-      allOf:
-        - $ref: "#/components/schemas/RecordHistory"
-    ApplicationCreateRequest:
-      required:
-        - provider_firm_id
-        - provider_office_id
-        - client_id
-      properties:
-        provider_firm_id:
-          type: string
-        provider_office_id:
-          type: string
-        client_id:
-          type: string
-          format: uuid
-        status_code:
-          type: string
-        statement_of_case:
-          type: string
-        is_emergency_application:
-          type: boolean
-        proceedings:
-          type: array
-          items:
-            $ref: "#/components/schemas/ApplicationProceedingCreateRequest"
-    ApplicationUpdateRequest:
-      properties:
-        provider_firm_id:
-          type: string
-        provider_office_id:
-          type: string
-        client_id:
-          type: string
-          format: uuid
-        status_code:
-          type: string
-        statement_of_case:
-          type: string
-        is_emergency_application:
-          type: boolean
-        proceedings:
-          type: array
-          items:
-            $ref: "#/components/schemas/ApplicationProceedingUpdateRequest"
-    ApplicationProceeding:
-      properties:
-        id:
-          type: string
-          format: uuid
-        proceeding_code:
-          type: string
-        level_of_service_code:
-          type: string
-      allOf:
-        - $ref: "#/components/schemas/RecordHistory"
-    ApplicationProceedingCreateRequest:
-      required:
-        - proceeding_code
-      properties:
-        proceeding_code:
-          type: string
-        level_of_service_code:
-          type: string
-    ApplicationProceedingUpdateRequest:
-      required:
-        - proceeding_code
-      properties:
-        id:
-          type: string
-          format: uuid
-        proceeding_code:
-          type: string
-        level_of_service_code:
-          type: string
-    RecordHistory:
-      required:
-        - created_at
-        - created_by
-        - updated_at
-        - updated_by
-      properties:
-        created_at:
-          type: string
-          format: date-time
-        created_by:
-          type: string
-        updated_at:
-          type: string
-          format: date-time
-        updated_by:
-          type: string
-
-    ApplicationHistoryCreateRequest:
-      required:
-        - user_id
-        - action
-        - resource_type_changed
-        - historic_snapshot
-        - timestamp
-      properties:
-        user_id:
-          type: string
-        action:
-          $ref: "#/components/schemas/ActionType"
-        resource_type_changed:
-          $ref: "#/components/schemas/ResourceType"
-        historic_snapshot:
+        schemaVersion:
+          type: integer
+        applicationContent:
           type: object
           additionalProperties: true
-          description: A JSON representation of the change made to the resource
-        timestamp:
-          type: string
-          format: date-time
-    ApplicationHistoryMessage:
-      allOf:
-        - $ref: "#/components/schemas/ApplicationHistoryCreateRequest"
+          description: Full JSON object representing all application fields
+
+    ApplicationCreateRequest:
+      type: object
       required:
-        - user_id
-        - application_id
-        - action
-        - resource_type_changed
-        - historic_snapshot
-        - timestamp
+        - statusId
+        - applicationContent
       properties:
-        application_id:
+        statusId:
           type: string
           format: uuid
-
-    ResourceType:
-      type: string
-      description: The type of resource (e.g., APPLICATION, PROCEEDING)
-      enum:
-        - APPLICATION
-        - PROCEEDING
-        - LIABLE_PARTY
-    ActionType:
-      type: string
-      description: The type of action performed (e.g., CREATED, UPDATED, DELETED)
-      enum:
-        - CREATED
-        - UPDATED
-        - DELETED
-
-    ApplicationSummary:
-      type: object
-      description: (APPLICATION LIST PAGE / VIEW - OPEN APPLICATIONS ONLY BY DEFAULT)
-      properties:
-        application_id:
-          type: string
-          format: uuid
-          description: The unique reference used to identify the application.
-        application_status:
-          type: string
-        application_reference:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-          description: This is the date that the application was submitted. It is used for MI and prioritisation.
-        modified_at:
-          type: string
-          format: date-time
-
-    ApplicationSummaryResponse:
-      type: object
-      properties:
-        paging:
+        schemaVersion:
+          type: integer
+        applicationContent:
           type: object
-          properties:
-            page:
-              type: integer
-            page_size:
-              type: integer
-            items_returned:
-              type: integer
-            total_records:
-              type: integer
-        applications:
-          type: array
-          items:
-            $ref: "#/components/schemas/ApplicationSummary"
+          additionalProperties: true
+          description: All the application fields to store in JSONB
+
+    ApplicationUpdateRequest:
+      type: object
+      properties:
+        statusId:
+          type: string
+          format: uuid
+        schemaVersion:
+          type: integer
+        applicationContent:
+          type: object
+          additionalProperties: true
+          description: Partial update fields for JSONB
+
+    ApplicationCollection:
+      type: array
+      items:
+        $ref: "#/components/schemas/Application"
