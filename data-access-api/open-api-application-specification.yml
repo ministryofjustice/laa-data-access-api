@@ -8,15 +8,34 @@ paths:
     get:
       tags:
         - application
-      summary: Get all applications
+      summary: Get applications
       operationId: getApplications
+      parameters:
+        - in: query
+          name: status
+          description: The current overall status of the applications' decision.
+          schema:
+            type: string
+            default: pending
+        - in: query
+          name: page
+          description: page number of data to be returned
+          schema:
+            type: integer
+            default: 0
+        - in: query
+          name: pagesize
+          description: number of applications in a page
+          schema:
+            type: integer
+            default: 10
       responses:
         '200':
-          description: Success
+          description: 'Success'
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApplicationCollection"
+                $ref: "#/components/schemas/ApplicationSummaryResponse"
         '400': { description: Bad request }
         '401': { description: Unauthorized }
         '403': { description: Forbidden }
@@ -149,3 +168,42 @@ components:
       type: array
       items:
         $ref: "#/components/schemas/Application"
+
+    ApplicationSummary:
+      type: object
+      description: (APPLICATION LIST PAGE / VIEW - OPEN APPLICATIONS ONLY BY DEFAULT)
+      properties:
+        application_id:
+          type: string
+          format: uuid
+          description: The unique reference used to identify the application.
+        application_status:
+          type: string
+        application_reference:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          description: This is the date that the application was submitted. It is used for MI and prioritisation.
+        modified_at:
+          type: string
+          format: date-time
+
+    ApplicationSummaryResponse:
+      type: object
+      properties:
+        paging:
+          type: object
+          properties:
+            page:
+              type: integer
+            page_size:
+              type: integer
+            items_returned:
+              type: integer
+            total_records:
+              type: integer
+        applications:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicationSummary"

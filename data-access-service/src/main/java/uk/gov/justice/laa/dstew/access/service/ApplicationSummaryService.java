@@ -5,7 +5,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
-import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
+import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
@@ -15,14 +15,14 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 @Service
 public class ApplicationSummaryService {
   private final ApplicationSummaryRepository applicationSummaryRepository;
-  private final ApplicationMapper applicationMapper;
+  private final ApplicationSummaryMapper mapper;
 
   public ApplicationSummaryService(
         final ApplicationSummaryRepository applicationSummaryRepository,
-        final ApplicationMapper applicationMapper
+        final ApplicationSummaryMapper applicationMapper
   ) {
     this.applicationSummaryRepository = applicationSummaryRepository;
-    this.applicationMapper = applicationMapper;
+    this.mapper = applicationMapper;
   }
 
   /**
@@ -35,7 +35,7 @@ public class ApplicationSummaryService {
     Pageable pageDetails = PageRequest.of(page, pageSize);
 
     return applicationSummaryRepository.findByStatusCodeLookupEntity_Code(applicationStatus, pageDetails)
-            .stream().map(applicationMapper::toApplicationSummary).toList();
+            .stream().map(mapper::toApplicationSummary).toList();
   }
 
   /**

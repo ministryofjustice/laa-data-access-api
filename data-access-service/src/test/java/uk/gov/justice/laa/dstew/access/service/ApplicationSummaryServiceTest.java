@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.StatusCodeLookupEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
+import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
@@ -28,7 +29,7 @@ public class ApplicationSummaryServiceTest {
     private ApplicationSummaryRepository repository;
 
     @Mock
-    private ApplicationMapper mapper;
+    private ApplicationSummaryMapper mapper;
 
     @Test
     void shouldGetAllApplications() {
