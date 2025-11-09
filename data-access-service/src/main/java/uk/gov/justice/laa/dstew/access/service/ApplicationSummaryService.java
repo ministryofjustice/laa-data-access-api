@@ -44,8 +44,7 @@ public class ApplicationSummaryService {
     List<ApplicationSummaryEntity> allApplications =
             applicationSummaryPage.hasContent() ? applicationSummaryPage.getContent() : Collections.emptyList();
 
-    List<ApplicationSummary> x = allApplications.stream().map(mapper::toApplicationSummary).toList();
-    return x;
+    return allApplications.stream().map(mapper::toApplicationSummary).toList();
   }
 
   /**

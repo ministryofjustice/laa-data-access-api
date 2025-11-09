@@ -15,7 +15,7 @@ public class ApplicationSummarySpecification {
   */
   public static Specification<ApplicationSummaryEntity> isStatus(String status) {
     return (root, query, builder) -> {
-      return builder.equal(root.get("statusCodeLookupEntity.code"), status);
+      return builder.equal(root.get("statusCodeLookupEntity").get("code"), status);
     };
   }
 }
