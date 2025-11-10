@@ -12,7 +12,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.StatusCodeLookupEntity;
-import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
