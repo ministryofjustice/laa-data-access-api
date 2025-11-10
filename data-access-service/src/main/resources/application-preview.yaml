@@ -45,5 +45,5 @@ management:
 ### or `FEATURE_TRANSFORMATION=false` to disable response transformations.
 
 feature:
-  security: true
+  security: false
 #  transformation: true

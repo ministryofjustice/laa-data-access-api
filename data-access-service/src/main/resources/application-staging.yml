@@ -1,12 +1,10 @@
 spring:
   application.name: LAA Data Stewardship Access - Access Application Data
 
-  # Default connection details for local dev, overridden in other envs
   datasource:
-    driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/laa_data_access_api
-    username: laa_user
-    password: laa_password
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
@@ -15,6 +13,9 @@ spring:
   sql.init.mode: never # Use Flyway for DB schema.
 
   cloud:
+    aws:
+      region: ${AWS_REGION}
+
     azure:
       active-directory:
         enabled: true
@@ -32,12 +33,6 @@ info:
 
 logging:
   level:
-    tomcat: INFO
-    root: INFO
-    org:
-      springframework:
-        web: INFO
-      hibernate: INFO
     com.azure.spring: INFO
 
 management:
@@ -49,6 +44,6 @@ management:
 ### For example, `FEATURE_SECURITY=false` to disable endpoint authorization,
 ### or `FEATURE_TRANSFORMATION=false` to disable response transformations.
 
-#feature:
-#  security: true
+feature:
+  security: false
 #  transformation: true
