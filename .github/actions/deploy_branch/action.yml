@@ -89,7 +89,7 @@ runs:
       
           case "${{ inputs.app-environment }}" in
             production)
-              export SPRING_PROFILE="production"
+              export SPRING_PROFILE="main"
               ;;
             staging|uat)
               export SPRING_PROFILE="staging"
@@ -97,7 +97,7 @@ runs:
             *)
               export SPRING_PROFILE="staging"
               ;;
-        esac
+          esac
         
         else
           export SPRING_PROFILE="preview"

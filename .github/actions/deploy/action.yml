@@ -65,7 +65,7 @@ runs:
         if [ "$branch_name" == "main" ]; then
           case "${{ inputs.app-environment }}" in
             production)
-              export SPRING_PROFILE="production"
+              export SPRING_PROFILE="main"
               ;;
             staging|uat)
               export SPRING_PROFILE="staging"
@@ -73,6 +73,7 @@ runs:
             *)
               export SPRING_PROFILE="staging"
               ;;
+          esac
         fi
 
         helm upgrade laa-data-access-api .helm/data-access-api \
