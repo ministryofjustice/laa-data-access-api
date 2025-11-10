@@ -62,10 +62,18 @@ runs:
       run: |
         LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
 
-        if [ "${{ inputs.app-environment }}" == "production" ]; then
-          export SPRING_PROFILE="main"
-        else
-          export SPRING_PROFILE="staging"
+        if [ "$branch_name" == "main" ]; then
+          case "${{ inputs.app-environment }}" in
+            production)
+              export SPRING_PROFILE="main"
+              ;;
+            staging|uat)
+              export SPRING_PROFILE="staging"
+              ;;
+            *)
+              export SPRING_PROFILE="staging"
+              ;;
+          esac
         fi
 
         helm upgrade laa-data-access-api .helm/data-access-api \
