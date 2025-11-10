@@ -59,7 +59,6 @@ runs:
         GIT_SHA: ${{ github.sha }}
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
-        DISABLE_SECURITY: true
       run: |
         LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
 
