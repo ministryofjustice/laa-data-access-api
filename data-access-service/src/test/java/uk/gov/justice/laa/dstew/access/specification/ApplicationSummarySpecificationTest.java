@@ -45,17 +45,4 @@ public class ApplicationSummarySpecificationTest {
         assertThat(result).isNotNull();
 
     }
-
-    @Test
-    void shouldNotFailWhenIsApplicationReferenceFilter(){
-        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification.isApplicationReference("ref1");
-        Predicate summaryPredicate = mock(Predicate.class);
-
-        when(root.get("applicationReference"))
-                .thenReturn(mock(jakarta.persistence.criteria.Path.class));
-        when(builder.equal(any(), eq("ref1"))).thenReturn(summaryPredicate);
-
-        Predicate result = spec.toPredicate(root, query, builder);
-        assertThat(result).isNotNull();
-    }
 }

@@ -178,7 +178,7 @@ components:
           format: uuid
           description: The unique reference used to identify the application.
         application_status:
-          type: string
+          $ref: "#/components/schemas/submission_status"
         application_reference:
           type: string
         created_at:
@@ -207,3 +207,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationSummary"
+
+    submission_status:
+      type: string
+      enum:
+        - DRAFT
+        - SUBMITTED
+      description: Application statuses

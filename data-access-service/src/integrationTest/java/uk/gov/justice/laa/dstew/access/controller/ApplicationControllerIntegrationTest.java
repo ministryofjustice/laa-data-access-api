@@ -40,6 +40,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.StatusCodeLookupEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.SubmissionStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
 @SpringBootTest(classes = AccessApp.class, properties = "feature.disable-security=false")
@@ -100,7 +101,7 @@ public class ApplicationControllerIntegrationTest {
   void shouldGetAllApplications() throws Exception {
     StatusCodeLookupEntity firstStatusCodeLookupEntity = new StatusCodeLookupEntity();
     firstStatusCodeLookupEntity.setId(UUID.randomUUID());
-    firstStatusCodeLookupEntity.setCode("granted");
+    firstStatusCodeLookupEntity.setCode("DRAFT");
 
     ApplicationSummaryEntity firstEntity = new ApplicationSummaryEntity();
     firstEntity.setId(UUID.randomUUID());
@@ -111,7 +112,7 @@ public class ApplicationControllerIntegrationTest {
 
     StatusCodeLookupEntity secondStatusCodeLookupEntity = new StatusCodeLookupEntity();
     secondStatusCodeLookupEntity.setId(UUID.randomUUID());
-    secondStatusCodeLookupEntity.setCode("granted");
+    secondStatusCodeLookupEntity.setCode("SUBMITTED");
 
     ApplicationSummaryEntity secondEntity = new ApplicationSummaryEntity();
     secondEntity.setId(UUID.randomUUID());
@@ -134,13 +135,13 @@ public class ApplicationControllerIntegrationTest {
     firstSummary.setApplicationReference(firstEntity.getApplicationReference());
     firstSummary.setCreatedAt(firstEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
     firstSummary.setModifiedAt(firstEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-    firstSummary.setApplicationStatus(firstEntity.getStatusCodeLookupEntity().getCode());
+    firstSummary.setApplicationStatus(SubmissionStatus.fromValue(firstEntity.getStatusCodeLookupEntity().getCode()));
     ApplicationSummary secondSummary = new ApplicationSummary();
     secondSummary.setApplicationId(secondEntity.getId());
     secondSummary.setApplicationReference(secondEntity.getApplicationReference());
     secondSummary.setCreatedAt(secondEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
     secondSummary.setModifiedAt(secondEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-    secondSummary.setApplicationStatus(secondEntity.getStatusCodeLookupEntity().getCode());
+    secondSummary.setApplicationStatus(SubmissionStatus.fromValue(secondEntity.getStatusCodeLookupEntity().getCode()));
 
     when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
     when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);

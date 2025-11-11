@@ -20,14 +20,4 @@ public class ApplicationSummarySpecification {
       return builder.equal(statusCodeEntityPath.get("code"), status);
     };
   }
-
-  /**
-   * Filters Application Summaries based on reference.
-   *
-   */
-  public static Specification<ApplicationSummaryEntity> isApplicationReference(String reference) {
-    return (root, query, builder) -> {
-      return builder.equal(root.get("applicationReference"), reference);
-    };
-  }
 }
