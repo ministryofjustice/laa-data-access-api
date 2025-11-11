@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -28,7 +29,7 @@ public class ApplicationSummarySpecificationTest {
     @Test
     void shouldNotFailWhenIsStatusFilter(){
 
-        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification.isStatus("ACTIVE");
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification.isStatus(ApplicationStatus.IN_PROGRESS);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
@@ -38,7 +39,7 @@ public class ApplicationSummarySpecificationTest {
         when(rootResults.get("code"))
                 .thenReturn(mock(jakarta.persistence.criteria.Path.class));
 
-        when(builder.equal(any(), eq("ACTIVE"))).thenReturn(summaryPredicate);
+        when(builder.equal(any(), eq("IN_PROGRESS"))).thenReturn(summaryPredicate);
 
         Predicate result = spec.toPredicate(root, query, builder);
 

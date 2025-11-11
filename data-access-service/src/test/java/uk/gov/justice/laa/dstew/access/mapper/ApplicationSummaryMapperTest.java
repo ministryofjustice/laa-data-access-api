@@ -6,8 +6,8 @@ import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.StatusCodeLookupEntity;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
-import uk.gov.justice.laa.dstew.access.model.SubmissionStatus;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -40,7 +40,7 @@ public class ApplicationSummaryMapperTest {
         assertThat(result).isNotNull();
         assertThat(result.getApplicationId()).isEqualTo(id);
         assertThat(result.getApplicationReference()).isEqualTo("ref1");
-        assertThat(result.getApplicationStatus()).isEqualTo(SubmissionStatus.fromValue(statusCodeLookupEntity.getCode()));
+        assertThat(result.getApplicationStatus()).isEqualTo(ApplicationStatus.fromValue(statusCodeLookupEntity.getCode()));
         assertThat(result.getCreatedAt().compareTo(
                 entity.getCreatedAt().atOffset(ZoneOffset.UTC)) == 0);
         assertThat(result.getModifiedAt().compareTo(

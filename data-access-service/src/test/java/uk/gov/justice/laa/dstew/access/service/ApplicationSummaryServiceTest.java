@@ -13,8 +13,8 @@ import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.StatusCodeLookupEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
-import uk.gov.justice.laa.dstew.access.model.SubmissionStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
 import java.time.Instant;
@@ -42,7 +42,7 @@ public class ApplicationSummaryServiceTest {
     void shouldGetAllApplications() {
         StatusCodeLookupEntity firstStatusCodeLookupEntity = new StatusCodeLookupEntity();
         firstStatusCodeLookupEntity.setId(UUID.randomUUID());
-        firstStatusCodeLookupEntity.setCode("DRAFT");
+        firstStatusCodeLookupEntity.setCode("IN_PROGRESS");
 
         ApplicationSummaryEntity firstEntity = new ApplicationSummaryEntity();
         firstEntity.setId(UUID.randomUUID());
@@ -53,7 +53,7 @@ public class ApplicationSummaryServiceTest {
 
         StatusCodeLookupEntity secondStatusCodeLookupEntity = new StatusCodeLookupEntity();
         secondStatusCodeLookupEntity.setId(UUID.randomUUID());
-        secondStatusCodeLookupEntity.setCode("DRAFT");
+        secondStatusCodeLookupEntity.setCode("IN_PROGRESS");
 
         ApplicationSummaryEntity secondEntity = new ApplicationSummaryEntity();
         secondEntity.setId(UUID.randomUUID());
@@ -67,13 +67,13 @@ public class ApplicationSummaryServiceTest {
         firstSummary.setApplicationReference(firstEntity.getApplicationReference());
         firstSummary.setCreatedAt(firstEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
         firstSummary.setModifiedAt(firstEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-        firstSummary.setApplicationStatus(SubmissionStatus.fromValue(firstEntity.getStatusCodeLookupEntity().getCode()));
+        firstSummary.setApplicationStatus(ApplicationStatus.fromValue(firstEntity.getStatusCodeLookupEntity().getCode()));
         ApplicationSummary secondSummary = new ApplicationSummary();
         secondSummary.setApplicationId(secondEntity.getId());
         secondSummary.setApplicationReference(secondEntity.getApplicationReference());
         secondSummary.setCreatedAt(secondEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
         secondSummary.setModifiedAt(secondEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-        secondSummary.setApplicationStatus(SubmissionStatus.fromValue(secondEntity.getStatusCodeLookupEntity().getCode()));
+        secondSummary.setApplicationStatus(ApplicationStatus.fromValue(secondEntity.getStatusCodeLookupEntity().getCode()));
 
         Page<ApplicationSummaryEntity> pagedResponse =
                 new PageImpl<ApplicationSummaryEntity>(List.of(firstEntity, secondEntity));
@@ -87,7 +87,8 @@ public class ApplicationSummaryServiceTest {
         when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
         when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);
 
-        List<ApplicationSummary> result = classUnderTest.getAllApplications("granted", 1,1);
+        List<ApplicationSummary> result = classUnderTest
+                .getAllApplications(ApplicationStatus.SUBMITTED, 1,1);
 
         assertThat(result).hasSize(2);
         assertThat(result.getFirst().getApplicationId()).isEqualTo(firstEntity.getId());
