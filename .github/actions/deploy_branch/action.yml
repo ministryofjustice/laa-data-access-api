@@ -86,7 +86,19 @@ runs:
         echo "branch name: $branch_name"
 
         if [ "$branch_name" == "main" ]; then
-          export SPRING_PROFILE="main"
+      
+          case "${{ inputs.app-environment }}" in
+            production)
+              export SPRING_PROFILE="main"
+              ;;
+            staging|uat)
+              export SPRING_PROFILE="staging"
+              ;;
+            *)
+              export SPRING_PROFILE="staging"
+              ;;
+          esac
+        
         else
           export SPRING_PROFILE="preview"
           # Using Bitnami legacy with PostgreSQL 17.2 (specified in values.yaml)

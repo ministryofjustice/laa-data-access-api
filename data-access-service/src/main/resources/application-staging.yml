@@ -3,7 +3,7 @@ spring:
 
   datasource:
     url: ${DB_URL}
-    username: "postgres"
+    username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
   jpa:
