@@ -16,7 +16,7 @@ paths:
           description: The current overall status of the applications' decision.
           schema:
             type: string
-            default: pending
+            default: DRAFT
         - in: query
           name: page
           description: page number of data to be returned
