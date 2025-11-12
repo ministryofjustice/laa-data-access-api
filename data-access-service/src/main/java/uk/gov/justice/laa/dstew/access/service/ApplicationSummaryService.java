@@ -42,8 +42,7 @@ public class ApplicationSummaryService {
     Page<ApplicationSummaryEntity> applicationSummaryPage = applicationSummaryRepository
             .findAll(ApplicationSummarySpecification.isStatus(applicationStatus), pageDetails);
 
-    List<ApplicationSummaryEntity> allApplications =
-            applicationSummaryPage.hasContent() ? applicationSummaryPage.getContent() : Collections.emptyList();
+    List<ApplicationSummaryEntity> allApplications = applicationSummaryPage.getContent();
 
     return allApplications.stream().map(mapper::toApplicationSummary).toList();
   }
