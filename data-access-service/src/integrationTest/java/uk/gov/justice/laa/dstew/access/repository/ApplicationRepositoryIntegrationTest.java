@@ -1,9 +1,11 @@
 package uk.gov.justice.laa.dstew.access.repository;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -48,5 +50,18 @@ public class ApplicationRepositoryIntegrationTest {
         entity.setApplicationContent(map);
         entity.setStatusId(UUID.fromString("5916ec11-b884-421e-907c-353618fc5b1c"));
         applicationRepository.save(entity);
+    }
+
+    @Test
+    @Sql(statements = { "INSERT INTO public.application(id, status_id, application_content, schema_version, application_reference)" + 
+                        "VALUES ('019a773c-440f-7845-a538-b989fc89290b', '5916ec11-b884-421e-907c-353618fc5b1c', '{ \"first_name\" : \"jimi\" }', 1969, 'ref1');"})
+    void applicationGet() throws Exception{
+        Optional<ApplicationEntity> optionEntity = applicationRepository.findById(UUID.fromString("019a773c-440f-7845-a538-b989fc89290b"));
+        ApplicationEntity entity = optionEntity.orElseThrow(); 
+        assertEquals("019a773c-440f-7845-a538-b989fc89290b", entity.getId().toString());
+        assertEquals(1969, entity.getSchemaVersion().intValue());
+        assertEquals("5916ec11-b884-421e-907c-353618fc5b1c'", entity.getStatusEntity().getId().toString());
+        assertEquals("pending", entity.getStatusEntity().getCode());
+        assertEquals("{\"first_name\" : \"jimi\" }", entity.getApplicationContent());
     }
 }
