@@ -53,10 +53,8 @@ public class ApplicationSummaryService {
    * @return the total of list of applications
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public Integer getAllApplicationsTotal(ApplicationStatus applicationStatus) {
-    return applicationSummaryRepository
-            .findAll(ApplicationSummarySpecification.isStatus(applicationStatus))
-            .size();
+  public long getAllApplicationsTotal(ApplicationStatus applicationStatus) {
+    return applicationSummaryRepository.count(ApplicationSummarySpecification.isStatus(applicationStatus));
   }
 
 }

@@ -61,7 +61,7 @@ public class ApplicationController implements ApplicationApi {
     response.setApplications(applicationsReturned);
     responsePageDetails.setPage(page);
     responsePageDetails.pageSize(pageSize);
-    responsePageDetails.totalRecords(summaryService.getAllApplicationsTotal(status));
+    responsePageDetails.totalRecords((int) summaryService.getAllApplicationsTotal(status));
     responsePageDetails.itemsReturned(applicationsReturned.size());
 
     return ResponseEntity.ok(response);

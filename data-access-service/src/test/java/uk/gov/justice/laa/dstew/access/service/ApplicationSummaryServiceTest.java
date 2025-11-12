@@ -92,16 +92,12 @@ public class ApplicationSummaryServiceTest {
 
         assertThat(result).hasSize(2);
         assertThat(result.getFirst().getApplicationId()).isEqualTo(firstEntity.getId());
-        assertThat(result.getFirst().getCreatedAt().compareTo(
-                        firstEntity.getCreatedAt().atOffset(ZoneOffset.UTC)) == 0);
-        assertThat(result.getFirst().getModifiedAt().compareTo(
-                        firstEntity.getModifiedAt().atOffset(ZoneOffset.UTC)) == 0);
+        assertThat(result.getFirst().getModifiedAt()).isEqualTo(firstEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+        assertThat(result.getFirst().getCreatedAt()).isEqualTo(firstEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
         assertThat(result.getFirst().getApplicationReference()).isEqualTo(firstEntity.getApplicationReference());
         assertThat(result.get(1).getApplicationId()).isEqualTo(secondEntity.getId());
-        assertThat(result.get(1).getCreatedAt().compareTo(
-                secondEntity.getCreatedAt().atOffset(ZoneOffset.UTC)) == 0);
-        assertThat(result.get(1).getModifiedAt().compareTo(
-                secondEntity.getModifiedAt().atOffset(ZoneOffset.UTC)) == 0);
+        assertThat(result.get(1).getModifiedAt()).isEqualTo(secondEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+        assertThat(result.get(1).getCreatedAt()).isEqualTo(secondEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
         assertThat(result.get(1).getApplicationReference()).isEqualTo(secondEntity.getApplicationReference());
 
     }

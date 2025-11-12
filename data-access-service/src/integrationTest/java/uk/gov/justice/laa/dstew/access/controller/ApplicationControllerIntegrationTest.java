@@ -124,12 +124,6 @@ public class ApplicationControllerIntegrationTest {
     Page<ApplicationSummaryEntity> pagedResponse =
             new PageImpl<ApplicationSummaryEntity>(List.of(firstEntity, secondEntity));
 
-    when(applicationSummaryRepository.findAll(
-            ArgumentMatchers.<Specification<ApplicationSummaryEntity>> any(),
-            any(Pageable.class)
-    ))
-            .thenReturn(pagedResponse);
-
     ApplicationSummary firstSummary = new ApplicationSummary();
     firstSummary.setApplicationId(firstEntity.getId());
     firstSummary.setApplicationReference(firstEntity.getApplicationReference());
@@ -143,8 +137,11 @@ public class ApplicationControllerIntegrationTest {
     secondSummary.setModifiedAt(secondEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
     secondSummary.setApplicationStatus(ApplicationStatus.fromValue(secondEntity.getStatusCodeLookupEntity().getCode()));
 
-    when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
-    when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);
+    when(applicationSummaryRepository.findAll(
+            ArgumentMatchers.<Specification<ApplicationSummaryEntity>> any(),
+            any(Pageable.class)
+    ))
+            .thenReturn(pagedResponse);
 
     mockMvc
             .perform(get("/api/v0/applications"))
