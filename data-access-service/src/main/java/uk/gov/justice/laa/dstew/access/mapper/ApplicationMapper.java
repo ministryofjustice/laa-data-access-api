@@ -16,13 +16,28 @@ import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 
+
+/**
+ * Mapper interface.
+ * All mapping operations are performed safely, throwing an
+ * {@link IllegalArgumentException} if JSON conversion fails.
+ */
 @Mapper(componentModel = "spring")
 public interface ApplicationMapper {
 
   ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+  /**
+   * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
+   *
+   * @param req the CREATE request to map
+   * @return a new {@link ApplicationEntity} populated from the request, or {@code null} if the request is null
+   * @throws IllegalArgumentException if the {@code applicationContent} cannot be serialized
+   */
   default ApplicationEntity toApplicationEntity(ApplicationCreateRequest req) {
-    if (req == null) return null;
+    if (req == null) {
+      return null;
+    }
 
     ApplicationEntity entity = new ApplicationEntity();
     entity.setId(Generators.timeBasedEpochGenerator().generate());
@@ -39,6 +54,13 @@ public interface ApplicationMapper {
     return entity;
   }
 
+  /**
+   * Updates an existing {@link ApplicationEntity} using values from an {@link ApplicationUpdateRequest}.
+   *
+   * @param entity the entity to update
+   * @param req the update request containing new values
+   * @throws IllegalArgumentException if the {@code applicationContent} cannot be serialized
+   */
   @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
   default void updateApplicationEntity(@MappingTarget ApplicationEntity entity, ApplicationUpdateRequest req) {
     if (req.getStatus() != null) {
@@ -58,8 +80,17 @@ public interface ApplicationMapper {
     }
   }
 
+  /**
+   * Maps a {@link ApplicationEntity} to an API-facing {@link Application} model.
+   *
+   * @param entity the entity to map
+   * @return a new {@link Application} object, or {@code null} if the entity is null
+   * @throws IllegalArgumentException if the {@code applicationContent} cannot be deserialized
+   */
   default Application toApplication(ApplicationEntity entity) {
-    if (entity == null) return null;
+    if (entity == null) {
+      return null;
+    }
     try {
       Application app = new Application();
       app.setId(entity.getId());
@@ -73,6 +104,12 @@ public interface ApplicationMapper {
     }
   }
 
+  /**
+   * Converts a {@link Instant} timestamp to an {@link OffsetDateTime} using UTC as the default zone offset.
+   *
+   * @param instant the {@link Instant} to convert
+   * @return the equivalent {@link OffsetDateTime}, or {@code null} if the input is null
+   */
   default OffsetDateTime toOffsetDateTime(Instant instant) {
     return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
   }
