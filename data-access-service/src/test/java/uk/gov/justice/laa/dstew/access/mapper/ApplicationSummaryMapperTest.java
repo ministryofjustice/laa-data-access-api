@@ -5,7 +5,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
-import uk.gov.justice.laa.dstew.access.entity.StatusCodeLookupEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import java.time.Instant;
 import java.util.UUID;

@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 /**
  * Repository for managing application entities.
@@ -13,7 +14,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
  */
 @Repository
 public interface ApplicationSummaryRepository extends JpaRepository<ApplicationSummaryEntity, UUID> {
-  List<ApplicationSummaryEntity> findByStatusCodeLookupEntity_Code(String status, Pageable pageable);
+  List<ApplicationSummaryEntity> findByStatusCodeLookupEntity_Code(ApplicationStatus status, Pageable pageable);
 
-  Integer countByStatusCodeLookupEntity_Code(String status);
+  Integer countByStatusCodeLookupEntity_Code(ApplicationStatus status);
 }

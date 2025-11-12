@@ -6,11 +6,9 @@ import com.vladmihalcea.hibernate.type.json.JsonType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Map;
@@ -22,6 +20,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 /**
  * Represents an application.
@@ -39,9 +38,9 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(columnDefinition = "UUID")
   private UUID id;
 
-  @OneToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "status_id", referencedColumnName = "id")
-  private StatusCodeLookupEntity statusEntity;
+  @Column(name = "status", nullable = false)
+  @Enumerated(EnumType.STRING)
+  private ApplicationStatus status;
 
   @Type(JsonType.class)
   @Column(columnDefinition = "json")
@@ -64,17 +63,6 @@ public class ApplicationEntity implements AuditableEntity {
     this.applicationContent = applicationContent;
   }
 
-  /**
-   * Sets the status id.
-   *
-   * @param statusId the identifier for the status.
-   */
-  public void setStatusId(UUID statusId) {
-    if (statusEntity == null) {
-      statusEntity = new StatusCodeLookupEntity();
-    }
-    statusEntity.setId(statusId);
-  }
 
   @Override
   public Instant getCreatedAt() {

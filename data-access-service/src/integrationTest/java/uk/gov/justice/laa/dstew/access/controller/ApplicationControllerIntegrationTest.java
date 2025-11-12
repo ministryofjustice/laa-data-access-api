@@ -30,7 +30,6 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
-import uk.gov.justice.laa.dstew.access.entity.StatusCodeLookupEntity;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
 @SpringBootTest(classes = AccessApp.class, properties = "feature.disable-security=false")

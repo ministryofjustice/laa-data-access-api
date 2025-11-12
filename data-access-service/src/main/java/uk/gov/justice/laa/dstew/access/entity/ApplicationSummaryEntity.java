@@ -14,6 +14,7 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 /**
  * Represents an application summary for legal aid.
@@ -30,9 +31,8 @@ public class ApplicationSummaryEntity {
   @Column(name = "id")
   private UUID id;
 
-  @OneToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "status_id", referencedColumnName = "id")
-  private StatusCodeLookupEntity statusCodeLookupEntity;
+  @Column(name = "status")
+  private ApplicationStatus status;
 
   @Column(name = "application_reference")
   private String applicationReference;

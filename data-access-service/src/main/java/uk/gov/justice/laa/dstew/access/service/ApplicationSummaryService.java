@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
@@ -31,7 +32,7 @@ public class ApplicationSummaryService {
    * @return the list of applications
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<ApplicationSummary> getAllApplications(String applicationStatus, Integer page, Integer pageSize) {
+  public List<ApplicationSummary> getAllApplications(ApplicationStatus applicationStatus, Integer page, Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
 
     return applicationSummaryRepository.findByStatusCodeLookupEntity_Code(applicationStatus, pageDetails)
@@ -44,7 +45,7 @@ public class ApplicationSummaryService {
    * @return the total of list of applications
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public Integer getAllApplicationsTotal(String applicationStatus) {
+  public Integer getAllApplicationsTotal(ApplicationStatus applicationStatus) {
     return applicationSummaryRepository.countByStatusCodeLookupEntity_Code(applicationStatus);
   }
 

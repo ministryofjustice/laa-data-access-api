@@ -1,10 +1,12 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
+import java.util.EnumSet;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
@@ -27,6 +29,12 @@ public class ApplicationValidations {
       );
     }
 
+    if (dto.getStatus() == null) {
+      throw new ValidationException(
+          List.of("Application status cannot be null")
+      );
+    }
+
     if (dto.getApplicationContent().isEmpty()) {
       throw new ValidationException(
           List.of("Application content cannot be empty")
@@ -34,7 +42,7 @@ public class ApplicationValidations {
     }
   }
 
-  /**
+  /**One by
    * Validates an incoming PATCH.
    */
   public void checkApplicationUpdateRequest(final ApplicationUpdateRequest dto,
@@ -43,6 +51,14 @@ public class ApplicationValidations {
       throw new ValidationException(
           List.of("ApplicationUpdateRequest and its content cannot be null")
       );
+    }
+
+    if (dto.getStatus() == null) {
+      throw new ValidationException(List.of("Application status cannot be null"));
+    }
+
+    if (!EnumSet.allOf(ApplicationStatus.class).contains(dto.getStatus())) {
+      throw new ValidationException(List.of("Invalid application status"));
     }
 
     if (dto.getApplicationContent().isEmpty()) {
