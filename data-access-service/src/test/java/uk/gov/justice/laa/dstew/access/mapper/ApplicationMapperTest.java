@@ -37,7 +37,7 @@ public class ApplicationMapperTest {
 
     assertThat(result).isNotNull();
     assertThat(result.getId()).isEqualTo(id);
-    assertThat(result.getApplicationStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS.name());
+    assertThat(result.getApplicationStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
   }
 
