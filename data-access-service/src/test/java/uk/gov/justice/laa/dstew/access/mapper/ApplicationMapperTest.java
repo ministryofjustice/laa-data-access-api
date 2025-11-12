@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,9 +27,7 @@ public class ApplicationMapperTest {
     UUID id = UUID.randomUUID();
     ApplicationEntity entity = new ApplicationEntity();
     entity.setId(id);
-    StatusCodeLookupEntity status = new StatusCodeLookupEntity();
-    status.setCode("Pending");
-    entity.setStatusEntity(status);
+    entity.setStatus(ApplicationStatus.IN_PROGRESS);
     entity.setSchemaVersion(1);
     entity.setApplicationContent(Map.of("foo", "bar", "baz", 123));
     entity.setCreatedAt(Instant.now());
@@ -38,7 +37,7 @@ public class ApplicationMapperTest {
 
     assertThat(result).isNotNull();
     assertThat(result.getId()).isEqualTo(id);
-    assertThat(result.getApplicationStatus()).isEqualTo("Pending");
+    assertThat(result.getApplicationStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS.name());
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
   }
 
@@ -49,9 +48,8 @@ public class ApplicationMapperTest {
 
   @Test
   void shouldMapApplicationCreateRequestToApplicationEntity() {
-    UUID statusId = UUID.randomUUID();
     ApplicationCreateRequest req = new ApplicationCreateRequest();
-    req.setStatusId(statusId);
+    req.setStatus(ApplicationStatus.SUBMITTED);
     req.setSchemaVersion(1);
     req.setApplicationContent(Map.of("foo", "bar"));
 
@@ -59,7 +57,7 @@ public class ApplicationMapperTest {
 
     assertThat(result).isNotNull();
     assertThat(result.getId()).isNotNull();
-    assertThat(result.getStatusEntity().getId()).isEqualTo(statusId);
+    assertThat(result.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
     assertThat(result.getSchemaVersion()).isEqualTo(1);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
   }
@@ -72,32 +70,31 @@ public class ApplicationMapperTest {
   @Test
   void shouldUpdateApplicationEntityWithoutOverwritingNulls() {
     ApplicationEntity entity = new ApplicationEntity();
-    UUID originalStatusId = UUID.randomUUID();
-    entity.setStatusId(originalStatusId);
+    entity.setStatus(ApplicationStatus.IN_PROGRESS);
     entity.setSchemaVersion(1);
 
     ApplicationUpdateRequest req = new ApplicationUpdateRequest(); // all nulls
     applicationMapper.updateApplicationEntity(entity, req);
 
-    assertThat(entity.getStatusEntity().getId()).isEqualTo(originalStatusId);
+    assertThat(entity.getStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
     assertThat(entity.getSchemaVersion()).isEqualTo(1);
   }
 
   @Test
   void shouldUpdateApplicationEntityWithNewValues() {
     ApplicationEntity entity = new ApplicationEntity();
-    entity.setStatusId(UUID.randomUUID());
+    entity.setStatus(ApplicationStatus.IN_PROGRESS);
     entity.setSchemaVersion(1);
     entity.setApplicationContent(Map.of("oldKey", "oldValue"));
 
     ApplicationUpdateRequest req = new ApplicationUpdateRequest();
-    req.setStatusId(UUID.randomUUID());
+    req.setStatus(ApplicationStatus.SUBMITTED);
     req.setSchemaVersion(2);
     req.setApplicationContent(Map.of("newKey", "newValue"));
 
     applicationMapper.updateApplicationEntity(entity, req);
 
-    assertThat(entity.getStatusEntity().getId()).isEqualTo(req.getStatusId());
+    assertThat(entity.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
     assertThat(entity.getSchemaVersion()).isEqualTo(2);
     assertThat(entity.getApplicationContent()).containsEntry("newKey", "newValue");
   }
@@ -105,7 +102,7 @@ public class ApplicationMapperTest {
   @Test
   void shouldThrowWhenApplicationCreateRequestContentCannotBeSerialized() {
     ApplicationCreateRequest req = new ApplicationCreateRequest();
-    req.setStatusId(UUID.randomUUID());
+    req.setStatus(ApplicationStatus.IN_PROGRESS);
     req.setApplicationContent(Map.of("key", new Object() {
       // Jackson cannot serialize anonymous object by default
     }));
@@ -116,10 +113,11 @@ public class ApplicationMapperTest {
   @Test
   void shouldThrowWhenApplicationUpdateRequestContentCannotBeSerialized() {
     ApplicationEntity entity = new ApplicationEntity();
-    entity.setStatusId(UUID.randomUUID());
+    entity.setStatus(ApplicationStatus.IN_PROGRESS);
 
     ApplicationUpdateRequest req = new ApplicationUpdateRequest();
-    req.setApplicationContent(Map.of("key", new Object() {}));
+    req.setApplicationContent(Map.of("key", new Object() {
+    }));
 
     assertThrows(IllegalArgumentException.class, () -> applicationMapper.updateApplicationEntity(entity, req));
   }
@@ -127,8 +125,9 @@ public class ApplicationMapperTest {
   @Test
   void shouldThrowWhenApplicationEntityContentCannotBeDeserialized() {
     ApplicationEntity entity = new ApplicationEntity();
-    entity.setStatusId(UUID.randomUUID());
-    entity.setApplicationContent(Map.of("key", new Object() {}));
+    entity.setStatus(ApplicationStatus.IN_PROGRESS);
+    entity.setApplicationContent(Map.of("key", new Object() {
+    }));
 
     assertThrows(IllegalArgumentException.class, () -> applicationMapper.toApplication(entity));
   }

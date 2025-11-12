@@ -15,21 +15,21 @@ import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationPro
 @ExtendWith(MockitoExtension.class)
 public class ApplicationTransformerTest {
 
-    @InjectMocks
-    ApplicationTransformer classUnderTest;
+  @InjectMocks
+  ApplicationTransformer classUnderTest;
 
-    @Mock
-    EffectiveAuthorizationProvider mockEntra;
+  @Mock
+  EffectiveAuthorizationProvider mockEntra;
 
-    @Test
-    void shouldTransformApplication() {
-        Application request = Application.builder()
-                .id(UUID.randomUUID())
-                .build();
+  @Test
+  void shouldTransformApplication() {
+    Application request = Application.builder()
+        .id(UUID.randomUUID())
+        .build();
 
-        when(mockEntra.hasAppRole("ProceedingReader")).thenReturn(true);
+    when(mockEntra.hasAppRole("ProceedingReader")).thenReturn(true);
 
-        Application response = classUnderTest.transform(request);
-        assertThat(response.getId()).isEqualTo(request.getId());
-    }
+    Application response = classUnderTest.transform(request);
+    assertThat(response.getId()).isEqualTo(request.getId());
+  }
 }

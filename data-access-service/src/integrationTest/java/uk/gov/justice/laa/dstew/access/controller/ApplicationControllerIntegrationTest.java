@@ -5,12 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithAnonymousUser;
@@ -30,6 +32,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
 @SpringBootTest(classes = AccessApp.class, properties = "feature.disable-security=false")
@@ -50,21 +53,10 @@ public class ApplicationControllerIntegrationTest {
   @Mock
   private ApplicationSummaryRepository applicationSummaryRepository;
 
-  // Pre-insert a valid status code
-  @BeforeAll
-  void setupStatusCode() {
-    jdbcTemplate.update(
-        "INSERT INTO status_code_lookup (id, code, description) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
-        UUID.fromString("123e4567-e89b-12d3-a456-426614174000"),
-        "SUBMITTED",
-        "Submitted"
-    );
-  }
-
   private String buildApplicationJson() {
     return "{"
         + "\"id\": \"" + UUID.randomUUID() + "\","
-        + "\"statusId\": \"123e4567-e89b-12d3-a456-426614174000\","
+        + "\"status\": \"SUBMITTED\","
         + "\"applicationContent\": {"
         + "\"first_name\": \"John\","
         + "\"last_name\": \"Doe\","
@@ -90,28 +82,26 @@ public class ApplicationControllerIntegrationTest {
     firstEntity.setApplicationReference("Ref1");
     firstEntity.setCreatedAt(Instant.now());
     firstEntity.setModifiedAt(Instant.now());
-    StatusCodeLookupEntity firstStatusCodeLookupEntity = new StatusCodeLookupEntity();
-    firstStatusCodeLookupEntity.setId(UUID.randomUUID());
-    firstStatusCodeLookupEntity.setCode("pending");
-    firstEntity.setStatusCodeLookupEntity(firstStatusCodeLookupEntity);
+    firstEntity.setStatus(ApplicationStatus.SUBMITTED);
 
     ApplicationSummaryEntity secondEntity = new ApplicationSummaryEntity();
     secondEntity.setId(UUID.randomUUID());
     secondEntity.setApplicationReference("Ref2");
     secondEntity.setCreatedAt(Instant.now());
     secondEntity.setModifiedAt(Instant.now());
-    StatusCodeLookupEntity secondStatusCodeLookupEntity = new StatusCodeLookupEntity();
-    secondStatusCodeLookupEntity.setId(UUID.randomUUID());
-    secondStatusCodeLookupEntity.setCode("pending");
-    secondEntity.setStatusCodeLookupEntity(secondStatusCodeLookupEntity);
+    secondEntity.setStatus(ApplicationStatus.SUBMITTED);
 
-    when(applicationSummaryRepository.findByStatusCodeLookupEntity_Code(any(), any())).thenReturn(List.of(firstEntity, secondEntity));
+    when(applicationSummaryRepository.findByStatusCodeLookupEntity_Code(any(ApplicationStatus.class), any(Pageable.class)))
+        .thenReturn(List.of(firstEntity, secondEntity));
+
+    when(applicationSummaryRepository.countByStatusCodeLookupEntity_Code(any(ApplicationStatus.class)))
+        .thenReturn(2);
 
     mockMvc
-            .perform(get("/api/v0/applications"))
-            .andExpect(status().isOk())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.*", hasSize(2)));
+        .perform(get("/api/v0/applications"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.*", hasSize(2)));
   }
 
   @Test
@@ -132,24 +122,25 @@ public class ApplicationControllerIntegrationTest {
 
   @Test
   void getItem_should_return_401_when_missing_credentials() throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
-               .andExpect(MockMvcResultMatchers.status().isUnauthorized());
+    mockMvc.perform(MockMvcRequestBuilders.get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
+        .andExpect(MockMvcResultMatchers.status().isUnauthorized());
   }
 
   @Test
   @WithMockUser()
   void getItem_should_return_403_when_user_does_not_have_required_roles() throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
-               .andExpect(MockMvcResultMatchers.status().isForbidden());
+    mockMvc.perform(MockMvcRequestBuilders.get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
+        .andExpect(MockMvcResultMatchers.status().isForbidden());
   }
 
   @WithMockUser(authorities = {"APPROLE_ApplicationReader", "APPROLE_ApplicationWriter"})
-  void getItem_should_return_404_when_application_does_not_exist() throws Exception{
-        mockMvc.perform(MockMvcRequestBuilders.get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
-               .andExpect(MockMvcResultMatchers.status().isNotFound())
-               .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-               .andExpect(MockMvcResultMatchers.jsonPath("$.title").value("Not found"))
-               .andExpect(MockMvcResultMatchers.jsonPath("$.detail").value("No application found with id: 019a2b5e-d126-71c7-89c2-500363c172f1"));
+  void getItem_should_return_404_when_application_does_not_exist() throws Exception {
+    mockMvc.perform(MockMvcRequestBuilders.get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
+        .andExpect(MockMvcResultMatchers.status().isNotFound())
+        .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.title").value("Not found"))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.detail")
+            .value("No application found with id: 019a2b5e-d126-71c7-89c2-500363c172f1"));
   }
 
   @Test
@@ -176,7 +167,7 @@ public class ApplicationControllerIntegrationTest {
   void shouldUpdateApplication() throws Exception {
     if (existingApplicationUri != null) {
       String updatePayload = "{"
-          + "\"statusId\": \"123e4567-e89b-12d3-a456-426614174000\","
+          + "\"status\": \"SUBMITTED\","
           + "\"applicationContent\": {"
           + "\"first_name\": \"John\","
           + "\"last_name\": \"Doe\","
