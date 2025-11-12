@@ -6,11 +6,18 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.UUID;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -41,17 +48,24 @@ public class ApplicationSummaryServiceTest {
 
     ApplicationSummary firstSummary = new ApplicationSummary();
     firstSummary.setApplicationId(firstEntity.getId());
-    firstSummary.setApplicationStatus(ApplicationStatus.valueOf(ApplicationStatus.IN_PROGRESS.name()));
+    firstSummary.setApplicationStatus(ApplicationStatus.IN_PROGRESS);
 
     ApplicationSummary secondSummary = new ApplicationSummary();
     secondSummary.setApplicationId(secondEntity.getId());
-    secondSummary.setApplicationStatus(ApplicationStatus.valueOf(ApplicationStatus.IN_PROGRESS.name()));
+    secondSummary.setApplicationStatus(ApplicationStatus.IN_PROGRESS);
 
-    when(repository.findByStatusCodeLookupEntity_Code(any(), any())).thenReturn(List.of(firstEntity, secondEntity));
+    Pageable pageDetails = PageRequest.of(1, 1);
+
+    // Wrap list in a PageImpl
+    Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(List.of(firstEntity, secondEntity));
+
+    // Mock the repository to return the Page
+    when(repository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+
     when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
     when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);
 
-    List<ApplicationSummary> result = classUnderTest.getAllApplications(ApplicationStatus.valueOf("IN_PROGRESS"), 1, 1);
+    List<ApplicationSummary> result = classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS, 1, 1);
 
     assertThat(result).hasSize(2);
     assertThat(result.get(0).getApplicationId()).isEqualTo(firstEntity.getId());

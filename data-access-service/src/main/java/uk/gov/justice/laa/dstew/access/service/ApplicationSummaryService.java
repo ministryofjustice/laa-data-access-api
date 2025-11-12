@@ -19,34 +19,27 @@ public class ApplicationSummaryService {
   private final ApplicationSummaryMapper mapper;
 
   public ApplicationSummaryService(
-        final ApplicationSummaryRepository applicationSummaryRepository,
-        final ApplicationSummaryMapper applicationMapper
+      final ApplicationSummaryRepository applicationSummaryRepository,
+      final ApplicationSummaryMapper applicationMapper
   ) {
     this.applicationSummaryRepository = applicationSummaryRepository;
     this.mapper = applicationMapper;
   }
 
-  /**
-   * Gets all application summaries.
-   *
-   * @return the list of applications
-   */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public List<ApplicationSummary> getAllApplications(ApplicationStatus applicationStatus, Integer page, Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
 
-    return applicationSummaryRepository.findByStatusCodeLookupEntity_Code(applicationStatus, pageDetails)
-            .stream().map(mapper::toApplicationSummary).toList();
+    return applicationSummaryRepository.findAll((root, query, cb) ->
+            cb.equal(root.get("status"), applicationStatus), pageDetails)
+        .stream()
+        .map(mapper::toApplicationSummary)
+        .toList();
   }
 
-  /**
-   * Gets all application summaries.
-   *
-   * @return the total of list of applications
-   */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public Integer getAllApplicationsTotal(ApplicationStatus applicationStatus) {
-    return applicationSummaryRepository.countByStatusCodeLookupEntity_Code(applicationStatus);
+    return (int) applicationSummaryRepository.count((root, query, cb) ->
+        cb.equal(root.get("status"), applicationStatus));
   }
-
 }
