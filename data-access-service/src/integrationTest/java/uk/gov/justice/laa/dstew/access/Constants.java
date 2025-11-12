@@ -4,5 +4,5 @@ public final class Constants {
     private Constants() {
     }
 
-    public static String POSTGRES_INSTANCE = "postgres:17";
+    public final static String POSTGRES_INSTANCE = "postgres:17";
 }

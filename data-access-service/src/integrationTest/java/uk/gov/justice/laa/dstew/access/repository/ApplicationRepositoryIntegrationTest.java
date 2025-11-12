@@ -1,13 +1,22 @@
 package uk.gov.justice.laa.dstew.access.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.instancio.Instancio;
+import org.instancio.Select;
+import org.instancio.generator.specs.OneOfArrayGeneratorSpec;
+import org.instancio.generators.Generators;
+import org.junit.BeforeClass;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -18,6 +27,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import jakarta.transaction.Transactional;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.StatusCodeLookupEntity;
 
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.jdbc.Sql;
@@ -40,28 +50,68 @@ public class ApplicationRepositoryIntegrationTest {
     @Autowired
     ApplicationRepository applicationRepository;
 
+    final static int NUMBER_OF_PREPOPULATED_APPLICATIONS = 5;
+    List<ApplicationEntity> prePopulatedApplications;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        Map<String,Object> map = new HashMap<String,Object>();
+        map.put("first_name", "jimi");
+        map.put("last_name", "hendrix");
+        prePopulatedApplications = Instancio.ofList(ApplicationEntity.class)
+                                .size(NUMBER_OF_PREPOPULATED_APPLICATIONS)
+                                .generate(Select.field(ApplicationEntity::getStatusEntity), gen -> StatusCodes(gen))
+                                .set(Select.field(ApplicationEntity::getApplicationContent), map)
+                                .create();
+        applicationRepository.saveAll(prePopulatedApplications);
+    }
+
     @Test
     void applicationSave() {
-        ApplicationEntity entity = new ApplicationEntity();
-        
         Map<String,Object> map = new HashMap<String,Object>();
         map.put("key", "value");
-        entity.setId(UUID.randomUUID());
-        entity.setApplicationContent(map);
+        var entity = ApplicationEntity.builder()
+                                             .id(UUID.randomUUID())
+                                             .applicationContent(map)
+                                             .build();
         entity.setStatusId(UUID.fromString("5916ec11-b884-421e-907c-353618fc5b1c"));
         applicationRepository.save(entity);
     }
 
     @Test
-    @Sql(statements = { "INSERT INTO public.application(id, status_id, application_content, schema_version, application_reference)" + 
-                        "VALUES ('019a773c-440f-7845-a538-b989fc89290b', '5916ec11-b884-421e-907c-353618fc5b1c', '{ \"first_name\" : \"jimi\" }', 1969, 'ref1');"})
-    void applicationGet() throws Exception{
-        Optional<ApplicationEntity> optionEntity = applicationRepository.findById(UUID.fromString("019a773c-440f-7845-a538-b989fc89290b"));
-        ApplicationEntity entity = optionEntity.orElseThrow(); 
-        assertEquals("019a773c-440f-7845-a538-b989fc89290b", entity.getId().toString());
-        assertEquals(1969, entity.getSchemaVersion().intValue());
-        assertEquals("5916ec11-b884-421e-907c-353618fc5b1c'", entity.getStatusEntity().getId().toString());
-        assertEquals("pending", entity.getStatusEntity().getCode());
-        assertEquals("{\"first_name\" : \"jimi\" }", entity.getApplicationContent());
+    void applicationGet() {
+        var expectedEntity = prePopulatedApplications.get(0);
+        Optional<ApplicationEntity> optionEntity = applicationRepository.findById(expectedEntity.getId());
+        ApplicationEntity actualEntity = optionEntity.orElseThrow(); 
+        assertApplicationEntitysAreEqual(expectedEntity, actualEntity);
+    }
+
+    @Test
+    void applicationGetAll() {
+        var applications = applicationRepository.findAll();
+        assertEquals(NUMBER_OF_PREPOPULATED_APPLICATIONS, applications.size());
+    }
+
+    static OneOfArrayGeneratorSpec<StatusCodeLookupEntity> StatusCodes(Generators gen) {
+        StatusCodeLookupEntity pendingStatus = StatusCodeLookupEntity.builder()
+                                                                     .code("pending")
+                                                                     .id(UUID.fromString("5916ec11-b884-421e-907c-353618fc5b1c"))
+                                                                     .build();
+        StatusCodeLookupEntity acceptedStatus = StatusCodeLookupEntity.builder()
+                                                                     .code("accepted")
+                                                                     .id(UUID.fromString("de31c50b-c731-4df4-aaa4-6acf4f4d8fe3"))
+                                                                     .build();
+        return gen.oneOf(pendingStatus, acceptedStatus);
+    }
+
+    private static void assertApplicationEntitysAreEqual(ApplicationEntity x, ApplicationEntity y) {
+        assertEquals(x.getId(), y.getId());
+        assertEquals(x.getApplicationContent(), y.getApplicationContent());
+        assertEquals(x.getCreatedAt(), y.getCreatedAt());
+        assertEquals(x.getModifiedAt(), y.getModifiedAt());
+        assertEquals(x.getSchemaVersion(), y.getSchemaVersion());
+        assertEquals(x.getCreatedBy(), y.getCreatedBy());
+        assertEquals(x.getStatusEntity().getCode(), y.getStatusEntity().getCode());
+        assertEquals(x.getStatusEntity().getId(), y.getStatusEntity().getId());
     }
 }
