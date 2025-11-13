@@ -7,6 +7,19 @@ plugins {
     id 'com.avast.gradle.docker-compose' version '0.17.12'
 }
 
+dockerCompose.isRequiredBy(integrationTest)
+
+dockerCompose {
+    useComposeFiles = ['../docker-compose.yml']
+    // workaround https://github.com/avast/gradle-docker-compose-plugin/issues/435
+    def dockerPath = ["/usr/bin/docker", "/usr/local/bin/docker"].find {
+        new File(it).exists()
+    }
+    if (dockerPath) {
+        dockerExecutable.set(dockerPath)
+    }
+}
+
 test {
     useJUnitPlatform()
     finalizedBy jacocoTestReport
