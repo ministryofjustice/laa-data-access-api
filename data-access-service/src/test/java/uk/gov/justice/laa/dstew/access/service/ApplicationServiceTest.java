@@ -19,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
@@ -49,7 +50,7 @@ public class ApplicationServiceTest {
   @Test
   void shouldCreateApplication() {
     ApplicationCreateRequest req = new ApplicationCreateRequest();
-    req.setStatusId(UUID.randomUUID());
+    req.setStatus(ApplicationStatus.IN_PROGRESS);
 
     ApplicationEntity entity = new ApplicationEntity();
     when(mapper.toApplicationEntity(req)).thenReturn(entity);
@@ -65,6 +66,8 @@ public class ApplicationServiceTest {
   void shouldGetAllApplications() {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setId(UUID.randomUUID());
+    entity.setStatus(ApplicationStatus.IN_PROGRESS);
+
     when(repository.findAll()).thenReturn(List.of(entity));
     when(mapper.toApplication(entity)).thenReturn(new Application());
 

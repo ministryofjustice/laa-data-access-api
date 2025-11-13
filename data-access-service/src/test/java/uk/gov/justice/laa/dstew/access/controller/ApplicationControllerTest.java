@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
@@ -61,7 +60,7 @@ class ApplicationControllerTest {
 
     String validRequestBody = """
           {
-            "statusId": "8c9a1234-56b7-89de-0123-456789abcdef",
+            "status": "SUBMITTED",
             "schemaVersion": 1,
             "applicationContent": { "foo": "bar" }
           }
@@ -99,20 +98,20 @@ class ApplicationControllerTest {
     ApplicationSummaryResponse applicationSummaryCollectionResponse = new ApplicationSummaryResponse();
     List<ApplicationSummary> applications = new ArrayList<>();
     applications.add(
-            ApplicationSummary.builder()
-                    .applicationId(UUID.randomUUID())
-                    .build());
+        ApplicationSummary.builder()
+            .applicationId(UUID.randomUUID())
+            .build());
     applications.add(
-            ApplicationSummary.builder()
-                    .applicationId(UUID.randomUUID())
-                    .build());
+        ApplicationSummary.builder()
+            .applicationId(UUID.randomUUID())
+            .build());
     applicationSummaryCollectionResponse.setApplications(applications);
 
-    when (applicationSummaryService.getAllApplications(any(), any(), any())).thenReturn(applications);
+    when(applicationSummaryService.getAllApplications(any(), any(), any())).thenReturn(applications);
     mockMvc
-            .perform(get("/api/v0/applications"))
-            .andExpect(status().isOk())
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+        .perform(get("/api/v0/applications"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
   }
 

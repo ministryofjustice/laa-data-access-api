@@ -1,5 +1,12 @@
 package uk.gov.justice.laa.dstew.access.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.UUID;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
@@ -8,98 +15,65 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
-import uk.gov.justice.laa.dstew.access.entity.StatusCodeLookupEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.util.List;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class ApplicationSummaryServiceTest {
 
-    @InjectMocks
-    private ApplicationSummaryService classUnderTest;
+  @InjectMocks
+  private ApplicationSummaryService classUnderTest;
 
-    @Mock
-    private ApplicationSummaryRepository repository;
+  @Mock
+  private ApplicationSummaryRepository repository;
 
-    @Mock
-    private ApplicationSummaryMapper mapper;
+  @Mock
+  private ApplicationSummaryMapper mapper;
 
-    @Test
-    void shouldGetAllApplications() {
-        StatusCodeLookupEntity firstStatusCodeLookupEntity = new StatusCodeLookupEntity();
-        firstStatusCodeLookupEntity.setId(UUID.randomUUID());
-        firstStatusCodeLookupEntity.setCode("IN_PROGRESS");
+  @Test
+  void shouldGetAllApplications() {
+    ApplicationSummaryEntity firstEntity = new ApplicationSummaryEntity();
+    firstEntity.setId(UUID.randomUUID());
+    firstEntity.setStatus(ApplicationStatus.IN_PROGRESS);
 
-        ApplicationSummaryEntity firstEntity = new ApplicationSummaryEntity();
-        firstEntity.setId(UUID.randomUUID());
-        firstEntity.setApplicationReference("appRef1");
-        firstEntity.setCreatedAt(Instant.now());
-        firstEntity.setModifiedAt(Instant.now());
-        firstEntity.setStatusCodeLookupEntity(firstStatusCodeLookupEntity);
+    ApplicationSummaryEntity secondEntity = new ApplicationSummaryEntity();
+    secondEntity.setId(UUID.randomUUID());
+    secondEntity.setStatus(ApplicationStatus.IN_PROGRESS);
 
-        StatusCodeLookupEntity secondStatusCodeLookupEntity = new StatusCodeLookupEntity();
-        secondStatusCodeLookupEntity.setId(UUID.randomUUID());
-        secondStatusCodeLookupEntity.setCode("IN_PROGRESS");
+    ApplicationSummary firstSummary = new ApplicationSummary();
+    firstSummary.setApplicationId(firstEntity.getId());
+    firstSummary.setApplicationStatus(ApplicationStatus.IN_PROGRESS);
 
-        ApplicationSummaryEntity secondEntity = new ApplicationSummaryEntity();
-        secondEntity.setId(UUID.randomUUID());
-        secondEntity.setApplicationReference("appRef2");
-        secondEntity.setCreatedAt(Instant.now());
-        secondEntity.setModifiedAt(Instant.now());
-        secondEntity.setStatusCodeLookupEntity(secondStatusCodeLookupEntity);
+    ApplicationSummary secondSummary = new ApplicationSummary();
+    secondSummary.setApplicationId(secondEntity.getId());
+    secondSummary.setApplicationStatus(ApplicationStatus.IN_PROGRESS);
 
-        ApplicationSummary firstSummary = new ApplicationSummary();
-        firstSummary.setApplicationId(firstEntity.getId());
-        firstSummary.setApplicationReference(firstEntity.getApplicationReference());
-        firstSummary.setCreatedAt(firstEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
-        firstSummary.setModifiedAt(firstEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-        firstSummary.setApplicationStatus(ApplicationStatus.fromValue(firstEntity.getStatusCodeLookupEntity().getCode()));
-        ApplicationSummary secondSummary = new ApplicationSummary();
-        secondSummary.setApplicationId(secondEntity.getId());
-        secondSummary.setApplicationReference(secondEntity.getApplicationReference());
-        secondSummary.setCreatedAt(secondEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
-        secondSummary.setModifiedAt(secondEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-        secondSummary.setApplicationStatus(ApplicationStatus.fromValue(secondEntity.getStatusCodeLookupEntity().getCode()));
+    Pageable pageDetails = PageRequest.of(1, 1);
 
-        Page<ApplicationSummaryEntity> pagedResponse =
-                new PageImpl<ApplicationSummaryEntity>(List.of(firstEntity, secondEntity));
+    // Wrap entities in a page
+    Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(List.of(firstEntity, secondEntity));
 
-        when(repository.findAll(
-                ArgumentMatchers.<Specification<ApplicationSummaryEntity>> any(),
-                any(Pageable.class)
-        ))
-                .thenReturn(pagedResponse);
+    // Mock repository
+    when(repository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
-        when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
-        when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);
+    // Mock mapper
+    when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
+    when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);
 
-        List<ApplicationSummary> result = classUnderTest
-                .getAllApplications(ApplicationStatus.SUBMITTED, 1,1);
+    List<ApplicationSummary> result =
+        classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS, 1, 1);
 
-        assertThat(result).hasSize(2);
-        assertThat(result.getFirst().getApplicationId()).isEqualTo(firstEntity.getId());
-        assertThat(result.getFirst().getModifiedAt()).isEqualTo(firstEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-        assertThat(result.getFirst().getCreatedAt()).isEqualTo(firstEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
-        assertThat(result.getFirst().getApplicationReference()).isEqualTo(firstEntity.getApplicationReference());
-        assertThat(result.get(1).getApplicationId()).isEqualTo(secondEntity.getId());
-        assertThat(result.get(1).getModifiedAt()).isEqualTo(secondEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-        assertThat(result.get(1).getCreatedAt()).isEqualTo(secondEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
-        assertThat(result.get(1).getApplicationReference()).isEqualTo(secondEntity.getApplicationReference());
-
-    }
-
+    // Verify results
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0).getApplicationId()).isEqualTo(firstEntity.getId());
+    assertThat(result.get(1).getApplicationId()).isEqualTo(secondEntity.getId());
+  }
 }

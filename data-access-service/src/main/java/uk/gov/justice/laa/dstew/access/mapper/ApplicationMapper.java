@@ -16,9 +16,11 @@ import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 
+
 /**
- * Mapper between ApplicationEntity and DTOs.
- * Handles JSONB content for applicationContent.
+ * Mapper interface.
+ * All mapping operations are performed safely, throwing an
+ * {@link IllegalArgumentException} if JSON conversion fails.
  */
 @Mapper(componentModel = "spring")
 public interface ApplicationMapper {
@@ -26,7 +28,11 @@ public interface ApplicationMapper {
   ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   /**
-   * Convert a create request into an ApplicationEntity, storing the content in JSONB.
+   * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
+   *
+   * @param req the CREATE request to map
+   * @return a new {@link ApplicationEntity} populated from the request, or {@code null} if the request is null
+   * @throws IllegalArgumentException if the {@code applicationContent} cannot be serialized
    */
   default ApplicationEntity toApplicationEntity(ApplicationCreateRequest req) {
     if (req == null) {
@@ -35,43 +41,51 @@ public interface ApplicationMapper {
 
     ApplicationEntity entity = new ApplicationEntity();
     entity.setId(Generators.timeBasedEpochGenerator().generate());
-    entity.setStatusId(req.getStatusId());
+    entity.setStatus(req.getStatus());
     entity.setSchemaVersion(req.getSchemaVersion());
 
     try {
-      // Store all fields inside applicationContent
-      entity.setApplicationContent(OBJECT_MAPPER.convertValue(req.getApplicationContent(), Map.class));
+      entity.setApplicationContent(
+          OBJECT_MAPPER.convertValue(req.getApplicationContent(), Map.class));
     } catch (Exception e) {
-      throw new IllegalArgumentException("Failed to serialize ApplicationCreateRequest.applicationContent", e);
+      throw new IllegalArgumentException(
+          "Failed to serialize ApplicationCreateRequest.applicationContent", e);
     }
-
     return entity;
   }
 
   /**
-   * Apply updates from an update request into an existing ApplicationEntity.
+   * Updates an existing {@link ApplicationEntity} using values from an {@link ApplicationUpdateRequest}.
+   *
+   * @param entity the entity to update
+   * @param req the update request containing new values
+   * @throws IllegalArgumentException if the {@code applicationContent} cannot be serialized
    */
   @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
   default void updateApplicationEntity(@MappingTarget ApplicationEntity entity, ApplicationUpdateRequest req) {
-    if (req.getStatusId() != null) {
-      entity.setStatusId(req.getStatusId());
+    if (req.getStatus() != null) {
+      entity.setStatus(req.getStatus());
     }
     if (req.getSchemaVersion() != null) {
       entity.setSchemaVersion(req.getSchemaVersion());
     }
-
     if (req.getApplicationContent() != null) {
       try {
-        // Merge or replace content
-        entity.setApplicationContent(OBJECT_MAPPER.convertValue(req.getApplicationContent(), Map.class));
+        entity.setApplicationContent(
+            OBJECT_MAPPER.convertValue(req.getApplicationContent(), Map.class));
       } catch (Exception e) {
-        throw new IllegalArgumentException("Failed to serialize ApplicationUpdateRequest.applicationContent", e);
+        throw new IllegalArgumentException(
+            "Failed to serialize ApplicationUpdateRequest.applicationContent", e);
       }
     }
   }
 
   /**
-   * Convert ApplicationEntity into an Application DTO, deserializing JSONB content.
+   * Maps a {@link ApplicationEntity} to an API-facing {@link Application} model.
+   *
+   * @param entity the entity to map
+   * @return a new {@link Application} object, or {@code null} if the entity is null
+   * @throws IllegalArgumentException if the {@code applicationContent} cannot be deserialized
    */
   default Application toApplication(ApplicationEntity entity) {
     if (entity == null) {
@@ -80,23 +94,22 @@ public interface ApplicationMapper {
     try {
       Application app = new Application();
       app.setId(entity.getId());
-      app.setApplicationStatus(entity.getStatusEntity().getCode());
+      app.setApplicationStatus(entity.getStatus());
       app.setSchemaVersion(entity.getSchemaVersion());
-
-      // Deserialize JSONB content
-      var contentMap = OBJECT_MAPPER.convertValue(
-          entity.getApplicationContent(),
-          new TypeReference<java.util.Map<String, Object>>() {
-          }
-      );
-      app.setApplicationContent(contentMap);
-
+      app.setApplicationContent(
+          OBJECT_MAPPER.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
       return app;
     } catch (Exception e) {
       throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
     }
   }
 
+  /**
+   * Converts a {@link Instant} timestamp to an {@link OffsetDateTime} using UTC as the default zone offset.
+   *
+   * @param instant the {@link Instant} to convert
+   * @return the equivalent {@link OffsetDateTime}, or {@code null} if the input is null
+   */
   default OffsetDateTime toOffsetDateTime(Instant instant) {
     return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
   }
