@@ -86,7 +86,14 @@ runs:
         echo "branch name: $branch_name"
 
         if [ "$branch_name" == "main" ]; then
-          export SPRING_PROFILE="main"
+          case "${{ inputs.app-environment }}" in
+            production)
+              export SPRING_PROFILE="main"
+              ;;
+            *)
+              export SPRING_PROFILE="unsecured"
+              ;;
+          esac
         else
           export SPRING_PROFILE="preview"
           # Using Bitnami legacy with PostgreSQL 17.2 (specified in values.yaml)
@@ -105,7 +112,7 @@ runs:
           --set ingress.hosts="{$external_host}" \
           --set ingressInternal.annotations."external-dns\.alpha\.kubernetes\.io/set-identifier"="$internal_identifier" \
           --set ingressInternal.hosts="{$internal_host}" \
-          --set spring.profile="$SPRING_PROFILE" \
+          --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
           --values ${VALUES_FILE} \
           --install \

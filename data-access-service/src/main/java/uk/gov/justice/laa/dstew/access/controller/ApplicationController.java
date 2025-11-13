@@ -10,6 +10,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponsePaging;
@@ -50,7 +51,7 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodResponse
   @LogMethodArguments
-  public ResponseEntity<ApplicationSummaryResponse> getApplications(String status, Integer page, Integer pageSize) {
+  public ResponseEntity<ApplicationSummaryResponse> getApplications(ApplicationStatus status, Integer page, Integer pageSize) {
 
     List<ApplicationSummary> applicationsReturned =
             summaryService.getAllApplications(status, page, pageSize);
@@ -60,7 +61,7 @@ public class ApplicationController implements ApplicationApi {
     response.setApplications(applicationsReturned);
     responsePageDetails.setPage(page);
     responsePageDetails.pageSize(pageSize);
-    responsePageDetails.totalRecords(summaryService.getAllApplicationsTotal(status));
+    responsePageDetails.totalRecords((int) summaryService.getAllApplicationsTotal(status));
     responsePageDetails.itemsReturned(applicationsReturned.size());
 
     return ResponseEntity.ok(response);

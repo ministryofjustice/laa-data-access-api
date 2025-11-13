@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
@@ -8,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
@@ -16,10 +18,15 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithAnonymousUser;
@@ -31,6 +38,9 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.StatusCodeLookupEntity;
+import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
 @SpringBootTest(classes = AccessApp.class, properties = "feature.disable-security=false")
@@ -50,6 +60,9 @@ public class ApplicationControllerIntegrationTest {
 
   @Mock
   private ApplicationSummaryRepository applicationSummaryRepository;
+
+  @Mock
+  private ApplicationSummaryMapper mapper;
 
   // Pre-insert a valid status code
   @BeforeAll
@@ -86,27 +99,49 @@ public class ApplicationControllerIntegrationTest {
   @Order(2)
   @WithMockUser(authorities = {"APPROLE_ApplicationReader"})
   void shouldGetAllApplications() throws Exception {
-    ApplicationSummaryEntity firstEntity = new ApplicationSummaryEntity();
-    firstEntity.setId(UUID.randomUUID());
-    firstEntity.setApplicationReference("Ref1");
-    firstEntity.setCreatedAt(Instant.now());
-    firstEntity.setModifiedAt(Instant.now());
     StatusCodeLookupEntity firstStatusCodeLookupEntity = new StatusCodeLookupEntity();
     firstStatusCodeLookupEntity.setId(UUID.randomUUID());
-    firstStatusCodeLookupEntity.setCode("pending");
+    firstStatusCodeLookupEntity.setCode("SUBMITTED");
+
+    ApplicationSummaryEntity firstEntity = new ApplicationSummaryEntity();
+    firstEntity.setId(UUID.randomUUID());
+    firstEntity.setApplicationReference("appRef1");
+    firstEntity.setCreatedAt(Instant.now());
+    firstEntity.setModifiedAt(Instant.now());
     firstEntity.setStatusCodeLookupEntity(firstStatusCodeLookupEntity);
+
+    StatusCodeLookupEntity secondStatusCodeLookupEntity = new StatusCodeLookupEntity();
+    secondStatusCodeLookupEntity.setId(UUID.randomUUID());
+    secondStatusCodeLookupEntity.setCode("SUBMITTED");
 
     ApplicationSummaryEntity secondEntity = new ApplicationSummaryEntity();
     secondEntity.setId(UUID.randomUUID());
-    secondEntity.setApplicationReference("Ref2");
+    secondEntity.setApplicationReference("appRef2");
     secondEntity.setCreatedAt(Instant.now());
     secondEntity.setModifiedAt(Instant.now());
-    StatusCodeLookupEntity secondStatusCodeLookupEntity = new StatusCodeLookupEntity();
-    secondStatusCodeLookupEntity.setId(UUID.randomUUID());
-    secondStatusCodeLookupEntity.setCode("pending");
     secondEntity.setStatusCodeLookupEntity(secondStatusCodeLookupEntity);
 
-    when(applicationSummaryRepository.findByStatusCodeLookupEntity_Code(any(), any())).thenReturn(List.of(firstEntity, secondEntity));
+    Page<ApplicationSummaryEntity> pagedResponse =
+            new PageImpl<ApplicationSummaryEntity>(List.of(firstEntity, secondEntity));
+
+    ApplicationSummary firstSummary = new ApplicationSummary();
+    firstSummary.setApplicationId(firstEntity.getId());
+    firstSummary.setApplicationReference(firstEntity.getApplicationReference());
+    firstSummary.setCreatedAt(firstEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
+    firstSummary.setModifiedAt(firstEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+    firstSummary.setApplicationStatus(ApplicationStatus.fromValue(firstEntity.getStatusCodeLookupEntity().getCode()));
+    ApplicationSummary secondSummary = new ApplicationSummary();
+    secondSummary.setApplicationId(secondEntity.getId());
+    secondSummary.setApplicationReference(secondEntity.getApplicationReference());
+    secondSummary.setCreatedAt(secondEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
+    secondSummary.setModifiedAt(secondEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+    secondSummary.setApplicationStatus(ApplicationStatus.fromValue(secondEntity.getStatusCodeLookupEntity().getCode()));
+
+    when(applicationSummaryRepository.findAll(
+            ArgumentMatchers.<Specification<ApplicationSummaryEntity>> any(),
+            any(Pageable.class)
+    ))
+            .thenReturn(pagedResponse);
 
     mockMvc
             .perform(get("/api/v0/applications"))
