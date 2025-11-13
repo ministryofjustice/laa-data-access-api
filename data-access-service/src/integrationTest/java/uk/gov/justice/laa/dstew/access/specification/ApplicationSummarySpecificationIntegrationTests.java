@@ -15,8 +15,6 @@ import org.instancio.Instancio;
 import org.instancio.Select;
 import org.instancio.generator.specs.OneOfArrayGeneratorSpec;
 import org.instancio.generators.Generators;
-import org.junit.BeforeClass;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
