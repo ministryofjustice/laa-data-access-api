@@ -15,8 +15,7 @@ paths:
           name: status
           description: The current overall status of the applications' decision.
           schema:
-            type: string
-            default: pending
+            $ref: "#/components/schemas/application_status"
         - in: query
           name: page
           description: page number of data to be returned
@@ -178,7 +177,7 @@ components:
           format: uuid
           description: The unique reference used to identify the application.
         application_status:
-          type: string
+          $ref: "#/components/schemas/application_status"
         application_reference:
           type: string
         created_at:
@@ -207,3 +206,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationSummary"
+
+    application_status:
+      type: string
+      enum:
+        - IN_PROGRESS
+        - SUBMITTED
+      default: IN_PROGRESS
+      description: Application statuses
