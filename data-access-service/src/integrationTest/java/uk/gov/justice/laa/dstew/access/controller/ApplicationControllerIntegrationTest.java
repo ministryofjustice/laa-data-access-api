@@ -1,27 +1,18 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.mockito.ArgumentMatchers;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -31,24 +22,26 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
+import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 
 @SpringBootTest(classes = AccessApp.class, properties = "feature.disable-security=false")
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
 public class ApplicationControllerIntegrationTest {
 
   private static String existingApplicationUri;
@@ -56,11 +49,14 @@ public class ApplicationControllerIntegrationTest {
   @Autowired
   private MockMvc mockMvc;
 
-  @Autowired
-  private JdbcTemplate jdbcTemplate;
+  @MockitoBean
+  private ApplicationSummaryRepository repository;
 
-  @Mock
-  private ApplicationSummaryRepository applicationSummaryRepository;
+  @MockitoBean
+  private ApplicationSummaryMapper mapper;
+
+  @Autowired
+  private ApplicationSummaryService summaryService;
 
   private String buildApplicationJson() {
     return "{"
@@ -124,7 +120,7 @@ public class ApplicationControllerIntegrationTest {
     when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
     when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);
 
-    List<ApplicationSummary> result = classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS, 1, 1);
+    List<ApplicationSummary> result = summaryService.getAllApplications(ApplicationStatus.IN_PROGRESS, 1, 1);
 
     assertThat(result).hasSize(2);
     assertThat(result.get(0).getApplicationId()).isEqualTo(firstEntity.getId());
