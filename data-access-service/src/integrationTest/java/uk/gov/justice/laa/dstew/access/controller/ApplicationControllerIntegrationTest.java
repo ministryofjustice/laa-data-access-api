@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
@@ -10,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Disabled;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -79,33 +82,50 @@ public class ApplicationControllerIntegrationTest {
   @Test
   @Order(2)
   @WithMockUser(authorities = {"APPROLE_ApplicationReader"})
-  @Disabled("Temporarily disabled until repository mocking aligns with new Specification-based queries")
   void shouldGetAllApplications() throws Exception {
     ApplicationSummaryEntity firstEntity = new ApplicationSummaryEntity();
     firstEntity.setId(UUID.randomUUID());
-    firstEntity.setApplicationReference("Ref1");
+    firstEntity.setApplicationReference("appRef1");
     firstEntity.setCreatedAt(Instant.now());
     firstEntity.setModifiedAt(Instant.now());
     firstEntity.setStatus(ApplicationStatus.SUBMITTED);
-
+    
+    ApplicationSummary firstSummary = new ApplicationSummary();
+    firstSummary.setApplicationId(firstEntity.getId());
+    firstSummary.setApplicationReference(firstEntity.getApplicationReference());
+    firstSummary.setCreatedAt(firstEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
+    firstSummary.setModifiedAt(firstEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+    firstSummary.setApplicationStatus(ApplicationStatus.IN_PROGRESS);
+    
     ApplicationSummaryEntity secondEntity = new ApplicationSummaryEntity();
     secondEntity.setId(UUID.randomUUID());
-    secondEntity.setApplicationReference("Ref2");
+    secondEntity.setApplicationReference("appRef2");
     secondEntity.setCreatedAt(Instant.now());
     secondEntity.setModifiedAt(Instant.now());
     secondEntity.setStatus(ApplicationStatus.SUBMITTED);
 
-    when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class)))
-        .thenReturn(new PageImpl<>(List.of(firstEntity, secondEntity)));
+    ApplicationSummary secondSummary = new ApplicationSummary();
+    secondSummary.setApplicationId(secondEntity.getId());
+    secondSummary.setApplicationReference(secondEntity.getApplicationReference());
+    secondSummary.setCreatedAt(secondEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
+    secondSummary.setModifiedAt(secondEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+    secondSummary.setApplicationStatus(ApplicationStatus.IN_PROGRESS);
+    
+    Pageable pageDetails = PageRequest.of(1, 1);
+    
+    Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(List.of(firstEntity, secondEntity));
 
-    when(applicationSummaryRepository.count(any(Specification.class)))
-        .thenReturn(2L);
+    when(repository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+    when(repository.count(any(Specification.class))).thenReturn(2L);
+    
+    when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
+    when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);
 
-    mockMvc
-        .perform(get("/api/v0/applications"))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.*", hasSize(2)));
+    List<ApplicationSummary> result = classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS, 1, 1);
+
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0).getApplicationId()).isEqualTo(firstEntity.getId());
+    assertThat(result.get(1).getApplicationId()).isEqualTo(secondEntity.getId());
   }
 
   @Test

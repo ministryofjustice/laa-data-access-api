@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -23,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
+
 
 @ExtendWith(MockitoExtension.class)
 public class ApplicationSummaryServiceTest {
@@ -56,17 +58,20 @@ public class ApplicationSummaryServiceTest {
 
     Pageable pageDetails = PageRequest.of(1, 1);
 
-    // Wrap list in a PageImpl
+    // Wrap entities in a page
     Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(List.of(firstEntity, secondEntity));
 
-    // Mock the repository to return the Page
+    // Mock repository
     when(repository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
+    // Mock mapper
     when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
     when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);
 
-    List<ApplicationSummary> result = classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS, 1, 1);
+    List<ApplicationSummary> result =
+        classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS, 1, 1);
 
+    // Verify results
     assertThat(result).hasSize(2);
     assertThat(result.get(0).getApplicationId()).isEqualTo(firstEntity.getId());
     assertThat(result.get(1).getApplicationId()).isEqualTo(secondEntity.getId());

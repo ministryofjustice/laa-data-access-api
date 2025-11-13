@@ -1,14 +1,18 @@
 package uk.gov.justice.laa.dstew.access.service;
 
+import java.util.Collections;
 import java.util.List;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
+import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
 
 /**
  * Service class responsible for retrieving and managing {@link ApplicationSummary} data.
@@ -22,14 +26,14 @@ public class ApplicationSummaryService {
    * Constructs a new {@link ApplicationSummaryService} with the required repository and mapper.
    *
    * @param applicationSummaryRepository the repository used to access application summary data
-   * @param applicationMapper the mapper used to convert entities into API-facing models
+   * @param applicationSummaryMapper the mapper used to convert entities into API-facing models
    */
   public ApplicationSummaryService(
-      final ApplicationSummaryRepository applicationSummaryRepository,
-      final ApplicationSummaryMapper applicationMapper
+    final ApplicationSummaryRepository applicationSummaryRepository,
+    final ApplicationSummaryMapper applicationSummaryMapper
   ) {
     this.applicationSummaryRepository = applicationSummaryRepository;
-    this.mapper = applicationMapper;
+    this.mapper = applicationSummaryMapper;
   }
 
   /**
@@ -44,8 +48,10 @@ public class ApplicationSummaryService {
   public List<ApplicationSummary> getAllApplications(ApplicationStatus applicationStatus, Integer page, Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
 
-    return applicationSummaryRepository.findAll((root, query, cb) ->
-            cb.equal(root.get("status"), applicationStatus), pageDetails)
+    Page<ApplicationSummaryEntity> applicationSummaryPage = applicationSummaryRepository
+        .findAll(ApplicationSummarySpecification.isStatus(applicationStatus), pageDetails);
+
+    return applicationSummaryPage.getContent()
         .stream()
         .map(mapper::toApplicationSummary)
         .toList();
@@ -59,8 +65,7 @@ public class ApplicationSummaryService {
    * @return the total number of applications matching the provided status
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public Integer getAllApplicationsTotal(ApplicationStatus applicationStatus) {
-    return (int) applicationSummaryRepository.count((root, query, cb) ->
-        cb.equal(root.get("status"), applicationStatus));
+  public long getAllApplicationsTotal(ApplicationStatus applicationStatus) {
+    return applicationSummaryRepository.count(ApplicationSummarySpecification.isStatus(applicationStatus));
   }
 }

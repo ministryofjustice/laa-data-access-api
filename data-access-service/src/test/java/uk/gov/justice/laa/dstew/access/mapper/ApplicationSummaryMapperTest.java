@@ -12,6 +12,13 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+
 @ExtendWith(MockitoExtension.class)
 public class ApplicationSummaryMapperTest {
 
@@ -34,7 +41,7 @@ public class ApplicationSummaryMapperTest {
     assertThat(result.getApplicationId()).isEqualTo(id);
     assertThat(result.getApplicationReference()).isEqualTo("ref1");
     assertThat(result.getApplicationStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
-    // assertThat(result.getCreatedAt()).isEqualTo(entity.getCreatedAt());
-    // assertThat(result.getModifiedAt()).isEqualTo(entity.getModifiedAt());
+    assertThat(result.getModifiedAt()).isEqualTo(entity.getModifiedAt().atOffset(ZoneOffset.UTC));
+    assertThat(result.getCreatedAt()).isEqualTo(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
   }
 }
