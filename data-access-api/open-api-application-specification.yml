@@ -201,11 +201,3 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationSummary"
-
-    application_status:
-      type: string
-      enum:
-        - IN_PROGRESS
-        - SUBMITTED
-      default: IN_PROGRESS
-      description: Application statuses

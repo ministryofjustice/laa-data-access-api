@@ -29,8 +29,8 @@ public class ApplicationSummaryService {
    * @param applicationSummaryMapper the mapper used to convert entities into API-facing models
    */
   public ApplicationSummaryService(
-    final ApplicationSummaryRepository applicationSummaryRepository,
-    final ApplicationSummaryMapper applicationSummaryMapper
+      final ApplicationSummaryRepository applicationSummaryRepository,
+      final ApplicationSummaryMapper applicationSummaryMapper
   ) {
     this.applicationSummaryRepository = applicationSummaryRepository;
     this.mapper = applicationSummaryMapper;
