@@ -13,9 +13,8 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -25,9 +24,11 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 /**
  * Represents an application.
  */
+@Builder(toBuilder = true)
+@AllArgsConstructor
+@NoArgsConstructor
 @Getter
 @Setter
-@RequiredArgsConstructor
 @Entity
 @Table(name = "application")
 @EntityListeners(AuditingEntityListener.class)
