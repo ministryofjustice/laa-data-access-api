@@ -27,11 +27,11 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 /**
  * Represents an application.
  */
-@Getter
-@Setter
+@Builder(toBuilder = true)
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
+@Getter
+@Setter
 @Entity
 @Table(name = "application")
 @EntityListeners(AuditingEntityListener.class)
@@ -92,5 +92,4 @@ public class ApplicationEntity implements AuditableEntity {
   public String getUpdatedBy() {
     return null;
   }
-
 }
