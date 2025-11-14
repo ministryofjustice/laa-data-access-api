@@ -93,7 +93,6 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-testcontainers:3.5.7'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    //developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
     // Security fix for SNYK-JAVA-ORGAPACHECOMMONS-10734078 (CVE-2025-48924)
     implementation 'org.apache.commons:commons-lang3:3.18.0'

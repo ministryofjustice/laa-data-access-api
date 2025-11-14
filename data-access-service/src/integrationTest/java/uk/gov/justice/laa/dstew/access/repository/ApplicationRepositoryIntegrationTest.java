@@ -88,12 +88,8 @@ public class ApplicationRepositoryIntegrationTest {
     }
 
     private static void assertApplicationEntitysAreEqual(ApplicationEntity x, ApplicationEntity y) {
-        assertEquals(x.getId(), y.getId());
-        assertEquals(x.getApplicationContent(), y.getApplicationContent());
-        assertEquals(x.getCreatedAt(), y.getCreatedAt());
-        assertEquals(x.getModifiedAt(), y.getModifiedAt());
-        assertEquals(x.getSchemaVersion(), y.getSchemaVersion());
-        assertEquals(x.getCreatedBy(), y.getCreatedBy());
-        assertEquals(x.getStatus(), y.getStatus());
+        assertThat(x)
+        .usingRecursiveComparison()
+        .isEqualTo(y);
     }
 }
