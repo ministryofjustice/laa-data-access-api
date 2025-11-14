@@ -42,6 +42,9 @@ public class ApplicationEntity implements AuditableEntity {
   @Enumerated(EnumType.STRING)
   private ApplicationStatus status;
 
+  @Column(name = "application_reference")
+  private String applicationReference;
+
   @Type(JsonType.class)
   @Column(columnDefinition = "json")
   private Map<String, Object> applicationContent;

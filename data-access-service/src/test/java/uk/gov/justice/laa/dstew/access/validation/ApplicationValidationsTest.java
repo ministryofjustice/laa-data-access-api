@@ -52,12 +52,51 @@ public class ApplicationValidationsTest {
   }
 
   @Test
+  void shoudlThrowCreateRequestValidationErrorWhenReferenceIsNull(){
+        ApplicationCreateRequest request = new ApplicationCreateRequest();
+    Map<String, Object> content = new HashMap<>();
+    content.put("foo", "bar");
+    request.setApplicationContent(content);
+    request.setApplicationReference(null);
+
+    assertThrows(ValidationException.class,
+        () -> classUnderTest.checkApplicationCreateRequest(request));
+  }
+
+
+  @Test
+  void shoudlThrowCreateRequestValidationErrorWhenReferenceIsEmpty(){
+        ApplicationCreateRequest request = new ApplicationCreateRequest();
+    Map<String, Object> content = new HashMap<>();
+    content.put("foo", "bar");
+    request.setApplicationContent(content);
+    request.setApplicationReference("");
+
+    assertThrows(ValidationException.class,
+        () -> classUnderTest.checkApplicationCreateRequest(request));
+  }
+
+
+  @Test
+  void shoudlThrowCreateRequestValidationErrorWhenReferenceIsWhitespace(){
+        ApplicationCreateRequest request = new ApplicationCreateRequest();
+    Map<String, Object> content = new HashMap<>();
+    content.put("foo", "bar");
+    request.setApplicationContent(content);
+    request.setApplicationReference("     ");
+
+    assertThrows(ValidationException.class,
+        () -> classUnderTest.checkApplicationCreateRequest(request));
+  }
+
+  @Test
   void shouldNotThrowCreateRequestValidationErrorWhenContentIsValid() {
     ApplicationCreateRequest request = new ApplicationCreateRequest();
     request.setStatus(ApplicationStatus.SUBMITTED);
     Map<String, Object> content = new HashMap<>();
     content.put("foo", "bar");
     request.setApplicationContent(content);
+    request.setApplicationReference("app-ref");
 
     assertDoesNotThrow(() -> classUnderTest.checkApplicationCreateRequest(request));
   }

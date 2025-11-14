@@ -62,7 +62,8 @@ class ApplicationControllerTest {
           {
             "status": "SUBMITTED",
             "schemaVersion": 1,
-            "applicationContent": { "foo": "bar" }
+            "applicationContent": { "foo": "bar" },
+            "applicationReference": "app_reference"
           }
         """;
 

@@ -52,6 +52,7 @@ public class ApplicationMapperTest {
     req.setStatus(ApplicationStatus.SUBMITTED);
     req.setSchemaVersion(1);
     req.setApplicationContent(Map.of("foo", "bar"));
+    req.setApplicationReference("app_reference");
 
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
 
@@ -60,6 +61,7 @@ public class ApplicationMapperTest {
     assertThat(result.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
     assertThat(result.getSchemaVersion()).isEqualTo(1);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
+    assertThat(result.getApplicationReference()).isEqualTo("app_reference");
   }
 
   @Test
