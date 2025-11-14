@@ -1,9 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.asserters;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 
 import java.util.List;
