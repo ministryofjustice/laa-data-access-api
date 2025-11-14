@@ -50,7 +50,6 @@ public class ApplicationMapperTest {
   void shouldMapApplicationCreateRequestToApplicationEntity() {
     ApplicationCreateRequest req = new ApplicationCreateRequest();
     req.setStatus(ApplicationStatus.SUBMITTED);
-    req.setSchemaVersion(1);
     req.setApplicationContent(Map.of("foo", "bar"));
 
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
@@ -58,7 +57,6 @@ public class ApplicationMapperTest {
     assertThat(result).isNotNull();
     assertThat(result.getId()).isNotNull();
     assertThat(result.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
-    assertThat(result.getSchemaVersion()).isEqualTo(1);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
   }
 
@@ -71,31 +69,26 @@ public class ApplicationMapperTest {
   void shouldUpdateApplicationEntityWithoutOverwritingNulls() {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setStatus(ApplicationStatus.IN_PROGRESS);
-    entity.setSchemaVersion(1);
 
     ApplicationUpdateRequest req = new ApplicationUpdateRequest(); // all nulls
     applicationMapper.updateApplicationEntity(entity, req);
 
     assertThat(entity.getStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
-    assertThat(entity.getSchemaVersion()).isEqualTo(1);
   }
 
   @Test
   void shouldUpdateApplicationEntityWithNewValues() {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setStatus(ApplicationStatus.IN_PROGRESS);
-    entity.setSchemaVersion(1);
     entity.setApplicationContent(Map.of("oldKey", "oldValue"));
 
     ApplicationUpdateRequest req = new ApplicationUpdateRequest();
     req.setStatus(ApplicationStatus.SUBMITTED);
-    req.setSchemaVersion(2);
     req.setApplicationContent(Map.of("newKey", "newValue"));
 
     applicationMapper.updateApplicationEntity(entity, req);
 
     assertThat(entity.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
-    assertThat(entity.getSchemaVersion()).isEqualTo(2);
     assertThat(entity.getApplicationContent()).containsEntry("newKey", "newValue");
   }
 

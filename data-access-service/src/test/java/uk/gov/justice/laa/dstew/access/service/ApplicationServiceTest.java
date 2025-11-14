@@ -22,7 +22,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
-import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
 @ExtendWith(MockitoExtension.class)
 public class ApplicationServiceTest {
@@ -34,8 +33,6 @@ public class ApplicationServiceTest {
   private ApplicationRepository repository;
   @Mock
   private ApplicationMapper mapper;
-  @Mock
-  private ApplicationValidations validator;
   @Mock
   private ObjectMapper objectMapper;
 
@@ -58,7 +55,6 @@ public class ApplicationServiceTest {
 
     UUID result = service.createApplication(req);
     assertThat(result).isEqualTo(entity.getId());
-    verify(validator).checkApplicationCreateRequest(req);
     verify(repository).save(entity);
   }
 

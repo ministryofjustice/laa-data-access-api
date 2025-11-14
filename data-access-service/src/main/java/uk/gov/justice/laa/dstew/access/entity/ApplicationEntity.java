@@ -63,6 +63,13 @@ public class ApplicationEntity implements AuditableEntity {
     this.applicationContent = applicationContent;
   }
 
+  public void setSchemaVersion(Integer schemaVersion) {
+    this.schemaVersion = schemaVersion;
+  }
+
+  public Integer getSchemaVersion() {
+    return schemaVersion;
+  }
 
   @Override
   public Instant getCreatedAt() {
@@ -83,4 +90,5 @@ public class ApplicationEntity implements AuditableEntity {
   public String getUpdatedBy() {
     return null;
   }
+
 }
