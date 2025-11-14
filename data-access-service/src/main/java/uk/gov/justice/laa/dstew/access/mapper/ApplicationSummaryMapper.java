@@ -22,7 +22,7 @@ public interface ApplicationSummaryMapper {
    * @return the application summary
    */
   @Mapping(target = "applicationId", source = "id")
-  @Mapping(target = "applicationStatus", source = "statusCodeLookupEntity.code")
+  @Mapping(target = "applicationStatus", source = "status")
   ApplicationSummary toApplicationSummary(ApplicationSummaryEntity applicationSummaryEntity);
 
   default OffsetDateTime map(Instant value) {

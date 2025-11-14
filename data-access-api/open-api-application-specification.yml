@@ -84,7 +84,6 @@ paths:
         '403': { description: Forbidden }
         '404': { description: Not found }
         '500': { description: Internal server error }
-
     patch:
       tags:
         - application
@@ -114,6 +113,14 @@ paths:
 
 components:
   schemas:
+    application_status:
+      type: string
+      enum:
+        - IN_PROGRESS
+        - SUBMITTED
+      default: IN_PROGRESS
+      description: Application statuses
+
     Application:
       type: object
       required:
@@ -124,49 +131,38 @@ components:
         id:
           type: string
           format: uuid
-          description: UUIDv7 format
         applicationStatus:
-          type: string
+          $ref: "#/components/schemas/application_status"
         schemaVersion:
           type: integer
         applicationContent:
           type: object
           additionalProperties: true
-          description: Full JSON object representing all application fields
 
     ApplicationCreateRequest:
       type: object
       required:
-        - statusId
+        - status
         - applicationContent
       properties:
-        statusId:
-          type: string
-          format: uuid
+        status:
+          $ref: "#/components/schemas/application_status"
         schemaVersion:
           type: integer
         applicationContent:
           type: object
           additionalProperties: true
-          description: All the application fields to store in JSONB
 
     ApplicationUpdateRequest:
       type: object
       properties:
-        statusId:
-          type: string
-          format: uuid
+        status:
+          $ref: "#/components/schemas/application_status"
         schemaVersion:
           type: integer
         applicationContent:
           type: object
           additionalProperties: true
-          description: Partial update fields for JSONB
-
-    ApplicationCollection:
-      type: array
-      items:
-        $ref: "#/components/schemas/Application"
 
     ApplicationSummary:
       type: object
@@ -183,7 +179,6 @@ components:
         created_at:
           type: string
           format: date-time
-          description: This is the date that the application was submitted. It is used for MI and prioritisation.
         modified_at:
           type: string
           format: date-time
@@ -206,11 +201,3 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationSummary"
-
-    application_status:
-      type: string
-      enum:
-        - IN_PROGRESS
-        - SUBMITTED
-      default: IN_PROGRESS
-      description: Application statuses

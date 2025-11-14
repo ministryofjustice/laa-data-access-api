@@ -15,46 +15,57 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
 
 /**
- * Service class for handling application summary requests.
+ * Service class responsible for retrieving and managing {@link ApplicationSummary} data.
  */
 @Service
 public class ApplicationSummaryService {
   private final ApplicationSummaryRepository applicationSummaryRepository;
   private final ApplicationSummaryMapper mapper;
 
+  /**
+   * Constructs a new {@link ApplicationSummaryService} with the required repository and mapper.
+   *
+   * @param applicationSummaryRepository the repository used to access application summary data
+   * @param applicationSummaryMapper the mapper used to convert entities into API-facing models
+   */
   public ApplicationSummaryService(
-        final ApplicationSummaryRepository applicationSummaryRepository,
-        final ApplicationSummaryMapper applicationSummaryMapper
+      final ApplicationSummaryRepository applicationSummaryRepository,
+      final ApplicationSummaryMapper applicationSummaryMapper
   ) {
     this.applicationSummaryRepository = applicationSummaryRepository;
     this.mapper = applicationSummaryMapper;
   }
 
   /**
-   * Gets all application summaries.
+   * Retrieves a paginated list of {@link ApplicationSummary} objects filtered by application status.
    *
-   * @return the list of applications
+   * @param applicationStatus the {@link ApplicationStatus} used to filter results
+   * @param page the page number to retrieve (zero-based index)
+   * @param pageSize the maximum number of results to return per page
+   * @return a list of {@link ApplicationSummary} instances matching the filter criteria
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public List<ApplicationSummary> getAllApplications(ApplicationStatus applicationStatus, Integer page, Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
 
     Page<ApplicationSummaryEntity> applicationSummaryPage = applicationSummaryRepository
-            .findAll(ApplicationSummarySpecification.isStatus(applicationStatus), pageDetails);
+        .findAll(ApplicationSummarySpecification.isStatus(applicationStatus), pageDetails);
 
-    List<ApplicationSummaryEntity> allApplications = applicationSummaryPage.getContent();
-
-    return allApplications.stream().map(mapper::toApplicationSummary).toList();
+    return applicationSummaryPage.getContent()
+        .stream()
+        .map(mapper::toApplicationSummary)
+        .toList();
   }
 
+
   /**
-   * Gets all application summaries.
+   * Retrieves the total count of applications with a specific {@link ApplicationStatus}.
    *
-   * @return the total of list of applications
+   * @param applicationStatus the {@link ApplicationStatus} used to filter applications
+   * @return the total number of applications matching the provided status
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public long getAllApplicationsTotal(ApplicationStatus applicationStatus) {
     return applicationSummaryRepository.count(ApplicationSummarySpecification.isStatus(applicationStatus));
   }
-
 }
