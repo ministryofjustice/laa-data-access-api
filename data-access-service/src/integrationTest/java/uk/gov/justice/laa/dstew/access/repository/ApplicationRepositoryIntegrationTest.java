@@ -1,8 +1,7 @@
 package uk.gov.justice.laa.dstew.access.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +26,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import jakarta.transaction.Transactional;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.StatusCodeLookupEntity;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.jdbc.Sql;
@@ -38,9 +37,6 @@ import static uk.gov.justice.laa.dstew.access.Constants.POSTGRES_INSTANCE;
 @SpringBootTest
 @Transactional
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Sql(statements = { "INSERT INTO public.status_code_lookup(id, code, description) VALUES ('5916ec11-b884-421e-907c-353618fc5b1c', 'pending', 'pending');",
-                    "INSERT INTO public.status_code_lookup(id, code, description) VALUES ('de31c50b-c731-4df4-aaa4-6acf4f4d8fe3', 'accepted', 'accepted');"
-                  })
 public class ApplicationRepositoryIntegrationTest {
 
     @Container
@@ -60,7 +56,6 @@ public class ApplicationRepositoryIntegrationTest {
         map.put("last_name", "hendrix");
         prePopulatedApplications = Instancio.ofList(ApplicationEntity.class)
                                 .size(NUMBER_OF_PREPOPULATED_APPLICATIONS)
-                                .generate(Select.field(ApplicationEntity::getStatusEntity), gen -> StatusCodes(gen))
                                 .set(Select.field(ApplicationEntity::getApplicationContent), map)
                                 .create();
         applicationRepository.saveAll(prePopulatedApplications);
@@ -73,8 +68,8 @@ public class ApplicationRepositoryIntegrationTest {
         var entity = ApplicationEntity.builder()
                                              .id(UUID.randomUUID())
                                              .applicationContent(map)
+                                             .status(ApplicationStatus.IN_PROGRESS)
                                              .build();
-        entity.setStatusId(UUID.fromString("5916ec11-b884-421e-907c-353618fc5b1c"));
         applicationRepository.save(entity);
     }
 
@@ -92,18 +87,6 @@ public class ApplicationRepositoryIntegrationTest {
         assertEquals(NUMBER_OF_PREPOPULATED_APPLICATIONS, applications.size());
     }
 
-    static OneOfArrayGeneratorSpec<StatusCodeLookupEntity> StatusCodes(Generators gen) {
-        StatusCodeLookupEntity pendingStatus = StatusCodeLookupEntity.builder()
-                                                                     .code("pending")
-                                                                     .id(UUID.fromString("5916ec11-b884-421e-907c-353618fc5b1c"))
-                                                                     .build();
-        StatusCodeLookupEntity acceptedStatus = StatusCodeLookupEntity.builder()
-                                                                     .code("accepted")
-                                                                     .id(UUID.fromString("de31c50b-c731-4df4-aaa4-6acf4f4d8fe3"))
-                                                                     .build();
-        return gen.oneOf(pendingStatus, acceptedStatus);
-    }
-
     private static void assertApplicationEntitysAreEqual(ApplicationEntity x, ApplicationEntity y) {
         assertEquals(x.getId(), y.getId());
         assertEquals(x.getApplicationContent(), y.getApplicationContent());
@@ -111,7 +94,6 @@ public class ApplicationRepositoryIntegrationTest {
         assertEquals(x.getModifiedAt(), y.getModifiedAt());
         assertEquals(x.getSchemaVersion(), y.getSchemaVersion());
         assertEquals(x.getCreatedBy(), y.getCreatedBy());
-        assertEquals(x.getStatusEntity().getCode(), y.getStatusEntity().getCode());
-        assertEquals(x.getStatusEntity().getId(), y.getStatusEntity().getId());
+        assertEquals(x.getStatus(), y.getStatus());
     }
 }
