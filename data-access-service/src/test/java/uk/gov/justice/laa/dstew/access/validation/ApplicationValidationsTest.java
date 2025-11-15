@@ -12,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
@@ -53,6 +54,7 @@ public class ApplicationValidationsTest {
   @Test
   void shouldNotThrowCreateRequestValidationErrorWhenContentIsValid() {
     ApplicationCreateRequest request = new ApplicationCreateRequest();
+    request.setStatus(ApplicationStatus.SUBMITTED);
     Map<String, Object> content = new HashMap<>();
     content.put("foo", "bar");
     request.setApplicationContent(content);
@@ -92,6 +94,7 @@ public class ApplicationValidationsTest {
     when(mockEntra.hasAnyAppRole("Caseworker", "Administrator")).thenReturn(false);
 
     ApplicationUpdateRequest request = new ApplicationUpdateRequest();
+    request.setStatus(ApplicationStatus.SUBMITTED);
     Map<String, Object> content = new HashMap<>();
     content.put("foo", "bar");
     request.setApplicationContent(content);
@@ -106,6 +109,7 @@ public class ApplicationValidationsTest {
     when(mockEntra.hasAnyAppRole("Caseworker", "Administrator")).thenReturn(true);
 
     ApplicationUpdateRequest request = new ApplicationUpdateRequest();
+    request.setStatus(ApplicationStatus.SUBMITTED);
     Map<String, Object> content = new HashMap<>();
     content.put("foo", "bar");
     request.setApplicationContent(content);
@@ -118,6 +122,7 @@ public class ApplicationValidationsTest {
     when(mockEntra.hasAppRole("Provider")).thenReturn(false);
 
     ApplicationUpdateRequest request = new ApplicationUpdateRequest();
+    request.setStatus(ApplicationStatus.IN_PROGRESS);
     Map<String, Object> content = new HashMap<>();
     content.put("foo", "bar");
     request.setApplicationContent(content);

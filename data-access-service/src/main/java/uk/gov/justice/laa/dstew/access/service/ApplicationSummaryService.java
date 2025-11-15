@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import java.util.Collections;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -48,15 +47,19 @@ public class ApplicationSummaryService {
   public List<ApplicationSummary> getAllApplications(ApplicationStatus applicationStatus, Integer page, Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
 
-    Page<ApplicationSummaryEntity> applicationSummaryPage = applicationSummaryRepository
-        .findAll(ApplicationSummarySpecification.isStatus(applicationStatus), pageDetails);
-
-    return applicationSummaryPage.getContent()
-        .stream()
-        .map(mapper::toApplicationSummary)
-        .toList();
+    if (applicationStatus != null) {
+      return getSummaryListFromPage(applicationSummaryRepository
+              .findAll(ApplicationSummarySpecification.isStatus(applicationStatus), pageDetails));
+    }
+    return getSummaryListFromPage(applicationSummaryRepository.findAll(pageDetails));
   }
 
+  private List<ApplicationSummary> getSummaryListFromPage(Page<ApplicationSummaryEntity> items) {
+    return items.getContent()
+            .stream()
+            .map(mapper::toApplicationSummary)
+            .toList();
+  }
 
   /**
    * Retrieves the total count of applications with a specific {@link ApplicationStatus}.
@@ -66,6 +69,11 @@ public class ApplicationSummaryService {
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public long getAllApplicationsTotal(ApplicationStatus applicationStatus) {
-    return applicationSummaryRepository.count(ApplicationSummarySpecification.isStatus(applicationStatus));
+
+    if (applicationStatus != null) {
+      return applicationSummaryRepository.count(ApplicationSummarySpecification.isStatus(applicationStatus));
+    }
+
+    return applicationSummaryRepository.count();
   }
 }

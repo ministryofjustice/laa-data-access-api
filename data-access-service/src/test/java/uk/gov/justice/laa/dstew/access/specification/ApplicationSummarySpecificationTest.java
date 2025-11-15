@@ -33,10 +33,7 @@ public class ApplicationSummarySpecificationTest {
 
         Predicate summaryPredicate = mock(Predicate.class);
 
-        when(root.get("statusCodeLookupEntity"))
-                .thenReturn(mock(jakarta.persistence.criteria.Path.class));
-
-        when(rootResults.get("code"))
+        when(root.get("status"))
                 .thenReturn(mock(jakarta.persistence.criteria.Path.class));
 
         when(builder.equal(any(), eq("IN_PROGRESS"))).thenReturn(summaryPredicate);
