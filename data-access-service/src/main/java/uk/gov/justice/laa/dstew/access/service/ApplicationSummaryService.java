@@ -47,17 +47,15 @@ public class ApplicationSummaryService {
   public List<ApplicationSummary> getAllApplications(ApplicationStatus applicationStatus, Integer page, Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
 
-    return getSummaryListFromPage(applicationSummaryRepository
-            .findAll(ApplicationSummarySpecification.filterBy(applicationStatus), pageDetails));
-  }
-
-  private List<ApplicationSummary> getSummaryListFromPage(Page<ApplicationSummaryEntity> items) {
-    return items.getContent()
+    return applicationSummaryRepository
+            .findAll(ApplicationSummarySpecification.filterBy(applicationStatus), pageDetails)
+            .getContent()
             .stream()
             .map(mapper::toApplicationSummary)
             .toList();
   }
 
+  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public long getAllApplicationsTotal(ApplicationStatus applicationStatus) {
     return applicationSummaryRepository.count(ApplicationSummarySpecification.filterBy(applicationStatus));
   }

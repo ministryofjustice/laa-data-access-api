@@ -1,11 +1,14 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.MethodOrderer;
@@ -18,7 +21,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.MediaType;
@@ -29,13 +31,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
-import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
-import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 
 @SpringBootTest(classes = AccessApp.class, properties = "feature.disable-security=false")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -51,12 +53,6 @@ public class ApplicationControllerIntegrationTest {
 
   @MockitoBean
   private ApplicationSummaryRepository repository;
-
-  @MockitoBean
-  private ApplicationSummaryMapper mapper;
-
-  @Autowired
-  private ApplicationSummaryService summaryService;
 
   private String buildApplicationJson() {
     return "{"
@@ -78,53 +74,59 @@ public class ApplicationControllerIntegrationTest {
         .andExpect(MockMvcResultMatchers.status().isUnauthorized());
   }
 
+  ApplicationSummaryEntity createApplicationSummaryEntity(ApplicationStatus status) {
+    ApplicationSummaryEntity entity;
+
+    entity = new ApplicationSummaryEntity();
+    entity.setId(UUID.randomUUID());
+    entity.setApplicationReference(UUID.randomUUID().toString());
+    entity.setCreatedAt(Instant.now());
+    entity.setModifiedAt(Instant.now());
+    entity.setStatus(status);
+
+    return entity;
+  }
+
+  List<ApplicationSummaryEntity> createMixedStatusSummaryList() {
+    List<ApplicationSummaryEntity> entities = new ArrayList<>();
+
+    entities.add(createApplicationSummaryEntity(ApplicationStatus.IN_PROGRESS));
+    entities.add(createApplicationSummaryEntity(ApplicationStatus.IN_PROGRESS));
+    entities.add(createApplicationSummaryEntity(ApplicationStatus.SUBMITTED));
+    entities.add(createApplicationSummaryEntity(ApplicationStatus.IN_PROGRESS));
+    return entities;
+  }
+
   @Test
-  @Order(2)
   @WithMockUser(authorities = {"APPROLE_ApplicationReader"})
-  void shouldGetAllApplications() throws Exception {
-    ApplicationSummaryEntity firstEntity = new ApplicationSummaryEntity();
-    firstEntity.setId(UUID.randomUUID());
-    firstEntity.setApplicationReference("appRef1");
-    firstEntity.setCreatedAt(Instant.now());
-    firstEntity.setModifiedAt(Instant.now());
-    firstEntity.setStatus(ApplicationStatus.SUBMITTED);
-    
-    ApplicationSummary firstSummary = new ApplicationSummary();
-    firstSummary.setApplicationId(firstEntity.getId());
-    firstSummary.setApplicationReference(firstEntity.getApplicationReference());
-    firstSummary.setCreatedAt(firstEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
-    firstSummary.setModifiedAt(firstEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-    firstSummary.setApplicationStatus(ApplicationStatus.IN_PROGRESS);
-    
-    ApplicationSummaryEntity secondEntity = new ApplicationSummaryEntity();
-    secondEntity.setId(UUID.randomUUID());
-    secondEntity.setApplicationReference("appRef2");
-    secondEntity.setCreatedAt(Instant.now());
-    secondEntity.setModifiedAt(Instant.now());
-    secondEntity.setStatus(ApplicationStatus.SUBMITTED);
+  void shouldGetAllApplicationsWhenNoFilter() throws Exception {
 
-    ApplicationSummary secondSummary = new ApplicationSummary();
-    secondSummary.setApplicationId(secondEntity.getId());
-    secondSummary.setApplicationReference(secondEntity.getApplicationReference());
-    secondSummary.setCreatedAt(secondEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
-    secondSummary.setModifiedAt(secondEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-    secondSummary.setApplicationStatus(ApplicationStatus.IN_PROGRESS);
-    
-    Pageable pageDetails = PageRequest.of(1, 1);
-    
-    Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(List.of(firstEntity, secondEntity));
+    when(repository.findAll(any(Specification.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(createMixedStatusSummaryList()));
+    when(repository.count(any(Specification.class))).thenReturn(4L);
 
-    when(repository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
-    when(repository.count(any(Specification.class))).thenReturn(2L);
-    
-    when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
-    when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);
+    mockMvc
+      .perform(MockMvcRequestBuilders.get("/api/v0/applications"))
+      .andExpect(MockMvcResultMatchers.status().isOk())
+      .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+      .andExpect(jsonPath("$.*", hasSize(2)))
+      .andExpect(jsonPath("$.applications", hasSize(4)));
+  }
 
-    List<ApplicationSummary> result = summaryService.getAllApplications(ApplicationStatus.IN_PROGRESS, 1, 1);
+  @Test
+  @WithMockUser(authorities = {"APPROLE_ApplicationReader"})
+  void shouldGetAllApplicationsWhenFilterIsSubmitted() throws Exception {
 
-    assertThat(result).hasSize(2);
-    assertThat(result.get(0).getApplicationId()).isEqualTo(firstEntity.getId());
-    assertThat(result.get(1).getApplicationId()).isEqualTo(secondEntity.getId());
+    when(repository.findAll(any(Specification.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(createMixedStatusSummaryList()));
+    when(repository.count(any(Specification.class))).thenReturn(4L);
+
+    mockMvc
+            .perform(MockMvcRequestBuilders.get("/api/v0/applications?status=SUBMITTED"))
+            .andExpect(MockMvcResultMatchers.status().isOk())
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.*", hasSize(2)))
+            .andExpect(jsonPath("$.applications", hasSize(4)));
   }
 
   @Test
@@ -161,8 +163,8 @@ public class ApplicationControllerIntegrationTest {
     mockMvc.perform(MockMvcRequestBuilders.get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
         .andExpect(MockMvcResultMatchers.status().isNotFound())
         .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(MockMvcResultMatchers.jsonPath("$.title").value("Not found"))
-        .andExpect(MockMvcResultMatchers.jsonPath("$.detail")
+        .andExpect(jsonPath("$.title").value("Not found"))
+        .andExpect(jsonPath("$.detail")
             .value("No application found with id: 019a2b5e-d126-71c7-89c2-500363c172f1"));
   }
 
@@ -213,9 +215,9 @@ public class ApplicationControllerIntegrationTest {
       mockMvc.perform(MockMvcRequestBuilders.get(existingApplicationUri))
           .andExpect(MockMvcResultMatchers.status().isOk())
           .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_JSON))
-          .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.first_name").value("John"))
-          .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.last_name").value("Doe"))
-          .andExpect(MockMvcResultMatchers.jsonPath("$.id").isNotEmpty());
+          .andExpect(jsonPath("$.applicationContent.first_name").value("John"))
+          .andExpect(jsonPath("$.applicationContent.last_name").value("Doe"))
+          .andExpect(jsonPath("$.id").isNotEmpty());
     }
   }
 
