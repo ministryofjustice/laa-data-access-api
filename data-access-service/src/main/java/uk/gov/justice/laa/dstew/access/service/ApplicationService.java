@@ -18,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
 /**
  * Service class for managing Applications.
@@ -27,6 +28,7 @@ public class ApplicationService {
 
   private final ApplicationRepository applicationRepository;
   private final ApplicationMapper applicationMapper;
+  private final ApplicationValidations applicationValidations;
   private final ObjectMapper objectMapper;
   private final Javers javers;
 
@@ -35,13 +37,16 @@ public class ApplicationService {
    *
    * @param applicationRepository the repository
    * @param applicationMapper the mapper between entity and DTO
+   * @param applicationValidations validations for requests
    * @param objectMapper Jackson ObjectMapper for JSONB
    */
   public ApplicationService(final ApplicationRepository applicationRepository,
                             final ApplicationMapper applicationMapper,
+                            final ApplicationValidations applicationValidations,
                             final ObjectMapper objectMapper) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
+    this.applicationValidations = applicationValidations;
     this.javers = JaversBuilder.javers().build();
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
@@ -79,7 +84,7 @@ public class ApplicationService {
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public UUID createApplication(final ApplicationCreateRequest req) {
-
+    applicationValidations.checkApplicationCreateRequest(req);
     final ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
     final ApplicationEntity saved = applicationRepository.save(entity);
 
@@ -97,7 +102,7 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void updateApplication(final UUID id, final ApplicationUpdateRequest req) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
-
+    applicationValidations.checkApplicationUpdateRequest(req, entity);
     applicationMapper.updateApplicationEntity(entity, req);
 
     applicationRepository.save(entity);

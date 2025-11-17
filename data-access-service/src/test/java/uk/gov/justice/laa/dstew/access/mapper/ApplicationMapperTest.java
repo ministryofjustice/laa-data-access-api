@@ -57,6 +57,7 @@ public class ApplicationMapperTest {
     assertThat(result).isNotNull();
     assertThat(result.getId()).isNotNull();
     assertThat(result.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
+    assertThat(result.getSchemaVersion()).isEqualTo(1);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
   }
 
@@ -80,6 +81,7 @@ public class ApplicationMapperTest {
   void shouldUpdateApplicationEntityWithNewValues() {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setStatus(ApplicationStatus.IN_PROGRESS);
+    entity.setSchemaVersion(1);
     entity.setApplicationContent(Map.of("oldKey", "oldValue"));
 
     ApplicationUpdateRequest req = new ApplicationUpdateRequest();
@@ -89,6 +91,7 @@ public class ApplicationMapperTest {
     applicationMapper.updateApplicationEntity(entity, req);
 
     assertThat(entity.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
+    entity.setSchemaVersion(1);
     assertThat(entity.getApplicationContent()).containsEntry("newKey", "newValue");
   }
 
@@ -123,5 +126,34 @@ public class ApplicationMapperTest {
     }));
 
     assertThrows(IllegalArgumentException.class, () -> applicationMapper.toApplication(entity));
+  }
+
+  @Test
+  void shouldSetTimestampsAndSchemaVersionOnCreateAndUpdate() throws InterruptedException {
+    ApplicationCreateRequest createReq = new ApplicationCreateRequest();
+    createReq.setStatus(ApplicationStatus.SUBMITTED);
+    createReq.setApplicationContent(Map.of("key", "value"));
+
+    Instant beforeCreate = Instant.now();
+    ApplicationEntity entity = applicationMapper.toApplicationEntity(createReq);
+    Instant afterCreate = Instant.now();
+
+    assertThat(entity.getSchemaVersion()).isEqualTo(1);
+    assertThat(entity.getCreatedAt()).isBetween(beforeCreate, afterCreate);
+    assertThat(entity.getModifiedAt()).isBetween(beforeCreate, afterCreate);
+
+    Thread.sleep(10); // ensure time difference
+    ApplicationUpdateRequest updateReq = new ApplicationUpdateRequest();
+    updateReq.setApplicationContent(Map.of("key", "newValue"));
+
+    Instant beforeUpdate = Instant.now();
+    applicationMapper.updateApplicationEntity(entity, updateReq);
+    Instant afterUpdate = Instant.now();
+
+    assertThat(entity.getCreatedAt()).isBetween(beforeCreate, afterCreate);
+
+    assertThat(entity.getModifiedAt()).isBetween(beforeUpdate, afterUpdate);
+
+    assertThat(entity.getApplicationContent()).containsEntry("key", "newValue");
   }
 }
