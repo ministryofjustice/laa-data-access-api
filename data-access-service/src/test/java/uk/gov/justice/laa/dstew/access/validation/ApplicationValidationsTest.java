@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -35,8 +37,9 @@ public class ApplicationValidationsTest {
 
   @Test
   void shouldThrowCreateRequestValidationErrorWhenContentIsNull() {
-    ApplicationCreateRequest request = new ApplicationCreateRequest();
-    request.setApplicationContent(null);
+    ApplicationCreateRequest request = ApplicationCreateRequest.builder()
+                                                               .applicationContent(null)
+                                                               .build();
 
     assertThrows(ValidationException.class,
         () -> classUnderTest.checkApplicationCreateRequest(request));
@@ -44,60 +47,46 @@ public class ApplicationValidationsTest {
 
   @Test
   void shouldThrowCreateRequestValidationErrorWhenContentIsEmpty() {
-    ApplicationCreateRequest request = new ApplicationCreateRequest();
-    request.setApplicationContent(new HashMap<>());
+    ApplicationCreateRequest request = ApplicationCreateRequest.builder()
+                                                               .applicationContent(new HashMap<>())
+                                                               .build();
 
     assertThrows(ValidationException.class,
         () -> classUnderTest.checkApplicationCreateRequest(request));
   }
 
   @Test
-  void shoudlThrowCreateRequestValidationErrorWhenReferenceIsNull(){
-        ApplicationCreateRequest request = new ApplicationCreateRequest();
-    Map<String, Object> content = new HashMap<>();
-    content.put("foo", "bar");
-    request.setApplicationContent(content);
-    request.setApplicationReference(null);
+  void shouldThrowCreateRequestValidationErrorWhenReferenceIsNull(){
+    ApplicationCreateRequest request = ApplicationCreateRequest.builder()
+                                                                .applicationContent(Map.of("foo", "bar"))
+                                                                .applicationReference(null)
+                                                                .build();
 
     assertThrows(ValidationException.class,
-        () -> classUnderTest.checkApplicationCreateRequest(request));
+        () -> classUnderTest.checkApplicationCreateRequest(request),
+        "Application reference cannot be blank");
   }
 
 
-  @Test
-  void shoudlThrowCreateRequestValidationErrorWhenReferenceIsEmpty(){
-        ApplicationCreateRequest request = new ApplicationCreateRequest();
-    Map<String, Object> content = new HashMap<>();
-    content.put("foo", "bar");
-    request.setApplicationContent(content);
-    request.setApplicationReference("");
-
-    assertThrows(ValidationException.class,
-        () -> classUnderTest.checkApplicationCreateRequest(request));
-  }
-
-
-  @Test
-  void shoudlThrowCreateRequestValidationErrorWhenReferenceIsWhitespace(){
-        ApplicationCreateRequest request = new ApplicationCreateRequest();
-    Map<String, Object> content = new HashMap<>();
-    content.put("foo", "bar");
-    request.setApplicationContent(content);
-    request.setApplicationReference("     ");
-
-    assertThrows(ValidationException.class,
-        () -> classUnderTest.checkApplicationCreateRequest(request));
-  }
+  @ParameterizedTest  
+  @ValueSource(strings = {"", "    "})  
+  void shouldCreateRequestValidationThrowValidationErrorWhenReferenceIsNotValid(String applicationReference) {  
+    ApplicationCreateRequest request = ApplicationCreateRequest.builder()
+                                                                .applicationContent(Map.of("foo", "bar"))
+                                                                .applicationReference(applicationReference)
+                                                                .build();
+    assertThrows(ValidationException.class,  
+        () -> classUnderTest.checkApplicationCreateRequest(request),  
+            "Application reference cannot be blank");  
+  } 
 
   @Test
   void shouldNotThrowCreateRequestValidationErrorWhenContentIsValid() {
-    ApplicationCreateRequest request = new ApplicationCreateRequest();
-    request.setStatus(ApplicationStatus.SUBMITTED);
-    Map<String, Object> content = new HashMap<>();
-    content.put("foo", "bar");
-    request.setApplicationContent(content);
-    request.setApplicationReference("app-ref");
-
+    ApplicationCreateRequest request = ApplicationCreateRequest.builder()
+                                                               .status(ApplicationStatus.SUBMITTED)
+                                                               .applicationContent(Map.of("foo", "bar"))
+                                                               .applicationReference("app-ref")
+                                                               .build();
     assertDoesNotThrow(() -> classUnderTest.checkApplicationCreateRequest(request));
   }
 

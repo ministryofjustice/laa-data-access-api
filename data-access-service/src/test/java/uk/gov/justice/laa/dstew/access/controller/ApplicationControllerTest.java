@@ -76,9 +76,9 @@ class ApplicationControllerTest {
         .andReturn();
 
     String returnUri = mvcResult.getResponse().getHeader("Location");
-    if (returnUri != null) {
-      assertThat(returnUri).endsWith("/applications/" + newId);
-    }
+    assertThat(returnUri).isNotNull();
+    assertThat(returnUri).endsWith("/applications/" + newId);
+    
   }
 
   @Test

@@ -48,11 +48,12 @@ public class ApplicationMapperTest {
 
   @Test
   void shouldMapApplicationCreateRequestToApplicationEntity() {
-    ApplicationCreateRequest req = new ApplicationCreateRequest();
-    req.setStatus(ApplicationStatus.SUBMITTED);
-    req.setSchemaVersion(1);
-    req.setApplicationContent(Map.of("foo", "bar"));
-    req.setApplicationReference("app_reference");
+    ApplicationCreateRequest req = ApplicationCreateRequest.builder()
+                                    .status(ApplicationStatus.SUBMITTED)
+                                    .schemaVersion(1)
+                                    .applicationContent(Map.of("foo", "bar"))
+                                    .applicationReference("app_reference")
+                                    .build();
 
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
 
