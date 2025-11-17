@@ -13,9 +13,9 @@ public class PersistedFactory<
         TBuilder,
         TId> {
 
-    private TRepository repository;
+    private final TRepository repository;
 
-    private TFactory factory;
+    private final TFactory factory;
 
     public PersistedFactory(TRepository repository, TFactory factory) {
         this.repository = repository;
