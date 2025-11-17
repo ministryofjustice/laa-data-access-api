@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import java.util.Collections;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -48,24 +47,16 @@ public class ApplicationSummaryService {
   public List<ApplicationSummary> getAllApplications(ApplicationStatus applicationStatus, Integer page, Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
 
-    Page<ApplicationSummaryEntity> applicationSummaryPage = applicationSummaryRepository
-        .findAll(ApplicationSummarySpecification.isStatus(applicationStatus), pageDetails);
-
-    return applicationSummaryPage.getContent()
-        .stream()
-        .map(mapper::toApplicationSummary)
-        .toList();
+    return applicationSummaryRepository
+            .findAll(ApplicationSummarySpecification.filterBy(applicationStatus), pageDetails)
+            .getContent()
+            .stream()
+            .map(mapper::toApplicationSummary)
+            .toList();
   }
 
-
-  /**
-   * Retrieves the total count of applications with a specific {@link ApplicationStatus}.
-   *
-   * @param applicationStatus the {@link ApplicationStatus} used to filter applications
-   * @return the total number of applications matching the provided status
-   */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public long getAllApplicationsTotal(ApplicationStatus applicationStatus) {
-    return applicationSummaryRepository.count(ApplicationSummarySpecification.isStatus(applicationStatus));
+    return applicationSummaryRepository.count(ApplicationSummarySpecification.filterBy(applicationStatus));
   }
 }
