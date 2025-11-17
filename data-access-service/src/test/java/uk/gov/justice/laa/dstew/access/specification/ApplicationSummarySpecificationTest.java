@@ -10,7 +10,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -27,20 +26,30 @@ public class ApplicationSummarySpecificationTest {
 
 
     @Test
-    void shouldNotFailWhenIsStatusFilter(){
+    void shouldNotFailWhenStatusHasAValue(){
 
-        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification.isStatus(ApplicationStatus.IN_PROGRESS);
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification.filterBy(ApplicationStatus.IN_PROGRESS);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
         when(root.get("status"))
                 .thenReturn(mock(jakarta.persistence.criteria.Path.class));
 
-        when(builder.equal(any(), eq("IN_PROGRESS"))).thenReturn(summaryPredicate);
-
+        when(builder.and(any())).thenReturn(summaryPredicate);
         Predicate result = spec.toPredicate(root, query, builder);
 
         assertThat(result).isNotNull();
-
     }
+
+    @Test
+    void shouldNotFailWhenStatusIsNull(){
+
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification.filterBy(null);
+
+        when(builder.and(any())).thenReturn(null);
+        Predicate result = spec.toPredicate(root, query, builder);
+
+        assertThat(result).isNull();
+    }
+
 }

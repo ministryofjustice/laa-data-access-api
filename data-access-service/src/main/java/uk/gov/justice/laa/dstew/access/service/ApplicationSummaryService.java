@@ -47,11 +47,8 @@ public class ApplicationSummaryService {
   public List<ApplicationSummary> getAllApplications(ApplicationStatus applicationStatus, Integer page, Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
 
-    if (applicationStatus != null) {
-      return getSummaryListFromPage(applicationSummaryRepository
-              .findAll(ApplicationSummarySpecification.isStatus(applicationStatus), pageDetails));
-    }
-    return getSummaryListFromPage(applicationSummaryRepository.findAll(pageDetails));
+    return getSummaryListFromPage(applicationSummaryRepository
+            .findAll(ApplicationSummarySpecification.filterBy(applicationStatus), pageDetails));
   }
 
   private List<ApplicationSummary> getSummaryListFromPage(Page<ApplicationSummaryEntity> items) {
@@ -61,19 +58,7 @@ public class ApplicationSummaryService {
             .toList();
   }
 
-  /**
-   * Retrieves the total count of applications with a specific {@link ApplicationStatus}.
-   *
-   * @param applicationStatus the {@link ApplicationStatus} used to filter applications
-   * @return the total number of applications matching the provided status
-   */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public long getAllApplicationsTotal(ApplicationStatus applicationStatus) {
-
-    if (applicationStatus != null) {
-      return applicationSummaryRepository.count(ApplicationSummarySpecification.isStatus(applicationStatus));
-    }
-
-    return applicationSummaryRepository.count();
+    return applicationSummaryRepository.count(ApplicationSummarySpecification.filterBy(applicationStatus));
   }
 }
