@@ -55,16 +55,28 @@ public class ApplicationControllerIntegrationTest {
   private ApplicationSummaryRepository repository;
 
   private String buildApplicationJson() {
-    return "{"
-        + "\"id\": \"" + UUID.randomUUID() + "\","
-        + "\"status\": \"SUBMITTED\","
-        + "\"applicationReference\": \"app_ref\","
-        + "\"applicationContent\": {"
-        + "\"first_name\": \"John\","
-        + "\"last_name\": \"Doe\","
-        + "\"application_id\": \"" + UUID.randomUUID() + "\""
-        + "}"
-        + "}";
+    return  """
+          {
+            "id" : "019a92e4-3b56-71a3-befc-52d9064a5f65",
+            "status": "SUBMITTED",
+            "applicationContent": 
+            { 
+              "first_name" : "John",
+              "last_name"  : "Doe"
+            },
+            "application_id" : "019a92e5-84d7-7353-b94a-cad6a60a713e",
+            "applicationReference" : "app_ref:
+            "individuals" : [
+              {
+                "firstName" : "John",
+                "lastName" : "Doe",
+                "details" : {
+                  "contactNumber" : "+447123456789"
+                }
+              }
+            ]
+          }
+        """;
   }
 
   @Test

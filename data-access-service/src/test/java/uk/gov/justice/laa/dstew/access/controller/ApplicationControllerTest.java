@@ -64,6 +64,15 @@ class ApplicationControllerTest {
             "schemaVersion": 1,
             "applicationContent": { "foo": "bar" },
             "applicationReference": "app_reference"
+            "individuals" : [
+              {
+                "firstName" : "John",
+                "lastName" : "Doe",
+                "details" : {
+                  "contactNumber" : "+447123456789"
+                }
+              }
+            ]
           }
         """;
 
