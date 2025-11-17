@@ -97,6 +97,15 @@ public class ApplicationControllerIntegrationTest {
     return entities;
   }
 
+  List<ApplicationSummaryEntity> createSubmittedStatusSummaryList() {
+    List<ApplicationSummaryEntity> entities = new ArrayList<>();
+
+    entities.add(createApplicationSummaryEntity(ApplicationStatus.SUBMITTED));
+    entities.add(createApplicationSummaryEntity(ApplicationStatus.SUBMITTED));
+    entities.add(createApplicationSummaryEntity(ApplicationStatus.SUBMITTED));
+    return entities;
+  }
+
   @Test
   @WithMockUser(authorities = {"APPROLE_ApplicationReader"})
   void shouldGetAllApplicationsWhenNoFilter() throws Exception {
@@ -118,15 +127,15 @@ public class ApplicationControllerIntegrationTest {
   void shouldGetAllApplicationsWhenFilterIsSubmitted() throws Exception {
 
     when(repository.findAll(any(Specification.class), any(Pageable.class)))
-            .thenReturn(new PageImpl<>(createMixedStatusSummaryList()));
-    when(repository.count(any(Specification.class))).thenReturn(4L);
+            .thenReturn(new PageImpl<>(createSubmittedStatusSummaryList()));
+    when(repository.count(any(Specification.class))).thenReturn(3L);
 
     mockMvc
             .perform(MockMvcRequestBuilders.get("/api/v0/applications?status=SUBMITTED"))
             .andExpect(MockMvcResultMatchers.status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.*", hasSize(2)))
-            .andExpect(jsonPath("$.applications", hasSize(4)));
+            .andExpect(jsonPath("$.applications", hasSize(3)));
   }
 
   @Test
