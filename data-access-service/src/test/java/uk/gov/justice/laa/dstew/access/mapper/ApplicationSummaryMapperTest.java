@@ -44,4 +44,9 @@ public class ApplicationSummaryMapperTest {
     assertThat(result.getModifiedAt()).isEqualTo(entity.getModifiedAt().atOffset(ZoneOffset.UTC));
     assertThat(result.getCreatedAt()).isEqualTo(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
   }
+
+  @Test
+  void shouldReturnNullWhenMappingNullEntity() {
+    assertThat(applicationMapper.toApplicationSummary(null)).isNull();
+  }
 }
