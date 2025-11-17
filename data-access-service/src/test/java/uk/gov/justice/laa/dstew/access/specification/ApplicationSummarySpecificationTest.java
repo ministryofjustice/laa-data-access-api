@@ -18,9 +18,6 @@ public class ApplicationSummarySpecificationTest {
     @SuppressWarnings("unchecked")
     private final Root<ApplicationSummaryEntity> root = mock(Root.class);
 
-    @SuppressWarnings("unchecked")
-    private final Path<Object> rootResults = mock(jakarta.persistence.criteria.Path.class);
-
     private final CriteriaQuery<?> query = mock(CriteriaQuery.class);
     private final CriteriaBuilder builder = mock(CriteriaBuilder.class);
 
