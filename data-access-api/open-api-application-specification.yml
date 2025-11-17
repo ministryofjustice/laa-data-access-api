@@ -119,7 +119,6 @@ components:
       enum:
         - IN_PROGRESS
         - SUBMITTED
-      default: IN_PROGRESS
       description: Application statuses
 
     Application:
