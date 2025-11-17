@@ -71,8 +71,8 @@ public class ApplicationSummarySpecificationIntegrationTests {
         assertNotEquals(0, expectedNumberOfInProgress);
         assertNotEquals(0, expectedNumberOfSubmitted);
 
-        var inProgressCount = applicationSummaryRepository.count(ApplicationSummarySpecification.isStatus(ApplicationStatus.IN_PROGRESS));
-        var inSubmittedCount = applicationSummaryRepository.count(ApplicationSummarySpecification.isStatus(ApplicationStatus.SUBMITTED));
+        var inProgressCount = applicationSummaryRepository.count(ApplicationSummarySpecification.filterBy(ApplicationStatus.IN_PROGRESS));
+        var inSubmittedCount = applicationSummaryRepository.count(ApplicationSummarySpecification.filterBy(ApplicationStatus.SUBMITTED));
 
         assertEquals(expectedNumberOfInProgress, inProgressCount);
         assertEquals(expectedNumberOfSubmitted, inSubmittedCount);
