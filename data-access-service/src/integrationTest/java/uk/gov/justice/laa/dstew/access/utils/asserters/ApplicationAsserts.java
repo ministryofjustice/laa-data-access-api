@@ -5,6 +5,7 @@ import uk.gov.justice.laa.dstew.access.model.Application;
 
 import java.util.List;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class ApplicationAsserts {
@@ -15,5 +16,6 @@ public class ApplicationAsserts {
 
     public static void assertApplicationEqual(ApplicationEntity expected, Application actual) {
         assertEquals(expected.getId(), actual.getId());
+        assertThat(expected).usingRecursiveComparison().ignoringFields("id").isEqualTo(actual);
     }
 }
