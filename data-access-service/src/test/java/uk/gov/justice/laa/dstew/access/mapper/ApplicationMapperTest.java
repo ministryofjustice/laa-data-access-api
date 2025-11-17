@@ -115,7 +115,13 @@ public class ApplicationMapperTest {
     req.setApplicationContent(Map.of("key", new Object() {
     }));
 
-    assertThrows(IllegalArgumentException.class, () -> applicationMapper.updateApplicationEntity(entity, req));
+    IllegalArgumentException ex = assertThrows(
+        IllegalArgumentException.class,
+        () -> applicationMapper.updateApplicationEntity(entity, req)
+    );
+
+    assertThat(ex.getMessage())
+        .isEqualTo("Failed to serialize ApplicationUpdateRequest.applicationContent");
   }
 
   @Test
