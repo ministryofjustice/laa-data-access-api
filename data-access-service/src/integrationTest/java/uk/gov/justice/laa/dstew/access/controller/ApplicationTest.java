@@ -35,7 +35,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
-        public void given_existing_data_when_get_called_then_OK_with_correct_data() throws Exception {
+        public void givenExistingData_whenGetCalled_thenOKWithCorrectData() throws Exception {
 
             // given
             ApplicationEntity expected = persistedApplicationFactory.createAndPersist();
@@ -55,7 +55,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         // TODO: check whether this should return application/problem+json
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
-        public void given_no_data_when_get_called_then_NotFound() throws Exception {
+        public void givenNoData_whenGetCalled_thenNotFound() throws Exception {
             // given
             UUID id = UUID.randomUUID();
 
@@ -72,7 +72,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         // TODO: Identify what the problem record should be
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
-        public void given_invalid_id_in_url_when_get_called_then_NotFound() throws Exception {
+        public void givenInvalidIdInUrl_whenGetCalled_thenNotFound() throws Exception {
             // given
             String id = "not an id";
 
@@ -87,7 +87,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         // TODO: Identify what the problem record should be
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
-        public void given_malformed_url_when_get_called_then_BadRequest() throws Exception {
+        public void givenMalformedUrl_whenGetCalled_thenBadRequest() throws Exception {
             // given
             // no data
 
@@ -104,7 +104,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         // TODO: Identify what the problem record should be
         @Test
         @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
-        public void given_unknown_role_when_get_called_then_Forbidden() throws Exception {
+        public void givenUnknownRole_whenGetCalled_thenForbidden() throws Exception {
             // given
             // no data
 
@@ -118,7 +118,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         // TODO: Identify what the problem record should be
         @Test
-        public void given_no_user_when_get_called_then_Unauthorized() throws Exception {
+        public void givenNoUser_whenGetCalled_thenUnauthorized() throws Exception {
             // given
             // no data
 
@@ -136,7 +136,7 @@ public class ApplicationTest extends BaseIntegrationTest {
     class CreateApplication {
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void given_data_when_calling_create_data_is_created_with_OK() throws Exception {
+        public void givenData_whenCallingCreateData_thenCreatedWithOK() throws Exception {
 
             // given
             ApplicationCreateRequest request = applicationCreateRequestFactory.create();
@@ -159,7 +159,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         @ParameterizedTest
         @MethodSource("applicationCreateRequestInvalidDataCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void given_invalid_data_when_calling_create_call_fails_with_BadRequest(ApplicationCreateRequest request) throws Exception {
+        public void givenInvalidData_whenCallingCreate_thenCallFailsWithBadRequest(ApplicationCreateRequest request) throws Exception {
             // given
             // in ValueSource
 
@@ -174,7 +174,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         @ParameterizedTest
         @ValueSource(strings = { "", "{}" })
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void given_no_body_when_calling_create_call_fails_created_with_BadRequest(String request) throws Exception {
+        public void givenNoBody_whenCallingCreate_thenCallFailsWithBadRequest(String request) throws Exception {
             // given
             // in ValueSource
 
@@ -188,7 +188,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
-        public void given_data_and_reader_role_when_calling_create_call_fails_with_Forbidden() throws Exception {
+        public void givenDataAndReaderRole_whenCallingCreate_thenFailsWithForbidden() throws Exception {
             // given
             ApplicationCreateRequest request = applicationCreateRequestFactory.create();
 
@@ -201,7 +201,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         }
 
         @Test
-        public void given_data_and_no_auth_when_calling_create_call_fails_with_Unauthorized() throws Exception {
+        public void givenDataAndNoAuth_whenCallingCreate_thenFailsWithUnauthorized() throws Exception {
             // given
             ApplicationCreateRequest request = applicationCreateRequestFactory.create();
 
@@ -215,7 +215,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         // TODO: figure out how to check that the logs do not contain PII
         @Test
-        public void given_data_and_error_when_calling_create_call_fails_and_omits_PII_from_logs() throws Exception {
+        public void givenDataAndError_whenCallingCreate_thenFailsAndOmitsPIIFromLogs() throws Exception {
             // given
             ApplicationCreateRequest request = applicationCreateRequestFactory.create();
 
