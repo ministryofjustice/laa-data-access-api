@@ -13,7 +13,7 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
     public ApplicationCreateRequest create() {
         return ApplicationCreateRequest.builder()
                 .status(ApplicationStatus.IN_PROGRESS)
-                .schemaVersion(1)
+                .applicationReference("TestReference")
                 .applicationContent(new HashMap<>() {
                     {
                         put("test", "value");

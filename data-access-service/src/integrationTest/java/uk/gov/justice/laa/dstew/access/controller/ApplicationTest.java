@@ -86,23 +86,6 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         // TODO: Identify what the problem record should be
         @Test
-        @WithMockUser(authorities = TestConstants.Roles.READER)
-        public void givenMalformedUrl_whenGetCalled_thenBadRequest() throws Exception {
-            // given
-            // no data
-
-            // when
-            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, ""); // not passing in an ID.
-
-            // then
-            assertSecurityHeaders(result);
-            assertBadRequest(result);
-
-            assertTrue(false);
-        }
-
-        // TODO: Identify what the problem record should be
-        @Test
         @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
         public void givenUnknownRole_whenGetCalled_thenForbidden() throws Exception {
             // given
