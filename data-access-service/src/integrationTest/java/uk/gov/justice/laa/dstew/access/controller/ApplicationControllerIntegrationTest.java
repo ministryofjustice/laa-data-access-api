@@ -237,7 +237,7 @@ public class ApplicationControllerIntegrationTest {
 
   @Test
   @Order(8)
-  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter", "APPROLE_ApplicationReader"})
   void shouldUpdateApplication_withContentAndStatus() throws Exception {
     // CREATE application
     String createPayload = buildApplicationJson();
@@ -275,7 +275,7 @@ public class ApplicationControllerIntegrationTest {
 
   @Test
   @Order(9)
-  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter", "APPROLE_ApplicationReader"})
   void shouldUpdateApplication_withContentOnly_statusUnchanged() throws Exception {
     String createPayload = buildApplicationJson();
     String location = mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications")
