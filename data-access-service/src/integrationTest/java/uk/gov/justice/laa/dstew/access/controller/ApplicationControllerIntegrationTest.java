@@ -58,6 +58,7 @@ public class ApplicationControllerIntegrationTest {
     return "{"
         + "\"id\": \"" + UUID.randomUUID() + "\","
         + "\"status\": \"SUBMITTED\","
+        + "\"applicationReference\": \"app_ref\","
         + "\"applicationContent\": {"
         + "\"first_name\": \"John\","
         + "\"last_name\": \"Doe\","

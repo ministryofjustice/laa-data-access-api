@@ -43,6 +43,7 @@ public interface ApplicationMapper {
     entity.setId(Generators.timeBasedEpochGenerator().generate());
     entity.setStatus(req.getStatus());
     entity.setSchemaVersion(req.getSchemaVersion());
+    entity.setApplicationReference(req.getApplicationReference());
 
     try {
       entity.setApplicationContent(

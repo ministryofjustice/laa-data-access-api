@@ -62,7 +62,8 @@ class ApplicationControllerTest {
           {
             "status": "SUBMITTED",
             "schemaVersion": 1,
-            "applicationContent": { "foo": "bar" }
+            "applicationContent": { "foo": "bar" },
+            "applicationReference": "app_reference"
           }
         """;
 
@@ -75,9 +76,9 @@ class ApplicationControllerTest {
         .andReturn();
 
     String returnUri = mvcResult.getResponse().getHeader("Location");
-    if (returnUri != null) {
-      assertThat(returnUri).endsWith("/applications/" + newId);
-    }
+    assertThat(returnUri).isNotNull();
+    assertThat(returnUri).endsWith("/applications/" + newId);
+    
   }
 
   @Test

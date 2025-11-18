@@ -148,6 +148,7 @@ components:
       required:
         - status
         - applicationContent
+        - applicationReference
       properties:
         status:
           $ref: "#/components/schemas/application_status"
@@ -156,6 +157,8 @@ components:
         applicationContent:
           type: object
           additionalProperties: true
+        applicationReference:
+          type: string
 
     ApplicationUpdateRequest:
       type: object
