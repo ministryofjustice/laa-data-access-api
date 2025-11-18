@@ -9,6 +9,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
+import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 
 import java.util.UUID;
@@ -43,6 +44,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertApplicationEqual(expected, actual);
         }
 
+        // TODO: check whether this should return application/problem+json
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
         public void given_no_data_when_get_called_then_NotFound() throws Exception {
@@ -59,6 +61,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertNotFound(result);
         }
 
+        // TODO: Identify what the problem record should be
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
         public void given_invalid_id_in_url_when_get_called_then_NotFound() throws Exception {
@@ -73,6 +76,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertBadRequest(result);
         }
 
+        // TODO: Identify what the problem record should be
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
         public void given_malformed_url_when_get_called_then_BadRequest() throws Exception {
@@ -80,7 +84,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             // no data
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, ""); // not passing in an ID..
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, ""); // not passing in an ID.
 
             // then
             assertSecurityHeaders(result);
@@ -89,6 +93,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertTrue(false);
         }
 
+        // TODO: Identify what the problem record should be
         @Test
         @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
         public void given_unknown_role_when_get_called_then_Forbidden() throws Exception {
@@ -103,6 +108,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertForbidden(result);
         }
 
+        // TODO: Identify what the problem record should be
         @Test
         public void given_no_user_when_get_called_then_Unauthorized() throws Exception {
             // given
@@ -132,6 +138,12 @@ public class ApplicationTest extends BaseIntegrationTest {
             // then
             assertSecurityHeaders(result);
             assertCreated(result);
+
+            UUID storedId = UUID.fromString(HeaderUtils.GetUUIDFromLocation(
+                    result.getResponse().getHeader("Location")
+            ));
+            ApplicationEntity stored = applicationRepository.getById(storedId);
+            assertApplicationEqual(request, stored);
         }
 
         @Test
@@ -200,8 +212,6 @@ public class ApplicationTest extends BaseIntegrationTest {
             // then
             assertSecurityHeaders(result);
             assertUnauthorised(result);
-
-            assertTrue(false);
         }
     }
 }
