@@ -19,7 +19,7 @@ public class ApplicationAsserts {
         assertEquals(expected.getId(), actual.getId());
         assertThat(expected)
                 .usingRecursiveComparison()
-                .ignoringFields("id", "createdAt", "modifiedAt", "status")
+                .ignoringFields("id", "createdAt", "modifiedAt", "applicationReference")
                 .isEqualTo(actual);
     }
 
