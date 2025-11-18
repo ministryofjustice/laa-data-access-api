@@ -2,10 +2,16 @@ package uk.gov.justice.laa.dstew.access.controller;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
@@ -13,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ApplicationAsserts.assertApplicationEqual;
@@ -23,7 +30,8 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 public class ApplicationTest extends BaseIntegrationTest {
 
     @Nested
-    class GetTest {
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class GetApplication {
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
@@ -124,7 +132,8 @@ public class ApplicationTest extends BaseIntegrationTest {
     }
 
     @Nested
-    class CreateTest {
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class CreateApplication {
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
         public void given_data_when_calling_create_data_is_created_with_OK() throws Exception {
@@ -142,15 +151,17 @@ public class ApplicationTest extends BaseIntegrationTest {
             UUID storedId = UUID.fromString(HeaderUtils.GetUUIDFromLocation(
                     result.getResponse().getHeader("Location")
             ));
-            ApplicationEntity stored = applicationRepository.getById(storedId);
+            ApplicationEntity stored = applicationRepository.findById(storedId).orElseThrow(() -> new ApplicationNotFoundException(storedId.toString()));
             assertApplicationEqual(request, stored);
         }
 
-        @Test
+        // TODO: think about how a status outside of the range of the Enum can be sent. Can a client actually do this anyway?
+        @ParameterizedTest
+        @MethodSource("applicationCreateRequestInvalidDataCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void given_invalid_data_when_calling_create_call_fails_with_BadRequest() throws Exception {
+        public void given_invalid_data_when_calling_create_call_fails_with_BadRequest(ApplicationCreateRequest request) throws Exception {
             // given
-            ApplicationCreateRequest request = new ApplicationCreateRequest(); // TODO: invalid data?
+            // in ValueSource
 
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -160,14 +171,15 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertBadRequest(result);
         }
 
-        @Test
+        @ParameterizedTest
+        @ValueSource(strings = { "", "{}" })
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void given_no_body_when_calling_create_call_fails_created_with_BadRequest() throws Exception {
+        public void given_no_body_when_calling_create_call_fails_created_with_BadRequest(String request) throws Exception {
             // given
-            ApplicationCreateRequest request = new ApplicationCreateRequest(); // TODO: invalid data?
+            // in ValueSource
 
             // when
-            MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, "");
+            MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
 
             // then
             assertSecurityHeaders(result);
@@ -213,6 +225,17 @@ public class ApplicationTest extends BaseIntegrationTest {
             // then
             assertSecurityHeaders(result);
             assertUnauthorised(result);
+        }
+
+        private Stream<Arguments> applicationCreateRequestInvalidDataCases() {
+            return Stream.of(
+                    Arguments.of(applicationCreateRequestFactory.create(builder -> {
+                        builder.status(null);
+                    })),
+                    Arguments.of(applicationCreateRequestFactory.create(builder -> {
+                        builder.applicationContent(null);
+                    }))
+            );
         }
     }
 }
