@@ -25,6 +25,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import jakarta.transaction.Transactional;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.LinkedIndividual;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
@@ -57,11 +58,14 @@ public class ApplicationSummarySpecificationIntegrationTests {
         Map<String,Object> map = new HashMap<String,Object>();
         map.put("first_name", "jimi");
         map.put("last_name", "hendrix");
-        prePopulatedApplications = Instancio.ofList(ApplicationEntity.class)
+        prePopulatedApplications = Instancio.ofList(LinkedIndividual.class)
                                 .size(NUMBER_OF_PREPOPULATED_APPLICATIONS)
                                 .generate(Select.field(ApplicationEntity::getStatus), gen -> gen.oneOf(ApplicationStatus.IN_PROGRESS, ApplicationStatus.SUBMITTED))
                                 .set(Select.field(ApplicationEntity::getApplicationContent), map)
-                                .create();
+                                .create()
+                                .stream()
+                                .map(i -> i.getLinkedApplication())
+                                .toList();
         applicationRepository.saveAll(prePopulatedApplications);
     }
 

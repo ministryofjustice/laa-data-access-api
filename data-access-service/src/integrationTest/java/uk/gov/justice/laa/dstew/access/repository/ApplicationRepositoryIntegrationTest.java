@@ -55,26 +55,23 @@ public class ApplicationRepositoryIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        
         Map<String,Object> map = new HashMap<String,Object>();
         map.put("first_name", "jimi");
         map.put("last_name", "hendrix");
-        IndividualEntity individual = IndividualEntity.builder()
-                                                      .firstName("John")
-                                                      .lastName("Doe")
-                                                      .details(map)
-                                                      .build();
-
-        prePopulatedApplications = Instancio.ofList(ApplicationEntity.class)
-                                .size(NUMBER_OF_PREPOPULATED_APPLICATIONS)
-                                .set(Select.field(ApplicationEntity::getApplicationContent), map)
-                                .create();
+        prePopulatedApplications = Instancio.ofList(LinkedIndividual.class)
+            .size(NUMBER_OF_PREPOPULATED_APPLICATIONS)
+            .set(Select.field(ApplicationEntity::getApplicationContent), map)
+            .set(Select.field(IndividualEntity::getDetails), map)
+            .create()
+            .stream()
+            .map(li -> li.getLinkedApplication())
+            .toList();
         applicationRepository.saveAll(prePopulatedApplications);
     }
 
     @Test
     void applicationSave() {
-        UUID individualId = UUID.fromString("019a9746-21a7-763b-bcb0-982b2cd673d5");
+        UUID individualId = UUID.randomUUID();
         UUID applicationId = UUID.randomUUID();
         Map<String,Object> map = new HashMap<String,Object>();
         map.put("key", "value");
