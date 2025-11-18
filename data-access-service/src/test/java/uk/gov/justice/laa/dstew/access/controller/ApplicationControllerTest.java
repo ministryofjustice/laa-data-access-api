@@ -85,11 +85,18 @@ class ApplicationControllerTest {
   void shouldUpdateItem() throws Exception {
     UUID applicationId = UUID.randomUUID();
     doNothing().when(applicationService).updateApplication(any(), any());
+    String validRequestBody = """
+          {
+            "status": "IN_PROGRESS",
+            "schemaVersion": 1,
+            "applicationContent": { "foo": "bar" }
+          }
+        """;
 
     mockMvc.perform(
             patch("/api/v0/applications/" + applicationId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"application_content\": {\"status\":\"IN_PROGRESS\"}}")
+                .content(validRequestBody)
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isNoContent());
   }

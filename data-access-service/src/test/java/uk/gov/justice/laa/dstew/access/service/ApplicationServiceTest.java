@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
+
 @ExtendWith(MockitoExtension.class)
 public class ApplicationServiceTest {
 
@@ -33,9 +35,9 @@ public class ApplicationServiceTest {
   @Mock
   private ApplicationRepository repository;
   @Mock
-  private ApplicationMapper mapper;
-  @Mock
   private ApplicationValidations validator;
+  @Mock
+  private ApplicationMapper mapper;
   @Mock
   private ObjectMapper objectMapper;
 
@@ -58,6 +60,7 @@ public class ApplicationServiceTest {
 
     UUID result = service.createApplication(req);
     assertThat(result).isEqualTo(entity.getId());
+    assertThat(entity.getSchemaVersion()).isEqualTo(1);
     verify(validator).checkApplicationCreateRequest(req);
     verify(repository).save(entity);
   }
@@ -88,6 +91,7 @@ public class ApplicationServiceTest {
 
     verify(mapper).updateApplicationEntity(entity, req);
     verify(repository).save(entity);
+    assertThat(entity.getModifiedAt()).isNotNull();
   }
 
   @Test
@@ -102,4 +106,5 @@ public class ApplicationServiceTest {
     Application result = service.getApplication(id);
     assertThat(result).isNotNull();
   }
+
 }

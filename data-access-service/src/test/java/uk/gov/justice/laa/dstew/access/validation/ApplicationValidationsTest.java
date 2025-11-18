@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.validation;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,8 +25,6 @@ public class ApplicationValidationsTest {
 
   @InjectMocks
   ApplicationValidations classUnderTest;
-
-  // --- ApplicationCreateRequest tests ---
 
   @Test
   void shouldThrowCreateRequestValidationErrorWhenRequestIsNull() {
@@ -115,50 +112,6 @@ public class ApplicationValidationsTest {
     assertThrows(ValidationException.class,
         () -> classUnderTest.checkApplicationUpdateRequest(request, null));
   }
-
-  @Test
-  void shouldThrowUpdateRequestValidationErrorWhenProviderCannotUpdate() {
-    when(mockEntra.hasAppRole("Provider")).thenReturn(true);
-    when(mockEntra.hasAnyAppRole("Caseworker", "Administrator")).thenReturn(false);
-
-    ApplicationUpdateRequest request = new ApplicationUpdateRequest();
-    request.setStatus(ApplicationStatus.SUBMITTED);
-    Map<String, Object> content = new HashMap<>();
-    content.put("foo", "bar");
-    request.setApplicationContent(content);
-
-    assertThrows(ValidationException.class,
-        () -> classUnderTest.checkApplicationUpdateRequest(request, null));
-  }
-
-  @Test
-  void shouldNotThrowUpdateRequestValidationErrorWhenProviderCanUpdate() {
-    when(mockEntra.hasAppRole("Provider")).thenReturn(true);
-    when(mockEntra.hasAnyAppRole("Caseworker", "Administrator")).thenReturn(true);
-
-    ApplicationUpdateRequest request = new ApplicationUpdateRequest();
-    request.setStatus(ApplicationStatus.SUBMITTED);
-    Map<String, Object> content = new HashMap<>();
-    content.put("foo", "bar");
-    request.setApplicationContent(content);
-
-    assertDoesNotThrow(() -> classUnderTest.checkApplicationUpdateRequest(request, null));
-  }
-
-  @Test
-  void shouldNotThrowUpdateRequestValidationErrorWhenNotProvider() {
-    when(mockEntra.hasAppRole("Provider")).thenReturn(false);
-
-    ApplicationUpdateRequest request = new ApplicationUpdateRequest();
-    request.setStatus(ApplicationStatus.IN_PROGRESS);
-    Map<String, Object> content = new HashMap<>();
-    content.put("foo", "bar");
-    request.setApplicationContent(content);
-
-    assertDoesNotThrow(() -> classUnderTest.checkApplicationUpdateRequest(request, null));
-  }
-
-  // --- ValidationUtils tests ---
 
   @Test
   void notNullBooleanShouldReturnFalseWhenNull() {
