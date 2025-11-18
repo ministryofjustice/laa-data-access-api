@@ -42,18 +42,22 @@ public class ApplicationSummaryServiceTest {
   void shouldGetAllApplications() {
     ApplicationSummaryEntity firstEntity = new ApplicationSummaryEntity();
     firstEntity.setId(UUID.randomUUID());
+    firstEntity.setApplicationReference("appref1");
     firstEntity.setStatus(ApplicationStatus.IN_PROGRESS);
 
     ApplicationSummaryEntity secondEntity = new ApplicationSummaryEntity();
     secondEntity.setId(UUID.randomUUID());
+    secondEntity.setApplicationReference("appref2");
     secondEntity.setStatus(ApplicationStatus.IN_PROGRESS);
 
     ApplicationSummary firstSummary = new ApplicationSummary();
     firstSummary.setApplicationId(firstEntity.getId());
+    firstSummary.setApplicationReference(firstEntity.getApplicationReference());
     firstSummary.setApplicationStatus(ApplicationStatus.IN_PROGRESS);
 
     ApplicationSummary secondSummary = new ApplicationSummary();
     secondSummary.setApplicationId(secondEntity.getId());
+    secondSummary.setApplicationReference(secondEntity.getApplicationReference());
     secondSummary.setApplicationStatus(ApplicationStatus.IN_PROGRESS);
 
     Pageable pageDetails = PageRequest.of(1, 1);
@@ -69,7 +73,7 @@ public class ApplicationSummaryServiceTest {
     when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);
 
     List<ApplicationSummary> result =
-        classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS, 1, 1);
+        classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS,  "", 1, 1);
 
     // Verify results
     assertThat(result).hasSize(2);

@@ -44,11 +44,16 @@ public class ApplicationSummaryService {
    * @return a list of {@link ApplicationSummary} instances matching the filter criteria
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<ApplicationSummary> getAllApplications(ApplicationStatus applicationStatus, Integer page, Integer pageSize) {
+  public List<ApplicationSummary> getAllApplications(
+          ApplicationStatus applicationStatus,
+          String applicationReference,
+          Integer page,
+          Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
 
     return applicationSummaryRepository
-            .findAll(ApplicationSummarySpecification.filterBy(applicationStatus), pageDetails)
+            .findAll(ApplicationSummarySpecification
+                    .filterBy(applicationStatus, applicationReference), pageDetails)
             .getContent()
             .stream()
             .map(mapper::toApplicationSummary)
@@ -56,7 +61,8 @@ public class ApplicationSummaryService {
   }
 
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public long getAllApplicationsTotal(ApplicationStatus applicationStatus) {
-    return applicationSummaryRepository.count(ApplicationSummarySpecification.filterBy(applicationStatus));
+  public long getAllApplicationsTotal(ApplicationStatus applicationStatus, String applicationReference) {
+    return applicationSummaryRepository.count(ApplicationSummarySpecification
+            .filterBy(applicationStatus, applicationReference));
   }
 }

@@ -21,11 +21,40 @@ public class ApplicationSummarySpecificationTest {
     private final CriteriaQuery<?> query = mock(CriteriaQuery.class);
     private final CriteriaBuilder builder = mock(CriteriaBuilder.class);
 
+    @Test
+    void shouldNotFailWhenReferenceIsBlank(){
+
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(null, "");
+
+        when(builder.and(any())).thenReturn(null);
+        Predicate result = spec.toPredicate(root, query, builder);
+
+        assertThat(result).isNull();
+    }
+
+    @Test
+    void shouldNotFailWhenReferenceHasAValue(){
+
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(null, "ref1");
+
+        Predicate summaryPredicate = mock(Predicate.class);
+
+        when(root.get("reference"))
+                .thenReturn(mock(jakarta.persistence.criteria.Path.class));
+
+        when(builder.and(any())).thenReturn(summaryPredicate);
+        Predicate result = spec.toPredicate(root, query, builder);
+
+        assertThat(result).isNotNull();
+    }
 
     @Test
     void shouldNotFailWhenStatusHasAValue(){
 
-        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification.filterBy(ApplicationStatus.IN_PROGRESS);
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(ApplicationStatus.IN_PROGRESS, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
@@ -39,9 +68,10 @@ public class ApplicationSummarySpecificationTest {
     }
 
     @Test
-    void shouldNotFailWhenStatusIsNull(){
+    void shouldNotFailWhenAllFieldsAreNull(){
 
-        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification.filterBy(null);
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(null, null);
 
         when(builder.and(any())).thenReturn(null);
         Predicate result = spec.toPredicate(root, query, builder);
@@ -49,4 +79,15 @@ public class ApplicationSummarySpecificationTest {
         assertThat(result).isNull();
     }
 
+    @Test
+    void shouldNotFailWhenAllFieldsAreSet(){
+
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(ApplicationStatus.SUBMITTED, "ref2");
+
+        when(builder.and(any())).thenReturn(null);
+        Predicate result = spec.toPredicate(root, query, builder);
+
+        assertThat(result).isNull();
+    }
 }

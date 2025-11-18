@@ -21,12 +21,17 @@ public class ApplicationSummarySpecification {
    *
    */
   public static Specification<ApplicationSummaryEntity> filterBy(
-          ApplicationStatus status) {
+          ApplicationStatus status,
+          String reference) {
     return (Root<ApplicationSummaryEntity> root, CriteriaQuery<?> query, CriteriaBuilder cb) -> {
       List<Predicate> predicates = new ArrayList<>();
 
       if (status != null) {
         predicates.add(cb.equal(root.get("status"), status));
+      }
+
+      if (reference != null && !reference.isBlank()) {
+        predicates.add(cb.like(cb.lower(root.get("reference")), reference.toLowerCase()));
       }
 
       return cb.and(predicates.toArray(new Predicate[0]));
