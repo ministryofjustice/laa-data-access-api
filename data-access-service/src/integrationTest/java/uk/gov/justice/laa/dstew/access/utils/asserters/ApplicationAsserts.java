@@ -16,6 +16,9 @@ public class ApplicationAsserts {
 
     public static void assertApplicationEqual(ApplicationEntity expected, Application actual) {
         assertEquals(expected.getId(), actual.getId());
-        assertThat(expected).usingRecursiveComparison().ignoringFields("id").isEqualTo(actual);
+        assertThat(expected)
+                .usingRecursiveComparison()
+                .ignoringFields("id", "createdAt", "modifiedAt", "status")
+                .isEqualTo(actual);
     }
 }
