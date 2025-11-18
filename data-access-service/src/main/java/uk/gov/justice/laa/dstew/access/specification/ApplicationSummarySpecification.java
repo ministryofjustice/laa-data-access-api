@@ -23,7 +23,7 @@ public class ApplicationSummarySpecification {
   public static Specification<ApplicationSummaryEntity> filterBy(
           ApplicationStatus status,
           String reference) {
-      return isStatus(status).and(isApplicationReference(reference));
+    return isStatus(status).and(isApplicationReference(reference));
   }
 
   private static Specification<ApplicationSummaryEntity> isStatus(ApplicationStatus status) {
