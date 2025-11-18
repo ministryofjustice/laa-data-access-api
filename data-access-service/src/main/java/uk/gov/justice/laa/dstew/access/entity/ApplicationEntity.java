@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.entity;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.vladmihalcea.hibernate.type.json.JsonType;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -10,9 +11,11 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -64,6 +67,9 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "modified_at")
   @UpdateTimestamp
   private Instant modifiedAt;
+
+  @OneToMany(mappedBy = "linkedApplication", cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+  private Set<LinkedIndividual> linkedIndividuals;
 
   // getters and setters
   public Map<String, Object> getApplicationContent() {

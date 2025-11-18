@@ -26,7 +26,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import jakarta.transaction.Transactional;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.LinkedIndividual;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.Individual;
 
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.jdbc.Sql;
@@ -63,13 +66,27 @@ public class ApplicationRepositoryIntegrationTest {
 
     @Test
     void applicationSave() {
+        UUID individualId = UUID.fromString("");
+        UUID applicationId = UUID.randomUUID();
         Map<String,Object> map = new HashMap<String,Object>();
         map.put("key", "value");
         var entity = ApplicationEntity.builder()
-                                             .id(UUID.randomUUID())
+                                             .id(applicationId)
                                              .applicationContent(map)
                                              .status(ApplicationStatus.IN_PROGRESS)
                                              .build();
+        IndividualEntity individual = IndividualEntity.builder()
+                                                        .id(individualId)
+                                                        .firstName("John")
+                                                        .lastName("Doe")
+                                                        .details(map)
+                                                        .build();
+        LinkedIndividual linkedIndividual = LinkedIndividual.builder()
+                                                            .linkedApplication(entity)
+                                                            .linkedIndividual(individual)
+                                                            .id(UUID.fromString(""))
+                                                            .build();
+        entity.getLinkedIndividuals().add(linkedIndividual);
         applicationRepository.save(entity);
     }
 
