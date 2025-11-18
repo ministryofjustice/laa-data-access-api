@@ -23,6 +23,7 @@ public class ApplicationValidations {
    * Validates an incoming POST.
    */
   public void checkApplicationCreateRequest(final ApplicationCreateRequest dto) {
+    
     if (dto == null || dto.getApplicationContent() == null) {
       throw new ValidationException(
           List.of("ApplicationCreateRequest and its content cannot be null")
@@ -38,6 +39,12 @@ public class ApplicationValidations {
     if (dto.getApplicationContent().isEmpty()) {
       throw new ValidationException(
           List.of("Application content cannot be empty")
+      );
+    }
+
+    if (dto.getApplicationReference() == null || dto.getApplicationReference().isBlank()) {
+      throw new ValidationException(
+        List.of("Application reference cannot be blank")
       );
     }
   }

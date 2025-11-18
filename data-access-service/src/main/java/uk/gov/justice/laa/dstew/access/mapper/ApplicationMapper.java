@@ -42,10 +42,8 @@ public interface ApplicationMapper {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setId(Generators.timeBasedEpochGenerator().generate());
     entity.setStatus(req.getStatus());
-    Instant now = Instant.now();
-    entity.setCreatedAt(now);
-    entity.setModifiedAt(now);
     entity.setSchemaVersion(1);
+    entity.setApplicationReference(req.getApplicationReference());
 
     try {
       entity.setApplicationContent(
