@@ -28,7 +28,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import jakarta.transaction.Transactional;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.entity.LinkedIndividual;
+import uk.gov.justice.laa.dstew.access.entity.LinkedIndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 
@@ -58,7 +58,7 @@ public class ApplicationRepositoryIntegrationTest {
         Map<String,Object> map = new HashMap<String,Object>();
         map.put("first_name", "jimi");
         map.put("last_name", "hendrix");
-        prePopulatedApplications = Instancio.ofList(LinkedIndividual.class)
+        prePopulatedApplications = Instancio.ofList(LinkedIndividualEntity.class)
             .size(NUMBER_OF_PREPOPULATED_APPLICATIONS)
             .set(Select.field(ApplicationEntity::getApplicationContent), map)
             .set(Select.field(IndividualEntity::getIndividualContent), map)
@@ -86,11 +86,11 @@ public class ApplicationRepositoryIntegrationTest {
                                                         .lastName("Doe")
                                                         .individualContent(map)
                                                         .build();
-        LinkedIndividual linkedIndividual = LinkedIndividual.builder()
+        LinkedIndividualEntity linkedIndividual = LinkedIndividualEntity.builder()
                                                             .linkedApplication(entity)
                                                             .linkedIndividual(individual)
                                                             .build();
-        HashSet<LinkedIndividual> set = new HashSet<LinkedIndividual>();
+        HashSet<LinkedIndividualEntity> set = new HashSet<LinkedIndividualEntity>();
         set.add(linkedIndividual);
         entity.setLinkedIndividuals(set);
         applicationRepository.save(entity);

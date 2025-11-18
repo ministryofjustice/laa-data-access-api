@@ -31,7 +31,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Table(name = "linked_individual")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class LinkedIndividual {
+public class LinkedIndividualEntity {
   @Column
   @Id
   private UUID id;

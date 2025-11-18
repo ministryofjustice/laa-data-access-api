@@ -69,7 +69,7 @@ public class ApplicationEntity implements AuditableEntity {
   private Instant modifiedAt;
 
   @OneToMany(mappedBy = "linkedApplication", cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
-  private Set<LinkedIndividual> linkedIndividuals;
+  private Set<LinkedIndividualEntity> linkedIndividuals;
 
   // getters and setters
   public Map<String, Object> getApplicationContent() {
