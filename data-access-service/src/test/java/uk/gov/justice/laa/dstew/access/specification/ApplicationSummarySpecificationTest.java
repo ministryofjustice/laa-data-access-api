@@ -56,13 +56,10 @@ public class ApplicationSummarySpecificationTest {
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
                 .filterBy(ApplicationStatus.IN_PROGRESS, null);
 
-        Predicate summaryPredicate = mock(Predicate.class);
-
         when(root.get("status"))
                 .thenReturn(mock(jakarta.persistence.criteria.Path.class));
 
-        when(builder.and(any())).thenReturn(summaryPredicate);
-        Predicate result = spec.toPredicate(root, query, builder);
+        var result = spec.toPredicate(root, query, builder);
 
         assertThat(result).isNotNull();
     }
