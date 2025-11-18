@@ -1,9 +1,5 @@
 package uk.gov.justice.laa.dstew.access.entity;
 
-<<<<<<< HEAD
-import com.fasterxml.jackson.annotation.JsonFormat;
-=======
->>>>>>> 6809ca5 (create individual data models)
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.vladmihalcea.hibernate.type.json.JsonType;
@@ -12,11 +8,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-<<<<<<< HEAD
 import java.time.Instant;
 import java.time.LocalDate;
-=======
->>>>>>> 6809ca5 (create individual data models)
 import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -24,13 +17,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-<<<<<<< HEAD
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UpdateTimestamp;
-=======
-import org.hibernate.annotations.Type;
->>>>>>> 6809ca5 (create individual data models)
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 /**
@@ -45,7 +34,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Table(name = "individual")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-<<<<<<< HEAD
 public class IndividualEntity  implements AuditableEntity {
   @Id
   @Column(columnDefinition = "UUID")
@@ -91,19 +79,4 @@ public class IndividualEntity  implements AuditableEntity {
   public String getUpdatedBy() {
     return null;
   }
-=======
-public class IndividualEntity {
-  @Column
-  @Id
-  private UUID id;
-
-  @Column
-  private String firstName;
-  @Column
-  private String lastName;
-
-  @Type(JsonType.class)
-  @Column(name = "individual_content", columnDefinition = "jsonb")
-  private Map<String, Object> details;
->>>>>>> 6809ca5 (create individual data models)
 }

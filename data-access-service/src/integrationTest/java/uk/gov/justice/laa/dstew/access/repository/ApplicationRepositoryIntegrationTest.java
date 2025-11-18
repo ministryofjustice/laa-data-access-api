@@ -61,7 +61,7 @@ public class ApplicationRepositoryIntegrationTest {
         prePopulatedApplications = Instancio.ofList(LinkedIndividual.class)
             .size(NUMBER_OF_PREPOPULATED_APPLICATIONS)
             .set(Select.field(ApplicationEntity::getApplicationContent), map)
-            .set(Select.field(IndividualEntity::getDetails), map)
+            .set(Select.field(IndividualEntity::getIndividualContent), map)
             .create()
             .stream()
             .map(li -> li.getLinkedApplication())
@@ -84,7 +84,7 @@ public class ApplicationRepositoryIntegrationTest {
                                                         .id(individualId)
                                                         .firstName("John")
                                                         .lastName("Doe")
-                                                        .details(map)
+                                                        .individualContent(map)
                                                         .build();
         LinkedIndividual linkedIndividual = LinkedIndividual.builder()
                                                             .linkedApplication(entity)

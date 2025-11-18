@@ -65,7 +65,7 @@ public class ApplicationControllerIntegrationTest {
               "last_name"  : "Doe"
             },
             "application_id" : "019a92e5-84d7-7353-b94a-cad6a60a713e",
-            "applicationReference" : "app_ref:
+            "applicationReference" : "app_ref",
             "individuals" : [
               {
                 "firstName" : "John",
