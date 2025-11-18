@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -54,9 +55,16 @@ public class ApplicationRepositoryIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        
         Map<String,Object> map = new HashMap<String,Object>();
         map.put("first_name", "jimi");
         map.put("last_name", "hendrix");
+        IndividualEntity individual = IndividualEntity.builder()
+                                                      .firstName("John")
+                                                      .lastName("Doe")
+                                                      .details(map)
+                                                      .build();
+
         prePopulatedApplications = Instancio.ofList(ApplicationEntity.class)
                                 .size(NUMBER_OF_PREPOPULATED_APPLICATIONS)
                                 .set(Select.field(ApplicationEntity::getApplicationContent), map)
@@ -66,7 +74,7 @@ public class ApplicationRepositoryIntegrationTest {
 
     @Test
     void applicationSave() {
-        UUID individualId = UUID.fromString("");
+        UUID individualId = UUID.fromString("019a9746-21a7-763b-bcb0-982b2cd673d5");
         UUID applicationId = UUID.randomUUID();
         Map<String,Object> map = new HashMap<String,Object>();
         map.put("key", "value");
@@ -84,9 +92,10 @@ public class ApplicationRepositoryIntegrationTest {
         LinkedIndividual linkedIndividual = LinkedIndividual.builder()
                                                             .linkedApplication(entity)
                                                             .linkedIndividual(individual)
-                                                            .id(UUID.fromString(""))
                                                             .build();
-        entity.getLinkedIndividuals().add(linkedIndividual);
+        HashSet<LinkedIndividual> set = new HashSet<LinkedIndividual>();
+        set.add(linkedIndividual);
+        entity.setLinkedIndividuals(set);
         applicationRepository.save(entity);
     }
 
