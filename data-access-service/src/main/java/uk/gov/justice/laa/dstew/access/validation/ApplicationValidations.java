@@ -58,10 +58,6 @@ public class ApplicationValidations {
       );
     }
 
-    if (dto.getStatus() == null) {
-      throw new ValidationException(List.of("Application status cannot be null"));
-    }
-
     if (dto.getApplicationContent().isEmpty()) {
       throw new ValidationException(
           List.of("Application content cannot be empty")

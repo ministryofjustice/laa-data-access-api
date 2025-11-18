@@ -234,4 +234,124 @@ public class ApplicationControllerIntegrationTest {
     mockMvc.perform(MockMvcRequestBuilders.get("/api/v0/applications"))
         .andExpect(MockMvcResultMatchers.status().isForbidden());
   }
+
+  @Test
+  @Order(8)
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  void shouldUpdateApplication_withContentAndStatus() throws Exception {
+    // CREATE application
+    String createPayload = buildApplicationJson();
+    String location = mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(createPayload))
+        .andExpect(MockMvcResultMatchers.status().isCreated())
+        .andReturn()
+        .getResponse()
+        .getHeader("Location");
+
+    assertThat(location).isNotNull();
+
+    // UPDATE application
+    String updatePayload = "{"
+        + "\"status\": \"IN_PROGRESS\","
+        + "\"applicationContent\": {\"first_name\": \"Jane\", \"last_name\": \"Smith\"}"
+        + "}";
+
+    mockMvc.perform(MockMvcRequestBuilders.patch(location)
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(updatePayload))
+        .andExpect(MockMvcResultMatchers.status().isNoContent());
+
+    // VERIFY update
+    mockMvc.perform(MockMvcRequestBuilders.get(location))
+        .andExpect(MockMvcResultMatchers.status().isOk())
+        .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.first_name").value("Jane"))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.last_name").value("Smith"))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.applicationStatus").value("IN_PROGRESS"));
+  }
+
+
+  @Test
+  @Order(9)
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  void shouldUpdateApplication_withContentOnly_statusUnchanged() throws Exception {
+    String createPayload = buildApplicationJson();
+    String location = mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(createPayload))
+        .andExpect(MockMvcResultMatchers.status().isCreated())
+        .andReturn()
+        .getResponse()
+        .getHeader("Location");
+
+    assertThat(location).isNotNull();
+
+    String updatePayload = "{ \"applicationContent\": {\"first_name\": \"Alice\", \"last_name\": \"Wonder\"} }";
+
+    mockMvc.perform(MockMvcRequestBuilders.patch(location)
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(updatePayload))
+        .andExpect(MockMvcResultMatchers.status().isNoContent());
+
+    mockMvc.perform(MockMvcRequestBuilders.get(location))
+        .andExpect(MockMvcResultMatchers.status().isOk())
+        .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.first_name").value("Alice"))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.last_name").value("Wonder"))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.applicationStatus").value("SUBMITTED")); // original status
+  }
+
+  @Test
+  @Order(10)
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  void shouldFailUpdate_whenApplicationContentIsNull() throws Exception {
+    String createPayload = buildApplicationJson();
+    String location = mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(createPayload))
+        .andExpect(MockMvcResultMatchers.status().isCreated())
+        .andReturn()
+        .getResponse()
+        .getHeader("Location");
+
+    assertThat(location).isNotNull();
+
+    String updatePayload = "{ \"applicationContent\": null }";
+
+    mockMvc.perform(MockMvcRequestBuilders.patch(location)
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(updatePayload))
+        .andExpect(MockMvcResultMatchers.status().isBadRequest());
+  }
+
+  @Test
+  @Order(11)
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  void shouldFailUpdate_whenApplicationContentIsEmpty() throws Exception {
+    String createPayload = buildApplicationJson();
+    String location = mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(createPayload))
+        .andExpect(MockMvcResultMatchers.status().isCreated())
+        .andReturn()
+        .getResponse()
+        .getHeader("Location");
+
+    assertThat(location).isNotNull();
+
+    String updatePayload = "{ \"applicationContent\": {} }";
+
+    mockMvc.perform(MockMvcRequestBuilders.patch(location)
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(updatePayload))
+        .andExpect(MockMvcResultMatchers.status().isBadRequest());
+  }
+
 }
