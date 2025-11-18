@@ -42,7 +42,6 @@ public interface ApplicationMapper {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setId(Generators.timeBasedEpochGenerator().generate());
     entity.setStatus(req.getStatus());
-    entity.setSchemaVersion(req.getSchemaVersion());
     entity.setApplicationReference(req.getApplicationReference());
 
     try {
@@ -66,9 +65,6 @@ public interface ApplicationMapper {
   default void updateApplicationEntity(@MappingTarget ApplicationEntity entity, ApplicationUpdateRequest req) {
     if (req.getStatus() != null) {
       entity.setStatus(req.getStatus());
-    }
-    if (req.getSchemaVersion() != null) {
-      entity.setSchemaVersion(req.getSchemaVersion());
     }
     if (req.getApplicationContent() != null) {
       try {
