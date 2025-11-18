@@ -41,7 +41,7 @@ public class ApplicationSummarySpecificationTest {
 
         Predicate summaryPredicate = mock(Predicate.class);
 
-        when(root.get("reference"))
+        when(root.get("applicationReference"))
                 .thenReturn(mock(jakarta.persistence.criteria.Path.class));
 
         when(builder.and(any())).thenReturn(summaryPredicate);

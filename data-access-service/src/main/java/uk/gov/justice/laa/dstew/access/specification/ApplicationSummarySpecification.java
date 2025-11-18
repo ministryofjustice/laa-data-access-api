@@ -31,7 +31,8 @@ public class ApplicationSummarySpecification {
       }
 
       if (reference != null && !reference.isBlank()) {
-        predicates.add(cb.like(cb.lower(root.get("reference")), reference.toLowerCase()));
+        predicates.add(cb.like(cb.lower(root.get("applicationReference")),
+                                  "%" + reference.toLowerCase() + "%"));
       }
 
       return cb.and(predicates.toArray(new Predicate[0]));

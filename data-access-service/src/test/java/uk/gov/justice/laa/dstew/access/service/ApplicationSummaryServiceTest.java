@@ -75,7 +75,7 @@ public class ApplicationSummaryServiceTest {
     List<ApplicationSummaryEntity> entities = createInProgressApplicationSummaryEntities();
     List<ApplicationSummary> summaries = createApplicationSummaries(entities);
 
-    Pageable pageDetails = PageRequest.of(1, 1);
+    Pageable pageDetails = PageRequest.of(0, 5);
 
     // Wrap entities in a page
     Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(entities);
@@ -105,7 +105,7 @@ public class ApplicationSummaryServiceTest {
     List<ApplicationSummaryEntity> entities = createInProgressApplicationSummaryEntities();
     List<ApplicationSummary> summaries = createApplicationSummaries(entities);
 
-    Pageable pageDetails = PageRequest.of(1, 1);
+    Pageable pageDetails = PageRequest.of(0, 5);
 
     // Wrap entities in a page
     Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(entities);
