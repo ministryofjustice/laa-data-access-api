@@ -201,6 +201,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertUnauthorised(result);
         }
 
+        // TODO: figure out how to check that the logs do not contain PII
         @Test
         public void given_data_and_error_when_calling_create_call_fails_and_omits_PII_from_logs() throws Exception {
             // given
