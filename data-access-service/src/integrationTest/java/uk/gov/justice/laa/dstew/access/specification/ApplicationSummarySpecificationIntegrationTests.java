@@ -103,4 +103,24 @@ public class ApplicationSummarySpecificationIntegrationTests {
 
         assertEquals(expectedNumberOfAppref, apprefCount);
     }
+
+    @Test
+    void isApplicationReferenceNullSpecification() {
+        long expectedNumberOfRecordsNoFilter =
+                prePopulatedApplications.size();
+
+        var recordCount = applicationSummaryRepository.count(ApplicationSummarySpecification.filterBy(null, null));
+
+        assertEquals(expectedNumberOfRecordsNoFilter, recordCount);
+    }
+
+    @Test
+    void isApplicationReferenceBlankSpecification() {
+        long expectedNumberOfRecordsNoFilter =
+                prePopulatedApplications.size();
+
+        var recordCount = applicationSummaryRepository.count(ApplicationSummarySpecification.filterBy(null, ""));
+
+        assertEquals(expectedNumberOfRecordsNoFilter, recordCount);
+    }
 }
