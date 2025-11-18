@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Field;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -26,6 +27,7 @@ import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 @Service
 public class ApplicationService {
 
+  private final int applicationVersion = 1;
   private final ApplicationRepository applicationRepository;
   private final ApplicationMapper applicationMapper;
   private final ApplicationValidations applicationValidations;
@@ -86,6 +88,7 @@ public class ApplicationService {
   public UUID createApplication(final ApplicationCreateRequest req) {
     applicationValidations.checkApplicationCreateRequest(req);
     final ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
+    entity.setSchemaVersion(applicationVersion);
     final ApplicationEntity saved = applicationRepository.save(entity);
 
     createAndSendHistoricRecord(saved, null);
@@ -104,7 +107,7 @@ public class ApplicationService {
     final ApplicationEntity entity = checkIfApplicationExists(id);
     applicationValidations.checkApplicationUpdateRequest(req, entity);
     applicationMapper.updateApplicationEntity(entity, req);
-
+    entity.setModifiedAt(Instant.now());
     applicationRepository.save(entity);
 
     // Optional: create snapshot for audit/history

@@ -42,7 +42,6 @@ public interface ApplicationMapper {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setId(Generators.timeBasedEpochGenerator().generate());
     entity.setStatus(req.getStatus());
-    entity.setSchemaVersion(1);
     entity.setApplicationReference(req.getApplicationReference());
 
     try {
@@ -76,7 +75,6 @@ public interface ApplicationMapper {
             "Failed to serialize ApplicationUpdateRequest.applicationContent", e);
       }
     }
-    entity.setModifiedAt(Instant.now());
   }
 
   /**

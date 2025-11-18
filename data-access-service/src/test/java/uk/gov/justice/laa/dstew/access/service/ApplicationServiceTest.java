@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,7 @@ public class ApplicationServiceTest {
 
     UUID result = service.createApplication(req);
     assertThat(result).isEqualTo(entity.getId());
+    assertThat(entity.getSchemaVersion()).isEqualTo(1);
     verify(validator).checkApplicationCreateRequest(req);
     verify(repository).save(entity);
   }
@@ -89,6 +91,7 @@ public class ApplicationServiceTest {
 
     verify(mapper).updateApplicationEntity(entity, req);
     verify(repository).save(entity);
+    assertThat(entity.getModifiedAt()).isNotNull();
   }
 
   @Test
@@ -103,4 +106,5 @@ public class ApplicationServiceTest {
     Application result = service.getApplication(id);
     assertThat(result).isNotNull();
   }
+
 }
