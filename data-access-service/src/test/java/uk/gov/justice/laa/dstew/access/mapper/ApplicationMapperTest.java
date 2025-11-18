@@ -48,10 +48,12 @@ public class ApplicationMapperTest {
 
   @Test
   void shouldMapApplicationCreateRequestToApplicationEntity() {
-    ApplicationCreateRequest req = new ApplicationCreateRequest();
-    req.setStatus(ApplicationStatus.SUBMITTED);
-    req.setSchemaVersion(1);
-    req.setApplicationContent(Map.of("foo", "bar"));
+    ApplicationCreateRequest req = ApplicationCreateRequest.builder()
+                                    .status(ApplicationStatus.SUBMITTED)
+                                    .schemaVersion(1)
+                                    .applicationContent(Map.of("foo", "bar"))
+                                    .applicationReference("app_reference")
+                                    .build();
 
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
 
@@ -60,6 +62,7 @@ public class ApplicationMapperTest {
     assertThat(result.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
     assertThat(result.getSchemaVersion()).isEqualTo(1);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
+    assertThat(result.getApplicationReference()).isEqualTo("app_reference");
   }
 
   @Test
