@@ -42,7 +42,7 @@ public class LinkedIndividualEntity {
   @JoinColumn(name = "application_id")
   private ApplicationEntity linkedApplication;
 
-  @ManyToOne(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+  @ManyToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
   @JoinColumn(name = "individual_id")
   private IndividualEntity linkedIndividual;
 }

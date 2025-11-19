@@ -57,7 +57,7 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(columnDefinition = "json")
   private Map<String, Object> applicationContent;
 
-  @OneToMany(mappedBy = "linkedApplication", cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+  @OneToMany(mappedBy = "linkedApplication", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
   private Set<LinkedIndividualEntity> linkedIndividuals;
 
   @Column(name = "schema_version")
