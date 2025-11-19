@@ -56,4 +56,16 @@ public class ResponseAsserts {
     public static void assertProblemRecord(HttpStatus status, ProblemDetail expectedDetail, MvcResult response, ProblemDetail actualDetail) {
         assertProblemRecord(status, expectedDetail.getTitle(), expectedDetail.getDetail(), response, actualDetail);
     }
+
+    public static void assertBadRequest(MvcResult response) {
+        assertEquals(HttpStatus.BAD_REQUEST.value(), response.getResponse().getStatus());
+    }
+
+    public static void assertForbidden(MvcResult response) {
+        assertEquals(HttpStatus.FORBIDDEN.value(), response.getResponse().getStatus());
+    }
+
+    public static void assertUnauthorised(MvcResult response) {
+        assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getResponse().getStatus());
+    }
 }

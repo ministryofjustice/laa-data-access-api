@@ -6,7 +6,7 @@ import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ApplicationAsserts.assertApplicationEqual;
 
-public class ApplicationTest extends BaseIntegrationTest {
+public class ApplicationRepositoryTest extends BaseIntegrationTest {
 
     @Test
     public void givenSaveOfExpectedApplication_whenGetCalled_expectedAndActualAreEqual() {

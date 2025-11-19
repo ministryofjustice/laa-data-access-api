@@ -22,12 +22,14 @@ public class ApplicationAsserts {
                 .isEqualTo(actual);
     }
 
+    // TODO: check whether we align status and applicationStatus.
     public static void assertApplicationEqual(ApplicationEntity expected, Application actual) {
         assertEquals(expected.getId(), actual.getId());
         assertThat(expected)
                 .usingRecursiveComparison()
-                .ignoringFields("id", "createdAt", "modifiedAt", "applicationReference")
+                .ignoringFields("id", "createdAt", "modifiedAt", "applicationReference", "status")
                 .isEqualTo(actual);
+        assertEquals(expected.getStatus(), actual.getApplicationStatus());
     }
 
     public static void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual) {
