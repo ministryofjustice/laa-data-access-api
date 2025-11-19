@@ -7,8 +7,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -49,7 +52,30 @@ public class ApplicationControllerIntegrationTest {
   @MockitoBean
   private ApplicationSummaryRepository repository;
 
+
   private String buildApplicationJson() {
+    return buildApplicationJson(false);
+  }
+
+  private String buildApplicationJson(boolean withIndividuals) {
+    StringBuilder linkedIndividualsJson = new StringBuilder();
+
+    if (withIndividuals) {
+      linkedIndividualsJson.append(", \"linked_individuals\": [")
+          .append("{")
+          .append("\"firstName\": \"John\",")
+          .append("\"lastName\": \"Doe\",")
+          .append("\"dateOfBirth\": \"1990-01-01\",")
+          .append("\"details\": {\"email\": \"john.doe@example.com\"}")
+          .append("},")
+          .append("{")
+          .append("\"firstName\": \"Jane\",")
+          .append("\"lastName\": \"Doe\",")
+          .append("\"dateOfBirth\": \"1992-02-02\",")
+          .append("\"details\": {\"email\": \"jane.doe@example.com\"}")
+          .append("}")
+          .append("]");
+    }
     return "{"
         + "\"id\": \"" + UUID.randomUUID() + "\","
         + "\"status\": \"SUBMITTED\","
@@ -59,6 +85,7 @@ public class ApplicationControllerIntegrationTest {
         + "\"last_name\": \"Doe\","
         + "\"application_id\": \"" + UUID.randomUUID() + "\""
         + "}"
+        + linkedIndividualsJson
         + "}";
   }
 
@@ -239,7 +266,6 @@ public class ApplicationControllerIntegrationTest {
   @Order(8)
   @WithMockUser(authorities = {"APPROLE_ApplicationWriter", "APPROLE_ApplicationReader"})
   void shouldUpdateApplication_withContentAndStatus() throws Exception {
-    // CREATE application
     String createPayload = buildApplicationJson();
     String location = mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications")
             .with(csrf())
@@ -252,7 +278,6 @@ public class ApplicationControllerIntegrationTest {
 
     assertThat(location).isNotNull();
 
-    // UPDATE application
     String updatePayload = "{"
         + "\"status\": \"IN_PROGRESS\","
         + "\"applicationContent\": {\"first_name\": \"Jane\", \"last_name\": \"Smith\"}"
@@ -264,7 +289,6 @@ public class ApplicationControllerIntegrationTest {
             .content(updatePayload))
         .andExpect(MockMvcResultMatchers.status().isNoContent());
 
-    // VERIFY update
     mockMvc.perform(MockMvcRequestBuilders.get(location))
         .andExpect(MockMvcResultMatchers.status().isOk())
         .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.first_name").value("Jane"))

@@ -4,13 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.LinkedIndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -39,6 +43,36 @@ public class ApplicationMapperTest {
     assertThat(result.getId()).isEqualTo(id);
     assertThat(result.getApplicationStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
+  }
+
+  @Test
+  void toApplication_mapsLinkedIndividualsCorrectly() {
+    IndividualEntity individual = IndividualEntity.builder()
+        .firstName("John").lastName("Doe").dateOfBirth(LocalDate.of(1990,1,1))
+        .individualContent(Map.of("notes","Test")).build();
+
+    LinkedIndividualEntity link = LinkedIndividualEntity.builder()
+        .linkedIndividual(individual).build();
+
+    ApplicationEntity appEntity = ApplicationEntity.builder()
+        .id(UUID.randomUUID())
+        .status(ApplicationStatus.IN_PROGRESS)
+        .linkedIndividuals(Set.of(link))
+        .build();
+
+    Application app = applicationMapper.toApplication(appEntity);
+
+
+    assertThat(app.getLinkedIndividuals())
+        .isNotNull()
+        .hasSize(1);
+
+    assertThat(app.getLinkedIndividuals().getFirst())
+        .extracting("firstName", "lastName", "dateOfBirth")
+        .containsExactly("John", "Doe", LocalDate.of(1990, 1, 1));
+
+    assertThat(app.getLinkedIndividuals().getFirst().getDetails())
+        .containsEntry("notes", "Test");
   }
 
   @Test
