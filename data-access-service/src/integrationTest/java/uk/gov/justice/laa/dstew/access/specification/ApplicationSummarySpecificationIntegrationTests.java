@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.instancio.Instancio;
@@ -60,6 +61,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
         prePopulatedApplications = Instancio.ofList(ApplicationEntity.class)
                                 .size(NUMBER_OF_PREPOPULATED_APPLICATIONS)
                                 .generate(Select.field(ApplicationEntity::getStatus), gen -> gen.oneOf(ApplicationStatus.IN_PROGRESS, ApplicationStatus.SUBMITTED))
+                                .set(Select.field(ApplicationEntity::getLinkedIndividuals), Set.of())
                                 .set(Select.field(ApplicationEntity::getApplicationContent), map)
                                 .create();
         applicationRepository.saveAll(prePopulatedApplications);

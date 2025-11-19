@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.instancio.Instancio;
@@ -56,6 +57,7 @@ public class ApplicationRepositoryIntegrationTest {
         map.put("last_name", "hendrix");
         prePopulatedApplications = Instancio.ofList(ApplicationEntity.class)
                                 .size(NUMBER_OF_PREPOPULATED_APPLICATIONS)
+                                .set(Select.field(ApplicationEntity::getLinkedIndividuals), Set.of())
                                 .set(Select.field(ApplicationEntity::getApplicationContent), map)
                                 .create();
         applicationRepository.saveAll(prePopulatedApplications);
@@ -77,7 +79,7 @@ public class ApplicationRepositoryIntegrationTest {
     void applicationGet() {
         var expectedEntity = prePopulatedApplications.get(0);
         Optional<ApplicationEntity> optionEntity = applicationRepository.findById(expectedEntity.getId());
-        ApplicationEntity actualEntity = optionEntity.orElseThrow(); 
+        ApplicationEntity actualEntity = optionEntity.orElseThrow();
         assertApplicationEntitysAreEqual(expectedEntity, actualEntity);
     }
 
