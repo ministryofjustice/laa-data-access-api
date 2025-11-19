@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.asserters;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -30,18 +31,6 @@ public class ResponseAsserts {
         assertEquals(HttpStatus.NOT_FOUND.value(), response.getResponse().getStatus());
     }
 
-    public static void assertBadRequest(MvcResult response) {
-        assertEquals(HttpStatus.BAD_REQUEST.value(), response.getResponse().getStatus());
-    }
-
-    public static void assertForbidden(MvcResult response) {
-        assertEquals(HttpStatus.FORBIDDEN.value(), response.getResponse().getStatus());
-    }
-
-    public static void assertUnauthorised(MvcResult response) {
-        assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getResponse().getStatus());
-    }
-
     public static void assertCreated(MvcResult response) {
         assertEquals(HttpStatus.CREATED.value(), response.getResponse().getStatus());
         assertNotNull(response.getResponse().getHeader("Location"));
@@ -49,5 +38,18 @@ public class ResponseAsserts {
 
     public static void assertNoContent(MvcResult response) {
         assertEquals(HttpStatus.NO_CONTENT.value(), response.getResponse().getStatus());
+    }
+
+    public static void assertProblemRecord(
+            HttpStatus expectedStatus,
+            String expectedShortCode,
+            String expectedDetail,
+            MvcResult response,
+            ProblemDetail actualDetail) {
+
+        assertEquals("application/problem+json", response.getResponse().getContentType());
+        assertEquals(expectedStatus.value(), response.getResponse().getStatus());
+        assertEquals(expectedShortCode, actualDetail.getTitle());
+        assertEquals(expectedDetail, actualDetail.getDetail());
     }
 }

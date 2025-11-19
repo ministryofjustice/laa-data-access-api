@@ -7,6 +7,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
@@ -21,10 +23,8 @@ import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import java.util.UUID;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ApplicationAsserts.assertApplicationEqual;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
 @ActiveProfiles("test")
 public class ApplicationTest extends BaseIntegrationTest {
@@ -78,10 +78,11 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, id);
+            ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
 
             // then
             assertSecurityHeaders(result);
-            assertBadRequest(result);
+            assertProblemRecord(HttpStatus.BAD_REQUEST, "", "", result, detail);
         }
 
         // TODO: Identify what the problem record should be
@@ -93,10 +94,11 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, UUID.randomUUID());
+            ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
 
             // then
             assertSecurityHeaders(result);
-            assertForbidden(result);
+            assertProblemRecord(HttpStatus.FORBIDDEN, "", "", result, detail);
         }
 
         // TODO: Identify what the problem record should be
@@ -107,10 +109,11 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, UUID.randomUUID());
+            ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
 
             // then
             assertSecurityHeaders(result);
-            assertUnauthorised(result);
+            assertProblemRecord(HttpStatus.FORBIDDEN, "", "", result, detail);
         }
     }
 
@@ -139,6 +142,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         }
 
         // TODO: think about how a status outside of the range of the Enum can be sent. Can a client actually do this anyway?
+        // TODO: check problem details
         @ParameterizedTest
         @MethodSource("applicationCreateRequestInvalidDataCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
@@ -148,12 +152,14 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+            ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
 
             // then
             assertSecurityHeaders(result);
-            assertBadRequest(result);
+            assertProblemRecord(HttpStatus.BAD_REQUEST, "Validation failed", "One or more validation rules were violated", result, detail);
         }
 
+        // TODO: check problem details
         @ParameterizedTest
         @ValueSource(strings = { "", "{}" })
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
@@ -163,10 +169,11 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+            ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
 
             // then
             assertSecurityHeaders(result);
-            assertBadRequest(result);
+            assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request", "Failed to read request", result, detail);
         }
 
         @Test
@@ -177,10 +184,11 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+            ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
 
             // then
             assertSecurityHeaders(result);
-            assertForbidden(result);
+            assertProblemRecord(HttpStatus.FORBIDDEN, "", "", result, detail);
         }
 
         @Test
@@ -190,10 +198,11 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+            ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
 
             // then
             assertSecurityHeaders(result);
-            assertUnauthorised(result);
+            assertProblemRecord(HttpStatus.UNAUTHORIZED, "", "", result, detail);
         }
 
         // TODO: figure out how to check that the logs do not contain PII
@@ -204,10 +213,11 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+            ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
 
             // then
             assertSecurityHeaders(result);
-            assertUnauthorised(result);
+            assertProblemRecord(HttpStatus.UNAUTHORIZED, "", "", result, detail);
         }
 
         private Stream<Arguments> applicationCreateRequestInvalidDataCases() {
@@ -221,4 +231,12 @@ public class ApplicationTest extends BaseIntegrationTest {
             );
         }
     }
+
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class UpdateApplication {}
+
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class GetAllApplications {}
 }
