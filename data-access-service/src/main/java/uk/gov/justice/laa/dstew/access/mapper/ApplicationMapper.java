@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.Individual;
 
 
 /**
@@ -88,6 +89,7 @@ public interface ApplicationMapper {
     if (entity == null) {
       return null;
     }
+
     try {
       Application app = new Application();
       app.setId(entity.getId());
@@ -95,6 +97,25 @@ public interface ApplicationMapper {
       app.setSchemaVersion(entity.getSchemaVersion());
       app.setApplicationContent(
           OBJECT_MAPPER.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
+
+      // Map linked individuals → API model
+      if (entity.getLinkedIndividuals() != null) {
+        app.setLinkedIndividuals(
+            entity.getLinkedIndividuals().stream()
+                .map(li -> {
+                  uk.gov.justice.laa.dstew.access.model.Individual dto =
+                      new uk.gov.justice.laa.dstew.access.model.Individual();
+
+                  dto.setFirstName(li.getLinkedIndividual().getFirstName());
+                  dto.setLastName(li.getLinkedIndividual().getLastName());
+                  dto.setDateOfBirth(li.getLinkedIndividual().getDateOfBirth());
+                  dto.setDetails(li.getLinkedIndividual().getIndividualContent());
+
+                  return dto;
+                })
+                .toList()
+        );
+      }
       return app;
     } catch (Exception e) {
       throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
