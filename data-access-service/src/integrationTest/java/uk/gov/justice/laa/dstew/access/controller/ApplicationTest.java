@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ApplicationAsserts.assertApplicationEqual;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
@@ -146,7 +147,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         @ParameterizedTest
         @MethodSource("applicationCreateRequestInvalidDataCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenInvalidData_whenCallingCreate_thenCallFailsWithBadRequest(ApplicationCreateRequest request) throws Exception {
+        public void givenInvalidData_whenCallingCreate_thenCallFailsWithBadRequest_andRepositoryEmpty(ApplicationCreateRequest request) throws Exception {
             // given
             // in ValueSource
 
@@ -157,13 +158,16 @@ public class ApplicationTest extends BaseIntegrationTest {
             // then
             assertSecurityHeaders(result);
             assertProblemRecord(HttpStatus.BAD_REQUEST, "Validation failed", "One or more validation rules were violated", result, detail);
+
+            // and
+            assertEquals(0, applicationRepository.count());
         }
 
         // TODO: check problem details
         @ParameterizedTest
         @ValueSource(strings = { "", "{}" })
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenNoBody_whenCallingCreate_thenCallFailsWithBadRequest(String request) throws Exception {
+        public void givenNoBody_whenCallingCreate_thenCallFailsWithBadRequest_andRepositoryEmpty(String request) throws Exception {
             // given
             // in ValueSource
 
@@ -174,11 +178,14 @@ public class ApplicationTest extends BaseIntegrationTest {
             // then
             assertSecurityHeaders(result);
             assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request", "Failed to read request", result, detail);
+
+            // and
+            assertEquals(0, applicationRepository.count());
         }
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
-        public void givenDataAndReaderRole_whenCallingCreate_thenFailsWithForbidden() throws Exception {
+        public void givenDataAndReaderRole_whenCallingCreate_thenFailsWithForbidden_andRepositoryEmpty() throws Exception {
             // given
             ApplicationCreateRequest request = applicationCreateRequestFactory.create();
 
@@ -189,10 +196,13 @@ public class ApplicationTest extends BaseIntegrationTest {
             // then
             assertSecurityHeaders(result);
             assertProblemRecord(HttpStatus.FORBIDDEN, "", "", result, detail);
+
+            // and
+            assertEquals(0, applicationRepository.count());
         }
 
         @Test
-        public void givenDataAndNoAuth_whenCallingCreate_thenFailsWithUnauthorized() throws Exception {
+        public void givenDataAndNoAuth_whenCallingCreate_thenFailsWithUnauthorized_andRepositoryEmpty() throws Exception {
             // given
             ApplicationCreateRequest request = applicationCreateRequestFactory.create();
 
@@ -203,11 +213,14 @@ public class ApplicationTest extends BaseIntegrationTest {
             // then
             assertSecurityHeaders(result);
             assertProblemRecord(HttpStatus.UNAUTHORIZED, "", "", result, detail);
+
+            // and
+            assertEquals(0, applicationRepository.count());
         }
 
         // TODO: figure out how to check that the logs do not contain PII
         @Test
-        public void givenDataAndError_whenCallingCreate_thenFailsAndOmitsPIIFromLogs() throws Exception {
+        public void givenDataAndError_whenCallingCreate_thenFailsAndOmitsPIIFromLogs_andRepositoryEmpty() throws Exception {
             // given
             ApplicationCreateRequest request = applicationCreateRequestFactory.create();
 
@@ -218,6 +231,9 @@ public class ApplicationTest extends BaseIntegrationTest {
             // then
             assertSecurityHeaders(result);
             assertProblemRecord(HttpStatus.UNAUTHORIZED, "", "", result, detail);
+
+            // and
+            assertEquals(0, applicationRepository.count());
         }
 
         private Stream<Arguments> applicationCreateRequestInvalidDataCases() {
