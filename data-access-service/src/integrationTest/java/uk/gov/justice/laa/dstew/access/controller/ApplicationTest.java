@@ -18,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
+import uk.gov.justice.laa.dstew.access.utils.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 
 import java.util.UUID;
@@ -118,6 +119,9 @@ public class ApplicationTest extends BaseIntegrationTest {
         }
     }
 
+    /**
+     * Tests related to DSTEW-503
+     */
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class CreateApplication {
@@ -147,9 +151,12 @@ public class ApplicationTest extends BaseIntegrationTest {
         @ParameterizedTest
         @MethodSource("applicationCreateRequestInvalidDataCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenInvalidData_whenCallingCreate_thenCallFailsWithBadRequest_andRepositoryEmpty(ApplicationCreateRequest request) throws Exception {
+        public void givenInvalidData_whenCallingCreate_thenCallFailsWithBadRequest_andRepositoryEmpty(
+                ApplicationCreateRequest request,
+                ProblemDetail expectedDetail) throws Exception {
+
             // given
-            // in ValueSource
+            // in MethodSource
 
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -157,7 +164,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // then
             assertSecurityHeaders(result);
-            assertProblemRecord(HttpStatus.BAD_REQUEST, "Validation failed", "One or more validation rules were violated", result, detail);
+            assertProblemRecord(HttpStatus.BAD_REQUEST, expectedDetail, result, detail);
 
             // and
             assertEquals(0, applicationRepository.count());
@@ -240,10 +247,22 @@ public class ApplicationTest extends BaseIntegrationTest {
             return Stream.of(
                     Arguments.of(applicationCreateRequestFactory.create(builder -> {
                         builder.status(null);
-                    })),
+                    }), ProblemDetailBuilder
+                            .create()
+                            .status(HttpStatus.BAD_REQUEST)
+                            .title("Bad Request")
+                            .detail("detail")
+                            .build()
+                    ),
                     Arguments.of(applicationCreateRequestFactory.create(builder -> {
                         builder.applicationContent(null);
-                    }))
+                    }), ProblemDetailBuilder
+                            .create()
+                            .status(HttpStatus.BAD_REQUEST)
+                            .title("Bad Request")
+                            .detail("detail")
+                            .build()
+                    )
             );
         }
     }

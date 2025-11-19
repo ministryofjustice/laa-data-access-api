@@ -52,4 +52,8 @@ public class ResponseAsserts {
         assertEquals(expectedShortCode, actualDetail.getTitle());
         assertEquals(expectedDetail, actualDetail.getDetail());
     }
+
+    public static void assertProblemRecord(HttpStatus status, ProblemDetail expectedDetail, MvcResult response, ProblemDetail actualDetail) {
+        assertProblemRecord(status, expectedDetail.getTitle(), expectedDetail.getDetail(), response, actualDetail);
+    }
 }
