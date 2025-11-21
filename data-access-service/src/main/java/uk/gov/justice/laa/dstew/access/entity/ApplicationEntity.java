@@ -3,15 +3,20 @@ package uk.gov.justice.laa.dstew.access.entity;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.vladmihalcea.hibernate.type.json.JsonType;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -52,6 +57,14 @@ public class ApplicationEntity implements AuditableEntity {
   @Type(JsonType.class)
   @Column(columnDefinition = "json")
   private Map<String, Object> applicationContent;
+
+  @ManyToMany(cascade = CascadeType.PERSIST)
+  @JoinTable(
+      name = "linked_individual",
+      joinColumns = @JoinColumn(name = "application_id"),
+      inverseJoinColumns = @JoinColumn(name = "individual_id")
+  )
+  private Set<IndividualEntity> individuals;
 
   @Column(name = "schema_version")
   private Integer schemaVersion;

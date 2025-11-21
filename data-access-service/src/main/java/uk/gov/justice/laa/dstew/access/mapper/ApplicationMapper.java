@@ -7,10 +7,14 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
@@ -22,10 +26,12 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
  * All mapping operations are performed safely, throwing an
  * {@link IllegalArgumentException} if JSON conversion fails.
  */
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {IndividualMapper.class})
 public interface ApplicationMapper {
 
   ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+  IndividualMapper INDIVIDUAL_MAPPER = Mappers.getMapper(IndividualMapper.class);
 
   /**
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
@@ -88,6 +94,7 @@ public interface ApplicationMapper {
     if (entity == null) {
       return null;
     }
+
     try {
       Application app = new Application();
       app.setId(entity.getId());
@@ -95,6 +102,16 @@ public interface ApplicationMapper {
       app.setSchemaVersion(entity.getSchemaVersion());
       app.setApplicationContent(
           OBJECT_MAPPER.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
+
+      app.setIndividuals(
+          Optional.ofNullable(entity.getIndividuals())
+              .orElse(Set.of())
+              .stream()
+              .map(INDIVIDUAL_MAPPER::toIndividual)
+              .filter(Objects::nonNull)
+              .toList()
+      );
+
       return app;
     } catch (Exception e) {
       throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
