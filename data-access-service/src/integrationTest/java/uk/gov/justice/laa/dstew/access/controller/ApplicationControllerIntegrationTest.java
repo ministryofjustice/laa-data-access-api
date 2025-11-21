@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -40,7 +41,6 @@ import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.entity.LinkedIndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
@@ -63,6 +63,8 @@ public class ApplicationControllerIntegrationTest {
   @Autowired
   private ApplicationRepository applicationRepository;
 
+  @Autowired
+  private EntityManager entityManager;
 
   private String buildApplicationJson() {
     return buildApplicationJson(false);
@@ -393,7 +395,7 @@ public class ApplicationControllerIntegrationTest {
   @WithMockUser(authorities = {"APPROLE_ApplicationReader"})
   @Transactional
   @Order(12)
-  void shouldReturnLinkedIndividuals() throws Exception {
+  void shouldReturnIndividuals() throws Exception {
 
     UUID appId = UUID.randomUUID();
 
@@ -418,8 +420,10 @@ public class ApplicationControllerIntegrationTest {
     ind2.setDateOfBirth(LocalDate.of(1992, 2, 2));
     ind2.setIndividualContent(Map.of("email", "jane.doe@example.com"));
 
-    app.setIndividuals(Set.of(ind1, ind2));
+    entityManager.persist(ind1);
+    entityManager.persist(ind2);
 
+    app.setIndividuals(Set.of(ind1, ind2));
     applicationRepository.saveAndFlush(app);
 
     mockMvc.perform(get("/api/v0/applications/" + appId))
@@ -432,7 +436,7 @@ public class ApplicationControllerIntegrationTest {
   @Test
   @WithMockUser(authorities = {"APPROLE_ApplicationReader", "APPROLE_ApplicationWriter"})
   @Order(13)
-  void shouldReturnEmptyLinkedIndividualsList() throws Exception {
+  void shouldReturnEmptyIndividualsList() throws Exception {
 
     ApplicationEntity app = new ApplicationEntity();
     UUID appId = UUID.randomUUID();
