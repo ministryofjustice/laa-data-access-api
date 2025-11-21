@@ -7,10 +7,14 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
@@ -26,6 +30,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 public interface ApplicationMapper {
 
   ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+  IndividualMapper INDIVIDUAL_MAPPER = Mappers.getMapper(IndividualMapper.class);
 
   /**
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
@@ -97,20 +103,15 @@ public interface ApplicationMapper {
       app.setApplicationContent(
           OBJECT_MAPPER.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
 
-      if (entity.getLinkedIndividuals() != null) {
-        app.setLinkedIndividuals(
-            entity.getLinkedIndividuals().stream()
-                .map(li -> {
-                  // null-safe mapping
-                  return li != null ? li.getLinkedIndividual() != null
-                      ? new IndividualMapperImpl().toIndividual(li)
-                      : null
-                      : null;
-                })
-                .filter(java.util.Objects::nonNull)
-                .toList()
-        );
-      }
+      app.setIndividuals(
+          Optional.ofNullable(entity.getIndividuals())
+              .orElse(Set.of())
+              .stream()
+              .map(INDIVIDUAL_MAPPER::toIndividual)
+              .filter(Objects::nonNull)
+              .toList()
+      );
+
       return app;
     } catch (Exception e) {
       throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);

@@ -60,7 +60,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
         prePopulatedApplications = Instancio.ofList(ApplicationEntity.class)
                                 .size(NUMBER_OF_PREPOPULATED_APPLICATIONS)
                                 .generate(Select.field(ApplicationEntity::getStatus), gen -> gen.oneOf(ApplicationStatus.IN_PROGRESS, ApplicationStatus.SUBMITTED))
-                                .set(Select.field(ApplicationEntity::getLinkedIndividuals), Set.of())
+                                .set(Select.field(ApplicationEntity::getIndividuals), Set.of())
                                 .generate(Select.field(ApplicationEntity::getApplicationReference), gen -> gen.oneOf("Appref1", "APPref2", "unknown"))
                                 .set(Select.field(ApplicationEntity::getApplicationContent), map)
                                 .create();

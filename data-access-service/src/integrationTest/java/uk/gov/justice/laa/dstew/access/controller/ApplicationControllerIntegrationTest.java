@@ -390,7 +390,7 @@ public class ApplicationControllerIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = "APPROLE_ApplicationReader")
+  @WithMockUser(authorities = {"APPROLE_ApplicationReader"})
   @Transactional
   @Order(12)
   void shouldReturnLinkedIndividuals() throws Exception {
@@ -411,34 +411,23 @@ public class ApplicationControllerIntegrationTest {
     ind1.setDateOfBirth(LocalDate.of(1990, 1, 1));
     ind1.setIndividualContent(Map.of("email", "john.doe@example.com"));
 
-    LinkedIndividualEntity link1 = new LinkedIndividualEntity();
-    link1.setId(UUID.randomUUID());
-    link1.setLinkedApplication(app);
-    link1.setLinkedIndividual(ind1);
-
     IndividualEntity ind2 = new IndividualEntity();
     ind2.setId(UUID.randomUUID());
     ind2.setFirstName("Jane");
     ind2.setLastName("Doe");
-    ind2.setDateOfBirth(LocalDate.of(1990, 1, 1));
+    ind2.setDateOfBirth(LocalDate.of(1992, 2, 2));
     ind2.setIndividualContent(Map.of("email", "jane.doe@example.com"));
 
-    LinkedIndividualEntity link2 = new LinkedIndividualEntity();
-    link2.setId(UUID.randomUUID());
-    link2.setLinkedApplication(app);
-    link2.setLinkedIndividual(ind2);
-
-    app.setLinkedIndividuals(Set.of(link1, link2));
+    app.setIndividuals(Set.of(ind1, ind2));
 
     applicationRepository.saveAndFlush(app);
 
     mockMvc.perform(get("/api/v0/applications/" + appId))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.linked_individuals.length()").value(2))
-        .andExpect(jsonPath("$.linked_individuals[0].firstName").exists())
-        .andExpect(jsonPath("$.linked_individuals[1].firstName").exists());
+        .andExpect(jsonPath("$.individuals.length()").value(2))
+        .andExpect(jsonPath("$.individuals[0].firstName").exists())
+        .andExpect(jsonPath("$.individuals[1].firstName").exists());
   }
-
 
   @Test
   @WithMockUser(authorities = {"APPROLE_ApplicationReader", "APPROLE_ApplicationWriter"})
@@ -454,14 +443,15 @@ public class ApplicationControllerIntegrationTest {
     app.setCreatedAt(Instant.now());
     app.setModifiedAt(Instant.now());
 
-    app.setLinkedIndividuals(Set.of());
+    app.setIndividuals(Set.of());
     applicationRepository.save(app);
 
     mockMvc.perform(get("/api/v0/applications/" + appId)
             .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.linked_individuals").isArray())
-        .andExpect(jsonPath("$.linked_individuals").isEmpty());
+        .andExpect(jsonPath("$.individuals").isArray())
+        .andExpect(jsonPath("$.individuals").isEmpty());
   }
+
 
 }

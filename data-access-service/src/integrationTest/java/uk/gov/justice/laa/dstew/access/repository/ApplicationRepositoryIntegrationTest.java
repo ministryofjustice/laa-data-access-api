@@ -57,7 +57,7 @@ public class ApplicationRepositoryIntegrationTest {
         map.put("last_name", "hendrix");
         prePopulatedApplications = Instancio.ofList(ApplicationEntity.class)
                                 .size(NUMBER_OF_PREPOPULATED_APPLICATIONS)
-                                .set(Select.field(ApplicationEntity::getLinkedIndividuals), Set.of())
+                                .set(Select.field(ApplicationEntity::getIndividuals), Set.of())
                                 .set(Select.field(ApplicationEntity::getApplicationContent), map)
                                 .create();
         applicationRepository.saveAll(prePopulatedApplications);

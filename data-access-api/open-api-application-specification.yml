@@ -161,7 +161,7 @@ components:
         applicationContent:
           type: object
           additionalProperties: true
-        linked_individuals:
+        individuals:
           type: array
           items:
             $ref: "#/components/schemas/Individual"
