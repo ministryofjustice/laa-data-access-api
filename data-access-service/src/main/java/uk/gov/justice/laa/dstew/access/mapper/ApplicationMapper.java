@@ -15,7 +15,6 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.Individual;
 
 
 /**
@@ -23,7 +22,7 @@ import uk.gov.justice.laa.dstew.access.model.Individual;
  * All mapping operations are performed safely, throwing an
  * {@link IllegalArgumentException} if JSON conversion fails.
  */
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {LinkedIndividualMapper.class})
 public interface ApplicationMapper {
 
   ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -98,21 +97,17 @@ public interface ApplicationMapper {
       app.setApplicationContent(
           OBJECT_MAPPER.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
 
-      // Map linked individuals → API model
       if (entity.getLinkedIndividuals() != null) {
         app.setLinkedIndividuals(
             entity.getLinkedIndividuals().stream()
                 .map(li -> {
-                  uk.gov.justice.laa.dstew.access.model.Individual dto =
-                      new uk.gov.justice.laa.dstew.access.model.Individual();
-
-                  dto.setFirstName(li.getLinkedIndividual().getFirstName());
-                  dto.setLastName(li.getLinkedIndividual().getLastName());
-                  dto.setDateOfBirth(li.getLinkedIndividual().getDateOfBirth());
-                  dto.setDetails(li.getLinkedIndividual().getIndividualContent());
-
-                  return dto;
+                  // null-safe mapping
+                  return li != null ? li.getLinkedIndividual() != null
+                      ? new LinkedIndividualMapperImpl().toIndividual(li)
+                      : null
+                      : null;
                 })
+                .filter(java.util.Objects::nonNull)
                 .toList()
         );
       }
