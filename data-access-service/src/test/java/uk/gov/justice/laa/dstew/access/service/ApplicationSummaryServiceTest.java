@@ -38,7 +38,7 @@ public class ApplicationSummaryServiceTest {
   @Mock
   private ApplicationSummaryMapper mapper;
 
-  List<ApplicationSummaryEntity> createInProgressApplicationSummaryEntities() {
+  private List<ApplicationSummaryEntity> createInProgressApplicationSummaryEntities() {
     ApplicationSummaryEntity firstEntity = new ApplicationSummaryEntity();
     firstEntity.setId(UUID.randomUUID());
     firstEntity.setApplicationReference("appref1");
@@ -52,7 +52,7 @@ public class ApplicationSummaryServiceTest {
     return List.of(firstEntity, secondEntity);
   }
 
-  List<ApplicationSummary> createApplicationSummaries(
+  private List<ApplicationSummary> createApplicationSummaries(
         List<ApplicationSummaryEntity> entities) {
 
     ApplicationSummary firstSummary = new ApplicationSummary();
