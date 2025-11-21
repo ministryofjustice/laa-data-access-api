@@ -21,15 +21,28 @@ public class ApplicationSummarySpecification {
    *
    */
   public static Specification<ApplicationSummaryEntity> filterBy(
-          ApplicationStatus status) {
-    return (Root<ApplicationSummaryEntity> root, CriteriaQuery<?> query, CriteriaBuilder cb) -> {
-      List<Predicate> predicates = new ArrayList<>();
-
-      if (status != null) {
-        predicates.add(cb.equal(root.get("status"), status));
-      }
-
-      return cb.and(predicates.toArray(new Predicate[0]));
-    };
+          ApplicationStatus status,
+          String reference) {
+    return isStatus(status).and(isApplicationReference(reference));
   }
+
+  private static Specification<ApplicationSummaryEntity> isStatus(ApplicationStatus status) {
+    if (status != null) {
+      return (root, query, builder)
+              -> builder.equal(root.get("status"), status);
+    }
+
+    return Specification.unrestricted();
+  }
+
+  private static Specification<ApplicationSummaryEntity> isApplicationReference(String reference) {
+    if (reference != null && !reference.isBlank()) {
+      return (root, query, builder)
+              -> builder.like(builder.lower(root.get("applicationReference")),
+              "%" + reference.toLowerCase() + "%");
+    }
+
+    return Specification.unrestricted();
+  }
+
 }

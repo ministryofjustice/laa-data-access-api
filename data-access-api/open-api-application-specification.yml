@@ -17,6 +17,11 @@ paths:
           schema:
             $ref: "#/components/schemas/applicationStatus"
         - in: query
+          name: reference
+          description: The application reference
+          schema:
+            type: string
+        - in: query
           name: page
           description: page number of data to be returned
           schema:
