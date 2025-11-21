@@ -51,17 +51,21 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodResponse
   @LogMethodArguments
-  public ResponseEntity<ApplicationSummaryResponse> getApplications(ApplicationStatus status, Integer page, Integer pageSize) {
+  public ResponseEntity<ApplicationSummaryResponse> getApplications(
+          ApplicationStatus status,
+          String reference,
+          Integer page,
+          Integer pageSize) {
 
     List<ApplicationSummary> applicationsReturned =
-            summaryService.getAllApplications(status, page, pageSize);
+            summaryService.getAllApplications(status, reference, page, pageSize);
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
     ApplicationSummaryResponsePaging responsePageDetails = new ApplicationSummaryResponsePaging();
     response.setPaging(responsePageDetails);
     response.setApplications(applicationsReturned);
     responsePageDetails.setPage(page);
     responsePageDetails.pageSize(pageSize);
-    responsePageDetails.totalRecords((int) summaryService.getAllApplicationsTotal(status));
+    responsePageDetails.totalRecords((int) summaryService.getAllApplicationsTotal(status, reference));
     responsePageDetails.itemsReturned(applicationsReturned.size());
 
     return ResponseEntity.ok(response);
