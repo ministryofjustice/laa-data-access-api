@@ -10,7 +10,7 @@ import uk.gov.justice.laa.dstew.access.model.Individual;
  * gracefully handling null values.
  */
 @Mapper(componentModel = "spring")
-public interface LinkedIndividualMapper {
+public interface IndividualMapper {
 
   /**
    * Converts a {@link LinkedIndividualEntity} to an API-facing {@link Individual} model.

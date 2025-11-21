@@ -11,13 +11,13 @@ import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.entity.LinkedIndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 
-class LinkedIndividualMapperTest {
+class IndividualMapperTest {
 
-  private LinkedIndividualMapper mapper;
+  private IndividualMapper mapper;
 
   @BeforeEach
   void setUp() {
-    mapper = new LinkedIndividualMapper() {};
+    mapper = new IndividualMapper() {};
   }
 
   @Test

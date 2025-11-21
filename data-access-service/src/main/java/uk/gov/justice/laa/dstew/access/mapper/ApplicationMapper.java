@@ -22,7 +22,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
  * All mapping operations are performed safely, throwing an
  * {@link IllegalArgumentException} if JSON conversion fails.
  */
-@Mapper(componentModel = "spring", uses = {LinkedIndividualMapper.class})
+@Mapper(componentModel = "spring", uses = {IndividualMapper.class})
 public interface ApplicationMapper {
 
   ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -103,7 +103,7 @@ public interface ApplicationMapper {
                 .map(li -> {
                   // null-safe mapping
                   return li != null ? li.getLinkedIndividual() != null
-                      ? new LinkedIndividualMapperImpl().toIndividual(li)
+                      ? new IndividualMapperImpl().toIndividual(li)
                       : null
                       : null;
                 })
