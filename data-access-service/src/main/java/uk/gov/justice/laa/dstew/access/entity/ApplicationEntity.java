@@ -31,7 +31,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 @Entity
 @Table(name = "application")
 @EntityListeners(AuditingEntityListener.class)
