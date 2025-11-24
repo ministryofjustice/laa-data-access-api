@@ -1,34 +1,46 @@
--- Enable UUID generation functions
+-- Enable UUID generation
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Application Table
-CREATE TABLE applications (
-                              id UUID PRIMARY KEY,
-                              provider_firm_id VARCHAR(255) NOT NULL,
-                              provider_office_id VARCHAR(255) NOT NULL,
-                              client_id UUID NOT NULL,
-                              status_code VARCHAR(100),
-                              statement_of_case VARCHAR(1000),
-                              is_emergency_application BOOLEAN,
+---------------------------------------------------------------------
+-- APPLICATION
+---------------------------------------------------------------------
+CREATE TABLE application (
+    id UUID PRIMARY KEY,
+    application_reference VARCHAR,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() AT TIME ZONE 'UTC'),
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() AT TIME ZONE 'UTC'),
 
-                              created_at TIMESTAMP NOT NULL,
-                              created_by VARCHAR(255) NOT NULL,
-                              updated_at TIMESTAMP NOT NULL,
-                              updated_by VARCHAR(255) NOT NULL
+    status VARCHAR(20) NOT NULL,
+    application_content JSONB NOT NULL,
+    schema_version INTEGER
 );
 
--- ApplicationProceeding Table
-CREATE TABLE applications_proceedings (
-                                          id UUID PRIMARY KEY,
-                                          application_id UUID NOT NULL,
-                                          proceeding_code VARCHAR(100),
-                                          level_of_service_code VARCHAR(100),
+---------------------------------------------------------------------
+-- INDIVIDUAL
+---------------------------------------------------------------------
+CREATE TABLE individual (
+    id UUID PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() AT TIME ZONE 'UTC'),
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() AT TIME ZONE 'UTC'),
 
-                                          created_at TIMESTAMP NOT NULL,
-                                          created_by VARCHAR(255) NOT NULL,
-                                          updated_at TIMESTAMP NOT NULL,
-                                          updated_by VARCHAR(255) NOT NULL,
+    first_name VARCHAR NOT NULL,
+    last_name VARCHAR NOT NULL,
+    date_of_birth DATE NOT NULL,
+    individual_content JSONB NOT NULL
+);
 
-                                          CONSTRAINT fk_application FOREIGN KEY (application_id)
-                                              REFERENCES applications(id) ON DELETE CASCADE
+---------------------------------------------------------------------
+-- MANY-TO-MANY
+---------------------------------------------------------------------
+CREATE TABLE linked_individual (
+    application_id UUID NOT NULL,
+    individual_id  UUID NOT NULL,
+
+    PRIMARY KEY (application_id, individual_id),
+
+    CONSTRAINT fk_linked_individual_application FOREIGN KEY (application_id)
+       REFERENCES application(id) ON DELETE CASCADE,
+
+    CONSTRAINT fk_linked_individual_individual FOREIGN KEY (individual_id)
+       REFERENCES individual(id) ON DELETE CASCADE
 );
