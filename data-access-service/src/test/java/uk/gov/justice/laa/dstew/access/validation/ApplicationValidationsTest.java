@@ -2,9 +2,16 @@ package uk.gov.justice.laa.dstew.access.validation;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import org.instancio.Instancio;
+import org.instancio.Select;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -15,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 @ExtendWith(MockitoExtension.class)
@@ -22,6 +30,8 @@ public class ApplicationValidationsTest {
 
   @Mock
   EffectiveAuthorizationProvider mockEntra;
+  @Mock
+  IndividualValidations individualValidator;
 
   @InjectMocks
   ApplicationValidations classUnderTest;
@@ -85,6 +95,27 @@ public class ApplicationValidationsTest {
                                                                .applicationReference("app-ref")
                                                                .build();
     assertDoesNotThrow(() -> classUnderTest.checkApplicationCreateRequest(request));
+  }
+
+  @Test
+  void shouldDelegateIndividualValidationsToIndividualValidator() {
+    var individuals = createIndividuals();
+    ApplicationCreateRequest request = ApplicationCreateRequest.builder()
+                                                               .status(ApplicationStatus.SUBMITTED)
+                                                               .applicationContent(Map.of("foo", "bar"))
+                                                               .applicationReference("app-ref")
+                                                               .individuals(individuals)
+                                                               .build();
+    classUnderTest.checkApplicationCreateRequest(request);
+    
+    individuals.forEach(i -> verify(individualValidator, times(1)).validateIndividual(i));
+  }
+
+  private static List<Individual> createIndividuals() {
+    return Instancio.ofList(Individual.class)
+                               .size(5)
+                               .set(Select.field(Individual::getDetails), Map.of("",""))
+                               .create();
   }
 
   // --- ApplicationUpdateRequest tests ---
