@@ -38,42 +38,125 @@ public class ApplicationSummaryServiceTest {
   @Mock
   private ApplicationSummaryMapper mapper;
 
-  @Test
-  void shouldGetAllApplications() {
+  private List<ApplicationSummaryEntity> createInProgressApplicationSummaryEntities() {
     ApplicationSummaryEntity firstEntity = new ApplicationSummaryEntity();
     firstEntity.setId(UUID.randomUUID());
+    firstEntity.setApplicationReference("appref1");
     firstEntity.setStatus(ApplicationStatus.IN_PROGRESS);
 
     ApplicationSummaryEntity secondEntity = new ApplicationSummaryEntity();
     secondEntity.setId(UUID.randomUUID());
+    secondEntity.setApplicationReference("appref2");
     secondEntity.setStatus(ApplicationStatus.IN_PROGRESS);
 
+    return List.of(firstEntity, secondEntity);
+  }
+
+  private List<ApplicationSummary> createApplicationSummaries(
+        List<ApplicationSummaryEntity> entities) {
+
     ApplicationSummary firstSummary = new ApplicationSummary();
-    firstSummary.setApplicationId(firstEntity.getId());
-    firstSummary.setApplicationStatus(ApplicationStatus.IN_PROGRESS);
+    firstSummary.setApplicationId(entities.getFirst().getId());
+    firstSummary.setApplicationReference(entities.getFirst().getApplicationReference());
+    firstSummary.setApplicationStatus(entities.getFirst().getStatus());
 
     ApplicationSummary secondSummary = new ApplicationSummary();
-    secondSummary.setApplicationId(secondEntity.getId());
-    secondSummary.setApplicationStatus(ApplicationStatus.IN_PROGRESS);
+    secondSummary.setApplicationId(entities.get(1).getId());
+    secondSummary.setApplicationReference(entities.get(1).getApplicationReference());
+    secondSummary.setApplicationStatus(entities.get(1).getStatus());
 
-    Pageable pageDetails = PageRequest.of(1, 1);
+    return List.of(firstSummary, secondSummary);
+
+  }
+
+  @Test
+  void shouldGetAllInProgressAndBlankReferenceApplications() {
+
+    List<ApplicationSummaryEntity> entities = createInProgressApplicationSummaryEntities();
+    List<ApplicationSummary> summaries = createApplicationSummaries(entities);
+
+    Pageable pageDetails = PageRequest.of(0, 5);
 
     // Wrap entities in a page
-    Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(List.of(firstEntity, secondEntity));
+    Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(entities);
 
     // Mock repository
     when(repository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
     // Mock mapper
-    when(mapper.toApplicationSummary(firstEntity)).thenReturn(firstSummary);
-    when(mapper.toApplicationSummary(secondEntity)).thenReturn(secondSummary);
+    when(mapper.toApplicationSummary(entities.getFirst())).thenReturn(summaries.getFirst());
+    when(mapper.toApplicationSummary(entities.get(1))).thenReturn(summaries.get(1));
 
     List<ApplicationSummary> result =
-        classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS, 1, 1);
+        classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS,
+                "",
+                pageDetails.getPageNumber(),
+                pageDetails.getPageSize());
 
     // Verify results
     assertThat(result).hasSize(2);
-    assertThat(result.get(0).getApplicationId()).isEqualTo(firstEntity.getId());
-    assertThat(result.get(1).getApplicationId()).isEqualTo(secondEntity.getId());
+    assertThat(result.get(0).getApplicationId()).isEqualTo(entities.getFirst().getId());
+    assertThat(result.get(1).getApplicationId()).isEqualTo(entities.get(1).getId());
   }
+
+  @Test
+  void shouldGetAllInProgressAndNullReferenceApplications() {
+
+    List<ApplicationSummaryEntity> entities = createInProgressApplicationSummaryEntities();
+    List<ApplicationSummary> summaries = createApplicationSummaries(entities);
+
+    Pageable pageDetails = PageRequest.of(0, 5);
+
+    // Wrap entities in a page
+    Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(entities);
+
+    // Mock repository
+    when(repository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+
+    // Mock mapper
+    when(mapper.toApplicationSummary(entities.getFirst())).thenReturn(summaries.getFirst());
+    when(mapper.toApplicationSummary(entities.get(1))).thenReturn(summaries.get(1));
+
+    List<ApplicationSummary> result =
+            classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS,
+                    null,
+                    pageDetails.getPageNumber(),
+                    pageDetails.getPageSize());
+
+    // Verify results
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0).getApplicationId()).isEqualTo(entities.getFirst().getId());
+    assertThat(result.get(1).getApplicationId()).isEqualTo(entities.get(1).getId());
+  }
+
+  @Test
+  void shouldGetAllApplicationReferenceApplications() {
+
+    List<ApplicationSummaryEntity> entities = createInProgressApplicationSummaryEntities();
+    List<ApplicationSummary> summaries = createApplicationSummaries(entities);
+
+    Pageable pageDetails = PageRequest.of(0, 5);
+
+    // Wrap entities in a page
+    Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(entities);
+
+    // Mock repository
+    when(repository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+
+    // Mock mapper
+    when(mapper.toApplicationSummary(entities.getFirst())).thenReturn(summaries.getFirst());
+    when(mapper.toApplicationSummary(entities.get(1))).thenReturn(summaries.get(1));
+
+    List<ApplicationSummary> result =
+            classUnderTest.getAllApplications(null,
+                    "appref",
+                    pageDetails.getPageNumber(),
+                    pageDetails.getPageSize());
+
+    // Verify results
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0).getApplicationId()).isEqualTo(entities.getFirst().getId());
+    assertThat(result.get(1).getApplicationId()).isEqualTo(entities.get(1).getId());
+  }
+
 }
