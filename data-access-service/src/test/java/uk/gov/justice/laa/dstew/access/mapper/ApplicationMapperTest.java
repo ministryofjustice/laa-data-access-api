@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -25,20 +27,26 @@ public class ApplicationMapperTest {
   @Test
   void shouldMapApplicationEntityToApplication() {
     UUID id = UUID.randomUUID();
+    Instant createdAt = Instant.now().minusSeconds(600000);
+    Instant updatedAt = Instant.now();
     ApplicationEntity entity = new ApplicationEntity();
     entity.setId(id);
     entity.setStatus(ApplicationStatus.IN_PROGRESS);
+    entity.setApplicationReference("Ref123");
     entity.setSchemaVersion(1);
     entity.setApplicationContent(Map.of("foo", "bar", "baz", 123));
-    entity.setCreatedAt(Instant.now());
-    entity.setModifiedAt(Instant.now());
+    entity.setCreatedAt(createdAt);
+    entity.setModifiedAt(updatedAt);
 
     Application result = applicationMapper.toApplication(entity);
 
     assertThat(result).isNotNull();
     assertThat(result.getId()).isEqualTo(id);
+    assertThat(result.getApplicationReference()).isEqualTo("Ref123");
     assertThat(result.getApplicationStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
+    assertThat(result.getCreatedAt()).isEqualTo(OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC));
+    assertThat(result.getUpdatedAt()).isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
   }
 
   @Test

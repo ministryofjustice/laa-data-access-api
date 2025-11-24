@@ -89,13 +89,16 @@ public interface ApplicationMapper {
       return null;
     }
     try {
-      Application app = new Application();
-      app.setId(entity.getId());
-      app.setApplicationStatus(entity.getStatus());
-      app.setSchemaVersion(entity.getSchemaVersion());
-      app.setApplicationContent(
+      Application application = new Application();
+      application.setId(entity.getId());
+      application.setApplicationStatus(entity.getStatus());
+      application.setSchemaVersion(entity.getSchemaVersion());
+      application.setApplicationContent(
           OBJECT_MAPPER.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
-      return app;
+      application.setApplicationReference(entity.getApplicationReference());
+      application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
+      application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
+      return application;
     } catch (Exception e) {
       throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
     }
