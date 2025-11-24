@@ -136,6 +136,24 @@ components:
         - SUBMITTED
       description: Application statuses
 
+    Individual:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - dateOfBirth
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        details:
+          type: object
+          additionalProperties: true
+
     Application:
       type: object
       required:
@@ -153,6 +171,10 @@ components:
         applicationContent:
           type: object
           additionalProperties: true
+        individuals:
+          type: array
+          items:
+            $ref: "#/components/schemas/Individual"
 
     ApplicationCreateRequest:
       type: object

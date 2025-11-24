@@ -4,23 +4,30 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.junit.jupiter.MockitoExtension;
+
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.Individual;
 
-@ExtendWith(MockitoExtension.class)
-public class ApplicationMapperTest {
+class ApplicationMapperTest {
 
-  @InjectMocks
-  private ApplicationMapper applicationMapper = new ApplicationMapperImpl();
+  private ApplicationMapper applicationMapper;
+
+  @BeforeEach
+  void setUp() {
+    applicationMapper = new ApplicationMapperImpl();
+  }
 
   @Test
   void shouldMapApplicationEntityToApplication() {
@@ -42,6 +49,35 @@ public class ApplicationMapperTest {
   }
 
   @Test
+  void toApplication_mapsLinkedIndividualsCorrectly() {
+    IndividualEntity individual = IndividualEntity.builder()
+        .id(UUID.randomUUID())
+        .firstName("John")
+        .lastName("Doe")
+        .dateOfBirth(LocalDate.of(1990, 1, 1))
+        .individualContent(Map.of("notes", "Test"))
+        .build();
+
+    ApplicationEntity appEntity = ApplicationEntity.builder()
+        .id(UUID.randomUUID())
+        .status(ApplicationStatus.IN_PROGRESS)
+        .individuals(Set.of(individual))
+        .build();
+
+    Application app = applicationMapper.toApplication(appEntity);
+
+    assertThat(app.getIndividuals())
+        .isNotNull()
+        .hasSize(1);
+
+    Individual mapped = app.getIndividuals().get(0);
+    assertThat(mapped.getFirstName()).isEqualTo("John");
+    assertThat(mapped.getLastName()).isEqualTo("Doe");
+    assertThat(mapped.getDateOfBirth()).isEqualTo(LocalDate.of(1990, 1, 1));
+    assertThat(mapped.getDetails()).containsEntry("notes", "Test");
+  }
+
+  @Test
   void shouldReturnNullWhenMappingNullEntity() {
     assertThat(applicationMapper.toApplication(null)).isNull();
   }
@@ -49,10 +85,10 @@ public class ApplicationMapperTest {
   @Test
   void shouldMapApplicationCreateRequestToApplicationEntity() {
     ApplicationCreateRequest req = ApplicationCreateRequest.builder()
-                                    .status(ApplicationStatus.SUBMITTED)
-                                    .applicationContent(Map.of("foo", "bar"))
-                                    .applicationReference("app_reference")
-                                    .build();
+        .status(ApplicationStatus.SUBMITTED)
+        .applicationContent(Map.of("foo", "bar"))
+        .applicationReference("app_reference")
+        .build();
 
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
 
@@ -93,7 +129,6 @@ public class ApplicationMapperTest {
     applicationMapper.updateApplicationEntity(entity, req);
 
     assertThat(entity.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
-    entity.setSchemaVersion(1);
     assertThat(entity.getApplicationContent()).containsEntry("newKey", "newValue");
   }
 
@@ -101,9 +136,7 @@ public class ApplicationMapperTest {
   void shouldThrowWhenApplicationCreateRequestContentCannotBeSerialized() {
     ApplicationCreateRequest req = new ApplicationCreateRequest();
     req.setStatus(ApplicationStatus.IN_PROGRESS);
-    req.setApplicationContent(Map.of("key", new Object() {
-      // Jackson cannot serialize anonymous object by default
-    }));
+    req.setApplicationContent(Map.of("key", new Object() {}));
 
     assertThrows(IllegalArgumentException.class, () -> applicationMapper.toApplicationEntity(req));
   }
@@ -114,8 +147,7 @@ public class ApplicationMapperTest {
     entity.setStatus(ApplicationStatus.IN_PROGRESS);
 
     ApplicationUpdateRequest req = new ApplicationUpdateRequest();
-    req.setApplicationContent(Map.of("key", new Object() {
-    }));
+    req.setApplicationContent(Map.of("key", new Object() {}));
 
     IllegalArgumentException ex = assertThrows(
         IllegalArgumentException.class,
@@ -130,8 +162,7 @@ public class ApplicationMapperTest {
   void shouldThrowWhenApplicationEntityContentCannotBeDeserialized() {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setStatus(ApplicationStatus.IN_PROGRESS);
-    entity.setApplicationContent(Map.of("key", new Object() {
-    }));
+    entity.setApplicationContent(Map.of("key", new Object() {}));
 
     assertThrows(IllegalArgumentException.class, () -> applicationMapper.toApplication(entity));
   }
