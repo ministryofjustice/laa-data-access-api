@@ -1,10 +1,13 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
+
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashMap;
 import java.util.List;
@@ -109,6 +112,23 @@ public class ApplicationValidationsTest {
     classUnderTest.checkApplicationCreateRequest(request);
     
     individuals.forEach(i -> verify(individualValidator, times(1)).validateIndividual(i));
+  }
+
+  @Test
+  void shouldOnlyReturnUniqueValidationErrors() {
+    ApplicationCreateRequest request = ApplicationCreateRequest.builder()
+                                                               .status(ApplicationStatus.SUBMITTED)
+                                                               .applicationContent(Map.of("foo", "bar"))
+                                                               .applicationReference("app-ref")
+                                                               .individuals(createIndividuals())
+                                                               .build();
+    when(individualValidator.validateIndividual(any(Individual.class)))
+      .thenReturn(List.of("ValidationError", "ValidationError"));
+    
+    ValidationException exception = assertThrows(ValidationException.class,  
+        () -> classUnderTest.checkApplicationCreateRequest(request));
+    assertThat(exception.errors()).hasSize(1);
+    assertThat(exception.errors().stream().findFirst().get()).isEqualTo("ValidationError");
   }
 
   private static List<Individual> createIndividuals() {

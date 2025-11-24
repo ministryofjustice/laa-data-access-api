@@ -28,7 +28,7 @@ public class IndividualValidationsTest {
     @ParameterizedTest  
     @NullSource
     @ValueSource(strings = {"", "    "})  
-    void shouldReturnValdiationErrorsWhenFirstNameIsNullEmptyOrWhitespace(String firstName) {
+    void shouldReturnValidationErrorsWhenFirstNameIsNullEmptyOrWhitespace(String firstName) {
         Individual individual = Individual.builder().firstName(firstName).build();
 
         var result = individualValidator.validateIndividual(individual);
@@ -39,7 +39,7 @@ public class IndividualValidationsTest {
     @ParameterizedTest  
     @NullSource
     @ValueSource(strings = {"", "    "})  
-    void shouldReturnValdiationErrorsWhenLastNameIsNullEmptyOrWhitespace(String lastName) {
+    void shouldReturnValidationErrorsWhenLastNameIsNullEmptyOrWhitespace(String lastName) {
         Individual individual = Individual.builder().lastName(lastName).build();
 
         var result = individualValidator.validateIndividual(individual);
@@ -64,6 +64,15 @@ public class IndividualValidationsTest {
         var result = individualValidator.validateIndividual(individual);
 
         assertThat(result).contains("Individual details must be populated.");
+    }
+
+    void shouldReturnMultipleValidationErrorsWhenMultiplePropertiesInvalid() {
+        Individual individual = Individual.builder().details(Map.of("foo", "bar")).build();
+
+        var result = individualValidator.validateIndividual(individual);
+
+        assertThat(result).contains("First name must be populated.");
+        assertThat(result).contains("Last name must be populated.");
     }
 
     @Test

@@ -51,6 +51,7 @@ public class ApplicationValidations {
                                                   .stream()
                                                   .map(individualValidator::validateIndividual)
                                                   .flatMap(s -> s.stream())
+                                                  .distinct()
                                                   .toList();
     if (!individualsValidationErrors.isEmpty()) {
       throw new ValidationException(individualsValidationErrors);
