@@ -184,6 +184,7 @@ components:
         - status
         - applicationContent
         - applicationReference
+        - individuals
       properties:
         status:
           $ref: "#/components/schemas/applicationStatus"
