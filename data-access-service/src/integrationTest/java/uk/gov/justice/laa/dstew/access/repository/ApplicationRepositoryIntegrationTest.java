@@ -27,6 +27,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import jakarta.transaction.Transactional;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -59,6 +60,7 @@ public class ApplicationRepositoryIntegrationTest {
                                 .size(NUMBER_OF_PREPOPULATED_APPLICATIONS)
                                 .set(Select.field(ApplicationEntity::getIndividuals), Set.of())
                                 .set(Select.field(ApplicationEntity::getApplicationContent), map)
+                                .set(Select.field(ApplicationEntity::getId), null)
                                 .create();
         applicationRepository.saveAll(prePopulatedApplications);
     }
@@ -68,7 +70,6 @@ public class ApplicationRepositoryIntegrationTest {
         Map<String,Object> map = new HashMap<String,Object>();
         map.put("key", "value");
         var entity = ApplicationEntity.builder()
-                                             .id(UUID.randomUUID())
                                              .applicationContent(map)
                                              .status(ApplicationStatus.IN_PROGRESS)
                                              .build();

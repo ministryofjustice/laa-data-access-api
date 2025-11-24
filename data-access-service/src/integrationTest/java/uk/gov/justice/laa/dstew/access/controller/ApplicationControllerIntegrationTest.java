@@ -394,25 +394,19 @@ public class ApplicationControllerIntegrationTest {
   @Transactional
   @Order(12)
   void shouldReturnIndividuals() throws Exception {
-
-    UUID appId = UUID.randomUUID();
-
     ApplicationEntity app = new ApplicationEntity();
-    app.setId(appId);
     app.setStatus(ApplicationStatus.SUBMITTED);
     app.setApplicationContent(Map.of("foo", "bar"));
     app.setCreatedAt(Instant.now());
     app.setModifiedAt(Instant.now());
 
     IndividualEntity ind1 = new IndividualEntity();
-    ind1.setId(UUID.randomUUID());
     ind1.setFirstName("John");
     ind1.setLastName("Doe");
     ind1.setDateOfBirth(LocalDate.of(1990, 1, 1));
     ind1.setIndividualContent(Map.of("email", "john.doe@example.com"));
 
     IndividualEntity ind2 = new IndividualEntity();
-    ind2.setId(UUID.randomUUID());
     ind2.setFirstName("Jane");
     ind2.setLastName("Doe");
     ind2.setDateOfBirth(LocalDate.of(1992, 2, 2));
@@ -422,7 +416,7 @@ public class ApplicationControllerIntegrationTest {
     entityManager.persist(ind2);
 
     app.setIndividuals(Set.of(ind1, ind2));
-    applicationRepository.saveAndFlush(app);
+    var appId = applicationRepository.saveAndFlush(app).getId();
 
     mockMvc.perform(get("/api/v0/applications/" + appId))
         .andExpect(status().isOk())
@@ -437,8 +431,6 @@ public class ApplicationControllerIntegrationTest {
   void shouldReturnEmptyIndividualsList() throws Exception {
 
     ApplicationEntity app = new ApplicationEntity();
-    UUID appId = UUID.randomUUID();
-    app.setId(appId);
     app.setStatus(ApplicationStatus.SUBMITTED);
     app.setSchemaVersion(1);
     app.setApplicationContent(Map.of("first_name", "Alice", "last_name", "Wonder"));
@@ -446,7 +438,7 @@ public class ApplicationControllerIntegrationTest {
     app.setModifiedAt(Instant.now());
 
     app.setIndividuals(Set.of());
-    applicationRepository.save(app);
+    var appId = applicationRepository.save(app).getId();
 
     mockMvc.perform(get("/api/v0/applications/" + appId)
             .accept(MediaType.APPLICATION_JSON))

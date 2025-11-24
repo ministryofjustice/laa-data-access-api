@@ -53,7 +53,6 @@ public interface IndividualMapper {
                             .lastName(individual.getLastName())
                             .dateOfBirth(individual.getDateOfBirth())
                             .individualContent(individual.getDetails())
-                            .id(Generators.timeBasedEpochGenerator().generate())
                             .build();
   }
 }

@@ -103,7 +103,6 @@ class ApplicationMapperTest {
 
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
 
-    assertThat(result).isNotNull();
     assertThat(result.getId()).isNotNull();
     assertThat(result.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");

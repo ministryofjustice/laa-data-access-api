@@ -64,6 +64,5 @@ class IndividualMapperTest {
     assertThat(result.getLastName()).isEqualTo("Doe");
     assertThat(result.getDateOfBirth()).isEqualTo(LocalDate.of(2025, 11, 24));
     assertThat(result.getIndividualContent()).isEqualTo(Map.of("key", "value"));
-    assertThat(result.getId()).isNotNull();
   }
 }
