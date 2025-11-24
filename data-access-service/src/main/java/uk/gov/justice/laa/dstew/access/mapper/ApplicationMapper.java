@@ -29,9 +29,9 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 @Mapper(componentModel = "spring", uses = {IndividualMapper.class})
 public interface ApplicationMapper {
 
-  ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  ObjectMapper objectMapper = new ObjectMapper();
 
-  IndividualMapper INDIVIDUAL_MAPPER = Mappers.getMapper(IndividualMapper.class);
+  IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
 
   /**
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
@@ -52,7 +52,7 @@ public interface ApplicationMapper {
 
     try {
       entity.setApplicationContent(
-          OBJECT_MAPPER.convertValue(req.getApplicationContent(), Map.class));
+          objectMapper.convertValue(req.getApplicationContent(), Map.class));
     } catch (Exception e) {
       throw new IllegalArgumentException(
           "Failed to serialize ApplicationCreateRequest.applicationContent", e);
@@ -75,7 +75,7 @@ public interface ApplicationMapper {
     if (req.getApplicationContent() != null) {
       try {
         entity.setApplicationContent(
-            OBJECT_MAPPER.convertValue(req.getApplicationContent(), Map.class));
+            objectMapper.convertValue(req.getApplicationContent(), Map.class));
       } catch (Exception e) {
         throw new IllegalArgumentException(
             "Failed to serialize ApplicationUpdateRequest.applicationContent", e);
@@ -101,13 +101,13 @@ public interface ApplicationMapper {
       app.setApplicationStatus(entity.getStatus());
       app.setSchemaVersion(entity.getSchemaVersion());
       app.setApplicationContent(
-          OBJECT_MAPPER.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
+          objectMapper.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
 
       app.setIndividuals(
           Optional.ofNullable(entity.getIndividuals())
               .orElse(Set.of())
               .stream()
-              .map(INDIVIDUAL_MAPPER::toIndividual)
+              .map(individualMapper::toIndividual)
               .filter(Objects::nonNull)
               .toList()
       );
