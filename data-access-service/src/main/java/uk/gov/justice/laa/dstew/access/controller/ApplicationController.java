@@ -54,11 +54,18 @@ public class ApplicationController implements ApplicationApi {
   public ResponseEntity<ApplicationSummaryResponse> getApplications(
           ApplicationStatus status,
           String reference,
+          String firstName,
+          String lastName,
           Integer page,
           Integer pageSize) {
 
     List<ApplicationSummary> applicationsReturned =
-            summaryService.getAllApplications(status, reference, page, pageSize);
+            summaryService.getAllApplications(
+                    status,
+                    reference,
+                    firstName,
+                    lastName,
+                    page, pageSize);
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
     ApplicationSummaryResponsePaging responsePageDetails = new ApplicationSummaryResponsePaging();
     response.setPaging(responsePageDetails);

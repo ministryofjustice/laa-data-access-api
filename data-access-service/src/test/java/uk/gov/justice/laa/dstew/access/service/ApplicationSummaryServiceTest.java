@@ -70,7 +70,7 @@ public class ApplicationSummaryServiceTest {
   }
 
   @Test
-  void shouldGetAllInProgressAndBlankReferenceApplications() {
+  void shouldGetAllInProgressAndBlankReferenceApplicationAndName() {
 
     List<ApplicationSummaryEntity> entities = createInProgressApplicationSummaryEntities();
     List<ApplicationSummary> summaries = createApplicationSummaries(entities);
@@ -90,6 +90,8 @@ public class ApplicationSummaryServiceTest {
     List<ApplicationSummary> result =
         classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS,
                 "",
+                "",
+                "",
                 pageDetails.getPageNumber(),
                 pageDetails.getPageSize());
 
@@ -100,7 +102,7 @@ public class ApplicationSummaryServiceTest {
   }
 
   @Test
-  void shouldGetAllInProgressAndNullReferenceApplications() {
+  void shouldGetAllInProgressAndNullReferenceApplicationsAndName() {
 
     List<ApplicationSummaryEntity> entities = createInProgressApplicationSummaryEntities();
     List<ApplicationSummary> summaries = createApplicationSummaries(entities);
@@ -119,6 +121,8 @@ public class ApplicationSummaryServiceTest {
 
     List<ApplicationSummary> result =
             classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS,
+                    null,
+                    null,
                     null,
                     pageDetails.getPageNumber(),
                     pageDetails.getPageSize());
@@ -150,6 +154,8 @@ public class ApplicationSummaryServiceTest {
     List<ApplicationSummary> result =
             classUnderTest.getAllApplications(null,
                     "appref",
+                    null,
+                    null,
                     pageDetails.getPageNumber(),
                     pageDetails.getPageSize());
 

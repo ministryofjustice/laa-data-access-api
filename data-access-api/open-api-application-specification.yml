@@ -22,8 +22,13 @@ paths:
           schema:
             type: string
         - in: query
-          name: reference
-          description: The application reference
+          name: firstName
+          description: The linked individuals first name
+          schema:
+            type: string
+        - in: query
+          name: lastName
+          description: The linked individuals last name
           schema:
             type: string
         - in: query

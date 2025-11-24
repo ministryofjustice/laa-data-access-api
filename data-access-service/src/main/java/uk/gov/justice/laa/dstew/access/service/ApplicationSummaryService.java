@@ -37,7 +37,10 @@ public class ApplicationSummaryService {
   /**
    * Retrieves a paginated list of {@link ApplicationSummary} objects filtered by application status.
    *
-   * @param applicationStatus the {@link ApplicationStatus} used to filter results
+   * @param applicationStatus the {@link ApplicationStatus} used to filter results on application status
+   * @param applicationReference used to filter results on application reference
+   * @param firstName used to filter results on linked individuals first name
+   * @param lastName used to filter results on  linked individuals last name
    * @param page the page number to retrieve (zero-based index)
    * @param pageSize the maximum number of results to return per page
    * @return a list of {@link ApplicationSummary} instances matching the filter criteria
@@ -46,6 +49,8 @@ public class ApplicationSummaryService {
   public List<ApplicationSummary> getAllApplications(
           ApplicationStatus applicationStatus,
           String applicationReference,
+          String firstName,
+          String lastName,
           Integer page,
           Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
