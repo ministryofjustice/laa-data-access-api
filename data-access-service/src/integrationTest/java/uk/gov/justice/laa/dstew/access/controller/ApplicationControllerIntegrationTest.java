@@ -67,39 +67,37 @@ public class ApplicationControllerIntegrationTest {
   private EntityManager entityManager;
 
   private String buildApplicationJson() {
-    return buildApplicationJson(false);
-  }
-
-  private String buildApplicationJson(boolean withIndividuals) {
-    StringBuilder linkedIndividualsJson = new StringBuilder();
-
-    if (withIndividuals) {
-      linkedIndividualsJson.append(", \"linked_individuals\": [")
-          .append("{")
-          .append("\"firstName\": \"John\",")
-          .append("\"lastName\": \"Doe\",")
-          .append("\"dateOfBirth\": \"1990-01-01\",")
-          .append("\"details\": {\"email\": \"john.doe@example.com\"}")
-          .append("},")
-          .append("{")
-          .append("\"firstName\": \"Jane\",")
-          .append("\"lastName\": \"Doe\",")
-          .append("\"dateOfBirth\": \"1992-02-02\",")
-          .append("\"details\": {\"email\": \"jane.doe@example.com\"}")
-          .append("}")
-          .append("]");
-    }
-    return "{"
-        + "\"id\": \"" + UUID.randomUUID() + "\","
-        + "\"status\": \"SUBMITTED\","
-        + "\"applicationReference\": \"app_ref\","
-        + "\"applicationContent\": {"
-        + "\"first_name\": \"John\","
-        + "\"last_name\": \"Doe\","
-        + "\"application_id\": \"" + UUID.randomUUID() + "\""
-        + "}"
-        + linkedIndividualsJson
-        + "}";
+    return  """
+          {
+            "id" : "019a92e4-3b56-71a3-befc-52d9064a5f65",
+            "status": "SUBMITTED",
+            "applicationContent": 
+            { 
+              "first_name" : "John",
+              "last_name"  : "Doe"
+            },
+            "application_id" : "019a92e5-84d7-7353-b94a-cad6a60a713e",
+            "applicationReference" : "app_ref",
+            "individuals" : [
+              {
+                "firstName" : "John",
+                "lastName" : "Doe",
+                "dateOfBirth" : "2025-11-24",
+                "details" : {
+                  "contactNumber" : "+447123456789"
+                  }
+              },
+              {
+                "firstName" : "Jan",
+                "lastName" : "Eod",
+                "dateOfBirth" : "2024-10-23",
+                "details" : {
+                  "contactNumber" : "+447987654321"
+                  }
+               }
+            ]
+          }
+        """;
   }
 
   @Test
