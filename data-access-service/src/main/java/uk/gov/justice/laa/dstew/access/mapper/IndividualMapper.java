@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
+import com.fasterxml.uuid.Generators;
 import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Individual;
@@ -32,5 +33,27 @@ public interface IndividualMapper {
     dto.setDateOfBirth(entity.getDateOfBirth());
     dto.setDetails(entity.getIndividualContent());
     return dto;
+  }
+
+  /**
+   * Converts API model {@link Individual} to an database entity {@link IndividualEntity} model.
+   * Safely handles nulls: if the {@code individual} itself is null,
+   * the method returns {@code null}.
+   *
+   * @param individual API model the {@link Individual} to map (might be null)
+   * @return a new {@link IndividualEntity} object populated with first name, last name, date of birth,
+   *         and individual content, or {@code null} if the input or individual is null
+   */
+  default IndividualEntity toIndividualEntity(Individual individual) {
+    return individual == null 
+            ? 
+            null : 
+            IndividualEntity.builder()
+                            .firstName(individual.getFirstName())
+                            .lastName(individual.getLastName())
+                            .dateOfBirth(individual.getDateOfBirth())
+                            .individualContent(individual.getDetails())
+                            .id(Generators.timeBasedEpochGenerator().generate())
+                            .build();
   }
 }
