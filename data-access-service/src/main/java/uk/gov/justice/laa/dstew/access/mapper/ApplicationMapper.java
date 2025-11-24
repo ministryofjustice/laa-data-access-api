@@ -7,10 +7,14 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
@@ -22,10 +26,12 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
  * All mapping operations are performed safely, throwing an
  * {@link IllegalArgumentException} if JSON conversion fails.
  */
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {IndividualMapper.class})
 public interface ApplicationMapper {
 
-  ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  ObjectMapper objectMapper = new ObjectMapper();
+
+  IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
 
   /**
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
@@ -46,7 +52,7 @@ public interface ApplicationMapper {
 
     try {
       entity.setApplicationContent(
-          OBJECT_MAPPER.convertValue(req.getApplicationContent(), Map.class));
+          objectMapper.convertValue(req.getApplicationContent(), Map.class));
     } catch (Exception e) {
       throw new IllegalArgumentException(
           "Failed to serialize ApplicationCreateRequest.applicationContent", e);
@@ -69,7 +75,7 @@ public interface ApplicationMapper {
     if (req.getApplicationContent() != null) {
       try {
         entity.setApplicationContent(
-            OBJECT_MAPPER.convertValue(req.getApplicationContent(), Map.class));
+            objectMapper.convertValue(req.getApplicationContent(), Map.class));
       } catch (Exception e) {
         throw new IllegalArgumentException(
             "Failed to serialize ApplicationUpdateRequest.applicationContent", e);
@@ -88,6 +94,7 @@ public interface ApplicationMapper {
     if (entity == null) {
       return null;
     }
+
     try {
       Application application = new Application();
       application.setId(entity.getId());
@@ -98,6 +105,16 @@ public interface ApplicationMapper {
       application.setApplicationReference(entity.getApplicationReference());
       application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
       application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
+      
+      application.setIndividuals(
+          Optional.ofNullable(entity.getIndividuals())
+              .orElse(Set.of())
+              .stream()
+              .map(individualMapper::toIndividual)
+              .filter(Objects::nonNull)
+              .toList()
+      );
+      
       return application;
     } catch (Exception e) {
       throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
