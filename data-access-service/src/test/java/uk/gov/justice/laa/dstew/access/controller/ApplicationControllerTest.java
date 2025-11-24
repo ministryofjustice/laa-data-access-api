@@ -62,7 +62,8 @@ class ApplicationControllerTest {
           {
             "status": "SUBMITTED",
             "schemaVersion": 1,
-            "applicationContent": { "foo": "bar" }
+            "applicationContent": { "foo": "bar" },
+            "applicationReference": "app_reference"
           }
         """;
 
@@ -75,20 +76,27 @@ class ApplicationControllerTest {
         .andReturn();
 
     String returnUri = mvcResult.getResponse().getHeader("Location");
-    if (returnUri != null) {
-      assertThat(returnUri).endsWith("/applications/" + newId);
-    }
+    assertThat(returnUri).isNotNull();
+    assertThat(returnUri).endsWith("/applications/" + newId);
+    
   }
 
   @Test
   void shouldUpdateItem() throws Exception {
     UUID applicationId = UUID.randomUUID();
     doNothing().when(applicationService).updateApplication(any(), any());
+    String validRequestBody = """
+          {
+            "status": "IN_PROGRESS",
+            "schemaVersion": 1,
+            "applicationContent": { "foo": "bar" }
+          }
+        """;
 
     mockMvc.perform(
             patch("/api/v0/applications/" + applicationId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"application_content\": {\"status\":\"IN_PROGRESS\"}}")
+                .content(validRequestBody)
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isNoContent());
   }

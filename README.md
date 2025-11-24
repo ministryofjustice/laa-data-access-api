@@ -35,7 +35,6 @@ Includes the following subprojects:
 - Continue to update this `README.md` file to include information such as what this project does.
 - Agree provisional content of `CODEOWNERS` file and PR review policy (e.g. number of reviewers).
 - Ensure the project has been added to the [Legal Aid Agency Snyk](https://app.snyk.io/org/legal-aid-agency) organisation.
-- Check why `build-test-pr.yml` and `pr-merge-main.yml` were not brought across.
 
 ## Build and run application
 ### Developing application within Intellij

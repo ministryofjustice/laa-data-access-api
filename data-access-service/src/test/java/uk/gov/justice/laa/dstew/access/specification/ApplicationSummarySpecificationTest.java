@@ -10,6 +10,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -22,32 +23,39 @@ public class ApplicationSummarySpecificationTest {
     private final CriteriaBuilder builder = mock(CriteriaBuilder.class);
 
     @Test
+    void shouldNotFailWhenReferenceIsNotBlank(){
+
+        String reference = "some-reference";
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(null, reference);
+
+        Predicate summaryPredicate = mock(Predicate.class);
+        when(builder.like(any(), eq("%"+reference+"%"))).thenReturn(summaryPredicate);
+        Predicate result = spec.toPredicate(root, query, builder);
+
+        assertThat(result).isNotNull();
+    }
+
+    @Test
     void shouldNotFailWhenReferenceIsBlank(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
                 .filterBy(null, "");
 
-        when(builder.and(any())).thenReturn(null);
         Predicate result = spec.toPredicate(root, query, builder);
 
         assertThat(result).isNull();
     }
 
     @Test
-    void shouldNotFailWhenReferenceHasAValue(){
+    void shouldNotFailWhenReferenceIsNull(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, "ref1");
+                .filterBy(null, null);
 
-        Predicate summaryPredicate = mock(Predicate.class);
-
-        when(root.get("reference"))
-                .thenReturn(mock(jakarta.persistence.criteria.Path.class));
-
-        when(builder.and(any())).thenReturn(summaryPredicate);
         Predicate result = spec.toPredicate(root, query, builder);
 
-        assertThat(result).isNotNull();
+        assertThat(result).isNull();
     }
 
     @Test
@@ -60,20 +68,33 @@ public class ApplicationSummarySpecificationTest {
 
         when(root.get("status"))
                 .thenReturn(mock(jakarta.persistence.criteria.Path.class));
+        when(builder.equal(any(), eq(ApplicationStatus.IN_PROGRESS))).thenReturn(summaryPredicate);
 
-        when(builder.and(any())).thenReturn(summaryPredicate);
         Predicate result = spec.toPredicate(root, query, builder);
-
         assertThat(result).isNotNull();
     }
 
+    @Test
+    void shouldFailWhenStatusHasAValueThatDoesNotMatch(){
+
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(ApplicationStatus.SUBMITTED, null);
+
+        Predicate summaryPredicate = mock(Predicate.class);
+
+        when(root.get("status"))
+                .thenReturn(mock(jakarta.persistence.criteria.Path.class));
+        when(builder.equal(any(), eq(ApplicationStatus.IN_PROGRESS))).thenReturn(summaryPredicate);
+
+        Predicate result = spec.toPredicate(root, query, builder);
+        assertThat(result).isNull();
+    }
     @Test
     void shouldNotFailWhenAllFieldsAreNull(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
                 .filterBy(null, null);
 
-        when(builder.and(any())).thenReturn(null);
         Predicate result = spec.toPredicate(root, query, builder);
 
         assertThat(result).isNull();
@@ -85,7 +106,6 @@ public class ApplicationSummarySpecificationTest {
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
                 .filterBy(ApplicationStatus.SUBMITTED, "ref2");
 
-        when(builder.and(any())).thenReturn(null);
         Predicate result = spec.toPredicate(root, query, builder);
 
         assertThat(result).isNull();

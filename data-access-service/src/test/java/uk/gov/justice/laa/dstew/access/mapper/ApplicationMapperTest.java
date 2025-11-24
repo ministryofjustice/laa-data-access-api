@@ -48,18 +48,19 @@ public class ApplicationMapperTest {
 
   @Test
   void shouldMapApplicationCreateRequestToApplicationEntity() {
-    ApplicationCreateRequest req = new ApplicationCreateRequest();
-    req.setStatus(ApplicationStatus.SUBMITTED);
-    req.setSchemaVersion(1);
-    req.setApplicationContent(Map.of("foo", "bar"));
+    ApplicationCreateRequest req = ApplicationCreateRequest.builder()
+                                    .status(ApplicationStatus.SUBMITTED)
+                                    .applicationContent(Map.of("foo", "bar"))
+                                    .applicationReference("app_reference")
+                                    .build();
 
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
 
     assertThat(result).isNotNull();
     assertThat(result.getId()).isNotNull();
     assertThat(result.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
-    assertThat(result.getSchemaVersion()).isEqualTo(1);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
+    assertThat(result.getApplicationReference()).isEqualTo("app_reference");
   }
 
   @Test
@@ -71,13 +72,11 @@ public class ApplicationMapperTest {
   void shouldUpdateApplicationEntityWithoutOverwritingNulls() {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setStatus(ApplicationStatus.IN_PROGRESS);
-    entity.setSchemaVersion(1);
 
     ApplicationUpdateRequest req = new ApplicationUpdateRequest(); // all nulls
     applicationMapper.updateApplicationEntity(entity, req);
 
     assertThat(entity.getStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
-    assertThat(entity.getSchemaVersion()).isEqualTo(1);
   }
 
   @Test
@@ -89,13 +88,12 @@ public class ApplicationMapperTest {
 
     ApplicationUpdateRequest req = new ApplicationUpdateRequest();
     req.setStatus(ApplicationStatus.SUBMITTED);
-    req.setSchemaVersion(2);
     req.setApplicationContent(Map.of("newKey", "newValue"));
 
     applicationMapper.updateApplicationEntity(entity, req);
 
     assertThat(entity.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
-    assertThat(entity.getSchemaVersion()).isEqualTo(2);
+    entity.setSchemaVersion(1);
     assertThat(entity.getApplicationContent()).containsEntry("newKey", "newValue");
   }
 
@@ -119,7 +117,13 @@ public class ApplicationMapperTest {
     req.setApplicationContent(Map.of("key", new Object() {
     }));
 
-    assertThrows(IllegalArgumentException.class, () -> applicationMapper.updateApplicationEntity(entity, req));
+    IllegalArgumentException ex = assertThrows(
+        IllegalArgumentException.class,
+        () -> applicationMapper.updateApplicationEntity(entity, req)
+    );
+
+    assertThat(ex.getMessage())
+        .isEqualTo("Failed to serialize ApplicationUpdateRequest.applicationContent");
   }
 
   @Test
