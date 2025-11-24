@@ -96,14 +96,17 @@ public interface ApplicationMapper {
     }
 
     try {
-      Application app = new Application();
-      app.setId(entity.getId());
-      app.setApplicationStatus(entity.getStatus());
-      app.setSchemaVersion(entity.getSchemaVersion());
-      app.setApplicationContent(
+      Application application = new Application();
+      application.setId(entity.getId());
+      application.setApplicationStatus(entity.getStatus());
+      application.setSchemaVersion(entity.getSchemaVersion());
+      application.setApplicationContent(
           objectMapper.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
-
-      app.setIndividuals(
+      application.setApplicationReference(entity.getApplicationReference());
+      application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
+      application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
+      
+      application.setIndividuals(
           Optional.ofNullable(entity.getIndividuals())
               .orElse(Set.of())
               .stream()
@@ -111,8 +114,8 @@ public interface ApplicationMapper {
               .filter(Objects::nonNull)
               .toList()
       );
-
-      return app;
+      
+      return application;
     } catch (Exception e) {
       throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
     }

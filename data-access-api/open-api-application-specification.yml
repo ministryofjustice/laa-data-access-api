@@ -150,6 +150,10 @@ components:
         - id
         - applicationStatus
         - applicationContent
+        - applicationReference
+        - schemaVersion
+        - createdAt
+        - updatedAt
       properties:
         id:
           type: string
@@ -161,6 +165,14 @@ components:
         applicationContent:
           type: object
           additionalProperties: true
+        applicationReference:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
         individuals:
           type: array
           items:
