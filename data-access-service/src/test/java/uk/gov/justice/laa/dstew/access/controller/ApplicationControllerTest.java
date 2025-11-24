@@ -154,13 +154,9 @@ class ApplicationControllerTest {
 
     Application resultApplication = deserialise(result, Application.class);
 
-    assertEquals(application.getId(), resultApplication.getId());
-    assertEquals(application.getApplicationReference(), resultApplication.getApplicationReference());
-    assertEquals(application.getApplicationStatus(), resultApplication.getApplicationStatus());
-    assertEquals(application.getApplicationContent(), resultApplication.getApplicationContent());
-    assertEquals(application.getSchemaVersion(), resultApplication.getSchemaVersion());
-    assertEquals(application.getCreatedAt(), resultApplication.getCreatedAt());
-    assertEquals(application.getUpdatedAt(), resultApplication.getUpdatedAt());
+    assertThat(resultApplication)
+            .usingRecursiveComparison()
+            .isEqualTo(application);
   }
 
   private <TResponseModel> TResponseModel deserialise(MvcResult result, Class<TResponseModel> clazz) throws Exception {

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
@@ -65,19 +66,22 @@ class ApplicationMapperTest {
         .individualContent(Map.of("notes", "Test"))
         .build();
 
-    ApplicationEntity appEntity = ApplicationEntity.builder()
+    ApplicationEntity applicationEntity = ApplicationEntity.builder()
         .id(UUID.randomUUID())
+        .applicationReference("application_reference_1")
         .status(ApplicationStatus.IN_PROGRESS)
         .individuals(Set.of(individual))
+        .createdAt(Instant.now())
+        .modifiedAt(Instant.now())
         .build();
 
-    Application app = applicationMapper.toApplication(appEntity);
+    Application application = applicationMapper.toApplication(applicationEntity);
 
-    assertThat(app.getIndividuals())
+    assertThat(application.getIndividuals())
         .isNotNull()
         .hasSize(1);
 
-    Individual mapped = app.getIndividuals().get(0);
+    Individual mapped = application.getIndividuals().get(0);
     assertThat(mapped.getFirstName()).isEqualTo("John");
     assertThat(mapped.getLastName()).isEqualTo("Doe");
     assertThat(mapped.getDateOfBirth()).isEqualTo(LocalDate.of(1990, 1, 1));

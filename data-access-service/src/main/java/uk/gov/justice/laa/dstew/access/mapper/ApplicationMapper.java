@@ -101,7 +101,7 @@ public interface ApplicationMapper {
       application.setApplicationStatus(entity.getStatus());
       application.setSchemaVersion(entity.getSchemaVersion());
       application.setApplicationContent(
-          OBJECT_MAPPER.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
+          objectMapper.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
       application.setApplicationReference(entity.getApplicationReference());
       application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
       application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
