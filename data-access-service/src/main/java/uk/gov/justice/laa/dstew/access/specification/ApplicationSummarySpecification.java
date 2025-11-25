@@ -1,11 +1,7 @@
 package uk.gov.justice.laa.dstew.access.specification;
 
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import java.util.ArrayList;
-import java.util.List;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -22,8 +18,11 @@ public class ApplicationSummarySpecification {
    */
   public static Specification<ApplicationSummaryEntity> filterBy(
           ApplicationStatus status,
-          String reference) {
-    return isStatus(status).and(isApplicationReference(reference));
+          String reference,
+          String firstName) {
+    return isStatus(status)
+            .and(isApplicationReference(reference))
+            .and(isFirstName(firstName));
   }
 
   private static Specification<ApplicationSummaryEntity> isStatus(ApplicationStatus status) {
@@ -45,4 +44,15 @@ public class ApplicationSummarySpecification {
     return Specification.unrestricted();
   }
 
+  private static Specification<ApplicationSummaryEntity> isFirstName(String firstName) {
+    if (firstName != null && !firstName.isBlank()) {
+      return (root, query, builder)
+              -> {
+                Join<Object, Object> individualsJoin = root.join("individuals", JoinType.INNER);
+                return builder.like(builder.lower(individualsJoin.get("firstName")),
+                                  "%" + firstName.toLowerCase() + "%");
+      };
+    }
+    return Specification.unrestricted();
+  }
 }

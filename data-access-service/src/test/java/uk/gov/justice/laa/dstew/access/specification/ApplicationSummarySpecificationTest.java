@@ -27,7 +27,7 @@ public class ApplicationSummarySpecificationTest {
 
         String reference = "some-reference";
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, reference);
+                .filterBy(null, reference, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
         when(builder.like(any(), eq("%"+reference+"%"))).thenReturn(summaryPredicate);
@@ -40,7 +40,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenReferenceIsBlank(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, "");
+                .filterBy(null, "", null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 
@@ -51,7 +51,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenReferenceIsNull(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null);
+                .filterBy(null, null, null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 
@@ -62,7 +62,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenStatusHasAValue(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(ApplicationStatus.IN_PROGRESS, null);
+                .filterBy(ApplicationStatus.IN_PROGRESS, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
@@ -78,7 +78,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldFailWhenStatusHasAValueThatDoesNotMatch(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(ApplicationStatus.SUBMITTED, null);
+                .filterBy(ApplicationStatus.SUBMITTED, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
@@ -93,7 +93,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenAllFieldsAreNull(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null);
+                .filterBy(null, null, null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 
@@ -104,10 +104,11 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenAllFieldsAreSet(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(ApplicationStatus.SUBMITTED, "ref2");
+                .filterBy(ApplicationStatus.SUBMITTED, "ref2", null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 
         assertThat(result).isNull();
     }
+
 }

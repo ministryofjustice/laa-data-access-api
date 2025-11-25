@@ -77,9 +77,9 @@ public class ApplicationSummarySpecificationIntegrationTests {
 
 
         Specification<ApplicationSummaryEntity> inProgressEntities =
-                ApplicationSummarySpecification.filterBy(ApplicationStatus.IN_PROGRESS, "");
+                ApplicationSummarySpecification.filterBy(ApplicationStatus.IN_PROGRESS, "", "");
         Specification<ApplicationSummaryEntity> submittedEntities =
-                ApplicationSummarySpecification.filterBy(ApplicationStatus.SUBMITTED, "");
+                ApplicationSummarySpecification.filterBy(ApplicationStatus.SUBMITTED, "", "");
 
         assertEquals(expectedNumberOfInProgress, applicationSummaryRepository.count(inProgressEntities));
         applicationSummaryRepository
@@ -105,9 +105,9 @@ public class ApplicationSummarySpecificationIntegrationTests {
         assertNotEquals(0, expectedNumberOfAppref);
 
         Specification<ApplicationSummaryEntity> appref1Entities =
-            ApplicationSummarySpecification.filterBy(null, "appref1");
+            ApplicationSummarySpecification.filterBy(null, "appref1", null);
         Specification<ApplicationSummaryEntity> appref2Entities =
-                ApplicationSummarySpecification.filterBy(null, "appref2");
+                ApplicationSummarySpecification.filterBy(null, "appref2", null);
 
         assertEquals(expectedNumberOfAppref,
                 applicationSummaryRepository.count(appref1Entities) +
@@ -138,7 +138,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
         assertNotEquals(0, expectedNumberOfAppref);
 
         Specification<ApplicationSummaryEntity> apprefEntities =
-            ApplicationSummarySpecification.filterBy(null, "appref");
+            ApplicationSummarySpecification.filterBy(null, "appref", null);
         applicationSummaryRepository
                 .findAll(apprefEntities, PageRequest.of(0, 10))
                 .getContent().forEach(
@@ -154,7 +154,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
         assertNotEquals(0, expectedNumberOfAppref);
 
         Specification<ApplicationSummaryEntity> apprefEntities =
-                ApplicationSummarySpecification.filterBy(null, "REf");
+                ApplicationSummarySpecification.filterBy(null, "REf", null);
         applicationSummaryRepository
                 .findAll(apprefEntities, PageRequest.of(0, 10))
                 .getContent().forEach(
@@ -170,7 +170,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
         assertNotEquals(0, expectedNumberOfAppref);
 
         Specification<ApplicationSummaryEntity> apprefEntities =
-                ApplicationSummarySpecification.filterBy(null, "eF1");
+                ApplicationSummarySpecification.filterBy(null, "eF1", null);
 
         applicationSummaryRepository
                 .findAll(apprefEntities, PageRequest.of(0, 10))
@@ -185,7 +185,8 @@ public class ApplicationSummarySpecificationIntegrationTests {
         long expectedNumberOfRecordsNoFilter =
                 prePopulatedApplications.size();
 
-        var recordCount = applicationSummaryRepository.count(ApplicationSummarySpecification.filterBy(null, null));
+        var recordCount = applicationSummaryRepository.count(ApplicationSummarySpecification.filterBy(
+                null, null, null));
 
         assertEquals(expectedNumberOfRecordsNoFilter, recordCount);
     }
@@ -195,7 +196,8 @@ public class ApplicationSummarySpecificationIntegrationTests {
         long expectedNumberOfRecordsNoFilter =
                 prePopulatedApplications.size();
 
-        var recordCount = applicationSummaryRepository.count(ApplicationSummarySpecification.filterBy(null, ""));
+        var recordCount = applicationSummaryRepository.count(ApplicationSummarySpecification.filterBy(
+                null, "", null));
 
         assertEquals(expectedNumberOfRecordsNoFilter, recordCount);
     }
@@ -210,7 +212,8 @@ public class ApplicationSummarySpecificationIntegrationTests {
         assertNotEquals(0, expectedNumberOfSubmittedAppref1);
 
         Specification<ApplicationSummaryEntity> apprefEntities =
-                ApplicationSummarySpecification.filterBy(ApplicationStatus.SUBMITTED, "ref1");
+                ApplicationSummarySpecification.filterBy(
+                        ApplicationStatus.SUBMITTED, "ref1", "");
 
         assertEquals(expectedNumberOfSubmittedAppref1, applicationSummaryRepository.count(apprefEntities));
 

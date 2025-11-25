@@ -57,16 +57,32 @@ public class ApplicationSummaryService {
 
     return applicationSummaryRepository
             .findAll(ApplicationSummarySpecification
-                    .filterBy(applicationStatus, applicationReference), pageDetails)
+                    .filterBy(applicationStatus,
+                            applicationReference,
+                            firstName),
+                            pageDetails)
             .getContent()
             .stream()
             .map(mapper::toApplicationSummary)
             .toList();
   }
 
+  /**
+   * Retrieves a total for a list of {@link ApplicationSummary} objects .
+   *
+   * @param applicationStatus the {@link ApplicationStatus} used to filter results on application status
+   * @param applicationReference used to filter results on application reference
+   * @param firstName used to filter results on linked individuals first name
+
+   * @return a total of {@link ApplicationSummary} instances matching the filter criteria
+   */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public long getAllApplicationsTotal(ApplicationStatus applicationStatus, String applicationReference) {
+  public long getAllApplicationsTotal(ApplicationStatus applicationStatus,
+                                      String applicationReference,
+                                      String firstName) {
     return applicationSummaryRepository.count(ApplicationSummarySpecification
-            .filterBy(applicationStatus, applicationReference));
+            .filterBy(applicationStatus,
+                      applicationReference,
+                    firstName));
   }
 }

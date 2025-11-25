@@ -22,12 +22,12 @@ paths:
           schema:
             type: string
         - in: query
-          name: firstName
+          name: firstname
           description: The linked individuals first name
           schema:
             type: string
         - in: query
-          name: lastName
+          name: lastname
           description: The linked individuals last name
           schema:
             type: string
