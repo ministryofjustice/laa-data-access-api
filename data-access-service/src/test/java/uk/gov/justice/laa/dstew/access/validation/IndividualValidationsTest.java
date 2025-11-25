@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,60 +30,85 @@ public class IndividualValidationsTest {
     @NullSource
     @ValueSource(strings = {"", "    "})  
     void shouldReturnValidationErrorsWhenFirstNameIsNullEmptyOrWhitespace(String firstName) {
-        Individual individual = Individual.builder().firstName(firstName).build();
+        Individual individual = getFullyValidBuilder().firstName(firstName).build();
 
         var result = individualValidator.validateIndividual(individual);
 
-        assertThat(result).contains("First name must be populated.");
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst()).isEqualTo("First name must be populated.");
     }
 
     @ParameterizedTest  
     @NullSource
     @ValueSource(strings = {"", "    "})  
     void shouldReturnValidationErrorsWhenLastNameIsNullEmptyOrWhitespace(String lastName) {
-        Individual individual = Individual.builder().lastName(lastName).build();
+        Individual individual = getFullyValidBuilder().lastName(lastName).build();
 
         var result = individualValidator.validateIndividual(individual);
 
-        assertThat(result).contains("Last name must be populated.");
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst()).isEqualTo("Last name must be populated.");
     }
 
     @Test
     void shouldReturnValidationErrorsWhenDetailsAreNull() {
-        Individual individual = Individual.builder().details(null).build();
+        Individual individual = getFullyValidBuilder().details(null).build();
 
         var result = individualValidator.validateIndividual(individual);
 
-        assertThat(result).contains("Individual details must be populated.");
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst()).isEqualTo("Individual details must be populated.");
     }
 
     @Test
     void shouldReturnValidationErrorsWhenDetailsAreEmpty() {
         HashMap<String, Object> map = new HashMap<>();
-        Individual individual = Individual.builder().details(map).build();
+        Individual individual = getFullyValidBuilder().details(map).build();
 
         var result = individualValidator.validateIndividual(individual);
 
-        assertThat(result).contains("Individual details must be populated.");
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst()).isEqualTo("Individual details must be populated.");
     }
 
-    void shouldReturnMultipleValidationErrorsWhenMultiplePropertiesInvalid() {
-        Individual individual = Individual.builder().details(Map.of("foo", "bar")).build();
+    @Test
+    void shouldReturnValidationErrorWhenDateOfBirthIsNull() {
+        Individual individual = getFullyValidBuilder().dateOfBirth(null).build();
 
         var result = individualValidator.validateIndividual(individual);
 
-        assertThat(result).contains("First name must be populated.");
-        assertThat(result).contains("Last name must be populated.");
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst()).isEqualTo("Date of birth must be populated.");
+    }
+
+    @Test
+    void shouldReturnMultipleValidationErrorsWhenMultiplePropertiesInvalid() {
+        Individual individual = getFullyValidBuilder().firstName(null)
+                                                      .lastName(null)
+                                                      .details(Map.of("foo", "bar"))
+                                                      .build();
+
+        var result = individualValidator.validateIndividual(individual);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.getFirst()).isEqualTo("First name must be populated.");
+        assertThat(result.getLast()).isEqualTo("Last name must be populated.");
     }
 
     @Test
     void shouldReturnNoValidationErrorsWhenFieldsAreSet() {
-        Individual individual = Individual.builder()
-                                          .firstName("John")
-                                          .lastName("Doe")
-                                          .details(Map.of("contactNumber","07123456789"))
-                                          .build();
+        Individual individual = getFullyValidBuilder().build();
+
         var result = individualValidator.validateIndividual(individual);
+
         assertThat(result).hasSize(0);
+    }
+
+    private static Individual.Builder getFullyValidBuilder() {
+        return Individual.builder()
+                         .firstName("John")
+                         .lastName("Doe")
+                         .dateOfBirth(LocalDate.of(2025, 11, 25))
+                         .details(Map.of("contactNumber","07123456789"));
     }
 }

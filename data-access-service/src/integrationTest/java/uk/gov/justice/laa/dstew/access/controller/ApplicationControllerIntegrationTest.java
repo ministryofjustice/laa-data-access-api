@@ -37,11 +37,16 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
@@ -66,38 +71,40 @@ public class ApplicationControllerIntegrationTest {
   @Autowired
   private EntityManager entityManager;
 
-  private String buildApplicationJson() {
-    return  """
-          {
-            "id" : "019a92e4-3b56-71a3-befc-52d9064a5f65",
-            "status": "SUBMITTED",
-            "applicationContent": 
-            { 
-              "first_name" : "John",
-              "last_name"  : "Doe"
-            },
-            "application_id" : "019a92e5-84d7-7353-b94a-cad6a60a713e",
-            "applicationReference" : "app_ref",
-            "individuals" : [
-              {
-                "firstName" : "John",
-                "lastName" : "Doe",
-                "dateOfBirth" : "2025-11-24",
-                "details" : {
-                  "contactNumber" : "+447123456789"
-                  }
-              },
-              {
-                "firstName" : "Jan",
-                "lastName" : "Eod",
-                "dateOfBirth" : "2024-10-23",
-                "details" : {
-                  "contactNumber" : "+447987654321"
-                  }
-               }
-            ]
-          }
-        """;
+  @Autowired
+  private ObjectMapper objectMapper;
+
+  private ApplicationCreateRequest buildApplication() {
+    return ApplicationCreateRequest.builder()
+          .status(ApplicationStatus.SUBMITTED)
+          .applicationReference("app_ref")
+          .applicationContent(Map.of(
+                  "id", "71489fb1-742e-4e72-8b0a-db7b9a0cd100",
+                  "name", "Martin Ronan",
+                  "email", "martin.ronan@example.com",
+                  "firm_id", "5580f217-5e07-4ff7-8307-9966a1b73f35",
+                  "created_at", "2025-09-10T14:33:54.905+01:00",
+                  "updated_at", "2025-11-24T09:08:45.308+00:00",
+                  "office_codes", "0X395U:2N078D:A123456"
+          ))
+          .individuals(List.of(
+                  Individual.builder()
+                          .firstName("John")
+                          .lastName("Doe")
+                          .dateOfBirth(LocalDate.of(1990, 1, 1))
+                          .details(Map.of("contactNumber", "+447123456789"))
+                          .build(),
+                  Individual.builder()
+                          .firstName("Jan")
+                          .lastName("Eod")
+                          .dateOfBirth(LocalDate.of(1992, 2, 2))
+                          .details(Map.of("contactNumber", "+447987654321"))
+                          .build()
+          ))
+          .build();
+  }
+  private String buildApplicationJson() throws Exception {
+    return  objectMapper.writeValueAsString(buildApplication());
   }
 
   @Test

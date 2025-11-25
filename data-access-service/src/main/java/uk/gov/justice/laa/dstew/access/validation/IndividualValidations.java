@@ -35,6 +35,11 @@ public class IndividualValidations {
     if (individual.getDetails() == null || individual.getDetails().isEmpty()) {
       validationErrors.add("Individual details must be populated.");
     }
+
+    if (individual.getDateOfBirth() == null) {
+      validationErrors.add("Date of birth must be populated.");
+    }
+
     return validationErrors;
   }
 }
