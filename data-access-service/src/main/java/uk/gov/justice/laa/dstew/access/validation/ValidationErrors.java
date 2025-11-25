@@ -22,7 +22,7 @@ class ValidationErrors {
     errors.add(error);
     return this;
   }
-
+  
   ValidationErrors addIf(boolean condition, String error) {
     return condition ? add(error) : this;
   }

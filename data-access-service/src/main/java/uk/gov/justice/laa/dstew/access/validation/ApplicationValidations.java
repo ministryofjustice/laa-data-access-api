@@ -50,7 +50,7 @@ public class ApplicationValidations {
     List<String> individualsValidationErrors = dto.getIndividuals()
                                                   .stream()
                                                   .map(individualValidator::validateIndividual)
-                                                  .flatMap(s -> s.stream())
+                                                  .flatMap(s -> s.errors().stream())
                                                   .distinct()
                                                   .toList();
     if (!individualsValidationErrors.isEmpty()) {

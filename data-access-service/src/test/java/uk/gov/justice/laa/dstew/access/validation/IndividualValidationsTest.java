@@ -22,8 +22,8 @@ public class IndividualValidationsTest {
         
         var result = individualValidator.validateIndividual(individual);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.stream().findFirst().get()).isEqualTo("Individual cannot be null.");
+        assertThat(result.errors()).hasSize(1);
+        assertThat(result.errors().stream().findFirst().get()).isEqualTo("Individual cannot be null.");
     }
 
     @ParameterizedTest  
@@ -34,8 +34,8 @@ public class IndividualValidationsTest {
 
         var result = individualValidator.validateIndividual(individual);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.getFirst()).isEqualTo("First name must be populated.");
+        assertThat(result.errors()).hasSize(1);
+        assertThat(result.errors().getFirst()).isEqualTo("First name must be populated.");
     }
 
     @ParameterizedTest  
@@ -46,8 +46,8 @@ public class IndividualValidationsTest {
 
         var result = individualValidator.validateIndividual(individual);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.getFirst()).isEqualTo("Last name must be populated.");
+        assertThat(result.errors()).hasSize(1);
+        assertThat(result.errors().getFirst()).isEqualTo("Last name must be populated.");
     }
 
     @Test
@@ -56,8 +56,8 @@ public class IndividualValidationsTest {
 
         var result = individualValidator.validateIndividual(individual);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.getFirst()).isEqualTo("Individual details must be populated.");
+        assertThat(result.errors()).hasSize(1);
+        assertThat(result.errors().getFirst()).isEqualTo("Individual details must be populated.");
     }
 
     @Test
@@ -67,8 +67,8 @@ public class IndividualValidationsTest {
 
         var result = individualValidator.validateIndividual(individual);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.getFirst()).isEqualTo("Individual details must be populated.");
+        assertThat(result.errors()).hasSize(1);
+        assertThat(result.errors().getFirst()).isEqualTo("Individual details must be populated.");
     }
 
     @Test
@@ -77,8 +77,8 @@ public class IndividualValidationsTest {
 
         var result = individualValidator.validateIndividual(individual);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.getFirst()).isEqualTo("Date of birth must be populated.");
+        assertThat(result.errors()).hasSize(1);
+        assertThat(result.errors().getFirst()).isEqualTo("Date of birth must be populated.");
     }
 
     @Test
@@ -90,9 +90,9 @@ public class IndividualValidationsTest {
 
         var result = individualValidator.validateIndividual(individual);
 
-        assertThat(result).hasSize(2);
-        assertThat(result.getFirst()).isEqualTo("First name must be populated.");
-        assertThat(result.getLast()).isEqualTo("Last name must be populated.");
+        assertThat(result.errors()).hasSize(2);
+        assertThat(result.errors().getFirst()).isEqualTo("First name must be populated.");
+        assertThat(result.errors().getLast()).isEqualTo("Last name must be populated.");
     }
 
     @Test
@@ -101,7 +101,7 @@ public class IndividualValidationsTest {
 
         var result = individualValidator.validateIndividual(individual);
 
-        assertThat(result).hasSize(0);
+        assertThat(result.errors()).hasSize(0);
     }
 
     private static Individual.Builder getFullyValidBuilder() {

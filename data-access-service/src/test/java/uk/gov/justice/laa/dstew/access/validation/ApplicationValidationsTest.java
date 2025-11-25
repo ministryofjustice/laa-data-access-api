@@ -8,11 +8,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.instancio.Instancio;
 import org.instancio.Select;
 import org.junit.jupiter.api.Test;
@@ -109,6 +107,9 @@ public class ApplicationValidationsTest {
                                                                .applicationReference("app-ref")
                                                                .individuals(individuals)
                                                                .build();
+    when(individualValidator.validateIndividual(any(Individual.class)))
+      .thenReturn(ValidationErrors.empty());
+      
     classUnderTest.checkApplicationCreateRequest(request);
     
     individuals.forEach(i -> verify(individualValidator, times(1)).validateIndividual(i));
@@ -122,8 +123,9 @@ public class ApplicationValidationsTest {
                                                                .applicationReference("app-ref")
                                                                .individuals(createIndividuals())
                                                                .build();
+    
     when(individualValidator.validateIndividual(any(Individual.class)))
-      .thenReturn(List.of("ValidationError", "ValidationError"));
+      .thenReturn(ValidationErrors.empty().add("ValidationError").add( "ValidationError"));
     
     ValidationException exception = assertThrows(ValidationException.class,  
         () -> classUnderTest.checkApplicationCreateRequest(request));
