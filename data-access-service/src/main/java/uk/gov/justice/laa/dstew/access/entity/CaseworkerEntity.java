@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -25,6 +26,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class CaseworkerEntity {
   @Id
+  @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
   @Column(columnDefinition = "UUID")
   private UUID id;
 
