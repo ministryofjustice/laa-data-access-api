@@ -109,6 +109,7 @@ public interface ApplicationMapper {
       application.setApplicationReference(entity.getApplicationReference());
       application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
       application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
+      application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
       
       application.setIndividuals(
           Optional.ofNullable(entity.getIndividuals())
