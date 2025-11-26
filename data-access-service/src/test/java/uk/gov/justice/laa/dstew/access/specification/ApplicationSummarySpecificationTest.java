@@ -78,6 +78,7 @@ public class ApplicationSummarySpecificationTest {
         Predicate result = spec.toPredicate(root, query, builder);
         assertThat(result).isNull();
     }
+
     @Test
     void shouldNotFailWhenAllFieldsAreNull(){
 
@@ -95,6 +96,11 @@ public class ApplicationSummarySpecificationTest {
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
                 .filterBy(ApplicationStatus.SUBMITTED, "ref2", "Andy", "Green");
 
+        when(
+                root.join(eq("individuals"), eq(JoinType.INNER))
+        )
+        .thenReturn(mock());
+
         Predicate result = spec.toPredicate(root, query, builder);
 
         assertThat(result).isNull();
@@ -108,6 +114,11 @@ public class ApplicationSummarySpecificationTest {
                 .filterBy(null, null, firstName, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
+
+        when(
+                root.join(eq("individuals"), eq(JoinType.INNER))
+                )
+        .thenReturn(mock());
 
         when(
                 builder.like(
@@ -141,4 +152,30 @@ public class ApplicationSummarySpecificationTest {
 
         assertThat(result).isNull();
     }
+
+    @Test
+    void shouldNotFailWhenLastNameIsNotBlank(){
+
+        String lastName = "some-name";
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(null, null, null, lastName);
+
+        Predicate summaryPredicate = mock(Predicate.class);
+
+        when(
+                root.join(eq("individuals"), eq(JoinType.INNER))
+        )
+                .thenReturn(mock());
+
+        when(
+                builder.like(
+                        any(),
+                        eq("%"+lastName+"%")
+                )
+        ).thenReturn(summaryPredicate);
+        Predicate result = spec.toPredicate(root, query, builder);
+
+        assertThat(result).isNotNull();
+    }
+
 }
