@@ -4,11 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import java.util.Set;
+
+import jakarta.persistence.EntityManager;
 import org.instancio.Instancio;
 import org.instancio.Select;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +53,9 @@ public class ApplicationSummarySpecificationIntegrationTests {
     @Autowired
     ApplicationSummaryRepository applicationSummaryRepository;
 
+    @Autowired
+    private EntityManager entityManager;
+
     final static int NUMBER_OF_PREPOPULATED_INDIVIDUALS = 12;
     final static int NUMBER_OF_PREPOPULATED_APPLICATIONS = 8;
     List<ApplicationEntity> prePopulatedApplications;
@@ -57,6 +63,14 @@ public class ApplicationSummarySpecificationIntegrationTests {
 
     @BeforeEach
     void setUp() throws Exception {
+
+        IndividualEntity ind1 = new IndividualEntity();
+        ind1.setFirstName("John");
+        ind1.setLastName("Doe");
+        ind1.setDateOfBirth(LocalDate.of(1990, 1, 1));
+        //ind1.setIndividualContent(Map.of("email", "john.doe@example.com"));
+        entityManager.persist(ind1);
+
         prePopulatedIndividuals = Instancio.ofSet(IndividualEntity.class)
         .size(NUMBER_OF_PREPOPULATED_INDIVIDUALS)
         .generate(Select.field(IndividualEntity::getFirstName),
@@ -64,6 +78,10 @@ public class ApplicationSummarySpecificationIntegrationTests {
         .generate(Select.field(IndividualEntity::getLastName),
                 gen -> gen.oneOf("Someone", "something", "Onething"))
         .create();
+
+        for (IndividualEntity individual : prePopulatedIndividuals) {
+            entityManager.persist(individual);
+        }
 
         Map<String,Object> map = new HashMap<String,Object>();
         map.put("first_name", "jimi");
@@ -76,7 +94,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
                                 .set(Select.field(ApplicationEntity::getApplicationContent), map)
                                 .set(Select.field(ApplicationEntity::getId), null)
                                 .create();
-        applicationRepository.saveAll(prePopulatedApplications);
+        applicationRepository.saveAllAndFlush(prePopulatedApplications);
     }
 
     @Test void isStatusSpecification() {
