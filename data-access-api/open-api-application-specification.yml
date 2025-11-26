@@ -194,6 +194,7 @@ components:
         - status
         - applicationContent
         - applicationReference
+        - individuals
       properties:
         status:
           $ref: "#/components/schemas/applicationStatus"
@@ -202,6 +203,12 @@ components:
           additionalProperties: true
         applicationReference:
           type: string
+        individuals:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/Individual"
+        
 
     ApplicationUpdateRequest:
       type: object

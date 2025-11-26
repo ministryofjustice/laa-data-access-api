@@ -41,4 +41,28 @@ class IndividualMapperTest {
     assertThat(result.getDateOfBirth()).isEqualTo(LocalDate.of(1980, 5, 15));
     assertThat(result.getDetails()).isEqualTo(Map.of("key", "value"));
   }
+
+  @Test
+  void toIndividualEntitY_shouldReturnNull_WhenIndividualIsNull() {
+    Individual individual = null;
+    IndividualEntity result = mapper.toIndividualEntity(individual);
+    assertThat(result).isNull();
+  }
+
+  @Test
+  void toIndividualEntity_shouldMapFieldsCorrectly() {
+    Individual individual = Individual.builder()
+                                      .firstName("John")
+                                      .lastName("Doe")
+                                      .dateOfBirth(LocalDate.of(2025, 11, 24))
+                                      .details(Map.of("key", "value"))
+                                      .build();
+    IndividualEntity result = mapper.toIndividualEntity(individual);
+
+    assertThat(result).isNotNull();
+    assertThat(result.getFirstName()).isEqualTo("John");
+    assertThat(result.getLastName()).isEqualTo("Doe");
+    assertThat(result.getDateOfBirth()).isEqualTo(LocalDate.of(2025, 11, 24));
+    assertThat(result.getIndividualContent()).isEqualTo(Map.of("key", "value"));
+  }
 }
