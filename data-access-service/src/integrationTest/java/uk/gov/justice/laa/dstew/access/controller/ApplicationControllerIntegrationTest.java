@@ -443,16 +443,14 @@ public class ApplicationControllerIntegrationTest {
   void shouldReturnCaseworkerId() throws Exception {
     CaseworkerEntity caseworkerEntity = CaseworkerEntity.builder().username("caseworker1").build();
     final UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworkerEntity).getId();
-    final UUID appId = UUID.randomUUID();
     ApplicationEntity app = new ApplicationEntity();
-    app.setId(appId);
     app.setStatus(ApplicationStatus.SUBMITTED);
     app.setApplicationContent(Map.of("foo", "bar"));
     app.setCreatedAt(Instant.now());
     app.setModifiedAt(Instant.now());
     app.setCaseworker(caseworkerEntity);
 
-    applicationRepository.saveAndFlush(app).getId();
+    final UUID appId = applicationRepository.saveAndFlush(app).getId();
 
     mockMvc.perform(get("/api/v0/applications/" + appId))
         .andExpect(status().isOk())
