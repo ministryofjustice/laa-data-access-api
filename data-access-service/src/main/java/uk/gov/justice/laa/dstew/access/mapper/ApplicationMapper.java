@@ -107,9 +107,9 @@ public interface ApplicationMapper {
       application.setApplicationContent(
           objectMapper.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
       application.setApplicationReference(entity.getApplicationReference());
+      application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
       application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
       application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
-      application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
       
       application.setIndividuals(
           Optional.ofNullable(entity.getIndividuals())
