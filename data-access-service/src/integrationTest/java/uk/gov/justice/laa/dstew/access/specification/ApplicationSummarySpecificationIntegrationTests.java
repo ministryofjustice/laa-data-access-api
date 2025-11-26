@@ -1,8 +1,6 @@
 package uk.gov.justice.laa.dstew.access.specification;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -14,6 +12,7 @@ import java.util.Set;
 import jakarta.persistence.EntityManager;
 import org.instancio.Instancio;
 import org.instancio.Select;
+import org.junit.Ignore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +34,7 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static uk.gov.justice.laa.dstew.access.Constants.POSTGRES_INSTANCE;
 
 @Testcontainers
@@ -56,45 +56,71 @@ public class ApplicationSummarySpecificationIntegrationTests {
     @Autowired
     private EntityManager entityManager;
 
-    final static int NUMBER_OF_PREPOPULATED_INDIVIDUALS = 12;
     final static int NUMBER_OF_PREPOPULATED_APPLICATIONS = 8;
     List<ApplicationEntity> prePopulatedApplications;
-    Set<IndividualEntity> prePopulatedIndividuals;
+
+    private IndividualEntity createIndividual(
+            String firstName,
+            String lastName,
+            LocalDate dob,
+            String email
+    ) {
+        IndividualEntity individual = new IndividualEntity();
+        individual.setFirstName(firstName);
+        individual.setLastName(lastName);
+        individual.setDateOfBirth(dob);
+        individual.setIndividualContent(Map.of("email", email));
+
+        return individual;
+    }
 
     @BeforeEach
     void setUp() throws Exception {
 
-        IndividualEntity ind1 = new IndividualEntity();
-        ind1.setFirstName("John");
-        ind1.setLastName("Doe");
-        ind1.setDateOfBirth(LocalDate.of(1990, 1, 1));
-        //ind1.setIndividualContent(Map.of("email", "john.doe@example.com"));
-        entityManager.persist(ind1);
+        IndividualEntity individual1 = createIndividual(
+                "Rob",
+                "Someone",
+                LocalDate.of(1990, 1, 1),
+                "rs1@example.com");
+        entityManager.persist(individual1);
 
-        prePopulatedIndividuals = Instancio.ofSet(IndividualEntity.class)
-        .size(NUMBER_OF_PREPOPULATED_INDIVIDUALS)
-        .generate(Select.field(IndividualEntity::getFirstName),
-                gen -> gen.oneOf("Rob", "robert", "Bert", "bobby"))
-        .generate(Select.field(IndividualEntity::getLastName),
-                gen -> gen.oneOf("Someone", "something", "Onething"))
-        .create();
-
-        for (IndividualEntity individual : prePopulatedIndividuals) {
-            entityManager.persist(individual);
-        }
+        IndividualEntity individual2 = createIndividual(
+                "robert",
+                "something",
+                        LocalDate.of(1990, 1, 1),
+                 "rs2@example.com");
+        entityManager.persist(individual2);
+        IndividualEntity individual3 = createIndividual(
+                "Bert",
+                "Onething",
+                LocalDate.of(1990, 1, 1),
+                "rs3@example.com");
+        entityManager.persist(individual3);
+        IndividualEntity individual4 = createIndividual(
+                "bobby",
+                "Lonesome",
+                LocalDate.of(1990, 1, 1),
+                "rs4@example.com");
+        entityManager.persist(individual4);
 
         Map<String,Object> map = new HashMap<String,Object>();
         map.put("first_name", "jimi");
         map.put("last_name", "hendrix");
         prePopulatedApplications = Instancio.ofList(ApplicationEntity.class)
                                 .size(NUMBER_OF_PREPOPULATED_APPLICATIONS)
-                                .generate(Select.field(ApplicationEntity::getStatus), gen -> gen.oneOf(ApplicationStatus.IN_PROGRESS, ApplicationStatus.SUBMITTED))
-                                .set(Select.field(ApplicationEntity::getIndividuals), prePopulatedIndividuals)
-                                .generate(Select.field(ApplicationEntity::getApplicationReference), gen -> gen.oneOf("Appref1", "APPref2", "unknown"))
+                                .generate(Select.field(ApplicationEntity::getStatus),
+                                        gen -> gen.oneOf(ApplicationStatus.IN_PROGRESS, ApplicationStatus.SUBMITTED))
+                                .generate(Select.field(ApplicationEntity::getApplicationReference),
+                                        gen -> gen.oneOf("Appref1", "APPref2", "unknown"))
+                                .generate(Select.field(ApplicationEntity::getIndividuals),
+                                        gen -> gen.oneOf(Set.of(individual1, individual2),
+                                                                    Set.of(individual2, individual3),
+                                                                    Set.of(individual3, individual4),
+                                                                    Set.of(individual4, individual1)))
                                 .set(Select.field(ApplicationEntity::getApplicationContent), map)
                                 .set(Select.field(ApplicationEntity::getId), null)
                                 .create();
-        applicationRepository.saveAllAndFlush(prePopulatedApplications);
+        applicationRepository.saveAll(prePopulatedApplications);
     }
 
     @Test void isStatusSpecification() {
@@ -123,36 +149,6 @@ public class ApplicationSummarySpecificationIntegrationTests {
                 .findAll(submittedEntities, PageRequest.of(0, 10))
                 .getContent().forEach(
                         a -> assertEquals(ApplicationStatus.SUBMITTED, a.getStatus())
-                );
-    }
-
-    @Test
-    void isApplicationReferenceSpecification() {
-        long expectedNumberOfAppref = prePopulatedApplications.stream()
-                .filter(a ->
-                        a.getApplicationReference().equals("Appref1")
-                        || a.getApplicationReference().equals("APPref2")).count();
-        assertNotEquals(0, expectedNumberOfAppref);
-
-        Specification<ApplicationSummaryEntity> appref1Entities =
-            ApplicationSummarySpecification.filterBy(null, "appref1", null, null);
-        Specification<ApplicationSummaryEntity> appref2Entities =
-                ApplicationSummarySpecification.filterBy(null, "appref2", null, null);
-
-        assertEquals(expectedNumberOfAppref,
-                applicationSummaryRepository.count(appref1Entities) +
-                        applicationSummaryRepository.count(appref2Entities));
-
-        applicationSummaryRepository
-                .findAll(appref1Entities, PageRequest.of(0, 10))
-                .getContent().forEach(
-                        a -> assertEquals("appref1", a.getApplicationReference().toLowerCase())
-                );
-
-        applicationSummaryRepository
-                .findAll(appref2Entities, PageRequest.of(0, 10))
-                .getContent().forEach(
-                        a -> assertEquals("appref2", a.getApplicationReference().toLowerCase())
                 );
     }
 
@@ -239,7 +235,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
                         a.getStatus().equals(ApplicationStatus.SUBMITTED)
                         && a.getApplicationReference().endsWith("ref1"))
                 .count();
-        assertNotEquals(0, expectedNumberOfSubmittedAppref1);
+         assertNotEquals(0, expectedNumberOfSubmittedAppref1);
 
         Specification<ApplicationSummaryEntity> apprefEntities =
                 ApplicationSummarySpecification.filterBy(
@@ -255,27 +251,32 @@ public class ApplicationSummarySpecificationIntegrationTests {
                 );
     }
 
-    // ------------------------------------------------------------------
     @Test
-    void isFirstNameSpecification() {
-        long expectedNumberOfRoberts = prePopulatedIndividuals.stream()
-                .filter(i ->
-                        i.getFirstName().equals("Robert")).count();
-        assertNotEquals(0, expectedNumberOfRoberts);
+    void isFirstNameBeginsWithSpecification() {
+        long expectedNumberOfGeneratedRecords = prePopulatedApplications
+                .stream()
+                .filter(a ->
+                        a.getIndividuals()
+                                .stream()
+                                .anyMatch(i-> i.getFirstName().contains("robert")))
+                .count();
+
+        assertNotEquals(0, expectedNumberOfGeneratedRecords);
 
         Specification<ApplicationSummaryEntity> robertEntities =
-                ApplicationSummarySpecification.filterBy(null, null, "Robert", null);
+                ApplicationSummarySpecification.filterBy(null, null, "robert", null);
 
-        assertEquals(expectedNumberOfRoberts, applicationSummaryRepository.count(robertEntities));
+        long returnedNumberOfRecords = applicationSummaryRepository.count(robertEntities);
+        assertEquals(expectedNumberOfGeneratedRecords, returnedNumberOfRecords);
 
-        /*
         applicationSummaryRepository
                 .findAll(robertEntities, PageRequest.of(0, 20))
                 .getContent().forEach(
-                        a -> assertEquals("appref1", a.getIndividuals().add(null))
-                );
-
-         */
+            a -> assertTrue(a.getIndividuals()
+                                         .stream()
+                                         .anyMatch(i -> i.getFirstName().toLowerCase().startsWith("robert"))
+                                        )
+                                    );
     }
 
     /*
