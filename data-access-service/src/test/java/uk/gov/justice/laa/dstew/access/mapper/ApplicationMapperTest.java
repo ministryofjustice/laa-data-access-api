@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -103,11 +104,35 @@ class ApplicationMapperTest {
 
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
 
-    assertThat(result).isNotNull();
-    assertThat(result.getId()).isNotNull();
     assertThat(result.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
     assertThat(result.getApplicationReference()).isEqualTo("app_reference");
+  }
+
+  @Test
+  void shouldMapApplicationCreateRequestToIndividuals() {
+    Individual individual = Individual.builder()
+                                      .firstName("John")
+                                      .lastName("Doe")
+                                      .dateOfBirth(LocalDate.of(2025, 11, 24))
+                                      .details(Map.of("foo", "bar"))
+                                      .build();
+    ApplicationCreateRequest req = ApplicationCreateRequest.builder()
+        .status(ApplicationStatus.SUBMITTED)
+        .applicationContent(Map.of("foo", "bar"))
+        .applicationReference("app_reference")
+        .individuals(List.of(individual))
+        .build();
+    ApplicationEntity result = applicationMapper.toApplicationEntity(req);
+    assertThat(result.getIndividuals()).hasSize(1);
+    var mappedIndividual = result.getIndividuals()
+                                 .stream()
+                                 .findFirst()
+                                 .get();
+    assertThat(mappedIndividual.getFirstName()).isEqualTo("John");
+    assertThat(mappedIndividual.getLastName()).isEqualTo("Doe");
+    assertThat(mappedIndividual.getDateOfBirth()).isEqualTo(LocalDate.of(2025, 11, 24));
+    assertThat(mappedIndividual.getIndividualContent()).isEqualTo(Map.of("foo", "bar"));
   }
 
   @Test

@@ -16,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationPro
 public class ApplicationValidations {
 
   private final EffectiveAuthorizationProvider entra;
+  private final IndividualValidations individualValidator;
 
   /**
    * Validates an incoming POST.
@@ -44,6 +45,16 @@ public class ApplicationValidations {
       throw new ValidationException(
         List.of("Application reference cannot be blank")
       );
+    }
+
+    List<String> individualsValidationErrors = dto.getIndividuals()
+                                                  .stream()
+                                                  .map(individualValidator::validateIndividual)
+                                                  .flatMap(s -> s.errors().stream())
+                                                  .distinct()
+                                                  .toList();
+    if (!individualsValidationErrors.isEmpty()) {
+      throw new ValidationException(individualsValidationErrors);
     }
   }
 

@@ -37,11 +37,16 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
@@ -66,40 +71,40 @@ public class ApplicationControllerIntegrationTest {
   @Autowired
   private EntityManager entityManager;
 
-  private String buildApplicationJson() {
-    return buildApplicationJson(false);
+  @Autowired
+  private ObjectMapper objectMapper;
+
+  private ApplicationCreateRequest buildApplication() {
+    return ApplicationCreateRequest.builder()
+          .status(ApplicationStatus.SUBMITTED)
+          .applicationReference("app_ref")
+          .applicationContent(Map.of(
+                  "id", "71489fb1-742e-4e72-8b0a-db7b9a0cd100",
+                  "name", "Martin Ronan",
+                  "email", "martin.ronan@example.com",
+                  "firm_id", "5580f217-5e07-4ff7-8307-9966a1b73f35",
+                  "created_at", "2025-09-10T14:33:54.905+01:00",
+                  "updated_at", "2025-11-24T09:08:45.308+00:00",
+                  "office_codes", "0X395U:2N078D:A123456"
+          ))
+          .individuals(List.of(
+                  Individual.builder()
+                          .firstName("John")
+                          .lastName("Doe")
+                          .dateOfBirth(LocalDate.of(1990, 1, 1))
+                          .details(Map.of("contactNumber", "+447123456789"))
+                          .build(),
+                  Individual.builder()
+                          .firstName("Jan")
+                          .lastName("Eod")
+                          .dateOfBirth(LocalDate.of(1992, 2, 2))
+                          .details(Map.of("contactNumber", "+447987654321"))
+                          .build()
+          ))
+          .build();
   }
-
-  private String buildApplicationJson(boolean withIndividuals) {
-    StringBuilder linkedIndividualsJson = new StringBuilder();
-
-    if (withIndividuals) {
-      linkedIndividualsJson.append(", \"linked_individuals\": [")
-          .append("{")
-          .append("\"firstName\": \"John\",")
-          .append("\"lastName\": \"Doe\",")
-          .append("\"dateOfBirth\": \"1990-01-01\",")
-          .append("\"details\": {\"email\": \"john.doe@example.com\"}")
-          .append("},")
-          .append("{")
-          .append("\"firstName\": \"Jane\",")
-          .append("\"lastName\": \"Doe\",")
-          .append("\"dateOfBirth\": \"1992-02-02\",")
-          .append("\"details\": {\"email\": \"jane.doe@example.com\"}")
-          .append("}")
-          .append("]");
-    }
-    return "{"
-        + "\"id\": \"" + UUID.randomUUID() + "\","
-        + "\"status\": \"SUBMITTED\","
-        + "\"applicationReference\": \"app_ref\","
-        + "\"applicationContent\": {"
-        + "\"first_name\": \"John\","
-        + "\"last_name\": \"Doe\","
-        + "\"application_id\": \"" + UUID.randomUUID() + "\""
-        + "}"
-        + linkedIndividualsJson
-        + "}";
+  private String buildApplicationJson() throws Exception {
+    return  objectMapper.writeValueAsString(buildApplication());
   }
 
   @Test
@@ -396,25 +401,19 @@ public class ApplicationControllerIntegrationTest {
   @Transactional
   @Order(12)
   void shouldReturnIndividuals() throws Exception {
-
-    UUID appId = UUID.randomUUID();
-
     ApplicationEntity app = new ApplicationEntity();
-    app.setId(appId);
     app.setStatus(ApplicationStatus.SUBMITTED);
     app.setApplicationContent(Map.of("foo", "bar"));
     app.setCreatedAt(Instant.now());
     app.setModifiedAt(Instant.now());
 
     IndividualEntity ind1 = new IndividualEntity();
-    ind1.setId(UUID.randomUUID());
     ind1.setFirstName("John");
     ind1.setLastName("Doe");
     ind1.setDateOfBirth(LocalDate.of(1990, 1, 1));
     ind1.setIndividualContent(Map.of("email", "john.doe@example.com"));
 
     IndividualEntity ind2 = new IndividualEntity();
-    ind2.setId(UUID.randomUUID());
     ind2.setFirstName("Jane");
     ind2.setLastName("Doe");
     ind2.setDateOfBirth(LocalDate.of(1992, 2, 2));
@@ -424,7 +423,7 @@ public class ApplicationControllerIntegrationTest {
     entityManager.persist(ind2);
 
     app.setIndividuals(Set.of(ind1, ind2));
-    applicationRepository.saveAndFlush(app);
+    var appId = applicationRepository.saveAndFlush(app).getId();
 
     mockMvc.perform(get("/api/v0/applications/" + appId))
         .andExpect(status().isOk())
@@ -439,8 +438,6 @@ public class ApplicationControllerIntegrationTest {
   void shouldReturnEmptyIndividualsList() throws Exception {
 
     ApplicationEntity app = new ApplicationEntity();
-    UUID appId = UUID.randomUUID();
-    app.setId(appId);
     app.setStatus(ApplicationStatus.SUBMITTED);
     app.setSchemaVersion(1);
     app.setApplicationContent(Map.of("first_name", "Alice", "last_name", "Wonder"));
@@ -448,7 +445,7 @@ public class ApplicationControllerIntegrationTest {
     app.setModifiedAt(Instant.now());
 
     app.setIndividuals(Set.of());
-    applicationRepository.save(app);
+    var appId = applicationRepository.save(app).getId();
 
     mockMvc.perform(get("/api/v0/applications/" + appId)
             .accept(MediaType.APPLICATION_JSON))
