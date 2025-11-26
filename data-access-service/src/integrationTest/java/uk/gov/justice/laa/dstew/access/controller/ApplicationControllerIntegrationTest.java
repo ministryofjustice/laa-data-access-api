@@ -443,12 +443,11 @@ public class ApplicationControllerIntegrationTest {
   void shouldReturnCaseworkerId() throws Exception {
     CaseworkerEntity caseworkerEntity = CaseworkerEntity.builder().username("caseworker1").build();
     final UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworkerEntity).getId();
-    ApplicationEntity app = new ApplicationEntity();
-    app.setStatus(ApplicationStatus.SUBMITTED);
-    app.setApplicationContent(Map.of("foo", "bar"));
-    app.setCreatedAt(Instant.now());
-    app.setModifiedAt(Instant.now());
-    app.setCaseworker(caseworkerEntity);
+    ApplicationEntity app = ApplicationEntity.builder()
+                                             .status(ApplicationStatus.SUBMITTED)
+                                             .caseworker(caseworkerEntity)
+                                             .applicationContent(Map.of("foo", "bar"))
+                                             .build();
 
     final UUID appId = applicationRepository.saveAndFlush(app).getId();
 
