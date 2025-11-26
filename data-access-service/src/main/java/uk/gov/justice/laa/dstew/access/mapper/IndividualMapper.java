@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
-import com.fasterxml.uuid.Generators;
 import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Individual;
