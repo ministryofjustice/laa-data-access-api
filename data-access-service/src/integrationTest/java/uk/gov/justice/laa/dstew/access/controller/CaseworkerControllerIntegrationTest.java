@@ -41,6 +41,7 @@ import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static uk.gov.justice.laa.dstew.access.Constants.POSTGRES_INSTANCE;
@@ -59,11 +60,23 @@ public class CaseworkerControllerIntegrationTest {
     MockMvc mockMvc;
 
     @Test
+    @WithMockUser(authorities = {"APPROLE_ApplicationReader"})
     void getAllCaseworkers() throws Exception {
         final int numberOfCaseworkersInsertedDuringMigration = 10;
         mockMvc.perform(get("/api/v0/caseworkers"))
                         .andExpect(status().isOk())
                         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                         .andExpect(jsonPath("$.*", hasSize(numberOfCaseworkersInsertedDuringMigration)));
+    }
+
+    @Test
+    void getAllCaseworkersWithoutUserShould401() throws Exception {
+        mockMvc.perform(get("/api/v0/caseworkers")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser()
+    void getAllCaseworkersWithoutAuthorityShould403() throws Exception {
+        mockMvc.perform(get("/api/v0/caseworkers")).andExpect(status().isForbidden());
     }
 }
