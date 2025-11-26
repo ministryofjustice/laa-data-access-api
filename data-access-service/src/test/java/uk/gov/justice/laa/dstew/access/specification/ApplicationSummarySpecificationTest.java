@@ -27,7 +27,7 @@ public class ApplicationSummarySpecificationTest {
 
         String reference = "some-reference";
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, reference, null);
+                .filterBy(null, reference, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
         when(builder.like(any(), eq("%"+reference+"%"))).thenReturn(summaryPredicate);
@@ -40,18 +40,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenReferenceIsBlank(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, "", null);
-
-        Predicate result = spec.toPredicate(root, query, builder);
-
-        assertThat(result).isNull();
-    }
-
-    @Test
-    void shouldNotFailWhenReferenceIsNull(){
-
-        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, null);
+                .filterBy(null, "", null, null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 
@@ -62,7 +51,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenStatusHasAValue(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(ApplicationStatus.IN_PROGRESS, null, null);
+                .filterBy(ApplicationStatus.IN_PROGRESS, null, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
@@ -78,7 +67,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldFailWhenStatusHasAValueThatDoesNotMatch(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(ApplicationStatus.SUBMITTED, null, null);
+                .filterBy(ApplicationStatus.SUBMITTED, null, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
@@ -93,7 +82,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenAllFieldsAreNull(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, null);
+                .filterBy(null, null, null, null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 
@@ -104,11 +93,52 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenAllFieldsAreSet(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(ApplicationStatus.SUBMITTED, "ref2", null);
+                .filterBy(ApplicationStatus.SUBMITTED, "ref2", "Andy", "Green");
 
         Predicate result = spec.toPredicate(root, query, builder);
 
         assertThat(result).isNull();
     }
 
+    @Test
+    void shouldNotFailWhenFirstNameIsNotBlank(){
+
+        String firstName = "some-name";
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(null, null, firstName, null);
+
+        Predicate summaryPredicate = mock(Predicate.class);
+
+        when(
+                builder.like(
+                        any(),
+                        eq("%"+firstName+"%")
+                )
+            ).thenReturn(summaryPredicate);
+        Predicate result = spec.toPredicate(root, query, builder);
+
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    void shouldNotFailWhenFirstNameIsBlank(){
+
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(null, null, "", null);
+
+        Predicate result = spec.toPredicate(root, query, builder);
+
+        assertThat(result).isNull();
+    }
+
+    @Test
+    void shouldNotFailWhenLastNameIsBlank(){
+
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(null, null, null, "");
+
+        Predicate result = spec.toPredicate(root, query, builder);
+
+        assertThat(result).isNull();
+    }
 }

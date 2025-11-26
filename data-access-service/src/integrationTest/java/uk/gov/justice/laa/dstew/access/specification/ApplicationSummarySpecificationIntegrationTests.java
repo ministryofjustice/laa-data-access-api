@@ -25,6 +25,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import jakarta.transaction.Transactional;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
@@ -49,18 +50,28 @@ public class ApplicationSummarySpecificationIntegrationTests {
     @Autowired
     ApplicationSummaryRepository applicationSummaryRepository;
 
+    final static int NUMBER_OF_PREPOPULATED_INDIVIDUALS = 12;
     final static int NUMBER_OF_PREPOPULATED_APPLICATIONS = 8;
     List<ApplicationEntity> prePopulatedApplications;
+    Set<IndividualEntity> prePopulatedIndividuals;
 
     @BeforeEach
     void setUp() throws Exception {
+        prePopulatedIndividuals = Instancio.ofSet(IndividualEntity.class)
+        .size(NUMBER_OF_PREPOPULATED_INDIVIDUALS)
+        .generate(Select.field(IndividualEntity::getFirstName),
+                gen -> gen.oneOf("Rob", "robert", "Bert", "bobby"))
+        .generate(Select.field(IndividualEntity::getLastName),
+                gen -> gen.oneOf("Someone", "something", "Onething"))
+        .create();
+
         Map<String,Object> map = new HashMap<String,Object>();
         map.put("first_name", "jimi");
         map.put("last_name", "hendrix");
         prePopulatedApplications = Instancio.ofList(ApplicationEntity.class)
                                 .size(NUMBER_OF_PREPOPULATED_APPLICATIONS)
                                 .generate(Select.field(ApplicationEntity::getStatus), gen -> gen.oneOf(ApplicationStatus.IN_PROGRESS, ApplicationStatus.SUBMITTED))
-                                .set(Select.field(ApplicationEntity::getIndividuals), Set.of())
+                                .set(Select.field(ApplicationEntity::getIndividuals), prePopulatedIndividuals)
                                 .generate(Select.field(ApplicationEntity::getApplicationReference), gen -> gen.oneOf("Appref1", "APPref2", "unknown"))
                                 .set(Select.field(ApplicationEntity::getApplicationContent), map)
                                 .create();
@@ -77,9 +88,9 @@ public class ApplicationSummarySpecificationIntegrationTests {
 
 
         Specification<ApplicationSummaryEntity> inProgressEntities =
-                ApplicationSummarySpecification.filterBy(ApplicationStatus.IN_PROGRESS, "", "");
+                ApplicationSummarySpecification.filterBy(ApplicationStatus.IN_PROGRESS, "", "", "");
         Specification<ApplicationSummaryEntity> submittedEntities =
-                ApplicationSummarySpecification.filterBy(ApplicationStatus.SUBMITTED, "", "");
+                ApplicationSummarySpecification.filterBy(ApplicationStatus.SUBMITTED, "", "", "");
 
         assertEquals(expectedNumberOfInProgress, applicationSummaryRepository.count(inProgressEntities));
         applicationSummaryRepository
@@ -105,9 +116,9 @@ public class ApplicationSummarySpecificationIntegrationTests {
         assertNotEquals(0, expectedNumberOfAppref);
 
         Specification<ApplicationSummaryEntity> appref1Entities =
-            ApplicationSummarySpecification.filterBy(null, "appref1", null);
+            ApplicationSummarySpecification.filterBy(null, "appref1", null, null);
         Specification<ApplicationSummaryEntity> appref2Entities =
-                ApplicationSummarySpecification.filterBy(null, "appref2", null);
+                ApplicationSummarySpecification.filterBy(null, "appref2", null, null);
 
         assertEquals(expectedNumberOfAppref,
                 applicationSummaryRepository.count(appref1Entities) +
@@ -138,7 +149,130 @@ public class ApplicationSummarySpecificationIntegrationTests {
         assertNotEquals(0, expectedNumberOfAppref);
 
         Specification<ApplicationSummaryEntity> apprefEntities =
-            ApplicationSummarySpecification.filterBy(null, "appref", null);
+            ApplicationSummarySpecification.filterBy(null, "appref", null, null);
+        applicationSummaryRepository
+                .findAll(apprefEntities, PageRequest.of(0, 10))
+                .getContent().forEach(
+                        a -> assertEquals("appref", a.getApplicationReference().toLowerCase().substring(0,6))
+                );
+        assertEquals( expectedNumberOfAppref, applicationSummaryRepository.count(apprefEntities));
+    }
+
+    @Test
+    void isApplicationReferencePartialFromMiddleSpecification() {
+        long expectedNumberOfAppref =
+                prePopulatedApplications.stream().filter(a -> a.getApplicationReference().contains("ref")).count();
+        assertNotEquals(0, expectedNumberOfAppref);
+
+        Specification<ApplicationSummaryEntity> apprefEntities =
+                ApplicationSummarySpecification.filterBy(null, "REf", null, null);
+        applicationSummaryRepository
+                .findAll(apprefEntities, PageRequest.of(0, 10))
+                .getContent().forEach(
+                        a -> assertThat(a.getApplicationReference().toLowerCase().contains("ref"))
+                );
+        assertEquals(expectedNumberOfAppref, applicationSummaryRepository.count(apprefEntities));
+    }
+
+    @Test
+    void isApplicationReferencePartialFromEndSpecification() {
+        long expectedNumberOfAppref =
+                prePopulatedApplications.stream().filter(a -> a.getApplicationReference().endsWith("ef1")).count();
+        assertNotEquals(0, expectedNumberOfAppref);
+
+        Specification<ApplicationSummaryEntity> apprefEntities =
+                ApplicationSummarySpecification.filterBy(null, "eF1", null, null);
+
+        applicationSummaryRepository
+                .findAll(apprefEntities, PageRequest.of(0, 10))
+                .getContent().forEach(
+                        a -> assertThat(a.getApplicationReference().toLowerCase().endsWith("ef1"))
+                );
+        assertEquals(expectedNumberOfAppref, applicationSummaryRepository.count(apprefEntities));
+    }
+
+    @Test
+    void isApplicationReferenceNullSpecification() {
+        long expectedNumberOfRecordsNoFilter =
+                prePopulatedApplications.size();
+
+        var recordCount = applicationSummaryRepository.count(ApplicationSummarySpecification.filterBy(
+                null, null, null, null));
+
+        assertEquals(expectedNumberOfRecordsNoFilter, recordCount);
+    }
+
+    @Test
+    void isApplicationReferenceBlankSpecification() {
+        long expectedNumberOfRecordsNoFilter =
+                prePopulatedApplications.size();
+
+        var recordCount = applicationSummaryRepository.count(ApplicationSummarySpecification.filterBy(
+                null, "", null, null));
+
+        assertEquals(expectedNumberOfRecordsNoFilter, recordCount);
+    }
+
+    @Test void isStatusSubmittedAndAppref1Specification() {
+        long expectedNumberOfSubmittedAppref1 = prePopulatedApplications
+                .stream()
+                .filter(a ->
+                        a.getStatus().equals(ApplicationStatus.SUBMITTED)
+                        && a.getApplicationReference().endsWith("ref1"))
+                .count();
+        assertNotEquals(0, expectedNumberOfSubmittedAppref1);
+
+        Specification<ApplicationSummaryEntity> apprefEntities =
+                ApplicationSummarySpecification.filterBy(
+                        ApplicationStatus.SUBMITTED, "ref1", "","");
+
+        assertEquals(expectedNumberOfSubmittedAppref1, applicationSummaryRepository.count(apprefEntities));
+
+        applicationSummaryRepository
+                .findAll(apprefEntities, PageRequest.of(0, 10))
+                .getContent().forEach(
+                        a -> assertThat(a.getApplicationReference().toLowerCase().endsWith("ef1")
+                                                    && a.getStatus().equals(ApplicationStatus.SUBMITTED))
+                );
+    }
+
+    // ------------------------------------------------------------------
+    @Test
+    void isFirstNameSpecification() {
+        long expectedNumberOfRoberts = prePopulatedIndividuals.stream()
+                .filter(i ->
+                        i.getFirstName().equals("Robert")).count();
+        assertNotEquals(0, expectedNumberOfRoberts);
+
+        Specification<ApplicationSummaryEntity> robertEntities =
+                ApplicationSummarySpecification.filterBy(null, null, "Robert", null);
+
+        assertEquals(expectedNumberOfRoberts, applicationSummaryRepository.count(robertEntities));
+
+        /*
+        applicationSummaryRepository
+                .findAll(robertEntities, PageRequest.of(0, 20))
+                .getContent().forEach(
+                        a -> assertEquals("appref1", a.getIndividuals().add(null))
+                );
+
+         */
+    }
+
+    /*
+    @Test
+    void isApplicationReferencePartialFromStartSpecification() {
+        long expectedNumberOfAppref =
+                prePopulatedApplications.stream().filter(
+                        a ->
+                                a.getApplicationReference().startsWith("Appref")
+                                        || a.getApplicationReference().startsWith("APPref2")
+                ).count();
+
+        assertNotEquals(0, expectedNumberOfAppref);
+
+        Specification<ApplicationSummaryEntity> apprefEntities =
+                ApplicationSummarySpecification.filterBy(null, "appref", null);
         applicationSummaryRepository
                 .findAll(apprefEntities, PageRequest.of(0, 10))
                 .getContent().forEach(
@@ -201,27 +335,5 @@ public class ApplicationSummarySpecificationIntegrationTests {
 
         assertEquals(expectedNumberOfRecordsNoFilter, recordCount);
     }
-
-    @Test void isStatusSubmittedAndAppref1Specification() {
-        long expectedNumberOfSubmittedAppref1 = prePopulatedApplications
-                .stream()
-                .filter(a ->
-                        a.getStatus().equals(ApplicationStatus.SUBMITTED)
-                        && a.getApplicationReference().endsWith("ref1"))
-                .count();
-        assertNotEquals(0, expectedNumberOfSubmittedAppref1);
-
-        Specification<ApplicationSummaryEntity> apprefEntities =
-                ApplicationSummarySpecification.filterBy(
-                        ApplicationStatus.SUBMITTED, "ref1", "");
-
-        assertEquals(expectedNumberOfSubmittedAppref1, applicationSummaryRepository.count(apprefEntities));
-
-        applicationSummaryRepository
-                .findAll(apprefEntities, PageRequest.of(0, 10))
-                .getContent().forEach(
-                        a -> assertThat(a.getApplicationReference().toLowerCase().endsWith("ef1")
-                                                    && a.getStatus().equals(ApplicationStatus.SUBMITTED))
-                );
-    }
+    */
 }

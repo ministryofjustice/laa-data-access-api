@@ -59,7 +59,8 @@ public class ApplicationSummaryService {
             .findAll(ApplicationSummarySpecification
                     .filterBy(applicationStatus,
                             applicationReference,
-                            firstName),
+                            firstName,
+                            lastName),
                             pageDetails)
             .getContent()
             .stream()
@@ -79,10 +80,12 @@ public class ApplicationSummaryService {
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public long getAllApplicationsTotal(ApplicationStatus applicationStatus,
                                       String applicationReference,
-                                      String firstName) {
+                                      String firstName,
+                                      String lastName) {
     return applicationSummaryRepository.count(ApplicationSummarySpecification
             .filterBy(applicationStatus,
                       applicationReference,
-                    firstName));
+                    firstName,
+                    lastName));
   }
 }

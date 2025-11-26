@@ -19,10 +19,12 @@ public class ApplicationSummarySpecification {
   public static Specification<ApplicationSummaryEntity> filterBy(
           ApplicationStatus status,
           String reference,
-          String firstName) {
+          String firstName,
+          String lastName) {
     return isStatus(status)
             .and(isApplicationReference(reference))
-            .and(isFirstName(firstName));
+            .and(isFirstName(firstName))
+            .and(isLastName(lastName));
   }
 
   private static Specification<ApplicationSummaryEntity> isStatus(ApplicationStatus status) {
@@ -49,8 +51,21 @@ public class ApplicationSummarySpecification {
       return (root, query, builder)
               -> {
                 Join<Object, Object> individualsJoin = root.join("individuals", JoinType.INNER);
-                return builder.like(builder.lower(individualsJoin.get("firstName")),
+                return builder.like(builder.lower(
+                                individualsJoin.get("firstName")),
                                   "%" + firstName.toLowerCase() + "%");
+      };
+    }
+    return Specification.unrestricted();
+  }
+
+  private static Specification<ApplicationSummaryEntity> isLastName(String lastName) {
+    if (lastName != null && !lastName.isBlank()) {
+      return (root, query, builder)
+              -> {
+        return builder.like(builder.lower(
+                        root.join("individuals", JoinType.INNER).get("lastName")),
+                "%" + lastName.toLowerCase() + "%");
       };
     }
     return Specification.unrestricted();
