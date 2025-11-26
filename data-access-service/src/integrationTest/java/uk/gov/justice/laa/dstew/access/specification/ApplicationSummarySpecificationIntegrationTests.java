@@ -64,6 +64,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
                                 .generate(Select.field(ApplicationEntity::getApplicationReference), gen -> gen.oneOf("Appref1", "APPref2", "unknown"))
                                 .set(Select.field(ApplicationEntity::getApplicationContent), map)
                                 .set(Select.field(ApplicationEntity::getId), null)
+                                .set(Select.field(ApplicationEntity::getCaseworker), null)
                                 .create();
         applicationRepository.saveAll(prePopulatedApplications);
     }

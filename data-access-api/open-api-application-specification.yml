@@ -177,6 +177,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Individual"
+        caseworkerId:
+          type: string
+          format: uuid
 
     ApplicationCreateRequest:
       type: object

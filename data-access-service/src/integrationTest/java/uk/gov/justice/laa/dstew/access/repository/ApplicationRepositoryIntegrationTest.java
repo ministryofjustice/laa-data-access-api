@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.oneOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.HashMap;
@@ -27,12 +28,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import jakarta.transaction.Transactional;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.test.context.jdbc.Sql;
-
 import static uk.gov.justice.laa.dstew.access.Constants.POSTGRES_INSTANCE;
 
 @Testcontainers
@@ -48,11 +46,15 @@ public class ApplicationRepositoryIntegrationTest {
     @Autowired
     ApplicationRepository applicationRepository;
 
+    @Autowired
+    CaseworkerRepository caseworkerRepository;
+
     final static int NUMBER_OF_PREPOPULATED_APPLICATIONS = 5;
     List<ApplicationEntity> prePopulatedApplications;
 
     @BeforeEach
     void setUp() throws Exception {
+        final CaseworkerEntity persistedCaseworker = caseworkerRepository.save(CaseworkerEntity.builder().username("caseworker_1").build());
         Map<String,Object> map = new HashMap<String,Object>();
         map.put("first_name", "jimi");
         map.put("last_name", "hendrix");
@@ -61,6 +63,7 @@ public class ApplicationRepositoryIntegrationTest {
                                 .set(Select.field(ApplicationEntity::getIndividuals), Set.of())
                                 .set(Select.field(ApplicationEntity::getApplicationContent), map)
                                 .set(Select.field(ApplicationEntity::getId), null)
+                                .generate(Select.field(ApplicationEntity::getCaseworker), gen -> gen.oneOf(null, persistedCaseworker))
                                 .create();
         applicationRepository.saveAll(prePopulatedApplications);
     }
