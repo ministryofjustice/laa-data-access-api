@@ -160,6 +160,10 @@ components:
         - id
         - applicationStatus
         - applicationContent
+        - applicationReference
+        - schemaVersion
+        - createdAt
+        - updatedAt
       properties:
         id:
           type: string
@@ -171,6 +175,14 @@ components:
         applicationContent:
           type: object
           additionalProperties: true
+        applicationReference:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
         individuals:
           type: array
           items:
@@ -207,18 +219,18 @@ components:
       type: object
       description: (APPLICATION LIST PAGE / VIEW - OPEN APPLICATIONS ONLY BY DEFAULT)
       properties:
-        application_id:
+        applicationId:
           type: string
           format: uuid
           description: The unique reference used to identify the application.
         applicationStatus:
           $ref: "#/components/schemas/applicationStatus"
-        application_reference:
+        applicationReference:
           type: string
-        created_at:
+        createdAt:
           type: string
           format: date-time
-        modified_at:
+        modifiedAt:
           type: string
           format: date-time
 
@@ -230,11 +242,11 @@ components:
           properties:
             page:
               type: integer
-            page_size:
+            pageSize:
               type: integer
-            items_returned:
+            itemsReturned:
               type: integer
-            total_records:
+            totalRecords:
               type: integer
         applications:
           type: array
