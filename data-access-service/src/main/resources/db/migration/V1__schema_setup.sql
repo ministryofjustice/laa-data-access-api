@@ -38,7 +38,7 @@ CREATE TABLE applications (
     application_reference VARCHAR,
     status VARCHAR(20) NOT NULL,
     application_content JSONB NOT NULL,
-    schema_version INTEGER
+    schema_version INTEGER,
 
     CONSTRAINT fk_application_caseworker FOREIGN KEY (caseworker_id)
         REFERENCES caseworkers(id)
