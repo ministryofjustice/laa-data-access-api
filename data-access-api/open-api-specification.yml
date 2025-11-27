@@ -21,3 +21,5 @@ components:
       $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationSummaryResponse"
     ApplicationSummary:
       $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationSummary"
+    CaseworkerAssignRequest:
+      $ref: "./open-api-application-specification.yml#/components/schemas/CaseworkerAssignRequest"

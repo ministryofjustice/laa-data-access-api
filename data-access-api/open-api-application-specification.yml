@@ -117,6 +117,33 @@ paths:
         '409': { description: Conflict }
         '500': { description: Internal server error }
 
+  /api/v0/applications/{id}/assign:
+    post:
+      tags:
+        - application
+      summary: Assign a caseworker to an application
+      operationId: assignCaseworker
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaseworkerAssignRequest'
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
+
 components:
   schemas:
     applicationStatus:
@@ -252,3 +279,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationSummary"
+
+    CaseworkerAssignRequest:
+      type: object
+      required:
+        - caseworkerId
+      properties:
+        caseworkerId:
+          type: string
+          format: uuid
