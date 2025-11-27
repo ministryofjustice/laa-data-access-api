@@ -1,7 +1,7 @@
 package uk.gov.justice.laa.dstew.access.exception;
 
 /**
- * The exception thrown when application not found.
+ * The exception thrown when caseworker not found.
  */
 public class CaseworkerNotFoundException extends RuntimeException {
 
