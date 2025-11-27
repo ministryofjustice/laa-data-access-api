@@ -54,8 +54,8 @@ CREATE TABLE linked_individuals(
     PRIMARY KEY (application_id, individual_id),
 
     CONSTRAINT fk_linked_individual_application FOREIGN KEY (application_id)
-        REFERENCES application(id) ON DELETE CASCADE,
+        REFERENCES applications(id) ON DELETE CASCADE,
 
     CONSTRAINT fk_linked_individual_individual FOREIGN KEY (individual_id)
-        REFERENCES individual(id) ON DELETE CASCADE
+        REFERENCES individuals(id) ON DELETE CASCADE
 );
