@@ -15,7 +15,6 @@ import uk.gov.justice.laa.dstew.access.utils.TestSecurityConfig;
 import uk.gov.justice.laa.dstew.access.utils.TestSpringContext;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
-import java.util.List;
 import java.util.stream.Stream;
 
 public class ApplicationServiceDouble {

@@ -7,16 +7,20 @@ import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.doubles.ApplicationServiceDouble;
 import uk.gov.justice.laa.dstew.access.utils.factory.ApplicationEntityFactory;
 
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ApplicationAsserts.assertApplicationEqual;
 
@@ -55,12 +59,12 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             ApplicationRepository repository = Mockito.mock(ApplicationRepository.class);
             when(repository.findById(applicationId)).thenThrow(ApplicationNotFoundException.class);
 
-            // when
             ApplicationService sut = new ApplicationServiceDouble()
                     .withRepository(repository)
                     .withRoles(TestConstants.Roles.READER)
                     .build();
 
+            // when
             // then
             // will this work? the repository is what is throwing the exception...
             assertThatExceptionOfType(ApplicationNotFoundException.class)
@@ -76,12 +80,12 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             UUID applicationId = UUID.randomUUID();
             ApplicationRepository repository = Mockito.mock(ApplicationRepository.class);
 
-            // when
             ApplicationService sut = new ApplicationServiceDouble()
                     .withRepository(repository)
                     .withRoles(TestConstants.Roles.NO_ROLE)
                     .build();
 
+            // when
             // then
             // will this work? the repository is what is throwing the exception...
             assertThatExceptionOfType(AuthorizationDeniedException.class)
@@ -99,6 +103,40 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     @Nested
     class Create {
 
+        @Test
+        public void givenNewApplication_whenCreateApplication_thenReturnNewId() {
+
+            // given
+            String expectedReference = "REF7327";
+            ApplicationCreateRequest request = ApplicationCreateRequest.builder()
+                    .status(ApplicationStatus.IN_PROGRESS)
+                    .applicationReference(expectedReference)
+                    .applicationContent(new HashMap<>() {{
+                        put("test", "content");
+                    }})
+                    .build();
+
+            UUID expectedId = UUID.randomUUID();
+            ApplicationEntity withExpectedId = ApplicationEntityFactory.create(builder ->
+                builder.id(expectedId)
+            );
+            ApplicationRepository repository = Mockito.mock(ApplicationRepository.class);
+            when(repository.save(any())).thenReturn(withExpectedId);
+
+
+
+            ApplicationService sut = new ApplicationServiceDouble()
+                    .withRepository(repository)
+                    .withRoles(TestConstants.Roles.WRITER)
+                    .build();
+
+            // when
+            UUID actualId = sut.createApplication(request);
+
+            // then
+            assertEquals(expectedId, actualId);
+            verify(repository, times(1)).save(any());
+        }
     }
 
     @Nested
