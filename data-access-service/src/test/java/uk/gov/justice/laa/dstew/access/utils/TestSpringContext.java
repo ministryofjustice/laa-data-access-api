@@ -27,10 +27,7 @@ public class TestSpringContext {
     }
 
     public TestSpringContext constructBeans(Class<?>... beanClasses) {
-        for (Class<?> beanClass : beanClasses) {
-            CONTEXT.register(beanClasses);
-        }
-
+        CONTEXT.register(beanClasses);
         return this;
     }
 

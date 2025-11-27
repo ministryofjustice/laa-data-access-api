@@ -52,7 +52,7 @@ public class ApplicationServiceDouble {
 
     // TODO: check that this works with tests in parallel..
     private void setSecurityContext() {
-        var authorities = List.of(this.roles).stream()
+        var authorities = Stream.of(this.roles)
                 .map(SimpleGrantedAuthority::new)
                 .toList();
 
