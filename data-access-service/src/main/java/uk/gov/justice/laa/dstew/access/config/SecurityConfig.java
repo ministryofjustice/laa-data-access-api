@@ -26,7 +26,7 @@ import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationPro
 @Configuration
 @EnableMethodSecurity
 @EnableWebSecurity
-class SecurityConfig {
+public class SecurityConfig {
   /**
    * Return the security filter chain.
    *
@@ -48,7 +48,7 @@ class SecurityConfig {
   }
 
   @Bean("entra")
-  EffectiveAuthorizationProvider authProvider() {
+  public EffectiveAuthorizationProvider authProvider() {
     return new EffectiveAuthorizationProvider() {
       @Override
       public boolean hasAppRole(String name) {

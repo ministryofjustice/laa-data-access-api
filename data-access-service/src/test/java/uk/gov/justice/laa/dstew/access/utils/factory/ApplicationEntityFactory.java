@@ -9,7 +9,7 @@ import java.util.function.Consumer;
 
 public class ApplicationEntityFactory {
 
-    public ApplicationEntity create() {
+    public static ApplicationEntity create() {
         ApplicationEntity entity = ApplicationEntity.builder()
                 .createdAt(InstantSource.system().instant())
                 .id(UUID.randomUUID())
@@ -24,14 +24,14 @@ public class ApplicationEntityFactory {
         return entity;
     }
 
-    public ApplicationEntity create(Consumer<ApplicationEntity.ApplicationEntityBuilder> customiser) {
+    public static ApplicationEntity create(Consumer<ApplicationEntity.ApplicationEntityBuilder> customiser) {
         ApplicationEntity entity = create();
         ApplicationEntity.ApplicationEntityBuilder builder = entity.toBuilder();
         customiser.accept(builder);
         return builder.build();
     }
 
-    public List<ApplicationEntity> create(int number) {
+    public static List<ApplicationEntity> create(int number) {
         ArrayList<ApplicationEntity> entities = new ArrayList<>();
         for (int i = 0; i < number; i++) {
             entities.add(create());
@@ -39,7 +39,7 @@ public class ApplicationEntityFactory {
         return entities;
     }
 
-    public List<ApplicationEntity> create(int number, Consumer<ApplicationEntity.ApplicationEntityBuilder> customiser) {
+    public static List<ApplicationEntity> create(int number, Consumer<ApplicationEntity.ApplicationEntityBuilder> customiser) {
         ArrayList<ApplicationEntity> entities = new ArrayList<>();
         for (int i = 0; i < number; i++) {
             entities.add(create(customiser));
