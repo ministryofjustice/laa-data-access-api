@@ -3,8 +3,12 @@ package uk.gov.justice.laa.dstew.access.specification;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.Individual;
 
 /**
  * Defines the filtering of Application Summaries.
@@ -50,7 +54,7 @@ public class ApplicationSummarySpecification {
     if (firstName != null && !firstName.isBlank()) {
       return (root, query, builder)
               -> {
-                Join<Object, Object> individualsJoin = root.join("individuals", JoinType.INNER);
+                Join<ApplicationEntity, IndividualEntity> individualsJoin = root.join("individuals", JoinType.INNER);
                 return builder.like(builder.lower(
                                 individualsJoin.get("firstName")),
                                   "%" + firstName.toLowerCase() + "%");
@@ -63,8 +67,9 @@ public class ApplicationSummarySpecification {
     if (lastName != null && !lastName.isBlank()) {
       return (root, query, builder)
               -> {
-        return builder.like(builder.lower(
-                        root.join("individuals", JoinType.INNER).get("lastName")),
+                Join<ApplicationEntity, IndividualEntity> individualsJoin = root.join("individuals", JoinType.INNER);
+                return builder.like(builder.lower(
+                              individualsJoin.get("lastName")),
                 "%" + lastName.toLowerCase() + "%");
       };
     }
