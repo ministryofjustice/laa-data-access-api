@@ -98,49 +98,49 @@ public class ApplicationSummarySpecificationIntegrationTests {
         prePopulatedApplications.add(
                 createApplicationEntity(
                         "Appref1", ApplicationStatus.SUBMITTED,
-                        map, Set.of(individual1))
+                        map, Set.of(individual1, individual2))
         );
 
         prePopulatedApplications.add(
                 createApplicationEntity(
                         "APPref2", ApplicationStatus.SUBMITTED,
-                        map, Set.of(individual2))
+                        map, Set.of(individual2, individual3))
         );
 
         prePopulatedApplications.add(
                 createApplicationEntity(
                         "unknown", ApplicationStatus.SUBMITTED,
-                        map, Set.of(individual3))
+                        map, Set.of(individual3, individual4))
         );
 
         prePopulatedApplications.add(
                 createApplicationEntity(
                         "Appref1", ApplicationStatus.SUBMITTED,
-                        map, Set.of(individual4))
+                        map, Set.of(individual4, individual1))
         );
 
         prePopulatedApplications.add (
                 createApplicationEntity(
                         "Appref1", ApplicationStatus.IN_PROGRESS,
-                        map, Set.of(individual1))
+                        map, Set.of(individual1, individual2))
         );
 
         prePopulatedApplications.add(
                 createApplicationEntity(
                         "APPref2", ApplicationStatus.IN_PROGRESS,
-                        map, Set.of(individual2))
+                        map, Set.of(individual2, individual3))
         );
 
         prePopulatedApplications.add(
                 createApplicationEntity(
                         "unknown", ApplicationStatus.IN_PROGRESS,
-                        map, Set.of(individual3))
+                        map, Set.of(individual3, individual4))
         );
 
         prePopulatedApplications.add(
                 createApplicationEntity(
                         "Appref1", ApplicationStatus.IN_PROGRESS,
-                        map, Set.of(individual4))
+                        map, Set.of(individual4, individual1))
         );
 
     }
@@ -176,6 +176,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
         entityManager.persist(individual4);
 
         createPrePopulatedApplications(individual1, individual2, individual3, individual4);
+
         applicationRepository.saveAll(prePopulatedApplications);
     }
 
@@ -322,7 +323,8 @@ public class ApplicationSummarySpecificationIntegrationTests {
         Specification<ApplicationSummaryEntity> entities =
                 ApplicationSummarySpecification.filterBy(null, null, "rObert", null);
 
-        long returnedNumberOfRecords = applicationSummaryRepository.count(entities);
+        long returnedNumberOfRecords = applicationSummaryRepository
+                .findAll(entities, PageRequest.of(0, 20)).getTotalElements();
         assertEquals(expectedNumberOfGeneratedRecords, returnedNumberOfRecords);
 
         applicationSummaryRepository
@@ -350,7 +352,8 @@ public class ApplicationSummarySpecificationIntegrationTests {
         Specification<ApplicationSummaryEntity> entities =
                 ApplicationSummarySpecification.filterBy(null, null, "oB", null);
 
-        long returnedNumberOfRecords = applicationSummaryRepository.count(entities);
+        long returnedNumberOfRecords = applicationSummaryRepository
+                .findAll(entities, PageRequest.of(0, 20)).getTotalElements();
         assertEquals(expectedNumberOfGeneratedRecords, returnedNumberOfRecords);
 
         applicationSummaryRepository
@@ -378,7 +381,8 @@ public class ApplicationSummarySpecificationIntegrationTests {
         Specification<ApplicationSummaryEntity> entities =
                 ApplicationSummarySpecification.filterBy(null, null, "ERt", null);
 
-        long returnedNumberOfRecords = applicationSummaryRepository.count(entities);
+        long returnedNumberOfRecords = applicationSummaryRepository
+                .findAll(entities, PageRequest.of(0, 20)).getTotalElements();
         assertEquals(expectedNumberOfGeneratedRecords, returnedNumberOfRecords);
 
         applicationSummaryRepository
@@ -417,7 +421,8 @@ public class ApplicationSummarySpecificationIntegrationTests {
         Specification<ApplicationSummaryEntity> entities =
                 ApplicationSummarySpecification.filterBy(null, null, null, "SOMe");
 
-        long returnedNumberOfRecords = applicationSummaryRepository.count(entities);
+        long returnedNumberOfRecords = applicationSummaryRepository
+                .findAll(entities, PageRequest.of(0, 20)).getTotalElements();
         assertEquals(expectedNumberOfGeneratedRecords, returnedNumberOfRecords);
 
         applicationSummaryRepository
@@ -445,7 +450,9 @@ public class ApplicationSummarySpecificationIntegrationTests {
         Specification<ApplicationSummaryEntity> entities =
                 ApplicationSummarySpecification.filterBy(null, null, null, "THi");
 
-        long returnedNumberOfRecords = applicationSummaryRepository.count(entities);
+        long returnedNumberOfRecords = applicationSummaryRepository
+                .findAll(entities, PageRequest.of(0, 20)).getTotalElements();
+
         assertEquals(expectedNumberOfGeneratedRecords, returnedNumberOfRecords);
 
         applicationSummaryRepository
@@ -473,7 +480,8 @@ public class ApplicationSummarySpecificationIntegrationTests {
         Specification<ApplicationSummaryEntity> entities =
                 ApplicationSummarySpecification.filterBy(null, null,  null, "Ng");
 
-        long returnedNumberOfRecords = applicationSummaryRepository.count(entities);
+        long returnedNumberOfRecords = applicationSummaryRepository
+                .findAll(entities, PageRequest.of(0, 20)).getTotalElements();
         assertEquals(expectedNumberOfGeneratedRecords, returnedNumberOfRecords);
 
         applicationSummaryRepository
