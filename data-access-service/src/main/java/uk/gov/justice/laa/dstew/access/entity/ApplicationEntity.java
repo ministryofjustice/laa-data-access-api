@@ -64,7 +64,7 @@ public class ApplicationEntity implements AuditableEntity {
 
   @ManyToMany(cascade = CascadeType.PERSIST)
   @JoinTable(
-      name = "linked_individual",
+      name = "linked_individuals",
       joinColumns = @JoinColumn(name = "application_id"),
       inverseJoinColumns = @JoinColumn(name = "individual_id")
   )
