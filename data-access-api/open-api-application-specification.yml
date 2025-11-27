@@ -121,8 +121,8 @@ paths:
     post:
       tags:
         - application
-      summary: Assign a caseworker to an application
       operationId: assignCaseworker
+      summary: Assign a caseworker to an application
       parameters:
         - name: id
           in: path
