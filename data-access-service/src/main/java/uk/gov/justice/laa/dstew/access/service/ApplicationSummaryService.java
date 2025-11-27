@@ -1,14 +1,15 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryPage;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
 
@@ -46,7 +47,7 @@ public class ApplicationSummaryService {
    * @return a list of {@link ApplicationSummary} instances matching the filter criteria
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<ApplicationSummary> getAllApplications(
+  public ApplicationSummaryPage getAllApplications(
           ApplicationStatus applicationStatus,
           String applicationReference,
           String firstName,
@@ -55,37 +56,22 @@ public class ApplicationSummaryService {
           Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
 
-    return applicationSummaryRepository
+    Page<ApplicationSummaryEntity> entities = applicationSummaryRepository
             .findAll(ApplicationSummarySpecification
-                    .filterBy(applicationStatus,
-                            applicationReference,
-                            firstName,
-                            lastName),
-                            pageDetails)
+                            .filterBy(applicationStatus,
+                                    applicationReference,
+                                    firstName,
+                                    lastName),
+                                    pageDetails);
+
+    ApplicationSummaryPage applicationsReturned = new ApplicationSummaryPage();
+    applicationsReturned.setApplications(entities
             .getContent()
             .stream()
             .map(mapper::toApplicationSummary)
-            .toList();
-  }
+            .toList());
+    applicationsReturned.setTotalItems(entities.getTotalElements());
 
-  /**
-   * Retrieves a total for a list of {@link ApplicationSummary} objects .
-   *
-   * @param applicationStatus the {@link ApplicationStatus} used to filter results on application status
-   * @param applicationReference used to filter results on application reference
-   * @param firstName used to filter results on linked individuals first name
-
-   * @return a total of {@link ApplicationSummary} instances matching the filter criteria
-   */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public long getAllApplicationsTotal(ApplicationStatus applicationStatus,
-                                      String applicationReference,
-                                      String firstName,
-                                      String lastName) {
-    return applicationSummaryRepository.count(ApplicationSummarySpecification
-            .filterBy(applicationStatus,
-                      applicationReference,
-                    firstName,
-                    lastName));
+    return applicationsReturned;
   }
 }
