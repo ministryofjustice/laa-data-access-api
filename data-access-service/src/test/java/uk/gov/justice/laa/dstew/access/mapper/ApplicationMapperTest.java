@@ -16,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
@@ -92,6 +93,31 @@ class ApplicationMapperTest {
   @Test
   void shouldReturnNullWhenMappingNullEntity() {
     assertThat(applicationMapper.toApplication(null)).isNull();
+  }
+
+  @Test
+  void shouldMapApplicationEntityCaseworkerNullToApplication() {
+    ApplicationEntity entity = ApplicationEntity.builder()
+                                                .applicationContent(Map.of("foo","bar"))
+                                                .createdAt(Instant.now())
+                                                .modifiedAt(Instant.now())
+                                                .caseworker(null)
+                                                .build();
+    var result = applicationMapper.toApplication(entity);
+    assertThat(result.getCaseworkerId()).isNull();
+  }
+
+  @Test
+  void shouldMapApplicationEntityCaseworkerToApplication() {
+    final UUID caseworkerId = UUID.randomUUID();
+    ApplicationEntity entity = ApplicationEntity.builder()
+                                                .applicationContent(Map.of("foo","bar"))
+                                                .createdAt(Instant.now())
+                                                .modifiedAt(Instant.now())
+                                                .caseworker(CaseworkerEntity.builder().id(caseworkerId).build())
+                                                .build();
+    var result = applicationMapper.toApplication(entity);
+    assertThat(result.getCaseworkerId()).isEqualTo(caseworkerId);
   }
 
   @Test
