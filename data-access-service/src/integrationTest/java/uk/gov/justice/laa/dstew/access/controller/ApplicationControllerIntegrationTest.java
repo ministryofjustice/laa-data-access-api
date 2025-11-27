@@ -43,12 +43,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
+import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 
 @SpringBootTest(classes = AccessApp.class, properties = "feature.disable-security=false")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -67,6 +69,9 @@ public class ApplicationControllerIntegrationTest {
 
   @Autowired
   private ApplicationRepository applicationRepository;
+
+  @Autowired
+  private CaseworkerRepository caseworkerRepository;
 
   @Autowired
   private EntityManager entityManager;
@@ -430,6 +435,25 @@ public class ApplicationControllerIntegrationTest {
         .andExpect(jsonPath("$.individuals.length()").value(2))
         .andExpect(jsonPath("$.individuals[0].firstName").exists())
         .andExpect(jsonPath("$.individuals[1].firstName").exists());
+  }
+
+  @Test
+  @WithMockUser(authorities = {"APPROLE_ApplicationReader"})
+  @Transactional
+  void shouldReturnCaseworkerId() throws Exception {
+    CaseworkerEntity caseworkerEntity = CaseworkerEntity.builder().username("caseworker1").build();
+    final UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworkerEntity).getId();
+    ApplicationEntity app = ApplicationEntity.builder()
+                                             .status(ApplicationStatus.SUBMITTED)
+                                             .caseworker(caseworkerEntity)
+                                             .applicationContent(Map.of("foo", "bar"))
+                                             .build();
+
+    final UUID appId = applicationRepository.saveAndFlush(app).getId();
+
+    mockMvc.perform(get("/api/v0/applications/" + appId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.caseworkerId").value(caseworkerId.toString()));
   }
 
   @Test
