@@ -96,4 +96,12 @@ public class ApplicationController implements ApplicationApi {
     return ResponseEntity.ok().build();
   }
 
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<Void> unassignCaseworker(UUID id) {
+    service.unassignCaseworker(id);
+    return ResponseEntity.ok().build();
+  }
+
 }

@@ -388,7 +388,6 @@ public class ApplicationControllerIntegrationTest {
     String updatePayload = "{ \"applicationContent\": {} }";
 
     mockMvc.perform(MockMvcRequestBuilders.patch(location)
-            .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content(updatePayload))
         .andExpect(MockMvcResultMatchers.status().isBadRequest());
@@ -601,5 +600,34 @@ public class ApplicationControllerIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload))
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  @Transactional
+  void shouldUnassignCaseworker() throws Exception {
+    CaseworkerEntity caseworker = CaseworkerEntity.builder()
+        .username("caseworker_user")
+        .build();
+    UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
+
+    ApplicationEntity app = ApplicationEntity.builder()
+        .status(ApplicationStatus.SUBMITTED)
+        .caseworker(caseworker)
+        .applicationContent(Map.of("foo", "bar"))
+        .createdAt(Instant.now())
+        .modifiedAt(Instant.now())
+        .build();
+
+    UUID appId = applicationRepository.saveAndFlush(app).getId();
+
+    assertThat(app.getCaseworker().getId()).isEqualTo(caseworkerId);
+
+    mockMvc.perform(
+        MockMvcRequestBuilders.post("/api/v0/applications/" + appId + "/unassign")
+        ).andExpect(status().isOk());
+
+    ApplicationEntity updated = applicationRepository.findById(appId).orElseThrow();
+    assertThat(updated.getCaseworker()).isNull();
   }
 }
