@@ -2,15 +2,19 @@ package uk.gov.justice.laa.dstew.access.mapper;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.uuid.Generators;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
@@ -22,10 +26,12 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
  * All mapping operations are performed safely, throwing an
  * {@link IllegalArgumentException} if JSON conversion fails.
  */
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {IndividualMapper.class})
 public interface ApplicationMapper {
 
-  ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  ObjectMapper objectMapper = new ObjectMapper();
+
+  IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
 
   /**
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
@@ -40,13 +46,17 @@ public interface ApplicationMapper {
     }
 
     ApplicationEntity entity = new ApplicationEntity();
-    entity.setId(Generators.timeBasedEpochGenerator().generate());
     entity.setStatus(req.getStatus());
     entity.setApplicationReference(req.getApplicationReference());
+    var individuals = req.getIndividuals()
+                         .stream()
+                         .map(individualMapper::toIndividualEntity)
+                         .collect(Collectors.toSet());
+    entity.setIndividuals(individuals);
 
     try {
       entity.setApplicationContent(
-          OBJECT_MAPPER.convertValue(req.getApplicationContent(), Map.class));
+          objectMapper.convertValue(req.getApplicationContent(), Map.class));
     } catch (Exception e) {
       throw new IllegalArgumentException(
           "Failed to serialize ApplicationCreateRequest.applicationContent", e);
@@ -69,7 +79,7 @@ public interface ApplicationMapper {
     if (req.getApplicationContent() != null) {
       try {
         entity.setApplicationContent(
-            OBJECT_MAPPER.convertValue(req.getApplicationContent(), Map.class));
+            objectMapper.convertValue(req.getApplicationContent(), Map.class));
       } catch (Exception e) {
         throw new IllegalArgumentException(
             "Failed to serialize ApplicationUpdateRequest.applicationContent", e);
@@ -88,14 +98,29 @@ public interface ApplicationMapper {
     if (entity == null) {
       return null;
     }
+
     try {
-      Application app = new Application();
-      app.setId(entity.getId());
-      app.setApplicationStatus(entity.getStatus());
-      app.setSchemaVersion(entity.getSchemaVersion());
-      app.setApplicationContent(
-          OBJECT_MAPPER.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
-      return app;
+      Application application = new Application();
+      application.setId(entity.getId());
+      application.setApplicationStatus(entity.getStatus());
+      application.setSchemaVersion(entity.getSchemaVersion());
+      application.setApplicationContent(
+          objectMapper.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
+      application.setApplicationReference(entity.getApplicationReference());
+      application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
+      application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
+      application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
+      
+      application.setIndividuals(
+          Optional.ofNullable(entity.getIndividuals())
+              .orElse(Set.of())
+              .stream()
+              .map(individualMapper::toIndividual)
+              .filter(Objects::nonNull)
+              .toList()
+      );
+      
+      return application;
     } catch (Exception e) {
       throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
     }

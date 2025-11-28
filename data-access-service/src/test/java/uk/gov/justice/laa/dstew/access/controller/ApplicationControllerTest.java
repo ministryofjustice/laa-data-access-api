@@ -1,9 +1,9 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,10 +11,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
@@ -24,6 +28,7 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import uk.gov.justice.laa.dstew.access.model.Application;
@@ -47,6 +52,9 @@ class ApplicationControllerTest {
   @Autowired
   private MockMvc mockMvc;
 
+  @Autowired
+  protected ObjectMapper objectMapper;
+
   @MockitoBean
   private ApplicationService applicationService;
 
@@ -63,7 +71,15 @@ class ApplicationControllerTest {
             "status": "SUBMITTED",
             "schemaVersion": 1,
             "applicationContent": { "foo": "bar" },
-            "applicationReference": "app_reference"
+            "applicationReference": "app_reference",
+            "individuals" : [
+              {
+                "firstName" : "John",
+                "lastName" : "Doe",
+                "dateOfBirth" : "2025-11-24",
+                "details" : { "foor" : "bar" }
+              }
+            ]
           }
         """;
 
@@ -115,7 +131,7 @@ class ApplicationControllerTest {
             .build());
     applicationSummaryCollectionResponse.setApplications(applications);
 
-    when(applicationSummaryService.getAllApplications(any(), any(), any(), any())).thenReturn(applications);
+    when(applicationSummaryService.getAllApplications(any(), any(), any(), any(), any(), any())).thenReturn(mock());
     mockMvc
         .perform(get("/api/v0/applications"))
         .andExpect(status().isOk())
@@ -125,18 +141,32 @@ class ApplicationControllerTest {
 
   @Test
   void shouldGetApplication() throws Exception {
-    UUID appId = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
-    when(applicationService.getApplication(any())).thenReturn(
-        Application.builder()
-            .id(appId)
-            .applicationContent(Map.of("foo", "bar"))
-            .build()
-    );
+    OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC).minusDays(3);
+    OffsetDateTime updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
 
-    mockMvc.perform(get("/api/v0/applications/" + appId))
+    var application = Application.builder()
+            .id(UUID.randomUUID())
+            .applicationReference("app_reference")
+            .applicationContent(Map.of("foo", "bar"))
+            .createdAt(createdAt)
+            .updatedAt(updatedAt)
+            .build();
+
+    when(applicationService.getApplication(any())).thenReturn(application);
+
+    MvcResult result = mockMvc.perform(get("/api/v0/applications/" + application.getId()))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.id").value(appId.toString()))
-        .andExpect(jsonPath("$.applicationContent.foo").value("bar"));
+        .andReturn();
+
+    Application resultApplication = deserialise(result, Application.class);
+
+    assertThat(resultApplication)
+            .usingRecursiveComparison()
+            .isEqualTo(application);
+  }
+
+  private <TResponseModel> TResponseModel deserialise(MvcResult result, Class<TResponseModel> clazz) throws Exception {
+    return objectMapper.readValue(result.getResponse().getContentAsString(), clazz);
   }
 }

@@ -1,10 +1,18 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
+
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import org.instancio.Instancio;
+import org.instancio.Select;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -15,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 @ExtendWith(MockitoExtension.class)
@@ -22,6 +31,8 @@ public class ApplicationValidationsTest {
 
   @Mock
   EffectiveAuthorizationProvider mockEntra;
+  @Mock
+  IndividualValidations individualValidator;
 
   @InjectMocks
   ApplicationValidations classUnderTest;
@@ -85,6 +96,48 @@ public class ApplicationValidationsTest {
                                                                .applicationReference("app-ref")
                                                                .build();
     assertDoesNotThrow(() -> classUnderTest.checkApplicationCreateRequest(request));
+  }
+
+  @Test
+  void shouldDelegateIndividualValidationsToIndividualValidator() {
+    var individuals = createIndividuals();
+    ApplicationCreateRequest request = ApplicationCreateRequest.builder()
+                                                               .status(ApplicationStatus.SUBMITTED)
+                                                               .applicationContent(Map.of("foo", "bar"))
+                                                               .applicationReference("app-ref")
+                                                               .individuals(individuals)
+                                                               .build();
+    when(individualValidator.validateIndividual(any(Individual.class)))
+      .thenReturn(ValidationErrors.empty());
+      
+    classUnderTest.checkApplicationCreateRequest(request);
+    
+    individuals.forEach(i -> verify(individualValidator, times(1)).validateIndividual(i));
+  }
+
+  @Test
+  void shouldOnlyReturnUniqueValidationErrors() {
+    ApplicationCreateRequest request = ApplicationCreateRequest.builder()
+                                                               .status(ApplicationStatus.SUBMITTED)
+                                                               .applicationContent(Map.of("foo", "bar"))
+                                                               .applicationReference("app-ref")
+                                                               .individuals(createIndividuals())
+                                                               .build();
+    
+    when(individualValidator.validateIndividual(any(Individual.class)))
+      .thenReturn(ValidationErrors.empty().add("ValidationError").add( "ValidationError"));
+    
+    ValidationException exception = assertThrows(ValidationException.class,  
+        () -> classUnderTest.checkApplicationCreateRequest(request));
+    assertThat(exception.errors()).hasSize(1);
+    assertThat(exception.errors().stream().findFirst().get()).isEqualTo("ValidationError");
+  }
+
+  private static List<Individual> createIndividuals() {
+    return Instancio.ofList(Individual.class)
+                               .size(5)
+                               .set(Select.field(Individual::getDetails), Map.of("",""))
+                               .create();
   }
 
   // --- ApplicationUpdateRequest tests ---

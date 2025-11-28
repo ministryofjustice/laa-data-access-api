@@ -8,6 +8,8 @@ paths:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications"
   /api/v0/applications/{id}:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}"
+  /api/v0/applications/{id}/assign:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1assign"
 
 components:
   schemas:
@@ -21,3 +23,5 @@ components:
       $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationSummaryResponse"
     ApplicationSummary:
       $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationSummary"
+    CaseworkerAssignRequest:
+      $ref: "./open-api-application-specification.yml#/components/schemas/CaseworkerAssignRequest"

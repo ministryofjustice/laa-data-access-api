@@ -1,14 +1,14 @@
 package uk.gov.justice.laa.dstew.access.specification;
 
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import java.util.ArrayList;
-import java.util.List;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.Individual;
 
 /**
  * Defines the filtering of Application Summaries.
@@ -22,8 +22,13 @@ public class ApplicationSummarySpecification {
    */
   public static Specification<ApplicationSummaryEntity> filterBy(
           ApplicationStatus status,
-          String reference) {
-    return isStatus(status).and(isApplicationReference(reference));
+          String reference,
+          String firstName,
+          String lastName) {
+    return isStatus(status)
+            .and(likeApplicationReference(reference))
+            .and(likeFirstName(firstName))
+            .and(likeLastName(lastName));
   }
 
   private static Specification<ApplicationSummaryEntity> isStatus(ApplicationStatus status) {
@@ -35,7 +40,7 @@ public class ApplicationSummarySpecification {
     return Specification.unrestricted();
   }
 
-  private static Specification<ApplicationSummaryEntity> isApplicationReference(String reference) {
+  private static Specification<ApplicationSummaryEntity> likeApplicationReference(String reference) {
     if (reference != null && !reference.isBlank()) {
       return (root, query, builder)
               -> builder.like(builder.lower(root.get("applicationReference")),
@@ -45,4 +50,29 @@ public class ApplicationSummarySpecification {
     return Specification.unrestricted();
   }
 
+  private static Specification<ApplicationSummaryEntity> likeFirstName(String firstName) {
+    if (firstName != null && !firstName.isBlank()) {
+      return (root, query, builder)
+              -> {
+                Join<ApplicationEntity, IndividualEntity> individualsJoin = root.join("individuals", JoinType.INNER);
+                return builder.like(builder.lower(
+                                individualsJoin.get("firstName")),
+                                  "%" + firstName.toLowerCase() + "%");
+      };
+    }
+    return Specification.unrestricted();
+  }
+
+  private static Specification<ApplicationSummaryEntity> likeLastName(String lastName) {
+    if (lastName != null && !lastName.isBlank()) {
+      return (root, query, builder)
+              -> {
+                Join<ApplicationEntity, IndividualEntity> individualsJoin = root.join("individuals", JoinType.INNER);
+                return builder.like(builder.lower(
+                              individualsJoin.get("lastName")),
+                "%" + lastName.toLowerCase() + "%");
+      };
+    }
+    return Specification.unrestricted();
+  }
 }

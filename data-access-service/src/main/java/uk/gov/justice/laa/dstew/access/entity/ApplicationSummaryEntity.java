@@ -2,13 +2,18 @@ package uk.gov.justice.laa.dstew.access.entity;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -43,4 +48,11 @@ public class ApplicationSummaryEntity {
   @Column(name = "modified_at")
   private Instant modifiedAt;
 
+  @ManyToMany(cascade = CascadeType.PERSIST)
+  @JoinTable(
+          name = "linked_individual",
+          joinColumns = @JoinColumn(name = "application_id"),
+          inverseJoinColumns = @JoinColumn(name = "individual_id")
+  )
+  private Set<IndividualEntity> individuals;
 }
