@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -12,7 +11,6 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -27,8 +25,6 @@ import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryPage;
-import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
 
@@ -109,7 +105,7 @@ public class ApplicationSummaryServiceTest {
     when(mapper.toApplicationSummary(entities.getFirst())).thenReturn(summaries.getFirst());
     when(mapper.toApplicationSummary(entities.get(1))).thenReturn(summaries.get(1));
 
-    ApplicationSummaryPage result =
+    var result =
         classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS,
                 "",
                 "",
@@ -118,10 +114,10 @@ public class ApplicationSummaryServiceTest {
                 pageDetails.getPageSize());
 
     // Verify results
-    assertEquals(2, result.getTotalItems());
-    assertThat(result.getApplications()).hasSize(2);
-    assertThat(result.getApplications().get(0).getApplicationId()).isEqualTo(entities.getFirst().getId());
-    assertThat(result.getApplications().get(1).getApplicationId()).isEqualTo(entities.get(1).getId());
+    List<ApplicationSummary> applicationsReturned = result.stream().toList();
+    assertEquals(2, result.getTotalElements());
+    assertThat(applicationsReturned.get(0).getApplicationId()).isEqualTo(entities.getFirst().getId());
+    assertThat(applicationsReturned.get(1).getApplicationId()).isEqualTo(entities.get(1).getId());
   }
 
   @Test
@@ -142,7 +138,7 @@ public class ApplicationSummaryServiceTest {
     when(mapper.toApplicationSummary(entities.getFirst())).thenReturn(summaries.getFirst());
     when(mapper.toApplicationSummary(entities.get(1))).thenReturn(summaries.get(1));
 
-    ApplicationSummaryPage result =
+    var result =
             classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS,
                     null,
                     null,
@@ -151,10 +147,10 @@ public class ApplicationSummaryServiceTest {
                     pageDetails.getPageSize());
 
     // Verify results
-    assertEquals(2, result.getTotalItems());
-    assertThat(result.getApplications()).hasSize(2);
-    assertThat(result.getApplications().get(0).getApplicationId()).isEqualTo(entities.getFirst().getId());
-    assertThat(result.getApplications().get(1).getApplicationId()).isEqualTo(entities.get(1).getId());
+    List<ApplicationSummary> applicationsReturned = result.stream().toList();
+    assertEquals(2, result.getTotalElements());
+    assertThat(applicationsReturned.get(0).getApplicationId()).isEqualTo(entities.getFirst().getId());
+    assertThat(applicationsReturned.get(1).getApplicationId()).isEqualTo(entities.get(1).getId());
   }
 
   @Test
@@ -175,7 +171,7 @@ public class ApplicationSummaryServiceTest {
     when(mapper.toApplicationSummary(entities.getFirst())).thenReturn(summaries.getFirst());
     when(mapper.toApplicationSummary(entities.get(1))).thenReturn(summaries.get(1));
 
-    ApplicationSummaryPage result =
+    var result =
             classUnderTest.getAllApplications(null,
                     "appref",
                     null,
@@ -184,10 +180,10 @@ public class ApplicationSummaryServiceTest {
                     pageDetails.getPageSize());
 
     // Verify results
-    assertEquals(2, result.getTotalItems());
-    assertThat(result.getApplications()).hasSize(2);
-    assertThat(result.getApplications().get(0).getApplicationId()).isEqualTo(entities.getFirst().getId());
-    assertThat(result.getApplications().get(1).getApplicationId()).isEqualTo(entities.get(1).getId());
+    List<ApplicationSummary> applicationsReturned = result.stream().toList();
+    assertEquals(2, result.getTotalElements());
+    assertThat(applicationsReturned.get(0).getApplicationId()).isEqualTo(entities.getFirst().getId());
+    assertThat(applicationsReturned.get(1).getApplicationId()).isEqualTo(entities.get(1).getId());
   }
 
   @Test
@@ -208,7 +204,7 @@ public class ApplicationSummaryServiceTest {
     when(mapper.toApplicationSummary(entities.getFirst())).thenReturn(summaries.getFirst());
     when(mapper.toApplicationSummary(entities.get(1))).thenReturn(summaries.get(1));
 
-    ApplicationSummaryPage result =
+    var result =
             classUnderTest.getAllApplications(null,
                     null,
                     "Dave",
@@ -217,10 +213,10 @@ public class ApplicationSummaryServiceTest {
                     pageDetails.getPageSize());
 
     // Verify results
-    assertEquals(2, result.getTotalItems());
-    assertThat(result.getApplications()).hasSize(2);
-    assertThat(result.getApplications().get(0).getApplicationId()).isEqualTo(entities.getFirst().getId());
-    assertThat(result.getApplications().get(1).getApplicationId()).isEqualTo(entities.get(1).getId());
+    List<ApplicationSummary> applicationsReturned = result.stream().toList();
+    assertEquals(2, result.getTotalElements());
+    assertThat(applicationsReturned.get(0).getApplicationId()).isEqualTo(entities.getFirst().getId());
+    assertThat(applicationsReturned.get(1).getApplicationId()).isEqualTo(entities.get(1).getId());
   }
 
   @Test
@@ -241,7 +237,7 @@ public class ApplicationSummaryServiceTest {
     when(mapper.toApplicationSummary(entities.getFirst())).thenReturn(summaries.getFirst());
     when(mapper.toApplicationSummary(entities.get(1))).thenReturn(summaries.get(1));
 
-    ApplicationSummaryPage result =
+    var result =
             classUnderTest.getAllApplications(null,
                     null,
                     null,
@@ -249,10 +245,11 @@ public class ApplicationSummaryServiceTest {
                     pageDetails.getPageNumber(),
                     pageDetails.getPageSize());
 
+
     // Verify results
-    assertEquals(2, result.getTotalItems());
-    assertThat(result.getApplications()).hasSize(2);
-    assertThat(result.getApplications().get(0).getApplicationId()).isEqualTo(entities.getFirst().getId());
-    assertThat(result.getApplications().get(1).getApplicationId()).isEqualTo(entities.get(1).getId());
+    List<ApplicationSummary> applicationsReturned = result.stream().toList();
+    assertEquals(2, result.getTotalElements());
+    assertThat(applicationsReturned.get(0).getApplicationId()).isEqualTo(entities.getFirst().getId());
+    assertThat(applicationsReturned.get(1).getApplicationId()).isEqualTo(entities.get(1).getId());
   }
 }

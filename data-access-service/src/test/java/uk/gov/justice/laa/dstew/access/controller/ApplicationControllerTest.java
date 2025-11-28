@@ -3,8 +3,7 @@ package uk.gov.justice.laa.dstew.access.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,7 +33,6 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryPage;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
@@ -133,10 +131,7 @@ class ApplicationControllerTest {
             .build());
     applicationSummaryCollectionResponse.setApplications(applications);
 
-    ApplicationSummaryPage applicationSummaryPage = new ApplicationSummaryPage();
-    applicationSummaryPage.setApplications(applications);
-    applicationSummaryPage.setTotalItems(2L);
-    when(applicationSummaryService.getAllApplications(any(), any(), any(), any(), any(), any())).thenReturn(applicationSummaryPage);
+    when(applicationSummaryService.getAllApplications(any(), any(), any(), any(), any(), any())).thenReturn(mock());
     mockMvc
         .perform(get("/api/v0/applications"))
         .andExpect(status().isOk())

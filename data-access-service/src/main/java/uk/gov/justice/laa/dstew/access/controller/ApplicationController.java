@@ -1,8 +1,10 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -10,7 +12,7 @@ import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryPage;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponsePaging;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
@@ -58,7 +60,7 @@ public class ApplicationController implements ApplicationApi {
           Integer page,
           Integer pageSize) {
 
-    ApplicationSummaryPage applicationsReturned =
+    Page<ApplicationSummary> applicationsReturned =
             summaryService.getAllApplications(
                     status,
                     reference,
@@ -68,11 +70,12 @@ public class ApplicationController implements ApplicationApi {
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
     ApplicationSummaryResponsePaging responsePageDetails = new ApplicationSummaryResponsePaging();
     response.setPaging(responsePageDetails);
-    response.setApplications(applicationsReturned.getApplications());
+    List<ApplicationSummary> applications = applicationsReturned.stream().toList();
+    response.setApplications(applications);
     responsePageDetails.setPage(page);
     responsePageDetails.pageSize(pageSize);
-    responsePageDetails.totalRecords((int) applicationsReturned.getTotalItems());
-    responsePageDetails.itemsReturned(applicationsReturned.getApplications().size());
+    responsePageDetails.totalRecords((int) applicationsReturned.getTotalElements());
+    responsePageDetails.itemsReturned(applications.size());
 
     return ResponseEntity.ok(response);
   }
