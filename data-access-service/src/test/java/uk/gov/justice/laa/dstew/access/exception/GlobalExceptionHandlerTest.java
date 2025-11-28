@@ -26,6 +26,16 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
+  void handleCaseworkerNotFound_returnsNotFoundStatusAndErrorMessage() {
+    var result = globalExceptionHandler.handleCaseworkerNotFound(new CaseworkerNotFoundException("Caseworker not found"));
+
+    assertThat(result).isNotNull();
+    assertThat(result.getStatusCode()).isEqualTo(NOT_FOUND);
+    assertThat(result.getBody()).isNotNull();
+    assertThat(result.getBody().getDetail()).isEqualTo("Caseworker not found");
+  }
+
+  @Test
   void handleValidationException_returnsBadRequestStatusAndErrors() {
     var result = globalExceptionHandler.handleValidationException(new ValidationException(List.of("error1")));
 

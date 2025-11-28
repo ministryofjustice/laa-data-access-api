@@ -11,3 +11,4 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 @Repository
 public interface ApplicationRepository extends JpaRepository<ApplicationEntity, UUID> {
 }
+
