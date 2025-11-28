@@ -174,6 +174,29 @@ public class ApplicationService {
   }
 
   /**
+   * Unassigns a caseworker from an application.
+   *
+   * @param applicationId the UUID of the application to update
+   * @throws ApplicationNotFoundException   if the application does not exist
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  public void unassignCaseworker(final UUID applicationId) {
+    final ApplicationEntity entity = applicationRepository.findById(applicationId)
+        .orElseThrow(() -> new ApplicationNotFoundException(
+            String.format("No application found with id: %s", applicationId)
+        ));
+
+    if (entity.getCaseworker() == null) {
+      return;
+    }
+
+    entity.setCaseworker(null);
+    entity.setModifiedAt(Instant.now());
+
+    applicationRepository.save(entity);
+  }
+
+  /**
    * Populate target object with field values from a map.
    *
    * @param target object to populate

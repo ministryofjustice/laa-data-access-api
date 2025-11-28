@@ -10,6 +10,8 @@ paths:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}"
   /api/v0/applications/{id}/assign:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1assign"
+  /api/v0/applications/{id}/unassign:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1unassign"
 
 components:
   schemas:
