@@ -21,8 +21,6 @@ import uk.gov.justice.laa.dstew.access.utils.factory.ApplicationEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.testData.ApplicationTestData;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
