@@ -512,6 +512,44 @@ public class ApplicationControllerIntegrationTest {
   @Test
   @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
   @Transactional
+  void shouldReAssignCaseworker() throws Exception {
+    CaseworkerEntity caseworker = CaseworkerEntity.builder()
+        .username("caseworker_user")
+        .build();
+    CaseworkerEntity caseworkerOther = CaseworkerEntity.builder()
+        .username("caseworker_user_other")
+        .build();
+    UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
+    UUID caseworkerOtherId = caseworkerRepository.saveAndFlush(caseworkerOther).getId();
+
+    ApplicationEntity app = ApplicationEntity.builder()
+        .status(ApplicationStatus.SUBMITTED)
+        .caseworker(caseworker)
+        .applicationContent(Map.of("foo", "bar"))
+        .createdAt(Instant.now())
+        .modifiedAt(Instant.now())
+        .build();
+
+    assertThat(app.getCaseworker().getId()).isEqualTo(caseworkerId);
+
+    UUID appId = applicationRepository.saveAndFlush(app).getId();
+
+    String payload = "{ \"caseworkerId\": \"" + caseworkerOtherId + "\" }";
+
+    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/" + appId + "/assign")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+        .andExpect(status().isOk());
+
+    ApplicationEntity updated = applicationRepository.findById(appId).orElseThrow();
+    assertThat(updated.getCaseworker()).isNotNull();
+    assertThat(updated.getCaseworker().getId()).isEqualTo(caseworkerOtherId);
+  }
+
+  @Test
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  @Transactional
   void shouldReturn404WhenAssigningToNonExistentApplication() throws Exception {
     UUID missingAppId = UUID.randomUUID();
 
