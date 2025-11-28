@@ -25,13 +25,13 @@ public class ApplicationSummarySpecification {
           String reference,
           String firstName,
           String lastName) {
-    return isStatus(status)
-            .and(isApplicationReference(reference))
-            .and(isFirstName(firstName))
-            .and(isLastName(lastName));
+    return likeStatus(status)
+            .and(likeApplicationReference(reference))
+            .and(likeFirstName(firstName))
+            .and(likeLastName(lastName));
   }
 
-  private static Specification<ApplicationSummaryEntity> isStatus(ApplicationStatus status) {
+  private static Specification<ApplicationSummaryEntity> likeStatus(ApplicationStatus status) {
     if (status != null) {
       return (root, query, builder)
               -> builder.equal(root.get("status"), status);
@@ -40,7 +40,7 @@ public class ApplicationSummarySpecification {
     return Specification.unrestricted();
   }
 
-  private static Specification<ApplicationSummaryEntity> isApplicationReference(String reference) {
+  private static Specification<ApplicationSummaryEntity> likeApplicationReference(String reference) {
     if (reference != null && !reference.isBlank()) {
       return (root, query, builder)
               -> builder.like(builder.lower(root.get("applicationReference")),
@@ -50,7 +50,7 @@ public class ApplicationSummarySpecification {
     return Specification.unrestricted();
   }
 
-  private static Specification<ApplicationSummaryEntity> isFirstName(String firstName) {
+  private static Specification<ApplicationSummaryEntity> likeFirstName(String firstName) {
     if (firstName != null && !firstName.isBlank()) {
       return (root, query, builder)
               -> {
@@ -63,7 +63,7 @@ public class ApplicationSummarySpecification {
     return Specification.unrestricted();
   }
 
-  private static Specification<ApplicationSummaryEntity> isLastName(String lastName) {
+  private static Specification<ApplicationSummaryEntity> likeLastName(String lastName) {
     if (lastName != null && !lastName.isBlank()) {
       return (root, query, builder)
               -> {
