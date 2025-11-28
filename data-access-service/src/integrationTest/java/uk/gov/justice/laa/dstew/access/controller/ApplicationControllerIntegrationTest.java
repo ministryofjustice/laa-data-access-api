@@ -291,7 +291,6 @@ public class ApplicationControllerIntegrationTest {
   void shouldUpdateApplication_withContentAndStatus() throws Exception {
     String createPayload = buildApplicationJson();
     String location = mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications")
-            .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content(createPayload))
         .andExpect(MockMvcResultMatchers.status().isCreated())
@@ -307,7 +306,6 @@ public class ApplicationControllerIntegrationTest {
         + "}";
 
     mockMvc.perform(MockMvcRequestBuilders.patch(location)
-            .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content(updatePayload))
         .andExpect(MockMvcResultMatchers.status().isNoContent());
@@ -326,7 +324,6 @@ public class ApplicationControllerIntegrationTest {
   void shouldUpdateApplication_withContentOnly_statusUnchanged() throws Exception {
     String createPayload = buildApplicationJson();
     String location = mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications")
-            .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content(createPayload))
         .andExpect(MockMvcResultMatchers.status().isCreated())
@@ -339,7 +336,6 @@ public class ApplicationControllerIntegrationTest {
     String updatePayload = "{ \"applicationContent\": {\"first_name\": \"Alice\", \"last_name\": \"Wonder\"} }";
 
     mockMvc.perform(MockMvcRequestBuilders.patch(location)
-            .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content(updatePayload))
         .andExpect(MockMvcResultMatchers.status().isNoContent());
@@ -357,7 +353,6 @@ public class ApplicationControllerIntegrationTest {
   void shouldFailUpdate_whenApplicationContentIsNull() throws Exception {
     String createPayload = buildApplicationJson();
     String location = mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications")
-            .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content(createPayload))
         .andExpect(MockMvcResultMatchers.status().isCreated())
@@ -370,7 +365,6 @@ public class ApplicationControllerIntegrationTest {
     String updatePayload = "{ \"applicationContent\": null }";
 
     mockMvc.perform(MockMvcRequestBuilders.patch(location)
-            .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content(updatePayload))
         .andExpect(MockMvcResultMatchers.status().isBadRequest());
@@ -382,7 +376,6 @@ public class ApplicationControllerIntegrationTest {
   void shouldFailUpdate_whenApplicationContentIsEmpty() throws Exception {
     String createPayload = buildApplicationJson();
     String location = mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications")
-            .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content(createPayload))
         .andExpect(MockMvcResultMatchers.status().isCreated())
@@ -499,7 +492,6 @@ public class ApplicationControllerIntegrationTest {
     String payload = "{ \"caseworkerId\": \"" + caseworkerId + "\" }";
 
     mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/" + appId + "/assign")
-            .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload))
         .andExpect(status().isOk());
@@ -537,7 +529,6 @@ public class ApplicationControllerIntegrationTest {
     String payload = "{ \"caseworkerId\": \"" + caseworkerOtherId + "\" }";
 
     mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/" + appId + "/assign")
-            .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload))
         .andExpect(status().isOk());
@@ -561,7 +552,6 @@ public class ApplicationControllerIntegrationTest {
     String payload = "{ \"caseworkerId\": \"" + caseworkerId + "\" }";
 
     mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/" + missingAppId + "/assign")
-            .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload))
         .andExpect(status().isNotFound())
@@ -585,7 +575,6 @@ public class ApplicationControllerIntegrationTest {
     String payload = "{ \"caseworkerId\": \"" + missingCwId + "\" }";
 
     mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/" + appId + "/assign")
-            .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload))
         .andExpect(status().isNotFound())
@@ -609,7 +598,6 @@ public class ApplicationControllerIntegrationTest {
     String payload = "{}";
 
     mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/" + appId + "/assign")
-            .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload))
         .andExpect(status().isBadRequest());

@@ -35,6 +35,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   }
 
   /**
+   * The handler for CaseworkerNotFoundException.
+   *
+   * @param exception the exception.
+   * @return the response with exception message.
+   */
+  @ExceptionHandler(CaseworkerNotFoundException.class)
+  public ResponseEntity<ProblemDetail> handleCaseworkerNotFound(CaseworkerNotFoundException exception) {
+    final var pd = ProblemDetail.forStatus(NOT_FOUND);
+    pd.setTitle("Not found");
+    pd.setDetail(exception.getMessage());
+    return ResponseEntity.status(NOT_FOUND).body(pd);
+  }
+
+  /**
    * The handler for ViolationException.
    *
    * @param exception the exception.
