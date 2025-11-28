@@ -25,13 +25,13 @@ public class ApplicationSummarySpecification {
           String reference,
           String firstName,
           String lastName) {
-    return likeStatus(status)
+    return isStatus(status)
             .and(likeApplicationReference(reference))
             .and(likeFirstName(firstName))
             .and(likeLastName(lastName));
   }
 
-  private static Specification<ApplicationSummaryEntity> likeStatus(ApplicationStatus status) {
+  private static Specification<ApplicationSummaryEntity> isStatus(ApplicationStatus status) {
     if (status != null) {
       return (root, query, builder)
               -> builder.equal(root.get("status"), status);
