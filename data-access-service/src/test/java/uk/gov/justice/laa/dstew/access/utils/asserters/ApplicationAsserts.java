@@ -15,11 +15,15 @@ public class ApplicationAsserts {
         assertEquals(expected.size(), actual.size());
     }
 
-    public static void assertApplicationEqual(ApplicationEntity expected, ApplicationEntity actual) {
+    public static void assertApplicationsEqualAndIgnore(ApplicationEntity expected, ApplicationEntity actual, String... ignoreMe) {
         assertThat(expected)
                 .usingRecursiveComparison()
-                .ignoringFields("createdAt", "modifiedAt")
+                .ignoringFields(ignoreMe)
                 .isEqualTo(actual);
+    }
+
+    public static void assertApplicationEqual(ApplicationEntity expected, ApplicationEntity actual) {
+        assertApplicationsEqualAndIgnore(expected, actual, "createdAt", "modifiedAt");
     }
 
     // TODO: check whether we align status and applicationStatus.
