@@ -38,11 +38,4 @@ public class ApplicationAsserts {
                 .ignoringFields("id", "createdAt", "modifiedAt", "status")
                 .isEqualTo(actual);
     }
-
-    public static void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual) {
-        assertThat(expected)
-                .usingRecursiveComparison()
-                .ignoringFields("id", "createdAt", "modifiedAt", "status")
-                .isEqualTo(actual);
-    }
 }
