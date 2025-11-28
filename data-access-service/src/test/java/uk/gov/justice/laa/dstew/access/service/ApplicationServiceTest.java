@@ -7,7 +7,6 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -16,13 +15,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
 
@@ -34,6 +36,8 @@ public class ApplicationServiceTest {
 
   @Mock
   private ApplicationRepository repository;
+  @Mock
+  private CaseworkerRepository caseworkerRepository;
   @Mock
   private ApplicationValidations validator;
   @Mock
@@ -105,6 +109,27 @@ public class ApplicationServiceTest {
 
     Application result = service.getApplication(id);
     assertThat(result).isNotNull();
+  }
+
+  @Test
+  void shouldAssignCaseworkerToApplication() {
+    UUID appId = UUID.randomUUID();
+    UUID cwId = UUID.randomUUID();
+
+    ApplicationEntity appEntity = new ApplicationEntity();
+    appEntity.setId(appId);
+
+    CaseworkerEntity caseworker = new CaseworkerEntity();
+    caseworker.setId(cwId);
+
+    when(repository.findById(appId)).thenReturn(Optional.of(appEntity));
+    when(caseworkerRepository.findById(cwId)).thenReturn(Optional.of(caseworker));
+    service.assignCaseworker(appId, cwId);
+
+    assertThat(appEntity.getCaseworker()).isEqualTo(caseworker);
+    assertThat(appEntity.getModifiedAt()).isNotNull();
+
+    verify(repository).save(appEntity);
   }
 
 }
