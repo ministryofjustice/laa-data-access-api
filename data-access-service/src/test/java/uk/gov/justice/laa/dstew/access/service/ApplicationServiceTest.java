@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.CaseworkerNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
@@ -130,6 +131,18 @@ public class ApplicationServiceTest {
     assertThat(appEntity.getModifiedAt()).isNotNull();
 
     verify(repository).save(appEntity);
+  }
+
+  @Test
+  void shouldThrowExceptionWhenCaseworkerNotFound() {
+    UUID appId = UUID.randomUUID();
+    UUID cwId = UUID.randomUUID();
+
+    when(repository.findById(appId)).thenReturn(Optional.of(new ApplicationEntity()));
+    when(caseworkerRepository.findById(cwId)).thenReturn(Optional.empty());
+
+    assertThrows(CaseworkerNotFoundException.class,
+        () -> service.assignCaseworker(appId, cwId));
   }
 
 }
