@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -54,19 +55,27 @@ public class ApplicationController implements ApplicationApi {
   public ResponseEntity<ApplicationSummaryResponse> getApplications(
           ApplicationStatus status,
           String reference,
+          String firstName,
+          String lastName,
           Integer page,
           Integer pageSize) {
 
-    List<ApplicationSummary> applicationsReturned =
-            summaryService.getAllApplications(status, reference, page, pageSize);
+    Page<ApplicationSummary> applicationsReturned =
+            summaryService.getAllApplications(
+                    status,
+                    reference,
+                    firstName,
+                    lastName,
+                    page, pageSize);
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
     ApplicationSummaryResponsePaging responsePageDetails = new ApplicationSummaryResponsePaging();
     response.setPaging(responsePageDetails);
-    response.setApplications(applicationsReturned);
+    List<ApplicationSummary> applications = applicationsReturned.stream().toList();
+    response.setApplications(applications);
     responsePageDetails.setPage(page);
     responsePageDetails.pageSize(pageSize);
-    responsePageDetails.totalRecords((int) summaryService.getAllApplicationsTotal(status, reference));
-    responsePageDetails.itemsReturned(applicationsReturned.size());
+    responsePageDetails.totalRecords((int) applicationsReturned.getTotalElements());
+    responsePageDetails.itemsReturned(applications.size());
 
     return ResponseEntity.ok(response);
   }

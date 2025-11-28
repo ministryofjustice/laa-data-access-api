@@ -22,6 +22,16 @@ paths:
           schema:
             type: string
         - in: query
+          name: firstname
+          description: The linked individuals first name
+          schema:
+            type: string
+        - in: query
+          name: lastname
+          description: The linked individuals last name
+          schema:
+            type: string
+        - in: query
           name: page
           description: page number of data to be returned
           schema:
