@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,12 +12,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
-
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 
 @ExtendWith(MockitoExtension.class)

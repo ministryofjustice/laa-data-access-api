@@ -6,9 +6,7 @@ import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.Individual;
 
 /**
  * Defines the filtering of Application Summaries.
