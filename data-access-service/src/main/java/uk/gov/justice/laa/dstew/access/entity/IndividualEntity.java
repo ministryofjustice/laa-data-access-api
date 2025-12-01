@@ -1,12 +1,13 @@
 package uk.gov.justice.laa.dstew.access.entity;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.vladmihalcea.hibernate.type.json.JsonType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -38,6 +39,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 public class IndividualEntity  implements AuditableEntity {
   @Id
   @Column(columnDefinition = "UUID")
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
   private UUID id;
 
   @Column(name = "first_name", nullable = false)

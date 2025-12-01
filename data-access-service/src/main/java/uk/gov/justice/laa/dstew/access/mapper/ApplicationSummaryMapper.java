@@ -30,6 +30,10 @@ public interface ApplicationSummaryMapper {
       app.setApplicationId(applicationSummaryEntity.getId());
       app.setApplicationStatus(applicationSummaryEntity.getStatus());
       app.setApplicationReference(applicationSummaryEntity.getApplicationReference());
+      app.setAssignedTo(applicationSummaryEntity.getCaseworker() != null 
+                        ? 
+                        applicationSummaryEntity.getCaseworker().getId() : 
+                        null);
       app.setCreatedAt(applicationSummaryEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
       app.setModifiedAt(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
       return app;
