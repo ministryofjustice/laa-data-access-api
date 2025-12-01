@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
-import java.util.List;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 

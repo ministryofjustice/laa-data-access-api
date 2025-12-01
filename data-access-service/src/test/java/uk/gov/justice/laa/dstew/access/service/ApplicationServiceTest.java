@@ -2,6 +2,8 @@ package uk.gov.justice.laa.dstew.access.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,7 +25,6 @@ import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
@@ -143,6 +144,51 @@ public class ApplicationServiceTest {
 
     assertThrows(CaseworkerNotFoundException.class,
         () -> service.assignCaseworker(appId, cwId));
+  }
+
+  @Test
+  void shouldUnassignCaseworker_whenAssigned() {
+    UUID appId = UUID.randomUUID();
+    ApplicationEntity entity = new ApplicationEntity();
+    entity.setId(appId);
+
+    CaseworkerEntity cw = new CaseworkerEntity();
+    cw.setId(UUID.randomUUID());
+    entity.setCaseworker(cw);
+
+    when(repository.findById(appId)).thenReturn(Optional.of(entity));
+
+    service.unassignCaseworker(appId);
+
+    assertThat(entity.getCaseworker()).isNull();
+    verify(repository).save(entity);
+  }
+
+  @Test
+  void shouldNotSave_whenAlreadyUnassigned() {
+    UUID appId = UUID.randomUUID();
+    ApplicationEntity entity = new ApplicationEntity();
+    entity.setId(appId);
+
+    // noop
+    entity.setCaseworker(null);
+
+    when(repository.findById(appId)).thenReturn(Optional.of(entity));
+
+    service.unassignCaseworker(appId);
+
+    verify(repository).findById(appId);
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldThrowException_whenAppNotFound() {
+    UUID appId = UUID.randomUUID();
+
+    when(repository.findById(appId)).thenReturn(Optional.empty());
+
+    assertThrows(ApplicationNotFoundException.class,
+        () -> service.unassignCaseworker(appId));
   }
 
 }
