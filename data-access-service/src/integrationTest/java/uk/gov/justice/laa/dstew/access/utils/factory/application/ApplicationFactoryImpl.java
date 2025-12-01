@@ -2,10 +2,13 @@ package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
 import java.time.InstantSource;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Consumer;
 
@@ -14,18 +17,25 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
 
     @Override
     public ApplicationEntity create() {
-        ApplicationEntity entity = ApplicationEntity.builder()
-                .createdAt(InstantSource.system().instant())
-                .id(UUID.randomUUID())
-                .status(ApplicationStatus.IN_PROGRESS)
-                .modifiedAt(InstantSource.system().instant())
+
+        IndividualEntity individualEntity = IndividualEntity.builder()
+                .firstName("John")
+                .lastName("Doe")
+                .dateOfBirth(LocalDate.now())
+                .individualContent(Map.of(
+                        "test", "content"
+                ))
                 .build();
 
-        Map<String, Object> appContent = new HashMap<>();
-        appContent.put("test", "content");
-        entity.setApplicationContent(appContent);
-
-        return entity;
+        return ApplicationEntity.builder()
+                .createdAt(InstantSource.system().instant())
+                .status(ApplicationStatus.IN_PROGRESS)
+                .modifiedAt(InstantSource.system().instant())
+                .individuals(Set.of(individualEntity))
+                .applicationContent(Map.of(
+                        "test", "content"
+                ))
+                .build();
     }
 
     @Override

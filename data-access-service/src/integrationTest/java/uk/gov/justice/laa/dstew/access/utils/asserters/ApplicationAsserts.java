@@ -12,10 +12,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class ApplicationAsserts {
 
-    public static void assertApplicationsEqual(List<ApplicationEntity> expected, List<Application> actual) {
-        assertEquals(expected.size(), actual.size());
-    }
-
     public static void assertApplicationEqual(ApplicationEntity expected, ApplicationEntity actual) {
         assertThat(expected)
                 .usingRecursiveComparison()
@@ -25,19 +21,35 @@ public class ApplicationAsserts {
 
     // TODO: check whether we align status and applicationStatus.
     public static void assertApplicationEqual(ApplicationEntity expected, Application actual) {
+
         assertEquals(expected.getId(), actual.getId());
+
         assertThat(expected)
                 .usingRecursiveComparison()
-                .ignoringFields("id", "createdAt", "modifiedAt", "applicationReference", "status")
+                .ignoringCollectionOrder()
+                .ignoringFields("id", "createdAt", "modifiedAt", "status", "caseworker", "individuals")
                 .isEqualTo(actual);
+
         assertEquals(expected.getStatus(), actual.getApplicationStatus());
+
+        assertThat(expected.getIndividuals())
+                .usingRecursiveComparison()
+                .ignoringCollectionOrder()
+                .ignoringFields("id", "createdAt", "modifiedAt", "individualContent")
+                .isEqualTo(actual.getIndividuals());
     }
 
     public static void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual) {
         assertThat(expected)
                 .usingRecursiveComparison()
-                .ignoringFields("id", "createdAt", "modifiedAt", "status")
+                .ignoringFields("id", "createdAt", "modifiedAt", "status", "individuals")
                 .isEqualTo(actual);
+
+        assertThat(expected.getIndividuals())
+                .usingRecursiveComparison()
+                .ignoringCollectionOrder()
+                .ignoringFields("id", "createdAt", "modifiedAt", "details")
+                .isEqualTo(actual.getIndividuals());
     }
 
     public static void assertApplicationEqual(ApplicationEntity expected, ApplicationSummary actual) {
