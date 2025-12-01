@@ -436,5 +436,61 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertThat(actual.getPaging().getItemsReturned()).isEqualTo(10);
             assertApplicationListsEqual(expectedApplications.subList(10, 20), actual.getApplications());
         }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        void givenTwentyApplicationsInProgressAndFilterForSubmitted_whenGetAllCalled_thenNoRecordsReturned() throws Exception {
+            // given
+            persistedApplicationFactory.createAndPersistMultiple(20, builder -> {
+                builder.status(ApplicationStatus.IN_PROGRESS);
+            });
+
+            // when
+            MvcResult result = getUri(new GetAllApplicationsURIBuilder()
+                    .withStatusFilter(ApplicationStatus.SUBMITTED)
+                    .build());
+            ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+            // then
+            assertContentHeaders(result);
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+            assertThat(actual.getPaging().getTotalRecords())
+                    .isEqualTo(0);
+            assertThat(actual.getPaging().getPageSize()).isEqualTo(10);
+            assertThat(actual.getPaging().getPage()).isEqualTo(0);
+            assertThat(actual.getPaging().getItemsReturned()).isEqualTo(0);
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        void givenTwentyApplicationsAndPageSizeOfTwenty_whenGetAllCalled_thenTwentyRecordsReturned() throws Exception {
+            // given
+            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(20, builder -> {
+                builder.status(ApplicationStatus.IN_PROGRESS);
+            });
+            persistedApplicationFactory.createAndPersistMultiple(10, builder -> {
+                builder.status(ApplicationStatus.SUBMITTED);
+            });
+
+            // when
+            MvcResult result = getUri(new GetAllApplicationsURIBuilder()
+                    .withPageSize(20)
+                    .build());
+            ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+            // then
+            assertContentHeaders(result);
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+            assertThat(actual.getPaging().getTotalRecords())
+                    .isEqualTo(30);
+            assertThat(actual.getPaging().getPageSize()).isEqualTo(20);
+            assertThat(actual.getPaging().getPage()).isEqualTo(0);
+            assertThat(actual.getPaging().getItemsReturned()).isEqualTo(20);
+            assertApplicationListsEqual(expectedApplications, actual.getApplications());
+        }
     }
 }
