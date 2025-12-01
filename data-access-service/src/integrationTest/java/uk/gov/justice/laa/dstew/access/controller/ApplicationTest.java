@@ -16,16 +16,22 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.uriBuilders.GetAllApplicationsURIBuilder;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ApplicationAsserts.assertApplicationEqual;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ApplicationAsserts.assertApplicationListsEqual;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
 @ActiveProfiles("test")
@@ -138,20 +144,20 @@ public class ApplicationTest extends BaseIntegrationTest {
         public void givenData_whenCallingCreateData_thenCreatedWithOK() throws Exception {
 
             // given
-            ApplicationCreateRequest request = applicationCreateRequestFactory.create();
+            ApplicationCreateRequest expected = applicationCreateRequestFactory.create();
 
             // when
-            MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+            MvcResult response = postUri(TestConstants.URIs.CREATE_APPLICATION, expected);
 
             // then
-            assertSecurityHeaders(result);
-            assertCreated(result);
+            assertSecurityHeaders(response);
+            assertCreated(response);
 
             UUID storedId = UUID.fromString(HeaderUtils.GetUUIDFromLocation(
-                    result.getResponse().getHeader("Location")
+                    response.getResponse().getHeader("Location")
             ));
-            ApplicationEntity stored = applicationRepository.findById(storedId).orElseThrow(() -> new ApplicationNotFoundException(storedId.toString()));
-            assertApplicationEqual(request, stored);
+            ApplicationEntity actual = applicationRepository.findById(storedId).orElseThrow(() -> new ApplicationNotFoundException(storedId.toString()));
+            assertApplicationEqual(expected, actual);
         }
 
         // TODO: think about how a status outside of the range of the Enum can be sent. Can a client actually do this anyway?
@@ -287,5 +293,148 @@ public class ApplicationTest extends BaseIntegrationTest {
 
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-    class GetAllApplications {}
+    class GetAllApplications {
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        void givenSevenApplications_whenGetAllCalled_thenReturnPageOfSevenApplicationsCorrectly() throws Exception {
+            // given
+            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(7, builder -> {
+                builder.status(ApplicationStatus.IN_PROGRESS);
+            });
+
+            // when
+            MvcResult result = getUri(TestConstants.URIs.GET_ALL_APPLICATIONS);
+            ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+            // then
+            assertContentHeaders(result);
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+            assertThat(actual.getPaging().getTotalRecords())
+                    .isEqualTo(expectedApplications.size());
+            assertThat(actual.getPaging().getPageSize()).isEqualTo(10);
+            assertThat(actual.getPaging().getPage()).isEqualTo(0);
+            assertThat(actual.getPaging().getItemsReturned()).isEqualTo(7);
+            assertApplicationListsEqual(expectedApplications, actual.getApplications());
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        void givenTwentyApplications_whenGetAllCalled_thenReturnPageOfTenApplications() throws Exception {
+            // given
+            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(10, builder -> {
+                builder.status(ApplicationStatus.IN_PROGRESS);
+            });
+            List<ApplicationEntity> unexpectedApplications = persistedApplicationFactory.createAndPersistMultiple(10, builder -> {
+                builder.status(ApplicationStatus.SUBMITTED);
+            });
+
+            // when
+            MvcResult result = getUri(TestConstants.URIs.GET_ALL_APPLICATIONS);
+            ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+            // then
+            assertContentHeaders(result);
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+            assertThat(actual.getPaging().getTotalRecords())
+                    .isEqualTo(expectedApplications.size() + unexpectedApplications.size());
+            assertThat(actual.getPaging().getPageSize()).isEqualTo(10);
+            assertThat(actual.getPaging().getPage()).isEqualTo(0);
+            assertThat(actual.getPaging().getItemsReturned()).isEqualTo(10);
+            assertApplicationListsEqual(expectedApplications, actual.getApplications());
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        void givenTwentyApplicationsAndFilterForInProgress_whenGetAllCalled_thenReturnPageOfTenApplications() throws Exception {
+            // given
+            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(10, builder -> {
+                builder.status(ApplicationStatus.IN_PROGRESS);
+            });
+            persistedApplicationFactory.createAndPersistMultiple(10, builder -> {
+                builder.status(ApplicationStatus.SUBMITTED);
+            });
+
+            // when
+            MvcResult result = getUri(new GetAllApplicationsURIBuilder().withStatusFilter(ApplicationStatus.IN_PROGRESS).build());
+            ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+            // then
+            assertContentHeaders(result);
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+            assertThat(actual.getPaging().getTotalRecords())
+                    .isEqualTo(expectedApplications.size());
+            assertThat(actual.getPaging().getPageSize()).isEqualTo(10);
+            assertThat(actual.getPaging().getPage()).isEqualTo(0);
+            assertThat(actual.getPaging().getItemsReturned()).isEqualTo(10);
+            assertApplicationListsEqual(expectedApplications, actual.getApplications());
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        void givenThirtyApplicationsAndFilterForSubmitted_whenGetAllCalled_thenReturnFirstPageOfTenApplications() throws Exception {
+            // given
+            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(20, builder -> {
+                builder.status(ApplicationStatus.SUBMITTED);
+            });
+            persistedApplicationFactory.createAndPersistMultiple(10, builder -> {
+                builder.status(ApplicationStatus.IN_PROGRESS);
+            });
+
+            // when
+            MvcResult result = getUri(new GetAllApplicationsURIBuilder()
+                    .withStatusFilter(ApplicationStatus.SUBMITTED)
+                    .build());
+            ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+            // then
+            assertContentHeaders(result);
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+            assertThat(actual.getPaging().getTotalRecords())
+                    .isEqualTo(expectedApplications.size());
+            assertThat(actual.getPaging().getPageSize()).isEqualTo(10);
+            assertThat(actual.getPaging().getPage()).isEqualTo(0);
+            assertThat(actual.getPaging().getItemsReturned()).isEqualTo(10);
+            assertApplicationListsEqual(expectedApplications.subList(0, 10), actual.getApplications());
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        void givenThirtyApplicationsAndFilterForSubmittedAndPageTwo_whenGetAllCalled_thenReturnSecondPageOfTenApplications() throws Exception {
+            // given
+            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(20, builder -> {
+                builder.status(ApplicationStatus.SUBMITTED);
+            });
+            persistedApplicationFactory.createAndPersistMultiple(10, builder -> {
+                builder.status(ApplicationStatus.IN_PROGRESS);
+            });
+
+            // when
+            MvcResult result = getUri(new GetAllApplicationsURIBuilder()
+                    .withStatusFilter(ApplicationStatus.SUBMITTED)
+                    .withPageNumber(1)
+                    .build());
+            ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+            // then
+            assertContentHeaders(result);
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+            assertThat(actual.getPaging().getTotalRecords())
+                    .isEqualTo(expectedApplications.size());
+            assertThat(actual.getPaging().getPageSize()).isEqualTo(10);
+            assertThat(actual.getPaging().getPage()).isEqualTo(1);
+            assertThat(actual.getPaging().getItemsReturned()).isEqualTo(10);
+            assertApplicationListsEqual(expectedApplications.subList(10, 20), actual.getApplications());
+        }
+    }
 }

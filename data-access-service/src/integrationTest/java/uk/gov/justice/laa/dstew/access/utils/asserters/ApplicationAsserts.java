@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.utils.asserters;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 
 import java.util.List;
 
@@ -37,5 +38,19 @@ public class ApplicationAsserts {
                 .usingRecursiveComparison()
                 .ignoringFields("id", "createdAt", "modifiedAt", "status")
                 .isEqualTo(actual);
+    }
+
+    public static void assertApplicationEqual(ApplicationEntity expected, ApplicationSummary actual) {
+        assertEquals(expected.getId(), actual.getApplicationId());
+        assertEquals(expected.getApplicationReference(), actual.getApplicationReference());
+        assertEquals(expected.getStatus(), actual.getApplicationStatus());
+    }
+
+    public static void assertApplicationListsEqual(List<ApplicationEntity> expected, List<ApplicationSummary> actual) {
+        assertEquals(expected.size(), actual.size());
+        // seems to work for now - might need to ignore order, etc..
+        for (int i = 0; i < expected.size(); i++) {
+            assertApplicationEqual(expected.get(i), actual.get(i));
+        }
     }
 }

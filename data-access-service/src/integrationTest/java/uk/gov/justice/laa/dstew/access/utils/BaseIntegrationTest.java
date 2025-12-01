@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
 
+import java.net.URI;
 import java.util.*;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -80,6 +81,12 @@ public abstract class BaseIntegrationTest {
     public MvcResult getUri(String uri, Object... args) throws Exception {
         return mockMvc
                 .perform(get(uri, args))
+                .andReturn();
+    }
+
+    public MvcResult getUri(URI uri) throws Exception {
+        return mockMvc
+                .perform(get(uri))
                 .andReturn();
     }
 
