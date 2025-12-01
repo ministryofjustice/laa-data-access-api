@@ -309,6 +309,9 @@ components:
         modifiedAt:
           type: string
           format: date-time
+        assignedTo:
+          type: string
+          format: uuid
 
     ApplicationSummaryResponse:
       type: object
