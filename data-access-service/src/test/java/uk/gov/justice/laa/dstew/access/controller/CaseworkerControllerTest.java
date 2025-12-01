@@ -62,4 +62,13 @@ public class CaseworkerControllerTest {
         .andExpect(content().json(expectedJson));
     }
     
+    @Test
+    void getCaseworkersWhenEmptyReturnsEmptyArray() throws Exception {
+        when(caseworkerService.getAllCaseworkers()).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v0/caseworkers"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().json("[]"));
+    }
 }
