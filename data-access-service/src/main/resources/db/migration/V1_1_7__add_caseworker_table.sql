@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS caseworkers(
+    ID UUID NOT NULL DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
+    username VARCHAR NOT NULL,
+    CONSTRAINT caseworker_pkey PRIMARY KEY (ID)
+);

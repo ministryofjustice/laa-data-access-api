@@ -8,9 +8,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
+import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 
-// `feature.security=false` prevents Entra auto-configuration failing context initialization
-// (temporary until figure out a better solution).
 @SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=true"})
 @ImportAutoConfiguration(exclude = {
     DataSourceAutoConfiguration.class,
@@ -22,6 +21,9 @@ public class AccessAppTests {
 
   @MockitoBean
   private ApplicationSummaryRepository applicationSummaryRepository;
+
+  @MockitoBean
+  private CaseworkerRepository caseworkerRepository;
 
   @Test
   void contextLoads() {

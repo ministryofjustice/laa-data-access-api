@@ -13,12 +13,15 @@ import org.javers.core.JaversBuilder;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.CaseworkerNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
 /**
@@ -32,6 +35,7 @@ public class ApplicationService {
   private final ApplicationMapper applicationMapper;
   private final ApplicationValidations applicationValidations;
   private final ObjectMapper objectMapper;
+  private final CaseworkerRepository caseworkerRepository;
   private final Javers javers;
 
   /**
@@ -45,13 +49,15 @@ public class ApplicationService {
   public ApplicationService(final ApplicationRepository applicationRepository,
                             final ApplicationMapper applicationMapper,
                             final ApplicationValidations applicationValidations,
-                            final ObjectMapper objectMapper) {
+                            final ObjectMapper objectMapper,
+                            final CaseworkerRepository caseworkerRepository) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
     this.javers = JaversBuilder.javers().build();
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
+    this.caseworkerRepository = caseworkerRepository;
   }
 
   /**
@@ -138,6 +144,56 @@ public class ApplicationService {
         .orElseThrow(() -> new ApplicationNotFoundException(
             String.format("No application found with id: %s", id)
         ));
+  }
+
+  /**
+   * Assigns a caseworker to an application.
+   *
+   * @param applicationId the UUID of the application to update
+   * @param caseworkerId the UUID of the caseworker to assign
+   * @throws ApplicationNotFoundException   if the application does not exist
+   * @throws CaseworkerNotFoundException    if the caseworker does not exist
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  public void assignCaseworker(final UUID applicationId, final UUID caseworkerId) {
+
+    final ApplicationEntity application = checkIfApplicationExists(applicationId);
+    final CaseworkerEntity caseworker = caseworkerRepository.findById(caseworkerId)
+        .orElseThrow(() -> new CaseworkerNotFoundException(
+            String.format("No caseworker found with id: %s", caseworkerId)));
+
+    // no update needed if same caseworker
+    if (caseworker.equals(application.getCaseworker())) {
+      return;
+    }
+
+    application.setCaseworker(caseworker);
+    application.setModifiedAt(Instant.now());
+
+    applicationRepository.save(application);
+  }
+
+  /**
+   * Unassigns a caseworker from an application.
+   *
+   * @param applicationId the UUID of the application to update
+   * @throws ApplicationNotFoundException   if the application does not exist
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  public void unassignCaseworker(final UUID applicationId) {
+    final ApplicationEntity entity = applicationRepository.findById(applicationId)
+        .orElseThrow(() -> new ApplicationNotFoundException(
+            String.format("No application found with id: %s", applicationId)
+        ));
+
+    if (entity.getCaseworker() == null) {
+      return;
+    }
+
+    entity.setCaseworker(null);
+    entity.setModifiedAt(Instant.now());
+
+    applicationRepository.save(entity);
   }
 
   /**
