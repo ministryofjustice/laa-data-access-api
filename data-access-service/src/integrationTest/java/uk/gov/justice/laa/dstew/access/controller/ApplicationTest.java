@@ -13,18 +13,19 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.Application;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.uriBuilders.GetAllApplicationsURIBuilder;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -491,6 +492,118 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertThat(actual.getPaging().getPage()).isEqualTo(0);
             assertThat(actual.getPaging().getItemsReturned()).isEqualTo(20);
             assertApplicationListsEqual(expectedApplications, actual.getApplications());
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        void givenTenApplicationsForJohnDoe_whenGetAllCalled_thenTenRecordsReturned() throws Exception {
+            // given
+            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(20, builder -> {
+                builder.status(ApplicationStatus.IN_PROGRESS);
+                builder.individuals(Set.of(
+                        individualFactory.create(individualBuilder -> {
+                            individualBuilder.firstName("John");
+                        })
+                ));
+            });
+            persistedApplicationFactory.createAndPersistMultiple(10, builder -> {
+                builder.status(ApplicationStatus.IN_PROGRESS);
+                builder.individuals(Set.of(
+                        individualFactory.create(individualBuilder -> {
+                            individualBuilder.firstName("Jane");
+                        })
+                ));
+            });
+
+            // when
+            MvcResult result = getUri(new GetAllApplicationsURIBuilder()
+                    .withFirstNameFilter("John")
+                    .withPageSize(10)
+                    .build());
+            ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+            // then
+            assertContentHeaders(result);
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+            assertThat(actual.getPaging().getTotalRecords())
+                    .isEqualTo(20);
+            assertThat(actual.getPaging().getPageSize()).isEqualTo(10);
+            assertThat(actual.getPaging().getPage()).isEqualTo(0);
+            assertThat(actual.getPaging().getItemsReturned()).isEqualTo(10);
+            assertApplicationListsEqual(expectedApplications.subList(0,10), actual.getApplications());
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        void givenTenApplicationsForJaneDoeInStatusSubmitted_whenGetAllCalled_thenTenRecordsReturned() throws Exception {
+            // given
+            persistedApplicationFactory.createAndPersistMultiple(20, builder -> {
+                builder.status(ApplicationStatus.IN_PROGRESS);
+                builder.individuals(Set.of(
+                        individualFactory.create(individualBuilder -> {
+                            individualBuilder.firstName("Jane");
+                        })
+                ));
+            });
+            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(10, builder -> {
+                builder.status(ApplicationStatus.SUBMITTED);
+                builder.individuals(Set.of(
+                        individualFactory.create(individualBuilder -> {
+                            individualBuilder.firstName("Jane");
+                        })
+                ));
+            });
+
+            // when
+            MvcResult result = getUri(new GetAllApplicationsURIBuilder()
+                    .withStatusFilter(ApplicationStatus.SUBMITTED)
+                    .withFirstNameFilter("Jane")
+                    .withPageSize(10)
+                    .build());
+            ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+            // then
+            assertContentHeaders(result);
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+            assertThat(actual.getPaging().getTotalRecords())
+                    .isEqualTo(10);
+            assertThat(actual.getPaging().getPageSize()).isEqualTo(10);
+            assertThat(actual.getPaging().getPage()).isEqualTo(0);
+            assertThat(actual.getPaging().getItemsReturned()).isEqualTo(10);
+            assertApplicationListsEqual(expectedApplications.subList(0,10), actual.getApplications());
+        }
+
+
+
+        @Test
+        public void givenNoUser_whenGetAllCalled_thenReturnUnauthorised() throws Exception {
+            // given
+            // nothing
+
+            // when
+            MvcResult result = getUri(TestConstants.URIs.GET_ALL_APPLICATIONS);
+
+            // then
+            assertSecurityHeaders(result);
+            assertUnauthorised(result);
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
+        public void givenNoRole_whenGetAllCalled_thenReturnForbidden() throws Exception {
+            // given
+            // nothing
+
+            // when
+            MvcResult result = getUri(TestConstants.URIs.GET_ALL_APPLICATIONS);
+
+            // then
+            assertSecurityHeaders(result);
+            assertForbidden(result);
         }
     }
 }

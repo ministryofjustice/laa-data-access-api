@@ -20,6 +20,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
@@ -60,6 +61,9 @@ public abstract class BaseIntegrationTest {
 
     @Autowired
     protected Factory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> applicationCreateRequestFactory;
+
+    @Autowired
+    protected Factory<IndividualEntity, IndividualEntity.IndividualEntityBuilder> individualFactory;
 
     @Autowired
     protected PersistedFactory<

@@ -14,6 +14,8 @@ public class GetAllApplicationsURIBuilder {
     private Integer pageNumber;
     private Integer pageSize;
     private ApplicationStatus statusFilter;
+    private String firstName;
+    private String lastName;
 
     public GetAllApplicationsURIBuilder withPageNumber(final int pageNumber) {
         this.pageNumber = pageNumber;
@@ -27,6 +29,16 @@ public class GetAllApplicationsURIBuilder {
 
     public GetAllApplicationsURIBuilder withStatusFilter(final ApplicationStatus statusFilter) {
         this.statusFilter = statusFilter;
+        return this;
+    }
+
+    public GetAllApplicationsURIBuilder withFirstNameFilter(final String firstName) {
+        this.firstName = firstName;
+        return this;
+    }
+
+    public GetAllApplicationsURIBuilder withLastNameFilter(final String lastName) {
+        this.lastName = lastName;
         return this;
     }
 
@@ -50,6 +62,14 @@ public class GetAllApplicationsURIBuilder {
                 queryParams.add(TestConstants.URIs.GET_ALL_APPLICATIONS_PAGE_SIZE_PARAM + pageSize);
             }
 
+            if (firstName != null) {
+                queryParams.add(TestConstants.URIs.GET_ALL_APPLICATIONS_FIRSTNAME_PARAM + firstName);
+            }
+
+            if (lastName != null) {
+                queryParams.add(TestConstants.URIs.GET_ALL_APPLICATIONS_LASTNAME_PARAM + lastName);
+            }
+
             uriString.append(String.join("&", queryParams));
         }
 
@@ -58,6 +78,8 @@ public class GetAllApplicationsURIBuilder {
 
     private boolean ifAnyPropertySet() {
         return !Objects.isNull(statusFilter) ||
+                !Objects.isNull(firstName) ||
+                !Objects.isNull(lastName) ||
                 !Objects.isNull(pageNumber) || !Objects.isNull(pageSize);
     }
 }
