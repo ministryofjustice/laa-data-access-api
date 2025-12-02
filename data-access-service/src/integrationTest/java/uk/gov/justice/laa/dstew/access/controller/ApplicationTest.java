@@ -577,8 +577,6 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertApplicationListsEqual(expectedApplications.subList(0,10), actual.getApplications());
         }
 
-
-
         @Test
         public void givenNoUser_whenGetAllCalled_thenReturnUnauthorised() throws Exception {
             // given
