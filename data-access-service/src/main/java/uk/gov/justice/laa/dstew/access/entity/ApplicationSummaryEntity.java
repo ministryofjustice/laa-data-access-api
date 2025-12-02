@@ -55,4 +55,8 @@ public class ApplicationSummaryEntity {
           inverseJoinColumns = @JoinColumn(name = "individual_id")
   )
   private Set<IndividualEntity> individuals;
+
+  @Column(name = "caseworker_id")
+  private UUID caseworkerId;
+
 }

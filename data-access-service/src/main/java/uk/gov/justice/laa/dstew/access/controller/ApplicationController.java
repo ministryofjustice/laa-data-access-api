@@ -58,6 +58,7 @@ public class ApplicationController implements ApplicationApi {
           String reference,
           String firstName,
           String lastName,
+          UUID userId,
           Integer page,
           Integer pageSize) {
 
@@ -67,6 +68,7 @@ public class ApplicationController implements ApplicationApi {
                     reference,
                     firstName,
                     lastName,
+                    userId,
                     page, pageSize);
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
     ApplicationSummaryResponsePaging responsePageDetails = new ApplicationSummaryResponsePaging();

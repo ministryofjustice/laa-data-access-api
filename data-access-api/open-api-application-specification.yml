@@ -32,6 +32,12 @@ paths:
           schema:
             type: string
         - in: query
+          name: userid
+          description: The caseworkers id
+          schema:
+            type: string
+            format: uuid
+        - in: query
           name: page
           description: page number of data to be returned
           schema:
