@@ -108,6 +108,7 @@ public class ApplicationSummaryServiceTest {
                 "",
                 "",
                 "",
+                null,
                 pageDetails.getPageNumber(),
                 pageDetails.getPageSize());
 
@@ -138,6 +139,7 @@ public class ApplicationSummaryServiceTest {
 
     var result =
             classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS,
+                    null,
                     null,
                     null,
                     null,
@@ -174,6 +176,7 @@ public class ApplicationSummaryServiceTest {
                     "appref",
                     null,
                     null,
+                    null,
                     pageDetails.getPageNumber(),
                     pageDetails.getPageSize());
 
@@ -206,6 +209,7 @@ public class ApplicationSummaryServiceTest {
             classUnderTest.getAllApplications(null,
                     null,
                     "Dave",
+                    null,
                     null,
                     pageDetails.getPageNumber(),
                     pageDetails.getPageSize());
@@ -240,6 +244,7 @@ public class ApplicationSummaryServiceTest {
                     null,
                     null,
                     "Young",
+                    null,
                     pageDetails.getPageNumber(),
                     pageDetails.getPageSize());
 

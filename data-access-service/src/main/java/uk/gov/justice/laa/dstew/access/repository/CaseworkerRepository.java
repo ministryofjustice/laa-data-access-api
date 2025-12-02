@@ -10,5 +10,5 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
  */
 @Repository
 public interface CaseworkerRepository extends JpaRepository<CaseworkerEntity, UUID>  {
-    
+  long countById(UUID id);
 }
