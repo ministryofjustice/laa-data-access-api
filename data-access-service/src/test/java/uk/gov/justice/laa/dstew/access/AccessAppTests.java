@@ -10,8 +10,6 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 
-// `feature.security=false` prevents Entra auto-configuration failing context initialization
-// (temporary until figure out a better solution).
 @SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=true"})
 @ImportAutoConfiguration(exclude = {
     DataSourceAutoConfiguration.class,

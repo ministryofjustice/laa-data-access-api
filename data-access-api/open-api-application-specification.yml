@@ -132,6 +132,23 @@ paths:
         '404': { description: Not found }
         '409': { description: Conflict }
         '500': { description: Internal server error }
+        
+  /api/v0/caseworkers:
+    get:
+      tags:
+        - caseworkers
+      summary: Get list of caseworkers
+      operationId: getCaseworkers
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseworkerResponse"
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '500': { description: Internal server error }
 
   /api/v0/applications/{id}/assign:
     post:
@@ -298,6 +315,9 @@ components:
         modifiedAt:
           type: string
           format: date-time
+        assignedTo:
+          type: string
+          format: uuid
 
     ApplicationSummaryResponse:
       type: object
@@ -317,6 +337,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationSummary"
+    Caseworker:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+    CaseworkerResponse:
+      type: array
+      items:
+        $ref: "#/components/schemas/Caseworker"
 
     CaseworkerAssignRequest:
       type: object

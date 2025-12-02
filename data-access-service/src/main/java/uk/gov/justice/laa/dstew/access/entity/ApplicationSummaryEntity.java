@@ -56,6 +56,10 @@ public class ApplicationSummaryEntity {
   )
   private Set<IndividualEntity> individuals;
 
+  @OneToOne
+  @JoinColumn(name = "caseworker_id", referencedColumnName = "id")
+  private CaseworkerEntity caseworker;
+
   @Column(name = "caseworker_id")
   private UUID caseworkerId;
 
