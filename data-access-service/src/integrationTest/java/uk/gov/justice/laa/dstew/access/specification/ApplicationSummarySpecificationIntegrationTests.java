@@ -540,7 +540,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
         applicationSummaryRepository
                 .findAll(caseworkerEntities, PageRequest.of(0, 10))
                 .getContent().forEach(
-                        a -> assertEquals(expectedId, a.getCaseworkerId())
+                        a -> assertEquals(expectedId, a.getCaseworker().getId())
                 );
     }
 }

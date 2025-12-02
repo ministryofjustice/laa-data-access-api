@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
@@ -81,7 +82,10 @@ public class ApplicationSummarySpecification {
 
     if (caseworkerId != null) {
       return (root, query, builder)
-              -> builder.equal(root.get("caseworkerId"), caseworkerId);
+            -> {
+              Join<ApplicationEntity, CaseworkerEntity> caseworkerJoin = root.join("caseworker", JoinType.INNER);
+              return builder.equal(caseworkerJoin.get("id"), caseworkerId);
+      };
     }
 
     return Specification.unrestricted();

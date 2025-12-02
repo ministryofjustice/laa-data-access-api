@@ -111,6 +111,11 @@ public class ApplicationSummarySpecificationTest {
         )
         .thenReturn(mock());
 
+        when(
+                root.join(eq("caseworker"), eq(JoinType.INNER))
+        )
+        .thenReturn(mock());
+
         Predicate result = spec.toPredicate(root, query, builder);
 
         assertThat(result).isNull();
@@ -197,10 +202,17 @@ public class ApplicationSummarySpecificationTest {
                 .filterBy(null, null, null, null, caseworkerId);
 
         Predicate summaryPredicate = mock(Predicate.class);
+        when(
+                root.join(eq("caseworker"), eq(JoinType.INNER))
+        )
+                .thenReturn(mock());
 
-        when(root.get("caseworkerId"))
-                .thenReturn(mock(jakarta.persistence.criteria.Path.class));
-        when(builder.equal(any(), eq(caseworkerId))).thenReturn(summaryPredicate);
+        when(
+                builder.equal(
+                        any(),
+                        eq(caseworkerId)
+                )
+        ).thenReturn(summaryPredicate);
 
         Predicate result = spec.toPredicate(root, query, builder);
         assertThat(result).isNotNull();
@@ -214,9 +226,17 @@ public class ApplicationSummarySpecificationTest {
 
         Predicate summaryPredicate = mock(Predicate.class);
 
-        when(root.get("caseworkerId"))
-                .thenReturn(mock(jakarta.persistence.criteria.Path.class));
-        when(builder.equal(any(), eq(UUID.randomUUID()))).thenReturn(summaryPredicate);
+        when(
+                root.join(eq("caseworker"), eq(JoinType.INNER))
+        )
+                .thenReturn(mock());
+
+        when(
+                builder.equal(
+                        any(),
+                        eq(UUID.randomUUID())
+                )
+        ).thenReturn(summaryPredicate);
 
         Predicate result = spec.toPredicate(root, query, builder);
         assertThat(result).isNull();
