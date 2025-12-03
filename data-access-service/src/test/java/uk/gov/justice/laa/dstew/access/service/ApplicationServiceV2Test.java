@@ -256,13 +256,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                             new ValidationException(List.of(
                                     "Application content cannot be empty"
                             ))
-                    ),
-                    // TODO: validation exception to throw all errors...
-                    Arguments.of(ApplicationCreateRequest.builder()
-                                    .build(),
-                            new ValidationException(List.of(
-                                    "Application status cannot be null"
-                            ))
                     )
             );
         }

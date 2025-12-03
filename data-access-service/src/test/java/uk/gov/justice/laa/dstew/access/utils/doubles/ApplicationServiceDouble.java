@@ -59,7 +59,6 @@ public class ApplicationServiceDouble {
         return ctx.getBean(ApplicationService.class);
     }
 
-    // TODO: check that this works with tests in parallel..
     private void setSecurityContext() {
         var authorities = Stream.of(this.roles)
                 .map(SimpleGrantedAuthority::new)

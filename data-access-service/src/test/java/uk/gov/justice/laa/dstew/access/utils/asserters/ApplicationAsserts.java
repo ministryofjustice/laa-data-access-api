@@ -26,7 +26,6 @@ public class ApplicationAsserts {
         assertApplicationsEqualAndIgnore(expected, actual, "createdAt", "modifiedAt");
     }
 
-    // TODO: check whether we align status and applicationStatus.
     public static void assertApplicationEqual(ApplicationEntity expected, Application actual) {
         assertEquals(expected.getId(), actual.getId());
         assertThat(expected)
