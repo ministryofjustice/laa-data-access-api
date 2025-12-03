@@ -1,7 +1,7 @@
 package uk.gov.justice.laa.dstew.access.model;
 
 /**
- * Represents a domain events type.
+ * Represents a domain events type in the model.
  */
 public enum DomainEventType {
     ASSIGN_APPLICATION_TO_CASEWORKER,
