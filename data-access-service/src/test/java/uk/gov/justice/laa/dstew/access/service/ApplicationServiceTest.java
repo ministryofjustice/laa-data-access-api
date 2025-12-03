@@ -2,12 +2,13 @@ package uk.gov.justice.laa.dstew.access.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -16,13 +17,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.CaseworkerNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
 
@@ -34,6 +38,8 @@ public class ApplicationServiceTest {
 
   @Mock
   private ApplicationRepository repository;
+  @Mock
+  private CaseworkerRepository caseworkerRepository;
   @Mock
   private ApplicationValidations validator;
   @Mock
@@ -105,6 +111,84 @@ public class ApplicationServiceTest {
 
     Application result = service.getApplication(id);
     assertThat(result).isNotNull();
+  }
+
+  @Test
+  void shouldAssignCaseworkerToApplication() {
+    UUID appId = UUID.randomUUID();
+    UUID cwId = UUID.randomUUID();
+
+    ApplicationEntity appEntity = new ApplicationEntity();
+    appEntity.setId(appId);
+
+    CaseworkerEntity caseworker = new CaseworkerEntity();
+    caseworker.setId(cwId);
+
+    when(repository.findById(appId)).thenReturn(Optional.of(appEntity));
+    when(caseworkerRepository.findById(cwId)).thenReturn(Optional.of(caseworker));
+    service.assignCaseworker(appId, cwId);
+
+    assertThat(appEntity.getCaseworker()).isEqualTo(caseworker);
+    assertThat(appEntity.getModifiedAt()).isNotNull();
+
+    verify(repository).save(appEntity);
+  }
+
+  @Test
+  void shouldThrowExceptionWhenCaseworkerNotFound() {
+    UUID appId = UUID.randomUUID();
+    UUID cwId = UUID.randomUUID();
+
+    when(repository.findById(appId)).thenReturn(Optional.of(new ApplicationEntity()));
+    when(caseworkerRepository.findById(cwId)).thenReturn(Optional.empty());
+
+    assertThrows(CaseworkerNotFoundException.class,
+        () -> service.assignCaseworker(appId, cwId));
+  }
+
+  @Test
+  void shouldUnassignCaseworker_whenAssigned() {
+    UUID appId = UUID.randomUUID();
+    ApplicationEntity entity = new ApplicationEntity();
+    entity.setId(appId);
+
+    CaseworkerEntity cw = new CaseworkerEntity();
+    cw.setId(UUID.randomUUID());
+    entity.setCaseworker(cw);
+
+    when(repository.findById(appId)).thenReturn(Optional.of(entity));
+
+    service.unassignCaseworker(appId);
+
+    assertThat(entity.getCaseworker()).isNull();
+    verify(repository).save(entity);
+  }
+
+  @Test
+  void shouldNotSave_whenAlreadyUnassigned() {
+    UUID appId = UUID.randomUUID();
+    ApplicationEntity entity = new ApplicationEntity();
+    entity.setId(appId);
+
+    // noop
+    entity.setCaseworker(null);
+
+    when(repository.findById(appId)).thenReturn(Optional.of(entity));
+
+    service.unassignCaseworker(appId);
+
+    verify(repository).findById(appId);
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldThrowException_whenAppNotFound() {
+    UUID appId = UUID.randomUUID();
+
+    when(repository.findById(appId)).thenReturn(Optional.empty());
+
+    assertThrows(ApplicationNotFoundException.class,
+        () -> service.unassignCaseworker(appId));
   }
 
 }

@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.service;
 
 import java.util.List;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -10,7 +11,9 @@ import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
+import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
  * Service class responsible for retrieving and managing {@link ApplicationSummary} data.
@@ -18,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecifica
 @Service
 public class ApplicationSummaryService {
   private final ApplicationSummaryRepository applicationSummaryRepository;
+  private final CaseworkerRepository caseworkerRepository;
   private final ApplicationSummaryMapper mapper;
 
   /**
@@ -28,40 +32,48 @@ public class ApplicationSummaryService {
    */
   public ApplicationSummaryService(
       final ApplicationSummaryRepository applicationSummaryRepository,
-      final ApplicationSummaryMapper applicationSummaryMapper
+      final ApplicationSummaryMapper applicationSummaryMapper,
+      final CaseworkerRepository caseworkerRepository
   ) {
     this.applicationSummaryRepository = applicationSummaryRepository;
     this.mapper = applicationSummaryMapper;
+    this.caseworkerRepository = caseworkerRepository;
   }
 
   /**
    * Retrieves a paginated list of {@link ApplicationSummary} objects filtered by application status.
    *
-   * @param applicationStatus the {@link ApplicationStatus} used to filter results
+   * @param applicationStatus the {@link ApplicationStatus} used to filter results on application status
+   * @param applicationReference used to filter results on application reference
+   * @param firstName used to filter results on linked individuals first name
+   * @param lastName used to filter results on  linked individuals last name
    * @param page the page number to retrieve (zero-based index)
    * @param pageSize the maximum number of results to return per page
    * @return a list of {@link ApplicationSummary} instances matching the filter criteria
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<ApplicationSummary> getAllApplications(
+  public Page<ApplicationSummary> getAllApplications(
           ApplicationStatus applicationStatus,
           String applicationReference,
+          String firstName,
+          String lastName,
+          UUID userId,
           Integer page,
           Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
 
+    if (userId != null && caseworkerRepository.countById(userId) == 0L) {
+      throw new ValidationException(List.of("Caseworker not found"));
+    }
+
     return applicationSummaryRepository
             .findAll(ApplicationSummarySpecification
-                    .filterBy(applicationStatus, applicationReference), pageDetails)
-            .getContent()
-            .stream()
-            .map(mapper::toApplicationSummary)
-            .toList();
-  }
-
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public long getAllApplicationsTotal(ApplicationStatus applicationStatus, String applicationReference) {
-    return applicationSummaryRepository.count(ApplicationSummarySpecification
-            .filterBy(applicationStatus, applicationReference));
+                            .filterBy(applicationStatus,
+                                    applicationReference,
+                                    firstName,
+                                    lastName,
+                                    userId),
+                    pageDetails)
+            .map(mapper::toApplicationSummary);
   }
 }

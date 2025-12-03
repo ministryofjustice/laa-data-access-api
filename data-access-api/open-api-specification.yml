@@ -8,6 +8,12 @@ paths:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications"
   /api/v0/applications/{id}:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}"
+  /api/v0/caseworkers:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1caseworkers"
+  /api/v0/applications/{id}/assign:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1assign"
+  /api/v0/applications/{id}/unassign:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1unassign"
 
 components:
   schemas:
@@ -21,3 +27,9 @@ components:
       $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationSummaryResponse"
     ApplicationSummary:
       $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationSummary"
+    Caseworker:
+      $ref: "./open-api-application-specification.yml#/components/schemas/Caseworker"
+    CaseworkerResponse:
+      $ref: "./open-api-application-specification.yml#/components/schemas/CaseworkerResponse"
+    CaseworkerAssignRequest:
+      $ref: "./open-api-application-specification.yml#/components/schemas/CaseworkerAssignRequest"
