@@ -33,13 +33,11 @@ public class DomainEventEntity {
   @Column(name = "id")
   private UUID id;
 
-  @OneToOne
-  @JoinColumn(name = "application_id", referencedColumnName = "id", nullable = false)
-  private ApplicationEntity application;
+  @Column(name = "application_id")
+  private UUID applicationId;
 
-  @OneToOne
-  @JoinColumn(name = "caseworker_id", referencedColumnName = "id")
-  private CaseworkerEntity caseworker;
+  @Column(name = "caseworker_id")
+  private UUID caseWorkerId;
 
   @Column(name = "type", nullable = false)
   @Enumerated(EnumType.STRING)
