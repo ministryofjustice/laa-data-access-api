@@ -10,18 +10,16 @@ import java.util.function.Consumer;
 public class ApplicationEntityFactory {
 
     public static ApplicationEntity create() {
-        ApplicationEntity entity = ApplicationEntity.builder()
+        return ApplicationEntity.builder()
                 .createdAt(InstantSource.system().instant())
                 .id(UUID.randomUUID())
                 .status(ApplicationStatus.IN_PROGRESS)
                 .modifiedAt(InstantSource.system().instant())
+                .applicationReference("REF7237")
+                .individuals(Set.of(
+                        IndividualEntityFactory.create()
+                ))
                 .build();
-
-        Map<String, Object> appContent = new HashMap<>();
-        appContent.put("test", "content");
-        entity.setApplicationContent(appContent);
-
-        return entity;
     }
 
     public static ApplicationEntity create(Consumer<ApplicationEntity.ApplicationEntityBuilder> customiser) {

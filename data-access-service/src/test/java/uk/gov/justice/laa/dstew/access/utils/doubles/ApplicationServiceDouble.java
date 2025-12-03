@@ -9,11 +9,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import uk.gov.justice.laa.dstew.access.config.SecurityConfig;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 import uk.gov.justice.laa.dstew.access.utils.TestSecurityConfig;
 import uk.gov.justice.laa.dstew.access.utils.TestSpringContext;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
+import uk.gov.justice.laa.dstew.access.validation.IndividualValidations;
 
 import java.util.stream.Stream;
 
@@ -22,9 +24,15 @@ public class ApplicationServiceDouble {
     private final SecurityConfig securityConfig = new SecurityConfig();
     private String[] roles = new String[] {};
     private ApplicationRepository applicationRepository = Mockito.mock(ApplicationRepository.class);
+    private CaseworkerRepository caseworkerRepository = Mockito.mock(CaseworkerRepository.class);
 
-    public ApplicationServiceDouble withRepository(ApplicationRepository repository) {
+    public ApplicationServiceDouble withApplicationRepository(ApplicationRepository repository) {
         this.applicationRepository = repository;
+        return this;
+    }
+
+    public ApplicationServiceDouble withCaseworkerRepository(CaseworkerRepository repository) {
+        this.caseworkerRepository = repository;
         return this;
     }
 
@@ -37,10 +45,12 @@ public class ApplicationServiceDouble {
 
         TestSpringContext ctx = new TestSpringContext()
                 .withBean(ApplicationRepository.class, applicationRepository)
+                .withBean(CaseworkerRepository.class, caseworkerRepository)
                 .withBean(ApplicationMapper.class, Mappers.getMapper(ApplicationMapper.class))
                 .withBean("entra", EffectiveAuthorizationProvider.class, securityConfig.authProvider())
                 .withBean(ObjectMapper.class, new ObjectMapper())
                 .withConfig(TestSecurityConfig.class)
+                .constructBeans(IndividualValidations.class)
                 .constructBeans(ApplicationValidations.class)
                 .constructBeans(ApplicationService.class)
                 .build();

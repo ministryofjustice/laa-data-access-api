@@ -31,9 +31,17 @@ public class ApplicationAsserts {
         assertEquals(expected.getId(), actual.getId());
         assertThat(expected)
                 .usingRecursiveComparison()
-                .ignoringFields("id", "createdAt", "modifiedAt", "applicationReference", "status")
+                .ignoringFields("id", "createdAt", "modifiedAt", "status", "caseworker",
+                        "individuals")
+                .ignoringCollectionOrder()
                 .isEqualTo(actual);
         assertEquals(expected.getStatus(), actual.getApplicationStatus());
+
+        assertThat(expected.getIndividuals())
+                .usingRecursiveComparison()
+                .ignoringCollectionOrder()
+                .ignoringFields("createdAt", "modifiedAt", "individualContent")
+                .isEqualTo(actual.getIndividuals());
     }
 
     public static void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual) {
