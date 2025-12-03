@@ -9,7 +9,7 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateFactoryImpl;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.IndividualFactoryImpl;
+import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactoryImpl;
 
 import java.util.UUID;
 

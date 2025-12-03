@@ -1,6 +1,5 @@
-package uk.gov.justice.laa.dstew.access.utils.factory.application;
+package uk.gov.justice.laa.dstew.access.utils.factory.individual;
 
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 

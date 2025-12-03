@@ -21,7 +21,6 @@ import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.builders.ValidationExceptionBuilder;
-import uk.gov.justice.laa.dstew.access.utils.uriBuilders.GetAllApplicationsURIBuilder;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 import java.util.List;
 import java.util.Set;
@@ -244,6 +243,12 @@ public class ApplicationTest extends BaseIntegrationTest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class GetApplications {
 
+        public static final String PAGE_PARAM = "page=";
+        public static final String PAGE_SIZE_PARAM = "pagesize=";
+        public static final String STATUS_PARAM = "status=";
+        public static final String FIRSTNAME_PARAM = "firstname=";
+        public static final String LASTNAME_PARAM = "lastname=";
+
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
         void givenApplicationsWithoutFiltering_whenGetApplications_thenReturnApplicationsWithPagingCorrectly() throws Exception {
@@ -279,7 +284,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             });
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?page=1");
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + PAGE_PARAM + "1");
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -307,7 +312,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             });
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?status=IN_PROGRESS");
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + STATUS_PARAM + ApplicationStatus.IN_PROGRESS);
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -335,9 +340,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             });
 
             // when
-            MvcResult result = getUri(new GetAllApplicationsURIBuilder()
-                    .withStatusFilter(ApplicationStatus.SUBMITTED)
-                    .build());
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -365,10 +368,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             });
 
             // when
-            MvcResult result = getUri(new GetAllApplicationsURIBuilder()
-                    .withStatusFilter(ApplicationStatus.SUBMITTED)
-                    .withPageNumber(1)
-                    .build());
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -393,9 +393,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             });
 
             // when
-            MvcResult result = getUri(new GetAllApplicationsURIBuilder()
-                    .withStatusFilter(ApplicationStatus.SUBMITTED)
-                    .build());
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -422,9 +420,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             });
 
             // when
-            MvcResult result = getUri(new GetAllApplicationsURIBuilder()
-                    .withPageSize(20)
-                    .build());
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -462,10 +458,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             });
 
             // when
-            MvcResult result = getUri(new GetAllApplicationsURIBuilder()
-                    .withFirstNameFilter("John")
-                    .withPageSize(10)
-                    .build());
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -503,11 +496,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             });
 
             // when
-            MvcResult result = getUri(new GetAllApplicationsURIBuilder()
-                    .withStatusFilter(ApplicationStatus.SUBMITTED)
-                    .withFirstNameFilter("Jane")
-                    .withPageSize(10)
-                    .build());
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
