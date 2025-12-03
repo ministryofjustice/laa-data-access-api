@@ -130,7 +130,8 @@ class ApplicationControllerTest {
             .build());
     applicationSummaryCollectionResponse.setApplications(applications);
 
-    when(applicationSummaryService.getAllApplications(any(), any(), any(), any(), any(), any())).thenReturn(mock());
+    when(applicationSummaryService.getAllApplications(any(), any(), any(),
+                                                      any(), any(), any(), any())).thenReturn(mock());
     mockMvc
         .perform(get("/api/v0/applications"))
         .andExpect(status().isOk())
