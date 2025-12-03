@@ -12,17 +12,17 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.doubles.ApplicationServiceDouble;
 import uk.gov.justice.laa.dstew.access.utils.factory.ApplicationEntityFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.IndividualEntityFactory;
-import uk.gov.justice.laa.dstew.access.utils.testData.ApplicationTestData;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -59,7 +59,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             Application actualApplication = sut.getApplication(expectedApplication.getId());
 
             // then
-            assertThat(actualApplication).isNotNull();
             assertApplicationEqual(expectedApplication, actualApplication);
             verify(applicationRepository, times(1)).findById(expectedApplication.getId());
         }
@@ -145,7 +144,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .build();
 
             // when
-            UUID actualId = sut.createApplication(ApplicationTestData.Create.TO_CREATE);
+            UUID actualId = sut.createApplication(APPLICATION_TO_CREATE);
 
             // then
             assertEquals(expectedId, actualId);
@@ -164,7 +163,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // when
             // then
             assertThatExceptionOfType(AuthorizationDeniedException.class)
-                    .isThrownBy(() -> sut.createApplication(ApplicationTestData.Create.TO_CREATE))
+                    .isThrownBy(() -> sut.createApplication(APPLICATION_TO_CREATE))
                     .withMessageContaining("Access Denied");
 
             verify(applicationRepository, times(0)).findById(any(UUID.class));
@@ -180,7 +179,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // when
             // then
             assertThatExceptionOfType(AuthorizationDeniedException.class)
-                    .isThrownBy(() -> sut.createApplication(ApplicationTestData.Create.TO_CREATE))
+                    .isThrownBy(() -> sut.createApplication(APPLICATION_TO_CREATE))
                     .withMessageContaining("Access Denied");
 
             verify(applicationRepository, times(0)).findById(any(UUID.class));
@@ -209,8 +208,63 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, times(0)).findById(any(UUID.class));
         }
 
-        private static Stream<Arguments> invalidApplicationRequests() {
-            return ApplicationTestData.Create.INVALID_REQUESTS;
+        private static final String APPLICATION_TO_CREATE_REFERENCE = "REF7327";
+        private static final ApplicationCreateRequest APPLICATION_TO_CREATE = ApplicationCreateRequest.builder()
+                .status(ApplicationStatus.IN_PROGRESS)
+                .applicationReference(APPLICATION_TO_CREATE_REFERENCE)
+                .applicationContent(new HashMap<>() {{
+                    put("test", "content");
+                }})
+                .build();
+
+        public static final Stream<Arguments> invalidApplicationRequests() {
+            return Stream.of(
+                    Arguments.of(ApplicationCreateRequest.builder()
+                                    .status(ApplicationStatus.IN_PROGRESS)
+                                    .applicationReference(APPLICATION_TO_CREATE_REFERENCE)
+                                    .applicationContent(null)
+                                    .build(),
+                            new ValidationException(List.of(
+                                    "ApplicationCreateRequest and its content cannot be null"
+                            ))
+                    ),
+                    Arguments.of(ApplicationCreateRequest.builder()
+                                    .applicationReference(APPLICATION_TO_CREATE_REFERENCE)
+                                    .applicationContent(new HashMap<>() {{
+                                        put("test", "content");
+                                    }})
+                                    .build(),
+                            new ValidationException(List.of(
+                                    "Application status cannot be null"
+                            ))
+                    ),
+                    Arguments.of(ApplicationCreateRequest.builder()
+                                    .status(ApplicationStatus.IN_PROGRESS)
+                                    .applicationContent(new HashMap<>() {{
+                                        put("test", "content");
+                                    }})
+                                    .build(),
+                            new ValidationException(List.of(
+                                    "Application reference cannot be blank"
+                            ))
+                    ),
+                    Arguments.of(ApplicationCreateRequest.builder()
+                                    .status(ApplicationStatus.IN_PROGRESS)
+                                    .applicationReference(APPLICATION_TO_CREATE_REFERENCE)
+                                    .applicationContent(new HashMap<>())
+                                    .build(),
+                            new ValidationException(List.of(
+                                    "Application content cannot be empty"
+                            ))
+                    ),
+                    // TODO: validation exception to throw all errors...
+                    Arguments.of(ApplicationCreateRequest.builder()
+                                    .build(),
+                            new ValidationException(List.of(
+                                    "Application status cannot be null"
+                            ))
+                    )
+            );
         }
     }
 
