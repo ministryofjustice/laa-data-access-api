@@ -1,10 +1,15 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
 /**
  * Validation exception that holds violations (errors).
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ValidationException extends RuntimeException {
   private final List<String> errors;
 
@@ -14,7 +19,8 @@ public class ValidationException extends RuntimeException {
    * @param message String exception message.
    * @param errors List of validation messages.
    */
-  public ValidationException(String message, List<String> errors) {
+  @JsonCreator
+  public ValidationException(@JsonProperty("message") String message, @JsonProperty("errors") List<String> errors) {
     super(message);
     this.errors = (errors == null) ? List.of() : List.copyOf(errors);
   }

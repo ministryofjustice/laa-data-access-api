@@ -158,7 +158,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             ValidationException expectedValidationException = ValidationExceptionBuilder
                     .create()
-                    .errors(List.of("ApplicationCreateRequest and its content cannot be null"))
+                    .errors(List.of("Application content cannot be empty"))
                     .build();
 
             // when
