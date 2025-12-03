@@ -1,7 +1,10 @@
 package uk.gov.justice.laa.dstew.access.utils;
 
+import java.util.UUID;
+
 public class HeaderUtils {
-    public static String GetUUIDFromLocation(String location) {
-        return location.replace("http://localhost" + TestConstants.URIs.CREATE_APPLICATION + "/", "");
+    public static UUID GetUUIDFromLocation(String location) {
+        var id = location.replace("http://localhost" + TestConstants.URIs.CREATE_APPLICATION + "/", "");
+        return UUID.fromString(id);
     }
 }

@@ -3,6 +3,9 @@ package uk.gov.justice.laa.dstew.access.utils.asserters;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.test.web.servlet.MvcResult;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -51,6 +54,17 @@ public class ResponseAsserts {
         assertEquals(expectedStatus.value(), response.getResponse().getStatus());
         assertEquals(expectedShortCode, actualDetail.getTitle());
         assertEquals(expectedDetail, actualDetail.getDetail());
+    }
+
+    public static void assertValidationException(
+            HttpStatus expectedStatus,
+            List<String> expectedValidationExceptions,
+            MvcResult response,
+            ValidationException validationException) {
+
+        assertEquals("application/problem+json", response.getResponse().getContentType());
+        assertEquals(expectedStatus.value(), response.getResponse().getStatus());
+        assertEquals(expectedValidationExceptions, validationException.errors());
     }
 
     public static void assertProblemRecord(HttpStatus status, ProblemDetail expectedDetail, MvcResult response, ProblemDetail actualDetail) {

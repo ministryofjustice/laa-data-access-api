@@ -82,16 +82,4 @@ public class IndividualEntity  implements AuditableEntity {
   public String getUpdatedBy() {
     return null;
   }
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("class IndividualEntity {\n");
-        sb.append("    firstName: ").append(firstName).append("\n");
-        sb.append("    lastName: ").append(lastName).append("\n");
-        sb.append("    dateOfBirth: ").append(dateOfBirth).append("\n");
-        sb.append("    individualContent: ").append(individualContent).append("\n");
-        sb.append("}");
-        return sb.toString();
-    }
 }

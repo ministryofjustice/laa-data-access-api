@@ -12,31 +12,30 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
-import uk.gov.justice.laa.dstew.access.utils.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
+import uk.gov.justice.laa.dstew.access.utils.builders.ValidationExceptionBuilder;
 import uk.gov.justice.laa.dstew.access.utils.uriBuilders.GetAllApplicationsURIBuilder;
-
-import java.time.LocalDate;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
-
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ApplicationAsserts.assertApplicationEqual;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ApplicationAsserts.assertApplicationListsEqual;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
 @ActiveProfiles("test")
 public class ApplicationTest extends BaseIntegrationTest {
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -44,135 +43,102 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
-        public void givenExistingData_whenGetCalled_thenOKWithCorrectData() throws Exception {
-
+        public void givenExistingApplication_whenGetApplication_thenReturnOKWithCorrectData() throws Exception {
             // given
-            ApplicationEntity expected = persistedApplicationFactory.createAndPersist();
+            ApplicationEntity expectedApplication = persistedApplicationFactory.createAndPersist();
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expected.getId());
-            Application actual = deserialise(result, Application.class);
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
+            Application actualApplication = deserialise(result, Application.class);
 
             // then
             assertContentHeaders(result);
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertApplicationEqual(expected, actual);
+            assertApplicationEqual(expectedApplication, actualApplication);
         }
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
-        public void givenNoData_whenGetCalled_thenNotFound() throws Exception {
+        public void givenApplicationNotExist_whenGetApplication_thenReturnNotFound() throws Exception {
             // given
-            UUID id = UUID.randomUUID();
+            persistedApplicationFactory.createAndPersist();
+            UUID notExistApplicationId = UUID.randomUUID();
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, id);
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, notExistApplicationId);
 
             // then
-            // TODO: check whether the 404 should be returning application/problem+json
-            //assertContentHeaders(result);
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertNotFound(result);
+            assertEquals("application/problem+json", result.getResponse().getContentType());
+            var json = objectMapper.readTree(result.getResponse().getContentAsString());
+            assertEquals("No application found with id: " + notExistApplicationId, json.get("detail").asText());
+
         }
 
-        // TODO: Identify what the problem record should be
-        @Test
-        @WithMockUser(authorities = TestConstants.Roles.READER)
-        public void givenInvalidIdInUrl_whenGetCalled_thenNotFound() throws Exception {
-            // given
-            String id = "not an id";
-
-            // when
-            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, id);
-            //ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
-
-            // then
-            assertSecurityHeaders(result);
-            //assertProblemRecord(HttpStatus.BAD_REQUEST, "", "", result, detail);
-            // TODO: remove this assert as it is checked in the method above
-            assertBadRequest(result);
-        }
-
-        // TODO: Identify what the problem record should be
         @Test
         @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
-        public void givenUnknownRole_whenGetCalled_thenForbidden() throws Exception {
+        public void givenUnknownRole_whenGetApplication_thenReturnForbidden() throws Exception {
             // given
-            // no data
+            ApplicationEntity expectedApplication = persistedApplicationFactory.createAndPersist();
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, UUID.randomUUID());
-            //ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
 
             // then
             assertSecurityHeaders(result);
-            //assertProblemRecord(HttpStatus.FORBIDDEN, "", "", result, detail);
-            // TODO: remove this assert as it is checked in the method above
             assertForbidden(result);
         }
 
-        // TODO: Identify what the problem record should be
         @Test
-        public void givenNoUser_whenGetCalled_thenUnauthorized() throws Exception {
+        public void givenNoUser_whenGetApplication_thenReturnUnauthorized() throws Exception {
             // given
-            // no data
+            ApplicationEntity expectedApplication = persistedApplicationFactory.createAndPersist();
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, UUID.randomUUID());
-            //ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
 
             // then
             assertSecurityHeaders(result);
-            //assertProblemRecord(HttpStatus.UNAUTHORIZED, "", "", result, detail);
-            // TODO: remove this assert as it is checked in the method above
             assertUnauthorised(result);
         }
     }
 
-    /**
-     * Tests related to DSTEW-503
-     */
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class CreateApplication {
 
-        // TODO: check whether endpoint should also return a body (DSTEW-503)
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenData_whenCallingCreateData_thenCreatedWithOK() throws Exception {
+        public void givenCreateNewApplication_whenCreateApplication_thenReturnCreatedWithLocationHeader() throws Exception {
 
             // given
-            ApplicationCreateRequest expected = applicationCreateRequestFactory.create();
+            ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
 
             // when
-            MvcResult response = postUri(TestConstants.URIs.CREATE_APPLICATION, expected);
+            MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
 
             // then
-            assertSecurityHeaders(response);
-            assertCreated(response);
+            assertSecurityHeaders(result);
+            assertCreated(result);
 
-            UUID storedId = UUID.fromString(HeaderUtils.GetUUIDFromLocation(
-                    response.getResponse().getHeader("Location")
-            ));
-            ApplicationEntity actual = applicationRepository.findById(storedId).orElseThrow(() -> new ApplicationNotFoundException(storedId.toString()));
-            assertApplicationEqual(expected, actual);
+            UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(
+                    result.getResponse().getHeader("Location")
+            );
+            assertNotNull(createdApplicationId);
+            ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId).orElseThrow(() -> new ApplicationNotFoundException(createdApplicationId.toString()));
+            assertApplicationEqual(applicationCreateRequest, createdApplication);
         }
 
-        // TODO: think about how a status outside of the range of the Enum can be sent. Can a client actually do this anyway?
-        // TODO: check problem details
         @ParameterizedTest
         @MethodSource("applicationCreateRequestInvalidDataCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenInvalidData_whenCallingCreate_thenCallFailsWithBadRequest_andRepositoryEmpty(
+        public void givenInvalidApplicationRequestData_whenCreateApplication_thenReturnBadRequest(
                 ApplicationCreateRequest request,
                 ProblemDetail expectedDetail) throws Exception {
-
-            // given
-            // in MethodSource
-
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
             ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
@@ -180,19 +146,35 @@ public class ApplicationTest extends BaseIntegrationTest {
             // then
             assertSecurityHeaders(result);
             assertProblemRecord(HttpStatus.BAD_REQUEST, expectedDetail, result, detail);
-
-            // and
             assertEquals(0, applicationRepository.count());
         }
 
-        // TODO: check problem details
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenInvalidApplicationContent_whenCreateApplication_thenReturnBadRequest() throws Exception {
+            ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder -> {
+                builder.applicationContent(null);
+            });
+
+            ValidationException expectedValidationException = ValidationExceptionBuilder
+                    .create()
+                    .errors(List.of("ApplicationCreateRequest and its content cannot be null"))
+                    .build();
+
+            // when
+            MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
+            ValidationException validationException = objectMapper.readValue(result.getResponse().getContentAsString(), ValidationException.class);
+
+            // then
+            assertSecurityHeaders(result);
+            assertValidationException(HttpStatus.BAD_REQUEST, expectedValidationException.errors(), result, validationException);
+            assertEquals(0, applicationRepository.count());
+        }
+
         @ParameterizedTest
         @ValueSource(strings = { "", "{}" })
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenNoBody_whenCallingCreate_thenCallFailsWithBadRequest_andRepositoryEmpty(String request) throws Exception {
-            // given
-            // in ValueSource
-
+        public void givenNoRequestBody_whenCreateApplication_thenReturnBadRequest(String request) throws Exception {
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
             ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
@@ -200,89 +182,55 @@ public class ApplicationTest extends BaseIntegrationTest {
             // then
             assertSecurityHeaders(result);
             assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request", "Failed to read request", result, detail);
-
-            // and
             assertEquals(0, applicationRepository.count());
         }
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
-        public void givenDataAndReaderRole_whenCallingCreate_thenFailsWithForbidden_andRepositoryEmpty() throws Exception {
+        public void givenDataAndReaderRole_whenCreateApplication_thenReturnForbidden() throws Exception {
             // given
             ApplicationCreateRequest request = applicationCreateRequestFactory.create();
 
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
-            //ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
 
             // then
             assertSecurityHeaders(result);
-            //assertProblemRecord(HttpStatus.FORBIDDEN, "", "", result, detail);
-
-            // and
-            assertEquals(0, applicationRepository.count());
-            // TODO: remove this assert as it is checked in the assertProblemRecord method above
             assertForbidden(result);
         }
 
         @Test
-        public void givenDataAndNoAuth_whenCallingCreate_thenFailsWithUnauthorized_andRepositoryEmpty() throws Exception {
+        public void givenDataAndNoAuth_whenCreateApplication_thenReturnUnauthorized() throws Exception {
             // given
             ApplicationCreateRequest request = applicationCreateRequestFactory.create();
 
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
-            //ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
 
             // then
             assertSecurityHeaders(result);
-            //assertProblemRecord(HttpStatus.UNAUTHORIZED, "", "", result, detail);
-
-            // and
-            assertEquals(0, applicationRepository.count());
-            // TODO: check whether we remove this assert as it is checked in the assertProblemRecord above
-            assertUnauthorised(result);
-        }
-
-        // TODO: figure out how to check that the logs do not contain PII
-        @Test
-        public void givenDataAndError_whenCallingCreate_thenFailsAndOmitsPIIFromLogs_andRepositoryEmpty() throws Exception {
-            // given
-            ApplicationCreateRequest request = applicationCreateRequestFactory.create();
-
-            // when
-            MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
-            //ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
-
-            // then
-            assertSecurityHeaders(result);
-            //assertProblemRecord(HttpStatus.UNAUTHORIZED, "", "", result, detail);
-
-            // and
-            assertEquals(0, applicationRepository.count());
-            // TODO: check whether we remove this assert as it is checked in the assertProblemRecord above
             assertUnauthorised(result);
         }
 
         private Stream<Arguments> applicationCreateRequestInvalidDataCases() {
             return Stream.of(
                     Arguments.of(applicationCreateRequestFactory.create(builder -> {
-                        builder.status(null);
-                    }), ProblemDetailBuilder
-                            .create()
-                            .status(HttpStatus.BAD_REQUEST)
-                            .title("Bad Request")
-                            .detail("Invalid request content.")
-                            .build()
+                                builder.status(null);
+                            }), ProblemDetailBuilder
+                                    .create()
+                                    .status(HttpStatus.BAD_REQUEST)
+                                    .title("Bad Request")
+                                    .detail("Invalid request content.")
+                                    .build()
                     ),
                     Arguments.of(applicationCreateRequestFactory.create(builder -> {
-                        builder.applicationContent(null);
-                    }), ProblemDetailBuilder
-                            .create()
-                            .status(HttpStatus.BAD_REQUEST)
-                            .title("Validation failed")
-                            .detail("One or more validation rules were violated")
-                            .build()
+                                builder.applicationReference(null);
+                            }), ProblemDetailBuilder
+                                    .create()
+                                    .status(HttpStatus.BAD_REQUEST)
+                                    .title("Bad Request")
+                                    .detail("Invalid request content.")
+                                    .build()
                     )
             );
         }
@@ -294,18 +242,18 @@ public class ApplicationTest extends BaseIntegrationTest {
 
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-    class GetAllApplications {
+    class GetApplications {
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
-        void givenSevenApplications_whenGetAllCalled_thenReturnPageOfSevenApplicationsCorrectly() throws Exception {
+        void givenApplicationsWithoutFiltering_whenGetApplications_thenReturnApplicationsWithPagingCorrectly() throws Exception {
             // given
             List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(7, builder -> {
                 builder.status(ApplicationStatus.IN_PROGRESS);
             });
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_ALL_APPLICATIONS);
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -318,22 +266,20 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertThat(actual.getPaging().getPageSize()).isEqualTo(10);
             assertThat(actual.getPaging().getPage()).isEqualTo(0);
             assertThat(actual.getPaging().getItemsReturned()).isEqualTo(7);
+            assertThat(actual.getApplications().size()).isEqualTo(7);
             assertApplicationListsEqual(expectedApplications, actual.getApplications());
         }
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
-        void givenTwentyApplications_whenGetAllCalled_thenReturnPageOfTenApplications() throws Exception {
+        void givenApplicationsRequiringPageTwo_whenGetApplication_thenReturnSecondPageOfApplicationsCorrectly() throws Exception {
             // given
-            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(10, builder -> {
+            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(20, builder -> {
                 builder.status(ApplicationStatus.IN_PROGRESS);
-            });
-            List<ApplicationEntity> unexpectedApplications = persistedApplicationFactory.createAndPersistMultiple(10, builder -> {
-                builder.status(ApplicationStatus.SUBMITTED);
             });
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_ALL_APPLICATIONS);
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?page=1");
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -341,19 +287,19 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertThat(actual.getPaging().getTotalRecords())
-                    .isEqualTo(expectedApplications.size() + unexpectedApplications.size());
+            assertThat(actual.getPaging().getTotalRecords()).isEqualTo(20);
             assertThat(actual.getPaging().getPageSize()).isEqualTo(10);
-            assertThat(actual.getPaging().getPage()).isEqualTo(0);
+            assertThat(actual.getPaging().getPage()).isEqualTo(1);
             assertThat(actual.getPaging().getItemsReturned()).isEqualTo(10);
-            assertApplicationListsEqual(expectedApplications, actual.getApplications());
+            assertThat(actual.getApplications().size()).isEqualTo(10);
+            assertThat((actual.getApplications()).containsAll(expectedApplications.subList(9,19)));
         }
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
-        void givenTwentyApplicationsAndFilterForInProgress_whenGetAllCalled_thenReturnPageOfTenApplications() throws Exception {
+        void givenApplicationsFilteredByInProgressStatus_whenGetApplication_thenReturnExpectedApplicationsCorrectly() throws Exception {
             // given
-            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(10, builder -> {
+            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(5, builder -> {
                 builder.status(ApplicationStatus.IN_PROGRESS);
             });
             persistedApplicationFactory.createAndPersistMultiple(10, builder -> {
@@ -361,7 +307,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             });
 
             // when
-            MvcResult result = getUri(new GetAllApplicationsURIBuilder().withStatusFilter(ApplicationStatus.IN_PROGRESS).build());
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?status=IN_PROGRESS");
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -369,12 +315,12 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertThat(actual.getPaging().getTotalRecords())
-                    .isEqualTo(expectedApplications.size());
+            assertThat(actual.getPaging().getTotalRecords()).isEqualTo(expectedApplications.size());
             assertThat(actual.getPaging().getPageSize()).isEqualTo(10);
             assertThat(actual.getPaging().getPage()).isEqualTo(0);
-            assertThat(actual.getPaging().getItemsReturned()).isEqualTo(10);
-            assertApplicationListsEqual(expectedApplications, actual.getApplications());
+            assertThat(actual.getPaging().getItemsReturned()).isEqualTo(5);
+            assertThat(actual.getApplications().size()).isEqualTo(5);
+            assertThat((actual.getApplications()).containsAll(expectedApplications));
         }
 
         @Test
@@ -583,7 +529,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             // nothing
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_ALL_APPLICATIONS);
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
 
             // then
             assertSecurityHeaders(result);
@@ -597,7 +543,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             // nothing
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_ALL_APPLICATIONS);
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
 
             // then
             assertSecurityHeaders(result);

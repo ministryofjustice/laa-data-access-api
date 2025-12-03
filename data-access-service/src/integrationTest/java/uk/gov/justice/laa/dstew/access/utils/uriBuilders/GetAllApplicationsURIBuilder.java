@@ -44,7 +44,7 @@ public class GetAllApplicationsURIBuilder {
 
     public URI build() throws URISyntaxException {
         StringBuilder uriString =  new StringBuilder();
-        uriString.append(TestConstants.URIs.GET_ALL_APPLICATIONS);
+        uriString.append(TestConstants.URIs.GET_APPLICATIONS);
 
         if (ifAnyPropertySet()) {
             uriString.append("?");

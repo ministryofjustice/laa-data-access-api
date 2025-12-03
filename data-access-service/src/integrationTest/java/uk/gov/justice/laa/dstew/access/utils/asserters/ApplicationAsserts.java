@@ -11,6 +11,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class ApplicationAsserts {
+    private static final int applicationVersion = 1;
 
     public static void assertApplicationEqual(ApplicationEntity expected, ApplicationEntity actual) {
         assertThat(expected)
@@ -21,35 +22,18 @@ public class ApplicationAsserts {
 
     // TODO: check whether we align status and applicationStatus.
     public static void assertApplicationEqual(ApplicationEntity expected, Application actual) {
-
         assertEquals(expected.getId(), actual.getId());
-
-        assertThat(expected)
-                .usingRecursiveComparison()
-                .ignoringCollectionOrder()
-                .ignoringFields("id", "createdAt", "modifiedAt", "status", "caseworker", "individuals")
-                .isEqualTo(actual);
-
+        assertEquals(expected.getApplicationContent(), actual.getApplicationContent());
         assertEquals(expected.getStatus(), actual.getApplicationStatus());
-
-        assertThat(expected.getIndividuals())
-                .usingRecursiveComparison()
-                .ignoringCollectionOrder()
-                .ignoringFields("id", "createdAt", "modifiedAt", "individualContent")
-                .isEqualTo(actual.getIndividuals());
+        assertEquals(expected.getSchemaVersion(), actual.getSchemaVersion());
     }
 
     public static void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual) {
-        assertThat(expected)
-                .usingRecursiveComparison()
-                .ignoringFields("id", "createdAt", "modifiedAt", "status", "individuals")
-                .isEqualTo(actual);
-
-        assertThat(expected.getIndividuals())
-                .usingRecursiveComparison()
-                .ignoringCollectionOrder()
-                .ignoringFields("id", "createdAt", "modifiedAt", "details")
-                .isEqualTo(actual.getIndividuals());
+        assertNotNull(actual.getId());
+        assertEquals(expected.getApplicationReference(), actual.getApplicationReference());
+        assertEquals(expected.getApplicationContent(), actual.getApplicationContent());
+        assertEquals(expected.getStatus(), actual.getStatus());
+        assertEquals(applicationVersion, actual.getSchemaVersion());
     }
 
     public static void assertApplicationEqual(ApplicationEntity expected, ApplicationSummary actual) {

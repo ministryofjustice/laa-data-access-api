@@ -9,7 +9,7 @@ public class TestConstants {
     public static class URIs {
         public static final String GET_APPLICATION = "/api/v0/applications/{id}";
         public static final String CREATE_APPLICATION = "/api/v0/applications";
-        public static final String GET_ALL_APPLICATIONS = "/api/v0/applications";
+        public static final String GET_APPLICATIONS = "/api/v0/applications";
 
         public static final String GET_ALL_APPLICATIONS_PAGE_PARAM = "page=";
         public static final String GET_ALL_APPLICATIONS_PAGE_SIZE_PARAM = "pagesize=";

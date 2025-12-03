@@ -36,24 +36,10 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
                 .build();
     }
 
-    @Override
     public ApplicationCreateRequest create(Consumer<ApplicationCreateRequest.Builder> customiser) {
         ApplicationCreateRequest entity = create();
         ApplicationCreateRequest.Builder builder = entity.toBuilder();
         customiser.accept(builder);
         return builder.build();
     }
-
-//    public ApplicationCreateRequest create(
-//            ApplicationStatus status = ApplicationStatus.IN_PROGRESS,
-//            Integer schemaVersion = 1,
-//            Map<String, Object> applicationContent =
-//                    new HashMap<String, Object>() { {"test", new String("test"} }
-//    ) {
-//        return new ApplicationCreateRequest().builder()
-//                .status(status)
-//                .schemaVersion(schemaVersion)
-//                .applicationContent(applicationContent)
-//                .build();
-//    }
 }

@@ -1,11 +1,9 @@
-package uk.gov.justice.laa.dstew.access.utils;
+package uk.gov.justice.laa.dstew.access.utils.builders;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 
 public class ProblemDetailBuilder {
-
-    private ProblemDetail problemDetail;
     private HttpStatus status;
     private String detail;
     private String title;
