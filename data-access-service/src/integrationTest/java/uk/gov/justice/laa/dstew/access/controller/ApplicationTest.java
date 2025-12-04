@@ -12,7 +12,6 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
@@ -271,6 +270,10 @@ public class ApplicationTest extends BaseIntegrationTest {
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
+            expectedApplications.forEach(expectedApplication -> {
+               expectedApplication.setId(UUID.randomUUID());
+            });
+
             // then
             assertContentHeaders(result);
             assertSecurityHeaders(result);
@@ -324,6 +327,32 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 25, 20,0,20);
             assertThat(actual.getApplications().size()).isEqualTo(20);
+            assertThat((actual.getApplications()).containsAll(expectedApplications));
+        }
+
+        @ParameterizedTest
+        @MethodSource("applicationFilteredByStatusCases")
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        void givenApplicationsFilteredByStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly(
+                List<ApplicationEntity> expectedApplications,
+                ApplicationStatus applicationStatus,
+                int numberOfApplications
+        ) throws Exception {
+
+            // given
+            persistedApplicationFactory.persistMultiple(expectedApplications);
+
+            // when
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + applicationStatus);
+            ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+            // then
+            assertContentHeaders(result);
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+            assertPaging(actual, numberOfApplications, 10,0, numberOfApplications);
+            assertThat(actual.getApplications().size()).isEqualTo(numberOfApplications);
             assertThat((actual.getApplications()).containsAll(expectedApplications));
         }
 
@@ -669,6 +698,29 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertThat(applicationSummaryResponse.getPaging().getPageSize()).isEqualTo(pageSize);
             assertThat(applicationSummaryResponse.getPaging().getPage()).isEqualTo(page);
             assertThat(applicationSummaryResponse.getPaging().getItemsReturned()).isEqualTo(itemsReturned);
+        }
+
+        private static <E extends Enum<E>> E anyOther(E excluded) {
+            for (E value : excluded.getDeclaringClass().getEnumConstants()) {
+                if (value != excluded) {
+                    return value;
+                }
+            }
+            throw new IllegalArgumentException("Enum only has one value");
+        }
+
+        private Stream<Arguments> applicationFilteredByStatusCases() {
+            List<ApplicationEntity> inProgressApplications = persistedApplicationFactory.createMultiple(7, builder ->
+                builder.status(ApplicationStatus.IN_PROGRESS)
+            );
+            List<ApplicationEntity> submittedApplications = persistedApplicationFactory.createMultiple(5, builder ->
+                    builder.status(ApplicationStatus.SUBMITTED)
+            );
+
+            return Stream.of(
+                    Arguments.of(inProgressApplications, ApplicationStatus.IN_PROGRESS, 7),
+                    Arguments.of(submittedApplications, ApplicationStatus.SUBMITTED, 5)
+            );
         }
     }
 }
