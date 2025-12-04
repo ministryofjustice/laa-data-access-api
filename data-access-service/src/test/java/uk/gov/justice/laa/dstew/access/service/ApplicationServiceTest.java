@@ -193,8 +193,6 @@ public class ApplicationServiceTest {
   void shouldThrowException_whenAppNotFound() {
     UUID appId = UUID.randomUUID();
 
-    when(repository.findById(appId)).thenReturn(Optional.empty());
-
     assertThrows(ApplicationNotFoundException.class,
         () -> service.unassignCaseworker(appId));
   }

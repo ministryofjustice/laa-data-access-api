@@ -210,24 +210,6 @@ public class ApplicationService {
   }
 
   /**
-   * Populate target object with field values from a map.
-   *
-   * @param target object to populate
-   * @param fieldValues map of field names to values
-   */
-  private void populateFields(final Object target, final Map<String, Object> fieldValues) {
-    fieldValues.forEach((name, value) -> {
-      try {
-        final Field field = target.getClass().getDeclaredField(name);
-        field.setAccessible(true);
-        field.set(target, value);
-      } catch (NoSuchFieldException | IllegalAccessException ignored) {
-        // Ignore unknown or inaccessible fields
-      }
-    });
-  }
-
-  /**
    * Check if an application has a caseworker assigned already and checks if the 
    * assigned caseworker matches the given caseworker.
    * 
