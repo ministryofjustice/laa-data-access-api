@@ -328,28 +328,6 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertThat((actual.getApplications()).containsAll(expectedApplications));
         }
 
-        @ParameterizedTest
-        @MethodSource("applicationFilteredByStatusCases")
-        @WithMockUser(authorities = TestConstants.Roles.READER)
-        void givenApplicationsFilteredByStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly(
-                ApplicationStatus applicationStatus,
-                List<ApplicationEntity> expectedApplications,
-                int totalItems
-        ) throws Exception {
-            // when
-            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + applicationStatus);
-            ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
-
-            // then
-            assertContentHeaders(result);
-            assertSecurityHeaders(result);
-            assertNoCacheHeaders(result);
-            assertOK(result);
-            assertPaging(actual, totalItems, 10,0,totalItems);
-            assertThat(actual.getApplications().size()).isEqualTo(5);
-            assertThat((actual.getApplications()).containsAll(expectedApplications));
-        }
-
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
         void givenApplicationsFilteredByInProgressStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
@@ -679,18 +657,6 @@ public class ApplicationTest extends BaseIntegrationTest {
             // then
             assertSecurityHeaders(result);
             assertForbidden(result);
-        }
-
-        private Stream<Arguments> applicationFilteredByStatusCases() {
-            List<ApplicationEntity> inProgressApplications = persistedApplicationFactory.createAndPersistMultiple(7, builder ->
-                    builder.status(ApplicationStatus.IN_PROGRESS));
-            List<ApplicationEntity> submittedApplications = persistedApplicationFactory.createAndPersistMultiple(5, builder ->
-                    builder.status(ApplicationStatus.SUBMITTED));
-
-            return Stream.of(
-                    Arguments.of(ApplicationStatus.IN_PROGRESS, inProgressApplications, 7),
-                    Arguments.of(ApplicationStatus.SUBMITTED, submittedApplications, 5)
-            );
         }
 
         private void assertPaging(
