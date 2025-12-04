@@ -40,7 +40,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @Transactional
 public abstract class BaseIntegrationTest {
 
-    private static final Logger LOG = LoggerFactory.getLogger(BaseIntegrationTest.class);
+    private static final Logger log = LoggerFactory.getLogger(BaseIntegrationTest.class);
 
     @Autowired protected MockMvc mockMvc;
     @Autowired protected ObjectMapper objectMapper;

@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ApplicationAsserts.assertApplicationEqual;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 public class ApplicationRepositoryTest extends BaseIntegrationTest {
 
@@ -20,5 +20,12 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
 
         // then
         assertApplicationEqual(expected, actual);
+    }
+
+    private void assertApplicationEqual(ApplicationEntity expected, ApplicationEntity actual) {
+        assertThat(expected)
+                .usingRecursiveComparison()
+                .ignoringFields("createdAt", "modifiedAt")
+                .isEqualTo(actual);
     }
 }

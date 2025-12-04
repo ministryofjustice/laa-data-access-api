@@ -32,26 +32,8 @@ public class PersistedFactory<
         return entity;
     }
 
-    public TEntity createAndPersist(Consumer<TBuilder> customiser) {
-        TEntity entity = factory.create(customiser);
-        createAndPersist(entity);
-        return entity;
-    }
-
     public void createAndPersistMultiple(List<TEntity> entities) {
         repository.saveAll(entities);
-    }
-
-    public List<TEntity> createAndPersistMultiple(int number) {
-        LinkedList<TEntity> entities = new LinkedList<>();
-        for (int i = 0; i < number; i++) {
-            TEntity entity = factory.create();
-            entities.add(entity);
-        }
-
-        createAndPersistMultiple(entities);
-
-        return entities;
     }
 
     public List<TEntity> createAndPersistMultiple(int number, Consumer<TBuilder> customiser) {
