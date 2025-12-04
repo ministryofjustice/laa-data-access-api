@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.service;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -154,7 +153,7 @@ public class ApplicationService {
    * @return found entity
    */
   private List<ApplicationEntity> checkifAllApplicationsExist(@NonNull final List<UUID> ids) {
-    var applications = applicationRepository.findAllById(ids);
+    var applications = applicationRepository.findAllById(ids.stream().distinct().toList());
     if (applications.isEmpty()) {
       throw new ApplicationNotFoundException("Could not find one of more application ids");
     }

@@ -197,4 +197,24 @@ public class ApplicationServiceTest {
         () -> service.unassignCaseworker(appId));
   }
 
+  @Test
+  void shouldOnlySearchForDistinctApplicationIds_whenAssigning() {
+    UUID appId1 = UUID.randomUUID();
+    UUID cwId = UUID.randomUUID();
+
+    ApplicationEntity appEntity1 = new ApplicationEntity();
+    appEntity1.setId(appId1);
+
+    List<ApplicationEntity> applications = List.of(appEntity1);
+    List<UUID> applicationIds = List.of(appId1, appId1, appId1);
+
+    CaseworkerEntity caseworker = new CaseworkerEntity();
+    caseworker.setId(cwId);
+
+    when(repository.findAllById(List.of(appId1))).thenReturn(applications);
+    when(caseworkerRepository.findById(cwId)).thenReturn(Optional.of(caseworker));
+    service.assignCaseworker(cwId, applicationIds);
+
+    verify(repository).findAllById(List.of(appId1));
+  }
 }
