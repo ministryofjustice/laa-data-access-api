@@ -76,6 +76,17 @@ Then execute
 
 `./gradlew bootRun`
 
+### Useful gradle commands
+
+Prior to pushing code, it's useful to run the following commands to check code style:
+- `./gradlew checkStyleMain` - runs checkstyle on `main` source code
+- `./gradlew checkStyleTest` - runs checkstyle on `test` source code
+
+To generate coverage reports locally:
+- `./gradlew jacocoAggregatedReport` - generates aggregate coverage report
+
+The report will be available in `data-access-service/build/reports/jacoco/jacocoAggregatedReport/html/index.html`
+
 ### Dropping database tables (may not be applicable)
 You may need to drop database tables manually prior to running app so Flyway can create the latest schema. To do this:
 - Start up a Postgres management tool e.g. pgadmin
