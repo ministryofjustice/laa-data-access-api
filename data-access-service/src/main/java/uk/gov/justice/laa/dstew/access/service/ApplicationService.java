@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.NonNull;
 import org.javers.core.Javers;
 import org.javers.core.JaversBuilder;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -139,7 +140,7 @@ public class ApplicationService {
    * @param id UUID of application
    * @return found entity
    */
-  protected ApplicationEntity checkIfApplicationExists(final UUID id) {
+  private ApplicationEntity checkIfApplicationExists(final UUID id) {
     return applicationRepository.findById(id)
         .orElseThrow(() -> new ApplicationNotFoundException(
             String.format("No application found with id: %s", id)
@@ -147,30 +148,42 @@ public class ApplicationService {
   }
 
   /**
+   * Checks that applications exist for all the IDs provided.
+   *
+   * @param ids Collection of UUIDs of applications
+   * @return found entity
+   */
+  private List<ApplicationEntity> checkifAllApplicationsExist(@NonNull final List<UUID> ids) {
+    var applications = applicationRepository.findAllById(ids);
+    if (applications.isEmpty()) {
+      throw new ApplicationNotFoundException("Could not find one of more application ids");
+    }
+    return applications;
+  }
+
+  /**
    * Assigns a caseworker to an application.
    *
-   * @param applicationId the UUID of the application to update
    * @param caseworkerId the UUID of the caseworker to assign
+   * @param applicationIds the UUIDs of the applications to assign the caseworker to
    * @throws ApplicationNotFoundException   if the application does not exist
    * @throws CaseworkerNotFoundException    if the caseworker does not exist
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public void assignCaseworker(final UUID applicationId, final UUID caseworkerId) {
-
-    final ApplicationEntity application = checkIfApplicationExists(applicationId);
+  public void assignCaseworker(@NonNull final UUID caseworkerId, final List<UUID> applicationIds) {
     final CaseworkerEntity caseworker = caseworkerRepository.findById(caseworkerId)
         .orElseThrow(() -> new CaseworkerNotFoundException(
             String.format("No caseworker found with id: %s", caseworkerId)));
 
-    // no update needed if same caseworker
-    if (caseworker.equals(application.getCaseworker())) {
-      return;
-    }
+    final List<ApplicationEntity> applications = checkifAllApplicationsExist(applicationIds);
 
-    application.setCaseworker(caseworker);
-    application.setModifiedAt(Instant.now());
-
-    applicationRepository.save(application);
+    applications.stream()
+                .filter(app -> !applicationCurrentCaseworkerIsCaseworker(app, caseworker))
+                .forEach(app -> {
+                  app.setCaseworker(caseworker);
+                  app.setModifiedAt(Instant.now());
+                });
+    applicationRepository.saveAll(applications);
   }
 
   /**
@@ -212,5 +225,15 @@ public class ApplicationService {
         // Ignore unknown or inaccessible fields
       }
     });
+  }
+
+  /**
+   * Check if an application has a caseworker assigned already and checks if the 
+   * assigned caseworker matches the given caseworker.
+   * 
+   */
+  private static boolean applicationCurrentCaseworkerIsCaseworker(ApplicationEntity application, CaseworkerEntity caseworker) {
+    return application.getCaseworker() != null 
+          && application.getCaseworker().equals(caseworker);
   }
 }

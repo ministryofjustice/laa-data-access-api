@@ -115,35 +115,43 @@ public class ApplicationServiceTest {
 
   @Test
   void shouldAssignCaseworkerToApplication() {
-    UUID appId = UUID.randomUUID();
+    UUID appId1 = UUID.randomUUID();
+    UUID appId2 = UUID.randomUUID();
     UUID cwId = UUID.randomUUID();
 
-    ApplicationEntity appEntity = new ApplicationEntity();
-    appEntity.setId(appId);
+    ApplicationEntity appEntity1 = new ApplicationEntity();
+    appEntity1.setId(appId1);
+
+    ApplicationEntity appEntity2 = new ApplicationEntity();
+    appEntity2.setId(appId2);
+
+    List<ApplicationEntity> applications = List.of(appEntity1, appEntity2);
+    List<UUID> applicationIds = List.of(appId1, appId2);
 
     CaseworkerEntity caseworker = new CaseworkerEntity();
     caseworker.setId(cwId);
 
-    when(repository.findById(appId)).thenReturn(Optional.of(appEntity));
+    when(repository.findAllById(applicationIds)).thenReturn(applications);
     when(caseworkerRepository.findById(cwId)).thenReturn(Optional.of(caseworker));
-    service.assignCaseworker(appId, cwId);
+    service.assignCaseworker(cwId, List.of(appId1, appId2));
 
-    assertThat(appEntity.getCaseworker()).isEqualTo(caseworker);
-    assertThat(appEntity.getModifiedAt()).isNotNull();
+    assertThat(appEntity1.getCaseworker()).isEqualTo(caseworker);
+    assertThat(appEntity1.getModifiedAt()).isNotNull();
 
-    verify(repository).save(appEntity);
+    assertThat(appEntity2.getCaseworker()).isEqualTo(caseworker);
+    assertThat(appEntity2.getModifiedAt()).isNotNull();
+
+    verify(repository).saveAll(applications);
   }
 
   @Test
   void shouldThrowExceptionWhenCaseworkerNotFound() {
-    UUID appId = UUID.randomUUID();
     UUID cwId = UUID.randomUUID();
 
-    when(repository.findById(appId)).thenReturn(Optional.of(new ApplicationEntity()));
     when(caseworkerRepository.findById(cwId)).thenReturn(Optional.empty());
 
     assertThrows(CaseworkerNotFoundException.class,
-        () -> service.assignCaseworker(appId, cwId));
+        () -> service.assignCaseworker(cwId, List.of(UUID.randomUUID())));
   }
 
   @Test

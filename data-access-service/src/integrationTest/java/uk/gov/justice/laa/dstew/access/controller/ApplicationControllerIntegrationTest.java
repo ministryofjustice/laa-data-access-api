@@ -44,6 +44,7 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
@@ -484,10 +485,14 @@ public class ApplicationControllerIntegrationTest {
         .build();
 
     UUID appId = applicationRepository.saveAndFlush(app).getId();
+    
+    CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
+                                                             .caseworkerId(caseworkerId)
+                                                             .applicationIds(List.of(appId))
+                                                             .build();
+    String payload = objectMapper.writeValueAsString(request);
 
-    String payload = "{ \"caseworkerId\": \"" + caseworkerId + "\" }";
-
-    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/" + appId + "/assign")
+    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/assign")
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload))
         .andExpect(status().isOk());
@@ -522,9 +527,13 @@ public class ApplicationControllerIntegrationTest {
 
     UUID appId = applicationRepository.saveAndFlush(app).getId();
 
-    String payload = "{ \"caseworkerId\": \"" + caseworkerOtherId + "\" }";
+    CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
+                                                             .caseworkerId(caseworkerOtherId)
+                                                             .applicationIds(List.of(appId))
+                                                             .build();
+    String payload = objectMapper.writeValueAsString(request);
 
-    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/" + appId + "/assign")
+    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/assign")
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload))
         .andExpect(status().isOk());
@@ -545,14 +554,18 @@ public class ApplicationControllerIntegrationTest {
         .build();
     UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
 
-    String payload = "{ \"caseworkerId\": \"" + caseworkerId + "\" }";
+    CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
+                                                             .caseworkerId(caseworkerId)
+                                                             .applicationIds(List.of(missingAppId))
+                                                             .build();
+    String payload = objectMapper.writeValueAsString(request);
 
-    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/" + missingAppId + "/assign")
+    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/assign")
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.title").value("Not found"))
-        .andExpect(jsonPath("$.detail").value("No application found with id: " + missingAppId));
+        .andExpect(jsonPath("$.detail").value("Could not find one of more application ids"));
   }
 
   @Test
@@ -568,9 +581,13 @@ public class ApplicationControllerIntegrationTest {
     UUID appId = applicationRepository.saveAndFlush(app).getId();
 
     UUID missingCwId = UUID.randomUUID();
-    String payload = "{ \"caseworkerId\": \"" + missingCwId + "\" }";
+        CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
+                                                             .caseworkerId(missingCwId)
+                                                             .applicationIds(List.of(appId))
+                                                             .build();
+    String payload = objectMapper.writeValueAsString(request);
 
-    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/" + appId + "/assign")
+    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/assign")
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload))
         .andExpect(status().isNotFound())
@@ -591,9 +608,12 @@ public class ApplicationControllerIntegrationTest {
 
     UUID appId = applicationRepository.saveAndFlush(app).getId();
 
-    String payload = "{}";
+    CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
+                                                             .applicationIds(List.of(UUID.randomUUID()))
+                                                             .build();
+    String payload = objectMapper.writeValueAsString(request);
 
-    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/" + appId + "/assign")
+    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/assign")
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload))
         .andExpect(status().isBadRequest());
