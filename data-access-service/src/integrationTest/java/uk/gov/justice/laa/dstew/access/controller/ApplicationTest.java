@@ -32,7 +32,6 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
 @ActiveProfiles("test")
 public class ApplicationTest extends BaseIntegrationTest {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final int applicationVersion = 1;
 
     @Nested
@@ -222,8 +221,8 @@ public class ApplicationTest extends BaseIntegrationTest {
                             }), ProblemDetailBuilder
                                     .create()
                                     .status(HttpStatus.BAD_REQUEST)
-                                    .title("Bad Request")
-                                    .detail("Invalid request content.")
+                                    .title("Validation failed")
+                                    .detail("One or more validation rules were violated")
                                     .build()
                     ),
                     Arguments.of(applicationCreateRequestFactory.create(builder -> {
@@ -231,8 +230,8 @@ public class ApplicationTest extends BaseIntegrationTest {
                             }), ProblemDetailBuilder
                                     .create()
                                     .status(HttpStatus.BAD_REQUEST)
-                                    .title("Bad Request")
-                                    .detail("Invalid request content.")
+                                    .title("Validation failed")
+                                    .detail("One or more validation rules were violated")
                                     .build()
                     )
             );
