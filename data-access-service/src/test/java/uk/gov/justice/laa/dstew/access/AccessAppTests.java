@@ -9,6 +9,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
+import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 
 @SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=true"})
 @ImportAutoConfiguration(exclude = {
@@ -24,6 +25,9 @@ class AccessAppTests {
 
   @MockitoBean
   private CaseworkerRepository caseworkerRepository;
+
+  @MockitoBean
+  private DomainEventRepository domainEventRepository;
 
   @Test
   void contextLoads() {

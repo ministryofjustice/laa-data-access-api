@@ -354,6 +354,15 @@ components:
       type: object
       required:
         - caseworkerId
+      properties:
+        caseworkerId:
+          type: string
+          format: uuid
+
+    CaseworkerAssignMultipleApplicationsRequest:
+      type: object
+      required:
+        - caseworkerId
         - applicationIds
       properties:
         caseworkerId:

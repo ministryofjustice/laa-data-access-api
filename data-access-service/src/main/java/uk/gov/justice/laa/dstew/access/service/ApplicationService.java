@@ -14,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
+import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.CaseworkerNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
@@ -36,6 +37,7 @@ public class ApplicationService {
   private final ApplicationValidations applicationValidations;
   private final ObjectMapper objectMapper;
   private final CaseworkerRepository caseworkerRepository;
+  private final DomainEventService domainEventService;
   private final Javers javers;
 
   /**
@@ -50,7 +52,8 @@ public class ApplicationService {
                             final ApplicationMapper applicationMapper,
                             final ApplicationValidations applicationValidations,
                             final ObjectMapper objectMapper,
-                            final CaseworkerRepository caseworkerRepository) {
+                            final CaseworkerRepository caseworkerRepository,
+                            final DomainEventService domainEventService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
@@ -58,6 +61,7 @@ public class ApplicationService {
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
     this.caseworkerRepository = caseworkerRepository;
+    this.domainEventService = domainEventService;
   }
 
   /**
