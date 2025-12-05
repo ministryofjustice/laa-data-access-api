@@ -1,3 +1,13 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.postgresql:postgresql:42.7.4"
+        classpath "org.flywaydb:flyway-database-postgresql:11.17.2"
+    }
+}
+
 plugins {
     id 'java'
     id 'jacoco'
@@ -5,6 +15,7 @@ plugins {
     id "com.gorylenko.gradle-git-properties" version "2.4.1"
     id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin' version '1.0.4'
     id 'com.avast.gradle.docker-compose' version '0.17.12'
+    id 'org.flywaydb.flyway' version '11.17.2'
 }
 
 dockerCompose.isRequiredBy(integrationTest)
@@ -82,6 +93,7 @@ dependencies {
     implementation 'org.javers:javers-core:7.8.0'
 
     runtimeOnly 'org.postgresql:postgresql'
+    implementation 'org.flywaydb:flyway-core'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
     testImplementation 'org.instancio:instancio-junit:5.5.1'
@@ -96,4 +108,11 @@ dependencies {
 
     // Security fix for SNYK-JAVA-ORGAPACHECOMMONS-10734078 (CVE-2025-48924)
     implementation 'org.apache.commons:commons-lang3:3.18.0'
+}
+
+flyway {
+    url = project.rootProject.property('dbUrl')
+    user = project.rootProject.property('dbUser')
+    password = project.rootProject.property('dbPassword')
+    locations = [ project.rootProject.property('dbLocations') ]
 }
