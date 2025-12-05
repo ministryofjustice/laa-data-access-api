@@ -33,6 +33,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 
@@ -164,6 +165,26 @@ class ApplicationControllerTest {
     assertThat(resultApplication)
             .usingRecursiveComparison()
             .isEqualTo(application);
+  }
+
+  @Test
+  void shouldAssignCaseworker() throws Exception {
+    var validRequest = 
+    """
+    {
+      "caseworkerId" : "f67e5290-c774-4e13-809b-37fc6cf9b09b",
+      "applicationIds" : [
+        "33703b45-f8b7-4143-8b5d-969826bdd090",
+        "8b92afd8-ab7b-4f5b-b0ea-2dcd7c2cde8f"
+      ]
+    }
+    """;
+    
+    mockMvc.perform(post("/api/v0/applications/assign")
+                    .contentType("application/json")
+                    .content(validRequest))
+            .andExpect(status().isOk())
+            .andReturn();
   }
 
   private <TResponseModel> TResponseModel deserialise(MvcResult result, Class<TResponseModel> clazz) throws Exception {

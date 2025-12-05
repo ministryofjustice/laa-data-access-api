@@ -95,8 +95,8 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> assignCaseworker(UUID id, CaseworkerAssignRequest request) {
-    service.assignCaseworker(id, request.getCaseworkerId());
+  public ResponseEntity<Void> assignCaseworker(CaseworkerAssignRequest request) {
+    service.assignCaseworker(request.getCaseworkerId(), request.getApplicationIds());
     return ResponseEntity.ok().build();
   }
 
