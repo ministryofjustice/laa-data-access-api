@@ -193,6 +193,14 @@ public class ApplicationService {
                 .forEach(app -> {
                   app.setCaseworker(caseworker);
                   app.setModifiedAt(Instant.now());
+                  applicationRepository.save(app);
+                  //domainEventService.postEvent(
+                  //                      app.getId(),
+                  //                      caseworker.getId(),
+                  //                      DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
+                  //                      Instant.now(),
+                  //                      app.getCreatedBy()
+                  //        );
                 });
     applicationRepository.saveAll(applications);
   }

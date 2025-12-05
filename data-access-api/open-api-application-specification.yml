@@ -358,21 +358,6 @@ components:
           items:
             type: string
             format: uuid
-
-    CaseworkerAssignMultipleApplicationsRequest:
-      type: object
-      required:
-        - caseworkerId
-        - applicationIds
-      properties:
-        caseworkerId:
-          type: string
-          format: uuid
-        applicationIds:
-          type: array
-          items:
-            type: string
-            format: uuid
         eventHistory:
           $ref: "#/components/schemas/EventHistory"
 

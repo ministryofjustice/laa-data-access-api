@@ -1,22 +1,23 @@
 package uk.gov.justice.laa.dstew.access.model;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import java.io.Serializable;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 /**
  * Class represents data associated with a domain event.
  */
-@Getter
-@Setter
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class DomainEventData {
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class DomainEventData implements Serializable {
   private UUID applicationId;
   private UUID caseWorkerId;
   private String createdBy;

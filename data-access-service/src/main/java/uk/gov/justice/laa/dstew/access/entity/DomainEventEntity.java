@@ -12,10 +12,13 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Type;
+import uk.gov.justice.laa.dstew.access.model.DomainEventData;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 
 /**
@@ -23,7 +26,9 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
  */
 @Getter
 @Setter
-@RequiredArgsConstructor
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Entity
 @Table(name = "domain_events")
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
@@ -44,7 +49,7 @@ public class DomainEventEntity {
 
   @Type(JsonType.class)
   @Column(columnDefinition = "jsonb", nullable = false)
-  private Map<String, Object> data;
+  private DomainEventData data;
 
   @Column(name = "created_at")
   private Instant createdAt;
