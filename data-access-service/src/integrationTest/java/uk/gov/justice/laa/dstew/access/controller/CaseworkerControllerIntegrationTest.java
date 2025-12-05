@@ -47,7 +47,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static uk.gov.justice.laa.dstew.access.Constants.POSTGRES_INSTANCE;
 
 @Testcontainers
-@SpringBootTest
+@SpringBootTest(properties = "feature.disable-security=false")
 @AutoConfigureMockMvc
 @Transactional
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)

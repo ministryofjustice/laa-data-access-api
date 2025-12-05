@@ -3,11 +3,12 @@ package uk.gov.justice.laa.dstew.access.service;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import lombok.NonNull;
 import org.javers.core.Javers;
 import org.javers.core.JaversBuilder;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -139,7 +140,7 @@ public class ApplicationService {
    * @param id UUID of application
    * @return found entity
    */
-  protected ApplicationEntity checkIfApplicationExists(final UUID id) {
+  private ApplicationEntity checkIfApplicationExists(final UUID id) {
     return applicationRepository.findById(id)
         .orElseThrow(() -> new ApplicationNotFoundException(
             String.format("No application found with id: %s", id)
@@ -147,30 +148,49 @@ public class ApplicationService {
   }
 
   /**
+   * Checks that applications exist for all the IDs provided.
+   *
+   * @param ids Collection of UUIDs of applications
+   * @return found entity
+   */
+  private List<ApplicationEntity> checkIfAllApplicationsExist(@NonNull final List<UUID> ids) {
+    var idsToFetch = ids.stream().distinct().toList();
+    var applications = applicationRepository.findAllById(idsToFetch);
+    List<UUID> fetchedApplicationsIds = applications.stream().map(app -> app.getId()).toList();
+    if (!idsToFetch.equals(fetchedApplicationsIds)) {
+      String missingIds = idsToFetch.stream()
+                                    .filter(appId -> !fetchedApplicationsIds.contains(appId))
+                                    .map(appId -> appId.toString())
+                                    .collect(Collectors.joining(","));
+      String exceptionMsg = "No application found with ids: " + missingIds;
+      throw new ApplicationNotFoundException(exceptionMsg);
+    }
+    return applications;
+  }
+
+  /**
    * Assigns a caseworker to an application.
    *
-   * @param applicationId the UUID of the application to update
    * @param caseworkerId the UUID of the caseworker to assign
+   * @param applicationIds the UUIDs of the applications to assign the caseworker to
    * @throws ApplicationNotFoundException   if the application does not exist
    * @throws CaseworkerNotFoundException    if the caseworker does not exist
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public void assignCaseworker(final UUID applicationId, final UUID caseworkerId) {
-
-    final ApplicationEntity application = checkIfApplicationExists(applicationId);
+  public void assignCaseworker(@NonNull final UUID caseworkerId, final List<UUID> applicationIds) {
     final CaseworkerEntity caseworker = caseworkerRepository.findById(caseworkerId)
         .orElseThrow(() -> new CaseworkerNotFoundException(
             String.format("No caseworker found with id: %s", caseworkerId)));
 
-    // no update needed if same caseworker
-    if (caseworker.equals(application.getCaseworker())) {
-      return;
-    }
+    final List<ApplicationEntity> applications = checkIfAllApplicationsExist(applicationIds);
 
-    application.setCaseworker(caseworker);
-    application.setModifiedAt(Instant.now());
-
-    applicationRepository.save(application);
+    applications.stream()
+                .filter(app -> !applicationCurrentCaseworkerIsCaseworker(app, caseworker))
+                .forEach(app -> {
+                  app.setCaseworker(caseworker);
+                  app.setModifiedAt(Instant.now());
+                });
+    applicationRepository.saveAll(applications);
   }
 
   /**
@@ -197,20 +217,12 @@ public class ApplicationService {
   }
 
   /**
-   * Populate target object with field values from a map.
-   *
-   * @param target object to populate
-   * @param fieldValues map of field names to values
+   * Check if an application has a caseworker assigned already and checks if the 
+   * assigned caseworker matches the given caseworker.
+   * 
    */
-  private void populateFields(final Object target, final Map<String, Object> fieldValues) {
-    fieldValues.forEach((name, value) -> {
-      try {
-        final Field field = target.getClass().getDeclaredField(name);
-        field.setAccessible(true);
-        field.set(target, value);
-      } catch (NoSuchFieldException | IllegalAccessException ignored) {
-        // Ignore unknown or inaccessible fields
-      }
-    });
+  private static boolean applicationCurrentCaseworkerIsCaseworker(ApplicationEntity application, CaseworkerEntity caseworker) {
+    return application.getCaseworker() != null 
+          && application.getCaseworker().equals(caseworker);
   }
 }
