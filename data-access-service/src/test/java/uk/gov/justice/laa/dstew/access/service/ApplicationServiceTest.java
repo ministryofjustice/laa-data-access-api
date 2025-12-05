@@ -202,19 +202,40 @@ public class ApplicationServiceTest {
     UUID appId1 = UUID.randomUUID();
     UUID cwId = UUID.randomUUID();
 
-    ApplicationEntity appEntity1 = new ApplicationEntity();
-    appEntity1.setId(appId1);
+    ApplicationEntity appEntity1 = ApplicationEntity.builder().id(appId1).build();
 
     List<ApplicationEntity> applications = List.of(appEntity1);
     List<UUID> applicationIds = List.of(appId1, appId1, appId1);
 
-    CaseworkerEntity caseworker = new CaseworkerEntity();
-    caseworker.setId(cwId);
+    CaseworkerEntity caseworker = CaseworkerEntity.builder().id(cwId).build();
 
     when(repository.findAllById(List.of(appId1))).thenReturn(applications);
     when(caseworkerRepository.findById(cwId)).thenReturn(Optional.of(caseworker));
     service.assignCaseworker(cwId, applicationIds);
 
     verify(repository).findAllById(List.of(appId1));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenAssignedApplicationsNotFound() {
+    UUID appId1 = UUID.randomUUID();
+    UUID appId2 = UUID.randomUUID();
+    UUID appId3 = UUID.randomUUID();
+    UUID cwId = UUID.randomUUID();
+
+    ApplicationEntity appEntity1 = new ApplicationEntity();
+    appEntity1.setId(appId1);
+
+    List<ApplicationEntity> applications = List.of(appEntity1);
+    List<UUID> applicationIds = List.of(appId1, appId2, appId3);
+
+    CaseworkerEntity caseworker = new CaseworkerEntity();
+    caseworker.setId(cwId);
+
+    when(repository.findAllById(applicationIds)).thenReturn(applications);
+    when(caseworkerRepository.findById(cwId)).thenReturn(Optional.of(caseworker));
+    ApplicationNotFoundException exception = assertThrows(ApplicationNotFoundException.class,
+      () -> service.assignCaseworker(cwId, applicationIds));
+    assertThat(exception.getMessage()).isEqualTo("No application found with ids: " + appId2.toString() + "," + appId3.toString());
   }
 }

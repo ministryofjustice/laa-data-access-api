@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.NonNull;
 import org.javers.core.Javers;
 import org.javers.core.JaversBuilder;
@@ -152,10 +153,17 @@ public class ApplicationService {
    * @param ids Collection of UUIDs of applications
    * @return found entity
    */
-  private List<ApplicationEntity> checkifAllApplicationsExist(@NonNull final List<UUID> ids) {
-    var applications = applicationRepository.findAllById(ids.stream().distinct().toList());
-    if (applications.isEmpty()) {
-      throw new ApplicationNotFoundException("Could not find one of more application ids");
+  private List<ApplicationEntity> checkIfAllApplicationsExist(@NonNull final List<UUID> ids) {
+    var idsToFetch = ids.stream().distinct().toList();
+    var applications = applicationRepository.findAllById(idsToFetch);
+    List<UUID> fetchedApplicationsIds = applications.stream().map(app -> app.getId()).toList();
+    if (!idsToFetch.equals(fetchedApplicationsIds)) {
+      String missingIds = idsToFetch.stream()
+                                    .filter(appId -> !fetchedApplicationsIds.contains(appId))
+                                    .map(appId -> appId.toString())
+                                    .collect(Collectors.joining(","));
+      String exceptionMsg = "No application found with ids: " + missingIds;
+      throw new ApplicationNotFoundException(exceptionMsg);
     }
     return applications;
   }
@@ -174,7 +182,7 @@ public class ApplicationService {
         .orElseThrow(() -> new CaseworkerNotFoundException(
             String.format("No caseworker found with id: %s", caseworkerId)));
 
-    final List<ApplicationEntity> applications = checkifAllApplicationsExist(applicationIds);
+    final List<ApplicationEntity> applications = checkIfAllApplicationsExist(applicationIds);
 
     applications.stream()
                 .filter(app -> !applicationCurrentCaseworkerIsCaseworker(app, caseworker))

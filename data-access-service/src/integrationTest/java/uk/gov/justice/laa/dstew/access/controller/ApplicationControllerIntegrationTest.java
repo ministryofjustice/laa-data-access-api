@@ -505,6 +505,82 @@ public class ApplicationControllerIntegrationTest {
   @Test
   @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
   @Transactional
+  void shouldAssignMultipleApplicationsToCaseworker() throws Exception {
+    CaseworkerEntity caseworker = CaseworkerEntity.builder()
+        .username("caseworker_user")
+        .build();
+    UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
+
+    ApplicationEntity app = ApplicationEntity.builder()
+        .status(ApplicationStatus.SUBMITTED)
+        .applicationContent(Map.of("foo", "bar"))
+        .createdAt(Instant.now())
+        .modifiedAt(Instant.now())
+        .build();
+    ApplicationEntity app2 = ApplicationEntity.builder()
+        .status(ApplicationStatus.SUBMITTED)
+        .applicationContent(Map.of("foo", "bar"))
+        .createdAt(Instant.now())
+        .modifiedAt(Instant.now())
+        .build();
+
+    UUID appId = applicationRepository.saveAndFlush(app).getId();
+    UUID appId2 = applicationRepository.saveAndFlush(app2).getId();
+    
+    CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
+                                                             .caseworkerId(caseworkerId)
+                                                             .applicationIds(List.of(appId, appId2))
+                                                             .build();
+    String payload = objectMapper.writeValueAsString(request);
+
+    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/assign")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+        .andExpect(status().isOk());
+
+    ApplicationEntity updated = applicationRepository.findById(appId).orElseThrow();
+    ApplicationEntity updated2 = applicationRepository.findById(appId2).orElseThrow();
+    assertThat(updated.getCaseworker()).isNotNull();
+    assertThat(updated.getCaseworker().getId()).isEqualTo(caseworkerId);
+    assertThat(updated2.getCaseworker()).isNotNull();
+    assertThat(updated2.getCaseworker().getId()).isEqualTo(caseworkerId);
+  }
+
+  @Test
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  @Transactional
+  void shouldThrowWhenMultipleAssigningApplicationUnknown() throws Exception {
+    CaseworkerEntity caseworker = CaseworkerEntity.builder()
+        .username("caseworker_user")
+        .build();
+    UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
+
+    ApplicationEntity app = ApplicationEntity.builder()
+        .status(ApplicationStatus.SUBMITTED)
+        .applicationContent(Map.of("foo", "bar"))
+        .createdAt(Instant.now())
+        .modifiedAt(Instant.now())
+        .build();
+    UUID appId = applicationRepository.saveAndFlush(app).getId();
+    UUID appId2 = UUID.randomUUID();
+    UUID appId3 = UUID.randomUUID();
+    
+    CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
+                                                             .caseworkerId(caseworkerId)
+                                                             .applicationIds(List.of(appId, appId2, appId3))
+                                                             .build();
+    String payload = objectMapper.writeValueAsString(request);
+
+    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/assign")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.detail").value("No application found with ids: " + appId2 + "," + appId3));
+  }
+
+  @Test
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  @Transactional
   void shouldReAssignCaseworker() throws Exception {
     CaseworkerEntity caseworker = CaseworkerEntity.builder()
         .username("caseworker_user")
@@ -565,7 +641,7 @@ public class ApplicationControllerIntegrationTest {
             .content(payload))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.title").value("Not found"))
-        .andExpect(jsonPath("$.detail").value("Could not find one of more application ids"));
+        .andExpect(jsonPath("$.detail").value("No application found with ids: " + missingAppId));
   }
 
   @Test
