@@ -716,10 +716,12 @@ public class ApplicationControllerIntegrationTest {
 
     assertThat(app.getCaseworker().getId()).isEqualTo(caseworkerId);
 
+    String payload = "{ \"eventHistory\": { \"eventDescription\": \"Removing caseworker\" } }";
+
     mockMvc.perform(
         MockMvcRequestBuilders.post("/api/v0/applications/" + appId + "/unassign")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{}")
+            .content(payload)
         ).andExpect(status().isOk());
 
     ApplicationEntity updated = applicationRepository.findById(appId).orElseThrow();
