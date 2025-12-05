@@ -191,6 +191,13 @@ paths:
           schema:
             type: string
             format: uuid
+      requestBody:
+        required: false
+        description: Optional event history describing the unassignment action
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaseworkerUnassignRequest'
       responses:
         '200': { description: OK }
         '400': { description: Bad request }
@@ -284,7 +291,6 @@ components:
           items:
             $ref: "#/components/schemas/Individual"
 
-
     ApplicationUpdateRequest:
       type: object
       required:
@@ -337,6 +343,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationSummary"
+
     Caseworker:
       type: object
       properties:
@@ -345,6 +352,15 @@ components:
           format: uuid
         username:
           type: string
+
+    EventHistory:
+      type: object
+      required:
+        - eventDescription
+      properties:
+        eventDescription:
+          type: string
+
     CaseworkerResponse:
       type: array
       items:
@@ -358,4 +374,12 @@ components:
         caseworkerId:
           type: string
           format: uuid
+
+    CaseworkerUnassignRequest:
+      type: object
+      properties:
+        eventHistory:
+          $ref: "#/components/schemas/EventHistory"
+
+
 

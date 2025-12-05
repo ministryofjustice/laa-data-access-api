@@ -158,7 +158,7 @@ public class ApplicationServiceTest {
 
     when(repository.findById(appId)).thenReturn(Optional.of(entity));
 
-    service.unassignCaseworker(appId);
+    service.unassignCaseworker(appId, null);
 
     assertThat(entity.getCaseworker()).isNull();
     verify(repository).save(entity);
@@ -175,7 +175,7 @@ public class ApplicationServiceTest {
 
     when(repository.findById(appId)).thenReturn(Optional.of(entity));
 
-    service.unassignCaseworker(appId);
+    service.unassignCaseworker(appId, null);
 
     verify(repository).findById(appId);
     verify(repository, never()).save(any());
@@ -188,7 +188,7 @@ public class ApplicationServiceTest {
     when(repository.findById(appId)).thenReturn(Optional.empty());
 
     assertThrows(ApplicationNotFoundException.class,
-        () -> service.unassignCaseworker(appId));
+        () -> service.unassignCaseworker(appId, null));
   }
 
 }

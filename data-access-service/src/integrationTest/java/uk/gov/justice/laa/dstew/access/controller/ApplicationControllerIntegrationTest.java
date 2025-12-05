@@ -622,6 +622,8 @@ public class ApplicationControllerIntegrationTest {
 
     mockMvc.perform(
         MockMvcRequestBuilders.post("/api/v0/applications/" + appId + "/unassign")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}")
         ).andExpect(status().isOk());
 
     ApplicationEntity updated = applicationRepository.findById(appId).orElseThrow();
