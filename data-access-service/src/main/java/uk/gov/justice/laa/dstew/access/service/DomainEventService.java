@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
@@ -65,5 +67,10 @@ public class DomainEventService {
                   DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER.name()));
     }
     domainEventRepository.save(domainEventEntity);
+  }
+
+  public Page<DomainEventEntity> getEvents(Integer pageNumber, Integer pageSize) {
+    PageRequest pageDetails = PageRequest.of(pageNumber, pageSize);
+    return domainEventRepository.findAll(pageDetails);
   }
 }
