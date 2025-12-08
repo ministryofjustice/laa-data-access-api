@@ -21,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
@@ -200,7 +201,7 @@ public class ApplicationService {
    * @throws ApplicationNotFoundException   if the application does not exist
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public void unassignCaseworker(final UUID applicationId) {
+  public void unassignCaseworker(final UUID applicationId, EventHistory history) {
     final ApplicationEntity entity = applicationRepository.findById(applicationId)
         .orElseThrow(() -> new ApplicationNotFoundException(
             String.format("No application found with id: %s", applicationId)
@@ -214,6 +215,11 @@ public class ApplicationService {
     entity.setModifiedAt(Instant.now());
 
     applicationRepository.save(entity);
+
+    if (history != null && history.getEventDescription() != null) {
+      // TODO: add persisting of history
+    }
+
   }
 
   /**
