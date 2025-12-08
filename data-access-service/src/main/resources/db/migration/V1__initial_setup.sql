@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS caseworkers(
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
     modified_at TIMESTAMPTZ NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
-    username VARCHAR NOT NULL,
+    username VARCHAR NOT NULL
     );
 
 -- Individuals
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS individuals(
     first_name VARCHAR NOT NULL,
     last_name VARCHAR NOT NULL,
     individual_content JSONB NOT NULL,
-    date_of_birth DATE NOT NULL,
+    date_of_birth DATE NOT NULL
     );
 
 -- Applications
