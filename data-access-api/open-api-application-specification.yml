@@ -249,7 +249,8 @@ components:
     domainEventType:
       type: string
       enum:
-        - TBD
+        - ASSIGN_APPLICATION_TO_CASEWORKER
+        - UNASSIGN_APPLICATION_TO_CASEWORKER
 
     categoryOfLaw:
       type: string
