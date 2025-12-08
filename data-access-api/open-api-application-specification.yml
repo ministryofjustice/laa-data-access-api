@@ -149,6 +149,38 @@ paths:
         '401': { description: Unauthorized }
         '403': { description: Forbidden }
         '500': { description: Internal server error }
+  
+  /api/v0/applications/{id}/history-search:
+    get:
+      tags:
+        - application
+      summary: Get a list of events associated with an application
+      operationId: getApplicationHistory
+      parameters:
+        - in: query
+          name: page
+          description: page number of data to be returned
+          schema:
+            type: integer
+            default: 0
+        - in: query
+          name: pagesize
+          description: number of items to retrieve
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationHistoryResponse"
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
 
   /api/v0/applications/assign:
     post:
@@ -336,16 +368,7 @@ components:
       type: object
       properties:
         paging:
-          type: object
-          properties:
-            page:
-              type: integer
-            pageSize:
-              type: integer
-            itemsReturned:
-              type: integer
-            totalRecords:
-              type: integer
+          $ref: "#/components/schemas/Paging"
         applications:
           type: array
           items:
@@ -396,6 +419,16 @@ components:
 
 
 
+    ApplicationHistoryResponse:
+      type: object
+      properties:
+        paging:
+          $ref: "#/components/schemas/Paging"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/DomainEvent"
+    
     DomainEvent:
       type: object
       required:
@@ -415,10 +448,22 @@ components:
         domainEventType:
           $ref: "#/components/schemas/domainEventType"
         createdAt:
-          type: date-time
+          type: string
+          format: date-time
         createdBy:
           type: string
         eventDescription:
           type: string
         
+    Paging:
+      type: object
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        itemsReturned:
+          type: integer
+        totalRecords:
+          type: integer
 
