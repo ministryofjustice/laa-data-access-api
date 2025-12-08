@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.model.Paging;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
+import uk.gov.justice.laa.dstew.access.service.DomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 
@@ -35,6 +36,7 @@ public class ApplicationController implements ApplicationApi {
 
   private final ApplicationService service;
   private final ApplicationSummaryService summaryService;
+  private final DomainEventService domainService;
 
   @LogMethodArguments
   @LogMethodResponse
@@ -121,9 +123,18 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(@Valid Integer page,
+  public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(UUID applicationId, @Valid Integer page,
       @Valid Integer pagesize) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'getApplicationHistory'");
+    var events = domainService.getEvents(applicationId, page, pagesize);
+    var paging = Paging.builder()
+                       .itemsReturned(events.getNumber())
+                       .pageSize(events.getNumberOfElements())
+                       .page(page)
+                       .totalRecords((int) events.getTotalElements())
+                       .build();
+    return ResponseEntity.ok(ApplicationHistoryResponse.builder()
+                                                 .events(events.getContent())
+                                                 .paging(paging)
+                                                 .build());
   }
 }

@@ -157,6 +157,13 @@ paths:
       summary: Get a list of events associated with an application
       operationId: getApplicationHistory
       parameters:
+        - in: path
+          name: id
+          description: "the ID of the application to get history format"
+          required: true
+          schema:
+            type: string
+            format: uuid
         - in: query
           name: page
           description: page number of data to be returned
@@ -164,7 +171,7 @@ paths:
             type: integer
             default: 0
         - in: query
-          name: pagesize
+          name: pageSize
           description: number of items to retrieve
           schema:
             type: integer

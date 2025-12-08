@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -24,6 +26,8 @@ import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -34,8 +38,10 @@ import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
+import uk.gov.justice.laa.dstew.access.model.DomainEvent;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
+import uk.gov.justice.laa.dstew.access.service.DomainEventService;
 
 @WebMvcTest(
     controllers = ApplicationController.class,
@@ -60,6 +66,9 @@ class ApplicationControllerTest {
 
   @MockitoBean
   private ApplicationSummaryService applicationSummaryService;
+
+  @MockitoBean
+  private DomainEventService domainEventService;
 
   @Test
   void shouldCreateApplication() throws Exception {
@@ -186,6 +195,28 @@ class ApplicationControllerTest {
             .andExpect(status().isOk())
             .andReturn();
   }
+
+  @Test
+  void shouldGetApplicationHistory() throws Exception{
+    final Integer pageNum = 3;
+    final Integer pageSize = 4;
+    final UUID applicationId = UUID.randomUUID();
+
+    when(domainEventService.getEvents(applicationId, pageNum, pageSize))
+    .thenReturn(new PageImpl<>(List.of(DomainEvent.builder().build())));
+
+    String address = "/api/v0/applications/" + applicationId + "/history-search"
+    + "?page=" + pageNum
+    + "&pageSize=" + pageSize;
+
+    mockMvc.perform(get(address))
+    .andExpect(status().isOk())
+    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+    .andReturn();
+
+    verify(domainEventService, times(1)).getEvents(applicationId, pageNum, pageSize);
+  }
+
 
   private <TResponseModel> TResponseModel deserialise(MvcResult result, Class<TResponseModel> clazz) throws Exception {
     return objectMapper.readValue(result.getResponse().getContentAsString(), clazz);

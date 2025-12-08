@@ -59,7 +59,7 @@ public class DomainEventService {
     domainEventRepository.save(domainEventEntity);
   }
 
-  public Page<DomainEventEntity> getEvents(Integer pageNumber, Integer pageSize) {
+  public Page<DomainEventEntity> getEvents(UUID applicationId, Integer pageNumber, Integer pageSize) {
     PageRequest pageDetails = PageRequest.of(pageNumber, pageSize);
     return domainEventRepository.findAll(pageDetails);
   }
