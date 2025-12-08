@@ -3,9 +3,7 @@ package uk.gov.justice.laa.dstew.access.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -46,6 +44,8 @@ public class ApplicationServiceTest {
   private ApplicationMapper mapper;
   @Mock
   private ObjectMapper objectMapper;
+  @Mock
+  private DomainEventService domainEventService;
 
   @Test
   void shouldThrowExceptionWhenApplicationNotFound() {
@@ -211,6 +211,7 @@ public class ApplicationServiceTest {
 
     when(repository.findAllById(List.of(appId1))).thenReturn(applications);
     when(caseworkerRepository.findById(cwId)).thenReturn(Optional.of(caseworker));
+    doNothing().when(domainEventService).postEvent(any(), any(), any(), any(), any());
     service.assignCaseworker(cwId, applicationIds);
 
     verify(repository).findAllById(List.of(appId1));

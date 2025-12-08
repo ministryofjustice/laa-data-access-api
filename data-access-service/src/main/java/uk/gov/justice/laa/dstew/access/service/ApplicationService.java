@@ -22,6 +22,7 @@ import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
@@ -194,13 +195,12 @@ public class ApplicationService {
                   app.setCaseworker(caseworker);
                   app.setModifiedAt(Instant.now());
                   applicationRepository.save(app);
-                  //domainEventService.postEvent(
-                  //                      app.getId(),
-                  //                      caseworker.getId(),
-                  //                      DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
-                  //                      Instant.now(),
-                  //                      app.getCreatedBy()
-                  //        );
+                  domainEventService.postEvent(
+                                        app.getId(),
+                                        caseworker.getId(),
+                                        DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
+                                        Instant.now(),
+                                        app.getCreatedBy());
                 });
     applicationRepository.saveAll(applications);
   }
