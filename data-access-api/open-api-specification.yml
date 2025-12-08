@@ -33,3 +33,5 @@ components:
       $ref: "./open-api-application-specification.yml#/components/schemas/CaseworkerResponse"
     CaseworkerAssignRequest:
       $ref: "./open-api-application-specification.yml#/components/schemas/CaseworkerAssignRequest"
+    DomainEvent:
+      $ref: "./open-api-application-specification.yml#/components/schemas/DomainEvent"

@@ -207,6 +207,10 @@ components:
         - IN_PROGRESS
         - SUBMITTED
       description: Application statuses
+    domainEventType:
+      type: string
+      enum:
+        - TBD
 
     categoryOfLaw:
       type: string
@@ -389,3 +393,32 @@ components:
       properties:
         eventHistory:
           $ref: "#/components/schemas/EventHistory"
+
+
+
+    DomainEvent:
+      type: object
+      required:
+        - applicationId
+        - domainEventType
+        - createdAt
+        - createdBy
+        - eventDescription
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        caseworkerId:
+          type: string
+          format: uuid
+          nullable: true
+        domainEventType:
+          $ref: "#/components/schemas/domainEventType"
+        createdAt:
+          type: date-time
+        createdBy:
+          type: string
+        eventDescription:
+          type: string
+        
+
