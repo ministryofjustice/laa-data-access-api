@@ -2,6 +2,9 @@ package uk.gov.justice.laa.dstew.access.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import lombok.RequiredArgsConstructor;
+
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -18,21 +21,10 @@ import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
  * Service class for managing domain events.
  */
 @Service
+@RequiredArgsConstructor
 public class DomainEventService {
   private final DomainEventRepository domainEventRepository;
   private final ObjectMapper objectMapper;
-
-  /**
-   * Constructs a new {@link DomainEventService} with the required repository and mapper.
-   *
-   * @param domainEventRepository the repository used to access domain event data.
-   */
-  public DomainEventService(
-          final DomainEventRepository domainEventRepository,
-          final ObjectMapper objectMapper) {
-    this.domainEventRepository = domainEventRepository;
-    this.objectMapper = objectMapper;
-  }
 
   /**
    * posts a domain event {@link DomainEventEntity} object.

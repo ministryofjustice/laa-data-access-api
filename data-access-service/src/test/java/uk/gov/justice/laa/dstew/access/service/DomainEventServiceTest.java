@@ -139,6 +139,7 @@ public class DomainEventServiceTest {
         var result = service.getEvents(1, 2);
 
         assertThat(result.getNumberOfElements()).isEqualTo(2);
+        assertThat(result.getContent()).hasSameElementsAs(List.of(entity, entity2));
     }
 
     private static DomainEventEntity createEntity() {
