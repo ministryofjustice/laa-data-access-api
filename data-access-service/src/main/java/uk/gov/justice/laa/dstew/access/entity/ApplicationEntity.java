@@ -41,7 +41,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 @NoArgsConstructor
 @Builder
 @Entity
-@Table(name = "application")
+@Table(name = "applications")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class ApplicationEntity implements AuditableEntity {
