@@ -7,6 +7,7 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateFactoryImpl;
@@ -26,6 +27,16 @@ public class TestConfiguration {
             ApplicationEntity.ApplicationEntityBuilder,
             UUID> persistedApplicationFactory(ApplicationRepository repository, Factory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder> applicationFactory) {
         return new PersistedFactory<>(repository, applicationFactory);
+    }
+
+    @Bean
+    public PersistedFactory<
+            CaseworkerRepository,
+            Factory<CaseworkerEntity, CaseworkerEntity.CaseworkerEntityBuilder>,
+            CaseworkerEntity,
+            CaseworkerEntity.CaseworkerEntityBuilder,
+            UUID> persistedCaseworkerFactory(CaseworkerRepository repository, Factory<CaseworkerEntity, CaseworkerEntity.CaseworkerEntityBuilder> caseworkerFactory) {
+        return new PersistedFactory<>(repository, caseworkerFactory);
     }
 
     @Bean

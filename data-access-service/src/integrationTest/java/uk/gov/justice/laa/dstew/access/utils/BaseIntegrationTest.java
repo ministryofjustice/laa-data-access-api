@@ -20,9 +20,11 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
 
@@ -66,12 +68,36 @@ public abstract class BaseIntegrationTest {
     protected Factory<IndividualEntity, IndividualEntity.IndividualEntityBuilder> individualFactory;
 
     @Autowired
+    protected Factory<CaseworkerEntity, CaseworkerEntity.CaseworkerEntityBuilder> caseworkerFactory;
+
+    @Autowired
     protected PersistedFactory<
             ApplicationRepository,
             Factory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder>,
             ApplicationEntity,
             ApplicationEntity.ApplicationEntityBuilder,
             UUID> persistedApplicationFactory;
+
+    @Autowired
+    protected PersistedFactory<
+            CaseworkerRepository,
+            Factory<CaseworkerEntity, CaseworkerEntity.CaseworkerEntityBuilder>,
+            CaseworkerEntity,
+            CaseworkerEntity.CaseworkerEntityBuilder,
+            UUID> persistedCaseworkerFactory;
+
+
+    // for use in tests and factories where applicable (i.e. default in ApplicationFactoryImpl)
+    public static CaseworkerEntity CaseworkerJohnDoe;
+    public static CaseworkerEntity CaseworkerJaneDoe;
+
+    @BeforeAll
+    void setupCaseworkers() {
+        CaseworkerJohnDoe = persistedCaseworkerFactory.createAndPersist(builder ->
+                builder.username("JohnDoe").build());
+        CaseworkerJaneDoe = persistedCaseworkerFactory.createAndPersist(builder ->
+                builder.username("JaneDoe").build());
+    }
 
     @BeforeEach
     void clearRepositories() {

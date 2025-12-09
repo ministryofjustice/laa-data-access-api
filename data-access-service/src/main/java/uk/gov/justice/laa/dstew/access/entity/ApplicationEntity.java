@@ -81,7 +81,7 @@ public class ApplicationEntity implements AuditableEntity {
   @UpdateTimestamp
   private Instant modifiedAt;
 
-  @OneToOne(cascade = CascadeType.PERSIST)
+  @OneToOne()
   @JoinColumn(name = "caseworker_id", referencedColumnName = "id")
   private CaseworkerEntity caseworker;
 
