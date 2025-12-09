@@ -198,23 +198,19 @@ class ApplicationControllerTest {
 
   @Test
   void shouldGetApplicationHistory() throws Exception{
-    final Integer pageNum = 3;
-    final Integer pageSize = 4;
     final UUID applicationId = UUID.randomUUID();
 
-    when(domainEventService.getEvents(applicationId, pageNum, pageSize))
-    .thenReturn(new PageImpl<>(List.of(DomainEvent.builder().build())));
+    when(domainEventService.getEvents(applicationId))
+    .thenReturn(List.of(DomainEvent.builder().build()));
 
-    String address = "/api/v0/applications/" + applicationId + "/history-search"
-    + "?page=" + pageNum
-    + "&pageSize=" + pageSize;
+    String address = "/api/v0/applications/" + applicationId + "/history-search";
 
     mockMvc.perform(get(address))
     .andExpect(status().isOk())
     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
     .andReturn();
 
-    verify(domainEventService, times(1)).getEvents(applicationId, pageNum, pageSize);
+    verify(domainEventService, times(1)).getEvents(applicationId);
   }
 
 

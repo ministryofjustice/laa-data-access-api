@@ -138,12 +138,10 @@ public class DomainEventServiceTest {
         DomainEventEntity entity = createEntity(applicationId);
         DomainEventEntity entity2 = createEntity(applicationId);
 
-        Page<DomainEventEntity> pagedResult = new PageImpl<>(List.of(entity, entity2));
+        when(repository.findAll())
+        .thenReturn(List.of(entity, entity2));
 
-        when(repository.findAll(PageRequest.of(1, 2)))
-        .thenReturn(pagedResult);
-
-        service.getEvents(applicationId, 1, 2);
+        service.getEvents(applicationId);
         assertThat(false).isTrue();
     }
 

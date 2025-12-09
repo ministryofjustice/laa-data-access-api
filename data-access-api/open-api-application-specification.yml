@@ -164,18 +164,6 @@ paths:
           schema:
             type: string
             format: uuid
-        - in: query
-          name: page
-          description: page number of data to be returned
-          schema:
-            type: integer
-            default: 0
-        - in: query
-          name: pageSize
-          description: number of items to retrieve
-          schema:
-            type: integer
-            default: 10
       responses:
         '200':
           description: 'Success'
@@ -430,8 +418,6 @@ components:
     ApplicationHistoryResponse:
       type: object
       properties:
-        paging:
-          $ref: "#/components/schemas/Paging"
         events:
           type: array
           items:

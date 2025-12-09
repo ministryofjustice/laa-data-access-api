@@ -123,18 +123,10 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(UUID applicationId, @Valid Integer page,
-      @Valid Integer pagesize) {
-    var events = domainService.getEvents(applicationId, page, pagesize);
-    var paging = Paging.builder()
-                       .itemsReturned(events.getNumber())
-                       .pageSize(events.getNumberOfElements())
-                       .page(page)
-                       .totalRecords((int) events.getTotalElements())
-                       .build();
+  public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(UUID applicationId) {
+    var events = domainService.getEvents(applicationId);
     return ResponseEntity.ok(ApplicationHistoryResponse.builder()
-                                                 .events(events.getContent())
-                                                 .paging(paging)
+                                                 .events(events)
                                                  .build());
   }
 }
