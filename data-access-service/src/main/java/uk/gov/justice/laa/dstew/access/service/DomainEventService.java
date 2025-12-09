@@ -1,13 +1,17 @@
 package uk.gov.justice.laa.dstew.access.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.model.DomainEventData;
+import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
+import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
  * Service class for managing domain events.
@@ -15,14 +19,18 @@ import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 @Service
 public class DomainEventService {
   private final DomainEventRepository domainEventRepository;
+  private final ObjectMapper objectMapper;
 
   /**
    * Constructs a new {@link DomainEventService} with the required repository and mapper.
    *
    * @param domainEventRepository the repository used to access domain event data.
    */
-  public DomainEventService(DomainEventRepository domainEventRepository) {
+  public DomainEventService(
+          final DomainEventRepository domainEventRepository,
+          final ObjectMapper objectMapper) {
     this.domainEventRepository = domainEventRepository;
+    this.objectMapper = objectMapper;
   }
 
   /**
@@ -30,28 +38,30 @@ public class DomainEventService {
    *
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public void postEvent(UUID applicationId,
-                        UUID caseWorkerId,
-                        DomainEventType event,
-                        Instant createdAt,
-                        String createdBy
-                        ) {
-    DomainEventData data = DomainEventData.builder()
-        .applicationId(applicationId)
-        .caseWorkerId(caseWorkerId)
-        .createdAt(createdAt)
-        .createdBy("")
-        .eventDescription(event.name())
-        .build();
+  public void saveAssignApplicationDomainEvent(UUID applicationId, UUID caseWorkerId) {
 
-    DomainEventEntity domainEventEntity = DomainEventEntity.builder()
-        .applicationId(applicationId)
-        .caseWorkerId(caseWorkerId)
-        .type(event)
-        .createdAt(createdAt)
-        .createdBy("")
-        .data(data)
-        .build();
-    domainEventRepository.save(domainEventEntity);
+    DomainEventType eventToSave = DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER;
+
+    AssignApplicationDomainEventDetails data = AssignApplicationDomainEventDetails.builder()
+            .applicationId(applicationId)
+            .caseWorkerId(caseWorkerId)
+            .createdAt(Instant.now())
+            .createdBy("")
+            .eventDescription(eventToSave.name())
+            .build();
+
+    try {
+      DomainEventEntity domainEventEntity = DomainEventEntity.builder()
+            .applicationId(applicationId)
+            .caseWorkerId(caseWorkerId)
+            .createdAt(Instant.now())
+            .createdBy("")
+            .type(eventToSave)
+            .data(objectMapper.writeValueAsString(data))
+            .build();
+      domainEventRepository.save(domainEventEntity);
+    } catch (JsonProcessingException e) {
+      throw new DomainEventPublishException(String.format("Unable to save Domain Event of type: %s", eventToSave.name()));
+    }
   }
 }

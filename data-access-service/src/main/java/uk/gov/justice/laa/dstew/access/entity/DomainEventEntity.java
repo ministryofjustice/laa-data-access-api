@@ -18,7 +18,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
-import uk.gov.justice.laa.dstew.access.model.DomainEventData;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 
 /**
@@ -50,7 +49,7 @@ public class DomainEventEntity {
 
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(columnDefinition = "jsonb", name = "data", nullable = false)
-  private DomainEventData data;
+  private String data;
 
   @Column(name = "created_at")
   private Instant createdAt;

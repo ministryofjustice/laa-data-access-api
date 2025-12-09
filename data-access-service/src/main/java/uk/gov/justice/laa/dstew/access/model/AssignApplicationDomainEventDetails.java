@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class DomainEventData implements Serializable {
+public class AssignApplicationDomainEventDetails implements Serializable {
   private UUID applicationId;
   private UUID caseWorkerId;
   private String createdBy;

@@ -133,6 +133,8 @@ public class ApplicationServiceTest {
 
     when(repository.findAllById(applicationIds)).thenReturn(applications);
     when(caseworkerRepository.findById(cwId)).thenReturn(Optional.of(caseworker));
+    doNothing().when(domainEventService).saveAssignApplicationDomainEvent(eq(appEntity1.getId()), any());
+    doNothing().when(domainEventService).saveAssignApplicationDomainEvent(eq(appEntity2.getId()), any());
     service.assignCaseworker(cwId, List.of(appId1, appId2));
 
     assertThat(appEntity1.getCaseworker()).isEqualTo(caseworker);
@@ -141,7 +143,10 @@ public class ApplicationServiceTest {
     assertThat(appEntity2.getCaseworker()).isEqualTo(caseworker);
     assertThat(appEntity2.getModifiedAt()).isNotNull();
 
-    verify(repository).saveAll(applications);
+    verify(domainEventService).saveAssignApplicationDomainEvent(eq(appEntity1.getId()),any());
+    verify(domainEventService).saveAssignApplicationDomainEvent(eq(appEntity2.getId()),any());
+    verify(repository).save(appEntity1);
+    verify(repository).save(appEntity2);
   }
 
   @Test
