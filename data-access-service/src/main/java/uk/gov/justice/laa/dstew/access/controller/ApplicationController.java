@@ -17,6 +17,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponsePaging;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
+import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
@@ -101,8 +103,12 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> unassignCaseworker(UUID id) {
-    service.unassignCaseworker(id);
+  public ResponseEntity<Void> unassignCaseworker(UUID id, CaseworkerUnassignRequest request) {
+
+    EventHistory history = request == null ? null : request.getEventHistory();
+
+    service.unassignCaseworker(id, history);
+
     return ResponseEntity.ok().build();
   }
 
