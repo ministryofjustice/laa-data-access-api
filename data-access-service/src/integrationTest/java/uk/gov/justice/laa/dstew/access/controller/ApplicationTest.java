@@ -21,9 +21,9 @@ import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.builders.ValidationExceptionBuilder;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -251,6 +251,18 @@ public class ApplicationTest extends BaseIntegrationTest {
 
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class AssignCaseworker {}
+
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class UnassignCaseworker {}
+
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class ReassignCaseworker {}
+
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class GetApplications {
 
         public static final String SEARCH_PAGE_PARAM = "page=";
@@ -270,10 +282,6 @@ public class ApplicationTest extends BaseIntegrationTest {
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
-            expectedApplications.forEach(expectedApplication -> {
-               expectedApplication.setId(UUID.randomUUID());
-            });
-
             // then
             assertContentHeaders(result);
             assertSecurityHeaders(result);
@@ -281,7 +289,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 7, 10,0,7);
             assertThat(actual.getApplications().size()).isEqualTo(7);
-            assertThat((actual.getApplications()).containsAll(expectedApplications));
+            assertApplicationListEquals(expectedApplications, actual.getApplications());
         }
 
         @Test
@@ -302,7 +310,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 20, 10,1,10);
             assertThat(actual.getApplications().size()).isEqualTo(10);
-            assertThat((actual.getApplications()).containsAll(expectedApplications.subList(9,19)));
+            assertApplicationListEquals(expectedApplications.subList(10,20), actual.getApplications());
         }
 
         @Test
@@ -314,7 +322,8 @@ public class ApplicationTest extends BaseIntegrationTest {
             List<ApplicationEntity> submittedApplications = persistedApplicationFactory.createAndPersistMultiple(10, builder ->
                     builder.status(ApplicationStatus.SUBMITTED));
 
-            List<ApplicationEntity> expectedApplications = Stream.concat(inProgressApplications.stream(), submittedApplications.stream().limit(5)).toList();
+            List<ApplicationEntity> expectedApplications = Stream.concat(inProgressApplications.stream(), submittedApplications.stream().limit(5))
+                    .collect(Collectors.toList());
 
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_PAGE_SIZE_PARAM + "20");
@@ -327,7 +336,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 25, 20,0,20);
             assertThat(actual.getApplications().size()).isEqualTo(20);
-            assertThat((actual.getApplications()).containsAll(expectedApplications));
+            assertApplicationListEquals(expectedApplications, actual.getApplications());
         }
 
         @ParameterizedTest
@@ -353,7 +362,22 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, numberOfApplications, 10,0, numberOfApplications);
             assertThat(actual.getApplications().size()).isEqualTo(numberOfApplications);
-            assertThat((actual.getApplications()).containsAll(expectedApplications));
+            assertApplicationListEquals(expectedApplications, actual.getApplications());
+        }
+
+        @Test
+        public void checkThatTheContainsAllActuallyWorks() {
+            List<ApplicationEntity> expected = persistedApplicationFactory.createMultiple(2, builder ->
+                    builder.status(ApplicationStatus.IN_PROGRESS)
+            );
+
+            List<Application> actual = List.of(
+                    Application.builder().applicationStatus(ApplicationStatus.IN_PROGRESS).build(),
+                    Application.builder().applicationStatus(ApplicationStatus.SUBMITTED).build()
+            );
+
+            assertThat(actual.containsAll(expected));
+            assertTrue(actual.containsAll(expected));
         }
 
         @Test
@@ -376,7 +400,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 5, 10,0,5);
             assertThat(actual.getApplications().size()).isEqualTo(5);
-            assertThat((actual.getApplications()).containsAll(expectedApplications));
+            assertApplicationListEquals(expectedApplications, actual.getApplications());
         }
 
         @Test
@@ -399,7 +423,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 6, 10,0,6);
             assertThat(actual.getApplications().size()).isEqualTo(6);
-            assertThat((actual.getApplications()).containsAll(expectedApplications));
+            assertApplicationListEquals(expectedApplications, actual.getApplications());
         }
 
         @Test
@@ -424,7 +448,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 17, 10,1,7);
             assertThat(actual.getApplications().size()).isEqualTo(7);
-            assertThat((actual.getApplications()).containsAll(expectedApplications.subList(10,17)));
+            assertApplicationListEquals(expectedApplications.subList(10,17), actual.getApplications());
         }
 
         @Test
@@ -447,7 +471,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 5, 10,0,5);
             assertThat(actual.getApplications().size()).isEqualTo(5);
-            assertThat((actual.getApplications()).containsAll(expectedApplications));
+            assertApplicationListEquals(expectedApplications, actual.getApplications());
         }
 
         @Test
@@ -476,7 +500,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 7, 10,0,7);
             assertThat(actual.getApplications().size()).isEqualTo(7);
-            assertThat((actual.getApplications()).containsAll(expectedApplications));
+            assertApplicationListEquals(expectedApplications, actual.getApplications());
         }
 
         @Test
@@ -499,7 +523,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 3, 10,0,3);
             assertThat(actual.getApplications().size()).isEqualTo(3);
-            assertThat((actual.getApplications()).containsAll(expectedApplications));
+            assertApplicationListEquals(expectedApplications, actual.getApplications());
         }
 
         @Test
@@ -532,7 +556,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 7, 10,0,7);
             assertThat(actual.getApplications().size()).isEqualTo(7);
-            assertThat((actual.getApplications()).containsAll(expectedApplications));
+            assertApplicationListEquals(expectedApplications, actual.getApplications());
         }
 
         @Test
@@ -559,7 +583,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 2, 10,0,2);
             assertThat(actual.getApplications().size()).isEqualTo(2);
-            assertThat((actual.getApplications()).containsAll(expectedApplications));
+            assertApplicationListEquals(expectedApplications, actual.getApplications());
         }
 
         @Test
@@ -593,7 +617,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 1, 10,0,1);
             assertThat(actual.getApplications().size()).isEqualTo(1);
-            assertThat((actual.getApplications()).containsAll(expectedApplications));
+            assertApplicationListEquals(expectedApplications, actual.getApplications());
         }
 
         @Test
@@ -628,7 +652,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 13, 10,1,3);
             assertThat(actual.getApplications().size()).isEqualTo(3);
-            assertThat((actual.getApplications()).containsAll(expectedApplications.subList(10,12)));
+            assertApplicationListEquals(expectedApplications.subList(10,13), actual.getApplications());
         }
 
         @Test
@@ -700,15 +724,6 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertThat(applicationSummaryResponse.getPaging().getItemsReturned()).isEqualTo(itemsReturned);
         }
 
-        private static <E extends Enum<E>> E anyOther(E excluded) {
-            for (E value : excluded.getDeclaringClass().getEnumConstants()) {
-                if (value != excluded) {
-                    return value;
-                }
-            }
-            throw new IllegalArgumentException("Enum only has one value");
-        }
-
         private Stream<Arguments> applicationFilteredByStatusCases() {
             List<ApplicationEntity> inProgressApplications = persistedApplicationFactory.createMultiple(7, builder ->
                 builder.status(ApplicationStatus.IN_PROGRESS)
@@ -721,6 +736,25 @@ public class ApplicationTest extends BaseIntegrationTest {
                     Arguments.of(inProgressApplications, ApplicationStatus.IN_PROGRESS, 7),
                     Arguments.of(submittedApplications, ApplicationStatus.SUBMITTED, 5)
             );
+        }
+
+        private void assertApplicationListEquals(List<ApplicationEntity> expectedApplications, List<ApplicationSummary> actualApplications) {
+            assertThat(actualApplications.size()).isEqualTo(expectedApplications.size());
+
+            expectedApplications.sort(Comparator.comparing(ApplicationEntity::getId));
+            actualApplications.sort(Comparator.comparing(ApplicationSummary::getApplicationId));
+            for (int i = 0; i < expectedApplications.size(); i++) {
+                assertApplicationsEqual(expectedApplications.get(i), actualApplications.get(i));
+            }
+        }
+
+        private void assertApplicationsEqual(ApplicationEntity expectedApplication, ApplicationSummary actualApplication) {
+            assertEquals(expectedApplication.getId(), actualApplication.getApplicationId());
+            assertEquals(expectedApplication.getStatus(), actualApplication.getApplicationStatus());
+            assertEquals(expectedApplication.getApplicationReference(), actualApplication.getApplicationReference());
+            assertEquals(expectedApplication.getCreatedAt(), actualApplication.getCreatedAt().toInstant());
+            assertEquals(expectedApplication.getModifiedAt(), actualApplication.getModifiedAt().toInstant());
+            assertEquals(expectedApplication.getCaseworker().getId(), actualApplication.getAssignedTo());
         }
     }
 }

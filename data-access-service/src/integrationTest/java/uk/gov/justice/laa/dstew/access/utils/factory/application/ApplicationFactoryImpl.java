@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.Individual;
@@ -27,6 +28,10 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                 ))
                 .build();
 
+        CaseworkerEntity caseworkerEntity = CaseworkerEntity.builder()
+                .username("JohnDoe")
+                .build();
+
         return ApplicationEntity.builder()
                 .createdAt(InstantSource.system().instant())
                 .status(ApplicationStatus.IN_PROGRESS)
@@ -35,6 +40,7 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                 .applicationContent(Map.of(
                         "test", "content"
                 ))
+                .caseworker(caseworkerEntity)
                 .build();
     }
 
