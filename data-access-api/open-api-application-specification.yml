@@ -452,7 +452,6 @@ components:
         caseworkerId:
           type: string
           format: uuid
-          nullable: true
         domainEventType:
           $ref: "#/components/schemas/domainEventType"
         createdAt:

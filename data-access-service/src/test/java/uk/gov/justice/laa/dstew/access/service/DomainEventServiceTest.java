@@ -10,8 +10,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
+import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
@@ -36,6 +39,9 @@ public class DomainEventServiceTest {
     @Mock
     private DomainEventRepository repository;
 
+    @MockitoSpyBean
+    private DomainEventMapper mapper;
+
     @Mock
     private ObjectMapper objectMapper;
 
@@ -55,7 +61,7 @@ public class DomainEventServiceTest {
 
         DomainEventEntity domainEventEntity = DomainEventEntity.builder()
                 .applicationId(applicationId)
-                .caseWorkerId(caseworkerId)
+                .caseworkerId(caseworkerId)
                 .createdAt(Instant.now())
                 .createdBy("")
                 .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
@@ -71,7 +77,7 @@ public class DomainEventServiceTest {
         verify(objectMapper, times(1)).writeValueAsString(any(AssignApplicationDomainEventDetails.class));
         verify(repository, times(1)).save(
                 argThat(entity -> entity.getApplicationId().equals(applicationId) &&
-                        entity.getCaseWorkerId().equals(caseworkerId) &&
+                        entity.getCaseworkerId().equals(caseworkerId) &&
                         entity.getType() == DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER &&
                         entity.getData().equals(jsonObject)
         ));
@@ -104,7 +110,7 @@ public class DomainEventServiceTest {
 
         DomainEventEntity domainEventEntity = DomainEventEntity.builder()
                 .applicationId(applicationId)
-                .caseWorkerId(caseworkerId)
+                .caseworkerId(caseworkerId)
                 .createdAt(Instant.now())
                 .createdBy("")
                 .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
@@ -120,7 +126,7 @@ public class DomainEventServiceTest {
         verify(objectMapper, times(1)).writeValueAsString(any(AssignApplicationDomainEventDetails.class));
         verify(repository, times(1)).save(
                 argThat(entity -> entity.getApplicationId().equals(applicationId) &&
-                        entity.getCaseWorkerId().equals(caseworkerId) &&
+                        entity.getCaseworkerId().equals(caseworkerId) &&
                         entity.getType() == DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER &&
                         entity.getData().equals(jsonObject)
                 ));
@@ -137,17 +143,15 @@ public class DomainEventServiceTest {
         when(repository.findAll(PageRequest.of(1, 2)))
         .thenReturn(pagedResult);
 
-        var result = service.getEvents(applicationId, 1, 2);
-
-        assertThat(result.getNumberOfElements()).isEqualTo(2);
-        // assertThat(result.getContent()).hasSameElementsAs(List.of(entity, entity2));
+        service.getEvents(applicationId, 1, 2);
+        assertThat(false).isTrue();
     }
 
     private static DomainEventEntity createEntity(UUID appId) {
         return DomainEventEntity.builder()
                          .id(UUID.randomUUID())
                          .applicationId(appId)
-                         .caseWorkerId(UUID.randomUUID())
+                         .caseworkerId(UUID.randomUUID())
                          .createdAt(Instant.now())
                          .createdBy("")
                          .data("{ \"foo\" : \"bar\"}")

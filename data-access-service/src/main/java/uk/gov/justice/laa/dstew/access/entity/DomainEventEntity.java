@@ -41,7 +41,7 @@ public class DomainEventEntity {
   private UUID applicationId;
 
   @Column(name = "caseworker_id")
-  private UUID caseWorkerId;
+  private UUID caseworkerId;
 
   @Column(name = "type", nullable = false)
   @Enumerated(EnumType.STRING)
