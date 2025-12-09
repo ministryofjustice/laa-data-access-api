@@ -40,7 +40,7 @@ public class DomainEventService {
         .applicationId(applicationId)
         .caseWorkerId(caseWorkerId)
         .createdAt(createdAt)
-        .createdBy("createdBy")
+        .createdBy("")
         .eventDescription(event.name())
         .build();
 
@@ -49,7 +49,7 @@ public class DomainEventService {
         .caseWorkerId(caseWorkerId)
         .type(event)
         .createdAt(createdAt)
-        .createdBy("createdBy")
+        .createdBy("")
         .data(data)
         .build();
     domainEventRepository.save(domainEventEntity);
