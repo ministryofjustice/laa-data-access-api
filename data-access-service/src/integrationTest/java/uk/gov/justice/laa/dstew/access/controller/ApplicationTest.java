@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.utils.builders.ValidationExceptionBuilder
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -275,8 +276,19 @@ public class ApplicationTest extends BaseIntegrationTest {
         @WithMockUser(authorities = TestConstants.Roles.READER)
         void givenApplicationsWithoutFiltering_whenGetApplications_thenReturnApplicationsWithPagingCorrectly() throws Exception {
             // given
-            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(7, builder ->
+            List<ApplicationEntity> expectedApplicationsWithCaseworker = persistedApplicationFactory.createAndPersistMultiple(3, builder ->
                 builder.status(ApplicationStatus.IN_PROGRESS));
+            List<ApplicationEntity> expectedApplicationWithDifferentCaseworker = persistedApplicationFactory.createAndPersistMultiple(3, builder ->
+                    builder.status(ApplicationStatus.IN_PROGRESS).caseworker(CaseworkerJaneDoe));
+            List<ApplicationEntity> expectedApplicationWithNoCaseworker = persistedApplicationFactory.createAndPersistMultiple(3, builder ->
+                    builder.status(ApplicationStatus.IN_PROGRESS).caseworker(null));
+
+            List<ApplicationEntity> expectedApplications = Stream.of(
+                            expectedApplicationsWithCaseworker.stream(),
+                            expectedApplicationWithDifferentCaseworker.stream(),
+                            expectedApplicationWithNoCaseworker.stream())
+                    .flatMap(Function.identity())
+                    .collect(Collectors.toList());
 
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
@@ -287,8 +299,8 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 7, 10,0,7);
-            assertThat(actual.getApplications().size()).isEqualTo(7);
+            assertPaging(actual, 9, 10,0,9);
+            assertThat(actual.getApplications().size()).isEqualTo(9);
             assertApplicationListEquals(expectedApplications, actual.getApplications());
         }
 
@@ -754,7 +766,12 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertEquals(expectedApplication.getApplicationReference(), actualApplication.getApplicationReference());
             assertEquals(expectedApplication.getCreatedAt(), actualApplication.getCreatedAt().toInstant());
             assertEquals(expectedApplication.getModifiedAt(), actualApplication.getModifiedAt().toInstant());
-            assertEquals(expectedApplication.getCaseworker().getId(), actualApplication.getAssignedTo());
+            if (expectedApplication.getCaseworker() != null) {
+                assertEquals(expectedApplication.getCaseworker().getId(), actualApplication.getAssignedTo());
+            }
+            else {
+                assertNull(actualApplication.getAssignedTo());
+            }
         }
     }
 }
