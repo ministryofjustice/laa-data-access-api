@@ -4,14 +4,15 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
+import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEvent;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
@@ -25,6 +26,7 @@ import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 public class DomainEventService {
   private final DomainEventRepository domainEventRepository;
   private final ObjectMapper objectMapper;
+  private final DomainEventMapper mapper;
 
   /**
    * posts a domain event {@link DomainEventEntity} object.
@@ -61,7 +63,7 @@ public class DomainEventService {
     domainEventRepository.save(domainEventEntity);
   }
 
-  public List<DomainEvent> getEvents(UUID applicationId) {
-    return domainEventRepository.findAll().stream().map(event -> new DomainEvent()).toList();
+  public List<DomainEvent> getEvents(Specification<DomainEventEntity> filter) {
+    return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).toList();
   }
 }

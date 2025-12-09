@@ -28,6 +28,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -42,6 +43,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEvent;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.service.DomainEventService;
+import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
 @WebMvcTest(
     controllers = ApplicationController.class,
@@ -200,7 +202,7 @@ class ApplicationControllerTest {
   void shouldGetApplicationHistory() throws Exception{
     final UUID applicationId = UUID.randomUUID();
 
-    when(domainEventService.getEvents(applicationId))
+    when(domainEventService.getEvents(any(Specification.class)))
     .thenReturn(List.of(DomainEvent.builder().build()));
 
     String address = "/api/v0/applications/" + applicationId + "/history-search";
@@ -210,7 +212,7 @@ class ApplicationControllerTest {
     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
     .andReturn();
 
-    verify(domainEventService, times(1)).getEvents(applicationId);
+    verify(domainEventService, times(1)).getEvents(any(Specification.class));
   }
 
 

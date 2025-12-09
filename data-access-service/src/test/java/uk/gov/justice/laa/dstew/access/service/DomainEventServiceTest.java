@@ -1,17 +1,20 @@
 package uk.gov.justice.laa.dstew.access.service;
 
+import static org.assertj.core.api.Assertions.anyOf;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
-
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
@@ -29,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
+import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
 @ExtendWith(MockitoExtension.class)
 public class DomainEventServiceTest {
@@ -39,7 +43,7 @@ public class DomainEventServiceTest {
     @Mock
     private DomainEventRepository repository;
 
-    @MockitoSpyBean
+    @MockitoBean
     private DomainEventMapper mapper;
 
     @Mock
@@ -137,12 +141,20 @@ public class DomainEventServiceTest {
         UUID applicationId = UUID.randomUUID();
         DomainEventEntity entity = createEntity(applicationId);
         DomainEventEntity entity2 = createEntity(applicationId);
+        Specification<DomainEventEntity> spec = DomainEventSpecification.filterApplicationId(applicationId);
 
-        when(repository.findAll())
+        when(repository.findAll(spec))
         .thenReturn(List.of(entity, entity2));
 
-        service.getEvents(applicationId);
-        assertThat(false).isTrue();
+        var result = service.getEvents(spec);
+        assertThat(result).isNotNull();
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getApplicationId()).isEqualTo(entity.getApplicationId());
+        assertThat(result.get(1).getApplicationId()).isEqualTo(entity2.getApplicationId());
+        verify(repository, times(1)).findAll(any(Specification.class));
+        verify(mapper, times(1)).toDomainEvent(entity);
+        verify(mapper, times(1)).toDomainEvent(entity2);
+        verify(mapper, times(2)).toDomainEvent(any());
     }
 
     private static DomainEventEntity createEntity(UUID appId) {

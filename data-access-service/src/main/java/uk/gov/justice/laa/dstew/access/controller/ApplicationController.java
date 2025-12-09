@@ -6,10 +6,12 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
+import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
@@ -26,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.service.DomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
+import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
 /**
  * Controller for handling /api/v0/applications requests.
@@ -124,7 +127,8 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(UUID applicationId) {
-    var events = domainService.getEvents(applicationId);
+    Specification<DomainEventEntity> filter = DomainEventSpecification.filterApplicationId(applicationId);
+    var events = domainService.getEvents(filter);
     return ResponseEntity.ok(ApplicationHistoryResponse.builder()
                                                  .events(events)
                                                  .build());

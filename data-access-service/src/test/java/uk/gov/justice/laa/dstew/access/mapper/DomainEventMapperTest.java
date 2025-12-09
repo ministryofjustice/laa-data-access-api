@@ -16,7 +16,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 
 public class DomainEventMapperTest {
 
-    private DomainEventMapper mapper = new DomainEventMapper();
+    private DomainEventMapper mapper = new DomainEventMapperImpl();
 
     @ParameterizedTest
     @NullSource
