@@ -211,7 +211,6 @@ public class ApplicationServiceTest {
 
     when(repository.findAllById(List.of(appId1))).thenReturn(applications);
     when(caseworkerRepository.findById(cwId)).thenReturn(Optional.of(caseworker));
-    doNothing().when(domainEventService).postEvent(any(), any(), any(), any(), any());
     service.assignCaseworker(cwId, applicationIds);
 
     verify(repository).findAllById(List.of(appId1));
