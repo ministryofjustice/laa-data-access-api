@@ -381,11 +381,3 @@ components:
       properties:
         eventHistory:
           $ref: "#/components/schemas/EventHistory"
-
-    EventHistory:
-      type: object
-      required:
-        - eventDescription
-      properties:
-        eventDescription:
-          type: string
