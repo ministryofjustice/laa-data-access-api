@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS individuals(
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
     modified_at TIMESTAMPTZ NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
+    created_by VARCHAR NULL,
+    updated_by VARCHAR NULL,
+
     first_name VARCHAR NOT NULL,
     last_name VARCHAR NOT NULL,
     individual_content JSONB NOT NULL,
@@ -25,7 +28,10 @@ CREATE TABLE IF NOT EXISTS applications(
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
     modified_at TIMESTAMPTZ NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
-    status VARCHAR(20) NOT NULL,
+    created_by VARCHAR NULL,
+    updated_by VARCHAR NULL,
+
+    status VARCHAR NOT NULL,
     application_content JSONB NOT NULL,
     schema_version INTEGER,
     application_reference VARCHAR,
@@ -55,10 +61,10 @@ CREATE TABLE IF NOT EXISTS domain_events(
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     application_id UUID,
     caseworker_id UUID NULL,
-    type VARCHAR(50) NOT NULL,
+    type VARCHAR NOT NULL,
     data JSONB NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT(NOW() AT TIME ZONE 'UTC'),
-    created_by VARCHAR(255) NOT NULL,
+    created_by VARCHAR NULL,
 
     CONSTRAINT domain_events_application_id_fkey FOREIGN KEY(application_id)
         REFERENCES applications(id),
