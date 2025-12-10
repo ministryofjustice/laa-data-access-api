@@ -812,4 +812,54 @@ public class ApplicationControllerIntegrationTest {
 
   }
 
+
+    @Test
+  @Transactional
+  @WithMockUser(authorities = "APPROLE_ApplicationReader")
+  void shouldGetFilteredEvents_whenEventTypesInQueryString() throws Exception {
+    ApplicationEntity app = ApplicationEntity.builder()
+      .status(ApplicationStatus.SUBMITTED)
+      .applicationContent(Map.of("foo", "bar"))
+      .createdAt(Instant.now())
+      .modifiedAt(Instant.now())
+      .build();
+
+    UUID appId = applicationRepository.saveAndFlush(app).getId();
+    CaseworkerEntity caseworker = CaseworkerEntity.builder()
+        .username("caseworker_user")
+        .build();
+    UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
+    DomainEventEntity event = DomainEventEntity.builder()
+                            .id(UUID.randomUUID())
+                            .applicationId(appId)
+                            .caseworkerId(null)
+                            .createdAt(Instant.now().minusSeconds(60))
+                            .createdBy("John.Doe")
+                            .data("{ \"foo\" : \"bar\" }")
+                            .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
+                            .build();
+    DomainEventEntity event2 = DomainEventEntity.builder()
+                            .id(UUID.randomUUID())
+                            .applicationId(appId)
+                            .caseworkerId(caseworkerId)
+                            .createdAt(Instant.now())
+                            .createdBy("Jane.Doe")
+                            .data("{ \"foo\" : \"bar\" }")
+                            .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
+                            .build();
+    domainEventRepository.saveAllAndFlush(List.of(event, event2));
+
+    String address = "/api/v0/applications/" + appId + "/history-search"
+    + "?eventType=" + DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER;
+    
+    mockMvc.perform(
+        MockMvcRequestBuilders.get(address))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.events.length()").value(1))
+        .andExpect(jsonPath("$.events[0].applicationId").value(appId.toString()))
+        .andExpect(jsonPath("$.events[0].caseworkerId").doesNotExist())
+        .andExpect(jsonPath("$.events[0].domainEventType").value("UNASSIGN_APPLICATION_TO_CASEWORKER"))
+        .andExpect(jsonPath("$.events[0].createdAt").value(event.getCreatedAt().toString()))
+        .andExpect(jsonPath("$.events[0].createdBy").value("John.Doe"));
+  }
 }
