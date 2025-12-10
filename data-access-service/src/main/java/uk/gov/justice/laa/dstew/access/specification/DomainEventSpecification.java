@@ -26,6 +26,9 @@ public class DomainEventSpecification {
   *
   */
   public static Specification<DomainEventEntity> filterMultipleEventType(List<DomainEventType> eventTypes) {
+    if (eventTypes == null || eventTypes.isEmpty()) {
+      return Specification.unrestricted();
+    }
     return eventTypes.stream()
                      .map(DomainEventSpecification::filterEventType)
                      .reduce(Specification.unrestricted(), (a, b) -> a.or(b));

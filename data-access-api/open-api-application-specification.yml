@@ -164,6 +164,13 @@ paths:
           schema:
             type: string
             format: uuid
+        - in: query
+          name: eventType
+          required: false
+          schema: 
+            type: array
+            items:
+              $ref: "#/components/schemas/domainEventType"
       responses:
         '200':
           description: 'Success'

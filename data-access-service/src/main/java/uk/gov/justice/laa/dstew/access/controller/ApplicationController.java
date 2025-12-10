@@ -21,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.model.Paging;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
@@ -126,8 +127,11 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(UUID applicationId) {
-    Specification<DomainEventEntity> filter = DomainEventSpecification.filterApplicationId(applicationId);
+  public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(UUID applicationId,
+      @Valid List<DomainEventType> eventType) {
+    var filterEventType = DomainEventSpecification.filterMultipleEventType(eventType);
+    Specification<DomainEventEntity> filter = DomainEventSpecification.filterApplicationId(applicationId)
+                                                                      .and(filterEventType);
     var events = domainService.getEvents(filter);
     return ResponseEntity.ok(ApplicationHistoryResponse.builder()
                                                  .events(events)
