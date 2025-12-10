@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
@@ -106,7 +107,7 @@ public abstract class BaseIntegrationTest {
                 builder.username("JaneDoe").build());
     }
 
-    @BeforeEach
+    @AfterEach
     void clearRepositories() {
         applicationRepository.deleteAll();
     }

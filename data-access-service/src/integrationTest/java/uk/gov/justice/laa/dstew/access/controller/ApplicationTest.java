@@ -7,7 +7,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -22,7 +21,8 @@ import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.builders.ValidationExceptionBuilder;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
-
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -223,8 +223,8 @@ public class ApplicationTest extends BaseIntegrationTest {
                             }), ProblemDetailBuilder
                                     .create()
                                     .status(HttpStatus.BAD_REQUEST)
-                                    .title("Validation failed")
-                                    .detail("One or more validation rules were violated")
+                                    .title("Bad Request")
+                                    .detail("Invalid request content.")
                                     .build()
                     ),
                     Arguments.of(applicationCreateRequestFactory.create(builder -> {
@@ -232,8 +232,8 @@ public class ApplicationTest extends BaseIntegrationTest {
                             }), ProblemDetailBuilder
                                     .create()
                                     .status(HttpStatus.BAD_REQUEST)
-                                    .title("Validation failed")
-                                    .detail("One or more validation rules were violated")
+                                    .title("Bad Request")
+                                    .detail("Invalid request content.")
                                     .build()
                     )
             );
@@ -580,17 +580,13 @@ public class ApplicationTest extends BaseIntegrationTest {
         }
 
         @ParameterizedTest
-        @MethodSource("applicationFilteredByStatusCases")
+        @MethodSource("applicationsSummaryFilteredByStatusCases")
         @WithMockUser(authorities = TestConstants.Roles.READER)
         void givenApplicationsFilteredByStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly(
-                List<ApplicationEntity> expectedApplications,
                 ApplicationStatus applicationStatus,
+                List<ApplicationSummary> expectedApplicationsSummary,
                 int numberOfApplications
         ) throws Exception {
-
-            // given
-            persistedApplicationFactory.persistMultiple(expectedApplications);
-
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + applicationStatus);
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
@@ -600,9 +596,9 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, numberOfApplications, 10,0, numberOfApplications);
+            assertPaging(actual, numberOfApplications, 10,0,numberOfApplications);
             assertThat(actual.getApplications().size()).isEqualTo(numberOfApplications);
-            assertApplicationListEquals(expectedApplications, actual.getApplications());
+            assertTrue((actual.getApplications()).containsAll(expectedApplicationsSummary));
         }
 
         @Test
@@ -987,18 +983,41 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertThat(applicationSummaryResponse.getPaging().getItemsReturned()).isEqualTo(itemsReturned);
         }
 
-        private Stream<Arguments> applicationFilteredByStatusCases() {
-            List<ApplicationEntity> inProgressApplications = persistedApplicationFactory.createMultiple(7, builder ->
-                builder.status(ApplicationStatus.IN_PROGRESS)
-            );
-            List<ApplicationEntity> submittedApplications = persistedApplicationFactory.createMultiple(5, builder ->
-                    builder.status(ApplicationStatus.SUBMITTED)
-            );
+        private Stream<Arguments> applicationsSummaryFilteredByStatusCases() {
+            Random rn = new Random();
+            List<ApplicationEntity> inProgressApplications = persistedApplicationFactory.createAndPersistMultiple(8, builder ->
+                    builder
+                            .status(ApplicationStatus.IN_PROGRESS)
+                            .applicationReference("REF-00"+ rn.nextInt(10) + 1));
+            List<ApplicationEntity> submittedApplications = persistedApplicationFactory.createAndPersistMultiple(3, builder ->
+                    builder
+                            .status(ApplicationStatus.SUBMITTED)
+                            .applicationReference("REF-00"+ rn.nextInt(50)));
+
+            List<ApplicationSummary> inProgressApplicationsSummary = inProgressApplications.stream()
+                    .map(this::toApplicationSummary)
+                    .collect(Collectors.toList());
+            List<ApplicationSummary> submittedApplicationsSummary = submittedApplications.stream()
+                    .map(this::toApplicationSummary)
+                    .collect(Collectors.toList());
 
             return Stream.of(
-                    Arguments.of(inProgressApplications, ApplicationStatus.IN_PROGRESS, 7),
-                    Arguments.of(submittedApplications, ApplicationStatus.SUBMITTED, 5)
+                    Arguments.of(ApplicationStatus.IN_PROGRESS, inProgressApplicationsSummary, 8),
+                    Arguments.of(ApplicationStatus.SUBMITTED, submittedApplicationsSummary, 3)
             );
+        }
+
+        private ApplicationSummary toApplicationSummary(ApplicationEntity applicationEntity) {
+            ApplicationSummary applicationSummary = new ApplicationSummary();
+            applicationSummary.setApplicationId(applicationEntity.getId());
+            applicationSummary.setApplicationStatus(applicationEntity.getStatus());
+            applicationSummary.setApplicationReference(applicationEntity.getApplicationReference());
+            applicationSummary.setCreatedAt(OffsetDateTime.ofInstant(applicationEntity.getCreatedAt(), ZoneOffset.UTC));
+            applicationSummary.setModifiedAt(OffsetDateTime.ofInstant(applicationEntity.getModifiedAt(), ZoneOffset.UTC));
+            if (applicationEntity.getCaseworker() != null) {
+                applicationSummary.setAssignedTo(applicationEntity.getCaseworker().getId());
+            }
+            return applicationSummary;
         }
 
         private void assertApplicationListEquals(List<ApplicationEntity> expectedApplications, List<ApplicationSummary> actualApplications) {
