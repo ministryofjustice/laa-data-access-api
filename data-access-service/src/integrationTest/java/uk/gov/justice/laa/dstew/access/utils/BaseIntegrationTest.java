@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
@@ -31,8 +32,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
 import java.net.URI;
 import java.util.*;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 @Testcontainers
 @ActiveProfiles("test")
@@ -63,6 +63,9 @@ public abstract class BaseIntegrationTest {
 
     @Autowired
     protected Factory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> applicationCreateRequestFactory;
+
+    @Autowired
+    protected Factory<ApplicationUpdateRequest, ApplicationUpdateRequest.Builder> applicationUpdateRequestFactory;
 
     @Autowired
     protected Factory<IndividualEntity, IndividualEntity.IndividualEntityBuilder> individualFactory;
@@ -133,6 +136,14 @@ public abstract class BaseIntegrationTest {
     public <TRequestModel> MvcResult postUri(String uri, TRequestModel requestModel, Object... args) throws Exception {
         return mockMvc
                 .perform(post(uri, args)
+                        .content(objectMapper.writeValueAsString(requestModel))
+                        .contentType(TestConstants.MediaTypes.APPLICATION_JSON))
+                .andReturn();
+    }
+
+    public <TRequestModel> MvcResult patchUri(String uri, TRequestModel requestModel, Object... args) throws Exception {
+        return mockMvc
+                .perform(patch(uri, args)
                         .content(objectMapper.writeValueAsString(requestModel))
                         .contentType(TestConstants.MediaTypes.APPLICATION_JSON))
                 .andReturn();

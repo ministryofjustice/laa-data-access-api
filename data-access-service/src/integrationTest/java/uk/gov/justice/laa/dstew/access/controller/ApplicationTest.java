@@ -7,6 +7,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -107,6 +108,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertEquals(expected.getApplicationContent(), actual.getApplicationContent());
             assertEquals(expected.getStatus(), actual.getApplicationStatus());
             assertEquals(expected.getSchemaVersion(), actual.getSchemaVersion());
+            assertEquals(expected.getCaseworker().getId(), actual.getCaseworkerId());
         }
     }
 
@@ -248,7 +250,156 @@ public class ApplicationTest extends BaseIntegrationTest {
 
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-    class UpdateApplication {}
+    class UpdateApplication {
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenUpdateRequestWithNewContentAndStatus_whenUpdateApplication_thenReturnOK_andUpdateApplication() throws Exception {
+            // given
+            ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+                builder.applicationContent(new HashMap<>(Map.of(
+                        "test", "content"
+                )));
+            });
+
+            Map<String, Object> expectedContent = new HashMap<>(Map.of(
+                    "test", "changed"
+            ));
+
+            ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create(builder -> {
+                builder.applicationContent(expectedContent).status(ApplicationStatus.SUBMITTED);
+            });
+
+            // when
+            MvcResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, applicationEntity.getId());
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertNoContent(result);
+
+            ApplicationEntity actual = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+            assertThat(expectedContent)
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .isEqualTo(actual.getApplicationContent());
+            assertEquals(ApplicationStatus.SUBMITTED, actual.getStatus());
+        }
+
+        @ParameterizedTest
+        @MethodSource("invalidApplicationUpdateRequests")
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenUpdateRequestWithInvalidContent_whenUpdateApplication_thenReturnBadRequest(
+                ApplicationUpdateRequest applicationUpdateRequest
+        ) throws Exception {
+            // given
+            ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+                builder.applicationContent(new HashMap<>(Map.of(
+                        "test", "content"
+                )));
+            });
+
+            // when
+            MvcResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, applicationEntity.getId());
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertBadRequest(result);
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenUpdateRequestWithWrongId_whenUpdateApplication_thenReturnNotFound() throws Exception {
+            // given
+            ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+                builder.applicationContent(new HashMap<>(Map.of(
+                        "test", "content"
+                )));
+            });
+
+            ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create();
+
+            // when
+            MvcResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, UUID.randomUUID());
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertNotFound(result);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = { "f8c3de3d-1fea-4d7c-a8b0", "not a UUID", ""})
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenUpdateRequestWithInvalidId_whenUpdateApplication_thenReturnNotFound(String uuid) throws Exception {
+            // given
+            persistedApplicationFactory.createAndPersist(builder -> {
+                builder.applicationContent(new HashMap<>(Map.of(
+                        "test", "content"
+                )));
+            });
+
+            ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create();
+
+            // when
+            MvcResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, uuid);
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertBadRequest(result);
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        public void givenReaderRole_whenUpdateApplication_thenReturnForbidden() throws Exception {
+            // given
+            ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create();
+
+            // when
+            MvcResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, UUID.randomUUID().toString());
+
+            // then
+            assertSecurityHeaders(result);
+            assertForbidden(result);
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
+        public void givenUnknownRole_whenUpdateApplication_thenReturnForbidden() throws Exception {
+            // given
+            ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create();
+
+            // when
+            MvcResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, UUID.randomUUID().toString());
+
+            // then
+            assertSecurityHeaders(result);
+            assertForbidden(result);
+        }
+
+        @Test
+        public void givenNoUser_whenUpdateApplication_thenReturnUnauthorised() throws Exception {
+            // given
+            ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create();
+
+            // when
+            MvcResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, UUID.randomUUID().toString());
+
+            // then
+            assertSecurityHeaders(result);
+            assertUnauthorised(result);
+        }
+
+        private Stream<Arguments> invalidApplicationUpdateRequests() {
+            return Stream.of(
+                    Arguments.of(applicationUpdateRequestFactory.create(builder ->
+                            builder.applicationContent(null))),
+                    null
+            );
+        }
+    }
 
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -381,14 +532,37 @@ public class ApplicationTest extends BaseIntegrationTest {
         public void checkThatTheContainsAllActuallyWorks() {
             List<ApplicationEntity> expected = persistedApplicationFactory.createMultiple(2, builder ->
                     builder.status(ApplicationStatus.IN_PROGRESS)
+                            .modifiedAt(null)
+                            .createdAt(null)
             );
 
-            List<Application> actual = List.of(
-                    Application.builder().applicationStatus(ApplicationStatus.IN_PROGRESS).build(),
-                    Application.builder().applicationStatus(ApplicationStatus.SUBMITTED).build()
+            List<ApplicationEntity> actual = persistedApplicationFactory.createMultiple(2, builder ->
+                    builder.status(ApplicationStatus.IN_PROGRESS)
+                            .modifiedAt(null)
+                            .createdAt(null)
             );
 
             assertThat(actual.containsAll(expected));
+            assertTrue(actual.containsAll(expected));
+        }
+
+        @Test
+        public void checkThatTheContainsAllWorksWithIntegers() {
+            class Thing {
+                public Thing(Integer value) {
+                    this.value = value;
+                }
+                Integer value;
+
+//                @Override
+//                public boolean equals(Object o) {
+//                    return ((Thing) o).value.equals(this.value);
+//                }
+            }
+
+            List<Thing> expected = List.of(new Thing(1), new Thing(2), new Thing(3));
+            List<Thing> actual = List.of(new Thing(1), new Thing(2), new Thing(3));
+
             assertTrue(actual.containsAll(expected));
         }
 

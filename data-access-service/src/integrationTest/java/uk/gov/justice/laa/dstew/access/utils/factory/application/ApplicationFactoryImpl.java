@@ -24,19 +24,19 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                 .firstName("John")
                 .lastName("Doe")
                 .dateOfBirth(LocalDate.now())
-                .individualContent(Map.of(
+                .individualContent(new LinkedHashMap<>(Map.of(
                         "test", "content"
-                ))
+                )))
                 .build();
 
         return ApplicationEntity.builder()
                 .createdAt(InstantSource.system().instant())
                 .status(ApplicationStatus.IN_PROGRESS)
                 .modifiedAt(InstantSource.system().instant())
-                .individuals(Set.of(individualEntity))
-                .applicationContent(Map.of(
+                .individuals(new HashSet<>(Set.of(individualEntity)))
+                .applicationContent(new LinkedHashMap<>(Map.of(
                         "test", "content"
-                ))
+                )))
                 .caseworker(BaseIntegrationTest.CaseworkerJohnDoe)
                 .build();
     }
