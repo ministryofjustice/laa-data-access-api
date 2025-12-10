@@ -32,7 +32,7 @@ public class DomainEventMapperTest {
                                                     .createdAt(createdAt)
                                                     .createdBy("John.Doe")
                                                     .data(Map.of("eventDescription", eventDescription))
-                                                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER_)
+                                                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
                                                     .build();
         DomainEvent result = mapper.toDomainEvent(entity);
         
@@ -51,7 +51,7 @@ public class DomainEventMapperTest {
                                                     .createdAt(Instant.now())
                                                     .createdBy("John.Doe")
                                                     .data(Map.of("foo", "bar"))
-                                                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER_)
+                                                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
                                                     .build();
         DomainEvent result = mapper.toDomainEvent(entity);
 

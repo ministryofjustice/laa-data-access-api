@@ -1,9 +1,9 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -63,7 +63,11 @@ public class DomainEventService {
     domainEventRepository.save(domainEventEntity);
   }
 
+  /**
+  * Provides a list of events associated with an application in createdAt ascending order.
+  */
   public List<DomainEvent> getEvents(Specification<DomainEventEntity> filter) {
-    return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).toList();
+    Comparator<DomainEvent> comparer = Comparator.comparing(DomainEvent::getCreatedAt);
+    return repository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
   }
 }

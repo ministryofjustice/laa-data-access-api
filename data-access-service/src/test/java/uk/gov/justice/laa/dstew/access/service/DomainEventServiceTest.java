@@ -13,15 +13,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.DomainEvent;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,7 +45,7 @@ public class DomainEventServiceTest {
     @Mock
     private DomainEventRepository repository;
 
-    @MockitoBean
+    @Mock
     private DomainEventMapper mapper;
 
     @Mock
@@ -145,13 +147,20 @@ public class DomainEventServiceTest {
 
         when(repository.findAll(spec))
         .thenReturn(List.of(entity, entity2));
+        //return events out of order
+        when(mapper.toDomainEvent(any()))
+        .thenReturn(DomainEvent.builder().applicationId(applicationId).createdAt(OffsetDateTime.of(2025, 10, 1, 0, 0, 0, 0, ZoneOffset.UTC)).build())
+        .thenReturn(DomainEvent.builder().applicationId(applicationId).createdAt(OffsetDateTime.of(2024, 9, 1, 0, 0, 0, 0, ZoneOffset.UTC)).build());
 
         var result = service.getEvents(spec);
         assertThat(result).isNotNull();
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getApplicationId()).isEqualTo(entity.getApplicationId());
         assertThat(result.get(1).getApplicationId()).isEqualTo(entity2.getApplicationId());
-        verify(repository, times(1)).findAll(any(Specification.class));
+        //events are returned in the correct order
+        assertThat(result.get(0).getCreatedAt()).isEqualTo(OffsetDateTime.of(2024, 9, 1, 0, 0, 0, 0, ZoneOffset.UTC));
+        assertThat(result.get(1).getCreatedAt()).isEqualTo(OffsetDateTime.of(2025, 10, 1, 0, 0, 0, 0, ZoneOffset.UTC));
+        verify(repository, times(1)).findAll(spec);
         verify(mapper, times(1)).toDomainEvent(entity);
         verify(mapper, times(1)).toDomainEvent(entity2);
         verify(mapper, times(2)).toDomainEvent(any());

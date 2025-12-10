@@ -1,10 +1,12 @@
 package uk.gov.justice.laa.dstew.access.specification;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.DynamicTest.stream;
 import static uk.gov.justice.laa.dstew.access.Constants.POSTGRES_INSTANCE;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,7 +53,8 @@ public class DomainEventSpecificationIntegrationTest {
     void setUp() throws Exception {
         var applications = List.of(createApplication(), createApplication());
         applicationRepository.saveAllAndFlush(applications);
-        prePopulatedEvents = applications.stream().map(app -> createEntity(app.getId())).toList();
+        prePopulatedEvents = applications.stream().map(app -> createEntities(app.getId())).flatMap(Collection::stream).toList();
+
         repository.saveAllAndFlush(prePopulatedEvents);
     }
 
@@ -59,18 +62,48 @@ public class DomainEventSpecificationIntegrationTest {
     void givenApplicationIdSpecification_shouldFilterApplicationsToGivenId() {
         var filterIdSpecification = DomainEventSpecification.filterApplicationId(prePopulatedEvents.getFirst().getApplicationId());
         var result = repository.findAll(filterIdSpecification);
-        assertThat(result).hasSize(1);
+        assertThat(result).hasSize(3);
         assertThat(result.getFirst().getId()).isEqualTo(prePopulatedEvents.getFirst().getId());
+        assertThat(result)
+            .allMatch(event -> event.getApplicationId().equals(prePopulatedEvents.getFirst().getApplicationId()));
     }
 
-    private DomainEventEntity createEntity(UUID appId) {
+    @Test
+    void givenDomainEventTypeSpecification_withSingleEventType_shouldFilterToOnlyThatEventType() {
+        var appId = prePopulatedEvents.getFirst().getApplicationId();
+        var filter = DomainEventSpecification.filterApplicationId(appId)
+                                             .and(DomainEventSpecification.filterMultipleEventType(List.of(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)));
+        var result = repository.findAll(filter);
+        assertThat(result).hasSize(2);
+        assertThat(result).allMatch(event -> event.getApplicationId().equals(appId));
+        assertThat(result).allMatch(event -> event.getType().equals(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER));
+    }
+
+    @Test
+    void givenDomainEventTypeSpecification_withMultipleEventType_shouldFilterToAllMatchingEventTypes() {
+        var appId = prePopulatedEvents.getFirst().getApplicationId();
+        var filter = DomainEventSpecification.filterApplicationId(appId)
+                                             .and(DomainEventSpecification.filterMultipleEventType(List.of(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER, 
+                                                                                                    DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)));
+        var result = repository.findAll(filter);
+        assertThat(result).hasSize(3);
+        assertThat(result).allMatch(event -> event.getApplicationId().equals(appId));
+    }
+
+    private List<DomainEventEntity> createEntities(UUID appId) {
+        return List.of(createEntity(appId, DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER), 
+                       createEntity(appId, DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER), 
+                       createEntity(appId, DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER));
+    }
+
+    private DomainEventEntity createEntity(UUID appId, DomainEventType eventType) {
         return DomainEventEntity.builder()
                                 .id(UUID.randomUUID())
                                 .applicationId(appId)
                                 .createdAt(Instant.now())
                                 .createdBy("John.Doe")
                                 .data(Map.of("eventDescription","assigning a caseworker"))
-                                .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER_)
+                                .type(eventType)
                                 .build();
     }
 
