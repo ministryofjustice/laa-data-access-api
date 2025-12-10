@@ -42,10 +42,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
@@ -489,6 +486,11 @@ public class ApplicationControllerIntegrationTest {
     CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
                                                              .caseworkerId(caseworkerId)
                                                              .applicationIds(List.of(appId))
+                                                              .eventHistory(
+                                                                  EventHistory.builder()
+                                                                          .eventDescription("description")
+                                                                  .build()
+                                                              )
                                                              .build();
     String payload = objectMapper.writeValueAsString(request);
 
@@ -530,6 +532,11 @@ public class ApplicationControllerIntegrationTest {
     CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
                                                              .caseworkerId(caseworkerId)
                                                              .applicationIds(List.of(appId, appId2))
+                                                              .eventHistory(
+                                                                      EventHistory.builder()
+                                                                      .eventDescription("description")
+                                                                      .build()
+                                                              )
                                                              .build();
     String payload = objectMapper.writeValueAsString(request);
 
@@ -568,6 +575,10 @@ public class ApplicationControllerIntegrationTest {
     CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
                                                              .caseworkerId(caseworkerId)
                                                              .applicationIds(List.of(appId, appId2, appId3))
+                                                             .eventHistory(EventHistory.builder()
+                                                                     .eventDescription("description")
+                                                                     .build()
+                                                             )
                                                              .build();
     String payload = objectMapper.writeValueAsString(request);
 
@@ -606,6 +617,10 @@ public class ApplicationControllerIntegrationTest {
     CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
                                                              .caseworkerId(caseworkerOtherId)
                                                              .applicationIds(List.of(appId))
+                                                             .eventHistory(
+                                                               EventHistory.builder()
+                                                                .eventDescription("description")
+                                                                .build())
                                                              .build();
     String payload = objectMapper.writeValueAsString(request);
 
@@ -727,4 +742,33 @@ public class ApplicationControllerIntegrationTest {
     ApplicationEntity updated = applicationRepository.findById(appId).orElseThrow();
     assertThat(updated.getCaseworker()).isNull();
   }
+
+  @Test
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  @Transactional
+  void shouldReturn500IfDomainEventsMissing() throws Exception {
+    CaseworkerEntity caseworker = CaseworkerEntity.builder()
+            .username("caseworker_user")
+            .build();
+    UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
+
+    ApplicationEntity app = ApplicationEntity.builder()
+            .status(ApplicationStatus.SUBMITTED)
+            .applicationContent(Map.of("foo", "bar"))
+            .createdAt(Instant.now())
+            .modifiedAt(Instant.now())
+            .build();
+
+    CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
+            .caseworkerId(caseworkerId)
+            .applicationIds(List.of(applicationRepository.saveAndFlush(app).getId()))
+            .build();
+    String payload = objectMapper.writeValueAsString(request);
+
+    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/assign")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(payload))
+            .andExpect(status().is5xxServerError());
+  }
+
 }

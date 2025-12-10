@@ -7,14 +7,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mock.web.MockMultipartFile;
-import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.exception.CaseworkerNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 
-import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
