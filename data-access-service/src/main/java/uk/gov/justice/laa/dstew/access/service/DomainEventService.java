@@ -11,7 +11,6 @@ import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
-import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
  * Service class for managing domain events.
@@ -38,22 +37,25 @@ public class DomainEventService {
    *
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public void saveAssignApplicationDomainEvent(UUID applicationId, UUID caseWorkerId) {
+  public void saveAssignApplicationDomainEvent(
+                    UUID applicationId,
+                    UUID caseworkerId,
+                    String eventDescription) {
 
     DomainEventType eventToSave = DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER;
 
     AssignApplicationDomainEventDetails data = AssignApplicationDomainEventDetails.builder()
             .applicationId(applicationId)
-            .caseWorkerId(caseWorkerId)
+            .caseWorkerId(caseworkerId)
             .createdAt(Instant.now())
             .createdBy("")
-            .eventDescription(eventToSave.name())
+            .eventDescription(eventDescription)
             .build();
 
     try {
       DomainEventEntity domainEventEntity = DomainEventEntity.builder()
             .applicationId(applicationId)
-            .caseWorkerId(caseWorkerId)
+            .caseWorkerId(caseworkerId)
             .createdAt(Instant.now())
             .createdBy("")
             .type(eventToSave)

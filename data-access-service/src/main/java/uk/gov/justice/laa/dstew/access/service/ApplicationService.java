@@ -181,7 +181,9 @@ public class ApplicationService {
    * @throws CaseworkerNotFoundException    if the caseworker does not exist
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public void assignCaseworker(@NonNull final UUID caseworkerId, final List<UUID> applicationIds) {
+  public void assignCaseworker(@NonNull final UUID caseworkerId,
+                               final List<UUID> applicationIds,
+                               final EventHistory eventHistory) {
     final CaseworkerEntity caseworker = caseworkerRepository.findById(caseworkerId)
         .orElseThrow(() -> new CaseworkerNotFoundException(
             String.format("No caseworker found with id: %s", caseworkerId)));
@@ -196,7 +198,8 @@ public class ApplicationService {
                   applicationRepository.save(app);
                   domainEventService.saveAssignApplicationDomainEvent(
                                       app.getId(),
-                                      caseworker.getId());
+                                      caseworker.getId(),
+                                      eventHistory.getEventDescription());
                 });
   }
 
