@@ -287,7 +287,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         }
 
         @ParameterizedTest
-        @MethodSource("invalidApplicationUpdateRequests")
+        @MethodSource("invalidApplicationUpdateRequestCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
         public void givenUpdateRequestWithInvalidContent_whenUpdateApplication_thenReturnBadRequest(
                 ApplicationUpdateRequest applicationUpdateRequest
@@ -392,7 +392,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertUnauthorised(result);
         }
 
-        private Stream<Arguments> invalidApplicationUpdateRequests() {
+        private Stream<Arguments> invalidApplicationUpdateRequestCases() {
             return Stream.of(
                     Arguments.of(applicationUpdateRequestFactory.create(builder ->
                             builder.applicationContent(null))),
@@ -403,15 +403,92 @@ public class ApplicationTest extends BaseIntegrationTest {
 
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-    class AssignCaseworker {}
+    class AssignCaseworker {
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        public void givenReaderRole_whenAssignCaseworker_thenReturnForbidden() throws Exception {
+            // given
+            CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create();
+
+            // when
+            MvcResult result = postUriWithoutModel(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest, UUID.randomUUID().toString());
+
+            // then
+            assertSecurityHeaders(result);
+            assertForbidden(result);
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
+        public void givenUnknownRole_whenAssignCaseworker_thenReturnForbidden() throws Exception {
+            // given
+            CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create();
+
+            // when
+            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest, UUID.randomUUID().toString());
+
+            // then
+            assertSecurityHeaders(result);
+            assertForbidden(result);
+        }
+
+        @Test
+        public void givenNoUser_whenAssignCaseworker_thenReturnUnauthorised() throws Exception {
+            // given
+            CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create();
+
+            // when
+            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest, UUID.randomUUID().toString());
+
+            // then
+            assertSecurityHeaders(result);
+            assertUnauthorised(result);
+        }
+    }
 
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-    class UnassignCaseworker {}
+    class UnassignCaseworker {
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        public void givenReaderRole_whenUnassignCaseworker_thenReturnForbidden() throws Exception {
+            // when
+            MvcResult result = postUriWithoutModel(TestConstants.URIs.UNASSIGN_CASEWORKER, UUID.randomUUID().toString());
+
+            // then
+            assertSecurityHeaders(result);
+            assertForbidden(result);
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
+        public void givenUnknownRole_whenUnassignCaseworker_thenReturnForbidden() throws Exception {
+            // when
+            MvcResult result = postUriWithoutModel(TestConstants.URIs.UNASSIGN_CASEWORKER, UUID.randomUUID().toString());
+
+            // then
+            assertSecurityHeaders(result);
+            assertForbidden(result);
+        }
+
+        @Test
+        public void givenNoUser_whenUnassignCaseworker_thenReturnUnauthorised() throws Exception {
+            // when
+            MvcResult result = postUriWithoutModel(TestConstants.URIs.UNASSIGN_CASEWORKER, UUID.randomUUID().toString());
+
+            // then
+            assertSecurityHeaders(result);
+            assertUnauthorised(result);
+        }
+    }
 
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-    class ReassignCaseworker {}
+    class ReassignCaseworker {
+
+    }
 
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)

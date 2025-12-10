@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
@@ -66,6 +67,9 @@ public abstract class BaseIntegrationTest {
 
     @Autowired
     protected Factory<ApplicationUpdateRequest, ApplicationUpdateRequest.Builder> applicationUpdateRequestFactory;
+
+    @Autowired
+    protected Factory<CaseworkerAssignRequest, CaseworkerAssignRequest.Builder> caseworkerAssignRequestFactory;
 
     @Autowired
     protected Factory<IndividualEntity, IndividualEntity.IndividualEntityBuilder> individualFactory;
@@ -122,6 +126,12 @@ public abstract class BaseIntegrationTest {
     public MvcResult getUri(URI uri) throws Exception {
         return mockMvc
                 .perform(get(uri))
+                .andReturn();
+    }
+
+    public MvcResult postUriWithoutModel(String uri, Object... args) throws Exception {
+        return mockMvc
+                .perform(post(uri, args))
                 .andReturn();
     }
 
