@@ -15,15 +15,20 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
+
+/**
+ * The global exception handler for all exceptions.
+ */
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
-  @PostConstruct
-  public void init() {
-    log.info("GlobalExceptionHandler loaded!");
-  }
-
+  /**
+   * The handler for ApplicationNotFoundException.
+   *
+   * @param ex the exception.
+   * @return the response with exception message.
+   */
   @ExceptionHandler(ApplicationNotFoundException.class)
   public ResponseEntity<ProblemDetail> handleApplicationNotFound(ApplicationNotFoundException ex) {
     ProblemDetail pd = ProblemDetail.forStatus(NOT_FOUND);
@@ -32,6 +37,12 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(NOT_FOUND).body(pd);
   }
 
+  /**
+   * The handler for CaseworkerNotFoundException.
+   *
+   * @param ex the exception.
+   * @return the response with exception message.
+   */
   @ExceptionHandler(CaseworkerNotFoundException.class)
   public ResponseEntity<ProblemDetail> handleCaseworkerNotFound(CaseworkerNotFoundException ex) {
     ProblemDetail pd = ProblemDetail.forStatus(NOT_FOUND);
@@ -40,6 +51,12 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(NOT_FOUND).body(pd);
   }
 
+  /**
+   * The handler for ValidationException.
+   *
+   * @param ex the exception.
+   * @return the response with errors.
+   */
   @ExceptionHandler(ValidationException.class)
   public ResponseEntity<ProblemDetail> handleValidationException(ValidationException ex) {
     ProblemDetail pd = ProblemDetail.forStatus(BAD_REQUEST);
@@ -49,6 +66,12 @@ public class GlobalExceptionHandler {
     return ResponseEntity.badRequest().body(pd);
   }
 
+  /**
+   * Handles deserialization errors due to malformed types (like sending an Object instead of String).
+   *
+   * @param ex the exception.
+   * @return the response with a descriptive error message.
+   */
   @ExceptionHandler(HttpMessageNotReadableException.class)
   public ResponseEntity<ProblemDetail> handleMalformedJson(HttpMessageNotReadableException ex) {
     Throwable root = ex.getRootCause();
@@ -75,6 +98,12 @@ public class GlobalExceptionHandler {
     return ResponseEntity.badRequest().body(pd);
   }
 
+  /**
+   * The handler for all other exceptions.
+   *
+   * @param ex the exception.
+   * @return the response with fixed title and detail.
+   */
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ProblemDetail> handleGenericException(Exception ex) {
     log.error("An unexpected application error has occurred.", ex);
