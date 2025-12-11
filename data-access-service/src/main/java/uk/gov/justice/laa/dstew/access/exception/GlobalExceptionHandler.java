@@ -1,93 +1,86 @@
 package uk.gov.justice.laa.dstew.access.exception;
 
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
+
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ProblemDetail;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.authorization.AuthorizationDeniedException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-import uk.gov.justice.laa.dstew.access.validation.ValidationException;
-
-/**
- * The global exception handler for all exceptions.
- */
 @RestControllerAdvice
 @Slf4j
-public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+public class GlobalExceptionHandler {
 
-  /**
-   * The handler for ApplicationNotFoundException.
-   *
-   * @param exception the exception.
-   * @return the response with exception message.
-   */
+  @PostConstruct
+  public void init() {
+    log.info("GlobalExceptionHandler loaded!");
+  }
+
   @ExceptionHandler(ApplicationNotFoundException.class)
-  public ResponseEntity<ProblemDetail> handleApplicationNotFound(ApplicationNotFoundException exception) {
-    final var pd = ProblemDetail.forStatus(NOT_FOUND);
+  public ResponseEntity<ProblemDetail> handleApplicationNotFound(ApplicationNotFoundException ex) {
+    ProblemDetail pd = ProblemDetail.forStatus(NOT_FOUND);
     pd.setTitle("Not found");
-    pd.setDetail(exception.getMessage());
+    pd.setDetail(ex.getMessage());
     return ResponseEntity.status(NOT_FOUND).body(pd);
   }
 
-  /**
-   * The handler for CaseworkerNotFoundException.
-   *
-   * @param exception the exception.
-   * @return the response with exception message.
-   */
   @ExceptionHandler(CaseworkerNotFoundException.class)
-  public ResponseEntity<ProblemDetail> handleCaseworkerNotFound(CaseworkerNotFoundException exception) {
-    final var pd = ProblemDetail.forStatus(NOT_FOUND);
+  public ResponseEntity<ProblemDetail> handleCaseworkerNotFound(CaseworkerNotFoundException ex) {
+    ProblemDetail pd = ProblemDetail.forStatus(NOT_FOUND);
     pd.setTitle("Not found");
-    pd.setDetail(exception.getMessage());
+    pd.setDetail(ex.getMessage());
     return ResponseEntity.status(NOT_FOUND).body(pd);
   }
 
-  /**
-   * The handler for ViolationException.
-   *
-   * @param exception the exception.
-   * @return the response with errors.
-   */
   @ExceptionHandler(ValidationException.class)
-  public ResponseEntity<ProblemDetail> handleValidationException(ValidationException exception) {
-    final var pd = ProblemDetail.forStatus(BAD_REQUEST);
+  public ResponseEntity<ProblemDetail> handleValidationException(ValidationException ex) {
+    ProblemDetail pd = ProblemDetail.forStatus(BAD_REQUEST);
     pd.setTitle("Validation failed");
-    pd.setDetail(exception.getMessage());
-    pd.setProperty("errors", exception.errors());
+    pd.setDetail(ex.getMessage());
+    pd.setProperty("errors", ex.errors());
     return ResponseEntity.badRequest().body(pd);
   }
 
-  /**
-   * The handler for ViolationException.
-   *
-   * @param exception the exception.
-   */
-  @ExceptionHandler(AuthorizationDeniedException.class)
-  public void handleAuthorizationDeniedException(AuthorizationDeniedException exception) 
-      throws AuthorizationDeniedException {
-    throw exception; //rely on Spring ExceptionTranslationFilter to differ between 403 and 401 return codes
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ProblemDetail> handleMalformedJson(HttpMessageNotReadableException ex) {
+    Throwable root = ex.getRootCause();
+    String message = "Invalid request payload";
+
+    if (root instanceof MismatchedInputException mie) {
+      String field = mie.getPath().stream()
+          .map(JsonMappingException.Reference::getFieldName)
+          .filter(f -> f != null)
+          .reduce((a, b) -> a + "." + b)
+          .orElse("unknown");
+
+      String expectedType = mie.getTargetType() != null ? mie.getTargetType().getSimpleName() : "unknown";
+
+      message = String.format("Invalid data type for field '%s'. Expected %s.", field, expectedType);
+      log.warn("Type mismatch for field {}: expected {}", field, expectedType, ex);
+    } else {
+      log.error("Failed to read request body", ex);
+    }
+
+    ProblemDetail pd = ProblemDetail.forStatus(BAD_REQUEST);
+    pd.setTitle("Bad Request");
+    pd.setDetail(message);
+    return ResponseEntity.badRequest().body(pd);
   }
 
-  /**
-   * The handler for Exception.
-   *
-   * @param exception the exception.
-   * @return the response with fixed title and detail.
-   */
   @ExceptionHandler(Exception.class)
-  public ResponseEntity<ProblemDetail> handleGenericException(Exception exception) {
-    final var logMessage = "An unexpected application error has occurred.";
-    log.error(logMessage, exception);
-    // Do NOT use the exception type or message in the response (it may leak security-sensitive info)
-    final var pd = ProblemDetail.forStatus(INTERNAL_SERVER_ERROR);
+  public ResponseEntity<ProblemDetail> handleGenericException(Exception ex) {
+    log.error("An unexpected application error has occurred.", ex);
+    ProblemDetail pd = ProblemDetail.forStatus(INTERNAL_SERVER_ERROR);
     pd.setTitle("Internal server error");
-    pd.setDetail(logMessage);
+    pd.setDetail("An unexpected application error has occurred.");
     return ResponseEntity.internalServerError().body(pd);
   }
 }
