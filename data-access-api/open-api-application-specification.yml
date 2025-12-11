@@ -347,8 +347,6 @@ components:
 
     EventHistory:
       type: object
-      required:
-        - eventDescription
       properties:
         eventDescription:
           type: string

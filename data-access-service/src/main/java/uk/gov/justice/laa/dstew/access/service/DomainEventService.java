@@ -7,7 +7,6 @@ import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
@@ -40,7 +39,7 @@ public class DomainEventService {
   public void saveAssignApplicationDomainEvent(
                     UUID applicationId,
                     UUID caseworkerId,
-                    String eventDescription) {
+                    String eventDescription) throws JsonProcessingException {
 
     AssignApplicationDomainEventDetails data = AssignApplicationDomainEventDetails.builder()
             .applicationId(applicationId)
@@ -50,8 +49,7 @@ public class DomainEventService {
             .eventDescription(eventDescription)
             .build();
 
-    try {
-      DomainEventEntity domainEventEntity = DomainEventEntity.builder()
+    DomainEventEntity domainEventEntity = DomainEventEntity.builder()
             .applicationId(applicationId)
             .caseWorkerId(caseworkerId)
             .createdAt(Instant.now())
@@ -59,10 +57,6 @@ public class DomainEventService {
             .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
             .data(objectMapper.writeValueAsString(data))
             .build();
-      domainEventRepository.save(domainEventEntity);
-    } catch (JsonProcessingException e) {
-      throw new DomainEventPublishException(String.format("Unable to save Domain Event of type: %s",
-              DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER.name()));
-    }
+    domainEventRepository.save(domainEventEntity);
   }
 }

@@ -771,4 +771,37 @@ public class ApplicationControllerIntegrationTest {
             .andExpect(status().is5xxServerError());
   }
 
+  @Test
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  @Transactional
+  void shouldReturnOkIfEventsDescriptionMissing() throws Exception {
+    CaseworkerEntity caseworker = CaseworkerEntity.builder()
+            .username("caseworker_user")
+            .build();
+    UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
+
+    ApplicationEntity app = ApplicationEntity.builder()
+            .status(ApplicationStatus.SUBMITTED)
+            .applicationContent(Map.of("foo", "bar"))
+            .createdAt(Instant.now())
+            .modifiedAt(Instant.now())
+            .build();
+
+    CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
+            .caseworkerId(caseworkerId)
+            .applicationIds(List.of(applicationRepository.saveAndFlush(app).getId()))
+            .eventHistory(
+              EventHistory.builder()
+              .eventDescription(null)
+              .build()
+            )
+            .build();
+    String payload = objectMapper.writeValueAsString(request);
+
+    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/assign")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(payload))
+            .andExpect(status().isOk());
+  }
+
 }

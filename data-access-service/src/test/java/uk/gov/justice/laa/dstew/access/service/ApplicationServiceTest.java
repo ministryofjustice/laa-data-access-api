@@ -19,7 +19,6 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.CaseworkerNotFoundException;
-import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
@@ -113,7 +112,7 @@ public class ApplicationServiceTest {
   }
 
   @Test
-  void shouldAssignCaseworkerToApplication() {
+  void shouldAssignCaseworkerToApplication() throws JsonProcessingException {
     UUID appId1 = UUID.randomUUID();
     UUID appId2 = UUID.randomUUID();
     UUID cwId = UUID.randomUUID();
@@ -131,13 +130,19 @@ public class ApplicationServiceTest {
     caseworker.setId(cwId);
 
     EventHistory eventHistory = EventHistory.builder()
-                                .eventDescription("this is an event")
+                                .eventDescription("description")
                                 .build();
 
     when(repository.findAllById(applicationIds)).thenReturn(applications);
     when(caseworkerRepository.findById(cwId)).thenReturn(Optional.of(caseworker));
-    doNothing().when(domainEventService).saveAssignApplicationDomainEvent(eq(appEntity1.getId()), any(), any());
-    doNothing().when(domainEventService).saveAssignApplicationDomainEvent(eq(appEntity2.getId()), any(), any());
+    doNothing().when(domainEventService).saveAssignApplicationDomainEvent(
+            eq(appEntity1.getId()),
+            eq(cwId),
+            eq(eventHistory.getEventDescription()));
+    doNothing().when(domainEventService).saveAssignApplicationDomainEvent(
+            eq(appEntity2.getId()),
+            eq(cwId),
+            eq(eventHistory.getEventDescription()));
     service.assignCaseworker(cwId, List.of(appId1, appId2), eventHistory);
 
     assertThat(appEntity1.getCaseworker()).isEqualTo(caseworker);
@@ -146,8 +151,14 @@ public class ApplicationServiceTest {
     assertThat(appEntity2.getCaseworker()).isEqualTo(caseworker);
     assertThat(appEntity2.getModifiedAt()).isNotNull();
 
-    verify(domainEventService).saveAssignApplicationDomainEvent(eq(appEntity1.getId()),any(), any());
-    verify(domainEventService).saveAssignApplicationDomainEvent(eq(appEntity2.getId()),any(), any());
+    verify(domainEventService).saveAssignApplicationDomainEvent(
+            eq(appEntity1.getId()),
+            eq(cwId),
+            eq(eventHistory.getEventDescription()));
+    verify(domainEventService).saveAssignApplicationDomainEvent(
+            eq(appEntity2.getId()),
+            eq(cwId),
+            eq(eventHistory.getEventDescription()));
     verify(repository).save(appEntity1);
     verify(repository).save(appEntity2);
   }
@@ -247,4 +258,38 @@ public class ApplicationServiceTest {
       () -> service.assignCaseworker(cwId, applicationIds, new EventHistory()));
     assertThat(exception.getMessage()).isEqualTo("No application found with ids: " + appId2.toString() + "," + appId3.toString());
   }
+
+  @Test
+  void shouldAssignCaseworkerToApplicationWhenNullEventDescription() throws JsonProcessingException {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseWorkerId = UUID.randomUUID();
+
+    ApplicationEntity applicationEntity = new ApplicationEntity();
+    applicationEntity.setId(applicationId);
+
+    CaseworkerEntity caseworker = new CaseworkerEntity();
+    caseworker.setId(caseWorkerId);
+
+    EventHistory eventHistory = EventHistory.builder()
+            .eventDescription(null)
+            .build();
+
+    when(repository.findAllById(List.of(applicationId))).thenReturn(List.of(applicationEntity));
+    when(caseworkerRepository.findById(caseWorkerId)).thenReturn(Optional.of(caseworker));
+    doNothing().when(domainEventService).saveAssignApplicationDomainEvent(
+            eq(applicationEntity.getId()),
+            eq(caseWorkerId),
+            eq(eventHistory.getEventDescription()));
+    service.assignCaseworker(caseWorkerId, List.of(applicationId), eventHistory);
+
+    assertThat(applicationEntity.getCaseworker()).isEqualTo(caseworker);
+    assertThat(applicationEntity.getModifiedAt()).isNotNull();
+
+    verify(domainEventService).saveAssignApplicationDomainEvent(
+            eq(applicationEntity.getId()),
+            eq(caseWorkerId),
+            eq(eventHistory.getEventDescription()));
+    verify(repository).save(applicationEntity);
+  }
+
 }
