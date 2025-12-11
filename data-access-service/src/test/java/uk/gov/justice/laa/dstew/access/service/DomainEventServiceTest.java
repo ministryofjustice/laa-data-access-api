@@ -110,6 +110,7 @@ public class DomainEventServiceTest {
 
         service.saveAssignApplicationDomainEvent(applicationId, caseworkerId, data.getEventDescription());
 
+        verify(objectMapper, times(1)).writeValueAsString(any(AssignApplicationDomainEventDetails.class));
         verify(repository, times(1)).save(
                 argThat(entity -> entity.getApplicationId().equals(applicationId) &&
                         entity.getCaseWorkerId().equals(caseworkerId) &&
