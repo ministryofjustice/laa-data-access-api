@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -61,6 +62,9 @@ public abstract class BaseIntegrationTest {
     protected ApplicationRepository applicationRepository;
 
     @Autowired
+    protected CaseworkerRepository caseworkerRepository;
+
+    @Autowired
     protected Factory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder> applicationFactory;
 
     @Autowired
@@ -105,11 +109,6 @@ public abstract class BaseIntegrationTest {
                 builder.username("JohnDoe").build());
         CaseworkerJaneDoe = persistedCaseworkerFactory.createAndPersist(builder ->
                 builder.username("JaneDoe").build());
-    }
-
-    @AfterEach
-    void clearRepositories() {
-        applicationRepository.deleteAll();
     }
 
     public MvcResult getUri(String uri) throws Exception {
