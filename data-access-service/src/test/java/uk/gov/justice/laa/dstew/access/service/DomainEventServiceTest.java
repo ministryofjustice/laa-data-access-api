@@ -16,7 +16,7 @@ import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import java.time.Instant;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -77,7 +77,7 @@ public class DomainEventServiceTest {
 
         when(objectMapper.writeValueAsString(any())).thenThrow(new JsonProcessingException("Error"){});
 
-        assertThrows(JsonProcessingException.class,
+        assertThrows(DomainEventPublishException.class,
                 () -> service.saveAssignApplicationDomainEvent(applicationId, caseworkerId, "description"));
     }
 

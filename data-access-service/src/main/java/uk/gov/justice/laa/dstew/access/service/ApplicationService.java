@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.service;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
@@ -19,12 +18,10 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.CaseworkerNotFoundException;
-import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
@@ -201,15 +198,10 @@ public class ApplicationService {
                   app.setCaseworker(caseworker);
                   app.setModifiedAt(Instant.now());
                   applicationRepository.save(app);
-                  try {
-                    domainEventService.saveAssignApplicationDomainEvent(
-                            app.getId(),
-                            caseworker.getId(),
-                            eventHistory.getEventDescription());
-                  } catch (JsonProcessingException e) {
-                    throw new DomainEventPublishException(String.format("Unable to save Domain Event of type: %s",
-                              DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER.name()));
-                  }
+                  domainEventService.saveAssignApplicationDomainEvent(
+                          app.getId(),
+                          caseworker.getId(),
+                          eventHistory.getEventDescription());
                 });
 
   }
