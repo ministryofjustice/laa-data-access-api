@@ -24,7 +24,6 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -448,7 +447,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             ApplicationEntity actualApplication = applicationRepository.findById(expectedApplication.getId()).orElseThrow();
             assertEquals(caseworkerAssignRequest.getCaseworkerId(), actualApplication.getCaseworker().getId());
-            assertApplicationEntityEqualIgnoreCaseworker(expectedApplication, actualApplication);
+            assertEquals(expectedApplication, actualApplication);
         }
 
         @Test
@@ -472,7 +471,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             ApplicationEntity actualApplication = applicationRepository.findById(expectedApplication.getId()).orElseThrow();
             assertNull(actualApplication.getCaseworker());
-            assertApplicationEntityEqualIgnoreCaseworker(expectedApplication, actualApplication);
+            assertEquals(expectedApplication, actualApplication);
         }
 
         @Test
@@ -1075,9 +1074,5 @@ public class ApplicationTest extends BaseIntegrationTest {
             }
             return applicationSummary;
         }
-    }
-
-    private void assertApplicationEntityEqualIgnoreCaseworker(ApplicationEntity expected, ApplicationEntity actual) {
-        assertThat(expected).usingRecursiveComparison().ignoringFields("caseworker").isEqualTo(actual);
     }
 }
