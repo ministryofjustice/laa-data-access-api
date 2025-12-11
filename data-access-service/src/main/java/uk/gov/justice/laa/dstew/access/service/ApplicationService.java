@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import jakarta.transaction.Transactional;
 import lombok.NonNull;
 import org.javers.core.Javers;
 import org.javers.core.JaversBuilder;
@@ -180,6 +182,7 @@ public class ApplicationService {
    * @throws ApplicationNotFoundException   if the application does not exist
    * @throws CaseworkerNotFoundException    if the caseworker does not exist
    */
+  @Transactional
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void assignCaseworker(@NonNull final UUID caseworkerId,
                                final List<UUID> applicationIds,
