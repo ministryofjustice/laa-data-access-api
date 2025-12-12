@@ -336,7 +336,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationSummary"
-
     Caseworker:
       type: object
       properties:
@@ -348,8 +347,6 @@ components:
 
     EventHistory:
       type: object
-      required:
-        - eventDescription
       properties:
         eventDescription:
           type: string
@@ -374,12 +371,11 @@ components:
           items:
             type: string
             format: uuid
+        eventHistory:
+          $ref: "#/components/schemas/EventHistory"
 
     CaseworkerUnassignRequest:
       type: object
       properties:
         eventHistory:
           $ref: "#/components/schemas/EventHistory"
-
-
-

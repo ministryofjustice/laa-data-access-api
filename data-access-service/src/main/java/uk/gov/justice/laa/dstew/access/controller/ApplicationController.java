@@ -98,7 +98,9 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<Void> assignCaseworker(CaseworkerAssignRequest request) {
-    service.assignCaseworker(request.getCaseworkerId(), request.getApplicationIds());
+    service.assignCaseworker(request.getCaseworkerId(),
+                              request.getApplicationIds(),
+                              request.getEventHistory());
     return ResponseEntity.ok().build();
   }
 
