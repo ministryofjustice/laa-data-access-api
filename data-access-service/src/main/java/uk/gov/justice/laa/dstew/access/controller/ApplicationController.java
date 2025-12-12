@@ -63,6 +63,7 @@ public class ApplicationController implements ApplicationApi {
           UUID userId,
           Integer page,
           Integer pageSize) {
+    page = (page == null || page < 1) ? 1 : page;
 
     Page<ApplicationSummary> applicationsReturned =
             summaryService.getAllApplications(
@@ -71,7 +72,8 @@ public class ApplicationController implements ApplicationApi {
                     firstName,
                     lastName,
                     userId,
-                    page, pageSize);
+                    page - 1, pageSize);
+
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
     ApplicationSummaryResponsePaging responsePageDetails = new ApplicationSummaryResponsePaging();
     response.setPaging(responsePageDetails);

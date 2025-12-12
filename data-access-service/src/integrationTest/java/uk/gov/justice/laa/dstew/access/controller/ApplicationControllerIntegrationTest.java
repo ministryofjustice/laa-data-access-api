@@ -727,4 +727,18 @@ public class ApplicationControllerIntegrationTest {
     ApplicationEntity updated = applicationRepository.findById(appId).orElseThrow();
     assertThat(updated.getCaseworker()).isNull();
   }
+
+  @Test
+  @WithMockUser(authorities = {"APPROLE_ApplicationReader"})
+  void shouldDefaultPageToOneWhenPageZeroProvided() throws Exception {
+
+    when(repository.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(createMixedStatusSummaryList()));
+    when(repository.count(any(Specification.class))).thenReturn(4L);
+
+    mockMvc.perform(get("/api/v0/applications?page=0"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.paging.page").value(1))
+        .andExpect(jsonPath("$.applications", hasSize(4)));
+  }
 }
