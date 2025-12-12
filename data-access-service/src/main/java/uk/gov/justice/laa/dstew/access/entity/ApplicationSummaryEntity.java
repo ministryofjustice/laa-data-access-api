@@ -29,7 +29,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 @Setter
 @RequiredArgsConstructor
 @Entity
-@Table(name = "application")
+@Table(name = "applications")
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class ApplicationSummaryEntity {
   @Id
