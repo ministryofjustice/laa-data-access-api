@@ -33,7 +33,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @NoArgsConstructor
 @Builder(toBuilder = true)
 @Entity
-@Table(name = "individual")
+@Table(name = "individuals")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class IndividualEntity  implements AuditableEntity {

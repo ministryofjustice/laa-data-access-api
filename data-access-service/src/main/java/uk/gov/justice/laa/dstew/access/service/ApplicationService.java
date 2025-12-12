@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.service;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,7 @@ public class ApplicationService {
   private final ApplicationValidations applicationValidations;
   private final ObjectMapper objectMapper;
   private final CaseworkerRepository caseworkerRepository;
+  private final DomainEventService domainEventService;
   private final Javers javers;
 
   /**
@@ -52,7 +54,8 @@ public class ApplicationService {
                             final ApplicationMapper applicationMapper,
                             final ApplicationValidations applicationValidations,
                             final ObjectMapper objectMapper,
-                            final CaseworkerRepository caseworkerRepository) {
+                            final CaseworkerRepository caseworkerRepository,
+                            final DomainEventService domainEventService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
@@ -60,6 +63,7 @@ public class ApplicationService {
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
     this.caseworkerRepository = caseworkerRepository;
+    this.domainEventService = domainEventService;
   }
 
   /**
@@ -177,8 +181,11 @@ public class ApplicationService {
    * @throws ApplicationNotFoundException   if the application does not exist
    * @throws CaseworkerNotFoundException    if the caseworker does not exist
    */
+  @Transactional
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public void assignCaseworker(@NonNull final UUID caseworkerId, final List<UUID> applicationIds) {
+  public void assignCaseworker(@NonNull final UUID caseworkerId,
+                               final List<UUID> applicationIds,
+                               final EventHistory eventHistory) {
     final CaseworkerEntity caseworker = caseworkerRepository.findById(caseworkerId)
         .orElseThrow(() -> new CaseworkerNotFoundException(
             String.format("No caseworker found with id: %s", caseworkerId)));
@@ -190,8 +197,13 @@ public class ApplicationService {
                 .forEach(app -> {
                   app.setCaseworker(caseworker);
                   app.setModifiedAt(Instant.now());
+                  applicationRepository.save(app);
+                  domainEventService.saveAssignApplicationDomainEvent(
+                          app.getId(),
+                          caseworker.getId(),
+                          eventHistory.getEventDescription());
                 });
-    applicationRepository.saveAll(applications);
+
   }
 
   /**
