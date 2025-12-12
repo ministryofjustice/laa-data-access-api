@@ -8,14 +8,16 @@ import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateFactoryImpl;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.CaseworkerAssignFactoryImpl;
+import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerAssignFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactoryImpl;
+import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerUnassignFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactoryImpl;
 
 import java.util.UUID;
@@ -56,6 +58,11 @@ public class TestConfiguration {
     @Bean
     public Factory<CaseworkerAssignRequest, CaseworkerAssignRequest.Builder> caseworkerAssignRequestFactory() {
         return new CaseworkerAssignFactoryImpl();
+    }
+
+    @Bean
+    public Factory<CaseworkerUnassignRequest, CaseworkerUnassignRequest.Builder> caseworkerUnassignRequestFactory() {
+        return new CaseworkerUnassignFactoryImpl();
     }
 
     @Bean

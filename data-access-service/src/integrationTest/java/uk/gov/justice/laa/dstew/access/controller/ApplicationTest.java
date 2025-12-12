@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
+import lombok.Getter;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -13,6 +14,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
@@ -25,7 +27,10 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.function.Supplier;
+import java.util.regex.MatchResult;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -427,32 +432,180 @@ public class ApplicationTest extends BaseIntegrationTest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class AssignCaseworker {
 
-        @Test
+        @ParameterizedTest
+        @MethodSource("validAssignCaseworkerRequestCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenValidAssignRequest_whenAssignCaseworker_thenReturnOK_andAssignCaseworker() throws Exception {
+        public void givenValidAssignRequest_whenAssignCaseworker_thenReturnOK_andAssignCaseworker(
+                CaseworkerCase assignCaseworkerCase
+        ) throws Exception {
             // given
-            ApplicationEntity expectedApplication = persistedApplicationFactory.createAndPersist(builder -> {
-                builder.caseworker(null);
+            List<ApplicationEntity> expectedAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+                    assignCaseworkerCase.numberOfApplicationsToAssign,
+                    builder -> {
+                        builder.caseworker(null);
             });
 
-            CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create();
+            List<ApplicationEntity> expectedAlreadyAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+                    assignCaseworkerCase.numberOfApplicationsAlreadyAssigned,
+                    builder -> {
+                        builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
+            });
+
+            List<ApplicationEntity> expectedUnassignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+                    assignCaseworkerCase.numberOfApplicationsNotAssigned,
+                    builder -> {
+                        builder.caseworker(null);
+            });
+
+            CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {;
+                builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
+                        .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()));
+            });
 
             // when
-            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest, expectedApplication.getId());
+            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
 
             // then
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
 
+            assertApplicationsMatchInRepository(expectedAssignedApplications);
+            assertApplicationsMatchInRepository(expectedAlreadyAssignedApplications);
+            assertApplicationsMatchInRepository(expectedUnassignedApplications);
+        }
+
+        @ParameterizedTest
+        @MethodSource("invalidAssignCaseworkerRequestCases")
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenInvalidAssignRequestBecauseApplicationDoesNotExist_whenAssignCaseworker_thenReturnNotFound_andGiveMissingIds(
+                CaseworkerCase assignCaseworkerCase
+        ) throws Exception {
+            // given
+            List<ApplicationEntity> expectedAlreadyAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+                    assignCaseworkerCase.numberOfApplicationsAlreadyAssigned,
+                    builder -> {
+                        builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
+                    });
+
+            List<ApplicationEntity> expectedUnassignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+                    assignCaseworkerCase.numberOfApplicationsNotAssigned,
+                    builder -> {
+                        builder.caseworker(null);
+                    });
+
+            List<UUID> invalidApplicationIds = IntStream.range(0, assignCaseworkerCase.numberOfApplicationsToAssign)
+                    .mapToObj(i -> UUID.randomUUID())
+                    .toList();
+
+            // generate random UUIDs so simulate records that do not exist..
+            CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {;
+                builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
+                        .applicationIds(invalidApplicationIds);
+            });
+
+            // when
+            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertNotFound(result);
+
+            ProblemDetail problemResult = deserialise(result, ProblemDetail.class);
+            // Extract UUIDs from the detail string
+            Pattern uuidPattern = Pattern.compile("[0-9a-fA-F\\-]{36}");
+            Set<UUID> actualIds = uuidPattern.matcher(problemResult.getDetail())
+                    .results()
+                    .map(MatchResult::group)
+                    .map(UUID::fromString)
+                    .collect(Collectors.toSet());
+
+            assertEquals(new HashSet<>(invalidApplicationIds), actualIds);
+
+            assertApplicationsMatchInRepository(expectedAlreadyAssignedApplications);
+            assertApplicationsMatchInRepository(expectedUnassignedApplications);
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenInvalidAssignRequestBecauseSomeApplicationsDoNotExist_whenAssignCaseworker_thenReturnNotFound_andAssignAvailableApplications_andGiveMissingIds() throws Exception {
+            // given
+            List<ApplicationEntity> expectedAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+                    4,
+                    builder -> {
+                        builder.caseworker(null);
+                    });
+
+            List<UUID> invalidApplicationIds = IntStream.range(0, 5)
+                    .mapToObj(i -> UUID.randomUUID())
+                    .toList();
+
+            List<UUID> allApplicationIds = Stream.of(
+                            expectedAssignedApplications.stream().map(ApplicationEntity::getId),
+                            invalidApplicationIds.stream()
+                    )
+                    .flatMap(s -> s)
+                    .collect(Collectors.toList());
+
+            // generate random UUIDs so simulate records that do not exist..
+            CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {;
+                builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
+                        .applicationIds(allApplicationIds);
+            });
+
+            // when
+            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertNotFound(result);
+
+            ProblemDetail problemResult = deserialise(result, ProblemDetail.class);
+            // Extract UUIDs from the detail string
+            Pattern uuidPattern = Pattern.compile("[0-9a-fA-F\\-]{36}");
+            Set<UUID> actualIds = uuidPattern.matcher(problemResult.getDetail())
+                    .results()
+                    .map(MatchResult::group)
+                    .map(UUID::fromString)
+                    .collect(Collectors.toSet());
+
+            assertEquals(new HashSet<>(invalidApplicationIds), actualIds);
+
+            assertApplicationsMatchInRepository(expectedAssignedApplications);
+        }
+
+        @ParameterizedTest
+        @MethodSource("invalidApplicationIdListsCases")
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenInvalidAssignmentRequestBecauseInvalidApplicationIds_whenAssignCaseworker_thenReturnBadRequest(
+                List<UUID> invalidApplicationIdList
+        ) throws Exception {
+            // given
+            ApplicationEntity expectedApplication = persistedApplicationFactory.createAndPersist(builder -> {
+                builder.caseworker(null);
+            });
+
+            CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
+                builder.applicationIds(invalidApplicationIdList);
+            });
+
+            // when
+            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
+
+            // then
+            assertSecurityHeaders(result);
+            assertBadRequest(result);
+
             ApplicationEntity actualApplication = applicationRepository.findById(expectedApplication.getId()).orElseThrow();
-            assertEquals(caseworkerAssignRequest.getCaseworkerId(), actualApplication.getCaseworker().getId());
+            assertNull(actualApplication.getCaseworker());
             assertEquals(expectedApplication, actualApplication);
         }
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenInvalidAssignmentRequest_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
+        public void givenInvalidAssignmentRequestBecauseCaseworkerDoesNotExist_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
             // given
             ApplicationEntity expectedApplication = persistedApplicationFactory.createAndPersist(builder -> {
                 builder.caseworker(null);
@@ -460,10 +613,11 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
                 builder.caseworkerId(null);
+                builder.applicationIds(List.of(expectedApplication.getId()));
             });
 
             // when
-            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest, expectedApplication.getId());
+            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
 
             // then
             assertSecurityHeaders(result);
@@ -481,7 +635,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create();
 
             // when
-            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest, UUID.randomUUID().toString());
+            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
 
             // then
             assertSecurityHeaders(result);
@@ -495,7 +649,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create();
 
             // when
-            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest, UUID.randomUUID().toString());
+            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
 
             // then
             assertSecurityHeaders(result);
@@ -508,11 +662,58 @@ public class ApplicationTest extends BaseIntegrationTest {
             CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create();
 
             // when
-            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest, UUID.randomUUID().toString());
+            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
 
             // then
             assertSecurityHeaders(result);
             assertUnauthorised(result);
+        }
+
+        private void assertApplicationsMatchInRepository(List<ApplicationEntity> expected) {
+            List<ApplicationEntity> actual = applicationRepository.findAllById(
+                    expected.stream().map(ApplicationEntity::getId).collect(Collectors.toList()));
+            assertThat(expected.size()).isEqualTo(actual.size());
+            assertTrue(expected.containsAll(actual));
+        }
+
+        @Getter
+        private class CaseworkerCase {
+            Integer numberOfApplicationsToAssign;
+            Integer numberOfApplicationsAlreadyAssigned;
+            Integer numberOfApplicationsNotAssigned;
+
+            public CaseworkerCase(
+                    Integer numberOfApplicationsToAssign,
+                    Integer numberOfApplicationsAlreadyAssigned,
+                    Integer numberOfApplicationsNotAssigned) {
+                this.numberOfApplicationsToAssign = numberOfApplicationsToAssign;
+                this.numberOfApplicationsAlreadyAssigned = numberOfApplicationsAlreadyAssigned;
+                this.numberOfApplicationsNotAssigned = numberOfApplicationsNotAssigned;
+            }
+        }
+
+        private Stream<Arguments> validAssignCaseworkerRequestCases() {
+            return Stream.of(
+                    Arguments.of(new CaseworkerCase(3,3, 2)),
+                    Arguments.of(new CaseworkerCase(5, 0, 4)),
+                    Arguments.of(new CaseworkerCase(2,4, 0))
+            );
+        }
+
+        private Stream<Arguments> invalidAssignCaseworkerRequestCases() {
+            return Stream.of(
+                    Arguments.of(new CaseworkerCase(5,3, 2)),
+                    Arguments.of(new CaseworkerCase(2, 0, 4)),
+                    Arguments.of(new CaseworkerCase(4,4, 0))
+            );
+        }
+
+        private Stream<Arguments> invalidApplicationIdListsCases() {
+            return Stream.of(
+                    Arguments.of(Collections.singletonList(null)),
+                    Arguments.of(Arrays.asList(UUID.randomUUID(), null, UUID.randomUUID())),
+                    Arguments.of(Collections.emptyList())
+            );
         }
     }
 
@@ -521,10 +722,57 @@ public class ApplicationTest extends BaseIntegrationTest {
     class UnassignCaseworker {
 
         @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenValidUnassignRequest_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
+            // given
+            ApplicationEntity expectedUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
+                builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
+            });
+
+            CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {
+                builder.eventHistory(EventHistory.builder()
+                        .eventDescription("Unassigned Caseworker")
+                        .build());
+            });
+
+            // when
+            MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, expectedUnassignedApplication.getId());
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+
+            ApplicationEntity actual = applicationRepository.findById(expectedUnassignedApplication.getId()).orElseThrow();
+            assertNull(actual.getCaseworker());
+            assertEquals(expectedUnassignedApplication, actual);
+
+            // TODO: check that the domain event is created.
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenApplicationNotExist_whenUnassignCaseworker_thenReturnNotFound() throws Exception {
+            // given
+            CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create();
+
+            // when
+            MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, UUID.randomUUID());
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertNotFound(result);
+        }
+
+        @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
         public void givenReaderRole_whenUnassignCaseworker_thenReturnForbidden() throws Exception {
+            // given
+            CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create();
+
             // when
-            MvcResult result = postUriWithoutModel(TestConstants.URIs.UNASSIGN_CASEWORKER, UUID.randomUUID().toString());
+            MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, UUID.randomUUID().toString());
 
             // then
             assertSecurityHeaders(result);
@@ -534,8 +782,11 @@ public class ApplicationTest extends BaseIntegrationTest {
         @Test
         @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
         public void givenUnknownRole_whenUnassignCaseworker_thenReturnForbidden() throws Exception {
+            // given
+            CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create();
+
             // when
-            MvcResult result = postUriWithoutModel(TestConstants.URIs.UNASSIGN_CASEWORKER, UUID.randomUUID().toString());
+            MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, UUID.randomUUID().toString());
 
             // then
             assertSecurityHeaders(result);
@@ -544,8 +795,11 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         @Test
         public void givenNoUser_whenUnassignCaseworker_thenReturnUnauthorised() throws Exception {
+            // given
+            CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create();
+
             // when
-            MvcResult result = postUriWithoutModel(TestConstants.URIs.UNASSIGN_CASEWORKER, UUID.randomUUID().toString());
+            MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, UUID.randomUUID().toString());
 
             // then
             assertSecurityHeaders(result);

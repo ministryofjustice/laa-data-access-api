@@ -11,7 +11,7 @@ public class TestConstants {
         public static final String CREATE_APPLICATION = "/api/v0/applications";
         public static final String GET_APPLICATIONS = "/api/v0/applications";
         public static final String UPDATE_APPLICATION = "/api/v0/applications/{id}";
-        public static final String ASSIGN_CASEWORKER = "/api/v0/applications/{id}/assign";
+        public static final String ASSIGN_CASEWORKER = "/api/v0/applications/assign";
         public static final String UNASSIGN_CASEWORKER = "/api/v0/applications/{id}/unassign";
     }
 

@@ -1,9 +1,11 @@
-package uk.gov.justice.laa.dstew.access.utils.factory.application;
+package uk.gov.justice.laa.dstew.access.utils.factory.caseworker;
 
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
+import java.util.List;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 public class CaseworkerAssignFactoryImpl implements Factory<CaseworkerAssignRequest, CaseworkerAssignRequest.Builder> {
@@ -12,6 +14,7 @@ public class CaseworkerAssignFactoryImpl implements Factory<CaseworkerAssignRequ
     public CaseworkerAssignRequest create() {
         return CaseworkerAssignRequest.builder()
                 .caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
+                .applicationIds(List.of(UUID.randomUUID()))
                 .build();
     }
 
