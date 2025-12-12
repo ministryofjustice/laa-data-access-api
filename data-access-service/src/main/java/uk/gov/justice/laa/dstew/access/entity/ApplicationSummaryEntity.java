@@ -51,7 +51,7 @@ public class ApplicationSummaryEntity {
 
   @ManyToMany(cascade = CascadeType.PERSIST)
   @JoinTable(
-          name = "linked_individual",
+          name = "linked_individuals",
           joinColumns = @JoinColumn(name = "application_id"),
           inverseJoinColumns = @JoinColumn(name = "individual_id")
   )
