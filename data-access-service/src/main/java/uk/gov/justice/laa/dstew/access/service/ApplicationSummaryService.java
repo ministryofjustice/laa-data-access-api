@@ -1,5 +1,7 @@
 package uk.gov.justice.laa.dstew.access.service;
 
+import java.util.List;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -9,7 +11,9 @@ import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
+import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
  * Service class responsible for retrieving and managing {@link ApplicationSummary} data.
@@ -17,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecifica
 @Service
 public class ApplicationSummaryService {
   private final ApplicationSummaryRepository applicationSummaryRepository;
+  private final CaseworkerRepository caseworkerRepository;
   private final ApplicationSummaryMapper mapper;
 
   /**
@@ -27,10 +32,12 @@ public class ApplicationSummaryService {
    */
   public ApplicationSummaryService(
       final ApplicationSummaryRepository applicationSummaryRepository,
-      final ApplicationSummaryMapper applicationSummaryMapper
+      final ApplicationSummaryMapper applicationSummaryMapper,
+      final CaseworkerRepository caseworkerRepository
   ) {
     this.applicationSummaryRepository = applicationSummaryRepository;
     this.mapper = applicationSummaryMapper;
+    this.caseworkerRepository = caseworkerRepository;
   }
 
   /**
@@ -50,16 +57,22 @@ public class ApplicationSummaryService {
           String applicationReference,
           String firstName,
           String lastName,
+          UUID userId,
           Integer page,
           Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
+
+    if (userId != null && caseworkerRepository.countById(userId) == 0L) {
+      throw new ValidationException(List.of("Caseworker not found"));
+    }
 
     return applicationSummaryRepository
             .findAll(ApplicationSummarySpecification
                             .filterBy(applicationStatus,
                                     applicationReference,
                                     firstName,
-                                    lastName),
+                                    lastName,
+                                    userId),
                     pageDetails)
             .map(mapper::toApplicationSummary);
   }

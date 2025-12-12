@@ -2,9 +2,11 @@ package uk.gov.justice.laa.dstew.access.specification;
 
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
+import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
@@ -22,11 +24,13 @@ public class ApplicationSummarySpecification {
           ApplicationStatus status,
           String reference,
           String firstName,
-          String lastName) {
+          String lastName,
+          UUID userId) {
     return isStatus(status)
             .and(likeApplicationReference(reference))
             .and(likeFirstName(firstName))
-            .and(likeLastName(lastName));
+            .and(likeLastName(lastName))
+            .and(isCaseworkerId(userId));
   }
 
   private static Specification<ApplicationSummaryEntity> isStatus(ApplicationStatus status) {
@@ -71,6 +75,19 @@ public class ApplicationSummarySpecification {
                 "%" + lastName.toLowerCase() + "%");
       };
     }
+    return Specification.unrestricted();
+  }
+
+  private static Specification<ApplicationSummaryEntity> isCaseworkerId(UUID caseworkerId) {
+
+    if (caseworkerId != null) {
+      return (root, query, builder)
+            -> {
+              Join<ApplicationEntity, CaseworkerEntity> caseworkerJoin = root.join("caseworker", JoinType.INNER);
+              return builder.equal(caseworkerJoin.get("id"), caseworkerId);
+      };
+    }
+
     return Specification.unrestricted();
   }
 }
