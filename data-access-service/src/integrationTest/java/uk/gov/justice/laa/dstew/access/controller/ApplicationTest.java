@@ -23,6 +23,8 @@ import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.builders.ValidationExceptionBuilder;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
+
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -459,7 +461,10 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {;
                 builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
-                        .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()));
+                        .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()))
+                        .eventHistory(EventHistory.builder()
+                                .eventDescription("Assigning caseworker")
+                                .build());
             });
 
             // when
@@ -473,6 +478,12 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertApplicationsMatchInRepository(expectedAssignedApplications);
             assertApplicationsMatchInRepository(expectedAlreadyAssignedApplications);
             assertApplicationsMatchInRepository(expectedUnassignedApplications);
+            assertDomainEventsCreatedForApplications(
+                    expectedAssignedApplications,
+                    BaseIntegrationTest.CaseworkerJohnDoe.getId(),
+                    DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
+                    caseworkerAssignRequest.getEventHistory()
+            );
         }
 
         @ParameterizedTest
@@ -676,6 +687,30 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertTrue(expected.containsAll(actual));
         }
 
+        private void assertDomainEventsCreatedForApplications(
+                List<ApplicationEntity> applications,
+                UUID caseWorkerId,
+                DomainEventType expectedDomainEventType,
+                EventHistory expectedEventHistory
+        ) {
+
+            List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
+
+            assertEquals(applications.size(), domainEvents.size());
+
+            List<UUID> applicationIds = applications.stream()
+                    .map(ApplicationEntity::getId)
+                    .collect(Collectors.toList());
+
+            for (DomainEventEntity domainEvent : domainEvents) {
+                assertEquals(expectedDomainEventType, domainEvent.getType());
+                assertTrue(applicationIds.contains(domainEvent.getApplicationId()));
+                assertEquals(caseWorkerId, domainEvent.getCaseWorkerId());
+                // TODO: improve event data comparison
+                assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
+            }
+        }
+
         @Getter
         private class CaseworkerCase {
             Integer numberOfApplicationsToAssign;
@@ -747,7 +782,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertNull(actual.getCaseworker());
             assertEquals(expectedUnassignedApplication, actual);
 
-            // TODO: check that the domain event is created.
+            // TODO: verify domain event created when unassign domain event implemented
         }
 
         @Test
@@ -763,6 +798,33 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertNotFound(result);
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenCaseworkerNotExist_whenUnassignCaseworker_thenReturnOK() throws Exception {
+            // given
+            ApplicationEntity expectedUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
+                builder.caseworker(null);
+            });
+
+            CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {;
+                builder.eventHistory(EventHistory.builder()
+                        .eventDescription("Unassigned Caseworker")
+                        .build());
+            });
+
+            // when
+            MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, expectedUnassignedApplication.getId());
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            // TODO: is this right?
+            assertOK(result);
+
+            List<DomainEventEntity> domainEventEntities = domainEventRepository.findAll();
+            assertEquals(0, domainEventEntities.size());
         }
 
         @Test
@@ -852,7 +914,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 9, 10,0,9);
+            assertPaging(actual, 9, 10,1,9);
             assertThat(actual.getApplications().size()).isEqualTo(9);
             assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
         }
@@ -868,7 +930,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                     .toList();
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_PAGE_PARAM + "1");
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_PAGE_PARAM + "2");
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -876,7 +938,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 20, 10,1,10);
+            assertPaging(actual, 20, 10,2,10);
             assertThat(actual.getApplications().size()).isEqualTo(10);
             assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(10,20)));
         }
@@ -904,7 +966,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 25, 20,0,20);
+            assertPaging(actual, 25, 20,1,20);
             assertThat(actual.getApplications().size()).isEqualTo(20);
             assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
         }
@@ -929,7 +991,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, numberOfApplications, 10,0,numberOfApplications);
+            assertPaging(actual, numberOfApplications, 10,1, numberOfApplications);
             assertThat(actual.getApplications().size()).isEqualTo(numberOfApplications);
             assertTrue((actual.getApplications()).containsAll(expectedApplicationsSummary));
         }
@@ -955,7 +1017,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 5, 10,0,5);
+            assertPaging(actual, 5, 10,1,5);
             assertThat(actual.getApplications().size()).isEqualTo(5);
             assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
         }
@@ -980,7 +1042,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 6, 10,0,6);
+            assertPaging(actual, 6, 10,1,6);
             assertThat(actual.getApplications().size()).isEqualTo(6);
             assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
         }
@@ -999,7 +1061,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
                     + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.SUBMITTED
-                    + "&" + SEARCH_PAGE_PARAM + "1");
+                    + "&" + SEARCH_PAGE_PARAM + "2");
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -1007,7 +1069,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 17, 10,1,7);
+            assertPaging(actual, 17, 10,2,7);
             assertThat(actual.getApplications().size()).isEqualTo(7);
             assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(10,17)));
         }
@@ -1033,7 +1095,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 5, 10,0,5);
+            assertPaging(actual, 5, 10,1,5);
             assertThat(actual.getApplications().size()).isEqualTo(5);
             assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
         }
@@ -1064,7 +1126,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 7, 10,0,7);
+            assertPaging(actual, 7, 10,1,7);
             assertThat(actual.getApplications().size()).isEqualTo(7);
             assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
         }
@@ -1090,7 +1152,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 3, 10,0,3);
+            assertPaging(actual, 3, 10,1,3);
             assertThat(actual.getApplications().size()).isEqualTo(3);
             assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
         }
@@ -1126,7 +1188,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 7, 10,0,7);
+            assertPaging(actual, 7, 10,1,7);
             assertThat(actual.getApplications().size()).isEqualTo(7);
             assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
         }
@@ -1156,7 +1218,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 2, 10,0,2);
+            assertPaging(actual, 2, 10,1,2);
             assertThat(actual.getApplications().size()).isEqualTo(2);
             assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
         }
@@ -1190,7 +1252,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 1, 10,0,1);
+            assertPaging(actual, 1, 10,1,1);
             assertThat(actual.getApplications().size()).isEqualTo(1);
             assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
         }
@@ -1217,7 +1279,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                     + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.IN_PROGRESS
                     + "&" + SEARCH_FIRSTNAME_PARAM + "George"
                     + "&" + SEARCH_LASTNAME_PARAM + "Theodore"
-                    + "&" + SEARCH_PAGE_PARAM + "1");
+                    + "&" + SEARCH_PAGE_PARAM + "2");
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -1225,7 +1287,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 13, 10,1,3);
+            assertPaging(actual, 13, 10,2,3);
             assertThat(actual.getApplications().size()).isEqualTo(3);
             assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(10,13)));
         }
@@ -1261,7 +1323,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 0, 10,0,0);
+            assertPaging(actual, 0, 10,1,0);
             assertThat(actual.getApplications().size()).isEqualTo(0);
         }
 
