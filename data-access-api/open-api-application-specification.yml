@@ -42,7 +42,7 @@ paths:
           description: page number of data to be returned
           schema:
             type: integer
-            default: 0
+            default: 1
         - in: query
           name: pagesize
           description: number of applications in a page

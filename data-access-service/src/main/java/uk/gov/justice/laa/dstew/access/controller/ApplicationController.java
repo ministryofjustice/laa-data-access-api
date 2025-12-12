@@ -72,6 +72,8 @@ public class ApplicationController implements ApplicationApi {
                     lastName,
                     userId,
                     page, pageSize);
+
+    page = (page == null || page < 1) ? 1 : page;
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
     ApplicationSummaryResponsePaging responsePageDetails = new ApplicationSummaryResponsePaging();
     response.setPaging(responsePageDetails);
