@@ -490,6 +490,7 @@ public class ApplicationControllerIntegrationTest {
     CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
                                                              .caseworkerId(caseworkerId)
                                                              .applicationIds(List.of(appId))
+                                                             .eventHistory(new EventHistory())
                                                              .build();
     String payload = objectMapper.writeValueAsString(request);
 
@@ -531,6 +532,7 @@ public class ApplicationControllerIntegrationTest {
     CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
                                                              .caseworkerId(caseworkerId)
                                                              .applicationIds(List.of(appId, appId2))
+                                                             .eventHistory(new EventHistory())
                                                              .build();
     String payload = objectMapper.writeValueAsString(request);
 
@@ -607,6 +609,7 @@ public class ApplicationControllerIntegrationTest {
     CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
                                                              .caseworkerId(caseworkerOtherId)
                                                              .applicationIds(List.of(appId))
+                                                             .eventHistory(new EventHistory())
                                                              .build();
     String payload = objectMapper.writeValueAsString(request);
 
