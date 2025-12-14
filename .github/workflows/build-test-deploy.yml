@@ -36,7 +36,7 @@ jobs:
         run: ./gradlew jacocoTestCoverageVerification
 
       - name: Integration test
-        run: ./gradlew integrationTest --tests '*IntegrationTest'
+        run: ./gradlew integrationTest
 
       - name: Publish api models package
         run: |
