@@ -176,7 +176,8 @@ class ApplicationControllerTest {
       "applicationIds" : [
         "33703b45-f8b7-4143-8b5d-969826bdd090",
         "8b92afd8-ab7b-4f5b-b0ea-2dcd7c2cde8f"
-      ]
+      ],
+      "eventHistory" : {}
     }
     """;
     

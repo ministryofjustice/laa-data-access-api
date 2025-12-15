@@ -18,9 +18,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class UnassignApplicationDomainEventDetails implements Serializable {
-    private UUID applicationId;
-    private UUID caseWorkerId;
-    private String createdBy;
-    private String eventDescription;
-    private Instant createdAt;
+  private UUID applicationId;
+  private UUID caseWorkerId;
+  private String createdBy;
+  private String eventDescription;
+  private Instant createdAt;
 }

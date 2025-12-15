@@ -223,7 +223,7 @@ public class ApplicationService {
       return;
     }
 
-    UUID caseworkerId = entity.getCaseworker().getId();
+    final UUID caseworkerId = entity.getCaseworker().getId();
     entity.setCaseworker(null);
     entity.setModifiedAt(Instant.now());
 
