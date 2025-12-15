@@ -29,7 +29,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 @Setter
 @RequiredArgsConstructor
 @Entity
-@Table(name = "application")
+@Table(name = "applications")
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class ApplicationSummaryEntity {
   @Id
@@ -51,7 +51,7 @@ public class ApplicationSummaryEntity {
 
   @ManyToMany(cascade = CascadeType.PERSIST)
   @JoinTable(
-          name = "linked_individual",
+          name = "linked_individuals",
           joinColumns = @JoinColumn(name = "application_id"),
           inverseJoinColumns = @JoinColumn(name = "individual_id")
   )

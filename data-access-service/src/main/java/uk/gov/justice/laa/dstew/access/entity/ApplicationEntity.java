@@ -41,7 +41,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 @NoArgsConstructor
 @Builder(toBuilder = true)
 @Entity
-@Table(name = "application")
+@Table(name = "applications")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class ApplicationEntity implements AuditableEntity {
@@ -64,7 +64,7 @@ public class ApplicationEntity implements AuditableEntity {
 
   @ManyToMany(cascade = CascadeType.PERSIST)
   @JoinTable(
-      name = "linked_individual",
+      name = "linked_individuals",
       joinColumns = @JoinColumn(name = "application_id"),
       inverseJoinColumns = @JoinColumn(name = "individual_id")
   )

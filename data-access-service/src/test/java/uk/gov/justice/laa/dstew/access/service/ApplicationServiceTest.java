@@ -3,10 +3,9 @@ package uk.gov.justice.laa.dstew.access.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Optional;
@@ -21,10 +20,7 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.CaseworkerNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
-import uk.gov.justice.laa.dstew.access.model.Application;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
@@ -46,6 +42,8 @@ public class ApplicationServiceTest {
   private ApplicationMapper mapper;
   @Mock
   private ObjectMapper objectMapper;
+  @Mock
+  private DomainEventService domainEventService;
 
   @Test
   void shouldThrowExceptionWhenApplicationNotFound() {
@@ -114,36 +112,65 @@ public class ApplicationServiceTest {
   }
 
   @Test
-  void shouldAssignCaseworkerToApplication() {
-    UUID appId = UUID.randomUUID();
+  void shouldAssignCaseworkerToApplication() throws JsonProcessingException {
+    UUID appId1 = UUID.randomUUID();
+    UUID appId2 = UUID.randomUUID();
     UUID cwId = UUID.randomUUID();
 
-    ApplicationEntity appEntity = new ApplicationEntity();
-    appEntity.setId(appId);
+    ApplicationEntity appEntity1 = new ApplicationEntity();
+    appEntity1.setId(appId1);
+
+    ApplicationEntity appEntity2 = new ApplicationEntity();
+    appEntity2.setId(appId2);
+
+    List<ApplicationEntity> applications = List.of(appEntity1, appEntity2);
+    List<UUID> applicationIds = List.of(appId1, appId2);
 
     CaseworkerEntity caseworker = new CaseworkerEntity();
     caseworker.setId(cwId);
 
-    when(repository.findById(appId)).thenReturn(Optional.of(appEntity));
+    EventHistory eventHistory = EventHistory.builder()
+                                .eventDescription("description")
+                                .build();
+
+    when(repository.findAllById(applicationIds)).thenReturn(applications);
     when(caseworkerRepository.findById(cwId)).thenReturn(Optional.of(caseworker));
-    service.assignCaseworker(appId, cwId);
+    doNothing().when(domainEventService).saveAssignApplicationDomainEvent(
+            eq(appEntity1.getId()),
+            eq(cwId),
+            eq(eventHistory.getEventDescription()));
+    doNothing().when(domainEventService).saveAssignApplicationDomainEvent(
+            eq(appEntity2.getId()),
+            eq(cwId),
+            eq(eventHistory.getEventDescription()));
+    service.assignCaseworker(cwId, List.of(appId1, appId2), eventHistory);
 
-    assertThat(appEntity.getCaseworker()).isEqualTo(caseworker);
-    assertThat(appEntity.getModifiedAt()).isNotNull();
+    assertThat(appEntity1.getCaseworker()).isEqualTo(caseworker);
+    assertThat(appEntity1.getModifiedAt()).isNotNull();
 
-    verify(repository).save(appEntity);
+    assertThat(appEntity2.getCaseworker()).isEqualTo(caseworker);
+    assertThat(appEntity2.getModifiedAt()).isNotNull();
+
+    verify(domainEventService).saveAssignApplicationDomainEvent(
+            eq(appEntity1.getId()),
+            eq(cwId),
+            eq(eventHistory.getEventDescription()));
+    verify(domainEventService).saveAssignApplicationDomainEvent(
+            eq(appEntity2.getId()),
+            eq(cwId),
+            eq(eventHistory.getEventDescription()));
+    verify(repository).save(appEntity1);
+    verify(repository).save(appEntity2);
   }
 
   @Test
   void shouldThrowExceptionWhenCaseworkerNotFound() {
-    UUID appId = UUID.randomUUID();
     UUID cwId = UUID.randomUUID();
 
-    when(repository.findById(appId)).thenReturn(Optional.of(new ApplicationEntity()));
     when(caseworkerRepository.findById(cwId)).thenReturn(Optional.empty());
 
     assertThrows(CaseworkerNotFoundException.class,
-        () -> service.assignCaseworker(appId, cwId));
+        () -> service.assignCaseworker(cwId, List.of(UUID.randomUUID()), new EventHistory()));
   }
 
   @Test
@@ -158,7 +185,7 @@ public class ApplicationServiceTest {
 
     when(repository.findById(appId)).thenReturn(Optional.of(entity));
 
-    service.unassignCaseworker(appId);
+    service.unassignCaseworker(appId, null);
 
     assertThat(entity.getCaseworker()).isNull();
     verify(repository).save(entity);
@@ -175,7 +202,7 @@ public class ApplicationServiceTest {
 
     when(repository.findById(appId)).thenReturn(Optional.of(entity));
 
-    service.unassignCaseworker(appId);
+    service.unassignCaseworker(appId, null);
 
     verify(repository).findById(appId);
     verify(repository, never()).save(any());
@@ -185,10 +212,99 @@ public class ApplicationServiceTest {
   void shouldThrowException_whenAppNotFound() {
     UUID appId = UUID.randomUUID();
 
-    when(repository.findById(appId)).thenReturn(Optional.empty());
-
     assertThrows(ApplicationNotFoundException.class,
-        () -> service.unassignCaseworker(appId));
+        () -> service.unassignCaseworker(appId, null));
   }
 
+  @Test
+  void shouldOnlySearchForDistinctApplicationIds_whenAssigning() {
+    UUID appId1 = UUID.randomUUID();
+    UUID cwId = UUID.randomUUID();
+    EventHistory history = EventHistory.builder().eventDescription("event description").build();
+
+    ApplicationEntity appEntity1 = ApplicationEntity.builder().id(appId1).build();
+
+    List<ApplicationEntity> applications = List.of(appEntity1);
+    List<UUID> applicationIds = List.of(appId1, appId1, appId1);
+
+    CaseworkerEntity caseworker = CaseworkerEntity.builder().id(cwId).build();
+
+    when(repository.findAllById(List.of(appId1))).thenReturn(applications);
+    when(caseworkerRepository.findById(cwId)).thenReturn(Optional.of(caseworker));
+    service.assignCaseworker(cwId, applicationIds, history);
+
+    verify(repository).findAllById(List.of(appId1));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenAssignedApplicationsNotFound() {
+    UUID appId1 = UUID.randomUUID();
+    UUID appId2 = UUID.randomUUID();
+    UUID appId3 = UUID.randomUUID();
+    UUID cwId = UUID.randomUUID();
+
+    ApplicationEntity appEntity1 = new ApplicationEntity();
+    appEntity1.setId(appId1);
+
+    List<ApplicationEntity> applications = List.of(appEntity1);
+    List<UUID> applicationIds = List.of(appId1, appId2, appId3);
+
+    CaseworkerEntity caseworker = new CaseworkerEntity();
+    caseworker.setId(cwId);
+
+    when(repository.findAllById(applicationIds)).thenReturn(applications);
+    when(caseworkerRepository.findById(cwId)).thenReturn(Optional.of(caseworker));
+    ApplicationNotFoundException exception = assertThrows(ApplicationNotFoundException.class,
+      () -> service.assignCaseworker(cwId, applicationIds, new EventHistory()));
+    assertThat(exception.getMessage()).isEqualTo("No application found with ids: " + appId2.toString() + "," + appId3.toString());
+  }
+
+  @Test
+  void shouldAssignCaseworkerToApplicationWhenNullEventDescription() throws JsonProcessingException {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseWorkerId = UUID.randomUUID();
+
+    ApplicationEntity applicationEntity = new ApplicationEntity();
+    applicationEntity.setId(applicationId);
+
+    CaseworkerEntity caseworker = new CaseworkerEntity();
+    caseworker.setId(caseWorkerId);
+
+    EventHistory eventHistory = EventHistory.builder()
+            .eventDescription(null)
+            .build();
+
+    when(repository.findAllById(List.of(applicationId))).thenReturn(List.of(applicationEntity));
+    when(caseworkerRepository.findById(caseWorkerId)).thenReturn(Optional.of(caseworker));
+    doNothing().when(domainEventService).saveAssignApplicationDomainEvent(
+            eq(applicationEntity.getId()),
+            eq(caseWorkerId),
+            eq(eventHistory.getEventDescription()));
+    service.assignCaseworker(caseWorkerId, List.of(applicationId), eventHistory);
+
+    assertThat(applicationEntity.getCaseworker()).isEqualTo(caseworker);
+    assertThat(applicationEntity.getModifiedAt()).isNotNull();
+
+    verify(domainEventService).saveAssignApplicationDomainEvent(
+            eq(applicationEntity.getId()),
+            eq(caseWorkerId),
+            eq(eventHistory.getEventDescription()));
+    verify(repository).save(applicationEntity);
+  }
+
+  @Test
+  void shouldNotThrow_whenApplicationOrderReturned_doesNotMatchOrderIdsGiven() {
+    ApplicationEntity appEntity1 = ApplicationEntity.builder().id(UUID.randomUUID()).build();
+    ApplicationEntity appEntity2 = ApplicationEntity.builder().id(UUID.randomUUID()).build();
+    ApplicationEntity appEntity3 = ApplicationEntity.builder().id(UUID.randomUUID()).build();
+    EventHistory history = EventHistory.builder().eventDescription("event description").build();
+    List<ApplicationEntity> applications = List.of(appEntity1, appEntity2, appEntity3);
+    List<UUID> applicationIds = applications.stream().map(x -> x.getId()).toList();
+    CaseworkerEntity caseworker = CaseworkerEntity.builder().id(UUID.randomUUID()).build();
+
+    when(caseworkerRepository.findById(caseworker.getId())).thenReturn(Optional.of(caseworker));
+    when(repository.findAllById(applicationIds)).thenReturn(applications.reversed());
+
+    service.assignCaseworker(caseworker.getId(), applicationIds, history);
+  }
 }

@@ -17,6 +17,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponsePaging;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
+import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
@@ -58,8 +60,10 @@ public class ApplicationController implements ApplicationApi {
           String reference,
           String firstName,
           String lastName,
+          UUID userId,
           Integer page,
           Integer pageSize) {
+    page = (page == null || page < 1) ? 1 : page;
 
     Page<ApplicationSummary> applicationsReturned =
             summaryService.getAllApplications(
@@ -67,7 +71,9 @@ public class ApplicationController implements ApplicationApi {
                     reference,
                     firstName,
                     lastName,
-                    page, pageSize);
+                    userId,
+                    page - 1, pageSize);
+
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
     ApplicationSummaryResponsePaging responsePageDetails = new ApplicationSummaryResponsePaging();
     response.setPaging(responsePageDetails);
@@ -91,16 +97,22 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> assignCaseworker(UUID id, CaseworkerAssignRequest request) {
-    service.assignCaseworker(id, request.getCaseworkerId());
+  public ResponseEntity<Void> assignCaseworker(CaseworkerAssignRequest request) {
+    service.assignCaseworker(request.getCaseworkerId(),
+                              request.getApplicationIds(),
+                              request.getEventHistory());
     return ResponseEntity.ok().build();
   }
 
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> unassignCaseworker(UUID id) {
-    service.unassignCaseworker(id);
+  public ResponseEntity<Void> unassignCaseworker(UUID id, CaseworkerUnassignRequest request) {
+
+    EventHistory history = request == null ? null : request.getEventHistory();
+
+    service.unassignCaseworker(id, history);
+
     return ResponseEntity.ok().build();
   }
 

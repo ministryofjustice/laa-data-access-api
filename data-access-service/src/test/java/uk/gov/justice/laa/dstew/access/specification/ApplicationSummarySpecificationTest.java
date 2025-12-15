@@ -18,6 +18,8 @@ import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
+import java.util.UUID;
+
 @ExtendWith(MockitoExtension.class)
 public class ApplicationSummarySpecificationTest {
     @SuppressWarnings("unchecked")
@@ -31,7 +33,7 @@ public class ApplicationSummarySpecificationTest {
 
         String reference = "some-reference";
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, reference, null, null);
+                .filterBy(null, reference, null, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
         when(builder.like(any(), eq("%"+reference+"%"))).thenReturn(summaryPredicate);
@@ -44,7 +46,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenReferenceIsBlank(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, "", null, null);
+                .filterBy(null, "", null, null, null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 
@@ -55,7 +57,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenStatusHasAValue(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(ApplicationStatus.IN_PROGRESS, null, null, null);
+                .filterBy(ApplicationStatus.IN_PROGRESS, null, null, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
@@ -71,7 +73,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldFailWhenStatusHasAValueThatDoesNotMatch(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(ApplicationStatus.SUBMITTED, null, null, null);
+                .filterBy(ApplicationStatus.SUBMITTED, null, null, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
@@ -87,7 +89,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenAllFieldsAreNull(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, null, null);
+                .filterBy(null, null, null, null, null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 
@@ -98,10 +100,19 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenAllFieldsAreSet(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(ApplicationStatus.SUBMITTED, "ref2", "Andy", "Green");
+                .filterBy(ApplicationStatus.SUBMITTED,
+                                "ref2",
+                                "Andy",
+                                "Green",
+                                        UUID.randomUUID());
 
         when(
                 root.join(eq("individuals"), eq(JoinType.INNER))
+        )
+        .thenReturn(mock());
+
+        when(
+                root.join(eq("caseworker"), eq(JoinType.INNER))
         )
         .thenReturn(mock());
 
@@ -115,7 +126,7 @@ public class ApplicationSummarySpecificationTest {
 
         String firstName = "some-name";
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, firstName, null);
+                .filterBy(null, null, firstName, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
@@ -139,7 +150,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenFirstNameIsBlank(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, "", null);
+                .filterBy(null, null, "", null, null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 
@@ -150,7 +161,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenLastNameIsBlank(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, null, "");
+                .filterBy(null, null, null, "", null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 
@@ -162,7 +173,7 @@ public class ApplicationSummarySpecificationTest {
 
         String lastName = "some-name";
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, null, lastName);
+                .filterBy(null, null, null, lastName, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
@@ -182,4 +193,52 @@ public class ApplicationSummarySpecificationTest {
         assertThat(result).isNotNull();
     }
 
+    @Test
+    void shouldNotFailWhenCaseworkerIdHasAValue(){
+
+        UUID caseworkerId = UUID.randomUUID();
+
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(null, null, null, null, caseworkerId);
+
+        Predicate summaryPredicate = mock(Predicate.class);
+        when(
+                root.join(eq("caseworker"), eq(JoinType.INNER))
+        )
+                .thenReturn(mock());
+
+        when(
+                builder.equal(
+                        any(),
+                        eq(caseworkerId)
+                )
+        ).thenReturn(summaryPredicate);
+
+        Predicate result = spec.toPredicate(root, query, builder);
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    void shouldFailWhenCaseworkerIdHasAValueThatDoesNotMatch(){
+
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(null, null, null, null, UUID.randomUUID());
+
+        Predicate summaryPredicate = mock(Predicate.class);
+
+        when(
+                root.join(eq("caseworker"), eq(JoinType.INNER))
+        )
+                .thenReturn(mock());
+
+        when(
+                builder.equal(
+                        any(),
+                        eq(UUID.randomUUID())
+                )
+        ).thenReturn(summaryPredicate);
+
+        Predicate result = spec.toPredicate(root, query, builder);
+        assertThat(result).isNull();
+    }
 }
