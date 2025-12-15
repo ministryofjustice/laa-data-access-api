@@ -68,7 +68,7 @@ public class ApplicationValidationsTest {
   void shouldThrowCreateRequestValidationErrorWhenReferenceIsNull(){
     ApplicationCreateRequest request = ApplicationCreateRequest.builder()
                                                                 .applicationContent(Map.of("foo", "bar"))
-                                                                .applicationReference(null)
+                                                                .laaReference(null)
                                                                 .build();
 
     assertThrows(ValidationException.class,
@@ -82,7 +82,7 @@ public class ApplicationValidationsTest {
   void shouldCreateRequestValidationThrowValidationErrorWhenReferenceIsNotValid(String applicationReference) {  
     ApplicationCreateRequest request = ApplicationCreateRequest.builder()
                                                                 .applicationContent(Map.of("foo", "bar"))
-                                                                .applicationReference(applicationReference)
+                                                                .laaReference(applicationReference)
                                                                 .build();
     assertThrows(ValidationException.class,  
         () -> classUnderTest.checkApplicationCreateRequest(request),  
@@ -94,7 +94,7 @@ public class ApplicationValidationsTest {
     ApplicationCreateRequest request = ApplicationCreateRequest.builder()
                                                                .status(ApplicationStatus.SUBMITTED)
                                                                .applicationContent(Map.of("foo", "bar"))
-                                                               .applicationReference("app-ref")
+                                                               .laaReference("app-ref")
                                                                .build();
     assertDoesNotThrow(() -> classUnderTest.checkApplicationCreateRequest(request));
   }
@@ -105,7 +105,7 @@ public class ApplicationValidationsTest {
     ApplicationCreateRequest request = ApplicationCreateRequest.builder()
                                                                .status(ApplicationStatus.SUBMITTED)
                                                                .applicationContent(Map.of("foo", "bar"))
-                                                               .applicationReference("app-ref")
+                                                               .laaReference("app-ref")
                                                                .individuals(individuals)
                                                                .build();
     when(individualValidator.validateIndividual(any(Individual.class)))
@@ -121,7 +121,7 @@ public class ApplicationValidationsTest {
     ApplicationCreateRequest request = ApplicationCreateRequest.builder()
                                                                .status(ApplicationStatus.SUBMITTED)
                                                                .applicationContent(Map.of("foo", "bar"))
-                                                               .applicationReference("app-ref")
+                                                               .laaReference("app-ref")
                                                                .individuals(createIndividuals())
                                                                .build();
     

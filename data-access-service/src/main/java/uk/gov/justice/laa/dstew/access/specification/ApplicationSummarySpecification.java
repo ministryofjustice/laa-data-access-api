@@ -45,7 +45,7 @@ public class ApplicationSummarySpecification {
   private static Specification<ApplicationSummaryEntity> likeApplicationReference(String reference) {
     if (reference != null && !reference.isBlank()) {
       return (root, query, builder)
-              -> builder.like(builder.lower(root.get("applicationReference")),
+              -> builder.like(builder.lower(root.get("laaReference")),
               "%" + reference.toLowerCase() + "%");
     }
 

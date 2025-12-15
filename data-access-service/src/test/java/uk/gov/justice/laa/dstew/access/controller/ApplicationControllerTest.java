@@ -71,7 +71,7 @@ class ApplicationControllerTest {
             "status": "SUBMITTED",
             "schemaVersion": 1,
             "applicationContent": { "foo": "bar" },
-            "applicationReference": "app_reference",
+            "laaReference": "laa_reference",
             "individuals" : [
               {
                 "firstName" : "John",
@@ -147,7 +147,7 @@ class ApplicationControllerTest {
 
     var application = Application.builder()
             .id(UUID.randomUUID())
-            .applicationReference("app_reference")
+            .laaReference("app_reference")
             .applicationContent(Map.of("foo", "bar"))
             .createdAt(createdAt)
             .updatedAt(updatedAt)

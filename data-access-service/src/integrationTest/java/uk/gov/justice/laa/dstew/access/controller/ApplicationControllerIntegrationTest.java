@@ -81,7 +81,7 @@ public class ApplicationControllerIntegrationTest {
   private ApplicationCreateRequest buildApplication() {
     return ApplicationCreateRequest.builder()
           .status(ApplicationStatus.SUBMITTED)
-          .applicationReference("app_ref")
+          .laaReference("app_ref")
           .applicationContent(Map.of(
                   "id", "71489fb1-742e-4e72-8b0a-db7b9a0cd100",
                   "name", "Martin Ronan",
@@ -124,7 +124,7 @@ public class ApplicationControllerIntegrationTest {
 
     entity = new ApplicationSummaryEntity();
     entity.setId(UUID.randomUUID());
-    entity.setApplicationReference(UUID.randomUUID().toString());
+    entity.setLaaReference(UUID.randomUUID().toString());
     entity.setCreatedAt(Instant.now());
     entity.setModifiedAt(Instant.now());
     entity.setStatus(status);

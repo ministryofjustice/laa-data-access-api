@@ -33,7 +33,7 @@ public class ApplicationSummaryMapperTest {
     entity.setId(id);
     entity.setCreatedAt(Instant.now());
     entity.setModifiedAt(Instant.now());
-    entity.setApplicationReference("ref1");
+    entity.setLaaReference("ref1");
     entity.setStatus(ApplicationStatus.IN_PROGRESS);
     entity.setCaseworker(CaseworkerEntity.builder().id(caseworkerId).build());
 
@@ -41,7 +41,7 @@ public class ApplicationSummaryMapperTest {
 
     assertThat(result).isNotNull();
     assertThat(result.getApplicationId()).isEqualTo(id);
-    assertThat(result.getApplicationReference()).isEqualTo("ref1");
+    assertThat(result.getLaaReference()).isEqualTo("ref1");
     assertThat(result.getApplicationStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
     assertThat(result.getAssignedTo() == caseworkerId);
     assertThat(result.getModifiedAt()).isEqualTo(entity.getModifiedAt().atOffset(ZoneOffset.UTC));
