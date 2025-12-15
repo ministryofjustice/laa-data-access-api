@@ -75,7 +75,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
     }
 
     private ApplicationEntity createApplicationEntity(
-            String applicationReference,
+            String laaReference,
             ApplicationStatus status,
             Map<String,Object> content,
             Set individuals,
@@ -83,7 +83,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
     ) {
         return ApplicationEntity.builder()
                 .id(null)
-                .laaReference(applicationReference)
+                .laaReference(laaReference)
                 .status(status)
                 .applicationContent(content)
                 .individuals(individuals)
@@ -225,7 +225,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
     }
 
     @Test
-    void isApplicationReferencePartialFromStartSpecification() {
+    void isLaaReferencePartialFromStartSpecification() {
         long expectedNumberOfAppref =
                 prePopulatedApplications.stream().filter(
                         a ->
@@ -246,7 +246,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
     }
 
     @Test
-    void isApplicationReferencePartialFromMiddleSpecification() {
+    void isLaaReferencePartialFromMiddleSpecification() {
         long expectedNumberOfAppref =
                 prePopulatedApplications.stream().filter(a -> a.getLaaReference().contains("ref")).count();
         assertNotEquals(0, expectedNumberOfAppref);
@@ -262,7 +262,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
     }
 
     @Test
-    void isApplicationReferencePartialFromEndSpecification() {
+    void isLaaReferencePartialFromEndSpecification() {
         long expectedNumberOfAppref =
                 prePopulatedApplications.stream().filter(a -> a.getLaaReference().endsWith("ef1")).count();
         assertNotEquals(0, expectedNumberOfAppref);
@@ -290,7 +290,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
     }
 
     @Test
-    void isApplicationReferenceBlankSpecification() {
+    void isLaaReferenceBlankSpecification() {
         long expectedNumberOfRecordsNoFilter =
                 prePopulatedApplications.size();
 

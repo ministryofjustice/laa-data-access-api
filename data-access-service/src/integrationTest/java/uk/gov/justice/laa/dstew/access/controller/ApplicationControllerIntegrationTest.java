@@ -248,7 +248,7 @@ public class ApplicationControllerIntegrationTest {
       String updatePayload = "{"
           + "\"status\": \"SUBMITTED\","
           + "\"applicationContent\": {"
-          + "\"applicationReference\": \"app_ref\","
+          + "\"laaReference\": \"app_ref\","
           + "\"first_name\": \"John\","
           + "\"last_name\": \"Doe\","
           + "\"application_id\": \"" + UUID.randomUUID() + "\""

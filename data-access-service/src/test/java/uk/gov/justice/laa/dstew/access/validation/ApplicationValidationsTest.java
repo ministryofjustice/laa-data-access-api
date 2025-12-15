@@ -79,10 +79,10 @@ public class ApplicationValidationsTest {
 
   @ParameterizedTest  
   @ValueSource(strings = {"", "    "})  
-  void shouldCreateRequestValidationThrowValidationErrorWhenReferenceIsNotValid(String applicationReference) {  
+  void shouldCreateRequestValidationThrowValidationErrorWhenReferenceIsNotValid(String laaReference) {
     ApplicationCreateRequest request = ApplicationCreateRequest.builder()
                                                                 .applicationContent(Map.of("foo", "bar"))
-                                                                .laaReference(applicationReference)
+                                                                .laaReference(laaReference)
                                                                 .build();
     assertThrows(ValidationException.class,  
         () -> classUnderTest.checkApplicationCreateRequest(request),  

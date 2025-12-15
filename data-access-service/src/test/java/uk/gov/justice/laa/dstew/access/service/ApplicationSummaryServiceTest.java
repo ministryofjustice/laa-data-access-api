@@ -154,7 +154,7 @@ public class ApplicationSummaryServiceTest {
   }
 
   @Test
-  void shouldGetAllApplicationReferenceApplications() {
+  void shouldGetAllLaaReferenceApplications() {
 
     List<ApplicationSummaryEntity> entities = createInProgressApplicationSummaryEntities();
     List<ApplicationSummary> summaries = createApplicationSummaries(entities);
