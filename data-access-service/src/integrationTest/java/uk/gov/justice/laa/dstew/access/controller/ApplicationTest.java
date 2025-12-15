@@ -79,8 +79,8 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertNoCacheHeaders(result);
             assertNotFound(result);
             assertEquals("application/problem+json", result.getResponse().getContentType());
-            var json = objectMapper.readTree(result.getResponse().getContentAsString());
-            assertEquals("No application found with id: " + notExistApplicationId, json.get("detail").asText());
+            ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+            assertEquals("No application found with id: " + notExistApplicationId, problemDetail.getDetail());
 
         }
 
@@ -173,7 +173,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                 ProblemDetail expectedDetail) throws Exception {
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
-            ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
+            ProblemDetail detail = deserialise(result, ProblemDetail.class);
 
             // then
             assertSecurityHeaders(result);
@@ -195,7 +195,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
-            ValidationException validationException = objectMapper.readValue(result.getResponse().getContentAsString(), ValidationException.class);
+            ValidationException validationException = deserialise(result, ValidationException.class);
 
             // then
             assertSecurityHeaders(result);
@@ -209,7 +209,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         public void givenNoRequestBody_whenCreateApplication_thenReturnBadRequest(String request) throws Exception {
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
-            ProblemDetail detail = objectMapper.readValue(result.getResponse().getContentAsString(), ProblemDetail.class);
+            ProblemDetail detail = deserialise(result, ProblemDetail.class);
 
             // then
             assertSecurityHeaders(result);
