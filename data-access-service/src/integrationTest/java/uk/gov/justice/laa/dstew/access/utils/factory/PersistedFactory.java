@@ -22,19 +22,19 @@ public class PersistedFactory<
         this.factory = factory;
     }
 
-    public void createAndPersist(TEntity entity) {
+    public void persist(TEntity entity) {
         repository.save(entity);
     }
 
     public TEntity createAndPersist() {
         TEntity entity = factory.create();
-        createAndPersist(entity);
+        persist(entity);
         return entity;
     }
 
     public TEntity createAndPersist(Consumer<TBuilder> customiser) {
         TEntity entity = factory.create(customiser);
-        createAndPersist(entity);
+        persist(entity);
         return entity;
     }
 
