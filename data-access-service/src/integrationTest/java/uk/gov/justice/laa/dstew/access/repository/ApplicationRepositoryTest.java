@@ -27,5 +27,7 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
                 .usingRecursiveComparison()
                 .ignoringFields("createdAt", "modifiedAt")
                 .isEqualTo(actual);
+        assertThat(expected.getCreatedAt()).isNotNull();
+        assertThat(expected.getModifiedAt()).isNotNull();
     }
 }
