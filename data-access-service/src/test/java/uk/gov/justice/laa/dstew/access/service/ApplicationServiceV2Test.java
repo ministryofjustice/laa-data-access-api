@@ -302,6 +302,36 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             assertThat(expectedEntity.getModifiedAt()).isNotNull();
         }
 
+        @ParameterizedTest
+        @MethodSource("invalidApplicationUpdateRequests")
+        void givenApplicationAndInvalidUpdateRequest_whenUpdateApplication_thenValidationExceptionWithCorrectMessage(
+                UUID applicationId,
+                ApplicationUpdateRequest applicationUpdateRequest,
+                ValidationException validationException
+        ) {
+            // given
+            ApplicationEntity expectedEntity = ApplicationEntityFactory.create(builder ->
+                    builder.id(applicationId)
+                            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+            );
+            when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
+
+            ApplicationService sut = new ApplicationServiceDouble()
+                    .withApplicationRepository(applicationRepository)
+                    .withRoles(TestConstants.Roles.WRITER)
+                    .build();
+
+            // when
+            // then
+            Throwable thrown = catchThrowable(() -> sut.updateApplication(applicationId, applicationUpdateRequest));
+            assertThat(thrown)
+                    .isInstanceOf(ValidationException.class)
+                    .usingRecursiveComparison()
+                    .isEqualTo(validationException);
+            verify(applicationRepository, times(1)).findById(applicationId);
+            verify(applicationRepository, never()).save(any());
+        }
+
         @Test
         public void givenApplicationUpdateAndNotRoleReader_whenCreateApplication_thenThrowUnauthorizedException() {
             // given
@@ -335,6 +365,37 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .withMessageContaining("Access Denied");
             verify(applicationRepository, never()).findById(applicationId);
             verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+        }
+
+        public static final Stream<Arguments> invalidApplicationUpdateRequests() {
+            return Stream.of(
+                    Arguments.of(UUID.randomUUID(),
+                            ApplicationUpdateFactory.create(builder -> builder
+                                    .status(ApplicationStatus.IN_PROGRESS)
+                                    .applicationContent(null)),
+                            new ValidationException(List.of(
+                                    "ApplicationUpdateRequest and its content cannot be null"
+                            ))
+                    ),
+                    Arguments.of(UUID.randomUUID(),
+                            ApplicationUpdateFactory.create(builder -> builder
+                                    .status(null)
+                                    .applicationContent(new HashMap<>() {{
+                                        put("test", "content");
+                                    }})),
+                            new ValidationException(List.of(
+                                    "Application status cannot be null"
+                            ))
+                    ),
+                    Arguments.of(UUID.randomUUID(),
+                            ApplicationUpdateFactory.create(builder -> builder
+                                    .status(ApplicationStatus.IN_PROGRESS)
+                                    .applicationContent(new HashMap<>())),
+                            new ValidationException(List.of(
+                                    "Application content cannot be empty"
+                            ))
+                    )
+            );
         }
     }
 
