@@ -459,9 +459,8 @@ public class ApplicationTest extends BaseIntegrationTest {
                     });
 
             CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
-                ;
                 builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
-                        .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()))
+                        .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()).reversed())
                         .eventHistory(EventHistory.builder()
                                 .eventDescription("Assigning caseworker")
                                 .build());
@@ -505,11 +504,12 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // then
             assertSecurityHeaders(result);
-            //assertBadRequest(result);
+            assertBadRequest(result);
 
             ApplicationEntity actualApplication = applicationRepository.findById(expectedAssignedApplication.getId()).orElseThrow();
             assertNull(actualApplication.getCaseworker());
             assertEquals(expectedAssignedApplication, actualApplication);
+            assertEquals(0, domainEventRepository.count());
         }
 
         @ParameterizedTest
