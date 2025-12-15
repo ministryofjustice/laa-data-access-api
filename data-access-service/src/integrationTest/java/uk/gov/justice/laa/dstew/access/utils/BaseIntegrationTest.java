@@ -49,13 +49,6 @@ public abstract class BaseIntegrationTest {
     @Autowired protected MockMvc mockMvc;
     @Autowired protected ObjectMapper objectMapper;
 
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:latest");
-
-    static {
-        postgres.start();
-    }
 
     @Autowired
     protected ApplicationRepository applicationRepository;
