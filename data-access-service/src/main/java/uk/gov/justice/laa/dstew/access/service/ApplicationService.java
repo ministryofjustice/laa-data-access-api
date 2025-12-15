@@ -162,11 +162,11 @@ public class ApplicationService {
     var idsToFetch = ids.stream().distinct().toList();
     var applications = applicationRepository.findAllById(idsToFetch);
     List<UUID> fetchedApplicationsIds = applications.stream().map(app -> app.getId()).toList();
-    if (!idsToFetch.equals(fetchedApplicationsIds)) {
-      String missingIds = idsToFetch.stream()
-                                    .filter(appId -> !fetchedApplicationsIds.contains(appId))
-                                    .map(appId -> appId.toString())
-                                    .collect(Collectors.joining(","));
+    String missingIds = idsToFetch.stream()
+                                  .filter(appId -> !fetchedApplicationsIds.contains(appId))
+                                  .map(appId -> appId.toString())
+                                  .collect(Collectors.joining(","));
+    if (!missingIds.isEmpty()) {
       String exceptionMsg = "No application found with ids: " + missingIds;
       throw new ApplicationNotFoundException(exceptionMsg);
     }
