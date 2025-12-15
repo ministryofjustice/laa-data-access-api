@@ -10,7 +10,9 @@ import uk.gov.justice.laa.dstew.access.config.SecurityConfig;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
+import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
+import uk.gov.justice.laa.dstew.access.service.DomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 import uk.gov.justice.laa.dstew.access.utils.TestSecurityConfig;
 import uk.gov.justice.laa.dstew.access.utils.TestSpringContext;
@@ -25,6 +27,7 @@ public class ApplicationServiceDouble {
     private String[] roles = new String[] {};
     private ApplicationRepository applicationRepository = Mockito.mock(ApplicationRepository.class);
     private CaseworkerRepository caseworkerRepository = Mockito.mock(CaseworkerRepository.class);
+    private DomainEventRepository domainEventRepository = Mockito.mock(DomainEventRepository.class);
 
     public ApplicationServiceDouble withApplicationRepository(ApplicationRepository repository) {
         this.applicationRepository = repository;
@@ -33,6 +36,11 @@ public class ApplicationServiceDouble {
 
     public ApplicationServiceDouble withCaseworkerRepository(CaseworkerRepository repository) {
         this.caseworkerRepository = repository;
+        return this;
+    }
+
+    public ApplicationServiceDouble withDomainEventRepository(DomainEventRepository domainEventRepository) {
+        this.domainEventRepository = domainEventRepository;
         return this;
     }
 
@@ -46,12 +54,14 @@ public class ApplicationServiceDouble {
         TestSpringContext ctx = new TestSpringContext()
                 .withBean(ApplicationRepository.class, applicationRepository)
                 .withBean(CaseworkerRepository.class, caseworkerRepository)
+                .withBean(DomainEventRepository.class, domainEventRepository)
                 .withBean(ApplicationMapper.class, Mappers.getMapper(ApplicationMapper.class))
                 .withBean("entra", EffectiveAuthorizationProvider.class, securityConfig.authProvider())
                 .withBean(ObjectMapper.class, new ObjectMapper())
                 .withConfig(TestSecurityConfig.class)
                 .constructBeans(IndividualValidations.class)
                 .constructBeans(ApplicationValidations.class)
+                .constructBeans(DomainEventService.class)
                 .constructBeans(ApplicationService.class)
                 .build();
 

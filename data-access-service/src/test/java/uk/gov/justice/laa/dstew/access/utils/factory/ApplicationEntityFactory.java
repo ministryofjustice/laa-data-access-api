@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.utils.factory;
 
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.utils.individual.IndividualEntityFactory;
 
 import java.time.InstantSource;
 import java.util.*;
