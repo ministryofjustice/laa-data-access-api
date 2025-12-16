@@ -813,7 +813,7 @@ public class ApplicationControllerIntegrationTest {
   }
 
 
-    @Test
+  @Test
   @Transactional
   @WithMockUser(authorities = "APPROLE_ApplicationReader")
   void shouldGetFilteredEvents_whenEventTypesInQueryString() throws Exception {
@@ -830,7 +830,6 @@ public class ApplicationControllerIntegrationTest {
         .build();
     UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
     DomainEventEntity event = DomainEventEntity.builder()
-                            .id(UUID.randomUUID())
                             .applicationId(appId)
                             .caseworkerId(null)
                             .createdAt(Instant.now().minusSeconds(60))
@@ -839,7 +838,6 @@ public class ApplicationControllerIntegrationTest {
                             .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
                             .build();
     DomainEventEntity event2 = DomainEventEntity.builder()
-                            .id(UUID.randomUUID())
                             .applicationId(appId)
                             .caseworkerId(caseworkerId)
                             .createdAt(Instant.now())

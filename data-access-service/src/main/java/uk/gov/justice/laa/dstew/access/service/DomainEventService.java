@@ -1,12 +1,12 @@
 package uk.gov.justice.laa.dstew.access.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
-
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -68,6 +68,6 @@ public class DomainEventService {
   */
   public List<DomainEvent> getEvents(Specification<DomainEventEntity> filter) {
     Comparator<DomainEvent> comparer = Comparator.comparing(DomainEvent::getCreatedAt);
-    return repository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
+    return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
   }
 }

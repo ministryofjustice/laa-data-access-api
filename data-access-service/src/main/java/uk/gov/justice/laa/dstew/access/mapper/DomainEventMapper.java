@@ -27,13 +27,9 @@ public interface DomainEventMapper {
                       .applicationId(entity.getApplicationId())
                       .caseworkerId(entity.getCaseworkerId())
                       .domainEventType(entity.getType())
-                      .eventDescription(getEventDescription(entity))
+                      .eventDescription(entity.getData())
                       .createdAt(instantMapper.toOffsetDateTime(entity.getCreatedAt()))
                       .createdBy(entity.getCreatedBy())
                       .build();
-  }
-
-  private String getEventDescription(DomainEventEntity entity) {
-    return (String) entity.getData().getOrDefault("eventDescription", null);
   }
 }

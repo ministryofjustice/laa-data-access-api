@@ -98,11 +98,10 @@ public class DomainEventSpecificationIntegrationTest {
 
     private DomainEventEntity createEntity(UUID appId, DomainEventType eventType) {
         return DomainEventEntity.builder()
-                                .id(UUID.randomUUID())
                                 .applicationId(appId)
                                 .createdAt(Instant.now())
                                 .createdBy("John.Doe")
-                                .data(Map.of("eventDescription","assigning a caseworker"))
+                                .data("{ \"eventDescription\" : \"assigning a caseworker\" }")
                                 .type(eventType)
                                 .build();
     }

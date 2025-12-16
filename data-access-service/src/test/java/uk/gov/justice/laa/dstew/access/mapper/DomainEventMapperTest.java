@@ -22,7 +22,7 @@ public class DomainEventMapperTest {
     @NullSource
     @ValueSource( strings = { "377adde8-632f-43c6-b10b-0843433759d3" })
     void shouldMapDomainEventEntityToDomainEvent(String caseworkerId) {
-        final String eventDescription = "Assigning to a senior caseworker";
+        final String eventDescription = "{ \"eventDescription\" : \"eventDescription\" }";
         Instant createdAt = Instant.ofEpochMilli(999999000);
         OffsetDateTime expectedCreatedDateTime = OffsetDateTime.of(1970, 01, 12, 13, 46, 39, 0, ZoneOffset.UTC);
         DomainEventEntity entity = DomainEventEntity.builder()
@@ -31,7 +31,7 @@ public class DomainEventMapperTest {
                                                     .caseworkerId(caseworkerId != null ? UUID.fromString(caseworkerId) : null)
                                                     .createdAt(createdAt)
                                                     .createdBy("John.Doe")
-                                                    .data(Map.of("eventDescription", eventDescription))
+                                                    .data(eventDescription)
                                                     .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
                                                     .build();
         DomainEvent result = mapper.toDomainEvent(entity);
@@ -42,19 +42,5 @@ public class DomainEventMapperTest {
         assertThat(result.getCreatedBy()).isEqualTo(entity.getCreatedBy());
         assertThat(result.getDomainEventType()).isEqualTo(entity.getType());
         assertThat(result.getEventDescription()).isEqualTo(eventDescription);
-    }
-
-    void shouldMapNullToEventDescriptionWhenEventDescriptionMissing() {
-        DomainEventEntity entity = DomainEventEntity.builder()
-                                                    .id(UUID.randomUUID())
-                                                    .applicationId(UUID.randomUUID())
-                                                    .createdAt(Instant.now())
-                                                    .createdBy("John.Doe")
-                                                    .data(Map.of("foo", "bar"))
-                                                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
-                                                    .build();
-        DomainEvent result = mapper.toDomainEvent(entity);
-
-        assertThat(result.getEventDescription()).isNull();
     }
 }
