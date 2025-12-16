@@ -227,7 +227,7 @@ class ApplicationControllerTest {
 
 
   @Test
-  void shouldReturnError() throws Exception {
+  void shouldReturnNotFoundException() throws Exception {
 
     OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC).minusDays(3);
     OffsetDateTime updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
