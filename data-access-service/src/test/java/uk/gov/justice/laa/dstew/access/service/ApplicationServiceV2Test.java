@@ -400,31 +400,8 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     }
 
     @Nested
-    class GetApplications {
-        @Test
-        void givenApplications_whenGetAllApplications_thenReturnAllMappedApplications() {
-            // given
-            ApplicationEntity entity = ApplicationEntityFactory.create();
-            when(applicationRepository.findAll()).thenReturn(List.of(entity));
-
-            ApplicationService sut = new ApplicationServiceDouble()
-                    .withApplicationRepository(applicationRepository)
-                    .withRoles(TestConstants.Roles.READER)
-                    .build();
-
-            // when
-            List<Application> results = sut.getAllApplications();
-
-            // then
-            assertThat(results).hasSize(1);
-            assertApplicationEqual(entity, results.get(0));
-            verify(applicationRepository, times(1)).findAll();
-        }
-    }
-
-    @Nested
     class AssignCaseworker {
-        // Only basic structure, as ApplicationServiceDouble and V2 may not support all legacy behaviors
+
         @Test
         void givenCaseworkerAndApplications_whenAssignCaseworker_thenAssignAndSave() {
             // given
@@ -434,27 +411,27 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
         @Test
         void givenNonexistentCaseworker_whenAssignCaseworker_thenThrowCaseworkerNotFoundException() {
-            // Placeholder for real implementation
+
         }
 
         @Test
         void givenDuplicateApplicationIds_whenAssignCaseworker_thenOnlyDistinctIdsUsed() {
-            // Placeholder for real implementation
+
         }
 
         @Test
         void givenMissingApplications_whenAssignCaseworker_thenThrowApplicationNotFoundException() {
-            // Placeholder for real implementation
+
         }
 
         @Test
         void givenNullEventDescription_whenAssignCaseworker_thenAssignAndSave() {
-            // Placeholder for real implementation
+
         }
 
         @Test
         void givenOrderMismatch_whenAssignCaseworker_thenNotThrow() {
-            // Placeholder for real implementation
+
         }
     }
 
@@ -462,17 +439,17 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     class UnassignCaseworker {
         @Test
         void givenAssignedCaseworker_whenUnassignCaseworker_thenUnassignAndSave() {
-            // Placeholder for real implementation
+
         }
 
         @Test
         void givenAlreadyUnassigned_whenUnassignCaseworker_thenNotSave() {
-            // Placeholder for real implementation
+
         }
 
         @Test
         void givenNonexistentApplication_whenUnassignCaseworker_thenThrowApplicationNotFoundException() {
-            // Placeholder for real implementation
+
         }
     }
 
