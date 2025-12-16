@@ -428,9 +428,9 @@ components:
         events:
           type: array
           items:
-            $ref: "#/components/schemas/DomainEvent"
+            $ref: "#/components/schemas/ApplicationDomainEvent"
     
-    DomainEvent:
+    ApplicationDomainEvent:
       type: object
       required:
         - applicationId

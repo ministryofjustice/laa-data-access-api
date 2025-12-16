@@ -858,6 +858,7 @@ public class ApplicationControllerIntegrationTest {
         .andExpect(jsonPath("$.events[0].caseworkerId").doesNotExist())
         .andExpect(jsonPath("$.events[0].domainEventType").value("UNASSIGN_APPLICATION_TO_CASEWORKER"))
         .andExpect(jsonPath("$.events[0].createdAt").value(event.getCreatedAt().toString()))
-        .andExpect(jsonPath("$.events[0].createdBy").value("John.Doe"));
+        .andExpect(jsonPath("$.events[0].createdBy").value("John.Doe"))
+        .andExpect(jsonPath("$.events[0].eventDescription").value("{ \"foo\" : \"bar\" }"));
   }
 }

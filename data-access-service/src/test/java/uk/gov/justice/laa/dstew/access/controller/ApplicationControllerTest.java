@@ -36,10 +36,10 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
-import uk.gov.justice.laa.dstew.access.model.DomainEvent;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.service.DomainEventService;
@@ -203,7 +203,7 @@ class ApplicationControllerTest {
     final UUID applicationId = UUID.randomUUID();
 
     when(domainEventService.getEvents(any(Specification.class)))
-    .thenReturn(List.of(DomainEvent.builder().build()));
+    .thenReturn(List.of(ApplicationDomainEvent.builder().build()));
 
     String address = "/api/v0/applications/" + applicationId + "/history-search";
 

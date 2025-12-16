@@ -3,8 +3,6 @@ package uk.gov.justice.laa.dstew.access.service;
 import static org.assertj.core.api.Assertions.anyOf;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -17,8 +15,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
-import uk.gov.justice.laa.dstew.access.model.DomainEvent;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import java.time.Instant;
@@ -149,8 +147,8 @@ public class DomainEventServiceTest {
         .thenReturn(List.of(entity, entity2));
         //return events out of order
         when(mapper.toDomainEvent(any()))
-        .thenReturn(DomainEvent.builder().applicationId(applicationId).createdAt(OffsetDateTime.of(2025, 10, 1, 0, 0, 0, 0, ZoneOffset.UTC)).build())
-        .thenReturn(DomainEvent.builder().applicationId(applicationId).createdAt(OffsetDateTime.of(2024, 9, 1, 0, 0, 0, 0, ZoneOffset.UTC)).build());
+        .thenReturn(ApplicationDomainEvent.builder().applicationId(applicationId).createdAt(OffsetDateTime.of(2025, 10, 1, 0, 0, 0, 0, ZoneOffset.UTC)).build())
+        .thenReturn(ApplicationDomainEvent.builder().applicationId(applicationId).createdAt(OffsetDateTime.of(2024, 9, 1, 0, 0, 0, 0, ZoneOffset.UTC)).build());
 
         var result = service.getEvents(spec);
         assertThat(result).isNotNull();

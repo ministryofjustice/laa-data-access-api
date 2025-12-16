@@ -11,7 +11,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.model.DomainEvent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 
 public class DomainEventMapperTest {
@@ -34,7 +34,7 @@ public class DomainEventMapperTest {
                                                     .data(eventDescription)
                                                     .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
                                                     .build();
-        DomainEvent result = mapper.toDomainEvent(entity);
+        ApplicationDomainEvent result = mapper.toDomainEvent(entity);
         
         assertThat(result.getApplicationId()).isEqualTo(entity.getApplicationId());
         assertThat(result.getCaseworkerId()).isEqualTo(entity.getCaseworkerId());

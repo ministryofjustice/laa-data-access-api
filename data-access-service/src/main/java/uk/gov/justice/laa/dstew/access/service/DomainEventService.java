@@ -13,8 +13,8 @@ import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
-import uk.gov.justice.laa.dstew.access.model.DomainEvent;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 
@@ -66,8 +66,8 @@ public class DomainEventService {
   /**
   * Provides a list of events associated with an application in createdAt ascending order.
   */
-  public List<DomainEvent> getEvents(Specification<DomainEventEntity> filter) {
-    Comparator<DomainEvent> comparer = Comparator.comparing(DomainEvent::getCreatedAt);
+  public List<ApplicationDomainEvent> getEvents(Specification<DomainEventEntity> filter) {
+    Comparator<ApplicationDomainEvent> comparer = Comparator.comparing(ApplicationDomainEvent::getCreatedAt);
     return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
   }
 }
