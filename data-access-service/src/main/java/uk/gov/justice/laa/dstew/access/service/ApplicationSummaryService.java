@@ -44,7 +44,7 @@ public class ApplicationSummaryService {
    * Retrieves a paginated list of {@link ApplicationSummary} objects filtered by application status.
    *
    * @param applicationStatus the {@link ApplicationStatus} used to filter results on application status
-   * @param applicationReference used to filter results on application reference
+   * @param laaReference used to filter results on application reference
    * @param firstName used to filter results on linked individuals first name
    * @param lastName used to filter results on  linked individuals last name
    * @param page the page number to retrieve (zero-based index)
@@ -54,7 +54,7 @@ public class ApplicationSummaryService {
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public Page<ApplicationSummary> getAllApplications(
           ApplicationStatus applicationStatus,
-          String applicationReference,
+          String laaReference,
           String firstName,
           String lastName,
           UUID userId,
@@ -69,7 +69,7 @@ public class ApplicationSummaryService {
     return applicationSummaryRepository
             .findAll(ApplicationSummarySpecification
                             .filterBy(applicationStatus,
-                                    applicationReference,
+                                    laaReference,
                                     firstName,
                                     lastName,
                                     userId),

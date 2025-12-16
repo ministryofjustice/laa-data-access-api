@@ -40,8 +40,8 @@ public class ApplicationSummaryEntity {
   @Enumerated(EnumType.STRING)
   private ApplicationStatus status;
 
-  @Column(name = "application_reference")
-  private String applicationReference;
+  @Column(name = "laa_reference")
+  private String laaReference;
 
   @Column(name = "created_at")
   private Instant createdAt;

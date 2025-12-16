@@ -29,7 +29,7 @@ public interface ApplicationSummaryMapper {
       ApplicationSummary app = new ApplicationSummary();
       app.setApplicationId(applicationSummaryEntity.getId());
       app.setApplicationStatus(applicationSummaryEntity.getStatus());
-      app.setApplicationReference(applicationSummaryEntity.getApplicationReference());
+      app.setLaaReference(applicationSummaryEntity.getLaaReference());
       app.setAssignedTo(applicationSummaryEntity.getCaseworker() != null 
                         ? 
                         applicationSummaryEntity.getCaseworker().getId() : 
