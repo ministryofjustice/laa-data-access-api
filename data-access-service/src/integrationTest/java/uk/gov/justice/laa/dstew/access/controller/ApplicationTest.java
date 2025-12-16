@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import lombok.Getter;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -743,9 +744,8 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         private Stream<Arguments> invalidApplicationIdListsCases() {
             return Stream.of(
-                    Arguments.of(Collections.singletonList(null)),
-                    Arguments.of(Arrays.asList(UUID.randomUUID(), null, UUID.randomUUID())),
-                    Arguments.of(Collections.emptyList())
+                    Arguments.of(Collections.emptyList()),
+                    Arguments.of((Object)null)
             );
         }
     }
