@@ -461,7 +461,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
                 builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
-                        .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()).reversed())
+                        .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()))
                         .eventHistory(EventHistory.builder()
                                 .eventDescription("Assigning caseworker")
                                 .build());
