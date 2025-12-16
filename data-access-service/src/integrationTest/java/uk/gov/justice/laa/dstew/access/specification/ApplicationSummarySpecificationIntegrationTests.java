@@ -31,7 +31,6 @@ import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
-import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 
 @Testcontainers
 @SpringBootTest
@@ -76,7 +75,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
     }
 
     private ApplicationEntity createApplicationEntity(
-            String applicationReference,
+            String laaReference,
             ApplicationStatus status,
             Map<String,Object> content,
             Set individuals,
@@ -84,7 +83,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
     ) {
         return ApplicationEntity.builder()
                 .id(null)
-                .applicationReference(applicationReference)
+                .laaReference(laaReference)
                 .status(status)
                 .applicationContent(content)
                 .individuals(individuals)
@@ -226,12 +225,12 @@ public class ApplicationSummarySpecificationIntegrationTests {
     }
 
     @Test
-    void isApplicationReferencePartialFromStartSpecification() {
+    void isLaaReferencePartialFromStartSpecification() {
         long expectedNumberOfAppref =
                 prePopulatedApplications.stream().filter(
                         a ->
-                                a.getApplicationReference().startsWith("Appref")
-                            || a.getApplicationReference().startsWith("APPref2")
+                                a.getLaaReference().startsWith("Appref")
+                            || a.getLaaReference().startsWith("APPref2")
                         ).count();
 
         assertNotEquals(0, expectedNumberOfAppref);
@@ -241,15 +240,15 @@ public class ApplicationSummarySpecificationIntegrationTests {
         applicationSummaryRepository
                 .findAll(apprefEntities, PageRequest.of(0, 10))
                 .getContent().forEach(
-                        a -> assertEquals("appref", a.getApplicationReference().toLowerCase().substring(0,6))
+                        a -> assertEquals("appref", a.getLaaReference().toLowerCase().substring(0,6))
                 );
         assertEquals( expectedNumberOfAppref, applicationSummaryRepository.count(apprefEntities));
     }
 
     @Test
-    void isApplicationReferencePartialFromMiddleSpecification() {
+    void isLaaReferencePartialFromMiddleSpecification() {
         long expectedNumberOfAppref =
-                prePopulatedApplications.stream().filter(a -> a.getApplicationReference().contains("ref")).count();
+                prePopulatedApplications.stream().filter(a -> a.getLaaReference().contains("ref")).count();
         assertNotEquals(0, expectedNumberOfAppref);
 
         Specification<ApplicationSummaryEntity> apprefEntities =
@@ -257,15 +256,15 @@ public class ApplicationSummarySpecificationIntegrationTests {
         applicationSummaryRepository
                 .findAll(apprefEntities, PageRequest.of(0, 10))
                 .getContent().forEach(
-                        a -> assertThat(a.getApplicationReference().toLowerCase().contains("ref"))
+                        a -> assertThat(a.getLaaReference().toLowerCase().contains("ref"))
                 );
         assertEquals(expectedNumberOfAppref, applicationSummaryRepository.count(apprefEntities));
     }
 
     @Test
-    void isApplicationReferencePartialFromEndSpecification() {
+    void isLaaReferencePartialFromEndSpecification() {
         long expectedNumberOfAppref =
-                prePopulatedApplications.stream().filter(a -> a.getApplicationReference().endsWith("ef1")).count();
+                prePopulatedApplications.stream().filter(a -> a.getLaaReference().endsWith("ef1")).count();
         assertNotEquals(0, expectedNumberOfAppref);
 
         Specification<ApplicationSummaryEntity> apprefEntities =
@@ -274,7 +273,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
         applicationSummaryRepository
                 .findAll(apprefEntities, PageRequest.of(0, 10))
                 .getContent().forEach(
-                        a -> assertThat(a.getApplicationReference().toLowerCase().endsWith("ef1"))
+                        a -> assertThat(a.getLaaReference().toLowerCase().endsWith("ef1"))
                 );
         assertEquals(expectedNumberOfAppref, applicationSummaryRepository.count(apprefEntities));
     }
@@ -291,7 +290,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
     }
 
     @Test
-    void isApplicationReferenceBlankSpecification() {
+    void isLaaReferenceBlankSpecification() {
         long expectedNumberOfRecordsNoFilter =
                 prePopulatedApplications.size();
 
@@ -306,7 +305,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
                 .stream()
                 .filter(a ->
                         a.getStatus().equals(ApplicationStatus.SUBMITTED)
-                        && a.getApplicationReference().endsWith("ref1"))
+                        && a.getLaaReference().endsWith("ref1"))
                 .count();
          assertNotEquals(0, expectedNumberOfSubmittedAppref1);
 
@@ -319,7 +318,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
         applicationSummaryRepository
                 .findAll(apprefEntities, PageRequest.of(0, 10))
                 .getContent().forEach(
-                        a -> assertThat(a.getApplicationReference().toLowerCase().endsWith("ef1")
+                        a -> assertThat(a.getLaaReference().toLowerCase().endsWith("ef1")
                                                     && a.getStatus().equals(ApplicationStatus.SUBMITTED))
                 );
     }
