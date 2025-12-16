@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatException;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -16,8 +15,8 @@ class GlobalExceptionHandlerTest {
   GlobalExceptionHandler globalExceptionHandler = new GlobalExceptionHandler();
 
   @Test
-  void handleApplicationNotFound_returnsNotFoundStatusAndErrorMessage() {
-    var result = globalExceptionHandler.handleApplicationNotFound(new ApplicationNotFoundException("Application not found"));
+  void handleApplicationNotFound_returnsGenericNotFoundExceptionAndErrorMessage() {
+    var result = globalExceptionHandler.handleResourceNotFound(new ResourceNotFoundException("Application not found"));
 
     assertThat(result).isNotNull();
     assertThat(result.getStatusCode()).isEqualTo(NOT_FOUND);
@@ -26,8 +25,8 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
-  void handleCaseworkerNotFound_returnsNotFoundStatusAndErrorMessage() {
-    var result = globalExceptionHandler.handleCaseworkerNotFound(new CaseworkerNotFoundException("Caseworker not found"));
+  void handleCaseworkerNotFound_returnsGenericNotFoundExceptionAndErrorMessage() {
+    var result = globalExceptionHandler.handleResourceNotFound(new ResourceNotFoundException("Caseworker not found"));
 
     assertThat(result).isNotNull();
     assertThat(result.getStatusCode()).isEqualTo(NOT_FOUND);

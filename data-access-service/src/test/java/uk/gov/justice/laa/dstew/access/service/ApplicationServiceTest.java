@@ -1,15 +1,7 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,13 +9,21 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
-import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
-import uk.gov.justice.laa.dstew.access.exception.CaseworkerNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -45,12 +45,12 @@ public class ApplicationServiceTest {
   @Mock
   private DomainEventService domainEventService;
 
-  @Test
+    @Test
   void shouldThrowExceptionWhenApplicationNotFound() {
     UUID id = UUID.randomUUID();
     when(repository.findById(id)).thenReturn(Optional.empty());
 
-    assertThrows(ApplicationNotFoundException.class, () -> service.updateApplication(id, new ApplicationUpdateRequest()));
+    assertThrows(ResourceNotFoundException.class, () -> service.updateApplication(id, new ApplicationUpdateRequest()));
   }
 
   @Test
@@ -112,7 +112,7 @@ public class ApplicationServiceTest {
   }
 
   @Test
-  void shouldAssignCaseworkerToApplication() throws JsonProcessingException {
+  void shouldAssignCaseworkerToApplication(){
     UUID appId1 = UUID.randomUUID();
     UUID appId2 = UUID.randomUUID();
     UUID cwId = UUID.randomUUID();
@@ -169,7 +169,7 @@ public class ApplicationServiceTest {
 
     when(caseworkerRepository.findById(cwId)).thenReturn(Optional.empty());
 
-    assertThrows(CaseworkerNotFoundException.class,
+    assertThrows(ResourceNotFoundException.class,
         () -> service.assignCaseworker(cwId, List.of(UUID.randomUUID()), new EventHistory()));
   }
 
@@ -212,7 +212,7 @@ public class ApplicationServiceTest {
   void shouldThrowException_whenAppNotFound() {
     UUID appId = UUID.randomUUID();
 
-    assertThrows(ApplicationNotFoundException.class,
+    assertThrows(ResourceNotFoundException.class,
         () -> service.unassignCaseworker(appId, null));
   }
 
@@ -254,7 +254,7 @@ public class ApplicationServiceTest {
 
     when(repository.findAllById(applicationIds)).thenReturn(applications);
     when(caseworkerRepository.findById(cwId)).thenReturn(Optional.of(caseworker));
-    ApplicationNotFoundException exception = assertThrows(ApplicationNotFoundException.class,
+    ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
       () -> service.assignCaseworker(cwId, applicationIds, new EventHistory()));
     assertThat(exception.getMessage()).isEqualTo("No application found with ids: " + appId2.toString() + "," + appId3.toString());
   }

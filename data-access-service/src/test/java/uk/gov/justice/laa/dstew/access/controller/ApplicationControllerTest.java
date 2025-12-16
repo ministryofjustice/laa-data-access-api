@@ -14,36 +14,46 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
-import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.service.DomainEventService;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
+
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(
     controllers = ApplicationController.class,
@@ -215,6 +225,38 @@ class ApplicationControllerTest {
     verify(domainEventService, times(1)).getEvents(applicationId, null);
   }
 
+
+  @Test
+  void shouldReturnError() throws Exception {
+
+    OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC).minusDays(3);
+    OffsetDateTime updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
+
+    UUID randomUUID = UUID.randomUUID();
+    var application = Application.builder()
+            .id(randomUUID)
+            .laaReference("laa_reference")
+            .applicationContent(Map.of("foo", "bar"))
+            .createdAt(createdAt)
+            .updatedAt(updatedAt)
+            .build();
+    when(applicationService.getApplication(randomUUID)).thenThrow(new ResourceNotFoundException("Application not found"));
+    ProblemDetail expectedProblem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+    expectedProblem.setTitle("Not found");
+    expectedProblem.setDetail("Application not found");
+    MvcResult result = mockMvc.perform(get("/api/v0/applications/" + application.getId()))
+            .andExpect(status().is4xxClientError())
+            .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+            .andReturn();
+
+
+    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+    assertThat(problemDetail.getTitle()).isEqualTo(expectedProblem.getTitle());
+    assertThat(problemDetail.getStatus()).isEqualTo(expectedProblem.getStatus());
+    assertThat(problemDetail.getDetail()).isEqualTo(expectedProblem.getDetail());
+
+
+  }
 
   private <TResponseModel> TResponseModel deserialise(MvcResult result, Class<TResponseModel> clazz) throws Exception {
     return objectMapper.readValue(result.getResponse().getContentAsString(), clazz);
