@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import lombok.Getter;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -51,7 +50,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         public void givenExistingApplication_whenGetApplication_thenReturnOKWithCorrectData() throws Exception {
             // given
             ApplicationEntity application = persistedApplicationFactory.createAndPersist();
-            Application expectedApplication = toApplication(application);
+            Application expectedApplication = createApplication(application);
 
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
@@ -112,7 +111,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertUnauthorised(result);
         }
 
-        private Application toApplication(ApplicationEntity applicationEntity) {
+        private Application createApplication(ApplicationEntity applicationEntity) {
             Application application = new Application();
             application.setId(applicationEntity.getId());
             application.setApplicationContent(applicationEntity.getApplicationContent());
@@ -952,7 +951,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                             expectedApplicationWithNoCaseworker
                     )
                     .flatMap(List::stream)
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .toList();
 
             // when
@@ -976,7 +975,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory.createAndPersistMultiple(20, builder ->
                             builder.status(ApplicationStatus.IN_PROGRESS))
                     .stream()
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .toList();
 
             // when
@@ -1004,7 +1003,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                             inProgressApplications.stream(),
                             submittedApplications.stream().limit(5)
                     )
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .toList();
 
             // when
@@ -1054,7 +1053,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory
                     .createAndPersistMultiple(5, builder -> builder.status(ApplicationStatus.IN_PROGRESS))
                     .stream()
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .toList();
 
             persistedApplicationFactory.createAndPersistMultiple(10, builder -> builder.status(ApplicationStatus.SUBMITTED));
@@ -1081,7 +1080,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory
                     .createAndPersistMultiple(6, builder -> builder.status(ApplicationStatus.SUBMITTED))
                     .stream()
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .toList();
             persistedApplicationFactory.createAndPersistMultiple(10, builder -> builder.status(ApplicationStatus.IN_PROGRESS));
 
@@ -1106,7 +1105,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory
                     .createAndPersistMultiple(17, builder -> builder.status(ApplicationStatus.SUBMITTED))
                     .stream()
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .toList();
             persistedApplicationFactory.createAndPersistMultiple(10, builder -> builder.status(ApplicationStatus.IN_PROGRESS));
 
@@ -1141,7 +1140,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory.createAndPersistMultiple(expectedCount, builder ->
                             builder.individuals(Set.of(individualFactory.create(i -> i.firstName(persistedFirstName)))))
                     .stream()
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .toList();
 
             // when
@@ -1170,7 +1169,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                             builder.status(ApplicationStatus.SUBMITTED)
                                     .individuals(Set.of(individualFactory.create(i -> i.firstName("Jane")))))
                     .stream()
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .toList();
 
             // when
@@ -1203,7 +1202,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory.createAndPersistMultiple(expectedCount, builder ->
                             builder.individuals(Set.of(individualFactory.create(i -> i.lastName(persistedLastName)))))
                     .stream()
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .toList();
 
             // when
@@ -1237,7 +1236,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                             .individuals(Set.of(individualFactory.create(i -> i.lastName("Smith")))));
 
             List<ApplicationSummary> expectedApplicationsSummary = expectedApplications.stream()
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .toList();
 
             // when
@@ -1265,7 +1264,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory.createAndPersistMultiple(2, builder ->
                             builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Lucas").lastName("Taylor")))))
                     .stream()
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .toList();
             persistedApplicationFactory.createAndPersistMultiple(5, builder ->
                     builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Victoria").lastName("Williams")))));
@@ -1300,7 +1299,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             persistedApplicationFactory.createAndPersistMultiple(5, builder -> builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Victoria").lastName("Theodore")))));
 
             List<ApplicationSummary> expectedApplicationsSummary = expectedApplications.stream()
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .toList();
 
             // when
@@ -1334,7 +1333,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             persistedApplicationFactory.createAndPersistMultiple(5, builder -> builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Victoria").lastName("Theodore")))));
 
             List<ApplicationSummary> expectedApplicationsSummary = expectedApplications.stream()
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .toList();
 
             // when
@@ -1401,7 +1400,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                     builder.caseworker(BaseIntegrationTest.CaseworkerJaneDoe));
 
             List<ApplicationSummary> expectedApplicationsSummary = expectedApplications.stream()
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .toList();
 
             // when
@@ -1426,7 +1425,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                     builder.status(ApplicationStatus.IN_PROGRESS));
 
             List<ApplicationSummary> expectedApplicationsSummary = expectedApplications.stream()
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .toList();
 
             // when
@@ -1510,11 +1509,11 @@ public class ApplicationTest extends BaseIntegrationTest {
             return persistedApplicationFactory.createAndPersistMultiple(numberOfApplications, builder ->
                             builder.status(status).applicationReference("REF-00" + random.nextInt(100)))
                     .stream()
-                    .map(this::toApplicationSummary)
+                    .map(this::createApplicationSummary)
                     .collect(Collectors.toList());
         }
 
-        private ApplicationSummary toApplicationSummary(ApplicationEntity applicationEntity) {
+        private ApplicationSummary createApplicationSummary(ApplicationEntity applicationEntity) {
             ApplicationSummary applicationSummary = new ApplicationSummary();
             applicationSummary.setApplicationId(applicationEntity.getId());
             applicationSummary.setApplicationStatus(applicationEntity.getStatus());
