@@ -256,7 +256,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                                     .build()
                     ),
                     Arguments.of(applicationCreateRequestFactory.create(builder -> {
-                                builder.applicationReference(null);
+                                builder.laaReference(null);
                             }), ProblemDetailBuilder
                                     .create()
                                     .status(HttpStatus.BAD_REQUEST)
@@ -269,7 +269,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         private void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual) {
             assertNotNull(actual.getId());
-            assertEquals(expected.getApplicationReference(), actual.getApplicationReference());
+            assertEquals(expected.getLaaReference(), actual.getLaaReference());
             assertEquals(expected.getApplicationContent(), actual.getApplicationContent());
             assertEquals(expected.getStatus(), actual.getStatus());
             assertEquals(applicationVersion, actual.getSchemaVersion());
@@ -1480,7 +1480,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             Random random = new Random();
 
             return persistedApplicationFactory.createAndPersistMultiple(numberOfApplications, builder ->
-                            builder.status(status).applicationReference("REF-00" + random.nextInt(100)))
+                            builder.status(status).laaReference("REF-00" + random.nextInt(100)))
                     .stream()
                     .map(this::createApplicationSummary)
                     .collect(Collectors.toList());
@@ -1490,7 +1490,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             ApplicationSummary applicationSummary = new ApplicationSummary();
             applicationSummary.setApplicationId(applicationEntity.getId());
             applicationSummary.setApplicationStatus(applicationEntity.getStatus());
-            applicationSummary.setApplicationReference(applicationEntity.getApplicationReference());
+            applicationSummary.setLaaReference(applicationEntity.getLaaReference());
             applicationSummary.setCreatedAt(OffsetDateTime.ofInstant(applicationEntity.getCreatedAt(), ZoneOffset.UTC));
             applicationSummary.setModifiedAt(OffsetDateTime.ofInstant(applicationEntity.getModifiedAt(), ZoneOffset.UTC));
             if (applicationEntity.getCaseworker() != null) {

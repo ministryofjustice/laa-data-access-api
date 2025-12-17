@@ -292,4 +292,19 @@ public class ApplicationServiceTest {
     verify(repository).save(applicationEntity);
   }
 
+  @Test
+  void shouldNotThrow_whenApplicationOrderReturned_doesNotMatchOrderIdsGiven() {
+    ApplicationEntity appEntity1 = ApplicationEntity.builder().id(UUID.randomUUID()).build();
+    ApplicationEntity appEntity2 = ApplicationEntity.builder().id(UUID.randomUUID()).build();
+    ApplicationEntity appEntity3 = ApplicationEntity.builder().id(UUID.randomUUID()).build();
+    EventHistory history = EventHistory.builder().eventDescription("event description").build();
+    List<ApplicationEntity> applications = List.of(appEntity1, appEntity2, appEntity3);
+    List<UUID> applicationIds = applications.stream().map(x -> x.getId()).toList();
+    CaseworkerEntity caseworker = CaseworkerEntity.builder().id(UUID.randomUUID()).build();
+
+    when(caseworkerRepository.findById(caseworker.getId())).thenReturn(Optional.of(caseworker));
+    when(repository.findAllById(applicationIds)).thenReturn(applications.reversed());
+
+    service.assignCaseworker(caseworker.getId(), applicationIds, history);
+  }
 }

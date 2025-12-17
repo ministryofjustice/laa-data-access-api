@@ -17,7 +17,7 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
     public ApplicationCreateRequest create() {
         return ApplicationCreateRequest.builder()
                 .status(ApplicationStatus.IN_PROGRESS)
-                .applicationReference("TestReference")
+                .laaReference("TestReference")
                 .applicationContent(new HashMap<>() {
                     {
                         put("test", "value");

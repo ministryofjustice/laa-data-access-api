@@ -55,13 +55,13 @@ public class ApplicationSummaryServiceTest {
   private List<ApplicationSummaryEntity> createInProgressApplicationSummaryEntities() {
     ApplicationSummaryEntity firstEntity = new ApplicationSummaryEntity();
     firstEntity.setId(UUID.randomUUID());
-    firstEntity.setApplicationReference("appref1");
+    firstEntity.setLaaReference("appref1");
     firstEntity.setStatus(ApplicationStatus.IN_PROGRESS);
     firstEntity.setIndividuals(createIndividuals());
 
     ApplicationSummaryEntity secondEntity = new ApplicationSummaryEntity();
     secondEntity.setId(UUID.randomUUID());
-    secondEntity.setApplicationReference("appref2");
+    secondEntity.setLaaReference("appref2");
     secondEntity.setStatus(ApplicationStatus.IN_PROGRESS);
     secondEntity.setIndividuals(createIndividuals());
 
@@ -73,12 +73,12 @@ public class ApplicationSummaryServiceTest {
 
     ApplicationSummary firstSummary = new ApplicationSummary();
     firstSummary.setApplicationId(entities.getFirst().getId());
-    firstSummary.setApplicationReference(entities.getFirst().getApplicationReference());
+    firstSummary.setLaaReference(entities.getFirst().getLaaReference());
     firstSummary.setApplicationStatus(entities.getFirst().getStatus());
 
     ApplicationSummary secondSummary = new ApplicationSummary();
     secondSummary.setApplicationId(entities.get(1).getId());
-    secondSummary.setApplicationReference(entities.get(1).getApplicationReference());
+    secondSummary.setLaaReference(entities.get(1).getLaaReference());
     secondSummary.setApplicationStatus(entities.get(1).getStatus());
 
     return List.of(firstSummary, secondSummary);
@@ -154,7 +154,7 @@ public class ApplicationSummaryServiceTest {
   }
 
   @Test
-  void shouldGetAllApplicationReferenceApplications() {
+  void shouldGetAllLaaReferenceApplications() {
 
     List<ApplicationSummaryEntity> entities = createInProgressApplicationSummaryEntities();
     List<ApplicationSummary> summaries = createApplicationSummaries(entities);

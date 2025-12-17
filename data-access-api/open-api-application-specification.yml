@@ -232,7 +232,7 @@ components:
         - id
         - applicationStatus
         - applicationContent
-        - applicationReference
+        - laaReference
         - schemaVersion
         - createdAt
         - updatedAt
@@ -247,7 +247,7 @@ components:
         applicationContent:
           type: object
           additionalProperties: true
-        applicationReference:
+        laaReference:
             type: string
         createdAt:
           type: string
@@ -268,7 +268,7 @@ components:
       required:
         - status
         - applicationContent
-        - applicationReference
+        - laaReference
         - individuals
       properties:
         status:
@@ -276,7 +276,7 @@ components:
         applicationContent:
           type: object
           additionalProperties: true
-        applicationReference:
+        laaReference:
           type: string
         individuals:
           type: array
@@ -306,7 +306,7 @@ components:
           description: The unique reference used to identify the application.
         applicationStatus:
           $ref: "#/components/schemas/applicationStatus"
-        applicationReference:
+        laaReference:
           type: string
         createdAt:
           type: string

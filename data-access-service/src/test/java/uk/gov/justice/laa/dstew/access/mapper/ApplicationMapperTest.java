@@ -39,7 +39,7 @@ class ApplicationMapperTest {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setId(id);
     entity.setStatus(ApplicationStatus.IN_PROGRESS);
-    entity.setApplicationReference("Ref123");
+    entity.setLaaReference("Ref123");
     entity.setSchemaVersion(1);
     entity.setApplicationContent(Map.of("foo", "bar", "baz", 123));
     entity.setCreatedAt(createdAt);
@@ -49,7 +49,7 @@ class ApplicationMapperTest {
 
     assertThat(result).isNotNull();
     assertThat(result.getId()).isEqualTo(id);
-    assertThat(result.getApplicationReference()).isEqualTo("Ref123");
+    assertThat(result.getLaaReference()).isEqualTo("Ref123");
     assertThat(result.getApplicationStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
     assertThat(result.getCreatedAt()).isEqualTo(OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC));
@@ -68,7 +68,7 @@ class ApplicationMapperTest {
 
     ApplicationEntity applicationEntity = ApplicationEntity.builder()
         .id(UUID.randomUUID())
-        .applicationReference("application_reference_1")
+        .laaReference("laa_reference_1")
         .status(ApplicationStatus.IN_PROGRESS)
         .individuals(Set.of(individual))
         .createdAt(Instant.now())
@@ -123,14 +123,14 @@ class ApplicationMapperTest {
     ApplicationCreateRequest req = ApplicationCreateRequest.builder()
         .status(ApplicationStatus.SUBMITTED)
         .applicationContent(Map.of("foo", "bar"))
-        .applicationReference("app_reference")
+        .laaReference("laa_reference")
         .build();
 
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
 
     assertThat(result.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
-    assertThat(result.getApplicationReference()).isEqualTo("app_reference");
+    assertThat(result.getLaaReference()).isEqualTo("laa_reference");
   }
 
   @Test
@@ -144,7 +144,7 @@ class ApplicationMapperTest {
     ApplicationCreateRequest req = ApplicationCreateRequest.builder()
         .status(ApplicationStatus.SUBMITTED)
         .applicationContent(Map.of("foo", "bar"))
-        .applicationReference("app_reference")
+        .laaReference("laa_reference")
         .individuals(List.of(individual))
         .build();
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
