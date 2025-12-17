@@ -563,7 +563,10 @@ public class ApplicationTest extends BaseIntegrationTest {
             CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
                 ;
                 builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
-                        .applicationIds(allApplicationIds);
+                        .applicationIds(allApplicationIds)
+                        .eventHistory(EventHistory.builder()
+                                .eventDescription("assigned to case worker")
+                                .build());
             });
 
             // when
