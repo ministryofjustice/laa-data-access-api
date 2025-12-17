@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -20,9 +19,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,7 +40,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import uk.gov.justice.laa.dstew.access.AccessApp;
-import uk.gov.justice.laa.dstew.access.entity.*;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
@@ -772,10 +778,9 @@ public class ApplicationControllerIntegrationTest {
             .eventHistory(EventHistory.builder().eventDescription("test assign first").build())
             .build();
 
-    String firstPayload = objectMapper.writeValueAsString(request);
     mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/assign")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(firstPayload))
+                    .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk());
 
     request = CaseworkerAssignRequest.builder()
@@ -784,10 +789,9 @@ public class ApplicationControllerIntegrationTest {
             .eventHistory(EventHistory.builder().eventDescription("assign second").build())
             .build();
 
-    String secondPayload = objectMapper.writeValueAsString(request);
     mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/assign")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(secondPayload))
+                    .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk());
 
     ApplicationEntity updated = applicationRepository.findById(appId).orElseThrow();
