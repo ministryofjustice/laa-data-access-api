@@ -223,14 +223,13 @@ public class ApplicationService {
       return;
     }
 
-    final UUID caseworkerId = entity.getCaseworker().getId();
     entity.setCaseworker(null);
     entity.setModifiedAt(Instant.now());
 
     applicationRepository.save(entity);
     domainEventService.saveUnassignApplicationDomainEvent(
             entity.getId(),
-            caseworkerId,
+            null,
             history.getEventDescription());
   }
 

@@ -194,7 +194,7 @@ public class ApplicationServiceTest {
     verify(repository).save(entity);
     verify(domainEventService).saveUnassignApplicationDomainEvent(
             eq(applicationId),
-            eq(caseworker.getId()),
+            eq(null),
             eq(eventHistory.getEventDescription()));
   }
 
@@ -317,13 +317,13 @@ public class ApplicationServiceTest {
     when(repository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
     doNothing().when(domainEventService).saveUnassignApplicationDomainEvent(
             eq(applicationEntity.getId()),
-            eq(caseWorkerId),
+            eq(null),
             eq(eventHistory.getEventDescription()));
     service.unassignCaseworker(applicationId, eventHistory);
 
     verify(domainEventService).saveUnassignApplicationDomainEvent(
             eq(applicationEntity.getId()),
-            eq(caseWorkerId),
+            eq(null),
             eq(eventHistory.getEventDescription()));
     verify(repository).save(applicationEntity);
   }
