@@ -211,7 +211,7 @@ components:
     categoryOfLaw:
       type: string
       enum:
-        - Family
+        - FAMILY
 
     matterType:
       type: string
