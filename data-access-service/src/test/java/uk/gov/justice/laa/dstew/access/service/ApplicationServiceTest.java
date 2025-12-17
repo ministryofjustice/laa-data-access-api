@@ -175,20 +175,27 @@ public class ApplicationServiceTest {
 
   @Test
   void shouldUnassignCaseworker_whenAssigned() {
-    UUID appId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
     ApplicationEntity entity = new ApplicationEntity();
-    entity.setId(appId);
+    entity.setId(applicationId);
 
-    CaseworkerEntity cw = new CaseworkerEntity();
-    cw.setId(UUID.randomUUID());
-    entity.setCaseworker(cw);
+    CaseworkerEntity caseworker = new CaseworkerEntity();
+    caseworker.setId(UUID.randomUUID());
+    entity.setCaseworker(caseworker);
+    EventHistory eventHistory = EventHistory.builder()
+            .eventDescription("description")
+            .build();
 
-    when(repository.findById(appId)).thenReturn(Optional.of(entity));
+    when(repository.findById(applicationId)).thenReturn(Optional.of(entity));
 
-    service.unassignCaseworker(appId, null);
+    service.unassignCaseworker(applicationId, eventHistory);
 
     assertThat(entity.getCaseworker()).isNull();
     verify(repository).save(entity);
+    verify(domainEventService).saveUnassignApplicationDomainEvent(
+            eq(applicationId),
+            eq(null),
+            eq(eventHistory.getEventDescription()));
   }
 
   @Test
@@ -288,6 +295,35 @@ public class ApplicationServiceTest {
     verify(domainEventService).saveAssignApplicationDomainEvent(
             eq(applicationEntity.getId()),
             eq(caseWorkerId),
+            eq(eventHistory.getEventDescription()));
+    verify(repository).save(applicationEntity);
+  }
+
+  @Test
+  void shouldUnassignCaseworkerFromApplicationWhenNullEventDescription() throws JsonProcessingException {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseWorkerId = UUID.randomUUID();
+
+    ApplicationEntity applicationEntity = new ApplicationEntity();
+    applicationEntity.setId(applicationId);
+    CaseworkerEntity caseworker = new CaseworkerEntity();
+    caseworker.setId(caseWorkerId);
+    applicationEntity.setCaseworker(caseworker);
+
+    EventHistory eventHistory = EventHistory.builder()
+            .eventDescription(null)
+            .build();
+
+    when(repository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+    doNothing().when(domainEventService).saveUnassignApplicationDomainEvent(
+            eq(applicationEntity.getId()),
+            eq(null),
+            eq(eventHistory.getEventDescription()));
+    service.unassignCaseworker(applicationId, eventHistory);
+
+    verify(domainEventService).saveUnassignApplicationDomainEvent(
+            eq(applicationEntity.getId()),
+            eq(null),
             eq(eventHistory.getEventDescription()));
     verify(repository).save(applicationEntity);
   }

@@ -229,11 +229,10 @@ public class ApplicationService {
     entity.setModifiedAt(Instant.now());
 
     applicationRepository.save(entity);
-
-    if (history != null && history.getEventDescription() != null) {
-      // TODO: add persisting of history
-    }
-
+    domainEventService.saveUnassignApplicationDomainEvent(
+            entity.getId(),
+            null,
+            history.getEventDescription());
   }
 
   /**
