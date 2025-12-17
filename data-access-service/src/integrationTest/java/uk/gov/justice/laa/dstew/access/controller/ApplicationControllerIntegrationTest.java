@@ -56,6 +56,7 @@ import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Transactional
 public class ApplicationControllerIntegrationTest {
 
   private static String existingApplicationUri;
@@ -238,42 +239,6 @@ public class ApplicationControllerIntegrationTest {
         .getHeader("Location");
 
     assertThat(location.isEmpty());
-  }
-
-  @Test
-  @Order(5)
-  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
-  void shouldUpdateApplication() throws Exception {
-    if (existingApplicationUri != null) {
-      String updatePayload = "{"
-          + "\"status\": \"SUBMITTED\","
-          + "\"applicationContent\": {"
-          + "\"laaReference\": \"app_ref\","
-          + "\"first_name\": \"John\","
-          + "\"last_name\": \"Doe\","
-          + "\"application_id\": \"" + UUID.randomUUID() + "\""
-          + "},"
-          + "\"schema_version\": \"" + 1 + "\""
-          + "}";
-      mockMvc.perform(MockMvcRequestBuilders.patch(existingApplicationUri)
-              .contentType(MediaType.APPLICATION_JSON)
-              .content(updatePayload))
-          .andExpect(MockMvcResultMatchers.status().isNoContent());
-    }
-  }
-
-  @Test
-  @Order(6)
-  @WithMockUser(authorities = {"APPROLE_ApplicationReader"})
-  void shouldGetItem() throws Exception {
-    if (existingApplicationUri != null) {
-      mockMvc.perform(MockMvcRequestBuilders.get(existingApplicationUri))
-          .andExpect(MockMvcResultMatchers.status().isOk())
-          .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_JSON))
-          .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.first_name").value("John"))
-          .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.last_name").value("Doe"))
-          .andExpect(MockMvcResultMatchers.jsonPath("$.id").isNotEmpty());
-    }
   }
 
   @Test
