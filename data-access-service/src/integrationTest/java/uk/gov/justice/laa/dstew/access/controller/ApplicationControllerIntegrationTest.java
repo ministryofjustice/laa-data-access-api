@@ -2,6 +2,8 @@ package uk.gov.justice.laa.dstew.access.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,11 +20,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestMethodOrder;
+import java.util.stream.Collectors;
+
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,10 +38,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import uk.gov.justice.laa.dstew.access.AccessApp;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
-import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.*;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
@@ -50,6 +47,7 @@ import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
+import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 
 @SpringBootTest(classes = AccessApp.class, properties = "feature.disable-security=false")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -72,6 +70,9 @@ public class ApplicationControllerIntegrationTest {
 
   @Autowired
   private CaseworkerRepository caseworkerRepository;
+
+  @Autowired
+  private DomainEventRepository eventRepository;
 
   @Autowired
   private EntityManager entityManager;
@@ -536,6 +537,7 @@ public class ApplicationControllerIntegrationTest {
     CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
                                                              .caseworkerId(caseworkerId)
                                                              .applicationIds(List.of(appId, appId2, appId3))
+                                                             .eventHistory(new EventHistory())
                                                              .build();
     String payload = objectMapper.writeValueAsString(request);
 
@@ -602,6 +604,7 @@ public class ApplicationControllerIntegrationTest {
     CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
                                                              .caseworkerId(caseworkerId)
                                                              .applicationIds(List.of(missingAppId))
+                                                             .eventHistory(new EventHistory())
                                                              .build();
     String payload = objectMapper.writeValueAsString(request);
 
@@ -629,6 +632,7 @@ public class ApplicationControllerIntegrationTest {
         CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
                                                              .caseworkerId(missingCwId)
                                                              .applicationIds(List.of(appId))
+                                                             .eventHistory(new EventHistory())
                                                              .build();
     String payload = objectMapper.writeValueAsString(request);
 
@@ -714,34 +718,6 @@ public class ApplicationControllerIntegrationTest {
   @Test
   @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
   @Transactional
-  void shouldReturn500IfDomainEventsMissing() throws Exception {
-    CaseworkerEntity caseworker = CaseworkerEntity.builder()
-            .username("caseworker_user")
-            .build();
-    UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
-
-    ApplicationEntity app = ApplicationEntity.builder()
-            .status(ApplicationStatus.SUBMITTED)
-            .applicationContent(Map.of("foo", "bar"))
-            .createdAt(Instant.now())
-            .modifiedAt(Instant.now())
-            .build();
-
-    CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
-            .caseworkerId(caseworkerId)
-            .applicationIds(List.of(applicationRepository.saveAndFlush(app).getId()))
-            .build();
-    String payload = objectMapper.writeValueAsString(request);
-
-    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/assign")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(payload))
-            .andExpect(status().is5xxServerError());
-  }
-
-  @Test
-  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
-  @Transactional
   void shouldReturnOkIfEventsDescriptionMissing() throws Exception {
     CaseworkerEntity caseworker = CaseworkerEntity.builder()
             .username("caseworker_user")
@@ -770,6 +746,64 @@ public class ApplicationControllerIntegrationTest {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(payload))
             .andExpect(status().isOk());
+  }
+
+  @Test
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  @Transactional
+  void shouldAssignCaseworkerAndAllowTwoDomainEvents() throws Exception {
+    CaseworkerEntity caseworker = CaseworkerEntity.builder()
+            .username("caseworker_user")
+            .build();
+    UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
+
+    ApplicationEntity app = ApplicationEntity.builder()
+            .status(ApplicationStatus.SUBMITTED)
+            .applicationContent(Map.of("foo", "bar"))
+            .createdAt(Instant.now())
+            .modifiedAt(Instant.now())
+            .build();
+
+    UUID appId = applicationRepository.saveAndFlush(app).getId();
+
+    CaseworkerAssignRequest request = CaseworkerAssignRequest.builder()
+            .caseworkerId(caseworkerId)
+            .applicationIds(List.of(appId))
+            .eventHistory(EventHistory.builder().eventDescription("test assign first").build())
+            .build();
+
+    String firstPayload = objectMapper.writeValueAsString(request);
+    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/assign")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(firstPayload))
+            .andExpect(status().isOk());
+
+    request = CaseworkerAssignRequest.builder()
+            .caseworkerId(caseworkerId)
+            .applicationIds(List.of(appId))
+            .eventHistory(EventHistory.builder().eventDescription("assign second").build())
+            .build();
+
+    String secondPayload = objectMapper.writeValueAsString(request);
+    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/assign")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(secondPayload))
+            .andExpect(status().isOk());
+
+    ApplicationEntity updated = applicationRepository.findById(appId).orElseThrow();
+    assertThat(updated.getCaseworker()).isNotNull();
+    assertThat(updated.getCaseworker().getId()).isEqualTo(caseworkerId);
+
+    assertTrue (eventRepository.findAll()
+            .stream()
+            .map(DomainEventEntity::getData)
+            .anyMatch(e -> e.contains("test assign first")));
+
+    assertTrue(eventRepository.findAll()
+            .stream()
+            .map(DomainEventEntity::getData)
+            .anyMatch(e -> e.contains("assign second")));
+
   }
 
 }
