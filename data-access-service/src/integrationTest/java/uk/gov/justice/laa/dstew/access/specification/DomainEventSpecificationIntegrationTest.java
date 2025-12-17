@@ -115,7 +115,7 @@ public class DomainEventSpecificationIntegrationTest {
                                                  .build());
         return ApplicationEntity.builder()
                                 .applicationContent(Map.of("foo","bar"))
-                                .applicationReference("ref")
+                                .laaReference("ref")
                                 .createdAt(Instant.now())
                                 .individuals(individuals)
                                 .status(ApplicationStatus.IN_PROGRESS)
