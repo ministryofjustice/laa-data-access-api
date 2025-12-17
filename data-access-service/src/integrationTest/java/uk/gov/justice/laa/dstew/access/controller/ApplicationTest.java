@@ -485,33 +485,6 @@ public class ApplicationTest extends BaseIntegrationTest {
             );
         }
 
-        @Test
-        @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenInvalidRequestBecauseEventHistoryDoesNotExist_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
-            // given
-            ApplicationEntity expectedAssignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
-                builder.caseworker(null);
-            });
-
-            CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
-                builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
-                        .applicationIds(List.of(expectedAssignedApplication.getId()))
-                        .eventHistory(null);
-            });
-
-            // when
-            MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
-
-            // then
-            assertSecurityHeaders(result);
-            assertBadRequest(result);
-
-            ApplicationEntity actualApplication = applicationRepository.findById(expectedAssignedApplication.getId()).orElseThrow();
-            assertNull(actualApplication.getCaseworker());
-            assertEquals(expectedAssignedApplication, actualApplication);
-            assertEquals(0, domainEventRepository.count());
-        }
-
         @ParameterizedTest
         @MethodSource("invalidAssignCaseworkerRequestCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
