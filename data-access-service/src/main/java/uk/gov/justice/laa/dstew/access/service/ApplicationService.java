@@ -192,17 +192,19 @@ public class ApplicationService {
 
     final List<ApplicationEntity> applications = checkIfAllApplicationsExist(applicationIds);
 
-    applications.stream()
-                .filter(app -> !applicationCurrentCaseworkerIsCaseworker(app, caseworker))
-                .forEach(app -> {
-                  app.setCaseworker(caseworker);
-                  app.setModifiedAt(Instant.now());
-                  applicationRepository.save(app);
-                  domainEventService.saveAssignApplicationDomainEvent(
-                          app.getId(),
-                          caseworker.getId(),
-                          eventHistory.getEventDescription());
-                });
+    applications.forEach(app -> {
+
+      if (!applicationCurrentCaseworkerIsCaseworker(app, caseworker)) {
+        app.setCaseworker(caseworker);
+        app.setModifiedAt(Instant.now());
+        applicationRepository.save(app);
+      }
+
+      domainEventService.saveAssignApplicationDomainEvent(
+              app.getId(),
+              caseworker.getId(),
+              eventHistory.getEventDescription());
+    });
 
   }
 
@@ -235,12 +237,12 @@ public class ApplicationService {
   }
 
   /**
-   * Check if an application has a caseworker assigned already and checks if the 
+   * Check if an application has a caseworker assigned already and checks if the
    * assigned caseworker matches the given caseworker.
-   * 
+   *
    */
   private static boolean applicationCurrentCaseworkerIsCaseworker(ApplicationEntity application, CaseworkerEntity caseworker) {
-    return application.getCaseworker() != null 
-          && application.getCaseworker().equals(caseworker);
+    return application.getCaseworker() != null
+            && application.getCaseworker().equals(caseworker);
   }
 }
