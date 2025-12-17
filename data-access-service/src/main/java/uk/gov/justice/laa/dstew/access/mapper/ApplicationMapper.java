@@ -53,14 +53,8 @@ public interface ApplicationMapper {
                          .map(individualMapper::toIndividualEntity)
                          .collect(Collectors.toSet());
     entity.setIndividuals(individuals);
-
-    try {
-      entity.setApplicationContent(
-          objectMapper.convertValue(req.getApplicationContent(), Map.class));
-    } catch (Exception e) {
-      throw new IllegalArgumentException(
-          "Failed to serialize ApplicationCreateRequest.applicationContent", e);
-    }
+    entity.setApplicationContent(getApplicationContent(req.getApplicationContent(),
+            "Failed to serialize ApplicationCreateRequest.applicationContent"));
     return entity;
   }
 
@@ -77,15 +71,14 @@ public interface ApplicationMapper {
       entity.setStatus(req.getStatus());
     }
     if (req.getApplicationContent() != null) {
-      try {
-        entity.setApplicationContent(
-            objectMapper.convertValue(req.getApplicationContent(), Map.class));
-      } catch (Exception e) {
-        throw new IllegalArgumentException(
-            "Failed to serialize ApplicationUpdateRequest.applicationContent", e);
-      }
+      Map<String, Object> applicationContent = getApplicationContent(req.getApplicationContent(),
+              "Failed to serialize ApplicationUpdateRequest.applicationContent");
+      entity.setApplicationContent(
+              applicationContent);
     }
   }
+
+
 
   /**
    * Maps a {@link ApplicationEntity} to an API-facing {@link Application} model.
@@ -98,14 +91,16 @@ public interface ApplicationMapper {
     if (entity == null) {
       return null;
     }
+    Map<String, Object> applicationContent = getApplicationContent(entity.getApplicationContent(),
+            "Failed to deserialize applicationContent from entity");
 
-    try {
-      Application application = new Application();
+    Application application = new Application();
       application.setId(entity.getId());
       application.setApplicationStatus(entity.getStatus());
       application.setSchemaVersion(entity.getSchemaVersion());
+
       application.setApplicationContent(
-          objectMapper.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
+              applicationContent);
       application.setLaaReference(entity.getLaaReference());
       application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
       application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
@@ -121,8 +116,31 @@ public interface ApplicationMapper {
       );
       
       return application;
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
-    }
+
   }
+
+  /**
+   * Helper method to safely convert a Map to application content.
+   *
+   * @param contentMap the map to convert
+   * @param message the error message to use if conversion fails
+   * @return the converted application content
+   * @throws IllegalArgumentException if conversion fails
+   */
+  private static Map<String, Object> getApplicationContent(Map<String, Object> contentMap, String message) {
+    Map<String, Object> applicationContent;
+    try {
+      applicationContent = objectMapper.convertValue(contentMap, new TypeReference<Map<String, Object>>() {
+      });
+
+    } catch (Exception e) {
+      throw new IllegalArgumentException(
+              message, e);
+    }
+    return applicationContent;
+  }
+
+    default OffsetDateTime toOffsetDateTime(Instant instant) {
+      return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
+    }
 }

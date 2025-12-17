@@ -25,7 +25,6 @@ public interface ApplicationSummaryMapper {
     if (applicationSummaryEntity == null) {
       return null;
     }
-    try {
       ApplicationSummary app = new ApplicationSummary();
       app.setApplicationId(applicationSummaryEntity.getId());
       app.setApplicationStatus(applicationSummaryEntity.getStatus());
@@ -37,9 +36,6 @@ public interface ApplicationSummaryMapper {
       app.setCreatedAt(applicationSummaryEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
       app.setModifiedAt(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
       return app;
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
-    }
   }
 
   default OffsetDateTime map(Instant value) {
