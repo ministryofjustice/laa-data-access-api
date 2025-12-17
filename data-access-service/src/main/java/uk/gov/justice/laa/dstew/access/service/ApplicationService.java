@@ -223,15 +223,15 @@ public class ApplicationService {
       return;
     }
 
+    final UUID caseworkerId = entity.getCaseworker().getId();
     entity.setCaseworker(null);
     entity.setModifiedAt(Instant.now());
 
     applicationRepository.save(entity);
-
-    if (history != null && history.getEventDescription() != null) {
-      // TODO: add persisting of history
-    }
-
+    domainEventService.saveUnassignApplicationDomainEvent(
+            entity.getId(),
+            caseworkerId,
+            history.getEventDescription());
   }
 
   /**

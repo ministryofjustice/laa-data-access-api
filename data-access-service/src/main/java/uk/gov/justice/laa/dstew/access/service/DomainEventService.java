@@ -10,6 +10,7 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 
 /**
@@ -63,6 +64,42 @@ public class DomainEventService {
     } catch (JsonProcessingException e) {
       throw new DomainEventPublishException(String.format("Unable to save Domain Event of type: %s",
                   DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER.name()));
+    }
+    domainEventRepository.save(domainEventEntity);
+  }
+
+
+  /**
+   * posts a domain event {@link DomainEventEntity} object.
+   *
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  public void saveUnassignApplicationDomainEvent(
+          UUID applicationId,
+          UUID caseworkerId,
+          String eventDescription) {
+
+    UnassignApplicationDomainEventDetails data = UnassignApplicationDomainEventDetails.builder()
+            .applicationId(applicationId)
+            .caseWorkerId(caseworkerId)
+            .createdAt(Instant.now())
+            .createdBy("")
+            .eventDescription(eventDescription)
+            .build();
+
+    DomainEventEntity domainEventEntity = null;
+    try {
+      domainEventEntity = DomainEventEntity.builder()
+              .applicationId(applicationId)
+              .caseWorkerId(caseworkerId)
+              .createdAt(Instant.now())
+              .createdBy("")
+              .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
+              .data(objectMapper.writeValueAsString(data))
+              .build();
+    } catch (JsonProcessingException e) {
+      throw new DomainEventPublishException(String.format("Unable to save Domain Event of type: %s",
+              DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER.name()));
     }
     domainEventRepository.save(domainEventEntity);
   }

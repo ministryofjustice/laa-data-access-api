@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 
 import java.time.Instant;
@@ -116,6 +117,93 @@ public class DomainEventServiceTest {
                 argThat(entity -> entity.getApplicationId().equals(applicationId) &&
                         entity.getCaseWorkerId().equals(caseworkerId) &&
                         entity.getType() == DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER &&
+                        entity.getData().equals(jsonObject)
+                ));
+    }
+
+    @Test
+    void shouldSaveUnassignApplicationDomainEvent() throws JsonProcessingException {
+        UUID applicationId = UUID.randomUUID();
+        UUID caseworkerId = UUID.randomUUID();
+        String jsonObject = "{\"field\":\"data\"}";
+
+        UnassignApplicationDomainEventDetails data = UnassignApplicationDomainEventDetails.builder()
+                .applicationId(applicationId)
+                .caseWorkerId(caseworkerId)
+                .createdAt(Instant.now())
+                .createdBy("")
+                .eventDescription("description")
+                .build();
+
+        DomainEventEntity domainEventEntity = DomainEventEntity.builder()
+                .applicationId(applicationId)
+                .caseWorkerId(caseworkerId)
+                .createdAt(Instant.now())
+                .createdBy("")
+                .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
+                .data(jsonObject)
+                .build();
+
+        when(objectMapper.writeValueAsString(any(UnassignApplicationDomainEventDetails.class)))
+                .thenReturn(jsonObject);
+        when(repository.save(any(DomainEventEntity.class))).thenReturn(domainEventEntity);
+
+        service.saveUnassignApplicationDomainEvent(applicationId, caseworkerId, data.getEventDescription());
+
+        verify(objectMapper, times(1)).writeValueAsString(any(UnassignApplicationDomainEventDetails.class));
+        verify(repository, times(1)).save(
+                argThat(entity -> entity.getApplicationId().equals(applicationId) &&
+                        entity.getCaseWorkerId().equals(caseworkerId) &&
+                        entity.getType() == DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER &&
+                        entity.getData().equals(jsonObject)
+                ));
+    }
+
+    @Test
+    void shouldManageExceptionThrownWhenSavingUnassignApplicationDomainEvent() throws JsonProcessingException {
+        UUID applicationId = UUID.randomUUID();
+        UUID caseworkerId = UUID.randomUUID();
+
+        when(objectMapper.writeValueAsString(any())).thenThrow(new JsonProcessingException("Error"){});
+
+        assertThrows(DomainEventPublishException.class,
+                () -> service.saveUnassignApplicationDomainEvent(applicationId, caseworkerId, "description"));
+    }
+
+    @Test
+    void shouldSaveUnassignApplicationDomainEventWhenNullEventDescription() throws JsonProcessingException {
+        UUID applicationId = UUID.randomUUID();
+        UUID caseworkerId = UUID.randomUUID();
+        String jsonObject = "{\"field\":\"data\"}";
+
+        UnassignApplicationDomainEventDetails data = UnassignApplicationDomainEventDetails.builder()
+                .applicationId(applicationId)
+                .caseWorkerId(caseworkerId)
+                .createdAt(Instant.now())
+                .createdBy("")
+                .eventDescription(null)
+                .build();
+
+        DomainEventEntity domainEventEntity = DomainEventEntity.builder()
+                .applicationId(applicationId)
+                .caseWorkerId(caseworkerId)
+                .createdAt(Instant.now())
+                .createdBy("")
+                .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
+                .data(jsonObject)
+                .build();
+
+        when(objectMapper.writeValueAsString(any(UnassignApplicationDomainEventDetails.class)))
+                .thenReturn(jsonObject);
+        when(repository.save(any(DomainEventEntity.class))).thenReturn(domainEventEntity);
+
+        service.saveUnassignApplicationDomainEvent(applicationId, caseworkerId, data.getEventDescription());
+
+        verify(objectMapper, times(1)).writeValueAsString(any(UnassignApplicationDomainEventDetails.class));
+        verify(repository, times(1)).save(
+                argThat(entity -> entity.getApplicationId().equals(applicationId) &&
+                        entity.getCaseWorkerId().equals(caseworkerId) &&
+                        entity.getType() == DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER &&
                         entity.getData().equals(jsonObject)
                 ));
     }
