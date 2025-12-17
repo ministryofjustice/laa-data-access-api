@@ -27,7 +27,7 @@ public class ApplicationSummarySpecification {
           String lastName,
           UUID userId) {
     return isStatus(status)
-            .and(likeApplicationReference(reference))
+            .and(likeLaaReference(reference))
             .and(likeFirstName(firstName))
             .and(likeLastName(lastName))
             .and(isCaseworkerId(userId));
@@ -42,10 +42,10 @@ public class ApplicationSummarySpecification {
     return Specification.unrestricted();
   }
 
-  private static Specification<ApplicationSummaryEntity> likeApplicationReference(String reference) {
+  private static Specification<ApplicationSummaryEntity> likeLaaReference(String reference) {
     if (reference != null && !reference.isBlank()) {
       return (root, query, builder)
-              -> builder.like(builder.lower(root.get("applicationReference")),
+              -> builder.like(builder.lower(root.get("laaReference")),
               "%" + reference.toLowerCase() + "%");
     }
 

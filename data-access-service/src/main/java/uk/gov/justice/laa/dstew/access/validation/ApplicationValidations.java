@@ -41,7 +41,7 @@ public class ApplicationValidations {
       );
     }
 
-    if (dto.getApplicationReference() == null || dto.getApplicationReference().isBlank()) {
+    if (dto.getLaaReference() == null || dto.getLaaReference().isBlank()) {
       throw new ValidationException(
         List.of("Application reference cannot be blank")
       );

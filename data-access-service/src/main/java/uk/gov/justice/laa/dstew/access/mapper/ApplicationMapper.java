@@ -47,7 +47,7 @@ public interface ApplicationMapper {
 
     ApplicationEntity entity = new ApplicationEntity();
     entity.setStatus(req.getStatus());
-    entity.setApplicationReference(req.getApplicationReference());
+    entity.setLaaReference(req.getLaaReference());
     var individuals = req.getIndividuals()
                          .stream()
                          .map(individualMapper::toIndividualEntity)
@@ -106,7 +106,7 @@ public interface ApplicationMapper {
       application.setSchemaVersion(entity.getSchemaVersion());
       application.setApplicationContent(
           objectMapper.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
-      application.setApplicationReference(entity.getApplicationReference());
+      application.setLaaReference(entity.getLaaReference());
       application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
       application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
       application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
