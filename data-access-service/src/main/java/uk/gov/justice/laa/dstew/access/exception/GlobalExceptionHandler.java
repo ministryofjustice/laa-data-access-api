@@ -1,7 +1,13 @@
 package uk.gov.justice.laa.dstew.access.exception;
 
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.ProblemDetail;
@@ -14,10 +20,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
-import java.util.Objects;
-import java.util.stream.Collectors;
 
-import static org.springframework.http.HttpStatus.*;
+
 
 
 /**
@@ -50,10 +54,24 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(ValidationException.class)
   public ResponseEntity<ProblemDetail> handleValidationException(ValidationException exception) {
-    final var pd = ProblemDetail.forStatusAndDetail(BAD_REQUEST, exception.getMessage());
-    pd.setTitle("Validation failed");
-    pd.setProperty("errors", exception.errors());
-    return ResponseEntity.badRequest().body(pd);
+    final ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(BAD_REQUEST, exception.getMessage());
+    problemDetail.setTitle("Validation failed");
+    problemDetail.setProperty("errors", exception.errors());
+    return ResponseEntity.badRequest().body(problemDetail);
+  }
+
+
+  /**
+   * The handler for Domain Event Publish Exception.
+   *
+   * @param exception the exception.
+   * @return the response with errors.
+   */
+  @ExceptionHandler(DomainEventPublishException.class)
+  public ResponseEntity<ProblemDetail> handleValidationException(DomainEventPublishException exception) {
+    final ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(INTERNAL_SERVER_ERROR, exception.getMessage());
+    problemDetail.setTitle("Internal Server Error");
+    return ResponseEntity.internalServerError().body(problemDetail);
   }
 
   /**
@@ -105,24 +123,23 @@ public class GlobalExceptionHandler {
    * @param ex the exception
    * @return ResponseEntity with ProblemDetail
    */
-  @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class} )
+  @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
   public ResponseEntity<ProblemDetail> handleHttpMessageNotReadable(Exception ex) {
 
-    switch (ex){
+    switch (ex) {
       case MethodArgumentTypeMismatchException argumentTypeMismatchException -> {
-        return ResponseEntity.badRequest().body(getMethodArgumentMismatchProblemDetail(ex, argumentTypeMismatchException));
-      }
-
+        return ResponseEntity.badRequest()
+                        .body(getMethodArgumentMismatchProblemDetail(ex, argumentTypeMismatchException)); }
       case HttpMessageNotReadableException notReadableException -> {
         ProblemDetail problemDetail = getHttpMessageNotReadableProblemDetail(ex, notReadableException);
-        return ResponseEntity.badRequest().body(problemDetail);
-      }
-        default -> throw new IllegalStateException("Unexpected value: " + ex);
+        return ResponseEntity.badRequest().body(problemDetail); }
+      default -> throw new IllegalStateException("Unexpected value: " + ex);
     }
 
   }
 
-  private static @NonNull ProblemDetail getHttpMessageNotReadableProblemDetail(Exception ex, HttpMessageNotReadableException notReadableException) {
+  private static @NonNull ProblemDetail getHttpMessageNotReadableProblemDetail(
+          Exception ex, HttpMessageNotReadableException notReadableException) {
     Throwable root = notReadableException.getRootCause();
     String message = "Invalid request payload";
 
@@ -149,9 +166,11 @@ public class GlobalExceptionHandler {
     return problemDetail;
   }
 
-  private static @NonNull ProblemDetail getMethodArgumentMismatchProblemDetail(Exception ex, MethodArgumentTypeMismatchException mismatchException) {
+  private static @NonNull ProblemDetail getMethodArgumentMismatchProblemDetail(
+          Exception ex, MethodArgumentTypeMismatchException mismatchException) {
     String field = mismatchException.getName();
-    String expectedType = mismatchException.getRequiredType() != null ? mismatchException.getRequiredType().getSimpleName() : "unknown";
+    String expectedType = mismatchException.getRequiredType() != null
+            ? mismatchException.getRequiredType().getSimpleName() : "unknown";
     String message = String.format("Invalid data type for field '%s'. Expected %s.", field, expectedType);
     log.warn("Type mismatch for field {}: expected {}", field, expectedType, ex);
 

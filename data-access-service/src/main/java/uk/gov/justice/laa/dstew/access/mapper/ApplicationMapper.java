@@ -95,30 +95,31 @@ public interface ApplicationMapper {
             "Failed to deserialize applicationContent from entity");
 
     Application application = new Application();
-      application.setId(entity.getId());
-      application.setApplicationStatus(entity.getStatus());
-      application.setSchemaVersion(entity.getSchemaVersion());
+        application.setId(entity.getId());
+        application.setApplicationStatus(entity.getStatus());
+        application.setSchemaVersion(entity.getSchemaVersion());
 
-      application.setApplicationContent(
-              applicationContent);
-      application.setLaaReference(entity.getLaaReference());
-      application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
-      application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
-      application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
-      
-      application.setIndividuals(
-          Optional.ofNullable(entity.getIndividuals())
-              .orElse(Set.of())
-              .stream()
-              .map(individualMapper::toIndividual)
-              .filter(Objects::nonNull)
-              .toList()
-      );
-      
-      return application;
+        application.setApplicationContent(
+                applicationContent);
+        application.setLaaReference(entity.getLaaReference());
+        application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
+        application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
+        application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
 
-  }
+        application.setIndividuals(
+                Optional.ofNullable(entity.getIndividuals())
+                        .orElse(Set.of())
+                        .stream()
+                        .map(individualMapper::toIndividual)
+                        .filter(Objects::nonNull)
+                        .toList()
+        );
 
+        return application;
+
+    }
+
+    //TODO why are we mapping a map to a map?
   /**
    * Helper method to safely convert a Map to application content.
    *
@@ -130,7 +131,7 @@ public interface ApplicationMapper {
   private static Map<String, Object> getApplicationContent(Map<String, Object> contentMap, String message) {
     Map<String, Object> applicationContent;
     try {
-      applicationContent = objectMapper.convertValue(contentMap, new TypeReference<Map<String, Object>>() {
+      applicationContent = objectMapper.convertValue(contentMap, new TypeReference<>() {
       });
 
     } catch (Exception e) {
@@ -140,7 +141,4 @@ public interface ApplicationMapper {
     return applicationContent;
   }
 
-    default OffsetDateTime toOffsetDateTime(Instant instant) {
-      return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
-    }
 }

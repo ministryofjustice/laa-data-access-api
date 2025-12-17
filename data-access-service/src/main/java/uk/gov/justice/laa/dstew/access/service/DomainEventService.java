@@ -62,6 +62,7 @@ public class DomainEventService {
 
   /**
    * Converts domain event details to JSON string.
+   *
    * @param domainEventDetails the domain event details
    * @return JSON string representation of the domain event details
    */
