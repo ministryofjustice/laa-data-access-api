@@ -9,11 +9,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -24,7 +21,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
+@EqualsAndHashCode
 @Entity
 @Table(name = "caseworkers")
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
@@ -39,9 +37,11 @@ public class CaseworkerEntity {
 
   @Column(name = "created_at")
   @CreationTimestamp
+  @EqualsAndHashCode.Exclude
   private Instant createdAt;
 
   @Column(name = "modified_at")
   @UpdateTimestamp
+  @EqualsAndHashCode.Exclude
   private Instant modifiedAt;
 }

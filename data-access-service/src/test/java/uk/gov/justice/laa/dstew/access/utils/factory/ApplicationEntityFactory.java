@@ -16,7 +16,7 @@ public class ApplicationEntityFactory {
                 .id(UUID.randomUUID())
                 .status(ApplicationStatus.IN_PROGRESS)
                 .modifiedAt(InstantSource.system().instant())
-                .applicationReference("REF7237")
+                .laaReference("REF7237")
                 .individuals(Set.of(
                         IndividualEntityFactory.create()
                 ))
