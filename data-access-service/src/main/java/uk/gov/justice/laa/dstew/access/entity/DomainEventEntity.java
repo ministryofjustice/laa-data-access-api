@@ -27,7 +27,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 @Entity
 @Table(name = "domain_events")
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)

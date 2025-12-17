@@ -66,6 +66,7 @@ public class DomainEventService {
   /**
   * Provides a list of events associated with an application in createdAt ascending order.
   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public List<ApplicationDomainEvent> getEvents(Specification<DomainEventEntity> filter) {
     Comparator<ApplicationDomainEvent> comparer = Comparator.comparing(ApplicationDomainEvent::getCreatedAt);
     return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
