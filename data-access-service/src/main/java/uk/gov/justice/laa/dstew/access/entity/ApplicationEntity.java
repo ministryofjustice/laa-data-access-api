@@ -93,7 +93,7 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "submitted_at")
   private Instant submittedAt;
 
-  @Column(name = "use_delegated_functions")
+  @Column(name = "used_delegated_functions")
   private boolean useDelegatedFunctions;
 
   @Column(name = "category_of_law")
