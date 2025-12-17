@@ -25,17 +25,9 @@ public class DomainEventSpecification {
   * the colleciton is empty.
   *
   */
-  public static Specification<DomainEventEntity> filterMultipleEventType(List<DomainEventType> eventTypes) {
-    if (eventTypes == null || eventTypes.isEmpty()) {
-      return Specification.unrestricted();
-    }
-    return eventTypes.stream()
-                     .map(DomainEventSpecification::filterEventType)
-                     .reduce(Specification.unrestricted(), (a, b) -> a.or(b));
-  }
-
-  private static Specification<DomainEventEntity> filterEventType(DomainEventType eventType) {
-    return (root, query, builder)
-        -> builder.equal(root.get("type"), eventType);
+  public static Specification<DomainEventEntity> filterEventTypes(List<DomainEventType> eventTypes) {
+    return (eventTypes == null || eventTypes.isEmpty())  
+            ? Specification.unrestricted()  
+            : (root, query, builder) -> root.get("type").in(eventTypes);  
   }
 }

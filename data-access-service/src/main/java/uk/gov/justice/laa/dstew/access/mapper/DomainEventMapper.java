@@ -1,5 +1,7 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
@@ -9,9 +11,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
  */
 @Mapper(componentModel = "spring")
 public interface DomainEventMapper {
-
-  OffsetInstantMapper instantMapper = new OffsetInstantMapperImpl();
-
   /**
    * Converts a {@link DomainEventEntity} to an API-facing {@link ApplicationDomainEvent} model.
    * Safely handles nulls: if the {@code entity} itself is null,
@@ -26,7 +25,7 @@ public interface DomainEventMapper {
                       .caseworkerId(entity.getCaseworkerId())
                       .domainEventType(entity.getType())
                       .eventDescription(entity.getData())
-                      .createdAt(instantMapper.toOffsetDateTime(entity.getCreatedAt()))
+                      .createdAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC))
                       .createdBy(entity.getCreatedBy())
                       .build();
   }

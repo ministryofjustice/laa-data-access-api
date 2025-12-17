@@ -72,7 +72,7 @@ public class DomainEventSpecificationIntegrationTest {
     void givenDomainEventTypeSpecification_withSingleEventType_shouldFilterToOnlyThatEventType() {
         var appId = prePopulatedEvents.getFirst().getApplicationId();
         var filter = DomainEventSpecification.filterApplicationId(appId)
-                                             .and(DomainEventSpecification.filterMultipleEventType(List.of(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)));
+                                             .and(DomainEventSpecification.filterEventTypes(List.of(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)));
         var result = repository.findAll(filter);
         assertThat(result).hasSize(2);
         assertThat(result).allMatch(event -> event.getApplicationId().equals(appId));
@@ -83,11 +83,13 @@ public class DomainEventSpecificationIntegrationTest {
     void givenDomainEventTypeSpecification_withMultipleEventType_shouldFilterToAllMatchingEventTypes() {
         var appId = prePopulatedEvents.getFirst().getApplicationId();
         var filter = DomainEventSpecification.filterApplicationId(appId)
-                                             .and(DomainEventSpecification.filterMultipleEventType(List.of(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER, 
+                                             .and(DomainEventSpecification.filterEventTypes(List.of(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER, 
                                                                                                     DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)));
         var result = repository.findAll(filter);
         assertThat(result).hasSize(3);
         assertThat(result).allMatch(event -> event.getApplicationId().equals(appId));
+        assertThat(result).allMatch(event -> event.getType().equals(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER) || 
+                                             event.getType().equals(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER));
     }
 
     private List<DomainEventEntity> createEntities(UUID appId) {

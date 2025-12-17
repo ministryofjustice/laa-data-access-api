@@ -143,14 +143,14 @@ public class DomainEventServiceTest {
         DomainEventEntity entity2 = createEntity(applicationId);
         Specification<DomainEventEntity> spec = DomainEventSpecification.filterApplicationId(applicationId);
 
-        when(repository.findAll(spec))
+        when(repository.findAll(any(Specification.class)))
         .thenReturn(List.of(entity, entity2));
         //return events out of order
         when(mapper.toDomainEvent(any()))
         .thenReturn(ApplicationDomainEvent.builder().applicationId(applicationId).createdAt(OffsetDateTime.of(2025, 10, 1, 0, 0, 0, 0, ZoneOffset.UTC)).build())
         .thenReturn(ApplicationDomainEvent.builder().applicationId(applicationId).createdAt(OffsetDateTime.of(2024, 9, 1, 0, 0, 0, 0, ZoneOffset.UTC)).build());
 
-        var result = service.getEvents(spec);
+        var result = service.getEvents(applicationId, List.of());
         assertThat(result).isNotNull();
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getApplicationId()).isEqualTo(entity.getApplicationId());
@@ -158,7 +158,7 @@ public class DomainEventServiceTest {
         //events are returned in the correct order
         assertThat(result.get(0).getCreatedAt()).isEqualTo(OffsetDateTime.of(2024, 9, 1, 0, 0, 0, 0, ZoneOffset.UTC));
         assertThat(result.get(1).getCreatedAt()).isEqualTo(OffsetDateTime.of(2025, 10, 1, 0, 0, 0, 0, ZoneOffset.UTC));
-        verify(repository, times(1)).findAll(spec);
+        verify(repository, times(1)).findAll(any(Specification.class));
         verify(mapper, times(1)).toDomainEvent(entity);
         verify(mapper, times(1)).toDomainEvent(entity2);
         verify(mapper, times(2)).toDomainEvent(any());

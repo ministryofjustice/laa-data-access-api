@@ -202,7 +202,7 @@ class ApplicationControllerTest {
   void shouldGetApplicationHistory() throws Exception{
     final UUID applicationId = UUID.randomUUID();
 
-    when(domainEventService.getEvents(any(Specification.class)))
+    when(domainEventService.getEvents(applicationId, null))
     .thenReturn(List.of(ApplicationDomainEvent.builder().build()));
 
     String address = "/api/v0/applications/" + applicationId + "/history-search";
@@ -212,7 +212,7 @@ class ApplicationControllerTest {
     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
     .andReturn();
 
-    verify(domainEventService, times(1)).getEvents(any(Specification.class));
+    verify(domainEventService, times(1)).getEvents(applicationId, null);
   }
 
 

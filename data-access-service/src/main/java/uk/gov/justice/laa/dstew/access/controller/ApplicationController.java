@@ -129,10 +129,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(UUID applicationId,
       @Valid List<DomainEventType> eventType) {
-    var filterEventType = DomainEventSpecification.filterMultipleEventType(eventType);
-    Specification<DomainEventEntity> filter = DomainEventSpecification.filterApplicationId(applicationId)
-                                                                      .and(filterEventType);
-    var events = domainService.getEvents(filter);
+    var events = domainService.getEvents(applicationId, eventType);
     return ResponseEntity.ok(ApplicationHistoryResponse.builder()
                                                  .events(events)
                                                  .build());
