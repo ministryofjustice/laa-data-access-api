@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
@@ -190,7 +191,7 @@ class ApplicationControllerTest {
 
   @Test
   void shouldAssignCaseworker() throws Exception {
-    var validRequest = 
+    var validRequest =
     """
     {
       "caseworkerId" : "f67e5290-c774-4e13-809b-37fc6cf9b09b",
@@ -200,7 +201,7 @@ class ApplicationControllerTest {
       ]
     }
     """;
-    
+
     mockMvc.perform(post("/api/v0/applications/assign")
                     .contentType("application/json")
                     .content(validRequest))
@@ -227,7 +228,7 @@ class ApplicationControllerTest {
 
 
   @Test
-  void shouldReturnNotFoundException() throws Exception {
+  void shouldReturnNotFoundExceptionWithApplicationMessage() throws Exception {
 
     OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC).minusDays(3);
     OffsetDateTime updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
@@ -255,6 +256,41 @@ class ApplicationControllerTest {
     assertThat(problemDetail.getStatus()).isEqualTo(expectedProblem.getStatus());
     assertThat(problemDetail.getDetail()).isEqualTo(expectedProblem.getDetail());
 
+  }
+
+  @Test
+  void shouldReturnNotFoundExceptionWithCaseworkerMessage() throws Exception {
+
+    UUID uuid = UUID.fromString("f67e5290-c774-4e13-809b-37fc6cf9b09b");
+    List<UUID> applicationIds = List.of(
+            UUID.fromString("33703b45-f8b7-4143-8b5d-969826bdd090"),
+            UUID.fromString("8b92afd8-ab7b-4f5b-b0ea-2dcd7c2cde8f"));
+    EventHistory eventHistory = new EventHistory();
+    eventHistory.setEventDescription("Caseworker assigned");
+    CaseworkerAssignRequest request = new CaseworkerAssignRequest();
+    request.setCaseworkerId(uuid);
+    request.setApplicationIds(applicationIds);
+    request.setEventHistory(eventHistory);
+    String requestJson = objectMapper.writeValueAsString(request);
+
+
+    doThrow(new ResourceNotFoundException("Caseworker not found")).when(applicationService).assignCaseworker(uuid, applicationIds, eventHistory);
+    ProblemDetail expectedProblem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+    expectedProblem.setTitle("Not found");
+    expectedProblem.setDetail("Caseworker not found");
+
+    MvcResult mvcResult = mockMvc.perform(post("/api/v0/applications/assign")
+                    .contentType("application/json")
+                    .content(requestJson))
+            .andExpect(status().is4xxClientError())
+            .andReturn();
+
+
+
+    ProblemDetail problemDetail = deserialise(mvcResult, ProblemDetail.class);
+    assertThat(problemDetail.getTitle()).isEqualTo(expectedProblem.getTitle());
+    assertThat(problemDetail.getStatus()).isEqualTo(expectedProblem.getStatus());
+    assertThat(problemDetail.getDetail()).isEqualTo(expectedProblem.getDetail());
 
   }
 
