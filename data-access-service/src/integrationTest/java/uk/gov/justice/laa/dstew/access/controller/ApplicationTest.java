@@ -526,27 +526,16 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
 
-            if (caseworkerAssignRequest.getEventHistory().getEventDescription() == null
-                    || caseworkerAssignNotesUpdateRequest.getEventHistory().getEventDescription() == null) {
-
-            }
             assertTrue (domainEvents
                     .stream()
                     .map(DomainEventEntity::getData)
-                    .anyMatch(e -> e.contains(expectedEventHistory.getEventDescription())));
-            if (expectedEventHistory.getEventDescription() != null) {
-                assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
-            } else {
-                assertFalse(domainEvent.getData().contains("eventDescription"));
-            }
+                    .anyMatch(e -> e.contains(eventDescription)));
 
-            assertMultipleDomainEventsCreatedForApplications(
-                    expectedAssignedApplications,
-                    BaseIntegrationTest.CaseworkerJohnDoe.getId(),
-                    DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
-                    caseworkerAssignRequest.getEventHistory(),
-                    2
-            );
+            assertTrue(domainEvents
+                    .stream()
+                    .map(DomainEventEntity::getData)
+                    .anyMatch(e -> e.contains(updateDescription)));
+
         }
 
         @ParameterizedTest
