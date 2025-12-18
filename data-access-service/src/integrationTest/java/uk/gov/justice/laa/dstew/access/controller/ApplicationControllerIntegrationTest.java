@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -45,11 +46,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
@@ -474,6 +471,7 @@ public class ApplicationControllerIntegrationTest {
     ApplicationEntity updated = applicationRepository.findById(appId).orElseThrow();
     assertThat(updated.getCaseworker()).isNotNull();
     assertThat(updated.getCaseworker().getId()).isEqualTo(caseworkerId);
+    assertThat(eventRepository.findAll()).hasSize(1);
   }
 
   @Test
@@ -519,6 +517,8 @@ public class ApplicationControllerIntegrationTest {
     assertThat(updated.getCaseworker().getId()).isEqualTo(caseworkerId);
     assertThat(updated2.getCaseworker()).isNotNull();
     assertThat(updated2.getCaseworker().getId()).isEqualTo(caseworkerId);
+    assertThat(eventRepository.findAll()).hasSize(2);
+
   }
 
   @Test
@@ -552,6 +552,8 @@ public class ApplicationControllerIntegrationTest {
             .content(payload))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.detail").value("No application found with ids: " + appId2 + "," + appId3));
+    assertThat(eventRepository.findAll()).hasSize(0);
+
   }
 
   @Test
@@ -594,6 +596,8 @@ public class ApplicationControllerIntegrationTest {
     ApplicationEntity updated = applicationRepository.findById(appId).orElseThrow();
     assertThat(updated.getCaseworker()).isNotNull();
     assertThat(updated.getCaseworker().getId()).isEqualTo(caseworkerOtherId);
+    assertThat(eventRepository.findAll()).hasSize(1);
+
   }
 
   @Test
@@ -620,6 +624,7 @@ public class ApplicationControllerIntegrationTest {
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.title").value("Not found"))
         .andExpect(jsonPath("$.detail").value("No application found with ids: " + missingAppId));
+    assertThat(eventRepository.findAll()).hasSize(0);
   }
 
   @Test
@@ -648,6 +653,8 @@ public class ApplicationControllerIntegrationTest {
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.title").value("Not found"))
         .andExpect(jsonPath("$.detail").value("No caseworker found with id: " + missingCwId));
+    assertThat(eventRepository.findAll()).hasSize(0);
+
   }
 
   @Test
@@ -672,6 +679,7 @@ public class ApplicationControllerIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload))
         .andExpect(status().isBadRequest());
+    assertThat(eventRepository.findAll()).hasSize(0);
   }
 
   @Test
@@ -704,7 +712,8 @@ public class ApplicationControllerIntegrationTest {
         ).andExpect(status().isOk());
 
     ApplicationEntity updated = applicationRepository.findById(appId).orElseThrow();
-    assertThat(updated.getCaseworker()).isNull();
+    assertThat(eventRepository.findAll()).hasSize(1);
+
   }
 
   @Test
@@ -724,7 +733,7 @@ public class ApplicationControllerIntegrationTest {
   @Test
   @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
   @Transactional
-  void shouldReturnOkIfEventsDescriptionMissing() throws Exception {
+  void shouldReturnOkIfEventsDescriptionMissingForAssignCaseworker() throws Exception {
     CaseworkerEntity caseworker = CaseworkerEntity.builder()
             .username("caseworker_user")
             .build();
@@ -752,6 +761,8 @@ public class ApplicationControllerIntegrationTest {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(payload))
             .andExpect(status().isOk());
+    assertThat(eventRepository.findAll()).hasSize(1);
+
   }
 
   @Test
@@ -810,4 +821,59 @@ public class ApplicationControllerIntegrationTest {
 
   }
 
+  @Test
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  @Transactional
+  void shouldReturn404WhenUnassigningFromNonExistentApplication() throws Exception {
+    UUID missingAppId = UUID.randomUUID();
+
+    CaseworkerUnassignRequest request = CaseworkerUnassignRequest.builder()
+            .eventHistory(new EventHistory())
+            .build();
+    String payload = objectMapper.writeValueAsString(request);
+
+    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/"+missingAppId.toString()+"/unassign")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(payload))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.title").value("Not found"));
+    assertThat(eventRepository.findAll()).hasSize(0);
+  }
+
+  @Test
+  @WithMockUser(authorities = {"APPROLE_ApplicationWriter"})
+  @Transactional
+  void shouldReturnOkIfEventsDescriptionMissingForUnassignCaseworker() throws Exception {
+    CaseworkerEntity caseworker = CaseworkerEntity.builder()
+            .username("caseworker_user")
+            .build();
+
+    ApplicationEntity app = ApplicationEntity.builder()
+            .status(ApplicationStatus.SUBMITTED)
+            .applicationContent(Map.of("foo", "bar"))
+            .createdAt(Instant.now())
+            .modifiedAt(Instant.now())
+            .caseworker(caseworkerRepository.saveAndFlush(caseworker))
+            .build();
+
+    CaseworkerUnassignRequest request = CaseworkerUnassignRequest.builder()
+            .eventHistory(
+                    EventHistory.builder()
+                            .eventDescription(null)
+                            .build()
+            )
+            .build();
+    String payload = objectMapper.writeValueAsString(request);
+
+    mockMvc.perform(MockMvcRequestBuilders.post("/api/v0/applications/"
+                            + applicationRepository.saveAndFlush(app).getId()
+                            + "/unassign")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(payload))
+            .andExpect(status().isOk());
+
+    assertThat(eventRepository.findAll()).hasSize(1);
+
+
+  }
 }
