@@ -55,8 +55,9 @@ public class ResponseEntityExceptionHandlerAdvice extends ResponseEntityExceptio
             }
 
             String expectedType = mie.getTargetType() != null ? mie.getTargetType().getSimpleName() : "unknown";
+            Object[] args = {field};
 
-            message = String.format("Invalid data type for field '%s'. Expected %s.", field, expectedType);
+            message = getMessage(args, mie.getTargetType());
             log.warn("Type mismatch for field {}: expected {}", field, expectedType, ex);
         } else {
             log.error("Failed to read request body", ex);
@@ -77,14 +78,18 @@ public class ResponseEntityExceptionHandlerAdvice extends ResponseEntityExceptio
             @NonNull HttpStatusCode status,@NonNull WebRequest request) {
 
         Object[] args = {ex.getPropertyName(), ex.getValue()};
-        Class<?> requiredType = ex.getRequiredType();
-        requiredType = requiredType != null ? requiredType : Object.class;
-        List<?> enumConstants = requiredType.isEnum() ? List.of(requiredType.getEnumConstants()) : List.of();
-        String simpleName = requiredType.getSimpleName();
-        String message = String.format("Invalid data type for field '%s'. Expected %s.", args[0], enumConstants.isEmpty() ? simpleName : enumConstants);
+        String message = getMessage(args, ex.getRequiredType());
         String messageCode = ErrorResponse.getDefaultDetailMessageCode(TypeMismatchException.class, null);
         ProblemDetail body = createProblemDetail(ex, status, message, messageCode, args, request);
 
         return handleExceptionInternal(ex, body, headers, status, request);
+    }
+
+    private static @org.jspecify.annotations.NonNull String getMessage(Object[] args, Class<?> requiredType1) {
+        Class<?> requiredType = requiredType1;
+        requiredType = requiredType != null ? requiredType : Object.class;
+        List<?> enumConstants = requiredType.isEnum() ? List.of(requiredType.getEnumConstants()) : List.of();
+        String simpleName = requiredType.getSimpleName();
+        return  String.format("Invalid data type for field '%s'. Expected: %s.", args[0], enumConstants.isEmpty() ? simpleName : enumConstants);
     }
 }

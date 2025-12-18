@@ -55,19 +55,6 @@ public class GlobalExceptionHandler {
 
 
   /**
-   * The handler for Domain Event Publish Exception.
-   *
-   * @param exception the exception.
-   * @return the response with errors.
-   */
-  @ExceptionHandler(DomainEventPublishException.class)
-  public ResponseEntity<ProblemDetail> handleValidationException(DomainEventPublishException exception) {
-    final ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(INTERNAL_SERVER_ERROR, exception.getMessage());
-    problemDetail.setTitle("Internal Server Error");
-    return ResponseEntity.internalServerError().body(problemDetail);
-  }
-
-  /**
    * The handler for ViolationException.
    *
    */

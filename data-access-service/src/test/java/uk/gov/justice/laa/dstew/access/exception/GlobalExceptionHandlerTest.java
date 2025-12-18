@@ -56,7 +56,7 @@ class GlobalExceptionHandlerTest {
     assertThat(result).isNotNull();
     assertThat(result.getStatusCode()).isEqualTo(INTERNAL_SERVER_ERROR);
     assertThat(result.getBody()).isNotNull();
-    assertThat(result.getBody().getDetail()).isEqualTo("An unexpected application error has occurred.");
+    assertThat(result.getBody().getDetail()).isEqualTo("An unexpected error has occurred.");
   }
 
   @Test void handleAuthorizationDeniedException_throwsException_for_ExceptionTranslationFilter_to_handle() {
@@ -73,7 +73,7 @@ class GlobalExceptionHandlerTest {
     assertThat(result).isNotNull();
     assertThat(result.getStatusCode()).isEqualTo(INTERNAL_SERVER_ERROR);
     assertThat(result.getBody()).isNotNull();
-    assertThat(result.getBody().getDetail()).isEqualTo("An unexpected application error has occurred.");
+    assertThat(result.getBody().getDetail()).isEqualTo("An unexpected error has occurred.");
   }
 
 
