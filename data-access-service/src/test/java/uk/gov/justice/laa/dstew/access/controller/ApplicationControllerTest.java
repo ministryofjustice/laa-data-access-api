@@ -169,7 +169,7 @@ class ApplicationControllerTest {
 
   @Test
   void shouldAssignCaseworker() throws Exception {
-    var validRequest = 
+    var validRequest =
     """
     {
       "caseworkerId" : "f67e5290-c774-4e13-809b-37fc6cf9b09b",
@@ -184,6 +184,25 @@ class ApplicationControllerTest {
     """;
 
     mockMvc.perform(post("/api/v0/applications/assign")
+                    .contentType("application/json")
+                    .content(validRequest))
+            .andExpect(status().isOk())
+            .andReturn();
+  }
+
+  @Test
+  void shouldUnassignCaseworker() throws Exception {
+    var validRequest =
+            """
+            {
+              "caseworkerId" : "f67e5290-c774-4e13-809b-37fc6cf9b09b",
+              "eventHistory" : {
+              "eventDescription":"removing caseworker"
+             }
+            }
+            """;
+
+    mockMvc.perform(post("/api/v0/applications/019a0c4c-92c6-7421-b62a-b6416e2a8402/unassign")
                     .contentType("application/json")
                     .content(validRequest))
             .andExpect(status().isOk())
