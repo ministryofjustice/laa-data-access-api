@@ -778,7 +778,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             return Stream.of(
                     Arguments.of(new AssignCaseworkerCase(1, 0, 0), "Assigned to caseworker", "update notes"),
                     Arguments.of(new AssignCaseworkerCase(1, 0, 0), "", "update notes"),
-                    Arguments.of(new AssignCaseworkerCase(1, 0, 0), null, "update notes")
+                    Arguments.of(new AssignCaseworkerCase(1, 0, 0), "update notes", "something else")
             );
         }
     }
