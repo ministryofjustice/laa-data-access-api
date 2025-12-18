@@ -1,8 +1,10 @@
 package uk.gov.justice.laa.dstew.access.utils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
@@ -38,6 +40,9 @@ public class BaseServiceTest {
 
     @MockitoBean
     protected ApplicationSummaryRepository applicationSummaryRepository;
+
+    @Autowired
+    protected ObjectMapper objectMapper;
 
     @AfterEach
     void tearDown() {

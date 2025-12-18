@@ -11,11 +11,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+
+import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
@@ -52,6 +49,7 @@ public class DomainEventEntity {
   private String data;
 
   @Column(name = "created_at")
+  @EqualsAndHashCode.Exclude
   private Instant createdAt;
 
   @Column(name = "created_by")

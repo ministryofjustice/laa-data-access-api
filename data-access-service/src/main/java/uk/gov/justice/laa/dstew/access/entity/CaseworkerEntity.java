@@ -22,7 +22,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
-@EqualsAndHashCode
 @Entity
 @Table(name = "caseworkers")
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)

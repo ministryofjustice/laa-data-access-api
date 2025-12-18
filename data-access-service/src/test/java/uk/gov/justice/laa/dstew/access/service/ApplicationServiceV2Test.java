@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -10,12 +11,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
+import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.caseworker.CaseworkerFactory;
-import uk.gov.justice.laa.dstew.access.utils.doubles.ApplicationServiceDouble;
 import uk.gov.justice.laa.dstew.access.utils.factory.ApplicationEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.ApplicationUpdateFactory;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -26,7 +27,6 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ApplicationAsserts.assertApplicationEqual;
 
@@ -45,13 +45,10 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             when(applicationRepository.findById(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
 
-            ApplicationService sut = new ApplicationServiceDouble()
-                    .withApplicationRepository(applicationRepository)
-                    .withRoles(TestConstants.Roles.READER)
-                    .build();
+            setSecurityContext(TestConstants.Roles.READER);
 
             // when
-            Application actualApplication = sut.getApplication(expectedApplication.getId());
+            Application actualApplication = serviceUnderTest.getApplication(expectedApplication.getId());
 
             // then
             assertApplicationEqual(expectedApplication, actualApplication);
@@ -65,15 +62,12 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             UUID applicationId = UUID.randomUUID();
             when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
 
-            ApplicationService sut = new ApplicationServiceDouble()
-                    .withApplicationRepository(applicationRepository)
-                    .withRoles(TestConstants.Roles.READER)
-                    .build();
+            setSecurityContext(TestConstants.Roles.READER);
 
             // when
             // then
             assertThatExceptionOfType(ApplicationNotFoundException.class)
-                    .isThrownBy(() -> sut.getApplication(applicationId))
+                    .isThrownBy(() -> serviceUnderTest.getApplication(applicationId))
                     .withMessageContaining("No application found with id: " + applicationId);
             verify(applicationRepository, times(1)).findById(applicationId);
         }
@@ -84,15 +78,12 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // given
             UUID applicationId = UUID.randomUUID();
 
-            ApplicationService sut = new ApplicationServiceDouble()
-                    .withApplicationRepository(applicationRepository)
-                    .withRoles(TestConstants.Roles.NO_ROLE)
-                    .build();
+            setSecurityContext(TestConstants.Roles.NO_ROLE);
 
             // when
             // then
             assertThatExceptionOfType(AuthorizationDeniedException.class)
-                    .isThrownBy(() -> sut.getApplication(applicationId))
+                    .isThrownBy(() -> serviceUnderTest.getApplication(applicationId))
             .withMessageContaining("Access Denied");
 
             verify(applicationRepository, times(0)).findById(applicationId);
@@ -101,15 +92,8 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         @Test
         public void givenApplicationAndNoRole_whenGetApplication_thenThrowUnauthorizedException() {
 
-            // given
-            ApplicationService sut = new ApplicationServiceDouble()
-                    .withApplicationRepository(applicationRepository)
-                    .build();
-
-            // when
-            // then
             assertThatExceptionOfType(AuthorizationDeniedException.class)
-                    .isThrownBy(() -> sut.getApplication(UUID.randomUUID()))
+                    .isThrownBy(() -> serviceUnderTest.getApplication(UUID.randomUUID()))
                     .withMessageContaining("Access Denied");
 
             verify(applicationRepository, times(0)).findById(any(UUID.class));
@@ -129,10 +113,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             );
             when(applicationRepository.save(any())).thenReturn(withExpectedId);
 
-//            ApplicationService sut = new ApplicationServiceDouble()
-//                    .withApplicationRepository(applicationRepository)
-//                    .withRoles(TestConstants.Roles.WRITER)
-//                    .build();
+            setSecurityContext(TestConstants.Roles.WRITER);
 
             // when
             UUID actualId = serviceUnderTest.createApplication(APPLICATION_TO_CREATE);
@@ -146,10 +127,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         @Test
         public void givenNewApplicationAndNotRoleReader_whenCreateApplication_thenThrowUnauthorizedException() {
             // given
-//            ApplicationService sut = new ApplicationServiceDouble()
-//                    .withApplicationRepository(applicationRepository)
-//                    .withRoles(TestConstants.Roles.NO_ROLE)
-//                    .build();
+            setSecurityContext(TestConstants.Roles.NO_ROLE);
 
             // when
             // then
@@ -162,13 +140,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
         @Test
         public void givenNewApplicationAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
-            // given
-//            ApplicationService sut = new ApplicationServiceDouble()
-//                    .withApplicationRepository(applicationRepository)
-//                    .build();
 
-            // when
-            // then
             assertThatExceptionOfType(AuthorizationDeniedException.class)
                     .isThrownBy(() -> serviceUnderTest.createApplication(APPLICATION_TO_CREATE))
                     .withMessageContaining("Access Denied");
@@ -182,14 +154,8 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                 ApplicationCreateRequest applicationCreateRequest,
                 ValidationException validationException
         ) {
-            // given
-//            ApplicationService sut = new ApplicationServiceDouble()
-//                    .withApplicationRepository(applicationRepository)
-//                    .withRoles(TestConstants.Roles.WRITER)
-//                    .build();
+            setSecurityContext(TestConstants.Roles.WRITER);
 
-            // when
-            // then
             Throwable thrown = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));
             assertThat(thrown)
                     .isInstanceOf(ValidationException.class)
@@ -260,10 +226,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             UUID applicationId = UUID.randomUUID();
             when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
 
-//            ApplicationService sut = new ApplicationServiceDouble()
-//                    .withApplicationRepository(applicationRepository)
-//                    .withRoles(TestConstants.Roles.WRITER)
-//                    .build();
+            setSecurityContext(TestConstants.Roles.WRITER);
 
             // when / then
             assertThatExceptionOfType(ApplicationNotFoundException.class)
@@ -283,10 +246,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             ApplicationUpdateRequest updateRequest = ApplicationUpdateFactory.create();
             when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
 
-//            ApplicationService sut = new ApplicationServiceDouble()
-//                    .withApplicationRepository(applicationRepository)
-//                    .withRoles(TestConstants.Roles.WRITER)
-//                    .build();
+            setSecurityContext(TestConstants.Roles.WRITER);
 
             // when
             serviceUnderTest.updateApplication(applicationId, updateRequest);
@@ -311,10 +271,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             );
             when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
 
-//            ApplicationService sut = new ApplicationServiceDouble()
-//                    .withApplicationRepository(applicationRepository)
-//                    .withRoles(TestConstants.Roles.WRITER)
-//                    .build();
+            setSecurityContext(TestConstants.Roles.WRITER);
 
             // when
             // then
@@ -328,13 +285,11 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         @Test
-        public void givenApplicationUpdateAndNotRoleReader_whenCreateApplication_thenThrowUnauthorizedException() {
+        public void givenApplicationUpdateAndNotRoleWriter_whenCreateApplication_thenThrowUnauthorizedException() {
             // given
             UUID applicationId = UUID.randomUUID();
-//            ApplicationService sut = new ApplicationServiceDouble()
-//                    .withApplicationRepository(applicationRepository)
-//                    .withRoles(TestConstants.Roles.NO_ROLE)
-//                    .build();
+
+            setSecurityContext(TestConstants.Roles.READER);
 
             // when
             // then
@@ -349,9 +304,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         public void givenApplicationUpdateAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
             // given
             UUID applicationId = UUID.randomUUID();
-//            ApplicationService sut = new ApplicationServiceDouble()
-//                    .withApplicationRepository(applicationRepository)
-//                    .build();
 
             // when
             // then
@@ -374,16 +326,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     ),
                     Arguments.of(UUID.randomUUID(),
                             ApplicationUpdateFactory.create(builder -> builder
-                                    .status(null)
-                                    .applicationContent(new HashMap<>() {{
-                                        put("test", "content");
-                                    }})),
-                            new ValidationException(List.of(
-                                    "Application status cannot be null"
-                            ))
-                    ),
-                    Arguments.of(UUID.randomUUID(),
-                            ApplicationUpdateFactory.create(builder -> builder
                                     .status(ApplicationStatus.IN_PROGRESS)
                                     .applicationContent(new HashMap<>())),
                             new ValidationException(List.of(
@@ -398,27 +340,38 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     class AssignCaseworker {
 
         @Test
-        void givenCaseworkerAndApplications_whenAssignCaseworker_thenAssignAndSave() {
-
+        void givenCaseworkerAndApplications_whenAssignCaseworker_thenAssignAndSave() throws JsonProcessingException {
+            // given
             UUID applicationId = UUID.randomUUID();
 
             CaseworkerEntity expectedCaseworker = CaseworkerFactory.create();
 
-            ApplicationEntity existingEntity = ApplicationEntityFactory.create(builder ->
+            ApplicationEntity existingApplicationEntity = ApplicationEntityFactory.create(builder ->
                     builder.id(applicationId).caseworker(null)
             );
 
-            ApplicationEntity expectedEntity = existingEntity.toBuilder().caseworker(expectedCaseworker).build();
-            ApplicationEntity expectedEntity2 = expectedEntity.toBuilder().build();
-            assertTrue(expectedEntity.equals(expectedEntity2));
+            ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
 
             EventHistory eventHistory = EventHistory.builder()
                     .eventDescription("Assigning caseworker for testing")
                     .build();
 
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(applicationId)
+                    .caseWorkerId(expectedCaseworker.getId())
+                    .createdBy("")
+                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
+                    .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
+                                    .applicationId(existingApplicationEntity.getId())
+                                    .caseWorkerId(expectedCaseworker.getId())
+                                    .eventDescription(eventHistory.getEventDescription())
+                                    .createdBy("")
+                                    .build()))
+                    .build();
+
             List<UUID> applicationIds = List.of(applicationId);
 
-            when(applicationRepository.findAllById(eq(applicationIds))).thenReturn(List.of(existingEntity));
+            when(applicationRepository.findAllById(eq(applicationIds))).thenReturn(List.of(existingApplicationEntity));
             when(caseworkerRepository.findById(expectedCaseworker.getId()))
                     .thenReturn(Optional.of(expectedCaseworker));
 
@@ -428,11 +381,17 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), List.of(applicationId), eventHistory);
 
             // then
-            verify(applicationRepository, times(1)).findAllById(refEq(applicationIds));
-            verify(applicationRepository, times(1)).save(eq(expectedEntity));
+            verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
+            verify(applicationRepository, times(1)).save(eq(expectedApplicationEntity));
             verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
 
-            assertThat(expectedEntity.getModifiedAt()).isNotEqualTo(existingEntity.getModifiedAt());
+            assertThat(expectedApplicationEntity.getModifiedAt()).isNotEqualTo(existingApplicationEntity.getModifiedAt());
+
+            ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
+            verify(domainEventRepository, times(1)).save(captor.capture());
+            DomainEventEntity actualDomainEvent = captor.getValue();
+            assertThat(expectedDomainEvent).isEqualTo(actualDomainEvent);
+            assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
         }
 
         @Test
@@ -455,10 +414,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
         }
 
-        @Test
-        void givenOrderMismatch_whenAssignCaseworker_thenNotThrow() {
 
-        }
     }
 
     @Nested

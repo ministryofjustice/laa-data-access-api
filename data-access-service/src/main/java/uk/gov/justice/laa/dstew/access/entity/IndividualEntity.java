@@ -30,7 +30,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @NoArgsConstructor
 @Builder(toBuilder = true)
 @Entity
-@EqualsAndHashCode
 @Table(name = "individuals")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)

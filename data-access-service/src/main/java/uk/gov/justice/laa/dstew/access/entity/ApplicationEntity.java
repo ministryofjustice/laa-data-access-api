@@ -37,7 +37,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder(toBuilder = true)
-@EqualsAndHashCode
 @Entity
 @Table(name = "applications")
 @EntityListeners(AuditingEntityListener.class)
@@ -81,7 +80,7 @@ public class ApplicationEntity implements AuditableEntity {
   @EqualsAndHashCode.Exclude
   private Instant modifiedAt;
 
-  @OneToOne
+  @OneToOne()
   @JoinColumn(name = "caseworker_id", referencedColumnName = "id")
   private CaseworkerEntity caseworker;
 
@@ -113,5 +112,4 @@ public class ApplicationEntity implements AuditableEntity {
   public String getUpdatedBy() {
     return null;
   }
-
 }
