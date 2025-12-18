@@ -487,6 +487,69 @@ public class ApplicationTest extends BaseIntegrationTest {
         }
 
         @ParameterizedTest
+        @MethodSource("validAssignCaseworkerRequestCasesMultipleEvents")
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenValidAssignRequest_whenAssignCaseworker_thenReturnOK_andCreateMultipleEvents(
+                AssignCaseworkerCase assignCaseworkerCase,
+                String eventDescription,
+                String updateDescription
+        ) throws Exception {
+            List<ApplicationEntity> expectedAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+                    assignCaseworkerCase.numberOfApplicationsToAssign,
+                    builder -> {
+                        builder.caseworker(null);
+                    });
+
+            CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
+                builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
+                        .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()).reversed())
+                        .eventHistory(EventHistory.builder()
+                                .eventDescription(eventDescription)
+                                .build());
+            });
+
+            CaseworkerAssignRequest caseworkerAssignNotesUpdateRequest = caseworkerAssignRequestFactory.create(builder -> {
+                builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
+                        .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()).reversed())
+                        .eventHistory(EventHistory.builder()
+                                .eventDescription(updateDescription)
+                                .build());
+            });
+
+            // when
+            MvcResult resultRequest = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
+            MvcResult resultUpdate = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignNotesUpdateRequest);
+
+            // then
+            assertOK(resultRequest);
+            assertOK(resultUpdate);
+
+            List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
+
+            if (caseworkerAssignRequest.getEventHistory().getEventDescription() == null
+                    || caseworkerAssignNotesUpdateRequest.getEventHistory().getEventDescription() == null) {
+
+            }
+            assertTrue (domainEvents
+                    .stream()
+                    .map(DomainEventEntity::getData)
+                    .anyMatch(e -> e.contains(expectedEventHistory.getEventDescription())));
+            if (expectedEventHistory.getEventDescription() != null) {
+                assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
+            } else {
+                assertFalse(domainEvent.getData().contains("eventDescription"));
+            }
+
+            assertMultipleDomainEventsCreatedForApplications(
+                    expectedAssignedApplications,
+                    BaseIntegrationTest.CaseworkerJohnDoe.getId(),
+                    DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
+                    caseworkerAssignRequest.getEventHistory(),
+                    2
+            );
+        }
+
+        @ParameterizedTest
         @MethodSource("invalidAssignCaseworkerRequestCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
         public void givenInvalidAssignRequestBecauseApplicationDoesNotExist_whenAssignCaseworker_thenReturnNotFound_andGiveMissingIds(
@@ -719,6 +782,14 @@ public class ApplicationTest extends BaseIntegrationTest {
             return Stream.of(
                     Arguments.of(Collections.emptyList()),
                     Arguments.of((Object)null)
+            );
+        }
+
+        private Stream<Arguments> validAssignCaseworkerRequestCasesMultipleEvents() {
+            return Stream.of(
+                    Arguments.of(new AssignCaseworkerCase(1, 0, 0), "Assigned to caseworker", "update notes"),
+                    Arguments.of(new AssignCaseworkerCase(1, 0, 0), "", "update notes"),
+                    Arguments.of(new AssignCaseworkerCase(1, 0, 0), null, "update notes")
             );
         }
     }
@@ -1551,6 +1622,5 @@ public class ApplicationTest extends BaseIntegrationTest {
             }
         }
     }
-
     // </editor-fold>
 }
