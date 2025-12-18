@@ -149,6 +149,40 @@ paths:
         '401': { description: Unauthorized }
         '403': { description: Forbidden }
         '500': { description: Internal server error }
+  
+  /api/v0/applications/{id}/history-search:
+    get:
+      tags:
+        - application
+      summary: Get a list of events associated with an application
+      operationId: getApplicationHistory
+      parameters:
+        - in: path
+          name: id
+          description: "the ID of the application to get history format"
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: eventType
+          required: false
+          schema: 
+            type: array
+            items:
+              $ref: "#/components/schemas/domainEventType"
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationHistoryResponse"
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
 
   /api/v0/applications/assign:
     post:
@@ -207,6 +241,11 @@ components:
         - IN_PROGRESS
         - SUBMITTED
       description: Application statuses
+    domainEventType:
+      type: string
+      enum:
+        - ASSIGN_APPLICATION_TO_CASEWORKER
+        - UNASSIGN_APPLICATION_TO_CASEWORKER
 
     categoryOfLaw:
       type: string
@@ -332,16 +371,7 @@ components:
       type: object
       properties:
         paging:
-          type: object
-          properties:
-            page:
-              type: integer
-            pageSize:
-              type: integer
-            itemsReturned:
-              type: integer
-            totalRecords:
-              type: integer
+          $ref: "#/components/schemas/Paging"
         applications:
           type: array
           items:
@@ -389,3 +419,51 @@ components:
       properties:
         eventHistory:
           $ref: "#/components/schemas/EventHistory"
+
+
+
+    ApplicationHistoryResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicationDomainEvent"
+    
+    ApplicationDomainEvent:
+      type: object
+      required:
+        - applicationId
+        - domainEventType
+        - createdAt
+        - createdBy
+        - eventDescription
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        caseworkerId:
+          type: string
+          format: uuid
+        domainEventType:
+          $ref: "#/components/schemas/domainEventType"
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        eventDescription:
+          type: string
+        
+    Paging:
+      type: object
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        itemsReturned:
+          type: integer
+        totalRecords:
+          type: integer
+

@@ -20,6 +20,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
+import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
@@ -81,6 +82,9 @@ public abstract class BaseIntegrationTest {
     protected Factory<CaseworkerEntity, CaseworkerEntity.CaseworkerEntityBuilder> caseworkerFactory;
 
     @Autowired
+    protected Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder> domainEventFactory;
+
+    @Autowired
     protected PersistedFactory<
             ApplicationRepository,
             Factory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder>,
@@ -95,6 +99,14 @@ public abstract class BaseIntegrationTest {
             CaseworkerEntity,
             CaseworkerEntity.CaseworkerEntityBuilder,
             UUID> persistedCaseworkerFactory;
+
+    @Autowired
+    protected PersistedFactory<
+              DomainEventRepository,
+              Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder>,
+              DomainEventEntity,
+              DomainEventEntity.DomainEventEntityBuilder,
+              UUID> persistedDomainEventFactory;
 
 
     // for use in tests and factories where applicable (i.e. default in ApplicationFactoryImpl)

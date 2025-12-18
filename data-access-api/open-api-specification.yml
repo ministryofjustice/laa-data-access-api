@@ -14,6 +14,8 @@ paths:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1assign"
   /api/v0/applications/{id}/unassign:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1unassign"
+  /api/v0/applications/{id}/history-search:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1history-search"
 
 components:
   schemas:
@@ -33,3 +35,7 @@ components:
       $ref: "./open-api-application-specification.yml#/components/schemas/CaseworkerResponse"
     CaseworkerAssignRequest:
       $ref: "./open-api-application-specification.yml#/components/schemas/CaseworkerAssignRequest"
+    ApplicationDomainEvent:
+      $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationDomainEvent"
+    Paging:
+      $ref: "./open-api-application-specification.yml#/components/schemas/Paging"
