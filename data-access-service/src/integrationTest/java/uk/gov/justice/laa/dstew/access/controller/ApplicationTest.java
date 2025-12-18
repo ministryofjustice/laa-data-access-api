@@ -214,7 +214,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // then
             assertSecurityHeaders(result);
-            assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request", "Failed to read request", result, detail);
+            assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request", "Invalid data type for field 'unknown'. Expected: ApplicationCreateRequest.", result, detail);
             assertEquals(0, applicationRepository.count());
         }
 

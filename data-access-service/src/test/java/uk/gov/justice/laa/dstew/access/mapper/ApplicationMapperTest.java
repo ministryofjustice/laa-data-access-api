@@ -95,7 +95,7 @@ class ApplicationMapperTest {
   @Test
   void shouldMapApplicationEntityCaseworkerNullToApplication() {
     ApplicationEntity entity = ApplicationEntity.builder()
-                                                .applicationContent(Map.of("foo","bar"))
+                                                .applicationContent(Map.of("foo", "bar"))
                                                 .createdAt(Instant.now())
                                                 .modifiedAt(Instant.now())
                                                 .caseworker(null)
@@ -108,7 +108,7 @@ class ApplicationMapperTest {
   void shouldMapApplicationEntityCaseworkerToApplication() {
     final UUID caseworkerId = UUID.randomUUID();
     ApplicationEntity entity = ApplicationEntity.builder()
-                                                .applicationContent(Map.of("foo","bar"))
+                                                .applicationContent(Map.of("foo", "bar"))
                                                 .createdAt(Instant.now())
                                                 .modifiedAt(Instant.now())
                                                 .caseworker(CaseworkerEntity.builder().id(caseworkerId).build())

@@ -3,7 +3,11 @@ package uk.gov.justice.laa.dstew.access.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -18,14 +22,18 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
-import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
 
 @ExtendWith(MockitoExtension.class)
-public class ApplicationServiceTest {
+class ApplicationServiceTest {
 
   @InjectMocks
   private ApplicationService service;
@@ -110,7 +118,7 @@ public class ApplicationServiceTest {
   }
 
   @Test
-  void shouldAssignCaseworkerToApplication(){
+  void shouldAssignCaseworkerToApplication() {
     UUID appId1 = UUID.randomUUID();
     UUID appId2 = UUID.randomUUID();
     UUID cwId = UUID.randomUUID();
@@ -253,8 +261,9 @@ public class ApplicationServiceTest {
     when(repository.findAllById(applicationIds)).thenReturn(applications);
     when(caseworkerRepository.findById(cwId)).thenReturn(Optional.of(caseworker));
     ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-      () -> service.assignCaseworker(cwId, applicationIds, new EventHistory()));
-    assertThat(exception.getMessage()).isEqualTo("No application found with ids: " + appId2.toString() + "," + appId3.toString());
+        () -> service.assignCaseworker(cwId, applicationIds, new EventHistory()));
+    assertThat(exception.getMessage()).isEqualTo("No application found with ids: "
+            + appId2 + "," + appId3);
   }
 
   @Test
