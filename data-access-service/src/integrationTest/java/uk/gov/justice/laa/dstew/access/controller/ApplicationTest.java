@@ -437,7 +437,8 @@ public class ApplicationTest extends BaseIntegrationTest {
         @MethodSource("validAssignCaseworkerRequestCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
         public void givenValidAssignRequest_whenAssignCaseworker_thenReturnOK_andAssignCaseworker(
-                AssignCaseworkerCase assignCaseworkerCase
+                AssignCaseworkerCase assignCaseworkerCase,
+                String eventDescription
         ) throws Exception {
             // given
             List<ApplicationEntity> expectedAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
@@ -462,7 +463,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                 builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
                         .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()).reversed())
                         .eventHistory(EventHistory.builder()
-                                .eventDescription("Assigning caseworker")
+                                .eventDescription(eventDescription)
                                 .build());
             });
 
@@ -700,9 +701,9 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         private Stream<Arguments> validAssignCaseworkerRequestCases() {
             return Stream.of(
-                    Arguments.of(new AssignCaseworkerCase(3, 3, 2)),
-                    Arguments.of(new AssignCaseworkerCase(5, 0, 4)),
-                    Arguments.of(new AssignCaseworkerCase(2, 4, 0))
+                    Arguments.of(new AssignCaseworkerCase(3, 3, 2), "Assigned to caseworker"),
+                    Arguments.of(new AssignCaseworkerCase(5, 0, 4), ""),
+                    Arguments.of(new AssignCaseworkerCase(2, 4, 0), null)
             );
         }
 
@@ -726,9 +727,12 @@ public class ApplicationTest extends BaseIntegrationTest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class UnassignCaseworker {
 
-        @Test
+        @ParameterizedTest
+        @MethodSource("validUnassignCaseworkerRequestCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenValidUnassignRequest_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
+        public void givenValidUnassignRequest_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker(
+                String eventDescription
+        ) throws Exception {
             // given
             ApplicationEntity expectedUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
                 builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
@@ -736,7 +740,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {
                 builder.eventHistory(EventHistory.builder()
-                        .eventDescription("Unassigned Caseworker")
+                        .eventDescription(eventDescription)
                         .build());
             });
 
@@ -751,8 +755,12 @@ public class ApplicationTest extends BaseIntegrationTest {
             ApplicationEntity actual = applicationRepository.findById(expectedUnassignedApplication.getId()).orElseThrow();
             assertNull(actual.getCaseworker());
             assertEquals(expectedUnassignedApplication, actual);
-
-            // TODO: verify domain event created when unassign domain event implemented
+            assertDomainEventsCreatedForApplications(
+                    List.of(expectedUnassignedApplication),
+                    null,
+                    DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
+                    caseworkerUnassignRequest.getEventHistory()
+            );
         }
 
         @Test
@@ -838,7 +846,14 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertUnauthorised(result);
         }
-    }
+
+        private Stream<String> validUnassignCaseworkerRequestCases() {
+            return Stream.of(
+                    "Unassigned from caseworker",
+                    "",
+                    null
+            );
+        }    }
 
     // invalid reassign is covered by invalid assign tests
     @Nested
@@ -1528,8 +1543,12 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertEquals(expectedDomainEventType, domainEvent.getType());
             assertTrue(applicationIds.contains(domainEvent.getApplicationId()));
             assertEquals(caseWorkerId, domainEvent.getCaseWorkerId());
-            // TODO: improve event data comparison
-            assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
+            if (expectedEventHistory.getEventDescription() != null) {
+                assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
+            }
+            else {
+                assertFalse(domainEvent.getData().contains("eventDescription"));
+            }
         }
     }
 
