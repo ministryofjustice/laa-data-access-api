@@ -219,8 +219,8 @@ paths:
             type: string
             format: uuid
       requestBody:
-        required: false
-        description: Optional event history describing the unassignment action
+        required: true
+        description: Event history describing the unassignment action
         content:
           application/json:
             schema:
@@ -401,6 +401,7 @@ components:
       required:
         - caseworkerId
         - applicationIds
+        - eventHistory
       properties:
         caseworkerId:
           type: string
@@ -416,6 +417,8 @@ components:
 
     CaseworkerUnassignRequest:
       type: object
+      required:
+        - eventHistory
       properties:
         eventHistory:
           $ref: "#/components/schemas/EventHistory"

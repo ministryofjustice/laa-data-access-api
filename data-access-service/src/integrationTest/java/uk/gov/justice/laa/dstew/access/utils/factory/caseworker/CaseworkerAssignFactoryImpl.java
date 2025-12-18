@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.caseworker;
 
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
+import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
@@ -15,6 +16,7 @@ public class CaseworkerAssignFactoryImpl implements Factory<CaseworkerAssignRequ
         return CaseworkerAssignRequest.builder()
                 .caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
                 .applicationIds(List.of(UUID.randomUUID()))
+                .eventHistory(EventHistory.builder().eventDescription("assigned to caseworker").build())
                 .build();
     }
 

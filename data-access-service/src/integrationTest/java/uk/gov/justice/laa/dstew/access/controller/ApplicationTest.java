@@ -438,7 +438,8 @@ public class ApplicationTest extends BaseIntegrationTest {
         @MethodSource("validAssignCaseworkerRequestCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
         public void givenValidAssignRequest_whenAssignCaseworker_thenReturnOK_andAssignCaseworker(
-                AssignCaseworkerCase assignCaseworkerCase
+                AssignCaseworkerCase assignCaseworkerCase,
+                String eventDescription
         ) throws Exception {
             // given
             List<ApplicationEntity> expectedAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
@@ -463,7 +464,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                 builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
                         .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()).reversed())
                         .eventHistory(EventHistory.builder()
-                                .eventDescription("Assigning caseworker")
+                                .eventDescription(eventDescription)
                                 .build());
             });
 
@@ -484,6 +485,58 @@ public class ApplicationTest extends BaseIntegrationTest {
                     DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
                     caseworkerAssignRequest.getEventHistory()
             );
+        }
+
+        @ParameterizedTest
+        @MethodSource("validAssignCaseworkerRequestCasesMultipleEvents")
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenValidAssignRequest_whenAssignCaseworker_thenReturnOK_andCreateMultipleEvents(
+                AssignCaseworkerCase assignCaseworkerCase,
+                String eventDescription,
+                String updateDescription
+        ) throws Exception {
+            List<ApplicationEntity> expectedAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+                    assignCaseworkerCase.numberOfApplicationsToAssign,
+                    builder -> {
+                        builder.caseworker(null);
+                    });
+
+            CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
+                builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
+                        .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()).reversed())
+                        .eventHistory(EventHistory.builder()
+                                .eventDescription(eventDescription)
+                                .build());
+            });
+
+            CaseworkerAssignRequest caseworkerAssignNotesUpdateRequest = caseworkerAssignRequestFactory.create(builder -> {
+                builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
+                        .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()).reversed())
+                        .eventHistory(EventHistory.builder()
+                                .eventDescription(updateDescription)
+                                .build());
+            });
+
+            // when
+            MvcResult resultRequest = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
+            MvcResult resultUpdate = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignNotesUpdateRequest);
+
+            // then
+            assertOK(resultRequest);
+            assertOK(resultUpdate);
+
+            List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
+
+            assertTrue (domainEvents
+                    .stream()
+                    .map(DomainEventEntity::getData)
+                    .anyMatch(e -> e.contains(eventDescription)));
+
+            assertTrue(domainEvents
+                    .stream()
+                    .map(DomainEventEntity::getData)
+                    .anyMatch(e -> e.contains(updateDescription)));
+
         }
 
         @ParameterizedTest
@@ -701,9 +754,9 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         private Stream<Arguments> validAssignCaseworkerRequestCases() {
             return Stream.of(
-                    Arguments.of(new AssignCaseworkerCase(3, 3, 2)),
-                    Arguments.of(new AssignCaseworkerCase(5, 0, 4)),
-                    Arguments.of(new AssignCaseworkerCase(2, 4, 0))
+                    Arguments.of(new AssignCaseworkerCase(3, 3, 2), "Assigned to caseworker"),
+                    Arguments.of(new AssignCaseworkerCase(5, 0, 4), ""),
+                    Arguments.of(new AssignCaseworkerCase(2, 4, 0), null)
             );
         }
 
@@ -721,15 +774,26 @@ public class ApplicationTest extends BaseIntegrationTest {
                     Arguments.of((Object)null)
             );
         }
+
+        private Stream<Arguments> validAssignCaseworkerRequestCasesMultipleEvents() {
+            return Stream.of(
+                    Arguments.of(new AssignCaseworkerCase(1, 0, 0), "Assigned to caseworker", "update notes"),
+                    Arguments.of(new AssignCaseworkerCase(1, 0, 0), "", "update notes"),
+                    Arguments.of(new AssignCaseworkerCase(1, 0, 0), "update notes", "something else")
+            );
+        }
     }
 
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class UnassignCaseworker {
 
-        @Test
+        @ParameterizedTest
+        @MethodSource("validUnassignCaseworkerRequestCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenValidUnassignRequest_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
+        public void givenValidUnassignRequest_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker(
+                String eventDescription
+        ) throws Exception {
             // given
             ApplicationEntity expectedUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
                 builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
@@ -737,7 +801,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {
                 builder.eventHistory(EventHistory.builder()
-                        .eventDescription("Unassigned Caseworker")
+                        .eventDescription(eventDescription)
                         .build());
             });
 
@@ -752,8 +816,12 @@ public class ApplicationTest extends BaseIntegrationTest {
             ApplicationEntity actual = applicationRepository.findById(expectedUnassignedApplication.getId()).orElseThrow();
             assertNull(actual.getCaseworker());
             assertEquals(expectedUnassignedApplication, actual);
-
-            // TODO: verify domain event created when unassign domain event implemented
+            assertDomainEventsCreatedForApplications(
+                    List.of(expectedUnassignedApplication),
+                    null,
+                    DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
+                    caseworkerUnassignRequest.getEventHistory()
+            );
         }
 
         @Test
@@ -839,7 +907,14 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertUnauthorised(result);
         }
-    }
+
+        private Stream<String> validUnassignCaseworkerRequestCases() {
+            return Stream.of(
+                    "Unassigned from caseworker",
+                    "",
+                    null
+            );
+        }    }
 
     // invalid reassign is covered by invalid assign tests
     @Nested
@@ -869,7 +944,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                     });
 
             CaseworkerAssignRequest caseworkerReassignRequest = caseworkerAssignRequestFactory.create(builder -> {
-                
+
                 builder.caseworkerId(BaseIntegrationTest.CaseworkerJaneDoe.getId())
                         .applicationIds(expectedReassignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()))
                         .eventHistory(EventHistory.builder()
@@ -1514,7 +1589,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             // given
             var domainEvents = setUpDomainEvents(appId);
             var expectedDomainEvents = domainEvents.stream().map(GetDomainEvents::toEvent).toList();
-            
+
             // when
             MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
             ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
@@ -1524,7 +1599,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            
+
             assertThat(actualResponse).isNotNull();
             assertTrue(actualResponse.getEvents().containsAll(expectedDomainEvents));
         }
@@ -1539,10 +1614,10 @@ public class ApplicationTest extends BaseIntegrationTest {
                                                     .filter(s -> s.getType().equals(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER))
                                                     .map(GetDomainEvents::toEvent)
                                                     .toList();
-            
+
             // when
-            MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH + 
-                                        "?" + SEARCH_EVENT_TYPE_PARAM + DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER, 
+            MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH +
+                                        "?" + SEARCH_EVENT_TYPE_PARAM + DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
                                       appId);
             ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
 
@@ -1551,7 +1626,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            
+
             assertThat(actualResponse).isNotNull();
             assertTrue(actualResponse.getEvents().containsAll(expectedAssignDomainEvents));
         }
@@ -1567,23 +1642,23 @@ public class ApplicationTest extends BaseIntegrationTest {
                                                                 s.getType().equals(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER))
                                                     .map(GetDomainEvents::toEvent)
                                                     .toList();
-            
+
             // when
-            String address = TestConstants.URIs.APPLICATION_HISTORY_SEARCH + 
-                                        "?" + SEARCH_EVENT_TYPE_PARAM + 
+            String address = TestConstants.URIs.APPLICATION_HISTORY_SEARCH +
+                                        "?" + SEARCH_EVENT_TYPE_PARAM +
                                             DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER +
-                                        "&" + SEARCH_EVENT_TYPE_PARAM + 
+                                        "&" + SEARCH_EVENT_TYPE_PARAM +
                                             DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER;
 
             MvcResult result = getUri(address, appId);
             ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
-            
+
             // then
             assertContentHeaders(result);
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            
+
             assertThat(actualResponse).isNotNull();
             assertTrue(actualResponse.getEvents().containsAll(expectedAssignDomainEvents));
         }
@@ -1670,9 +1745,13 @@ public class ApplicationTest extends BaseIntegrationTest {
         for (DomainEventEntity domainEvent : domainEvents) {
             assertEquals(expectedDomainEventType, domainEvent.getType());
             assertTrue(applicationIds.contains(domainEvent.getApplicationId()));
-            assertEquals(caseWorkerId, domainEvent.getCaseworkerId());
-            // TODO: improve event data comparison
-            assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
+            assertEquals(caseWorkerId, domainEvent.getCaseWorkerId());
+            if (expectedEventHistory.getEventDescription() != null) {
+                assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
+            }
+            else {
+                assertFalse(domainEvent.getData().contains("eventDescription"));
+            }
         }
     }
 

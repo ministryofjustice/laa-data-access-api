@@ -17,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
@@ -66,17 +67,53 @@ public class DomainEventService {
   }
 
   /**
-  * Provides a list of events associated with an application in createdAt ascending order.
-  */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<ApplicationDomainEvent> getEvents(UUID applicationId,
-      @Valid List<DomainEventType> eventType) {
+   * Posts a domain event {@link DomainEventEntity} object.
+   *
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  public void saveUnassignApplicationDomainEvent(
+          UUID applicationId,
+          UUID caseworkerId,
+          String eventDescription) {
 
-    var filterEventType = DomainEventSpecification.filterEventTypes(eventType);
-    Specification<DomainEventEntity> filter = DomainEventSpecification.filterApplicationId(applicationId)
-                                                                      .and(filterEventType);
+    UnassignApplicationDomainEventDetails data = UnassignApplicationDomainEventDetails.builder()
+            .applicationId(applicationId)
+            .caseWorkerId(caseworkerId)
+            .createdAt(Instant.now())
+            .createdBy("")
+            .eventDescription(eventDescription)
+            .build();
 
-    Comparator<ApplicationDomainEvent> comparer = Comparator.comparing(ApplicationDomainEvent::getCreatedAt);
-    return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
+    DomainEventEntity domainEventEntity = null;
+    try {
+      domainEventEntity = DomainEventEntity.builder()
+              .applicationId(applicationId)
+              .caseWorkerId(caseworkerId)
+              .createdAt(Instant.now())
+              .createdBy("")
+              .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
+              .data(objectMapper.writeValueAsString(data))
+              .build();
+    } catch (JsonProcessingException e) {
+      throw new DomainEventPublishException(String.format("Unable to save Domain Event of type: %s",
+              DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER.name()));
+    }
+    domainEventRepository.save(domainEventEntity);
   }
+
+    /**
+     * Provides a list of events associated with an application in createdAt ascending order.
+     */
+    @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+    public List<ApplicationDomainEvent> getEvents(UUID applicationId,
+                                                  @Valid List<DomainEventType> eventType) {
+
+        var filterEventType = DomainEventSpecification.filterEventTypes(eventType);
+        Specification<DomainEventEntity> filter = DomainEventSpecification.filterApplicationId(applicationId)
+                .and(filterEventType);
+
+        Comparator<ApplicationDomainEvent> comparer = Comparator.comparing(ApplicationDomainEvent::getCreatedAt);
+        return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
+    }
+
 }

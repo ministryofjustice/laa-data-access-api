@@ -217,9 +217,9 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void unassignCaseworker(final UUID applicationId, EventHistory history) {
     final ApplicationEntity entity = applicationRepository.findById(applicationId)
-        .orElseThrow(() -> new ApplicationNotFoundException(
-            String.format("No application found with id: %s", applicationId)
-        ));
+            .orElseThrow(() -> new ApplicationNotFoundException(
+                    String.format("No application found with id: %s", applicationId)
+            ));
 
     if (entity.getCaseworker() == null) {
       return;
@@ -229,11 +229,10 @@ public class ApplicationService {
     entity.setModifiedAt(Instant.now());
 
     applicationRepository.save(entity);
-
-    if (history != null && history.getEventDescription() != null) {
-      // TODO: add persisting of history
-    }
-
+    domainEventService.saveUnassignApplicationDomainEvent(
+            entity.getId(),
+            null,
+            history.getEventDescription());
   }
 
   /**
