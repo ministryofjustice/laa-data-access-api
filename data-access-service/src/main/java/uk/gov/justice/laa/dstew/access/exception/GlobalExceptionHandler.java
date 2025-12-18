@@ -129,8 +129,8 @@ public class GlobalExceptionHandler {
     switch (ex) {
       case MethodArgumentTypeMismatchException argumentTypeMismatchException -> {
         return ResponseEntity.badRequest()
-                        .body(getMethodArgumentMismatchProblemDetail(ex, argumentTypeMismatchException)); }
-      case HttpMessageNotReadableException notReadableException -> {
+                        .body(getMethodArgumentMismatchProblemDetail(argumentTypeMismatchException)); }
+      case HttpMessageNotReadableException notReadableException  -> {
         ProblemDetail problemDetail = getHttpMessageNotReadableProblemDetail(ex, notReadableException);
         return ResponseEntity.badRequest().body(problemDetail); }
       default -> throw new IllegalStateException("Unexpected value: " + ex);
@@ -167,12 +167,12 @@ public class GlobalExceptionHandler {
   }
 
   private static @NonNull ProblemDetail getMethodArgumentMismatchProblemDetail(
-          Exception ex, MethodArgumentTypeMismatchException mismatchException) {
+          MethodArgumentTypeMismatchException mismatchException) {
     String field = mismatchException.getName();
     String expectedType = mismatchException.getRequiredType() != null
             ? mismatchException.getRequiredType().getSimpleName() : "unknown";
     String message = String.format("Invalid data type for field '%s'. Expected %s.", field, expectedType);
-    log.warn("Type mismatch for field {}: expected {}", field, expectedType, ex);
+    log.warn("Type mismatch for field {}: expected {}", field, expectedType);
 
     ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(BAD_REQUEST, message);
     problemDetail.setTitle("Bad Request");
