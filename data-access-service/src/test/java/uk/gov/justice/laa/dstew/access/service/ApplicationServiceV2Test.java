@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -17,8 +18,8 @@ import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.caseworker.CaseworkerFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.ApplicationEntityFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.ApplicationUpdateFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEntityFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateFactory;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 import java.util.*;
@@ -337,10 +338,14 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     }
 
     @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class AssignCaseworker {
 
-        @Test
-        void givenCaseworkerAndApplications_whenAssignCaseworker_thenAssignAndSave() throws JsonProcessingException {
+        @ParameterizedTest
+        @MethodSource("validAssignEventDescriptionCases")
+        void givenCaseworkerAndApplications_whenAssignCaseworker_thenAssignAndSave(
+                String eventDescription
+        ) throws JsonProcessingException {
             // given
             UUID applicationId = UUID.randomUUID();
 
@@ -353,7 +358,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
 
             EventHistory eventHistory = EventHistory.builder()
-                    .eventDescription("Assigning caseworker for testing")
+                    .eventDescription(eventDescription)
                     .build();
 
             DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
@@ -362,11 +367,11 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .createdBy("")
                     .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
                     .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
-                                    .applicationId(existingApplicationEntity.getId())
-                                    .caseWorkerId(expectedCaseworker.getId())
-                                    .eventDescription(eventHistory.getEventDescription())
-                                    .createdBy("")
-                                    .build()))
+                            .applicationId(existingApplicationEntity.getId())
+                            .caseWorkerId(expectedCaseworker.getId())
+                            .eventDescription(eventHistory.getEventDescription())
+                            .createdBy("")
+                            .build()))
                     .build();
 
             List<UUID> applicationIds = List.of(applicationId);
@@ -382,16 +387,10 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             // then
             verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
-            verify(applicationRepository, times(1)).save(eq(expectedApplicationEntity));
             verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
 
-            assertThat(expectedApplicationEntity.getModifiedAt()).isNotEqualTo(existingApplicationEntity.getModifiedAt());
-
-            ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
-            verify(domainEventRepository, times(1)).save(captor.capture());
-            DomainEventEntity actualDomainEvent = captor.getValue();
-            assertThat(expectedDomainEvent).isEqualTo(actualDomainEvent);
-            assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
+            verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
+            verifyThatDomainEventSaved(expectedDomainEvent, 1);
         }
 
         @Test
@@ -414,7 +413,46 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
         }
 
+        private Stream<Arguments> validAssignEventDescriptionCases() {
+            return Stream.of(
+                    Arguments.of("Unassigned by system"),
+                    Arguments.of(""),
+                    Arguments.of((Object)null)
+            );
+        }
 
+        private void verifyThatApplicationEntitySaved(ApplicationEntity expectedApplicationEntity, int timesCalled) {
+            ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
+            verify(applicationRepository, times(timesCalled)).save(captor.capture());
+            ApplicationEntity actualApplicationEntity = captor.getValue();
+            assertThat(expectedApplicationEntity)
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .ignoringFields("createdAt", "modifiedAt")
+                    .isEqualTo(actualApplicationEntity);
+            assertThat(actualApplicationEntity.getCreatedAt()).isNotNull();
+            assertThat(actualApplicationEntity.getModifiedAt()).isNotNull();
+        }
+
+        private void verifyThatDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled) throws JsonProcessingException {
+            ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
+            verify(domainEventRepository, times(timesCalled)).save(captor.capture());
+            DomainEventEntity actualDomainEvent = captor.getValue();
+            assertThat(expectedDomainEvent)
+                    .usingRecursiveComparison()
+                    .ignoringFields("createdAt", "data")
+                    .isEqualTo(actualDomainEvent);
+            assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
+
+            Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
+            Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
+            assertThat(expectedData)
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .ignoringFields("createdAt")
+                    .isEqualTo(actualData);
+            assertThat(actualData.get("createdAt")).isNotNull();
+        }
     }
 
     @Nested

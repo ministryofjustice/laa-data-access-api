@@ -1,12 +1,10 @@
-package uk.gov.justice.laa.dstew.access.utils.factory;
+package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
-import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Consumer;
 
 public class ApplicationUpdateFactory {

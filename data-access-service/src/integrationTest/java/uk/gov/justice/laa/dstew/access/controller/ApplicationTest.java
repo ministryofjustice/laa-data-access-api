@@ -81,7 +81,6 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertEquals("application/problem+json", result.getResponse().getContentType());
             ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
             assertEquals("No application found with id: " + notExistApplicationId, problemDetail.getDetail());
-
         }
 
         @Test
