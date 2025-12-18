@@ -6,10 +6,7 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
-
 import java.util.List;
-
-
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -62,7 +59,7 @@ class GlobalExceptionHandlerTest {
   @Test void handleAuthorizationDeniedException_throwsException_for_ExceptionTranslationFilter_to_handle() {
     assertThatException()
       .isThrownBy(() -> globalExceptionHandler.handleAuthorizationDeniedException(new AuthorizationDeniedException("")))
-      .isInstanceOf(AuthorizationDeniedException.class);
+        .isInstanceOf(AuthorizationDeniedException.class);
   }
 
   @Test
@@ -76,5 +73,4 @@ class GlobalExceptionHandlerTest {
     assertThat(result.getBody().getDetail()).isEqualTo("An unexpected error has occurred.");
   }
 
-
-  }
+}
