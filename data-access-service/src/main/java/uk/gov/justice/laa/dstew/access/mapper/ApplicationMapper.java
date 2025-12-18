@@ -1,11 +1,7 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -29,8 +25,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 @Mapper(componentModel = "spring", uses = {IndividualMapper.class})
 public interface ApplicationMapper {
 
-  ObjectMapper objectMapper = new ObjectMapper();
-
   IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
 
   /**
@@ -53,8 +47,7 @@ public interface ApplicationMapper {
                          .map(individualMapper::toIndividualEntity)
                          .collect(Collectors.toSet());
     entity.setIndividuals(individuals);
-    entity.setApplicationContent(getApplicationContent(req.getApplicationContent(),
-            "Failed to serialize ApplicationCreateRequest.applicationContent"));
+    entity.setApplicationContent(req.getApplicationContent());
     return entity;
   }
 
@@ -71,10 +64,7 @@ public interface ApplicationMapper {
       entity.setStatus(req.getStatus());
     }
     if (req.getApplicationContent() != null) {
-      Map<String, Object> applicationContent = getApplicationContent(req.getApplicationContent(),
-              "Failed to serialize ApplicationUpdateRequest.applicationContent");
-      entity.setApplicationContent(
-              applicationContent);
+      entity.setApplicationContent(req.getApplicationContent());
     }
   }
 
@@ -91,54 +81,28 @@ public interface ApplicationMapper {
     if (entity == null) {
       return null;
     }
-    Map<String, Object> applicationContent = getApplicationContent(entity.getApplicationContent(),
-            "Failed to deserialize applicationContent from entity");
 
     Application application = new Application();
-        application.setId(entity.getId());
-        application.setApplicationStatus(entity.getStatus());
-        application.setSchemaVersion(entity.getSchemaVersion());
+    application.setId(entity.getId());
+    application.setApplicationStatus(entity.getStatus());
+    application.setSchemaVersion(entity.getSchemaVersion());
+    application.setApplicationContent(entity.getApplicationContent());
+    application.setLaaReference(entity.getLaaReference());
+    application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
+    application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
+    application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
 
-        application.setApplicationContent(
-                applicationContent);
-        application.setLaaReference(entity.getLaaReference());
-        application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
-        application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
-        application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
+    application.setIndividuals(
+            Optional.ofNullable(entity.getIndividuals())
+                    .orElse(Set.of())
+                    .stream()
+                    .map(individualMapper::toIndividual)
+                    .filter(Objects::nonNull)
+                    .toList()
+    );
 
-        application.setIndividuals(
-                Optional.ofNullable(entity.getIndividuals())
-                        .orElse(Set.of())
-                        .stream()
-                        .map(individualMapper::toIndividual)
-                        .filter(Objects::nonNull)
-                        .toList()
-        );
-
-        return application;
-
-    }
-
-    //TODO why are we mapping a map to a map?
-  /**
-   * Helper method to safely convert a Map to application content.
-   *
-   * @param contentMap the map to convert
-   * @param message the error message to use if conversion fails
-   * @return the converted application content
-   * @throws IllegalArgumentException if conversion fails
-   */
-  private static Map<String, Object> getApplicationContent(Map<String, Object> contentMap, String message) {
-    Map<String, Object> applicationContent;
-    try {
-      applicationContent = objectMapper.convertValue(contentMap, new TypeReference<>() {
-      });
-
-    } catch (Exception e) {
-      throw new IllegalArgumentException(
-              message, e);
-    }
-    return applicationContent;
+    return application;
   }
+
 
 }

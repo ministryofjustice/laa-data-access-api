@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -192,38 +191,4 @@ class ApplicationMapperTest {
     assertThat(entity.getApplicationContent()).containsEntry("newKey", "newValue");
   }
 
-  @Test
-  void shouldThrowWhenApplicationCreateRequestContentCannotBeSerialized() {
-    ApplicationCreateRequest req = new ApplicationCreateRequest();
-    req.setStatus(ApplicationStatus.IN_PROGRESS);
-    req.setApplicationContent(Map.of("key", new Object() {}));
-
-    assertThrows(IllegalArgumentException.class, () -> applicationMapper.toApplicationEntity(req));
-  }
-
-  @Test
-  void shouldThrowWhenApplicationUpdateRequestContentCannotBeSerialized() {
-    ApplicationEntity entity = new ApplicationEntity();
-    entity.setStatus(ApplicationStatus.IN_PROGRESS);
-
-    ApplicationUpdateRequest req = new ApplicationUpdateRequest();
-    req.setApplicationContent(Map.of("key", new Object() {}));
-
-    IllegalArgumentException ex = assertThrows(
-        IllegalArgumentException.class,
-        () -> applicationMapper.updateApplicationEntity(entity, req)
-    );
-
-    assertThat(ex.getMessage())
-        .isEqualTo("Failed to serialize ApplicationUpdateRequest.applicationContent");
-  }
-
-  @Test
-  void shouldThrowWhenApplicationEntityContentCannotBeDeserialized() {
-    ApplicationEntity entity = new ApplicationEntity();
-    entity.setStatus(ApplicationStatus.IN_PROGRESS);
-    entity.setApplicationContent(Map.of("key", new Object() {}));
-
-    assertThrows(IllegalArgumentException.class, () -> applicationMapper.toApplication(entity));
-  }
 }
