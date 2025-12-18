@@ -1,7 +1,14 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -15,15 +22,6 @@ import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -45,7 +43,7 @@ public class ApplicationServiceTest {
   @Mock
   private DomainEventService domainEventService;
 
-    @Test
+  @Test
   void shouldThrowExceptionWhenApplicationNotFound() {
     UUID id = UUID.randomUUID();
     when(repository.findById(id)).thenReturn(Optional.empty());
@@ -260,7 +258,7 @@ public class ApplicationServiceTest {
   }
 
   @Test
-  void shouldAssignCaseworkerToApplicationWhenNullEventDescription() throws JsonProcessingException {
+  void shouldAssignCaseworkerToApplicationWhenNullEventDescription() {
     UUID applicationId = UUID.randomUUID();
     UUID caseWorkerId = UUID.randomUUID();
 
@@ -299,7 +297,7 @@ public class ApplicationServiceTest {
     ApplicationEntity appEntity3 = ApplicationEntity.builder().id(UUID.randomUUID()).build();
     EventHistory history = EventHistory.builder().eventDescription("event description").build();
     List<ApplicationEntity> applications = List.of(appEntity1, appEntity2, appEntity3);
-    List<UUID> applicationIds = applications.stream().map(x -> x.getId()).toList();
+    List<UUID> applicationIds = applications.stream().map(ApplicationEntity::getId).toList();
     CaseworkerEntity caseworker = CaseworkerEntity.builder().id(UUID.randomUUID()).build();
 
     when(caseworkerRepository.findById(caseworker.getId())).thenReturn(Optional.of(caseworker));
