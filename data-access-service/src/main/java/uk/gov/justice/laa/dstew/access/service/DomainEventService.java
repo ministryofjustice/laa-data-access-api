@@ -43,7 +43,7 @@ public class DomainEventService {
 
     AssignApplicationDomainEventDetails data = AssignApplicationDomainEventDetails.builder()
             .applicationId(applicationId)
-            .caseWorkerId(caseworkerId)
+            .caseworkerId(caseworkerId)
             .createdAt(Instant.now())
             .createdBy("")
             .eventDescription(eventDescription)
@@ -78,7 +78,7 @@ public class DomainEventService {
 
     UnassignApplicationDomainEventDetails data = UnassignApplicationDomainEventDetails.builder()
             .applicationId(applicationId)
-            .caseWorkerId(caseworkerId)
+            .caseworkerId(caseworkerId)
             .createdAt(Instant.now())
             .createdBy("")
             .eventDescription(eventDescription)
@@ -88,7 +88,7 @@ public class DomainEventService {
     try {
       domainEventEntity = DomainEventEntity.builder()
               .applicationId(applicationId)
-              .caseWorkerId(caseworkerId)
+              .caseworkerId(caseworkerId)
               .createdAt(Instant.now())
               .createdBy("")
               .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
@@ -101,19 +101,19 @@ public class DomainEventService {
     domainEventRepository.save(domainEventEntity);
   }
 
-    /**
-     * Provides a list of events associated with an application in createdAt ascending order.
-     */
-    @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-    public List<ApplicationDomainEvent> getEvents(UUID applicationId,
+  /**
+   * Provides a list of events associated with an application in createdAt ascending order.
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+  public List<ApplicationDomainEvent> getEvents(UUID applicationId,
                                                   @Valid List<DomainEventType> eventType) {
 
-        var filterEventType = DomainEventSpecification.filterEventTypes(eventType);
-        Specification<DomainEventEntity> filter = DomainEventSpecification.filterApplicationId(applicationId)
+    var filterEventType = DomainEventSpecification.filterEventTypes(eventType);
+    Specification<DomainEventEntity> filter = DomainEventSpecification.filterApplicationId(applicationId)
                 .and(filterEventType);
 
-        Comparator<ApplicationDomainEvent> comparer = Comparator.comparing(ApplicationDomainEvent::getCreatedAt);
-        return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
-    }
+    Comparator<ApplicationDomainEvent> comparer = Comparator.comparing(ApplicationDomainEvent::getCreatedAt);
+    return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
+  }
 
 }

@@ -58,7 +58,7 @@ public class DomainEventServiceTest {
 
         AssignApplicationDomainEventDetails data = AssignApplicationDomainEventDetails.builder()
                 .applicationId(applicationId)
-                .caseWorkerId(caseworkerId)
+                .caseworkerId(caseworkerId)
                 .createdAt(Instant.now())
                 .createdBy("")
                 .eventDescription("description")
@@ -107,7 +107,7 @@ public class DomainEventServiceTest {
 
         AssignApplicationDomainEventDetails data = AssignApplicationDomainEventDetails.builder()
                 .applicationId(applicationId)
-                .caseWorkerId(caseworkerId)
+                .caseworkerId(caseworkerId)
                 .createdAt(Instant.now())
                 .createdBy("")
                 .eventDescription(null)
@@ -145,7 +145,7 @@ public class DomainEventServiceTest {
 
         UnassignApplicationDomainEventDetails data = UnassignApplicationDomainEventDetails.builder()
                 .applicationId(applicationId)
-                .caseWorkerId(caseworkerId)
+                .caseworkerId(caseworkerId)
                 .createdAt(Instant.now())
                 .createdBy("")
                 .eventDescription("description")
@@ -153,7 +153,7 @@ public class DomainEventServiceTest {
 
         DomainEventEntity domainEventEntity = DomainEventEntity.builder()
                 .applicationId(applicationId)
-                .caseWorkerId(caseworkerId)
+                .caseworkerId(caseworkerId)
                 .createdAt(Instant.now())
                 .createdBy("")
                 .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
@@ -169,7 +169,7 @@ public class DomainEventServiceTest {
         verify(objectMapper, times(1)).writeValueAsString(any(UnassignApplicationDomainEventDetails.class));
         verify(repository, times(1)).save(
                 argThat(entity -> entity.getApplicationId().equals(applicationId) &&
-                        entity.getCaseWorkerId().equals(caseworkerId) &&
+                        entity.getCaseworkerId().equals(caseworkerId) &&
                         entity.getType() == DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER &&
                         entity.getData().equals(jsonObject)
                 ));
@@ -194,7 +194,7 @@ public class DomainEventServiceTest {
 
         UnassignApplicationDomainEventDetails data = UnassignApplicationDomainEventDetails.builder()
                 .applicationId(applicationId)
-                .caseWorkerId(caseworkerId)
+                .caseworkerId(caseworkerId)
                 .createdAt(Instant.now())
                 .createdBy("")
                 .eventDescription(null)
@@ -202,7 +202,7 @@ public class DomainEventServiceTest {
 
         DomainEventEntity domainEventEntity = DomainEventEntity.builder()
                 .applicationId(applicationId)
-                .caseWorkerId(caseworkerId)
+                .caseworkerId(caseworkerId)
                 .createdAt(Instant.now())
                 .createdBy("")
                 .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
@@ -218,7 +218,7 @@ public class DomainEventServiceTest {
         verify(objectMapper, times(1)).writeValueAsString(any(UnassignApplicationDomainEventDetails.class));
         verify(repository, times(1)).save(
                 argThat(entity -> entity.getApplicationId().equals(applicationId) &&
-                        entity.getCaseWorkerId().equals(caseworkerId) &&
+                        entity.getCaseworkerId().equals(caseworkerId) &&
                         entity.getType() == DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER &&
                         entity.getData().equals(jsonObject)
                 ));

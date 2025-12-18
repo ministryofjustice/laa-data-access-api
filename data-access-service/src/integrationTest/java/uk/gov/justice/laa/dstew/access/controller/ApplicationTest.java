@@ -1745,7 +1745,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         for (DomainEventEntity domainEvent : domainEvents) {
             assertEquals(expectedDomainEventType, domainEvent.getType());
             assertTrue(applicationIds.contains(domainEvent.getApplicationId()));
-            assertEquals(caseWorkerId, domainEvent.getCaseWorkerId());
+            assertEquals(caseWorkerId, domainEvent.getCaseworkerId());
             if (expectedEventHistory.getEventDescription() != null) {
                 assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
             }

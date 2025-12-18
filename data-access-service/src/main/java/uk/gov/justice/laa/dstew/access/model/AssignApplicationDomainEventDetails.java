@@ -19,7 +19,7 @@ import lombok.NoArgsConstructor;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AssignApplicationDomainEventDetails implements Serializable {
   private UUID applicationId;
-  private UUID caseWorkerId;
+  private UUID caseworkerId;
   private String createdBy;
   private String eventDescription;
   private Instant createdAt;
