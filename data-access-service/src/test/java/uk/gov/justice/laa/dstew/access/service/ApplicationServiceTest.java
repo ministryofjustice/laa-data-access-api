@@ -175,20 +175,27 @@ public class ApplicationServiceTest {
 
   @Test
   void shouldUnassignCaseworker_whenAssigned() {
-    UUID appId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
     ApplicationEntity entity = new ApplicationEntity();
-    entity.setId(appId);
+    entity.setId(applicationId);
 
-    CaseworkerEntity cw = new CaseworkerEntity();
-    cw.setId(UUID.randomUUID());
-    entity.setCaseworker(cw);
+    CaseworkerEntity caseworker = new CaseworkerEntity();
+    caseworker.setId(UUID.randomUUID());
+    entity.setCaseworker(caseworker);
+    EventHistory eventHistory = EventHistory.builder()
+            .eventDescription("description")
+            .build();
 
-    when(repository.findById(appId)).thenReturn(Optional.of(entity));
+    when(repository.findById(applicationId)).thenReturn(Optional.of(entity));
 
-    service.unassignCaseworker(appId, null);
+    service.unassignCaseworker(applicationId, eventHistory);
 
     assertThat(entity.getCaseworker()).isNull();
     verify(repository).save(entity);
+    verify(domainEventService).saveUnassignApplicationDomainEvent(
+            eq(applicationId),
+            eq(null),
+            eq(eventHistory.getEventDescription()));
   }
 
   @Test

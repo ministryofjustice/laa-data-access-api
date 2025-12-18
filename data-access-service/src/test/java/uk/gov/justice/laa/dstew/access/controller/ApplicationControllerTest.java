@@ -187,11 +187,33 @@ class ApplicationControllerTest {
       "applicationIds" : [
         "33703b45-f8b7-4143-8b5d-969826bdd090",
         "8b92afd8-ab7b-4f5b-b0ea-2dcd7c2cde8f"
-      ]
+      ],
+    "eventHistory" : {
+      "eventDescription":"assigning to caseworker"
+     }
     }
     """;
     
     mockMvc.perform(post("/api/v0/applications/assign")
+                    .contentType("application/json")
+                    .content(validRequest))
+            .andExpect(status().isOk())
+            .andReturn();
+  }
+
+  @Test
+  void shouldUnassignCaseworker() throws Exception {
+    var validRequest =
+            """
+            {
+              "caseworkerId" : "f67e5290-c774-4e13-809b-37fc6cf9b09b",
+              "eventHistory" : {
+              "eventDescription":"removing caseworker"
+             }
+            }
+            """;
+
+    mockMvc.perform(post("/api/v0/applications/019a0c4c-92c6-7421-b62a-b6416e2a8402/unassign")
                     .contentType("application/json")
                     .content(validRequest))
             .andExpect(status().isOk())

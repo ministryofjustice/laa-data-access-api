@@ -10,14 +10,14 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Class represents data associated with a domain event.
+ * Class representing data associated with a domain event.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class AssignApplicationDomainEventDetails implements Serializable {
+public class UnassignApplicationDomainEventDetails implements Serializable {
   private UUID applicationId;
   private UUID caseworkerId;
   private String createdBy;
