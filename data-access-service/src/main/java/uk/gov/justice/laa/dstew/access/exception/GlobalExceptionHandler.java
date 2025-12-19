@@ -48,7 +48,8 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(ValidationException.class)
   public ResponseEntity<ProblemDetail> handleValidationException(ValidationException exception) {
     final ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(BAD_REQUEST, exception.getMessage());
-    problemDetail.setTitle("Validation failed");
+    problemDetail.setTitle(BAD_REQUEST.getReasonPhrase());
+    problemDetail.setDetail("Generic Validation Error");
     problemDetail.setProperty("errors", exception.errors());
     return ResponseEntity.badRequest().body(problemDetail);
   }
