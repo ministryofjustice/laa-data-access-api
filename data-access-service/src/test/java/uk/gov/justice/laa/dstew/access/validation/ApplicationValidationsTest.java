@@ -22,7 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.Status;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
@@ -92,7 +92,7 @@ public class ApplicationValidationsTest {
   @Test
   void shouldNotThrowCreateRequestValidationErrorWhenContentIsValid() {
     ApplicationCreateRequest request = ApplicationCreateRequest.builder()
-                                                               .status(ApplicationStatus.SUBMITTED)
+                                                               .status(Status.SUBMITTED)
                                                                .applicationContent(Map.of("foo", "bar"))
                                                                .laaReference("app-ref")
                                                                .build();
@@ -103,7 +103,7 @@ public class ApplicationValidationsTest {
   void shouldDelegateIndividualValidationsToIndividualValidator() {
     var individuals = createIndividuals();
     ApplicationCreateRequest request = ApplicationCreateRequest.builder()
-                                                               .status(ApplicationStatus.SUBMITTED)
+                                                               .status(Status.SUBMITTED)
                                                                .applicationContent(Map.of("foo", "bar"))
                                                                .laaReference("app-ref")
                                                                .individuals(individuals)
@@ -119,7 +119,7 @@ public class ApplicationValidationsTest {
   @Test
   void shouldOnlyReturnUniqueValidationErrors() {
     ApplicationCreateRequest request = ApplicationCreateRequest.builder()
-                                                               .status(ApplicationStatus.SUBMITTED)
+                                                               .status(Status.SUBMITTED)
                                                                .applicationContent(Map.of("foo", "bar"))
                                                                .laaReference("app-ref")
                                                                .individuals(createIndividuals())

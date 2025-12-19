@@ -1,7 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.Status;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
@@ -16,7 +16,7 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
     @Override
     public ApplicationCreateRequest create() {
         return ApplicationCreateRequest.builder()
-                .status(ApplicationStatus.IN_PROGRESS)
+                .status(Status.IN_PROGRESS)
                 .laaReference("TestReference")
                 .applicationContent(new HashMap<>() {
                     {

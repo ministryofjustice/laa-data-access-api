@@ -3,7 +3,9 @@ package uk.gov.justice.laa.dstew.access.utils.factory.application;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
+import uk.gov.justice.laa.dstew.access.model.Status;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
@@ -29,13 +31,16 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
 
         return ApplicationEntity.builder()
                 .createdAt(InstantSource.system().instant())
-                .status(ApplicationStatus.IN_PROGRESS)
+                .status(Status.IN_PROGRESS)
                 .modifiedAt(InstantSource.system().instant())
+                .submittedAt(InstantSource.system().instant())
                 .individuals(new HashSet<>(Set.of(individualEntity)))
                 .applicationContent(new LinkedHashMap<>(Map.of(
                         "test", "content"
                 )))
                 .caseworker(BaseIntegrationTest.CaseworkerJohnDoe)
+                .categoryOfLaw(CategoryOfLaw.FAMILY)
+                .matterType(MatterType.SCA)
                 .build();
     }
 
