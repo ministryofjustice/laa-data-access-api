@@ -8,8 +8,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.Status;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
@@ -43,7 +43,7 @@ public class ApplicationSummaryService {
   /**
    * Retrieves a paginated list of {@link ApplicationSummary} objects filtered by application status.
    *
-   * @param applicationStatus the {@link ApplicationStatus} used to filter results on application status
+   * @param applicationStatus the {@link Status} used to filter results on application status
    * @param laaReference used to filter results on application reference
    * @param clientFirstName used to filter results on linked individuals first name
    * @param clientLastName used to filter results on  linked individuals last name
@@ -53,7 +53,7 @@ public class ApplicationSummaryService {
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public Page<ApplicationSummary> getAllApplications(
-          ApplicationStatus applicationStatus,
+          Status applicationStatus,
           String laaReference,
           String clientFirstName,
           String clientLastName,

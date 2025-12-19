@@ -15,7 +15,7 @@ paths:
           name: status
           description: The current overall status of the applications' decision.
           schema:
-            $ref: "#/components/schemas/applicationStatus"
+            $ref: "#/components/schemas/status"
         - in: query
           name: laaReference
           description: The LAA reference number of the application
@@ -235,7 +235,7 @@ paths:
 
 components:
   schemas:
-    applicationStatus:
+    status:
       type: string
       enum:
         - IN_PROGRESS
@@ -258,6 +258,10 @@ components:
       type: string
       enum:
         - SCA
+    applicationType:
+      type: string
+      enum:
+        - INITIAL
 
     Individual:
       type: object
@@ -281,7 +285,7 @@ components:
       type: object
       required:
         - id
-        - applicationStatus
+        - status
         - applicationContent
         - laaReference
         - schemaVersion
@@ -291,8 +295,8 @@ components:
         id:
           type: string
           format: uuid
-        applicationStatus:
-          $ref: "#/components/schemas/applicationStatus"
+        status:
+          $ref: "#/components/schemas/status"
         schemaVersion:
           type: integer
         applicationContent:
@@ -323,7 +327,7 @@ components:
         - individuals
       properties:
         status:
-          $ref: "#/components/schemas/applicationStatus"
+          $ref: "#/components/schemas/status"
         applicationContent:
           type: object
           additionalProperties: true
@@ -341,7 +345,7 @@ components:
         - applicationContent
       properties:
         status:
-          $ref: "#/components/schemas/applicationStatus"
+          $ref: "#/components/schemas/status"
         applicationContent:
           type: object
           description: Application data to update
@@ -355,19 +359,39 @@ components:
           type: string
           format: uuid
           description: The unique reference used to identify the application.
-        applicationStatus:
-          $ref: "#/components/schemas/applicationStatus"
+        status:
+          $ref: "#/components/schemas/status"
+        submittedAt:
+          type: string
+          format: date-time
+        lastUpdated:
+          type: string
+          format: date-time
+        usedDelegatedFunctions:
+          type: boolean
+        categoryOfLaw:
+          $ref: "#/components/schemas/categoryOfLaw"
+        matterType:
+          $ref: "#/components/schemas/matterType"
+        assignedTo:
+          type: string
+          format: uuid
+        autoGrant:
+          type: boolean
+        clientFirstName:
+          type: string
+        clientLastName:
+          type: string 
+        clientDateOfBirth:
+          type: string
+          format: date
         laaReference:
           type: string
         createdAt:
           type: string
           format: date-time
-        modifiedAt:
-          type: string
-          format: date-time
-        assignedTo:
-          type: string
-          format: uuid
+        applicationType:
+          $ref: "#/components/schemas/applicationType"
 
     ApplicationSummaryResponse:
       type: object

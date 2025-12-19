@@ -25,16 +25,34 @@ public interface ApplicationSummaryMapper {
     if (applicationSummaryEntity == null) {
       return null;
     }
-    ApplicationSummary app = new ApplicationSummary();
-    app.setApplicationId(applicationSummaryEntity.getId());
-    app.setApplicationStatus(applicationSummaryEntity.getStatus());
-    app.setLaaReference(applicationSummaryEntity.getLaaReference());
-    app.setAssignedTo(applicationSummaryEntity.getCaseworker() != null
-                      ?
-                      applicationSummaryEntity.getCaseworker().getId() :
-                      null);
-    app.setCreatedAt(applicationSummaryEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
-    app.setModifiedAt(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-    return app;
+    try {
+      ApplicationSummary app = new ApplicationSummary();
+      app.setApplicationId(applicationSummaryEntity.getId());
+      app.setSubmittedAt(applicationSummaryEntity.getSubmittedAt() != null 
+                          ? applicationSummaryEntity.getSubmittedAt().atOffset(ZoneOffset.UTC) 
+                          : null);
+      app.setAutoGrant(applicationSummaryEntity.isAutoGranted());
+      app.setCategoryOfLaw(applicationSummaryEntity.getCategoryOfLaw());
+      app.setMatterType(applicationSummaryEntity.getMatterType());
+      app.setUsedDelegatedFunctions(applicationSummaryEntity.isUsedDelegatedFunctions());
+      app.setLaaReference(applicationSummaryEntity.getLaaReference());
+      app.setStatus(applicationSummaryEntity.getStatus());
+      app.setAssignedTo(applicationSummaryEntity.getCaseworker() != null 
+                        ? 
+                        applicationSummaryEntity.getCaseworker().getId() : 
+                        null);
+      var individual = applicationSummaryEntity.getIndividuals().stream().findFirst();
+      individual.ifPresent(client -> {
+        app.setClientFirstName(client.getFirstName());
+        app.setClientLastName(client.getLastName());
+        app.setClientDateOfBirth(client.getDateOfBirth());
+      });
+      app.setApplicationType(applicationSummaryEntity.getType());
+      app.setCreatedAt(applicationSummaryEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
+      app.setLastUpdated(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+      return app;
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
+    }
   }
 }

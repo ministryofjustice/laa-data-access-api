@@ -13,6 +13,7 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
@@ -22,7 +23,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.ApplicationType;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
+import uk.gov.justice.laa.dstew.access.model.Status;
 
 /**
  * Represents an application summary for legal aid.
@@ -44,7 +48,7 @@ public class ApplicationSummaryEntity {
 
   @Column(name = "status", nullable = false)
   @Enumerated(EnumType.STRING)
-  private ApplicationStatus status;
+  private Status status;
 
   @Column(name = "laa_reference")
   private String laaReference;
@@ -54,6 +58,24 @@ public class ApplicationSummaryEntity {
 
   @Column(name = "modified_at")
   private Instant modifiedAt;
+
+  @Column(name = "submitted_at")
+  private Instant submittedAt;
+
+  @Column(name = "used_delegated_functions")
+  private boolean usedDelegatedFunctions;
+
+  @Column(name = "category_of_law")
+  private CategoryOfLaw categoryOfLaw;
+
+  @Column(name = "matter_types")
+  private MatterType matterType;
+
+  @Column(name = "is_auto_granted")
+  private boolean isAutoGranted;
+
+  @Transient
+  private ApplicationType type = ApplicationType.INITIAL;
 
   @ManyToMany(cascade = CascadeType.PERSIST)
   @JoinTable(

@@ -21,7 +21,7 @@ import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.Status;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
