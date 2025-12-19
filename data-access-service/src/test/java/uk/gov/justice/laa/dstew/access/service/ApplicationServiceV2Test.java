@@ -538,61 +538,120 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
         private Stream<Arguments> validAssignEventDescriptionCases() {
             return Stream.of(
-                    Arguments.of("Unassigned by system"),
+                    Arguments.of("Assigned by system"),
                     Arguments.of(""),
                     Arguments.of((Object)null)
             );
         }
-
-        private void verifyThatApplicationEntitySaved(ApplicationEntity expectedApplicationEntity, int timesCalled) {
-            ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
-            verify(applicationRepository, times(timesCalled)).save(captor.capture());
-            ApplicationEntity actualApplicationEntity = captor.getValue();
-            assertThat(expectedApplicationEntity)
-                    .usingRecursiveComparison()
-                    .ignoringCollectionOrder()
-                    .ignoringFields("createdAt", "modifiedAt")
-                    .isEqualTo(actualApplicationEntity);
-            assertThat(actualApplicationEntity.getCreatedAt()).isNotNull();
-            assertThat(actualApplicationEntity.getModifiedAt()).isNotNull();
-        }
-
-        private void verifyThatDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled) throws JsonProcessingException {
-            ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
-            verify(domainEventRepository, times(timesCalled)).save(captor.capture());
-            DomainEventEntity actualDomainEvent = captor.getValue();
-            assertThat(expectedDomainEvent)
-                    .usingRecursiveComparison()
-                    .ignoringFields("createdAt", "data")
-                    .isEqualTo(actualDomainEvent);
-            assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
-
-            Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
-            Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
-            assertThat(expectedData)
-                    .usingRecursiveComparison()
-                    .ignoringCollectionOrder()
-                    .ignoringFields("createdAt")
-                    .isEqualTo(actualData);
-            assertThat(actualData.get("createdAt")).isNotNull();
-        }
     }
 
     @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class UnassignCaseworker {
-        @Test
-        void givenAssignedCaseworker_whenUnassignCaseworker_thenUnassignAndSave() {
 
+        @ParameterizedTest
+        @MethodSource("validUnassignEventDescriptionCases")
+        void givenAssignedCaseworker_whenUnassignCaseworker_thenUnassignAndSave(
+                String eventDescription
+        ) throws JsonProcessingException {
+            // given
+            UUID applicationId = UUID.randomUUID();
+
+            CaseworkerEntity expectedCaseworker = CaseworkerFactory.create();
+
+            ApplicationEntity existingApplicationEntity = ApplicationEntityFactory.create(builder ->
+                    builder.id(applicationId).caseworker(expectedCaseworker)
+            );
+
+            ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(null).build();
+
+            EventHistory eventHistory = EventHistory.builder()
+                    .eventDescription(eventDescription)
+                    .build();
+
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(applicationId)
+                    .caseWorkerId(expectedCaseworker.getId())
+                    .createdBy("")
+                    .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
+                    .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
+                            .applicationId(existingApplicationEntity.getId())
+                            .caseWorkerId(expectedCaseworker.getId())
+                            .eventDescription(eventHistory.getEventDescription())
+                            .createdBy("")
+                            .build()))
+                    .build();
+
+            when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            serviceUnderTest.unassignCaseworker(applicationId, eventHistory);
+
+            // then
+            verify(applicationRepository, times(1)).findById(applicationId);
+
+            verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
+            // TODO: introduce when DSTEW-901 is merged
+            //verifyThatDomainEventSaved(expectedDomainEvent, 1);
         }
 
         @Test
-        void givenAlreadyUnassigned_whenUnassignCaseworker_thenNotSave() {
+        void givenAlreadyUnassigned_whenUnassignCaseworker_thenNotSave() throws JsonProcessingException {
+            UUID applicationId = UUID.randomUUID();
+            ApplicationEntity existingApplicationEntity = ApplicationEntityFactory.create(builder ->
+                    builder.id(applicationId).caseworker(null)
+            );
 
+            ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(null).build();
+
+            EventHistory eventHistory = EventHistory.builder()
+                    .eventDescription("Unassigned")
+                    .build();
+
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(applicationId)
+                    .caseWorkerId(null)
+                    .createdBy("")
+                    .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
+                    .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
+                            .applicationId(existingApplicationEntity.getId())
+                            .eventDescription(eventHistory.getEventDescription())
+                            .createdBy("")
+                            .build()))
+                    .build();
+
+            when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            serviceUnderTest.unassignCaseworker(applicationId, eventHistory);
+
+            // then
+            verify(applicationRepository, times(1)).findById(applicationId);
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            // TODO: check that a domain event is created once DSTEW-901 is merged
         }
 
         @Test
         void givenNonexistentApplication_whenUnassignCaseworker_thenThrowApplicationNotFoundException() {
 
+            // given
+            UUID nonexistentApplicationId = UUID.randomUUID();
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(nonexistentApplicationId, new EventHistory()));
+            assertThat(thrown)
+                    .isInstanceOf(ApplicationNotFoundException.class)
+                    .hasMessage("No application found with id: " + nonexistentApplicationId);
+
+            // then
+            verify(applicationRepository, times(1)).findById(nonexistentApplicationId);
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
         }
 
         @Test
@@ -630,10 +689,113 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, never()).save(any(ApplicationEntity.class));
             verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
         }
+
+        private Stream<Arguments> validUnassignEventDescriptionCases() {
+            return Stream.of(
+                    Arguments.of("Assigned by system"),
+                    Arguments.of(""),
+                    Arguments.of((Object)null)
+            );
+        }
     }
 
     @Nested
     class ReassignCaseworker {
 
+        @Test
+        void givenApplicationWithCaseworker_whenReassignCaseworker_thenSaveAndCreateDomainEvent() throws JsonProcessingException {
+
+            // given
+            UUID applicationId = UUID.randomUUID();
+
+            CaseworkerEntity existingCaseworker = CaseworkerFactory.create(builder ->
+                    builder.id(UUID.randomUUID())
+                            .username("John Doe")
+            );
+
+            CaseworkerEntity expectedCaseworker = CaseworkerFactory.create(builder ->
+                    builder.id(UUID.randomUUID())
+                            .username("Jane Doe")
+            );
+
+            ApplicationEntity existingApplicationEntity = ApplicationEntityFactory.create(builder ->
+                    builder.id(applicationId).caseworker(existingCaseworker)
+            );
+
+            ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
+
+            EventHistory eventHistory = EventHistory.builder()
+                    .eventDescription("Case reassigned.")
+                    .build();
+
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(applicationId)
+                    .caseWorkerId(expectedCaseworker.getId())
+                    .createdBy("")
+                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
+                    .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
+                            .applicationId(existingApplicationEntity.getId())
+                            .caseWorkerId(expectedCaseworker.getId())
+                            .eventDescription(eventHistory.getEventDescription())
+                            .createdBy("")
+                            .build()))
+                    .build();
+
+            List<UUID> applicationIds = List.of(applicationId);
+
+            when(applicationRepository.findAllById(eq(applicationIds))).thenReturn(List.of(existingApplicationEntity));
+            when(caseworkerRepository.findById(expectedCaseworker.getId()))
+                    .thenReturn(Optional.of(expectedCaseworker));
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), List.of(applicationId), eventHistory);
+
+            // then
+            verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
+            verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
+
+            verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
+            // TODO: introduce when DSTEW-901 is merged
+            //verifyThatDomainEventSaved(expectedDomainEvent, 1);
+        }
     }
+
+    // <editor-fold desc="Shared asserts">
+
+    private void verifyThatApplicationEntitySaved(ApplicationEntity expectedApplicationEntity, int timesCalled) {
+        ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
+        verify(applicationRepository, times(timesCalled)).save(captor.capture());
+        ApplicationEntity actualApplicationEntity = captor.getValue();
+        assertThat(expectedApplicationEntity)
+                .usingRecursiveComparison()
+                .ignoringCollectionOrder()
+                .ignoringFields("createdAt", "modifiedAt")
+                .isEqualTo(actualApplicationEntity);
+        assertThat(actualApplicationEntity.getCreatedAt()).isNotNull();
+        assertThat(actualApplicationEntity.getModifiedAt()).isNotNull();
+    }
+
+    private void verifyThatDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled) throws JsonProcessingException {
+        ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
+        verify(domainEventRepository, times(timesCalled)).save(captor.capture());
+        DomainEventEntity actualDomainEvent = captor.getValue();
+        assertThat(expectedDomainEvent)
+                .usingRecursiveComparison()
+                .ignoringFields("createdAt", "data")
+                .isEqualTo(actualDomainEvent);
+        assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
+
+        Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
+        Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
+        assertThat(expectedData)
+                .usingRecursiveComparison()
+                .ignoringCollectionOrder()
+                .ignoringFields("createdAt")
+                .isEqualTo(actualData);
+        assertThat(actualData.get("createdAt")).isNotNull();
+    }
+
+    // </editor-fold>
 }
