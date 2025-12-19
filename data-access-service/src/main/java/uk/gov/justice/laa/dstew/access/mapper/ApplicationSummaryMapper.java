@@ -25,21 +25,17 @@ public interface ApplicationSummaryMapper {
     if (applicationSummaryEntity == null) {
       return null;
     }
-    try {
-      ApplicationSummary app = new ApplicationSummary();
-      app.setApplicationId(applicationSummaryEntity.getId());
-      app.setApplicationStatus(applicationSummaryEntity.getStatus());
-      app.setLaaReference(applicationSummaryEntity.getLaaReference());
-      app.setAssignedTo(applicationSummaryEntity.getCaseworker() != null 
-                        ? 
-                        applicationSummaryEntity.getCaseworker().getId() : 
-                        null);
-      app.setCreatedAt(applicationSummaryEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
-      app.setModifiedAt(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-      return app;
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
-    }
+    ApplicationSummary app = new ApplicationSummary();
+    app.setApplicationId(applicationSummaryEntity.getId());
+    app.setApplicationStatus(applicationSummaryEntity.getStatus());
+    app.setLaaReference(applicationSummaryEntity.getLaaReference());
+    app.setAssignedTo(applicationSummaryEntity.getCaseworker() != null
+                      ?
+                      applicationSummaryEntity.getCaseworker().getId() :
+                      null);
+    app.setCreatedAt(applicationSummaryEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
+    app.setModifiedAt(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+    return app;
   }
 
   default OffsetDateTime map(Instant value) {

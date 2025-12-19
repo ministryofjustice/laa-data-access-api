@@ -10,14 +10,11 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.NonNull;
-import org.javers.core.Javers;
-import org.javers.core.JaversBuilder;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
-import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
-import uk.gov.justice.laa.dstew.access.exception.CaseworkerNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
@@ -40,7 +37,6 @@ public class ApplicationService {
   private final ObjectMapper objectMapper;
   private final CaseworkerRepository caseworkerRepository;
   private final DomainEventService domainEventService;
-  private final Javers javers;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -59,7 +55,6 @@ public class ApplicationService {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
-    this.javers = JaversBuilder.javers().build();
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
     this.caseworkerRepository = caseworkerRepository;
@@ -147,7 +142,7 @@ public class ApplicationService {
    */
   private ApplicationEntity checkIfApplicationExists(final UUID id) {
     return applicationRepository.findById(id)
-        .orElseThrow(() -> new ApplicationNotFoundException(
+        .orElseThrow(() -> new ResourceNotFoundException(
             String.format("No application found with id: %s", id)
         ));
   }
@@ -168,7 +163,7 @@ public class ApplicationService {
                                   .collect(Collectors.joining(","));
     if (!missingIds.isEmpty()) {
       String exceptionMsg = "No application found with ids: " + missingIds;
-      throw new ApplicationNotFoundException(exceptionMsg);
+      throw new ResourceNotFoundException(exceptionMsg);
     }
     return applications;
   }
@@ -178,8 +173,7 @@ public class ApplicationService {
    *
    * @param caseworkerId the UUID of the caseworker to assign
    * @param applicationIds the UUIDs of the applications to assign the caseworker to
-   * @throws ApplicationNotFoundException   if the application does not exist
-   * @throws CaseworkerNotFoundException    if the caseworker does not exist
+   * @throws ResourceNotFoundException   if the application or caseworker does not exist
    */
   @Transactional
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
@@ -187,7 +181,7 @@ public class ApplicationService {
                                final List<UUID> applicationIds,
                                final EventHistory eventHistory) {
     final CaseworkerEntity caseworker = caseworkerRepository.findById(caseworkerId)
-        .orElseThrow(() -> new CaseworkerNotFoundException(
+        .orElseThrow(() -> new ResourceNotFoundException(
             String.format("No caseworker found with id: %s", caseworkerId)));
 
     final List<ApplicationEntity> applications = checkIfAllApplicationsExist(applicationIds);
@@ -212,12 +206,12 @@ public class ApplicationService {
    * Unassigns a caseworker from an application.
    *
    * @param applicationId the UUID of the application to update
-   * @throws ApplicationNotFoundException   if the application does not exist
+   * @throws ResourceNotFoundException   if the application does not exist
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void unassignCaseworker(final UUID applicationId, EventHistory history) {
     final ApplicationEntity entity = applicationRepository.findById(applicationId)
-        .orElseThrow(() -> new ApplicationNotFoundException(
+        .orElseThrow(() -> new ResourceNotFoundException(
             String.format("No application found with id: %s", applicationId)
         ));
 

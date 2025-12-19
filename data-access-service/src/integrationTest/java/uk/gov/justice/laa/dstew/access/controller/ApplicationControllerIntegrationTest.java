@@ -222,6 +222,7 @@ public class ApplicationControllerIntegrationTest {
         .andExpect(MockMvcResultMatchers.status().isForbidden());
   }
 
+  @Test
   @WithMockUser(authorities = {"APPROLE_ApplicationReader", "APPROLE_ApplicationWriter"})
   void getItem_should_return_404_when_application_does_not_exist() throws Exception {
     mockMvc.perform(MockMvcRequestBuilders.get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
