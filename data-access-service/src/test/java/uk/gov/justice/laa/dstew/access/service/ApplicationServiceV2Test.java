@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpda
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -395,7 +396,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
         @Test
         void givenNonexistentCaseworker_whenAssignCaseworker_thenThrowCaseworkerNotFoundException() {
-
         }
 
         @Test
@@ -405,7 +405,38 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
         @Test
         void givenMissingApplications_whenAssignCaseworker_thenThrowApplicationNotFoundException() {
+            UUID existingApplicationId = UUID.randomUUID();
+            ApplicationEntity existingApplicationEntity = ApplicationEntityFactory.create(builder ->
+                    builder.id(existingApplicationId).caseworker(null)
+            );
 
+            CaseworkerEntity expectedCaseworker = CaseworkerFactory.create();
+
+            List<UUID> applicationIds = List.of(UUID.randomUUID(), existingApplicationId, UUID.randomUUID());
+
+            EventHistory eventHistory = EventHistory.builder()
+                    .eventDescription("Case assigned.")
+                    .build();
+
+            when(applicationRepository.findAllById(eq(applicationIds))).thenReturn(List.of(existingApplicationEntity));
+            when(caseworkerRepository.findById(expectedCaseworker.getId()))
+                    .thenReturn(Optional.of(expectedCaseworker));
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds, eventHistory));
+            assertThat(thrown)
+                    .isInstanceOf(ApplicationNotFoundException.class)
+                    .hasMessage("No application found with ids: " + applicationIds.stream()
+                            .filter(id -> !id.equals(existingApplicationId))
+                            .map(UUID::toString)
+                            .collect(Collectors.joining(",")));
+
+            // then
+            verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
+            verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
         }
 
         @Test
