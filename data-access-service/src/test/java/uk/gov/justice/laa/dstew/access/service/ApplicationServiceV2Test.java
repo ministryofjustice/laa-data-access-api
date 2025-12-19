@@ -9,11 +9,13 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.repository.query.Param;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.CaseworkerNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -396,11 +398,70 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
         @Test
         void givenNonexistentCaseworker_whenAssignCaseworker_thenThrowCaseworkerNotFoundException() {
+            UUID nonexistentCaseworkerId = UUID.randomUUID();
+
+            when(caseworkerRepository.findById(nonexistentCaseworkerId))
+                    .thenReturn(Optional.empty());
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(nonexistentCaseworkerId, List.of(UUID.randomUUID()), new EventHistory()));
+            assertThat(thrown)
+                    .isInstanceOf(CaseworkerNotFoundException.class)
+                    .hasMessage("No caseworker found with id: " + nonexistentCaseworkerId);
+
+            // then
+            verify(caseworkerRepository, times(1)).findById(nonexistentCaseworkerId);
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
         }
 
         @Test
-        void givenDuplicateApplicationIds_whenAssignCaseworker_thenOnlyDistinctIdsUsed() {
+        void givenDuplicateApplicationIds_whenAssignCaseworker_thenOnlyDistinctIdsUsed() throws JsonProcessingException {
+            UUID existingApplicationId = UUID.randomUUID();
+            ApplicationEntity existingApplicationEntity = ApplicationEntityFactory.create(builder ->
+                    builder.id(existingApplicationId).caseworker(null)
+            );
 
+            CaseworkerEntity expectedCaseworker = CaseworkerFactory.create();
+
+            List<UUID> applicationIds = List.of(existingApplicationId, existingApplicationId, existingApplicationId);
+            List<UUID> distinctApplicationIds = Stream.of(existingApplicationId).toList();
+
+            ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
+
+            EventHistory eventHistory = EventHistory.builder()
+                    .eventDescription("Caseworker assigned.")
+                    .build();
+
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(expectedApplicationEntity.getId())
+                    .caseWorkerId(expectedCaseworker.getId())
+                    .createdBy("")
+                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
+                    .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
+                            .applicationId(existingApplicationEntity.getId())
+                            .caseWorkerId(expectedCaseworker.getId())
+                            .eventDescription(eventHistory.getEventDescription())
+                            .createdBy("")
+                            .build()))
+                    .build();
+
+            when(applicationRepository.findAllById(eq(distinctApplicationIds))).thenReturn(List.of(existingApplicationEntity));
+            when(caseworkerRepository.findById(expectedCaseworker.getId()))
+                    .thenReturn(Optional.of(expectedCaseworker));
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds, eventHistory);
+
+            // then
+            verify(applicationRepository, times(1)).findAllById(eq(distinctApplicationIds));
+            verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
+
+            verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
+            verifyThatDomainEventSaved(expectedDomainEvent, 1);
         }
 
         @Test
@@ -440,8 +501,39 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         @Test
-        void givenNullEventDescription_whenAssignCaseworker_thenAssignAndSave() {
+        void givenRoleReader_whenAssignCaseworker_thenThrowUnauthorizedException() {
+            // given
+            setSecurityContext(TestConstants.Roles.READER);
 
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(UUID.randomUUID(), List.of(UUID.randomUUID()), new EventHistory()));
+            assertThat(thrown)
+                    .isInstanceOf(AuthorizationDeniedException.class)
+                    .hasMessage("Access Denied");
+
+            // then
+            verify(applicationRepository, never()).findAllById(any(Iterable.class));
+            verify(caseworkerRepository, never()).findById(any(UUID.class));
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        @Test
+        void givenNoRole_whenAssignCaseworker_thenThrowUnauthorizedException() {
+            // given
+            // no security context set
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(UUID.randomUUID(), List.of(UUID.randomUUID()), new EventHistory()));
+            assertThat(thrown)
+                    .isInstanceOf(AuthorizationDeniedException.class)
+                    .hasMessage("Access Denied");
+
+            // then
+            verify(applicationRepository, never()).findAllById(any(Iterable.class));
+            verify(caseworkerRepository, never()).findById(any(UUID.class));
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
         }
 
         private Stream<Arguments> validAssignEventDescriptionCases() {
@@ -501,6 +593,42 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         @Test
         void givenNonexistentApplication_whenUnassignCaseworker_thenThrowApplicationNotFoundException() {
 
+        }
+
+        @Test
+        void givenRoleReader_whenUnassignCaseworker_thenThrowUnauthorizedException() {
+            // given
+            setSecurityContext(TestConstants.Roles.READER);
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistory()));
+            assertThat(thrown)
+                    .isInstanceOf(AuthorizationDeniedException.class)
+                    .hasMessage("Access Denied");
+
+            // then
+            verify(applicationRepository, never()).findAllById(any(Iterable.class));
+            verify(caseworkerRepository, never()).findById(any(UUID.class));
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        @Test
+        void givenNoRole_whenUnassignCaseworker_thenThrowUnauthorizedException() {
+            // given
+            // no security context set
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistory()));
+            assertThat(thrown)
+                    .isInstanceOf(AuthorizationDeniedException.class)
+                    .hasMessage("Access Denied");
+
+            // then
+            verify(applicationRepository, never()).findAllById(any(Iterable.class));
+            verify(caseworkerRepository, never()).findById(any(UUID.class));
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
         }
     }
 
