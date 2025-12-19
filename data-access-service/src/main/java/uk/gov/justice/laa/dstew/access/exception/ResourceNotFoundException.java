@@ -6,7 +6,7 @@ package uk.gov.justice.laa.dstew.access.exception;
 public class ResourceNotFoundException extends RuntimeException {
 
   /**
-   * Constructor for ApplicationNotFoundException.
+   * Constructor for ResourceNotFoundException.
    *
    * @param message the error message
    */
