@@ -16,7 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.Status;
 
 import java.util.UUID;
 
@@ -57,13 +57,13 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenStatusHasAValue(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(ApplicationStatus.IN_PROGRESS, null, null, null, null);
+                .filterBy(Status.IN_PROGRESS, null, null, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
         when(root.get("status"))
                 .thenReturn(mock(jakarta.persistence.criteria.Path.class));
-        when(builder.equal(any(), eq(ApplicationStatus.IN_PROGRESS))).thenReturn(summaryPredicate);
+        when(builder.equal(any(), eq(Status.IN_PROGRESS))).thenReturn(summaryPredicate);
 
         Predicate result = spec.toPredicate(root, query, builder);
         assertThat(result).isNotNull();
@@ -73,13 +73,13 @@ public class ApplicationSummarySpecificationTest {
     void shouldFailWhenStatusHasAValueThatDoesNotMatch(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(ApplicationStatus.SUBMITTED, null, null, null, null);
+                .filterBy(Status.SUBMITTED, null, null, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
         when(root.get("status"))
                 .thenReturn(mock(jakarta.persistence.criteria.Path.class));
-        when(builder.equal(any(), eq(ApplicationStatus.IN_PROGRESS))).thenReturn(summaryPredicate);
+        when(builder.equal(any(), eq(Status.IN_PROGRESS))).thenReturn(summaryPredicate);
 
         Predicate result = spec.toPredicate(root, query, builder);
         assertThat(result).isNull();
@@ -100,7 +100,7 @@ public class ApplicationSummarySpecificationTest {
     void shouldNotFailWhenAllFieldsAreSet(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(ApplicationStatus.SUBMITTED,
+                .filterBy(Status.SUBMITTED,
                                 "ref2",
                                 "Andy",
                                 "Green",

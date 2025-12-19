@@ -24,7 +24,7 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.Status;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
@@ -62,7 +62,7 @@ class ApplicationServiceTest {
   @Test
   void shouldCreateApplication() {
     ApplicationCreateRequest req = new ApplicationCreateRequest();
-    req.setStatus(ApplicationStatus.IN_PROGRESS);
+    req.setStatus(Status.IN_PROGRESS);
 
     ApplicationEntity entity = new ApplicationEntity();
     when(mapper.toApplicationEntity(req)).thenReturn(entity);
@@ -79,7 +79,7 @@ class ApplicationServiceTest {
   void shouldGetAllApplications() {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setId(UUID.randomUUID());
-    entity.setStatus(ApplicationStatus.IN_PROGRESS);
+    entity.setStatus(Status.IN_PROGRESS);
 
     when(repository.findAll()).thenReturn(List.of(entity));
     when(mapper.toApplication(entity)).thenReturn(new Application());

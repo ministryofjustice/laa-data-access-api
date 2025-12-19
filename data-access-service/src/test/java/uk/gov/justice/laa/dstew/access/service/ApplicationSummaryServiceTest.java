@@ -21,7 +21,7 @@ import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.Status;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
@@ -56,13 +56,13 @@ public class ApplicationSummaryServiceTest {
     ApplicationSummaryEntity firstEntity = new ApplicationSummaryEntity();
     firstEntity.setId(UUID.randomUUID());
     firstEntity.setLaaReference("appref1");
-    firstEntity.setStatus(ApplicationStatus.IN_PROGRESS);
+    firstEntity.setStatus(Status.IN_PROGRESS);
     firstEntity.setIndividuals(createIndividuals());
 
     ApplicationSummaryEntity secondEntity = new ApplicationSummaryEntity();
     secondEntity.setId(UUID.randomUUID());
     secondEntity.setLaaReference("appref2");
-    secondEntity.setStatus(ApplicationStatus.IN_PROGRESS);
+    secondEntity.setStatus(Status.IN_PROGRESS);
     secondEntity.setIndividuals(createIndividuals());
 
     return List.of(firstEntity, secondEntity);
@@ -74,12 +74,12 @@ public class ApplicationSummaryServiceTest {
     ApplicationSummary firstSummary = new ApplicationSummary();
     firstSummary.setApplicationId(entities.getFirst().getId());
     firstSummary.setLaaReference(entities.getFirst().getLaaReference());
-    firstSummary.setApplicationStatus(entities.getFirst().getStatus());
+    firstSummary.setStatus(entities.getFirst().getStatus());
 
     ApplicationSummary secondSummary = new ApplicationSummary();
     secondSummary.setApplicationId(entities.get(1).getId());
     secondSummary.setLaaReference(entities.get(1).getLaaReference());
-    secondSummary.setApplicationStatus(entities.get(1).getStatus());
+    secondSummary.setStatus(entities.get(1).getStatus());
 
     return List.of(firstSummary, secondSummary);
 
@@ -104,7 +104,7 @@ public class ApplicationSummaryServiceTest {
     when(mapper.toApplicationSummary(entities.get(1))).thenReturn(summaries.get(1));
 
     var result =
-        classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS,
+        classUnderTest.getAllApplications(Status.IN_PROGRESS,
                 "",
                 "",
                 "",
@@ -138,7 +138,7 @@ public class ApplicationSummaryServiceTest {
     when(mapper.toApplicationSummary(entities.get(1))).thenReturn(summaries.get(1));
 
     var result =
-            classUnderTest.getAllApplications(ApplicationStatus.IN_PROGRESS,
+            classUnderTest.getAllApplications(Status.IN_PROGRESS,
                     null,
                     null,
                     null,

@@ -82,26 +82,30 @@ public interface ApplicationMapper {
       return null;
     }
 
-    Application application = new Application();
-    application.setId(entity.getId());
-    application.setApplicationStatus(entity.getStatus());
-    application.setSchemaVersion(entity.getSchemaVersion());
-    application.setApplicationContent(entity.getApplicationContent());
-    application.setLaaReference(entity.getLaaReference());
-    application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
-    application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
-    application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
-
-    application.setIndividuals(
-            Optional.ofNullable(entity.getIndividuals())
-                    .orElse(Set.of())
-                    .stream()
-                    .map(individualMapper::toIndividual)
-                    .filter(Objects::nonNull)
-                    .toList()
-    );
-
-    return application;
+    try {
+      Application application = new Application();
+      application.setId(entity.getId());
+      application.setStatus(entity.getStatus());
+      application.setSchemaVersion(entity.getSchemaVersion());
+      application.setApplicationContent(entity.getApplicationContent());
+      application.setLaaReference(entity.getLaaReference());
+      application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
+      application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
+      application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
+      
+      application.setIndividuals(
+          Optional.ofNullable(entity.getIndividuals())
+              .orElse(Set.of())
+              .stream()
+              .map(individualMapper::toIndividual)
+              .filter(Objects::nonNull)
+              .toList()
+      );
+      
+      return application;
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
+    }
   }
 
 

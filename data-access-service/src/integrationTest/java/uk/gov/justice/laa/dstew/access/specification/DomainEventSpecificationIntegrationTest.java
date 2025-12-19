@@ -21,14 +21,12 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
 import jakarta.transaction.Transactional;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.Status;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 
@@ -120,7 +118,7 @@ public class DomainEventSpecificationIntegrationTest {
                                 .laaReference("ref")
                                 .createdAt(Instant.now())
                                 .individuals(individuals)
-                                .status(ApplicationStatus.IN_PROGRESS)
+                                .status(Status.IN_PROGRESS)
                                 .build();
     }
 }

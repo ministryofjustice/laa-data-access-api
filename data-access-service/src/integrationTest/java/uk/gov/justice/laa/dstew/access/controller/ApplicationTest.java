@@ -118,7 +118,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             Application application = new Application();
             application.setId(applicationEntity.getId());
             application.setApplicationContent(applicationEntity.getApplicationContent());
-            application.setApplicationStatus(applicationEntity.getStatus());
+            application.setStatus(applicationEntity.getStatus());
             application.setSchemaVersion(applicationEntity.getSchemaVersion());
             if (applicationEntity.getCaseworker() != null) {
                 application.setCaseworkerId(applicationEntity.getCaseworker().getId());
@@ -300,7 +300,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             ));
 
             ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create(builder -> {
-                builder.applicationContent(expectedContent).status(ApplicationStatus.SUBMITTED);
+                builder.applicationContent(expectedContent).status(Status.SUBMITTED);
             });
 
             // when
@@ -316,12 +316,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                     .usingRecursiveComparison()
                     .ignoringCollectionOrder()
                     .isEqualTo(actual.getApplicationContent());
-            assertEquals(ApplicationStatus.SUBMITTED, actual.getStatus());
-
-            assertDomainEventForApplication(
-                actual,
-                DomainEventType.APPLICATION_UPDATED
-            );
+            assertEquals(Status.SUBMITTED, actual.getStatus());
         }
 
         @ParameterizedTest
@@ -992,11 +987,11 @@ public class ApplicationTest extends BaseIntegrationTest {
         void givenApplicationsWithoutFiltering_whenGetApplications_thenReturnApplicationsWithPagingCorrectly() throws Exception {
             // given
             List<ApplicationEntity> expectedApplicationsWithCaseworker = persistedApplicationFactory.createAndPersistMultiple(3, builder ->
-                    builder.status(ApplicationStatus.IN_PROGRESS));
+                    builder.status(Status.IN_PROGRESS));
             List<ApplicationEntity> expectedApplicationWithDifferentCaseworker = persistedApplicationFactory.createAndPersistMultiple(3, builder ->
-                    builder.status(ApplicationStatus.IN_PROGRESS).caseworker(CaseworkerJaneDoe));
+                    builder.status(Status.IN_PROGRESS).caseworker(CaseworkerJaneDoe));
             List<ApplicationEntity> expectedApplicationWithNoCaseworker = persistedApplicationFactory.createAndPersistMultiple(3, builder ->
-                    builder.status(ApplicationStatus.IN_PROGRESS).caseworker(null));
+                    builder.status(Status.IN_PROGRESS).caseworker(null));
 
             List<ApplicationSummary> expectedApplicationsSummary = Stream.of(
                             expectedApplicationsWithCaseworker,
@@ -1026,7 +1021,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         void givenApplicationsRequiringPageTwo_whenGetApplications_thenReturnSecondPageOfApplicationsCorrectly() throws Exception {
             // given
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory.createAndPersistMultiple(20, builder ->
-                            builder.status(ApplicationStatus.IN_PROGRESS))
+                            builder.status(Status.IN_PROGRESS))
                     .stream()
                     .map(this::createApplicationSummary)
                     .toList();
@@ -1049,8 +1044,8 @@ public class ApplicationTest extends BaseIntegrationTest {
         @WithMockUser(authorities = TestConstants.Roles.READER)
         void givenApplicationsAndPageSizeOfTwenty_whenGetApplications_thenReturnTwentyRecords() throws Exception {
             // given
-            List<ApplicationEntity> inProgressApplications = persistedApplicationFactory.createAndPersistMultiple(15, builder -> builder.status(ApplicationStatus.IN_PROGRESS));
-            List<ApplicationEntity> submittedApplications = persistedApplicationFactory.createAndPersistMultiple(10, builder -> builder.status(ApplicationStatus.SUBMITTED));
+            List<ApplicationEntity> inProgressApplications = persistedApplicationFactory.createAndPersistMultiple(15, builder -> builder.status(Status.IN_PROGRESS));
+            List<ApplicationEntity> submittedApplications = persistedApplicationFactory.createAndPersistMultiple(10, builder -> builder.status(Status.SUBMITTED));
 
             List<ApplicationSummary> expectedApplicationsSummary = Stream.concat(
                             inProgressApplications.stream(),
@@ -1077,7 +1072,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         @MethodSource("applicationsSummaryFilteredByStatusCases")
         @WithMockUser(authorities = TestConstants.Roles.READER)
         void givenApplicationsFilteredByStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly(
-                ApplicationStatus applicationStatus,
+                Status Status,
                 Supplier<List<ApplicationSummary>> expectedApplicationsSummarySupplier,
                 int numberOfApplications
         ) throws Exception {
@@ -1085,7 +1080,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             List<ApplicationSummary> expectedApplicationsSummary = expectedApplicationsSummarySupplier.get();
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + applicationStatus);
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + Status);
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -1104,15 +1099,15 @@ public class ApplicationTest extends BaseIntegrationTest {
         void givenApplicationsFilteredByInProgressStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
             // given
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory
-                    .createAndPersistMultiple(5, builder -> builder.status(ApplicationStatus.IN_PROGRESS))
+                    .createAndPersistMultiple(5, builder -> builder.status(Status.IN_PROGRESS))
                     .stream()
                     .map(this::createApplicationSummary)
                     .toList();
 
-            persistedApplicationFactory.createAndPersistMultiple(10, builder -> builder.status(ApplicationStatus.SUBMITTED));
+            persistedApplicationFactory.createAndPersistMultiple(10, builder -> builder.status(Status.SUBMITTED));
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.IN_PROGRESS);
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + Status.IN_PROGRESS);
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -1131,14 +1126,14 @@ public class ApplicationTest extends BaseIntegrationTest {
         void givenApplicationsFilteredBySubmittedStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
             // given
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory
-                    .createAndPersistMultiple(6, builder -> builder.status(ApplicationStatus.SUBMITTED))
+                    .createAndPersistMultiple(6, builder -> builder.status(Status.SUBMITTED))
                     .stream()
                     .map(this::createApplicationSummary)
                     .toList();
-            persistedApplicationFactory.createAndPersistMultiple(10, builder -> builder.status(ApplicationStatus.IN_PROGRESS));
+            persistedApplicationFactory.createAndPersistMultiple(10, builder -> builder.status(Status.IN_PROGRESS));
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.SUBMITTED);
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + Status.SUBMITTED);
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -1156,15 +1151,15 @@ public class ApplicationTest extends BaseIntegrationTest {
         void givenApplicationsFilteredBySubmittedStatusWithPaging_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
             // given
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory
-                    .createAndPersistMultiple(17, builder -> builder.status(ApplicationStatus.SUBMITTED))
+                    .createAndPersistMultiple(17, builder -> builder.status(Status.SUBMITTED))
                     .stream()
                     .map(this::createApplicationSummary)
                     .toList();
-            persistedApplicationFactory.createAndPersistMultiple(10, builder -> builder.status(ApplicationStatus.IN_PROGRESS));
+            persistedApplicationFactory.createAndPersistMultiple(10, builder -> builder.status(Status.IN_PROGRESS));
 
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
-                    + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.SUBMITTED
+                    + "?" + SEARCH_STATUS_PARAM + Status.SUBMITTED
                     + "&" + SEARCH_PAGE_PARAM + "2");
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
@@ -1215,11 +1210,11 @@ public class ApplicationTest extends BaseIntegrationTest {
         void givenApplicationsFilteredByFirstNameAndStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
             // given
             persistedApplicationFactory.createAndPersistMultiple(8, builder ->
-                    builder.status(ApplicationStatus.IN_PROGRESS)
+                    builder.status(Status.IN_PROGRESS)
                             .individuals(Set.of(individualFactory.create(i -> i.firstName("Jane")))));
 
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory.createAndPersistMultiple(7, builder ->
-                            builder.status(ApplicationStatus.SUBMITTED)
+                            builder.status(Status.SUBMITTED)
                                     .individuals(Set.of(individualFactory.create(i -> i.firstName("Jane")))))
                     .stream()
                     .map(this::createApplicationSummary)
@@ -1227,7 +1222,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
-                    + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.SUBMITTED
+                    + "?" + SEARCH_STATUS_PARAM + Status.SUBMITTED
                     + "&" + SEARCH_FIRSTNAME_PARAM + "Jane");
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
@@ -1277,15 +1272,15 @@ public class ApplicationTest extends BaseIntegrationTest {
         void givenApplicationsFilteredByLastNameAndStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
             // given
             persistedApplicationFactory.createAndPersistMultiple(1, builder ->
-                    builder.status(ApplicationStatus.IN_PROGRESS)
+                    builder.status(Status.IN_PROGRESS)
                             .individuals(Set.of(individualFactory.create(i -> i.lastName("David")))));
 
             List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(7, builder ->
-                    builder.status(ApplicationStatus.SUBMITTED)
+                    builder.status(Status.SUBMITTED)
                             .individuals(Set.of(individualFactory.create(i -> i.lastName("David")))));
 
             persistedApplicationFactory.createAndPersistMultiple(5, builder ->
-                    builder.status(ApplicationStatus.IN_PROGRESS)
+                    builder.status(Status.IN_PROGRESS)
                             .individuals(Set.of(individualFactory.create(i -> i.lastName("Smith")))));
 
             List<ApplicationSummary> expectedApplicationsSummary = expectedApplications.stream()
@@ -1294,7 +1289,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
-                    + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.SUBMITTED
+                    + "?" + SEARCH_STATUS_PARAM + Status.SUBMITTED
                     + "&" + SEARCH_LASTNAME_PARAM + "David");
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
@@ -1343,10 +1338,10 @@ public class ApplicationTest extends BaseIntegrationTest {
         void givenApplicationsFilteredByFirstNameAndLastNameAndStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
             // given
             List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(1, builder ->
-                    builder.status(ApplicationStatus.IN_PROGRESS)
+                    builder.status(Status.IN_PROGRESS)
                             .individuals(Set.of(individualFactory.create(i -> i.firstName("George").lastName("Theodore")))));
 
-            persistedApplicationFactory.createAndPersistMultiple(3, builder -> builder.status(ApplicationStatus.SUBMITTED)
+            persistedApplicationFactory.createAndPersistMultiple(3, builder -> builder.status(Status.SUBMITTED)
                     .individuals(Set.of(individualFactory.create(i -> i.firstName("George").lastName("Theodore")))));
             persistedApplicationFactory.createAndPersistMultiple(2, builder -> builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Lucas").lastName("Jones")))));
             persistedApplicationFactory.createAndPersistMultiple(5, builder -> builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Victoria").lastName("Theodore")))));
@@ -1357,7 +1352,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
-                    + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.IN_PROGRESS
+                    + "?" + SEARCH_STATUS_PARAM + Status.IN_PROGRESS
                     + "&" + SEARCH_FIRSTNAME_PARAM + "George"
                     + "&" + SEARCH_LASTNAME_PARAM + "Theodore");
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
@@ -1377,10 +1372,10 @@ public class ApplicationTest extends BaseIntegrationTest {
         void givenApplicationsFilteredByFirstNameAndLastNameAndStatusWithPaging_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
             // given
             List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(13, builder ->
-                    builder.status(ApplicationStatus.IN_PROGRESS)
+                    builder.status(Status.IN_PROGRESS)
                             .individuals(Set.of(individualFactory.create(i -> i.firstName("George").lastName("Theodore")))));
 
-            persistedApplicationFactory.createAndPersistMultiple(3, builder -> builder.status(ApplicationStatus.SUBMITTED)
+            persistedApplicationFactory.createAndPersistMultiple(3, builder -> builder.status(Status.SUBMITTED)
                     .individuals(Set.of(individualFactory.create(i -> i.firstName("George").lastName("Theodore")))));
             persistedApplicationFactory.createAndPersistMultiple(2, builder -> builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Lucas").lastName("Jones")))));
             persistedApplicationFactory.createAndPersistMultiple(5, builder -> builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Victoria").lastName("Theodore")))));
@@ -1391,7 +1386,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
-                    + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.IN_PROGRESS
+                    + "?" + SEARCH_STATUS_PARAM + Status.IN_PROGRESS
                     + "&" + SEARCH_FIRSTNAME_PARAM + "George"
                     + "&" + SEARCH_LASTNAME_PARAM + "Theodore"
                     + "&" + SEARCH_PAGE_PARAM + "2");
@@ -1413,22 +1408,22 @@ public class ApplicationTest extends BaseIntegrationTest {
             // given
             persistedApplicationFactory.createAndPersistMultiple(7, builder ->
                     builder
-                            .status(ApplicationStatus.IN_PROGRESS)
+                            .status(Status.IN_PROGRESS)
                             .individuals(Set.of(individualFactory.create(i -> i.firstName("George").lastName("Theodore")))));
             persistedApplicationFactory.createAndPersistMultiple(3, builder ->
                     builder
-                            .status(ApplicationStatus.SUBMITTED)
+                            .status(Status.SUBMITTED)
                             .individuals(Set.of(individualFactory.create(i -> i.firstName("George").lastName("Theodore")))));
             persistedApplicationFactory.createAndPersistMultiple(2, builder ->
                     builder
-                            .status(ApplicationStatus.SUBMITTED)
+                            .status(Status.SUBMITTED)
                             .individuals(Set.of(individualFactory.create(i -> i.firstName("Lucas").lastName("Jones")))));
             persistedApplicationFactory.createAndPersistMultiple(5, builder ->
                     builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Victoria").lastName("Theodore")))));
 
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
-                    + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.IN_PROGRESS
+                    + "?" + SEARCH_STATUS_PARAM + Status.IN_PROGRESS
                     + "&" + SEARCH_FIRSTNAME_PARAM + "Lucas"
                     + "&" + SEARCH_LASTNAME_PARAM + "Jones");
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
@@ -1475,7 +1470,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         public void givenPageZero_whenGetApplications_thenDefaultToPageOneAndReturnCorrectResults() throws Exception {
             // given
             List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(15, builder ->
-                    builder.status(ApplicationStatus.IN_PROGRESS));
+                    builder.status(Status.IN_PROGRESS));
 
             List<ApplicationSummary> expectedApplicationsSummary = expectedApplications.stream()
                     .map(this::createApplicationSummary)
@@ -1551,12 +1546,12 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         private Stream<Arguments> applicationsSummaryFilteredByStatusCases() {
             return Stream.of(
-                    Arguments.of(ApplicationStatus.IN_PROGRESS, (Supplier<List<ApplicationSummary>>) () -> generateApplicationSummaries(ApplicationStatus.IN_PROGRESS, 8), 8),
-                    Arguments.of(ApplicationStatus.SUBMITTED, (Supplier<List<ApplicationSummary>>) () -> generateApplicationSummaries(ApplicationStatus.SUBMITTED, 5), 5)
+                    Arguments.of(Status.IN_PROGRESS, (Supplier<List<ApplicationSummary>>) () -> generateApplicationSummaries(Status.IN_PROGRESS, 8), 8),
+                    Arguments.of(Status.SUBMITTED, (Supplier<List<ApplicationSummary>>) () -> generateApplicationSummaries(Status.SUBMITTED, 5), 5)
             );
         }
 
-        private List<ApplicationSummary> generateApplicationSummaries(ApplicationStatus status, int numberOfApplications) {
+        private List<ApplicationSummary> generateApplicationSummaries(Status status, int numberOfApplications) {
             Random random = new Random();
 
             return persistedApplicationFactory.createAndPersistMultiple(numberOfApplications, builder ->
@@ -1569,13 +1564,20 @@ public class ApplicationTest extends BaseIntegrationTest {
         private ApplicationSummary createApplicationSummary(ApplicationEntity applicationEntity) {
             ApplicationSummary applicationSummary = new ApplicationSummary();
             applicationSummary.setApplicationId(applicationEntity.getId());
-            applicationSummary.setApplicationStatus(applicationEntity.getStatus());
+            applicationSummary.setStatus(applicationEntity.getStatus());
+            applicationSummary.setSubmittedAt(OffsetDateTime.ofInstant(applicationEntity.getSubmittedAt(), ZoneOffset.UTC));
+            applicationSummary.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getModifiedAt(), ZoneOffset.UTC));
+            applicationSummary.setUsedDelegatedFunctions(applicationEntity.isUseDelegatedFunctions());
+            applicationSummary.setCategoryOfLaw(applicationEntity.getCategoryOfLaw());
+            applicationSummary.setMatterType(applicationEntity.getMatterType());
+            applicationSummary.setAssignedTo(applicationEntity.getCaseworker() != null ? applicationEntity.getCaseworker().getId() : null);
+            applicationSummary.autoGrant(applicationEntity.isAutoGranted());
             applicationSummary.setLaaReference(applicationEntity.getLaaReference());
             applicationSummary.setCreatedAt(OffsetDateTime.ofInstant(applicationEntity.getCreatedAt(), ZoneOffset.UTC));
-            applicationSummary.setModifiedAt(OffsetDateTime.ofInstant(applicationEntity.getModifiedAt(), ZoneOffset.UTC));
-            if (applicationEntity.getCaseworker() != null) {
-                applicationSummary.setAssignedTo(applicationEntity.getCaseworker().getId());
-            }
+            applicationSummary.setApplicationType(ApplicationType.INITIAL);
+            applicationSummary.setClientFirstName(applicationEntity.getIndividuals().stream().findFirst().get().getFirstName());
+            applicationSummary.setClientLastName(applicationEntity.getIndividuals().stream().findFirst().get().getLastName());
+            applicationSummary.setClientDateOfBirth(applicationEntity.getIndividuals().stream().findFirst().get().getDateOfBirth());
             return applicationSummary;
         }
     }
