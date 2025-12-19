@@ -47,7 +47,7 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.Status;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
@@ -90,7 +90,7 @@ public class ApplicationControllerIntegrationTest {
 
   private ApplicationCreateRequest buildApplication() {
     return ApplicationCreateRequest.builder()
-          .status(ApplicationStatus.SUBMITTED)
+          .status(Status.SUBMITTED)
           .laaReference("app_ref")
           .applicationContent(Map.of(
                   "id", "71489fb1-742e-4e72-8b0a-db7b9a0cd100",
@@ -129,7 +129,7 @@ public class ApplicationControllerIntegrationTest {
         .andExpect(MockMvcResultMatchers.status().isUnauthorized());
   }
 
-  ApplicationSummaryEntity createApplicationSummaryEntity(ApplicationStatus status) {
+  ApplicationSummaryEntity createApplicationSummaryEntity(Status status) {
     ApplicationSummaryEntity entity;
 
     entity = new ApplicationSummaryEntity();
@@ -139,25 +139,31 @@ public class ApplicationControllerIntegrationTest {
     entity.setModifiedAt(Instant.now());
     entity.setStatus(status);
 
+    IndividualEntity individual = IndividualEntity.builder()
+                                      .firstName("John")
+                                      .lastName("Doe")
+                                      .dateOfBirth(LocalDate.of(1981, 3, 6))
+                                      .build();
+    entity.setIndividuals(Set.of(individual));
     return entity;
   }
 
   List<ApplicationSummaryEntity> createMixedStatusSummaryList() {
     List<ApplicationSummaryEntity> entities = new ArrayList<>();
 
-    entities.add(createApplicationSummaryEntity(ApplicationStatus.IN_PROGRESS));
-    entities.add(createApplicationSummaryEntity(ApplicationStatus.IN_PROGRESS));
-    entities.add(createApplicationSummaryEntity(ApplicationStatus.SUBMITTED));
-    entities.add(createApplicationSummaryEntity(ApplicationStatus.IN_PROGRESS));
+    entities.add(createApplicationSummaryEntity(Status.IN_PROGRESS));
+    entities.add(createApplicationSummaryEntity(Status.IN_PROGRESS));
+    entities.add(createApplicationSummaryEntity(Status.SUBMITTED));
+    entities.add(createApplicationSummaryEntity(Status.IN_PROGRESS));
     return entities;
   }
 
   List<ApplicationSummaryEntity> createSubmittedStatusSummaryList() {
     List<ApplicationSummaryEntity> entities = new ArrayList<>();
 
-    entities.add(createApplicationSummaryEntity(ApplicationStatus.SUBMITTED));
-    entities.add(createApplicationSummaryEntity(ApplicationStatus.SUBMITTED));
-    entities.add(createApplicationSummaryEntity(ApplicationStatus.SUBMITTED));
+    entities.add(createApplicationSummaryEntity(Status.SUBMITTED));
+    entities.add(createApplicationSummaryEntity(Status.SUBMITTED));
+    entities.add(createApplicationSummaryEntity(Status.SUBMITTED));
     return entities;
   }
 
@@ -287,7 +293,7 @@ public class ApplicationControllerIntegrationTest {
         .andExpect(MockMvcResultMatchers.status().isOk())
         .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.first_name").value("Jane"))
         .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.last_name").value("Smith"))
-        .andExpect(MockMvcResultMatchers.jsonPath("$.applicationStatus").value("IN_PROGRESS"));
+        .andExpect(MockMvcResultMatchers.jsonPath("$.status").value("IN_PROGRESS"));
   }
 
 
@@ -317,7 +323,7 @@ public class ApplicationControllerIntegrationTest {
         .andExpect(MockMvcResultMatchers.status().isOk())
         .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.first_name").value("Alice"))
         .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.last_name").value("Wonder"))
-        .andExpect(MockMvcResultMatchers.jsonPath("$.applicationStatus").value("SUBMITTED")); // original status
+        .andExpect(MockMvcResultMatchers.jsonPath("$.status").value("SUBMITTED")); // original status
   }
 
   @Test
@@ -372,7 +378,7 @@ public class ApplicationControllerIntegrationTest {
   @Order(12)
   void shouldReturnIndividuals() throws Exception {
     ApplicationEntity app = new ApplicationEntity();
-    app.setStatus(ApplicationStatus.SUBMITTED);
+    app.setStatus(Status.SUBMITTED);
     app.setApplicationContent(Map.of("foo", "bar"));
     app.setCreatedAt(Instant.now());
     app.setModifiedAt(Instant.now());
@@ -409,7 +415,7 @@ public class ApplicationControllerIntegrationTest {
     CaseworkerEntity caseworkerEntity = CaseworkerEntity.builder().username("caseworker1").build();
     final UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworkerEntity).getId();
     ApplicationEntity app = ApplicationEntity.builder()
-                                             .status(ApplicationStatus.SUBMITTED)
+                                             .status(Status.SUBMITTED)
                                              .caseworker(caseworkerEntity)
                                              .applicationContent(Map.of("foo", "bar"))
                                              .build();
@@ -427,7 +433,7 @@ public class ApplicationControllerIntegrationTest {
   void shouldReturnEmptyIndividualsList() throws Exception {
 
     ApplicationEntity app = new ApplicationEntity();
-    app.setStatus(ApplicationStatus.SUBMITTED);
+    app.setStatus(Status.SUBMITTED);
     app.setSchemaVersion(1);
     app.setApplicationContent(Map.of("first_name", "Alice", "last_name", "Wonder"));
     app.setCreatedAt(Instant.now());
@@ -453,7 +459,7 @@ public class ApplicationControllerIntegrationTest {
     UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
 
     ApplicationEntity app = ApplicationEntity.builder()
-        .status(ApplicationStatus.SUBMITTED)
+        .status(Status.SUBMITTED)
         .applicationContent(Map.of("foo", "bar"))
         .createdAt(Instant.now())
         .modifiedAt(Instant.now())
@@ -488,13 +494,13 @@ public class ApplicationControllerIntegrationTest {
     UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
 
     ApplicationEntity app = ApplicationEntity.builder()
-        .status(ApplicationStatus.SUBMITTED)
+        .status(Status.SUBMITTED)
         .applicationContent(Map.of("foo", "bar"))
         .createdAt(Instant.now())
         .modifiedAt(Instant.now())
         .build();
     ApplicationEntity app2 = ApplicationEntity.builder()
-        .status(ApplicationStatus.SUBMITTED)
+        .status(Status.SUBMITTED)
         .applicationContent(Map.of("foo", "bar"))
         .createdAt(Instant.now())
         .modifiedAt(Instant.now())
@@ -533,7 +539,7 @@ public class ApplicationControllerIntegrationTest {
     UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
 
     ApplicationEntity app = ApplicationEntity.builder()
-        .status(ApplicationStatus.SUBMITTED)
+        .status(Status.SUBMITTED)
         .applicationContent(Map.of("foo", "bar"))
         .createdAt(Instant.now())
         .modifiedAt(Instant.now())
@@ -570,7 +576,7 @@ public class ApplicationControllerIntegrationTest {
     UUID caseworkerOtherId = caseworkerRepository.saveAndFlush(caseworkerOther).getId();
 
     ApplicationEntity app = ApplicationEntity.builder()
-        .status(ApplicationStatus.SUBMITTED)
+        .status(Status.SUBMITTED)
         .caseworker(caseworker)
         .applicationContent(Map.of("foo", "bar"))
         .createdAt(Instant.now())
@@ -629,7 +635,7 @@ public class ApplicationControllerIntegrationTest {
   @Transactional
   void shouldReturn404WhenCaseworkerDoesNotExist() throws Exception {
     ApplicationEntity app = ApplicationEntity.builder()
-        .status(ApplicationStatus.SUBMITTED)
+        .status(Status.SUBMITTED)
         .applicationContent(Map.of("foo", "bar"))
         .createdAt(Instant.now())
         .modifiedAt(Instant.now())
@@ -657,7 +663,7 @@ public class ApplicationControllerIntegrationTest {
   @Transactional
   void shouldReturn400WhenCaseworkerIdMissing() throws Exception {
     ApplicationEntity app = ApplicationEntity.builder()
-        .status(ApplicationStatus.SUBMITTED)
+        .status(Status.SUBMITTED)
         .applicationContent(Map.of("foo", "bar"))
         .createdAt(Instant.now())
         .modifiedAt(Instant.now())
@@ -686,7 +692,7 @@ public class ApplicationControllerIntegrationTest {
     UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
 
     ApplicationEntity app = ApplicationEntity.builder()
-        .status(ApplicationStatus.SUBMITTED)
+        .status(Status.SUBMITTED)
         .caseworker(caseworker)
         .applicationContent(Map.of("foo", "bar"))
         .createdAt(Instant.now())
@@ -733,7 +739,7 @@ public class ApplicationControllerIntegrationTest {
     UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
 
     ApplicationEntity app = ApplicationEntity.builder()
-            .status(ApplicationStatus.SUBMITTED)
+            .status(Status.SUBMITTED)
             .applicationContent(Map.of("foo", "bar"))
             .createdAt(Instant.now())
             .modifiedAt(Instant.now())
@@ -766,7 +772,7 @@ public class ApplicationControllerIntegrationTest {
     UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworker).getId();
 
     ApplicationEntity app = ApplicationEntity.builder()
-            .status(ApplicationStatus.SUBMITTED)
+            .status(Status.SUBMITTED)
             .applicationContent(Map.of("foo", "bar"))
             .createdAt(Instant.now())
             .modifiedAt(Instant.now())

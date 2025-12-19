@@ -102,7 +102,7 @@ public interface ApplicationMapper {
     try {
       Application application = new Application();
       application.setId(entity.getId());
-      application.setApplicationStatus(entity.getStatus());
+      application.setStatus(entity.getStatus());
       application.setSchemaVersion(entity.getSchemaVersion());
       application.setApplicationContent(
           objectMapper.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));

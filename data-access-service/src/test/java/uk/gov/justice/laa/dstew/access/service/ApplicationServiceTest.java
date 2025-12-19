@@ -56,7 +56,7 @@ public class ApplicationServiceTest {
   @Test
   void shouldCreateApplication() {
     ApplicationCreateRequest req = new ApplicationCreateRequest();
-    req.setStatus(ApplicationStatus.IN_PROGRESS);
+    req.setStatus(Status.IN_PROGRESS);
 
     ApplicationEntity entity = new ApplicationEntity();
     when(mapper.toApplicationEntity(req)).thenReturn(entity);
@@ -73,7 +73,7 @@ public class ApplicationServiceTest {
   void shouldGetAllApplications() {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setId(UUID.randomUUID());
-    entity.setStatus(ApplicationStatus.IN_PROGRESS);
+    entity.setStatus(Status.IN_PROGRESS);
 
     when(repository.findAll()).thenReturn(List.of(entity));
     when(mapper.toApplication(entity)).thenReturn(new Application());
