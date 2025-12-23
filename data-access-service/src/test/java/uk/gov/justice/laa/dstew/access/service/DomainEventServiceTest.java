@@ -12,12 +12,16 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -174,4 +178,68 @@ public class DomainEventServiceTest {
                          .data("{ \"foo\" : \"bar\"}")
                          .build();
     }
+
+    @Test
+    void shouldSaveCreateApplicationDomainEvent() throws JsonProcessingException {
+        UUID applicationId = UUID.randomUUID();
+        String createdBy = null;
+        String jsonObject = "{\"applicationId\":\"" + applicationId + "\"}";
+
+        ApplicationEntity applicationEntity = ApplicationEntity.builder()
+            .id(applicationId)
+            .status(ApplicationStatus.IN_PROGRESS)
+            .build();
+
+        when(objectMapper.writeValueAsString(any(CreateApplicationDomainEventDetails.class)))
+            .thenReturn(jsonObject);
+
+        service.saveCreateApplicationDomainEvent(applicationEntity, createdBy);
+
+        verify(objectMapper, times(1))
+            .writeValueAsString(any(CreateApplicationDomainEventDetails.class));
+
+        verify(repository, times(1)).save(
+            argThat(entity ->
+                entity.getApplicationId().equals(applicationId)
+                    && entity.getCaseworkerId() == null
+                    && entity.getType() == DomainEventType.APPLICATION_CREATED
+                    && entity.getData().equals(jsonObject)
+                    && entity.getCreatedBy() == null
+                    && entity.getCreatedAt() != null
+            )
+        );
+    }
+
+    @Test
+    void shouldSaveUpdateApplicationDomainEvent() throws JsonProcessingException {
+        UUID applicationId = UUID.randomUUID();
+        String createdBy = null;
+        String jsonObject = "{\"field\":\"data\"}";
+
+        ApplicationEntity applicationEntity = ApplicationEntity.builder()
+            .id(applicationId)
+            .status(ApplicationStatus.IN_PROGRESS)
+            .build();
+
+        when(objectMapper.writeValueAsString(any(UpdateApplicationDomainEventDetails.class)))
+            .thenReturn(jsonObject);
+
+        service.saveUpdateApplicationDomainEvent(applicationEntity, null);
+
+        verify(objectMapper, times(1))
+            .writeValueAsString(any(UpdateApplicationDomainEventDetails.class));
+
+        verify(repository, times(1)).save(
+            argThat(entity ->
+                entity.getApplicationId().equals(applicationId)
+                    && entity.getCaseworkerId() == null
+                    && entity.getType() == DomainEventType.APPLICATION_UPDATED
+                    && entity.getData().equals(jsonObject)
+                    && entity.getCreatedBy() == null
+                    && entity.getCreatedAt() != null
+            )
+        );
+    }
+
+
 }

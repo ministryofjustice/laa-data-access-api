@@ -11,12 +11,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
@@ -31,16 +34,130 @@ public class DomainEventService {
   private final DomainEventMapper mapper;
 
   /**
-   * posts a domain event {@link DomainEventEntity} object.
+   * Shared internal logic for persisting domain events.
+   *
+   */
+  private void saveDomainEvent(
+      UUID applicationId,
+      UUID caseworkerId,
+      DomainEventType eventType,
+      Object data) {
+
+    try {
+      DomainEventEntity entity =
+          DomainEventEntity.builder()
+              .applicationId(applicationId)
+              .caseworkerId(caseworkerId)
+              .createdAt(Instant.now())
+              .createdBy("")
+              .type(eventType)
+              .data(objectMapper.writeValueAsString(data))
+              .build();
+
+      domainEventRepository.save(entity);
+
+    } catch (JsonProcessingException e) {
+      throw new DomainEventPublishException(
+          String.format("Unable to save Domain Event of type: %s", eventType.name())
+      );
+    }
+  }
+
+  /**
+   * Posts an APPLICATION_CREATED domain event.
+   *
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  public void saveCreateApplicationDomainEvent(
+      ApplicationEntity applicationEntity,
+      String createdBy) {
+
+    CreateApplicationDomainEventDetails data =
+        CreateApplicationDomainEventDetails.builder()
+            .applicationId(applicationEntity.getId())
+            .createdAt(Instant.now())
+            .createdBy(createdBy)
+            .applicationStatus(String.valueOf(applicationEntity.getStatus()))
+            .applicationContent(String.valueOf(applicationEntity))
+            .build();
+
+    DomainEventEntity domainEventEntity;
+    try {
+      domainEventEntity =
+          DomainEventEntity.builder()
+              .applicationId(applicationEntity.getId())
+              .caseworkerId(null)
+              .type(DomainEventType.APPLICATION_CREATED)
+              .data(objectMapper.writeValueAsString(data))
+              .createdAt(Instant.now())
+              .createdBy(createdBy)
+              .build();
+    } catch (JsonProcessingException e) {
+      throw new DomainEventPublishException(
+          String.format(
+              "Unable to save Domain Event of type: %s",
+              DomainEventType.APPLICATION_CREATED.name()
+          )
+      );
+    }
+
+    domainEventRepository.save(domainEventEntity);
+  }
+
+  /**
+   * Posts an APPLICATION_UPDATED domain event.
+   *
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  public void saveUpdateApplicationDomainEvent(
+      ApplicationEntity applicationEntity,
+      String updatedBy) {
+
+    UpdateApplicationDomainEventDetails data =
+        UpdateApplicationDomainEventDetails.builder()
+            .applicationId(applicationEntity.getId())
+            .updatedAt(applicationEntity.getModifiedAt())
+            .updatedBy(updatedBy)
+            .applicationStatus(String.valueOf(applicationEntity.getStatus()))
+            .applicationContent(String.valueOf(applicationEntity))
+            .build();
+
+    DomainEventEntity domainEventEntity;
+    try {
+      domainEventEntity =
+          DomainEventEntity.builder()
+              .applicationId(applicationEntity.getId())
+              .caseworkerId(null)
+              .type(DomainEventType.APPLICATION_UPDATED)
+              .data(objectMapper.writeValueAsString(data))
+              .createdAt(Instant.now())
+              .createdBy(updatedBy)
+              .build();
+    } catch (JsonProcessingException e) {
+      throw new DomainEventPublishException(
+          String.format(
+              "Unable to save Domain Event of type: %s",
+              DomainEventType.APPLICATION_UPDATED.name()
+          )
+      );
+    }
+
+    domainEventRepository.save(domainEventEntity);
+  }
+
+
+  /**
+   * Posts an ASSIGN_APPLICATION_TO_CASEWORKER domain event.
    *
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void saveAssignApplicationDomainEvent(
-                    UUID applicationId,
-                    UUID caseworkerId,
-                    String eventDescription) {
+      UUID applicationId,
+      UUID caseworkerId,
+      String eventDescription) {
 
-    AssignApplicationDomainEventDetails data = AssignApplicationDomainEventDetails.builder()
+    AssignApplicationDomainEventDetails data =
+        AssignApplicationDomainEventDetails.builder()
             .applicationId(applicationId)
             .caseWorkerId(caseworkerId)
             .createdAt(Instant.now())
@@ -48,21 +165,12 @@ public class DomainEventService {
             .eventDescription(eventDescription)
             .build();
 
-    DomainEventEntity domainEventEntity = null;
-    try {
-      domainEventEntity = DomainEventEntity.builder()
-                  .applicationId(applicationId)
-                  .caseworkerId(caseworkerId)
-                  .createdAt(Instant.now())
-                  .createdBy("")
-                  .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
-                  .data(objectMapper.writeValueAsString(data))
-                  .build();
-    } catch (JsonProcessingException e) {
-      throw new DomainEventPublishException(String.format("Unable to save Domain Event of type: %s",
-                  DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER.name()));
-    }
-    domainEventRepository.save(domainEventEntity);
+    saveDomainEvent(
+        applicationId,
+        caseworkerId,
+        DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
+        data
+    );
   }
 
   /**

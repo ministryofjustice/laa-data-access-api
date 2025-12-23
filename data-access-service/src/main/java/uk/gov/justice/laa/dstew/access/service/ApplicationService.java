@@ -103,6 +103,8 @@ public class ApplicationService {
     entity.setSchemaVersion(applicationVersion);
     final ApplicationEntity saved = applicationRepository.save(entity);
 
+    domainEventService.saveCreateApplicationDomainEvent(saved, null);
+
     createAndSendHistoricRecord(saved, null);
 
     return saved.getId();
@@ -121,6 +123,8 @@ public class ApplicationService {
     applicationMapper.updateApplicationEntity(entity, req);
     entity.setModifiedAt(Instant.now());
     applicationRepository.save(entity);
+
+    domainEventService.saveUpdateApplicationDomainEvent(entity, null);
 
     // Optional: create snapshot for audit/history
     objectMapper.convertValue(
