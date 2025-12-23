@@ -244,6 +244,7 @@ components:
     domainEventType:
       type: string
       enum:
+        - APPLICATION_CREATED
         - ASSIGN_APPLICATION_TO_CASEWORKER
         - UNASSIGN_APPLICATION_TO_CASEWORKER
 
@@ -419,8 +420,6 @@ components:
       properties:
         eventHistory:
           $ref: "#/components/schemas/EventHistory"
-
-
 
     ApplicationHistoryResponse:
       type: object

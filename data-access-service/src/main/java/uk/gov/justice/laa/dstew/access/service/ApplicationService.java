@@ -103,6 +103,8 @@ public class ApplicationService {
     entity.setSchemaVersion(applicationVersion);
     final ApplicationEntity saved = applicationRepository.save(entity);
 
+    domainEventService.saveCreateApplicationDomainEvent(saved, null);
+
     createAndSendHistoricRecord(saved, null);
 
     return saved.getId();
