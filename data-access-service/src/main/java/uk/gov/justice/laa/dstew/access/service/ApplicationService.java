@@ -124,6 +124,8 @@ public class ApplicationService {
     entity.setModifiedAt(Instant.now());
     applicationRepository.save(entity);
 
+    domainEventService.saveUpdateApplicationDomainEvent(entity, null);
+
     // Optional: create snapshot for audit/history
     objectMapper.convertValue(
         applicationMapper.toApplication(entity),

@@ -19,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
@@ -102,6 +103,48 @@ public class DomainEventService {
 
     domainEventRepository.save(domainEventEntity);
   }
+
+  /**
+   * Posts an APPLICATION_UPDATED domain event.
+   *
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  public void saveUpdateApplicationDomainEvent(
+      ApplicationEntity applicationEntity,
+      String updatedBy) {
+
+    UpdateApplicationDomainEventDetails data =
+        UpdateApplicationDomainEventDetails.builder()
+            .applicationId(applicationEntity.getId())
+            .updatedAt(applicationEntity.getModifiedAt())
+            .updatedBy(updatedBy)
+            .applicationStatus(String.valueOf(applicationEntity.getStatus()))
+            .applicationContent(String.valueOf(applicationEntity))
+            .build();
+
+    DomainEventEntity domainEventEntity;
+    try {
+      domainEventEntity =
+          DomainEventEntity.builder()
+              .applicationId(applicationEntity.getId())
+              .caseworkerId(null)
+              .type(DomainEventType.APPLICATION_UPDATED)
+              .data(objectMapper.writeValueAsString(data))
+              .createdAt(Instant.now())
+              .createdBy(updatedBy)
+              .build();
+    } catch (JsonProcessingException e) {
+      throw new DomainEventPublishException(
+          String.format(
+              "Unable to save Domain Event of type: %s",
+              DomainEventType.APPLICATION_UPDATED.name()
+          )
+      );
+    }
+
+    domainEventRepository.save(domainEventEntity);
+  }
+
 
   /**
    * Posts an ASSIGN_APPLICATION_TO_CASEWORKER domain event.
