@@ -49,6 +49,7 @@ openApiGenerate {
             useJakartaEe        : "true",
             useSpringBoot3      : "true",
             useTags             : "true",
+            useBeanValidation   : "false"
     ]
     globalProperties = [
             models              : "", // omitting `supportingFiles` prevents generation of
