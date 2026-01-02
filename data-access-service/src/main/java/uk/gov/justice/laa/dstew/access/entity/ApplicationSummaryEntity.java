@@ -16,18 +16,19 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+
+import lombok.*;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 /**
  * Represents an application summary for legal aid.
  * Will be removed when merged into new application structures
  */
+@Builder(toBuilder = true)
+@AllArgsConstructor
+@NoArgsConstructor
 @Getter
 @Setter
-@RequiredArgsConstructor
 @Entity
 @Table(name = "applications")
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)

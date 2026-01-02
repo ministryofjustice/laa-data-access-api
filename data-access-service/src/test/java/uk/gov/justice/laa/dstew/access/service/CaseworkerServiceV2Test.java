@@ -52,10 +52,10 @@ public class CaseworkerServiceV2Test extends BaseServiceTest {
 
             // when
             // then
-            verify(caseworkerRepository, never()).findAll();
             assertThatExceptionOfType(AuthorizationDeniedException.class)
                     .isThrownBy(() -> serviceUnderTest.getAllCaseworkers())
                     .withMessageContaining("Access Denied");
+            verify(caseworkerRepository, never()).findAll();
         }
 
         @Test
@@ -63,10 +63,10 @@ public class CaseworkerServiceV2Test extends BaseServiceTest {
             // given
             // when
             // then
-            verify(caseworkerRepository, never()).findAll();
             assertThatExceptionOfType(AuthorizationDeniedException.class)
                     .isThrownBy(() -> serviceUnderTest.getAllCaseworkers())
                     .withMessageContaining("Access Denied");
+            verify(caseworkerRepository, never()).findAll();
         }
 
         private void assertCaseworkerListsEqual(List<Caseworker> actualList, List<CaseworkerEntity> expectedList) {

@@ -35,4 +35,17 @@ public class ApplicationEntityFactory extends BaseFactory<ApplicationEntity, App
                 .applicationContent(Map.of("test", "content"))
                 .build();
     }
+
+    @Override
+    public ApplicationEntity createRandom() {
+        return createDefault().toBuilder()
+                .laaReference(faker.bothify("REF####"))
+                .individuals(Set.of(
+                        individualEntityFactory.createRandom()
+                ))
+                .applicationContent(Map.of(
+                        "test", faker.text().text(50)
+                ))
+                .build();
+    }
 }
