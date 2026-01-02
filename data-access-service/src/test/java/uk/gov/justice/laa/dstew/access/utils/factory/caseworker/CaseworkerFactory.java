@@ -2,14 +2,10 @@ package uk.gov.justice.laa.dstew.access.utils.factory.caseworker;
 
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
-import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
-import java.util.function.Consumer;
 
 @Component
 public class CaseworkerFactory extends BaseFactory<CaseworkerEntity, CaseworkerEntity.CaseworkerEntityBuilder> {
