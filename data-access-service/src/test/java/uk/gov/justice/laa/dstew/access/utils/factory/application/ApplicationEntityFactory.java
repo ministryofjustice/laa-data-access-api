@@ -1,17 +1,16 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.testcontainers.shaded.org.apache.commons.lang3.NotImplementedException;
+import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
-import uk.gov.justice.laa.dstew.access.utils.individual.IndividualEntityFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualEntityFactory;
 
 import java.time.InstantSource;
 import java.util.*;
 
-@Service
+@Component
 public class ApplicationEntityFactory extends BaseFactory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder> {
 
     @Autowired

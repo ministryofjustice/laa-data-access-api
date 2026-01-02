@@ -1,17 +1,14 @@
-package uk.gov.justice.laa.dstew.access.utils.individual;
+package uk.gov.justice.laa.dstew.access.utils.factory.individual;
 
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
 
-@Service
+@Component
 public class IndividualEntityFactory extends BaseFactory<IndividualEntity, IndividualEntity.IndividualEntityBuilder> {
 
     public IndividualEntityFactory() {

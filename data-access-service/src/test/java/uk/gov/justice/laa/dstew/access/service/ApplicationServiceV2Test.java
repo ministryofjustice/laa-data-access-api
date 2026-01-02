@@ -19,7 +19,7 @@ import uk.gov.justice.laa.dstew.access.exception.CaseworkerNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-import uk.gov.justice.laa.dstew.access.utils.caseworker.CaseworkerFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactory;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 import java.util.*;
@@ -30,7 +30,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ApplicationAsserts.assertApplicationEqual;
 
 public class ApplicationServiceV2Test extends BaseServiceTest {
 
@@ -99,6 +98,17 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .withMessageContaining("Access Denied");
 
             verify(applicationRepository, times(0)).findById(any(UUID.class));
+        }
+
+        public void assertApplicationEqual(ApplicationEntity expectedApplication, Application actualApplication) {
+            assertThat(actualApplication.getApplicationStatus()).isEqualTo(expectedApplication.getStatus());
+            assertThat(actualApplication.getLaaReference()).isEqualTo(expectedApplication.getLaaReference());
+            assertThat(actualApplication.getApplicationContent())
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .isEqualTo(expectedApplication.getApplicationContent());
+
+            assertIndividualCollectionsEqual(actualApplication.getIndividuals(), expectedApplication.getIndividuals());
         }
     }
 
@@ -460,7 +470,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // given
             UUID applicationId = UUID.randomUUID();
 
-            CaseworkerEntity expectedCaseworker = CaseworkerFactory.create();
+            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
 
             ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
                     builder.id(applicationId).caseworker(null)
@@ -531,7 +541,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     builder.id(existingApplicationId).caseworker(null)
             );
 
-            CaseworkerEntity expectedCaseworker = CaseworkerFactory.create();
+            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
 
             List<UUID> applicationIds = List.of(existingApplicationId, existingApplicationId, existingApplicationId);
             List<UUID> distinctApplicationIds = Stream.of(existingApplicationId).toList();
@@ -579,7 +589,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     builder.id(existingApplicationId).caseworker(null)
             );
 
-            CaseworkerEntity expectedCaseworker = CaseworkerFactory.create();
+            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
 
             List<UUID> applicationIds = List.of(UUID.randomUUID(), existingApplicationId, UUID.randomUUID());
 
@@ -665,7 +675,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // given
             UUID applicationId = UUID.randomUUID();
 
-            CaseworkerEntity expectedCaseworker = CaseworkerFactory.create();
+            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
 
             ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
                     builder.id(applicationId).caseworker(expectedCaseworker)
@@ -816,12 +826,12 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // given
             UUID applicationId = UUID.randomUUID();
 
-            CaseworkerEntity existingCaseworker = CaseworkerFactory.create(builder ->
+            CaseworkerEntity existingCaseworker = caseworkerFactory.createDefault(builder ->
                     builder.id(UUID.randomUUID())
                             .username("John Doe")
             );
 
-            CaseworkerEntity expectedCaseworker = CaseworkerFactory.create(builder ->
+            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault(builder ->
                     builder.id(UUID.randomUUID())
                             .username("Jane Doe")
             );

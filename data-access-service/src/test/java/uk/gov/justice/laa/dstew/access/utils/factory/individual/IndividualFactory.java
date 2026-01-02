@@ -1,6 +1,6 @@
-package uk.gov.justice.laa.dstew.access.utils.individual;
+package uk.gov.justice.laa.dstew.access.utils.factory.individual;
 
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 
@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
-@Service
+@Component
 public class IndividualFactory extends BaseFactory<Individual, Individual.Builder> {
 
     public IndividualFactory() {

@@ -1,6 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
@@ -8,7 +8,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 import java.util.HashMap;
 import java.util.Map;
 
-@Service
+@Component
 public class ApplicationUpdateRequestFactory extends BaseFactory<ApplicationUpdateRequest, ApplicationUpdateRequest.Builder> {
 
     public ApplicationUpdateRequestFactory() {

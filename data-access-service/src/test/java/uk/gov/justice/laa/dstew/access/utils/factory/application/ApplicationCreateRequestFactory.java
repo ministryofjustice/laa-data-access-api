@@ -1,15 +1,15 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
-import uk.gov.justice.laa.dstew.access.utils.individual.IndividualFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactory;
 
 import java.util.List;
 
-@Service
+@Component
 public class ApplicationCreateRequestFactory extends BaseFactory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> {
 
     @Autowired
