@@ -9,19 +9,17 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.repository.query.Param;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.CaseworkerNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.caseworker.CaseworkerFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEntityFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateFactory;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 import java.util.*;
@@ -45,7 +43,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         @Test
         public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {
             // given
-            ApplicationEntity expectedApplication = ApplicationEntityFactory.create();
+            ApplicationEntity expectedApplication = applicationEntityFactory.createDefault();
 
             when(applicationRepository.findById(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
 
@@ -105,6 +103,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     }
 
     @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class CreateApplication {
 
         @Test
@@ -112,20 +111,23 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             // given
             UUID expectedId = UUID.randomUUID();
-            ApplicationEntity withExpectedId = ApplicationEntityFactory.create(builder ->
+            ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder ->
                     builder.id(expectedId)
             );
+
+            ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault();
+
             when(applicationRepository.save(any())).thenReturn(withExpectedId);
 
             setSecurityContext(TestConstants.Roles.WRITER);
 
             // when
-            UUID actualId = serviceUnderTest.createApplication(APPLICATION_TO_CREATE);
+            UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
 
             // then
             assertEquals(expectedId, actualId);
 
-            verify(applicationRepository, times(1)).save(any());
+            verifyThatApplicationSaved(applicationCreateRequest, 1);
         }
 
         @Test
@@ -136,7 +138,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // when
             // then
             assertThatExceptionOfType(AuthorizationDeniedException.class)
-                    .isThrownBy(() -> serviceUnderTest.createApplication(APPLICATION_TO_CREATE))
+                    .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
                     .withMessageContaining("Access Denied");
 
             verify(applicationRepository, times(0)).findById(any(UUID.class));
@@ -146,7 +148,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         public void givenNewApplicationAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
 
             assertThatExceptionOfType(AuthorizationDeniedException.class)
-                    .isThrownBy(() -> serviceUnderTest.createApplication(APPLICATION_TO_CREATE))
+                    .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
                     .withMessageContaining("Access Denied");
 
             verify(applicationRepository, times(0)).findById(any(UUID.class));
@@ -166,63 +168,159 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .usingRecursiveComparison()
                     .isEqualTo(validationException);
 
-            verify(applicationRepository, times(0)).findById(any(UUID.class));
+            verify(applicationRepository, never()).findById(any(UUID.class));
+            verify(applicationRepository, never()).save(any());
         }
 
-        private static final String APPLICATION_TO_CREATE_REFERENCE = "REF7327";
-        private static final ApplicationCreateRequest APPLICATION_TO_CREATE = ApplicationCreateRequest.builder()
-                .status(ApplicationStatus.IN_PROGRESS)
-                .laaReference(APPLICATION_TO_CREATE_REFERENCE)
-                .applicationContent(new HashMap<>() {{
-                    put("test", "content");
-                }})
-                .build();
+        private Stream<Arguments> invalidApplicationRequests() {
+            return Stream.concat(
+                    invalidApplicationSpecificCases(),
+                    invalidIndividualSpecificCases()
+            );
+        }
 
-        public static final Stream<Arguments> invalidApplicationRequests() {
+        private Stream<Arguments> invalidApplicationSpecificCases() {
             return Stream.of(
-                    Arguments.of(ApplicationCreateRequest.builder()
-                                    .status(ApplicationStatus.IN_PROGRESS)
-                                    .laaReference(APPLICATION_TO_CREATE_REFERENCE)
-                                    .applicationContent(null)
-                                    .build(),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.applicationContent(null)),
                             new ValidationException(List.of(
                                     "ApplicationCreateRequest and its content cannot be null"
                             ))
                     ),
-                    Arguments.of(ApplicationCreateRequest.builder()
-                                    .laaReference(APPLICATION_TO_CREATE_REFERENCE)
-                                    .applicationContent(new HashMap<>() {{
-                                        put("test", "content");
-                                    }})
-                                    .build(),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.status(null)),
                             new ValidationException(List.of(
                                     "Application status cannot be null"
                             ))
                     ),
-                    Arguments.of(ApplicationCreateRequest.builder()
-                                    .status(ApplicationStatus.IN_PROGRESS)
-                                    .applicationContent(new HashMap<>() {{
-                                        put("test", "content");
-                                    }})
-                                    .build(),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.laaReference(null)),
                             new ValidationException(List.of(
                                     "Application reference cannot be blank"
                             ))
                     ),
-                    Arguments.of(ApplicationCreateRequest.builder()
-                                    .status(ApplicationStatus.IN_PROGRESS)
-                                    .laaReference(APPLICATION_TO_CREATE_REFERENCE)
-                                    .applicationContent(new HashMap<>())
-                                    .build(),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.applicationContent(new HashMap<>())),
                             new ValidationException(List.of(
                                     "Application content cannot be empty"
                             ))
                     )
             );
         }
+
+        private Stream<Arguments> invalidIndividualSpecificCases() {
+            return Stream.of(
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd.firstName(null))))),
+                            new ValidationException(List.of(
+                                    "First name must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd.lastName(null))))),
+                            new ValidationException(List.of(
+                                    "Last name must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd.details(null))))),
+                            new ValidationException(List.of(
+                                    "Individual details must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd.details(new HashMap<>()))))),
+                            new ValidationException(List.of(
+                                    "Individual details must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd.dateOfBirth(null))))),
+                            new ValidationException(List.of(
+                                    "Date of birth must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd
+                                                    .firstName(null)
+                                                    .lastName(null)
+                                                    .dateOfBirth(null)
+                                                    .details(new HashMap<>()))))),
+                            new ValidationException(List.of(
+                                    "First name must be populated.",
+                                    "Last name must be populated.",
+                                    "Individual details must be populated.",
+                                    "Date of birth must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd
+                                                    .firstName(null)
+                                                    .lastName(null)
+                                                    .dateOfBirth(null)
+                                                    .details(null))))),
+                            new ValidationException(List.of(
+                                    "First name must be populated.",
+                                    "Last name must be populated.",
+                                    "Individual details must be populated.",
+                                    "Date of birth must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(
+                                            individualFactory.createRandom(builderInd ->
+                                                builderInd.firstName(null)),
+                                            individualFactory.createRandom(builderInd ->
+                                                builderInd.lastName(null))
+                                       )
+                                    )),
+                            new ValidationException(List.of(
+                                    "First name must be populated.",
+                                    "Last name must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(
+                                                    individualFactory.createRandom(builderInd ->
+                                                            builderInd.firstName(null).lastName(null)),
+                                                    individualFactory.createRandom(builderInd ->
+                                                            builderInd.lastName(null).dateOfBirth(null))
+                                            )
+                                    )),
+                            new ValidationException(List.of(
+                                    "First name must be populated.",
+                                    "Last name must be populated.",
+                                    "Date of birth must be populated."
+                            ))
+                    )
+            );
+        }
+
+        private void verifyThatApplicationSaved(ApplicationCreateRequest applicationCreateRequest, int timesCalled) {
+            ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
+            verify(applicationRepository, times(timesCalled)).save(captor.capture());
+            ApplicationEntity actualApplicationEntity = captor.getValue();
+
+            assertThat(actualApplicationEntity.getStatus()).isEqualTo(applicationCreateRequest.getStatus());
+            assertThat(actualApplicationEntity.getLaaReference()).isEqualTo(applicationCreateRequest.getLaaReference());
+            assertThat(actualApplicationEntity.getApplicationContent())
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .isEqualTo(applicationCreateRequest.getApplicationContent());
+
+            assertIndividualCollectionsEqual(applicationCreateRequest.getIndividuals(), actualApplicationEntity.getIndividuals());
+        }
     }
 
     @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class UpdateApplication {
         @Test
         void givenNoApplication_whenUpdateApplication_thenThrowApplicationNotFoundException() {
@@ -243,11 +341,11 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         void givenApplication_whenUpdateApplication_thenUpdateAndSave() {
             // given
             UUID applicationId = UUID.randomUUID();
-            ApplicationEntity expectedEntity = ApplicationEntityFactory.create(builder ->
+            ApplicationEntity expectedEntity = applicationEntityFactory.createDefault(builder ->
                     builder.id(applicationId)
-                            .applicationContent(new HashMap<>(Map.of("test", "change")))
+                            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
             );
-            ApplicationUpdateRequest updateRequest = ApplicationUpdateFactory.create();
+            ApplicationUpdateRequest updateRequest = applicationUpdateRequestFactory.createDefault();
             when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
 
             setSecurityContext(TestConstants.Roles.WRITER);
@@ -257,7 +355,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             // then
             verify(applicationRepository, times(1)).findById(applicationId);
-            verify(applicationRepository, times(1)).save(expectedEntity);
+            verifyThatApplicationUpdated(updateRequest, 1);
             assertThat(expectedEntity.getModifiedAt()).isNotNull();
         }
 
@@ -269,7 +367,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                 ValidationException validationException
         ) {
             // given
-            ApplicationEntity expectedEntity = ApplicationEntityFactory.create(builder ->
+            ApplicationEntity expectedEntity = applicationEntityFactory.createDefault(builder ->
                     builder.id(applicationId)
                             .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
             );
@@ -318,25 +416,35 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, never()).save(any(ApplicationEntity.class));
         }
 
-        public static final Stream<Arguments> invalidApplicationUpdateRequests() {
+        public final Stream<Arguments> invalidApplicationUpdateRequests() {
             return Stream.of(
                     Arguments.of(UUID.randomUUID(),
-                            ApplicationUpdateFactory.create(builder -> builder
-                                    .status(ApplicationStatus.IN_PROGRESS)
+                            applicationUpdateRequestFactory.createDefault(builder -> builder
                                     .applicationContent(null)),
                             new ValidationException(List.of(
                                     "ApplicationUpdateRequest and its content cannot be null"
                             ))
                     ),
                     Arguments.of(UUID.randomUUID(),
-                            ApplicationUpdateFactory.create(builder -> builder
-                                    .status(ApplicationStatus.IN_PROGRESS)
+                            applicationUpdateRequestFactory.createDefault(builder -> builder
                                     .applicationContent(new HashMap<>())),
                             new ValidationException(List.of(
                                     "Application content cannot be empty"
                             ))
                     )
             );
+        }
+
+        private void verifyThatApplicationUpdated(ApplicationUpdateRequest applicationUpdateRequest, int timesCalled) {
+            ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
+            verify(applicationRepository, times(timesCalled)).save(captor.capture());
+            ApplicationEntity actualApplicationEntity = captor.getValue();
+
+            assertThat(actualApplicationEntity.getStatus()).isEqualTo(applicationUpdateRequest.getStatus());
+            assertThat(actualApplicationEntity.getApplicationContent())
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .isEqualTo(applicationUpdateRequest.getApplicationContent());
         }
     }
 
@@ -354,7 +462,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             CaseworkerEntity expectedCaseworker = CaseworkerFactory.create();
 
-            ApplicationEntity existingApplicationEntity = ApplicationEntityFactory.create(builder ->
+            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
                     builder.id(applicationId).caseworker(null)
             );
 
@@ -419,7 +527,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         @Test
         void givenDuplicateApplicationIds_whenAssignCaseworker_thenOnlyDistinctIdsUsed() throws JsonProcessingException {
             UUID existingApplicationId = UUID.randomUUID();
-            ApplicationEntity existingApplicationEntity = ApplicationEntityFactory.create(builder ->
+            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
                     builder.id(existingApplicationId).caseworker(null)
             );
 
@@ -467,7 +575,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         @Test
         void givenMissingApplications_whenAssignCaseworker_thenThrowApplicationNotFoundException() {
             UUID existingApplicationId = UUID.randomUUID();
-            ApplicationEntity existingApplicationEntity = ApplicationEntityFactory.create(builder ->
+            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
                     builder.id(existingApplicationId).caseworker(null)
             );
 
@@ -559,7 +667,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             CaseworkerEntity expectedCaseworker = CaseworkerFactory.create();
 
-            ApplicationEntity existingApplicationEntity = ApplicationEntityFactory.create(builder ->
+            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
                     builder.id(applicationId).caseworker(expectedCaseworker)
             );
 
@@ -600,7 +708,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         @Test
         void givenAlreadyUnassigned_whenUnassignCaseworker_thenNotSave() throws JsonProcessingException {
             UUID applicationId = UUID.randomUUID();
-            ApplicationEntity existingApplicationEntity = ApplicationEntityFactory.create(builder ->
+            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
                     builder.id(applicationId).caseworker(null)
             );
 
@@ -718,7 +826,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                             .username("Jane Doe")
             );
 
-            ApplicationEntity existingApplicationEntity = ApplicationEntityFactory.create(builder ->
+            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
                     builder.id(applicationId).caseworker(existingCaseworker)
             );
 
@@ -763,6 +871,36 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     }
 
     // <editor-fold desc="Shared asserts">
+
+    private void assertIndividualCollectionsEqual(List<Individual> expectedList, Set<IndividualEntity> actualList) {
+
+        assertThat(actualList).hasSameSizeAs(expectedList);
+
+        for (Individual expected : expectedList) {
+            boolean match = actualList.stream()
+                    .anyMatch(actual -> {
+                        try {
+                            assertIndividualEqual(expected, actual);
+                            return true;
+                        } catch (AssertionError e) {
+                            return false;
+                        }
+                    });
+            assertThat(match)
+                    .as("No matching IndividualEntity found for expected: " + expected)
+                    .isTrue();
+        }
+    }
+
+    private void assertIndividualEqual(Individual expected, IndividualEntity actual) {
+        assertThat(actual.getFirstName()).isEqualTo(expected.getFirstName());
+        assertThat(actual.getLastName()).isEqualTo(expected.getLastName());
+        assertThat(actual.getDateOfBirth()).isEqualTo(expected.getDateOfBirth());
+        assertThat(actual.getIndividualContent())
+                .usingRecursiveComparison()
+                .ignoringCollectionOrder()
+                .isEqualTo(expected.getDetails());
+    }
 
     private void verifyThatApplicationEntitySaved(ApplicationEntity expectedApplicationEntity, int timesCalled) {
         ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);

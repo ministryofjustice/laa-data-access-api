@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.domainEvent;
 
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 
 import java.util.UUID;

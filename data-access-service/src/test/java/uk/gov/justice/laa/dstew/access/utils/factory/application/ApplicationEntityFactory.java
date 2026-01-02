@@ -1,48 +1,39 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.testcontainers.shaded.org.apache.commons.lang3.NotImplementedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 import uk.gov.justice.laa.dstew.access.utils.individual.IndividualEntityFactory;
 
 import java.time.InstantSource;
 import java.util.*;
-import java.util.function.Consumer;
 
-public class ApplicationEntityFactory {
+@Service
+public class ApplicationEntityFactory extends BaseFactory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder> {
 
-    public static ApplicationEntity create() {
+    @Autowired
+    private IndividualEntityFactory individualEntityFactory;
+
+    public ApplicationEntityFactory() {
+        super(ApplicationEntity::toBuilder, ApplicationEntity.ApplicationEntityBuilder::build);
+    }
+
+    @Override
+    public ApplicationEntity createDefault() {
         return ApplicationEntity.builder()
+                .schemaVersion(1)
                 .createdAt(InstantSource.system().instant())
                 .id(UUID.randomUUID())
                 .status(ApplicationStatus.IN_PROGRESS)
                 .modifiedAt(InstantSource.system().instant())
-                .laaReference("REF7237")
+                .laaReference("REF7327")
                 .individuals(Set.of(
-                        IndividualEntityFactory.create()
+                        individualEntityFactory.createDefault()
                 ))
+                .applicationContent(Map.of("test", "content"))
                 .build();
-    }
-
-    public static ApplicationEntity create(Consumer<ApplicationEntity.ApplicationEntityBuilder> customiser) {
-        ApplicationEntity entity = create();
-        ApplicationEntity.ApplicationEntityBuilder builder = entity.toBuilder();
-        customiser.accept(builder);
-        return builder.build();
-    }
-
-    public static List<ApplicationEntity> create(int number) {
-        ArrayList<ApplicationEntity> entities = new ArrayList<>();
-        for (int i = 0; i < number; i++) {
-            entities.add(create());
-        }
-        return entities;
-    }
-
-    public static List<ApplicationEntity> create(int number, Consumer<ApplicationEntity.ApplicationEntityBuilder> customiser) {
-        ArrayList<ApplicationEntity> entities = new ArrayList<>();
-        for (int i = 0; i < number; i++) {
-            entities.add(create(customiser));
-        }
-        return entities;
     }
 }

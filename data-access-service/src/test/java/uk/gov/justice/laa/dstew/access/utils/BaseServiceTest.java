@@ -17,8 +17,11 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateRequestFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEntityFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateRequestFactory;
+import uk.gov.justice.laa.dstew.access.utils.individual.IndividualFactory;
 
-import java.util.List;
 import java.util.stream.Stream;
 
 @SpringBootTest(properties = {"feature.disable-jpa-auditing=true"})
@@ -43,6 +46,18 @@ public class BaseServiceTest {
 
     @Autowired
     protected ObjectMapper objectMapper;
+
+    @Autowired
+    protected ApplicationEntityFactory applicationEntityFactory;
+
+    @Autowired
+    protected ApplicationCreateRequestFactory applicationCreateRequestFactory;
+
+    @Autowired
+    protected ApplicationUpdateRequestFactory applicationUpdateRequestFactory;
+
+    @Autowired
+    protected IndividualFactory individualFactory;
 
     @AfterEach
     void tearDown() {
