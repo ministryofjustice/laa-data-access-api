@@ -753,7 +753,76 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertNull(actual.getCaseworker());
             assertEquals(expectedUnassignedApplication, actual);
 
-            // TODO: verify domain event created when unassign domain event implemented
+            assertDomainEventsCreatedForApplications(
+                    List.of(expectedUnassignedApplication),
+                    null,
+                    DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
+                    caseworkerUnassignRequest.getEventHistory()
+            );
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenValidUnassignRequestWithBlankEventDescription_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
+            // given
+            ApplicationEntity expectedUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
+                builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
+            });
+
+            CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {
+                builder.eventHistory(EventHistory.builder()
+                        .eventDescription("")
+                        .build());
+            });
+
+            // when
+            MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, expectedUnassignedApplication.getId());
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+
+            ApplicationEntity actual = applicationRepository.findById(expectedUnassignedApplication.getId()).orElseThrow();
+            assertNull(actual.getCaseworker());
+            assertEquals(expectedUnassignedApplication, actual);
+
+            assertDomainEventsCreatedForApplications(
+                    List.of(expectedUnassignedApplication),
+                    null,
+                    DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
+                    caseworkerUnassignRequest.getEventHistory()
+            );
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenValidUnassignRequestWithNullEventDescription_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
+            // given
+            ApplicationEntity expectedUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
+                builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
+            });
+
+            CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {
+                builder.eventHistory(EventHistory.builder()
+                        .eventDescription(null)
+                        .build());
+            });
+
+            // when
+            MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, expectedUnassignedApplication.getId());
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+
+            assertDomainEventsCreatedForApplications(
+                    List.of(expectedUnassignedApplication),
+                    null,
+                    DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
+                    caseworkerUnassignRequest.getEventHistory()
+            );
         }
 
         @Test
@@ -1671,8 +1740,11 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertEquals(expectedDomainEventType, domainEvent.getType());
             assertTrue(applicationIds.contains(domainEvent.getApplicationId()));
             assertEquals(caseWorkerId, domainEvent.getCaseworkerId());
-            // TODO: improve event data comparison
-            assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
+            if (expectedEventHistory.getEventDescription() != null) {
+              assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
+            } else {
+              assertFalse(domainEvent.getData().contains("eventDescription"));
+            }
         }
     }
 

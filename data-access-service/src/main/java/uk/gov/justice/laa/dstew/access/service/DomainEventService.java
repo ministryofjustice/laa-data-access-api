@@ -28,7 +28,7 @@ import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 @RequiredArgsConstructor
 public class DomainEventService {
 
-  private static final String emptyCreatedByParameter = "";
+  private static final String defaultCreatedByName = "";
 
   private final DomainEventRepository domainEventRepository;
   private final ObjectMapper objectMapper;
@@ -48,7 +48,7 @@ public class DomainEventService {
             .applicationId(applicationId)
             .caseWorkerId(caseworkerId)
             .createdAt(Instant.now())
-            .createdBy(emptyCreatedByParameter)
+            .createdBy(defaultCreatedByName)
             .eventDescription(eventDescription)
             .build();
 
@@ -58,7 +58,7 @@ public class DomainEventService {
                   .applicationId(applicationId)
                   .caseworkerId(caseworkerId)
                   .createdAt(Instant.now())
-                  .createdBy(emptyCreatedByParameter)
+                  .createdBy(defaultCreatedByName)
                   .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
                   .data(objectMapper.writeValueAsString(data))
                   .build();
@@ -83,7 +83,7 @@ public class DomainEventService {
             .applicationId(applicationId)
             .caseworkerId(caseworkerId)
             .createdAt(Instant.now())
-            .createdBy(emptyCreatedByParameter)
+            .createdBy(defaultCreatedByName)
             .eventDescription(eventDescription)
             .build();
 
@@ -93,7 +93,7 @@ public class DomainEventService {
               .applicationId(applicationId)
               .caseworkerId(caseworkerId)
               .createdAt(Instant.now())
-              .createdBy(emptyCreatedByParameter)
+              .createdBy(defaultCreatedByName)
               .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
               .data(objectMapper.writeValueAsString(eventDetails))
               .build();
