@@ -117,9 +117,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   public ResponseEntity<Void> unassignCaseworker(UUID id, CaseworkerUnassignRequest request) {
 
-    EventHistory history = request == null ? null : request.getEventHistory();
-
-    service.unassignCaseworker(id, history);
+    service.unassignCaseworker(id, request.getEventHistory());
 
     return ResponseEntity.ok().build();
   }
