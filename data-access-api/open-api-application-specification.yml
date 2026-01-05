@@ -295,7 +295,7 @@ components:
         id:
           type: string
           format: uuid
-        status:
+        applicationStatus:
           $ref: "#/components/schemas/status"
         schemaVersion:
           type: integer
