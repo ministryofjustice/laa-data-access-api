@@ -246,24 +246,21 @@ public class ApplicationTest extends BaseIntegrationTest {
         }
 
         private Stream<Arguments> applicationCreateRequestInvalidDataCases() {
+            ProblemDetail problemDetail = ProblemDetailBuilder
+                    .create()
+                    .status(HttpStatus.BAD_REQUEST)
+                    .title("Bad Request")
+                    .detail("Request validation failed")
+                    .build();
+            problemDetail.setType(null);
             return Stream.of(
                     Arguments.of(applicationCreateRequestFactory.create(builder -> {
                                 builder.status(null);
-                            }), ProblemDetailBuilder
-                                    .create()
-                                    .status(HttpStatus.BAD_REQUEST)
-                                    .title("Bad Request")
-                                    .detail("Invalid request content.")
-                                    .build()
+                            }), problemDetail
                     ),
                     Arguments.of(applicationCreateRequestFactory.create(builder -> {
                                 builder.laaReference(null);
-                            }), ProblemDetailBuilder
-                                    .create()
-                                    .status(HttpStatus.BAD_REQUEST)
-                                    .title("Bad Request")
-                                    .detail("Invalid request content.")
-                                    .build()
+                            }), problemDetail
                     )
             );
         }
