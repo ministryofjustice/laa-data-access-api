@@ -1,19 +1,17 @@
 package uk.gov.justice.laa.dstew.access.exception;
 
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
-
-
 
 
 
@@ -33,9 +31,8 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(ResourceNotFoundException.class)
   public ResponseEntity<ProblemDetail> handleResourceNotFound(ResourceNotFoundException exception) {
-    final ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(NOT_FOUND, exception.getMessage());
-    problemDetail.setTitle("Not found"); //Is this needed as ProblemDetail.forStatus already sets it?
-    return ResponseEntity.status(NOT_FOUND).body(problemDetail);
+    return ResponseEntity.status(NOT_FOUND).body(ProblemDetailUtil.getCustomProblemDetail(
+            HttpStatus.NOT_FOUND, exception.getMessage()));
   }
 
 
@@ -47,9 +44,9 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(ValidationException.class)
   public ResponseEntity<ProblemDetail> handleValidationException(ValidationException exception) {
-    final ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(BAD_REQUEST, exception.getMessage());
-    problemDetail.setTitle(BAD_REQUEST.getReasonPhrase());
-    problemDetail.setDetail("Generic Validation Error");
+
+    final ProblemDetail problemDetail = ProblemDetailUtil.getCustomProblemDetail(
+              HttpStatus.BAD_REQUEST, "Generic Validation Error");
     problemDetail.setProperty("errors", exception.errors());
     return ResponseEntity.badRequest().body(problemDetail);
   }
@@ -76,9 +73,8 @@ public class GlobalExceptionHandler {
     final var logMessage = "An unexpected error has occurred.";
     log.error(logMessage, exception);
     // Do NOT use the exception type or message in the response (it may leak security-sensitive info)
-    final ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(INTERNAL_SERVER_ERROR, logMessage);
-    problemDetail.setTitle(INTERNAL_SERVER_ERROR.getReasonPhrase());
-    return ResponseEntity.internalServerError().body(problemDetail);
+    return ResponseEntity.internalServerError().body(
+            ProblemDetailUtil.getCustomProblemDetail(INTERNAL_SERVER_ERROR, logMessage));
   }
 
   /**The handler for Spring DataAccessExceptions.
@@ -92,9 +88,8 @@ public class GlobalExceptionHandler {
     final String responseMessage = "An unexpected error has occurred.";
     final String logMessage = "Database error has occurred type : %s".formatted(exception.getClass().getSimpleName());
     log.error(logMessage, exception);
-    final ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(INTERNAL_SERVER_ERROR, responseMessage);
-    problemDetail.setTitle(INTERNAL_SERVER_ERROR.getReasonPhrase());
-    return ResponseEntity.internalServerError().body(problemDetail);
+    return ResponseEntity.internalServerError().body(
+            ProblemDetailUtil.getCustomProblemDetail(INTERNAL_SERVER_ERROR, responseMessage));
   }
 
 

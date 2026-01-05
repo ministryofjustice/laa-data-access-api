@@ -11,8 +11,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
@@ -27,9 +26,7 @@ import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ProblemDetail;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -253,18 +250,13 @@ class ApplicationControllerTest {
             .createdAt(createdAt)
             .updatedAt(updatedAt)
             .build();
-    MvcResult result = mockMvc.perform(get("/api/v0/applications/" + application.getId()))
+    mockMvc.perform(get("/api/v0/applications/" + application.getId()))
             .andExpect(status().is4xxClientError())
             .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-            .andReturn();
-    ProblemDetail expectedProblem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
-    expectedProblem.setTitle("Not found");
-    expectedProblem.setDetail("Application not found");
-
-    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
-    assertThat(problemDetail.getTitle()).isEqualTo(expectedProblem.getTitle());
-    assertThat(problemDetail.getStatus()).isEqualTo(expectedProblem.getStatus());
-    assertThat(problemDetail.getDetail()).isEqualTo(expectedProblem.getDetail());
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.detail").value("Application not found"))
+            .andExpect(jsonPath("$.title").value("Not Found"))
+            .andExpect(jsonPath("$.type").doesNotExist());
 
   }
 
@@ -280,28 +272,21 @@ class ApplicationControllerTest {
     doThrow(new ResourceNotFoundException("Caseworker not found"))
             .when(applicationService).assignCaseworker(uuid, applicationIds, eventHistory);
 
-    ProblemDetail expectedProblem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
-    expectedProblem.setTitle("Not found");
-    expectedProblem.setDetail("Caseworker not found");
-
     CaseworkerAssignRequest request = new CaseworkerAssignRequest();
     request.setCaseworkerId(uuid);
     request.setApplicationIds(applicationIds);
     request.setEventHistory(eventHistory);
     String requestJson = objectMapper.writeValueAsString(request);
 
-    MvcResult mvcResult = mockMvc.perform(post("/api/v0/applications/assign")
+    mockMvc.perform(post("/api/v0/applications/assign")
                     .contentType("application/json")
                     .content(requestJson))
             .andExpect(status().is4xxClientError())
-            .andReturn();
-
-
-
-    ProblemDetail problemDetail = deserialise(mvcResult, ProblemDetail.class);
-    assertThat(problemDetail.getTitle()).isEqualTo(expectedProblem.getTitle());
-    assertThat(problemDetail.getStatus()).isEqualTo(expectedProblem.getStatus());
-    assertThat(problemDetail.getDetail()).isEqualTo(expectedProblem.getDetail());
+            .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.detail").value("Caseworker not found"))
+            .andExpect(jsonPath("$.title").value("Not Found"))
+            .andExpect(jsonPath("$.type").doesNotExist());
 
   }
 
