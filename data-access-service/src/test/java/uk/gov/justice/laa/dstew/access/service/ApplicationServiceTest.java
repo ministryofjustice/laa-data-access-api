@@ -185,7 +185,7 @@ public class ApplicationServiceTest {
 
     when(repository.findById(appId)).thenReturn(Optional.of(entity));
 
-    service.unassignCaseworker(appId, null);
+    service.unassignCaseworker(appId, new EventHistory());
 
     assertThat(entity.getCaseworker()).isNull();
     verify(repository).save(entity);
@@ -306,5 +306,65 @@ public class ApplicationServiceTest {
     when(repository.findAllById(applicationIds)).thenReturn(applications.reversed());
 
     service.assignCaseworker(caseworker.getId(), applicationIds, history);
+  }
+
+  @Test
+  void shouldUnassignCaseworkerToApplicationWhenNullEventDescription() throws JsonProcessingException {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseWorkerId = UUID.randomUUID();
+
+    CaseworkerEntity caseworker = new CaseworkerEntity();
+    caseworker.setId(caseWorkerId);
+
+    ApplicationEntity applicationEntity = new ApplicationEntity();
+    applicationEntity.setId(applicationId);
+    applicationEntity.setCaseworker(caseworker);
+
+    EventHistory eventHistory = EventHistory.builder()
+            .eventDescription(null)
+            .build();
+
+    when(repository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+    doNothing().when(domainEventService).saveUnassignApplicationDomainEvent(
+            eq(applicationEntity.getId()),
+            eq(null),
+            eq(eventHistory.getEventDescription()));
+    service.unassignCaseworker(applicationId, eventHistory);
+
+    verify(domainEventService).saveUnassignApplicationDomainEvent(
+            eq(applicationEntity.getId()),
+            eq(null),
+            eq(eventHistory.getEventDescription()));
+    verify(repository).save(applicationEntity);
+  }
+
+  @Test
+  void shouldUnassignCaseworkerToApplicationWhenBlankEventDescription() throws JsonProcessingException {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseWorkerId = UUID.randomUUID();
+
+    CaseworkerEntity caseworker = new CaseworkerEntity();
+    caseworker.setId(caseWorkerId);
+
+    ApplicationEntity applicationEntity = new ApplicationEntity();
+    applicationEntity.setId(applicationId);
+    applicationEntity.setCaseworker(caseworker);
+
+    EventHistory eventHistory = EventHistory.builder()
+            .eventDescription("")
+            .build();
+
+    when(repository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+    doNothing().when(domainEventService).saveUnassignApplicationDomainEvent(
+            eq(applicationEntity.getId()),
+            eq(null),
+            eq(eventHistory.getEventDescription()));
+    service.unassignCaseworker(applicationId, eventHistory);
+
+    verify(domainEventService).saveUnassignApplicationDomainEvent(
+            eq(applicationEntity.getId()),
+            eq(null),
+            eq(eventHistory.getEventDescription()));
+    verify(repository).save(applicationEntity);
   }
 }

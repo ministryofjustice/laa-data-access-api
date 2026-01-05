@@ -17,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
@@ -26,6 +27,9 @@ import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 @Service
 @RequiredArgsConstructor
 public class DomainEventService {
+
+  private static final String emptyCreatedByParameter = "";
+
   private final DomainEventRepository domainEventRepository;
   private final ObjectMapper objectMapper;
   private final DomainEventMapper mapper;
@@ -44,7 +48,7 @@ public class DomainEventService {
             .applicationId(applicationId)
             .caseWorkerId(caseworkerId)
             .createdAt(Instant.now())
-            .createdBy("")
+            .createdBy(emptyCreatedByParameter)
             .eventDescription(eventDescription)
             .build();
 
@@ -54,13 +58,48 @@ public class DomainEventService {
                   .applicationId(applicationId)
                   .caseworkerId(caseworkerId)
                   .createdAt(Instant.now())
-                  .createdBy("")
+                  .createdBy(emptyCreatedByParameter)
                   .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
                   .data(objectMapper.writeValueAsString(data))
                   .build();
     } catch (JsonProcessingException e) {
       throw new DomainEventPublishException(String.format("Unable to save Domain Event of type: %s",
                   DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER.name()));
+    }
+    domainEventRepository.save(domainEventEntity);
+  }
+
+  /**
+   * Posts a domain event {@link DomainEventEntity} object.
+   *
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  public void saveUnassignApplicationDomainEvent(
+          UUID applicationId,
+          UUID caseworkerId,
+          String eventDescription) {
+
+    UnassignApplicationDomainEventDetails eventDetails = UnassignApplicationDomainEventDetails.builder()
+            .applicationId(applicationId)
+            .caseworkerId(caseworkerId)
+            .createdAt(Instant.now())
+            .createdBy(emptyCreatedByParameter)
+            .eventDescription(eventDescription)
+            .build();
+
+    DomainEventEntity domainEventEntity = null;
+    try {
+      domainEventEntity = DomainEventEntity.builder()
+              .applicationId(applicationId)
+              .caseworkerId(caseworkerId)
+              .createdAt(Instant.now())
+              .createdBy(emptyCreatedByParameter)
+              .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
+              .data(objectMapper.writeValueAsString(eventDetails))
+              .build();
+    } catch (JsonProcessingException e) {
+      throw new DomainEventPublishException(String.format("Unable to save Domain Event of type: %s",
+              DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER.name()));
     }
     domainEventRepository.save(domainEventEntity);
   }
