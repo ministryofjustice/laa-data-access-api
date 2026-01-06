@@ -1462,7 +1462,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 4, 10, 1, 4);
             assertThat(actual.getApplications().size()).isEqualTo(4);
-            assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
+            assertArrayEquals(expectedApplicationsSummary.toArray(), actual.getApplications().toArray());
         }
 
         @Test
