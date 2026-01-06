@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
@@ -13,8 +14,10 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.ProceedingDetail;
 
 
 /**
@@ -34,28 +37,57 @@ public interface ApplicationMapper {
    * @return a new {@link ApplicationEntity} populated from the request, or {@code null} if the request is null
    * @throws IllegalArgumentException if the {@code applicationContent} cannot be serialized
    */
-  default ApplicationEntity toApplicationEntity(ApplicationCreateRequest req) {
+  default ApplicationEntity toApplicationEntity(ApplicationCreateRequest req, ObjectMapper mapper) {
     if (req == null) {
       return null;
     }
 
     ApplicationEntity entity = new ApplicationEntity();
+    ApplicationContent applicationContent = mapper.convertValue(req.getApplicationContent(), ApplicationContent.class);
+    processingApplicationContent(entity, applicationContent);
     entity.setStatus(req.getStatus());
     entity.setLaaReference(req.getLaaReference());
     var individuals = req.getIndividuals()
-                         .stream()
-                         .map(individualMapper::toIndividualEntity)
-                         .collect(Collectors.toSet());
+        .stream()
+        .map(individualMapper::toIndividualEntity)
+        .collect(Collectors.toSet());
     entity.setIndividuals(individuals);
     entity.setApplicationContent(req.getApplicationContent());
     return entity;
   }
 
   /**
+   * Processes application content to extract and set key fields in the entity.
+   *
+   * @param entity             the application entity to update
+   * @param applicationContent the application content to process
+   */
+  private void processingApplicationContent(ApplicationEntity entity, ApplicationContent applicationContent) {
+    if (applicationContent == null) {
+      return;
+    }
+    if (applicationContent.getProceedings() == null || applicationContent.getProceedings().isEmpty()) {
+      return;
+    }
+    ProceedingDetail leadProceeding = applicationContent.getProceedings().stream()
+        .filter(Objects::nonNull)
+        .filter(ProceedingDetail::leadProceeding)
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("No lead proceeding found in application content"));
+    boolean usedDelegatedFunction =
+        applicationContent.getProceedings().stream().filter(Objects::nonNull)
+            .anyMatch(ProceedingDetail::useDelegatedFunctions);
+    entity.setAutoGranted(applicationContent.isAutoGrant());
+    entity.setUseDelegatedFunctions(usedDelegatedFunction);
+    entity.setCategoryOfLaw(leadProceeding.categoryOfLaw());
+    entity.setMatterType(leadProceeding.matterType());
+  }
+
+  /**
    * Updates an existing {@link ApplicationEntity} using values from an {@link ApplicationUpdateRequest}.
    *
    * @param entity the entity to update
-   * @param req the update request containing new values
+   * @param req    the update request containing new values
    * @throws IllegalArgumentException if the {@code applicationContent} cannot be serialized
    */
   @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -67,7 +99,6 @@ public interface ApplicationMapper {
       entity.setApplicationContent(req.getApplicationContent());
     }
   }
-
 
 
   /**
@@ -93,12 +124,12 @@ public interface ApplicationMapper {
     application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
 
     application.setIndividuals(
-            Optional.ofNullable(entity.getIndividuals())
-                    .orElse(Set.of())
-                    .stream()
-                    .map(individualMapper::toIndividual)
-                    .filter(Objects::nonNull)
-                    .toList()
+        Optional.ofNullable(entity.getIndividuals())
+            .orElse(Set.of())
+            .stream()
+            .map(individualMapper::toIndividual)
+            .filter(Objects::nonNull)
+            .toList()
     );
 
     return application;

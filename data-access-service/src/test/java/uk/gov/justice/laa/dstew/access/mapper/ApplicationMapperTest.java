@@ -2,6 +2,10 @@ package uk.gov.justice.laa.dstew.access.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -10,11 +14,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.enums.MatterType;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -24,6 +31,15 @@ import uk.gov.justice.laa.dstew.access.model.Individual;
 class ApplicationMapperTest {
 
   private ApplicationMapper applicationMapper;
+
+  private static ObjectMapper objectMapper;
+
+  @BeforeAll
+  static void beforeAll() {
+    objectMapper = new ObjectMapper();
+    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    objectMapper.registerModule(new JavaTimeModule());
+  }
 
   @BeforeEach
   void setUp() {
@@ -95,11 +111,11 @@ class ApplicationMapperTest {
   @Test
   void shouldMapApplicationEntityCaseworkerNullToApplication() {
     ApplicationEntity entity = ApplicationEntity.builder()
-                                                .applicationContent(Map.of("foo", "bar"))
-                                                .createdAt(Instant.now())
-                                                .modifiedAt(Instant.now())
-                                                .caseworker(null)
-                                                .build();
+        .applicationContent(Map.of("foo", "bar"))
+        .createdAt(Instant.now())
+        .modifiedAt(Instant.now())
+        .caseworker(null)
+        .build();
     var result = applicationMapper.toApplication(entity);
     assertThat(result.getCaseworkerId()).isNull();
   }
@@ -108,50 +124,70 @@ class ApplicationMapperTest {
   void shouldMapApplicationEntityCaseworkerToApplication() {
     final UUID caseworkerId = UUID.randomUUID();
     ApplicationEntity entity = ApplicationEntity.builder()
-                                                .applicationContent(Map.of("foo", "bar"))
-                                                .createdAt(Instant.now())
-                                                .modifiedAt(Instant.now())
-                                                .caseworker(CaseworkerEntity.builder().id(caseworkerId).build())
-                                                .build();
+        .applicationContent(Map.of("foo", "bar"))
+        .createdAt(Instant.now())
+        .modifiedAt(Instant.now())
+        .caseworker(CaseworkerEntity.builder().id(caseworkerId).build())
+        .build();
     var result = applicationMapper.toApplication(entity);
     assertThat(result.getCaseworkerId()).isEqualTo(caseworkerId);
   }
 
   @Test
-  void shouldMapApplicationCreateRequestToApplicationEntity() {
+  void shouldMapApplicationCreateRequestToApplicationEntity() throws IOException {
+
+    String appContentJson = """
+        {
+              "id": "d2839704-bdcf-4258-b294-ac0cb1d1d6d7",
+              "laaReference": "L-XCX-0WB",
+              "submittedAt": "2025-12-03T14:02:37.303+00:00",
+              "autoGrant": "true",
+              "proceedings": [
+                { "leadProceeding": true,
+                  "id": "f6e2c4e1-5d32-4c3e-9f0a-1e2b3c4d5e6f",
+                  "categoryOfLaw": "Family",
+                  "matterType": "SCA",
+                  "useDelegatedFunctions": true
+                  }
+                  ]
+              }
+        """;
+    Map<String, Object> appContentMap = objectMapper.readValue(appContentJson, Map.class);
     ApplicationCreateRequest req = ApplicationCreateRequest.builder()
         .status(ApplicationStatus.SUBMITTED)
-        .applicationContent(Map.of("foo", "bar"))
+        .applicationContent(appContentMap)
         .laaReference("laa_reference")
         .build();
 
-    ApplicationEntity result = applicationMapper.toApplicationEntity(req);
-
+    ApplicationEntity result = applicationMapper.toApplicationEntity(req, objectMapper);
+    assertThat(result.getCategoryOfLaw()).isEqualTo(CategoryOfLaw.Family);
+    assertThat(result.getMatterType()).isEqualTo(MatterType.SCA);
+    assertThat(result.isAutoGranted()).isTrue();
     assertThat(result.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
-    assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
+    assertThat(result.getApplicationContent()).containsEntry("laaReference", "L-XCX-0WB");
     assertThat(result.getLaaReference()).isEqualTo("laa_reference");
   }
 
   @Test
   void shouldMapApplicationCreateRequestToIndividuals() {
     Individual individual = Individual.builder()
-                                      .firstName("John")
-                                      .lastName("Doe")
-                                      .dateOfBirth(LocalDate.of(2025, 11, 24))
-                                      .details(Map.of("foo", "bar"))
-                                      .build();
+        .firstName("John")
+        .lastName("Doe")
+        .dateOfBirth(LocalDate.of(2025, 11, 24))
+        .details(Map.of("foo", "bar"))
+        .build();
     ApplicationCreateRequest req = ApplicationCreateRequest.builder()
         .status(ApplicationStatus.SUBMITTED)
         .applicationContent(Map.of("foo", "bar"))
         .laaReference("laa_reference")
         .individuals(List.of(individual))
         .build();
-    ApplicationEntity result = applicationMapper.toApplicationEntity(req);
+    ApplicationEntity result = applicationMapper.toApplicationEntity(req, objectMapper);
     assertThat(result.getIndividuals()).hasSize(1);
     var mappedIndividual = result.getIndividuals()
-                                 .stream()
-                                 .findFirst()
-                                 .get();
+        .stream()
+        .findFirst()
+        .get();
     assertThat(mappedIndividual.getFirstName()).isEqualTo("John");
     assertThat(mappedIndividual.getLastName()).isEqualTo("Doe");
     assertThat(mappedIndividual.getDateOfBirth()).isEqualTo(LocalDate.of(2025, 11, 24));
@@ -160,7 +196,7 @@ class ApplicationMapperTest {
 
   @Test
   void shouldReturnNullWhenMappingNullCreateRequest() {
-    assertThat(applicationMapper.toApplicationEntity(null)).isNull();
+    assertThat(applicationMapper.toApplicationEntity(null, objectMapper)).isNull();
   }
 
   @Test
