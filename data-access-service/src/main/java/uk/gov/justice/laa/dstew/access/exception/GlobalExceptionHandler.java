@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.exception;
 
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static uk.gov.justice.laa.dstew.access.exception.ProblemDetailUtility.getCustomProblemDetail;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -31,7 +32,7 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(ResourceNotFoundException.class)
   public ResponseEntity<ProblemDetail> handleResourceNotFound(ResourceNotFoundException exception) {
-    return ResponseEntity.status(NOT_FOUND).body(ProblemDetailUtil.getCustomProblemDetail(
+    return ResponseEntity.status(NOT_FOUND).body(getCustomProblemDetail(
             HttpStatus.NOT_FOUND, exception.getMessage()));
   }
 
@@ -45,7 +46,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(ValidationException.class)
   public ResponseEntity<ProblemDetail> handleValidationException(ValidationException exception) {
 
-    final ProblemDetail problemDetail = ProblemDetailUtil.getCustomProblemDetail(
+    final ProblemDetail problemDetail = getCustomProblemDetail(
               HttpStatus.BAD_REQUEST, "Generic Validation Error");
     problemDetail.setProperty("errors", exception.errors());
     return ResponseEntity.badRequest().body(problemDetail);
@@ -74,7 +75,7 @@ public class GlobalExceptionHandler {
     log.error(logMessage, exception);
     // Do NOT use the exception type or message in the response (it may leak security-sensitive info)
     return ResponseEntity.internalServerError().body(
-            ProblemDetailUtil.getCustomProblemDetail(INTERNAL_SERVER_ERROR, logMessage));
+            getCustomProblemDetail(INTERNAL_SERVER_ERROR, logMessage));
   }
 
   /**The handler for Spring DataAccessExceptions.
@@ -89,7 +90,7 @@ public class GlobalExceptionHandler {
     final String logMessage = "Database error has occurred type : %s".formatted(exception.getClass().getSimpleName());
     log.error(logMessage, exception);
     return ResponseEntity.internalServerError().body(
-            ProblemDetailUtil.getCustomProblemDetail(INTERNAL_SERVER_ERROR, responseMessage));
+            getCustomProblemDetail(INTERNAL_SERVER_ERROR, responseMessage));
   }
 
 

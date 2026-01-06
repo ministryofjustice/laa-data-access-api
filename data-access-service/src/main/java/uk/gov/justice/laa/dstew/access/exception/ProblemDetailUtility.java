@@ -6,7 +6,7 @@ import org.springframework.http.ProblemDetail;
 /**
  * Utility class for creating custom ProblemDetail instances.
  */
-public class ProblemDetailUtil {
+public class ProblemDetailUtility {
 
   /**
    * Creates a custom ProblemDetail with given status and detail message.

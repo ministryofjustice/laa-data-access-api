@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.exception;
 
 
+import static uk.gov.justice.laa.dstew.access.exception.ProblemDetailUtility.getCustomProblemDetail;
+
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import java.util.Arrays;
@@ -46,7 +48,7 @@ public class ResponseEntityExceptionHandlerAdvice extends ResponseEntityExceptio
       MethodArgumentNotValidException ex, @NonNull HttpHeaders headers,
       @NonNull HttpStatusCode status, @NonNull WebRequest request) {
 
-    ProblemDetail problemDetail = ProblemDetailUtil.getCustomProblemDetail(
+    ProblemDetail problemDetail = getCustomProblemDetail(
         HttpStatus.BAD_REQUEST, "Request validation failed");
 
     // Add field errors as additional properties
@@ -84,7 +86,7 @@ public class ResponseEntityExceptionHandlerAdvice extends ResponseEntityExceptio
       log.error("Failed to read request body", ex);
     }
 
-    ProblemDetail problemDetail = ProblemDetailUtil.getCustomProblemDetail(
+    ProblemDetail problemDetail = getCustomProblemDetail(
         HttpStatus.BAD_REQUEST, message);
     return ResponseEntity.badRequest().body(problemDetail);
   }
