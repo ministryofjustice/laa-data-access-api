@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.builders.ValidationExceptionBuilder;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -81,6 +82,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertEquals("application/problem+json", result.getResponse().getContentType());
             ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
             assertEquals("No application found with id: " + notExistApplicationId, problemDetail.getDetail());
+
         }
 
         @Test
@@ -436,8 +438,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         @MethodSource("validAssignCaseworkerRequestCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
         public void givenValidAssignRequest_whenAssignCaseworker_thenReturnOK_andAssignCaseworker(
-                AssignCaseworkerCase assignCaseworkerCase,
-                String eventDescription
+                AssignCaseworkerCase assignCaseworkerCase
         ) throws Exception {
             // given
             List<ApplicationEntity> expectedAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
@@ -462,7 +463,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                 builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
                         .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()).reversed())
                         .eventHistory(EventHistory.builder()
-                                .eventDescription(eventDescription)
+                                .eventDescription("Assigning caseworker")
                                 .build());
             });
 
@@ -700,11 +701,9 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         private Stream<Arguments> validAssignCaseworkerRequestCases() {
             return Stream.of(
-                    Arguments.of(new AssignCaseworkerCase(3, 3, 2), "test"),
-                    Arguments.of(new AssignCaseworkerCase(5, 0, 4), "test"),
-                    Arguments.of(new AssignCaseworkerCase(2, 4, 0), "test"),
-                    Arguments.of(new AssignCaseworkerCase(2, 4, 0), null),
-                    Arguments.of(new AssignCaseworkerCase(2, 4, 0), "")
+                    Arguments.of(new AssignCaseworkerCase(3, 3, 2)),
+                    Arguments.of(new AssignCaseworkerCase(5, 0, 4)),
+                    Arguments.of(new AssignCaseworkerCase(2, 4, 0))
             );
         }
 
@@ -728,20 +727,9 @@ public class ApplicationTest extends BaseIntegrationTest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class UnassignCaseworker {
 
-        private Stream<Arguments> validUnassignEventDescriptionCases() {
-            return Stream.of(
-                    Arguments.of("Unassigned by system"),
-                    Arguments.of(""),
-                    Arguments.of(null)
-            );
-        }
-
-        @ParameterizedTest
-        @MethodSource("validUnassignEventDescriptionCases")
+        @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenValidUnassignRequest_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker(
-                String eventDescription
-        ) throws Exception {
+        public void givenValidUnassignRequest_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
             // given
             ApplicationEntity expectedUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
                 builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
@@ -749,7 +737,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {
                 builder.eventHistory(EventHistory.builder()
-                        .eventDescription(eventDescription)
+                        .eventDescription("Unassigned Caseworker")
                         .build());
             });
 
@@ -765,7 +753,76 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertNull(actual.getCaseworker());
             assertEquals(expectedUnassignedApplication, actual);
 
-            // TODO: verify domain event created when unassign domain event implemented
+            assertDomainEventsCreatedForApplications(
+                    List.of(expectedUnassignedApplication),
+                    null,
+                    DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
+                    caseworkerUnassignRequest.getEventHistory()
+            );
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenValidUnassignRequestWithBlankEventDescription_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
+            // given
+            ApplicationEntity expectedUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
+                builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
+            });
+
+            CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {
+                builder.eventHistory(EventHistory.builder()
+                        .eventDescription("")
+                        .build());
+            });
+
+            // when
+            MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, expectedUnassignedApplication.getId());
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+
+            ApplicationEntity actual = applicationRepository.findById(expectedUnassignedApplication.getId()).orElseThrow();
+            assertNull(actual.getCaseworker());
+            assertEquals(expectedUnassignedApplication, actual);
+
+            assertDomainEventsCreatedForApplications(
+                    List.of(expectedUnassignedApplication),
+                    null,
+                    DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
+                    caseworkerUnassignRequest.getEventHistory()
+            );
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenValidUnassignRequestWithNullEventDescription_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
+            // given
+            ApplicationEntity expectedUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
+                builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
+            });
+
+            CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {
+                builder.eventHistory(EventHistory.builder()
+                        .eventDescription(null)
+                        .build());
+            });
+
+            // when
+            MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, expectedUnassignedApplication.getId());
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+
+            assertDomainEventsCreatedForApplications(
+                    List.of(expectedUnassignedApplication),
+                    null,
+                    DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
+                    caseworkerUnassignRequest.getEventHistory()
+            );
         }
 
         @Test
@@ -881,7 +938,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                     });
 
             CaseworkerAssignRequest caseworkerReassignRequest = caseworkerAssignRequestFactory.create(builder -> {
-                ;
+                
                 builder.caseworkerId(BaseIntegrationTest.CaseworkerJaneDoe.getId())
                         .applicationIds(expectedReassignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()))
                         .eventHistory(EventHistory.builder()
@@ -1513,6 +1570,148 @@ public class ApplicationTest extends BaseIntegrationTest {
         }
     }
 
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class GetDomainEvents {
+
+        private final String SEARCH_EVENT_TYPE_PARAM = "eventType=";
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        public void givenApplicationWithDomainEvents_whenApplicationHistorySearch_theReturnDomainEvents() throws Exception {
+            var appId = persistedApplicationFactory.createAndPersist().getId();
+            // given
+            var domainEvents = setUpDomainEvents(appId);
+            var expectedDomainEvents = domainEvents.stream().map(GetDomainEvents::toEvent).toList();
+            
+            // when
+            MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
+            ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
+
+            // then
+            assertContentHeaders(result);
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+            
+            assertThat(actualResponse).isNotNull();
+            assertTrue(actualResponse.getEvents().containsAll(expectedDomainEvents));
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        public void givenApplicationWithDomainEvents_whenApplicationHistorySearchFilterSingleDomainEvent_thenOnlyFilteredDomainEventTypes() throws Exception {
+                        var appId = persistedApplicationFactory.createAndPersist().getId();
+            // given
+            var domainEvents = setUpDomainEvents(appId);
+            var expectedAssignDomainEvents = domainEvents.stream()
+                                                    .filter(s -> s.getType().equals(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER))
+                                                    .map(GetDomainEvents::toEvent)
+                                                    .toList();
+            
+            // when
+            MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH + 
+                                        "?" + SEARCH_EVENT_TYPE_PARAM + DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER, 
+                                      appId);
+            ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
+
+            // then
+            assertContentHeaders(result);
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+            
+            assertThat(actualResponse).isNotNull();
+            assertTrue(actualResponse.getEvents().containsAll(expectedAssignDomainEvents));
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        public void givenApplicationWithDomainEvents_whenApplicationHistorySearchFilterMultipleDomainEvent_thenOnlyFilteredDomainEventTypes() throws Exception {
+            var appId = persistedApplicationFactory.createAndPersist().getId();
+            // given
+            var domainEvents = setUpDomainEvents(appId);
+            var expectedAssignDomainEvents = domainEvents.stream()
+                                                    .filter(s -> s.getType().equals(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER) ||
+                                                                s.getType().equals(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER))
+                                                    .map(GetDomainEvents::toEvent)
+                                                    .toList();
+            
+            // when
+            String address = TestConstants.URIs.APPLICATION_HISTORY_SEARCH + 
+                                        "?" + SEARCH_EVENT_TYPE_PARAM + 
+                                            DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER +
+                                        "&" + SEARCH_EVENT_TYPE_PARAM + 
+                                            DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER;
+
+            MvcResult result = getUri(address, appId);
+            ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
+            
+            // then
+            assertContentHeaders(result);
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+            
+            assertThat(actualResponse).isNotNull();
+            assertTrue(actualResponse.getEvents().containsAll(expectedAssignDomainEvents));
+        }
+
+        @Test
+        public void givenNoUser_whenApplicationHistorySearch_thenReturnUnauthorised() throws Exception {
+            // when
+            MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, UUID.randomUUID());
+
+            // then
+            assertSecurityHeaders(result);
+            assertUnauthorised(result);
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
+        public void givenNoRole_whenApplicationHistorySearch_thenReturnForbidden() throws Exception {
+            // when
+            MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, UUID.randomUUID());
+
+            // then
+            assertSecurityHeaders(result);
+            assertForbidden(result);
+        }
+
+        private List<DomainEventEntity> setUpDomainEvents(UUID appId) {
+            return List.of(
+                setupDomainEvent(appId, DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER),
+                setupDomainEvent(appId, DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER),
+                setupDomainEvent(appId, DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER),
+                setupDomainEvent(appId, DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER),
+                setupDomainEvent(appId, DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
+            );
+        }
+
+        private DomainEventEntity setupDomainEvent(UUID appId, DomainEventType eventType) {
+            String eventDesc = "{ \"eventDescription\" : \"" + eventType.getValue() + "\"}";
+            return persistedDomainEventFactory.createAndPersist(builder ->
+                {
+                    builder.applicationId(appId);
+                    builder.createdAt(Instant.now());
+                    builder.data(eventDesc);
+                    builder.type(eventType);
+                }
+            );
+        }
+
+        private static ApplicationDomainEvent toEvent(DomainEventEntity entity) {
+            return ApplicationDomainEvent.builder()
+                                         .applicationId(entity.getApplicationId())
+                                         .createdAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC))
+                                         .domainEventType(entity.getType())
+                                         .eventDescription(entity.getData())
+                                         .caseworkerId(entity.getCaseworkerId())
+                                         .createdBy(entity.getCreatedBy())
+                                         .build();
+        }
+    }
+
     // <editor-fold desc="Shared asserts">
 
     private void assertApplicationsMatchInRepository(List<ApplicationEntity> expected) {
@@ -1540,10 +1739,11 @@ public class ApplicationTest extends BaseIntegrationTest {
         for (DomainEventEntity domainEvent : domainEvents) {
             assertEquals(expectedDomainEventType, domainEvent.getType());
             assertTrue(applicationIds.contains(domainEvent.getApplicationId()));
-            assertEquals(caseWorkerId, domainEvent.getCaseWorkerId());
-            // TODO: improve event data comparison
+            assertEquals(caseWorkerId, domainEvent.getCaseworkerId());
             if (expectedEventHistory.getEventDescription() != null) {
-                assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
+              assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
+            } else {
+              assertFalse(domainEvent.getData().contains("eventDescription"));
             }
         }
     }

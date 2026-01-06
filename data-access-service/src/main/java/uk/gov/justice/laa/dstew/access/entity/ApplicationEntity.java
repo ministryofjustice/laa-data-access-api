@@ -27,6 +27,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.enums.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 /**
@@ -83,6 +85,24 @@ public class ApplicationEntity implements AuditableEntity {
   @OneToOne()
   @JoinColumn(name = "caseworker_id", referencedColumnName = "id")
   private CaseworkerEntity caseworker;
+
+  @Column(name = "apply_application_id")
+  private UUID applyApplicationId;
+
+  @Column(name = "submitted_at")
+  private Instant submittedAt;
+
+  @Column(name = "used_delegated_functions")
+  private boolean useDelegatedFunctions;
+
+  @Column(name = "category_of_law")
+  private CategoryOfLaw categoryOfLaw;
+
+  @Column(name = "matter_types")
+  private MatterType matterType;
+
+  @Column(name = "is_auto_granted")
+  private boolean isAutoGranted;
 
   // getters and setters
   public Map<String, Object> getApplicationContent() {

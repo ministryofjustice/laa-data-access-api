@@ -1,28 +1,35 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
+import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
+import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponsePaging;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.Paging;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
+import uk.gov.justice.laa.dstew.access.service.DomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
+import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
 /**
  * Controller for handling /api/v0/applications requests.
@@ -33,6 +40,7 @@ public class ApplicationController implements ApplicationApi {
 
   private final ApplicationService service;
   private final ApplicationSummaryService summaryService;
+  private final DomainEventService domainService;
 
   @LogMethodArguments
   @LogMethodResponse
@@ -75,14 +83,14 @@ public class ApplicationController implements ApplicationApi {
                     page - 1, pageSize);
 
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
-    ApplicationSummaryResponsePaging responsePageDetails = new ApplicationSummaryResponsePaging();
-    response.setPaging(responsePageDetails);
     List<ApplicationSummary> applications = applicationsReturned.stream().toList();
+    Paging paging = new Paging();
     response.setApplications(applications);
-    responsePageDetails.setPage(page);
-    responsePageDetails.pageSize(pageSize);
-    responsePageDetails.totalRecords((int) applicationsReturned.getTotalElements());
-    responsePageDetails.itemsReturned(applications.size());
+    paging.setPage(page);
+    paging.pageSize(pageSize);
+    paging.totalRecords((int) applicationsReturned.getTotalElements());
+    paging.itemsReturned(applications.size());
+    response.setPaging(paging);
 
     return ResponseEntity.ok(response);
   }
@@ -109,11 +117,19 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   public ResponseEntity<Void> unassignCaseworker(UUID id, CaseworkerUnassignRequest request) {
 
-    EventHistory history = request == null ? null : request.getEventHistory();
-
-    service.unassignCaseworker(id, history);
+    service.unassignCaseworker(id, request.getEventHistory());
 
     return ResponseEntity.ok().build();
   }
 
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(UUID applicationId,
+      @Valid List<DomainEventType> eventType) {
+    var events = domainService.getEvents(applicationId, eventType);
+    return ResponseEntity.ok(ApplicationHistoryResponse.builder()
+                                                 .events(events)
+                                                 .build());
+  }
 }
