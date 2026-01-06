@@ -21,6 +21,6 @@ public class CreateApplicationDomainEventDetails {
   private UUID applicationId;
   private String applicationStatus;
   private String applicationContent;
-  private Instant createdAt;
+  private Instant createdDate;
   private String createdBy;
 }
