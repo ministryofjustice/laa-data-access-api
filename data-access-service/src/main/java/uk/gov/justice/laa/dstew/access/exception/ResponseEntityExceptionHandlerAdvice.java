@@ -123,7 +123,8 @@ public class ResponseEntityExceptionHandlerAdvice extends ResponseEntityExceptio
 
   private static String getMessageWhenInvalidEnum(IllegalArgumentException illegalArgumentException) {
     String message;
-    String classPath = illegalArgumentException.getStackTrace()[0].getClassName();
+    StackTraceElement[] stackTraceElements = illegalArgumentException.getStackTrace();
+    String classPath = stackTraceElements[0].getClassName();
     try {
       Class<? extends Enum> enumClass = (Class<? extends Enum>) Class.forName(classPath);
       String validValues = Arrays.stream(enumClass.getEnumConstants())
