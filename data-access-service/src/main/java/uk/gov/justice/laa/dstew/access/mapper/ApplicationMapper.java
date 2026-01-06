@@ -1,11 +1,7 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -29,8 +25,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 @Mapper(componentModel = "spring", uses = {IndividualMapper.class})
 public interface ApplicationMapper {
 
-  ObjectMapper objectMapper = new ObjectMapper();
-
   IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
 
   /**
@@ -53,14 +47,7 @@ public interface ApplicationMapper {
                          .map(individualMapper::toIndividualEntity)
                          .collect(Collectors.toSet());
     entity.setIndividuals(individuals);
-
-    try {
-      entity.setApplicationContent(
-          objectMapper.convertValue(req.getApplicationContent(), Map.class));
-    } catch (Exception e) {
-      throw new IllegalArgumentException(
-          "Failed to serialize ApplicationCreateRequest.applicationContent", e);
-    }
+    entity.setApplicationContent(req.getApplicationContent());
     return entity;
   }
 
@@ -77,15 +64,11 @@ public interface ApplicationMapper {
       entity.setStatus(req.getStatus());
     }
     if (req.getApplicationContent() != null) {
-      try {
-        entity.setApplicationContent(
-            objectMapper.convertValue(req.getApplicationContent(), Map.class));
-      } catch (Exception e) {
-        throw new IllegalArgumentException(
-            "Failed to serialize ApplicationUpdateRequest.applicationContent", e);
-      }
+      entity.setApplicationContent(req.getApplicationContent());
     }
   }
+
+
 
   /**
    * Maps a {@link ApplicationEntity} to an API-facing {@link Application} model.
@@ -99,30 +82,27 @@ public interface ApplicationMapper {
       return null;
     }
 
-    try {
-      Application application = new Application();
-      application.setId(entity.getId());
-      application.setApplicationStatus(entity.getStatus());
-      application.setSchemaVersion(entity.getSchemaVersion());
-      application.setApplicationContent(
-          objectMapper.convertValue(entity.getApplicationContent(), new TypeReference<Map<String, Object>>() {}));
-      application.setLaaReference(entity.getLaaReference());
-      application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
-      application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
-      application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
-      
-      application.setIndividuals(
-          Optional.ofNullable(entity.getIndividuals())
-              .orElse(Set.of())
-              .stream()
-              .map(individualMapper::toIndividual)
-              .filter(Objects::nonNull)
-              .toList()
-      );
-      
-      return application;
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
-    }
+    Application application = new Application();
+    application.setId(entity.getId());
+    application.setApplicationStatus(entity.getStatus());
+    application.setSchemaVersion(entity.getSchemaVersion());
+    application.setApplicationContent(entity.getApplicationContent());
+    application.setLaaReference(entity.getLaaReference());
+    application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
+    application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
+    application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
+
+    application.setIndividuals(
+            Optional.ofNullable(entity.getIndividuals())
+                    .orElse(Set.of())
+                    .stream()
+                    .map(individualMapper::toIndividual)
+                    .filter(Objects::nonNull)
+                    .toList()
+    );
+
+    return application;
   }
+
+
 }

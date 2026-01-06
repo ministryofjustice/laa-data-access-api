@@ -20,6 +20,8 @@ import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
+
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
@@ -29,6 +31,9 @@ import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 @Service
 @RequiredArgsConstructor
 public class DomainEventService {
+
+  private static final String defaultCreatedByName = "";
+
   private final DomainEventRepository domainEventRepository;
   private final ObjectMapper objectMapper;
   private final DomainEventMapper mapper;
@@ -49,7 +54,7 @@ public class DomainEventService {
               .applicationId(applicationId)
               .caseworkerId(caseworkerId)
               .createdAt(Instant.now())
-              .createdBy("")
+              .createdBy(defaultCreatedByName)
               .type(eventType)
               .data(objectMapper.writeValueAsString(data))
               .build();
@@ -75,10 +80,10 @@ public class DomainEventService {
     CreateApplicationDomainEventDetails data =
         CreateApplicationDomainEventDetails.builder()
             .applicationId(applicationEntity.getId())
-            .createdAt(Instant.now())
-            .createdBy(createdBy)
+            .createdDate(applicationEntity.getCreatedAt())
+            .createdBy(applicationEntity.getCreatedBy())
             .applicationStatus(String.valueOf(applicationEntity.getStatus()))
-            .applicationContent(String.valueOf(applicationEntity))
+            .applicationContent(applicationEntity.getApplicationContent().toString())
             .build();
 
     DomainEventEntity domainEventEntity;
@@ -161,7 +166,7 @@ public class DomainEventService {
             .applicationId(applicationId)
             .caseWorkerId(caseworkerId)
             .createdAt(Instant.now())
-            .createdBy("")
+            .createdBy(defaultCreatedByName)
             .eventDescription(eventDescription)
             .build();
 
@@ -174,15 +179,60 @@ public class DomainEventService {
   }
 
   /**
-  * Provides a list of events associated with an application in createdAt ascending order.
-  */
+   * Converts domain event details to JSON string.
+   *
+   * @param domainEventDetails the domain event details
+   * @param domainEventType    domain event type enum
+   * @return JSON string representation of the domain event details
+   */
+  private String getEventDetailsAsJson(Object domainEventDetails, DomainEventType domainEventType) {
+    try {
+      return objectMapper.writeValueAsString(domainEventDetails);
+    } catch (JsonProcessingException e) {
+      throw new DomainEventPublishException(String.format("Unable to save Domain Event of type: %s",
+          domainEventType.name()));
+    }
+  }
+
+  /**
+   * Posts a domain event {@link DomainEventEntity} object.
+   *
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  public void saveUnassignApplicationDomainEvent(
+      UUID applicationId,
+      UUID caseworkerId,
+      String eventDescription) {
+
+    UnassignApplicationDomainEventDetails eventDetails = UnassignApplicationDomainEventDetails.builder()
+        .applicationId(applicationId)
+        .caseworkerId(caseworkerId)
+        .createdAt(Instant.now())
+        .createdBy(defaultCreatedByName)
+        .eventDescription(eventDescription)
+        .build();
+
+    DomainEventEntity domainEventEntity = DomainEventEntity.builder()
+        .applicationId(applicationId)
+        .caseworkerId(caseworkerId)
+        .createdAt(Instant.now())
+        .createdBy(defaultCreatedByName)
+        .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
+        .data(getEventDetailsAsJson(eventDetails, DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER))
+        .build();
+    domainEventRepository.save(domainEventEntity);
+  }
+
+  /**
+   * Provides a list of events associated with an application in createdAt ascending order.
+   */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public List<ApplicationDomainEvent> getEvents(UUID applicationId,
-      @Valid List<DomainEventType> eventType) {
+                                                @Valid List<DomainEventType> eventType) {
 
     var filterEventType = DomainEventSpecification.filterEventTypes(eventType);
     Specification<DomainEventEntity> filter = DomainEventSpecification.filterApplicationId(applicationId)
-                                                                      .and(filterEventType);
+        .and(filterEventType);
 
     Comparator<ApplicationDomainEvent> comparer = Comparator.comparing(ApplicationDomainEvent::getCreatedAt);
     return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
