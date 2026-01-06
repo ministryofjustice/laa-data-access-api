@@ -52,7 +52,7 @@ public class DomainEventService {
               .applicationId(applicationId)
               .caseworkerId(caseworkerId)
               .createdAt(Instant.now())
-              .createdBy("")
+              .createdBy(defaultCreatedByName)
               .type(eventType)
               .data(objectMapper.writeValueAsString(data))
               .build();
@@ -122,7 +122,7 @@ public class DomainEventService {
             .applicationId(applicationId)
             .caseWorkerId(caseworkerId)
             .createdAt(Instant.now())
-            .createdBy("")
+            .createdBy(defaultCreatedByName)
             .eventDescription(eventDescription)
             .build();
 
