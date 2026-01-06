@@ -316,7 +316,7 @@ class ApplicationServiceTest {
   }
 
   @Test
-  void shouldUnassignCaseworkerToApplicationWhenNullEventDescription() throws JsonProcessingException {
+  void shouldUnassignCaseworkerToApplicationWhenNullEventDescription() {
     UUID applicationId = UUID.randomUUID();
     UUID caseWorkerId = UUID.randomUUID();
 
@@ -346,7 +346,7 @@ class ApplicationServiceTest {
   }
 
   @Test
-  void shouldUnassignCaseworkerToApplicationWhenBlankEventDescription() throws JsonProcessingException {
+  void shouldUnassignCaseworkerToApplicationWhenBlankEventDescription() {
     UUID applicationId = UUID.randomUUID();
     UUID caseWorkerId = UUID.randomUUID();
 
