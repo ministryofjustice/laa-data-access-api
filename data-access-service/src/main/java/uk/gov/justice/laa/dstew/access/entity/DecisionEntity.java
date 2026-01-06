@@ -1,0 +1,72 @@
+package uk.gov.justice.laa.dstew.access.entity;
+
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import uk.gov.justice.laa.dstew.access.enums.DecisionStatus;
+
+/**
+ * Represents a decision.
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
+@Entity
+@Table(name = "decisions")
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+public class DecisionEntity implements AuditableEntity {
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Column(columnDefinition = "UUID")
+  private UUID id;
+
+  @Column(name = "application_id")
+  private UUID applicationId;
+
+  @Column(name = "created_at")
+  @CreationTimestamp
+  private Instant createdAt;
+
+  @Column(name = "modified_at")
+  @UpdateTimestamp
+  private Instant modifiedAt;
+
+  @Column(name = "overall_decision")
+  private DecisionStatus overallDecision;
+
+  @Override
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
+
+  @Override
+  public String getCreatedBy() {
+    return null;
+  }
+
+  @Override
+  public Instant getUpdatedAt() {
+    return modifiedAt;
+  }
+
+  @Override
+  public String getUpdatedBy() {
+    return null;
+  }
+}
