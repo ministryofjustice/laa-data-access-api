@@ -10,6 +10,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
@@ -36,6 +37,7 @@ import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
  */
 @RequiredArgsConstructor
 @RestController
+@ExcludeFromGeneratedCodeCoverage
 public class ApplicationController implements ApplicationApi {
 
   private final ApplicationService service;

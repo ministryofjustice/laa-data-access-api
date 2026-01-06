@@ -67,18 +67,6 @@ public class ApplicationService {
   }
 
   /**
-   * Retrieve all applications.
-   *
-   * @return list of applications
-   */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<Application> getAllApplications() {
-    return applicationRepository.findAll().stream()
-        .map(applicationMapper::toApplication)
-        .toList();
-  }
-
-  /**
    * Retrieve a single application by ID.
    *
    * @param id application UUID

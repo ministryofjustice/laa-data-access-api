@@ -19,7 +19,6 @@ import uk.gov.justice.laa.dstew.access.exception.CaseworkerNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactory;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 import java.util.*;
@@ -210,6 +209,12 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                             ))
                     ),
                     Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.laaReference("")),
+                            new ValidationException(List.of(
+                                    "Application reference cannot be blank"
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
                                     builder.applicationContent(new HashMap<>())),
                             new ValidationException(List.of(
                                     "Application content cannot be empty"
@@ -221,6 +226,12 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         private Stream<Arguments> invalidIndividualSpecificCases() {
             return Stream.of(
                     Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(Collections.singletonList(null))),
+                            new ValidationException(List.of(
+                                    "Individual cannot be null."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
                                     builder.individuals(List.of(individualFactory.createDefault(builderInd ->
                                             builderInd.firstName(null))))),
                             new ValidationException(List.of(
@@ -229,7 +240,21 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     ),
                     Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
                                     builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd.firstName(""))))),
+                            new ValidationException(List.of(
+                                    "First name must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
                                             builderInd.lastName(null))))),
+                            new ValidationException(List.of(
+                                    "Last name must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd.lastName(""))))),
                             new ValidationException(List.of(
                                     "Last name must be populated."
                             ))
@@ -484,7 +509,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
                     .applicationId(applicationId)
-                    .caseWorkerId(expectedCaseworker.getId())
+                    .caseworkerId(expectedCaseworker.getId())
                     .createdBy("")
                     .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
                     .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
@@ -554,7 +579,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
                     .applicationId(expectedApplicationEntity.getId())
-                    .caseWorkerId(expectedCaseworker.getId())
+                    .caseworkerId(expectedCaseworker.getId())
                     .createdBy("")
                     .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
                     .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
@@ -689,7 +714,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
                     .applicationId(applicationId)
-                    .caseWorkerId(expectedCaseworker.getId())
+                    .caseworkerId(expectedCaseworker.getId())
                     .createdBy("")
                     .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
                     .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
@@ -730,7 +755,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
                     .applicationId(applicationId)
-                    .caseWorkerId(null)
+                    .caseworkerId(null)
                     .createdBy("")
                     .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
                     .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
@@ -848,7 +873,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
                     .applicationId(applicationId)
-                    .caseWorkerId(expectedCaseworker.getId())
+                    .caseworkerId(expectedCaseworker.getId())
                     .createdBy("")
                     .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
                     .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()

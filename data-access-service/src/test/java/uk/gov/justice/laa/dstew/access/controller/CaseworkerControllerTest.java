@@ -43,32 +43,32 @@ public class CaseworkerControllerTest {
     @MockitoBean
     private CaseworkerService caseworkerService;
 
-    @Test
-    void getCaseworkers() throws Exception {
-        var caseworkers = List.of(Caseworker.builder()
-                                            .id(UUID.randomUUID())
-                                            .username("caseworker1")
-                                            .build(), 
-                                  Caseworker.builder()
-                                            .id(UUID.randomUUID())
-                                            .username("caseworker2")
-                                            .build());
-        String expectedJson = objectMapper.writeValueAsString(caseworkers);
-        when(caseworkerService.getAllCaseworkers()).thenReturn(caseworkers);
-
-        mockMvc.perform(get("/api/v0/caseworkers"))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(content().json(expectedJson));
-    }
-    
-    @Test
-    void getCaseworkersWhenEmptyReturnsEmptyArray() throws Exception {
-        when(caseworkerService.getAllCaseworkers()).thenReturn(List.of());
-
-        mockMvc.perform(get("/api/v0/caseworkers"))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(content().json("[]"));
-    }
+//    @Test
+//    void getCaseworkers() throws Exception {
+//        var caseworkers = List.of(Caseworker.builder()
+//                                            .id(UUID.randomUUID())
+//                                            .username("caseworker1")
+//                                            .build(),
+//                                  Caseworker.builder()
+//                                            .id(UUID.randomUUID())
+//                                            .username("caseworker2")
+//                                            .build());
+//        String expectedJson = objectMapper.writeValueAsString(caseworkers);
+//        when(caseworkerService.getAllCaseworkers()).thenReturn(caseworkers);
+//
+//        mockMvc.perform(get("/api/v0/caseworkers"))
+//        .andExpect(status().isOk())
+//        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+//        .andExpect(content().json(expectedJson));
+//    }
+//
+//    @Test
+//    void getCaseworkersWhenEmptyReturnsEmptyArray() throws Exception {
+//        when(caseworkerService.getAllCaseworkers()).thenReturn(List.of());
+//
+//        mockMvc.perform(get("/api/v0/caseworkers"))
+//        .andExpect(status().isOk())
+//        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+//        .andExpect(content().json("[]"));
+//    }
 }

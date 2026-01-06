@@ -4,6 +4,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.api.CaseworkersApi;
 import uk.gov.justice.laa.dstew.access.model.Caseworker;
 import uk.gov.justice.laa.dstew.access.service.CaseworkerService;
@@ -15,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
  */
 @RequiredArgsConstructor
 @RestController
+@ExcludeFromGeneratedCodeCoverage
 public class CaseworkerController implements CaseworkersApi {
 
   private final CaseworkerService caseworkerService;

@@ -11,7 +11,7 @@ public class DomainEventFactory {
 
         DomainEventEntity entity = DomainEventEntity.builder()
                 .applicationId(UUID.randomUUID())
-                .caseWorkerId(UUID.randomUUID())
+                .caseworkerId(UUID.randomUUID())
                 .createdBy("")
                 .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
                 .data("")
