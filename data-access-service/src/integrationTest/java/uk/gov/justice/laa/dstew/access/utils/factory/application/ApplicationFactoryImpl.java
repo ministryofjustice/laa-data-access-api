@@ -29,11 +29,12 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                 )))
                 .build();
 
+        var instant = InstantSource.system().instant();
         return ApplicationEntity.builder()
-                .createdAt(InstantSource.system().instant())
+                .createdAt(instant)
                 .status(Status.IN_PROGRESS)
-                .modifiedAt(InstantSource.system().instant())
-                .submittedAt(InstantSource.system().instant())
+                .modifiedAt(instant)
+                .submittedAt(instant)
                 .individuals(new HashSet<>(Set.of(individualEntity)))
                 .applicationContent(new LinkedHashMap<>(Map.of(
                         "test", "content"
