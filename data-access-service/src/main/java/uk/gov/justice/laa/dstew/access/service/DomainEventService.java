@@ -77,7 +77,7 @@ public class DomainEventService {
             .createdDate(applicationEntity.getCreatedAt())
             .createdBy(applicationEntity.getCreatedBy())
             .applicationStatus(String.valueOf(applicationEntity.getStatus()))
-            .applicationContent(String.valueOf(applicationEntity))
+            .applicationContent(applicationEntity.getApplicationContent().toString())
             .build();
 
     DomainEventEntity domainEventEntity;
