@@ -15,7 +15,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
@@ -162,7 +162,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                     result.getResponse().getHeader("Location")
             );
             assertNotNull(createdApplicationId);
-            ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId).orElseThrow(() -> new ApplicationNotFoundException(createdApplicationId.toString()));
+            ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId).orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
             assertApplicationEqual(applicationCreateRequest, createdApplication);
         }
 
@@ -214,7 +214,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // then
             assertSecurityHeaders(result);
-            assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request", "Failed to read request", result, detail);
+            assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request", "Invalid data type for field 'unknown'. Expected: ApplicationCreateRequest.", result, detail);
             assertEquals(0, applicationRepository.count());
         }
 
@@ -246,24 +246,21 @@ public class ApplicationTest extends BaseIntegrationTest {
         }
 
         private Stream<Arguments> applicationCreateRequestInvalidDataCases() {
+            ProblemDetail problemDetail = ProblemDetailBuilder
+                    .create()
+                    .status(HttpStatus.BAD_REQUEST)
+                    .title("Bad Request")
+                    .detail("Request validation failed")
+                    .build();
+            problemDetail.setType(null);
             return Stream.of(
                     Arguments.of(applicationCreateRequestFactory.create(builder -> {
                                 builder.status(null);
-                            }), ProblemDetailBuilder
-                                    .create()
-                                    .status(HttpStatus.BAD_REQUEST)
-                                    .title("Bad Request")
-                                    .detail("Invalid request content.")
-                                    .build()
+                            }), problemDetail
                     ),
                     Arguments.of(applicationCreateRequestFactory.create(builder -> {
                                 builder.laaReference(null);
-                            }), ProblemDetailBuilder
-                                    .create()
-                                    .status(HttpStatus.BAD_REQUEST)
-                                    .title("Bad Request")
-                                    .detail("Invalid request content.")
-                                    .build()
+                            }), problemDetail
                     )
             );
         }
