@@ -6,12 +6,10 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
-import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
@@ -29,7 +27,6 @@ import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.service.DomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
-import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
 /**
  * Controller for handling /api/v0/applications requests.
@@ -45,7 +42,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   @LogMethodResponse
   @Override
-  public ResponseEntity<Void> createApplication(ApplicationCreateRequest applicationCreateReq) {
+  public ResponseEntity<Void> createApplication(@Valid ApplicationCreateRequest applicationCreateReq) {
     UUID id = service.createApplication(applicationCreateReq);
 
     URI uri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
@@ -55,7 +52,7 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodResponse
   @LogMethodArguments
-  public ResponseEntity<Void> updateApplication(UUID id, ApplicationUpdateRequest applicationUpdateReq) {
+  public ResponseEntity<Void> updateApplication(UUID id, @Valid ApplicationUpdateRequest applicationUpdateReq) {
     service.updateApplication(id, applicationUpdateReq);
     return ResponseEntity.noContent().build();
   }
@@ -105,7 +102,7 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> assignCaseworker(CaseworkerAssignRequest request) {
+  public ResponseEntity<Void> assignCaseworker(@Valid CaseworkerAssignRequest request) {
     service.assignCaseworker(request.getCaseworkerId(),
                               request.getApplicationIds(),
                               request.getEventHistory());
@@ -115,11 +112,9 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> unassignCaseworker(UUID id, CaseworkerUnassignRequest request) {
+  public ResponseEntity<Void> unassignCaseworker(UUID id, @Valid CaseworkerUnassignRequest request) {
 
-    EventHistory history = request == null ? null : request.getEventHistory();
-
-    service.unassignCaseworker(id, history);
+    service.unassignCaseworker(id, request.getEventHistory());
 
     return ResponseEntity.ok().build();
   }

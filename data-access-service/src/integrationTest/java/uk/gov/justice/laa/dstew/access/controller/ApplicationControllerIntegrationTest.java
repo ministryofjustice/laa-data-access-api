@@ -222,12 +222,13 @@ public class ApplicationControllerIntegrationTest {
         .andExpect(MockMvcResultMatchers.status().isForbidden());
   }
 
+  @Test
   @WithMockUser(authorities = {"APPROLE_ApplicationReader", "APPROLE_ApplicationWriter"})
   void getItem_should_return_404_when_application_does_not_exist() throws Exception {
     mockMvc.perform(MockMvcRequestBuilders.get("/api/v0/applications/019a2b5e-d126-71c7-89c2-500363c172f1"))
         .andExpect(MockMvcResultMatchers.status().isNotFound())
         .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(MockMvcResultMatchers.jsonPath("$.title").value("Not found"))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.title").value("Not Found"))
         .andExpect(MockMvcResultMatchers.jsonPath("$.detail")
             .value("No application found with id: 019a2b5e-d126-71c7-89c2-500363c172f1"));
   }
@@ -620,7 +621,7 @@ public class ApplicationControllerIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload))
         .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.title").value("Not found"))
+        .andExpect(jsonPath("$.title").value("Not Found"))
         .andExpect(jsonPath("$.detail").value("No application found with ids: " + missingAppId));
   }
 
@@ -648,7 +649,7 @@ public class ApplicationControllerIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload))
         .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.title").value("Not found"))
+        .andExpect(jsonPath("$.title").value("Not Found"))
         .andExpect(jsonPath("$.detail").value("No caseworker found with id: " + missingCwId));
   }
 
