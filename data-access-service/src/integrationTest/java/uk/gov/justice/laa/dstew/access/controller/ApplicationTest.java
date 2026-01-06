@@ -1565,15 +1565,15 @@ public class ApplicationTest extends BaseIntegrationTest {
             ApplicationSummary applicationSummary = new ApplicationSummary();
             applicationSummary.setApplicationId(applicationEntity.getId());
             applicationSummary.setStatus(applicationEntity.getStatus());
-            applicationSummary.setSubmittedAt(OffsetDateTime.ofInstant(applicationEntity.getSubmittedAt(), ZoneOffset.UTC));
-            applicationSummary.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getModifiedAt(), ZoneOffset.UTC));
+            applicationSummary.setSubmittedAt(applicationEntity.getSubmittedAt().atOffset(ZoneOffset.UTC));
+            applicationSummary.setLastUpdated(applicationEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
             applicationSummary.setUsedDelegatedFunctions(applicationEntity.isUseDelegatedFunctions());
             applicationSummary.setCategoryOfLaw(applicationEntity.getCategoryOfLaw());
             applicationSummary.setMatterType(applicationEntity.getMatterType());
             applicationSummary.setAssignedTo(applicationEntity.getCaseworker() != null ? applicationEntity.getCaseworker().getId() : null);
             applicationSummary.autoGrant(applicationEntity.isAutoGranted());
             applicationSummary.setLaaReference(applicationEntity.getLaaReference());
-            applicationSummary.setCreatedAt(OffsetDateTime.ofInstant(applicationEntity.getCreatedAt(), ZoneOffset.UTC));
+            applicationSummary.setCreatedAt(applicationEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
             applicationSummary.setApplicationType(ApplicationType.INITIAL);
             applicationSummary.setClientFirstName(applicationEntity.getIndividuals().stream().findFirst().get().getFirstName());
             applicationSummary.setClientLastName(applicationEntity.getIndividuals().stream().findFirst().get().getLastName());
