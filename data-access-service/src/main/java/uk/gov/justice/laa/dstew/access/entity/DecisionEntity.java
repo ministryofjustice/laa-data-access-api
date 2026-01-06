@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -31,7 +32,7 @@ import uk.gov.justice.laa.dstew.access.enums.DecisionStatus;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class DecisionEntity implements AuditableEntity {
   @Id
-  @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(columnDefinition = "UUID")
   private UUID id;
 
@@ -47,7 +48,7 @@ public class DecisionEntity implements AuditableEntity {
   private Instant modifiedAt;
 
   @Column(name = "overall_decision")
-  private DecisionStatus decisionStatus;
+  private DecisionStatus overallDecision;
 
   @Override
   public Instant getCreatedAt() {
