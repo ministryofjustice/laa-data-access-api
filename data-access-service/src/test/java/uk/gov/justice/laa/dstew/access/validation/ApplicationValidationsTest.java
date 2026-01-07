@@ -9,11 +9,14 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.instancio.Instancio;
 import org.instancio.Select;
+import org.javers.common.collections.Arrays;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -185,5 +188,25 @@ public class ApplicationValidationsTest {
   @Test
   void notNullStringShouldReturnSameStringWhenNotNull() {
     assert ValidationUtils.notNull("hello").equals("hello");
+  }
+
+  // ----- list of applications id validations -----
+
+  @Test void shouldNotThrowWhenIdListContainsOnlyValidValues() {
+    var ids = List.of(UUID.randomUUID(), UUID.randomUUID());
+    assertDoesNotThrow(() -> classUnderTest.checkApplicationIdList(ids));
+  }
+
+  @Test void shouldNotThrowWhenIdListEmpty() {
+    assertDoesNotThrow(() -> classUnderTest.checkApplicationIdList(Collections.emptyList()));
+  }
+
+  @Test void shouldThrowValidationExceptionWhenListOfIdsIsNull() {
+    assertThrows(ValidationException.class, () -> classUnderTest.checkApplicationIdList(null));
+  }
+
+  @Test void shouldThrowValidationExceptionWhenIdContainsNullValue() {
+    List ids = Arrays.asList(new UUID[] { UUID.randomUUID(), null });
+    assertThrows(ValidationException.class, () -> classUnderTest.checkApplicationIdList(ids));
   }
 }
