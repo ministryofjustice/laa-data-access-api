@@ -30,11 +30,12 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                 .build();
 
         var instant = InstantSource.system().instant();
+        var instantWithoutNanos = instant.minusNanos(instant.getNano());
         return ApplicationEntity.builder()
-                .createdAt(instant)
+                .createdAt(instantWithoutNanos)
                 .status(Status.IN_PROGRESS)
-                .modifiedAt(instant)
-                .submittedAt(instant)
+                .modifiedAt(instantWithoutNanos)
+                .submittedAt(instantWithoutNanos)
                 .individuals(new HashSet<>(Set.of(individualEntity)))
                 .applicationContent(new LinkedHashMap<>(Map.of(
                         "test", "content"
