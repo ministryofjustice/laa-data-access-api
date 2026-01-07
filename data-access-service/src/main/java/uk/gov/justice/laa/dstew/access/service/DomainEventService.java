@@ -115,19 +115,6 @@ public class DomainEventService {
         DomainEventType.APPLICATION_UPDATED,
         domainEventDetails
     );
-
-    /*
-    DomainEventEntity domainEventEntity =
-        DomainEventEntity.builder()
-            .applicationId(applicationEntity.getId())
-            .caseworkerId(null)
-            .type(DomainEventType.APPLICATION_UPDATED)
-            .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.APPLICATION_UPDATED))
-            .createdAt(Instant.now())
-            .createdBy(updatedBy)
-            .build();
-
-    domainEventRepository.save(domainEventEntity);*/
   }
 
 
