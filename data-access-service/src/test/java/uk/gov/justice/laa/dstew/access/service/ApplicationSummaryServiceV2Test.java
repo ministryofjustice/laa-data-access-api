@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -21,6 +22,7 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
@@ -65,7 +67,8 @@ public class ApplicationSummaryServiceV2Test extends BaseServiceTest {
             assertApplicationSummaryListsEqual(actualApplications, expectedApplications);
         }
 
-        @Test
+        @ParameterizedTest
+        @ValueSource(ints = {0, 10})
         public void givenPageZeroAndUserId_whenGetApplicationsAndNoCaseworkerFound_thenThrowValidationException() {
 
             // given

@@ -9,11 +9,13 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * Configuration for JPA auditing (automatic created & lastModified metadata).
  * Configuration can be disabled for AccessAppTests.contextLoads().
  */
+@ExcludeFromGeneratedCodeCoverage
 @ConditionalOnProperty(prefix = "feature", name = "disable-jpa-auditing", havingValue = "false", matchIfMissing = true)
 @Configuration
 @EnableJpaAuditing(auditorAwareRef = "auditorProvider")

@@ -540,6 +540,23 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         @Test
+        void givenNullCasworkerId_whenAsssignCaseworker_thenThrowNullPointerException() {
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(null, null, null));
+            assertThat(thrown)
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessage("caseworkerId is marked non-null but is null");
+
+            // then
+            verify(applicationRepository, never()).findAllById(any(Iterable.class));
+            verify(caseworkerRepository, never()).findById(any(UUID.class));
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        @Test
         void givenNonexistentCaseworker_whenAssignCaseworker_thenThrowCaseworkerNotFoundException() {
             UUID nonexistentCaseworkerId = UUID.randomUUID();
 
@@ -555,8 +572,33 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .hasMessage("No caseworker found with id: " + nonexistentCaseworkerId);
 
             // then
+            verify(applicationRepository, never()).findAllById(any(Iterable.class));
             verify(caseworkerRepository, times(1)).findById(nonexistentCaseworkerId);
             verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        @Test
+        void givenEmptyApplicationIds_whenAssignCaseworker_thenNoActionTaken() {
+
+            // given
+            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+            when(caseworkerRepository.findById(expectedCaseworker.getId()))
+                    .thenReturn(Optional.of(expectedCaseworker));
+
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            List<UUID> emptyApplicationIds = Collections.emptyList();
+
+            // when
+            serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), emptyApplicationIds, new EventHistory());
+
+            // then
+            verify(applicationRepository, times(1)).findAllById(emptyApplicationIds);
+            verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
         }
 
         @Test
@@ -608,6 +650,50 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         @Test
+        void givenApplicationIsAlreadyAssignedToCaseworker_whenAssignCaseworker_thenNotUpdateApplication_andCreateDomainEvent() throws JsonProcessingException {
+
+            UUID existingApplicationId = UUID.randomUUID();
+            CaseworkerEntity existingCaseworker = caseworkerFactory.createDefault();
+            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+                    builder.id(existingApplicationId).caseworker(existingCaseworker)
+            );
+
+            List<UUID> applicationIds = List.of(existingApplicationId);
+
+            EventHistory eventHistory = EventHistory.builder()
+                    .eventDescription("Caseworker assigned.")
+                    .build();
+
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(existingApplicationEntity.getId())
+                    .caseworkerId(existingCaseworker.getId())
+                    .createdBy("")
+                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
+                    .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
+                            .applicationId(existingApplicationEntity.getId())
+                            .caseWorkerId(existingCaseworker.getId())
+                            .eventDescription(eventHistory.getEventDescription())
+                            .createdBy("")
+                            .build()))
+                    .build();
+
+            when(applicationRepository.findAllById(eq(applicationIds))).thenReturn(List.of(existingApplicationEntity));
+            when(caseworkerRepository.findById(existingCaseworker.getId()))
+                    .thenReturn(Optional.of(existingCaseworker));
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            serviceUnderTest.assignCaseworker(existingCaseworker.getId(), applicationIds, eventHistory);
+
+            // then
+            verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
+            verify(caseworkerRepository, times(1)).findById(existingCaseworker.getId());
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verifyThatDomainEventSaved(expectedDomainEvent, 1);
+        }
+
+        @Test
         void givenMissingApplications_whenAssignCaseworker_thenThrowApplicationNotFoundException() {
             UUID existingApplicationId = UUID.randomUUID();
             ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
@@ -641,6 +727,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
             verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
             verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
         }
 
         @Test
@@ -714,12 +801,12 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
                     .applicationId(applicationId)
-                    .caseworkerId(expectedCaseworker.getId())
+                    .caseworkerId(null)
                     .createdBy("")
                     .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
                     .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
                             .applicationId(existingApplicationEntity.getId())
-                            .caseWorkerId(expectedCaseworker.getId())
+                            .caseWorkerId(null)
                             .eventDescription(eventHistory.getEventDescription())
                             .createdBy("")
                             .build()))
@@ -736,8 +823,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, times(1)).findById(applicationId);
 
             verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
-            // TODO: introduce when DSTEW-901 is merged
-            //verifyThatDomainEventSaved(expectedDomainEvent, 1);
+            verifyThatDomainEventSaved(expectedDomainEvent, 1);
         }
 
         @Test
@@ -747,22 +833,8 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     builder.id(applicationId).caseworker(null)
             );
 
-            ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(null).build();
-
             EventHistory eventHistory = EventHistory.builder()
                     .eventDescription("Unassigned")
-                    .build();
-
-            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
-                    .applicationId(applicationId)
-                    .caseworkerId(null)
-                    .createdBy("")
-                    .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
-                    .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
-                            .applicationId(existingApplicationEntity.getId())
-                            .eventDescription(eventHistory.getEventDescription())
-                            .createdBy("")
-                            .build()))
                     .build();
 
             when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
@@ -775,24 +847,26 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // then
             verify(applicationRepository, times(1)).findById(applicationId);
             verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-            // TODO: check that a domain event is created once DSTEW-901 is merged
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
         }
 
-        @Test
-        void givenNonexistentApplication_whenUnassignCaseworker_thenThrowApplicationNotFoundException() {
+        @ParameterizedTest
+        @MethodSource("invalidUnassignApplicationIdCases")
+        void givenNonexistentApplication_whenUnassignCaseworker_thenThrowApplicationNotFoundException(
+                UUID applicationId
+        ) {
 
             // given
-            UUID nonexistentApplicationId = UUID.randomUUID();
             setSecurityContext(TestConstants.Roles.WRITER);
 
             // when
-            Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(nonexistentApplicationId, new EventHistory()));
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(applicationId, new EventHistory()));
             assertThat(thrown)
                     .isInstanceOf(ApplicationNotFoundException.class)
-                    .hasMessage("No application found with id: " + nonexistentApplicationId);
+                    .hasMessage("No application found with id: " + applicationId);
 
             // then
-            verify(applicationRepository, times(1)).findById(nonexistentApplicationId);
+            verify(applicationRepository, times(1)).findById(applicationId);
             verify(applicationRepository, never()).save(any(ApplicationEntity.class));
             verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
         }
@@ -810,7 +884,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             // then
             verify(applicationRepository, never()).findAllById(any(Iterable.class));
-            verify(caseworkerRepository, never()).findById(any(UUID.class));
             verify(applicationRepository, never()).save(any(ApplicationEntity.class));
             verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
         }
@@ -828,7 +901,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             // then
             verify(applicationRepository, never()).findAllById(any(Iterable.class));
-            verify(caseworkerRepository, never()).findById(any(UUID.class));
             verify(applicationRepository, never()).save(any(ApplicationEntity.class));
             verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
         }
@@ -838,6 +910,13 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     Arguments.of("Assigned by system"),
                     Arguments.of(""),
                     Arguments.of((Object)null)
+            );
+        }
+
+        private Stream<Arguments> invalidUnassignApplicationIdCases() {
+            return Stream.of(
+                    Arguments.of(UUID.randomUUID()),
+                    Arguments.of((UUID)null)
             );
         }
     }
@@ -900,8 +979,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
 
             verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
-            // TODO: introduce when DSTEW-901 is merged
-            //verifyThatDomainEventSaved(expectedDomainEvent, 1);
+            verifyThatDomainEventSaved(expectedDomainEvent, 1);
         }
     }
 

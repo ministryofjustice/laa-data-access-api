@@ -15,11 +15,13 @@ import java.util.UUID;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 
 /**
  * Represents a domain events table.
  */
+@ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter
 @NoArgsConstructor

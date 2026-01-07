@@ -20,10 +20,12 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * Represents an individual.
  */
+@ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter
 @AllArgsConstructor

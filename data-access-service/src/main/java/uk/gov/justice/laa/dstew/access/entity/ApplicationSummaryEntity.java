@@ -18,12 +18,14 @@ import java.util.Set;
 import java.util.UUID;
 
 import lombok.*;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 /**
  * Represents an application summary for legal aid.
  * Will be removed when merged into new application structures
  */
+@ExcludeFromGeneratedCodeCoverage
 @Builder(toBuilder = true)
 @AllArgsConstructor
 @NoArgsConstructor

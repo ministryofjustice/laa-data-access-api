@@ -27,6 +27,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.enums.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -34,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 /**
  * Represents an application.
  */
+@ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter
 @AllArgsConstructor

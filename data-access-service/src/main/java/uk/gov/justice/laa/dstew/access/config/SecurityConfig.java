@@ -17,11 +17,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 /**
  * Spring Security configuration if security is not disabled.
  */
+@ExcludeFromGeneratedCodeCoverage
 @ConditionalOnProperty(prefix = "feature", name = "disable-security", havingValue = "false", matchIfMissing = true)
 @Configuration
 @EnableMethodSecurity
