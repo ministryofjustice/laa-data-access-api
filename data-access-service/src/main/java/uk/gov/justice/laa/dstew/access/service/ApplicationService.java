@@ -86,6 +86,8 @@ public class ApplicationService {
     entity.setSchemaVersion(applicationVersion);
     final ApplicationEntity saved = applicationRepository.save(entity);
 
+    domainEventService.saveCreateApplicationDomainEvent(saved, null);
+
     createAndSendHistoricRecord(saved, null);
 
     return saved.getId();
@@ -142,6 +144,7 @@ public class ApplicationService {
    * @return found entity
    */
   private List<ApplicationEntity> checkIfAllApplicationsExist(@NonNull final List<UUID> ids) {
+    applicationValidations.checkApplicationIdList(ids);
     var idsToFetch = ids.stream().distinct().toList();
     var applications = applicationRepository.findAllById(idsToFetch);
     List<UUID> fetchedApplicationsIds = applications.stream().map(app -> app.getId()).toList();
