@@ -14,8 +14,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.exception.ApplicationNotFoundException;
-import uk.gov.justice.laa.dstew.access.exception.CaseworkerNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -56,7 +55,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         @Test
-        public void givenNoApplicationAndRoleReader_whenGetApplication_thenThrowApplicationNotFoundException() {
+        public void givenNoApplicationAndRoleReader_whenGetApplication_thenThrowResourceNotFoundException() {
 
             // given
             UUID applicationId = UUID.randomUUID();
@@ -66,7 +65,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             // when
             // then
-            assertThatExceptionOfType(ApplicationNotFoundException.class)
+            assertThatExceptionOfType(ResourceNotFoundException.class)
                     .isThrownBy(() -> serviceUnderTest.getApplication(applicationId))
                     .withMessageContaining("No application found with id: " + applicationId);
             verify(applicationRepository, times(1)).findById(applicationId);
@@ -358,7 +357,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class UpdateApplication {
         @Test
-        void givenNoApplication_whenUpdateApplication_thenThrowApplicationNotFoundException() {
+        void givenNoApplication_whenUpdateApplication_thenThrowResourceNotFoundException() {
             // given
             UUID applicationId = UUID.randomUUID();
             when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
@@ -366,7 +365,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             setSecurityContext(TestConstants.Roles.WRITER);
 
             // when / then
-            assertThatExceptionOfType(ApplicationNotFoundException.class)
+            assertThatExceptionOfType(ResourceNotFoundException.class)
                     .isThrownBy(() -> serviceUnderTest.updateApplication(applicationId, new ApplicationUpdateRequest()))
                     .withMessageContaining("No application found with id: " + applicationId);
             verify(applicationRepository, times(1)).findById(applicationId);
@@ -557,7 +556,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         @Test
-        void givenNonexistentCaseworker_whenAssignCaseworker_thenThrowCaseworkerNotFoundException() {
+        void givenNonexistentCaseworker_whenAssignCaseworker_thenThrowResourceNotFoundException() {
             UUID nonexistentCaseworkerId = UUID.randomUUID();
 
             when(caseworkerRepository.findById(nonexistentCaseworkerId))
@@ -568,7 +567,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // when
             Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(nonexistentCaseworkerId, List.of(UUID.randomUUID()), new EventHistory()));
             assertThat(thrown)
-                    .isInstanceOf(CaseworkerNotFoundException.class)
+                    .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessage("No caseworker found with id: " + nonexistentCaseworkerId);
 
             // then
@@ -694,7 +693,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         @Test
-        void givenMissingApplications_whenAssignCaseworker_thenThrowApplicationNotFoundException() {
+        void givenMissingApplications_whenAssignCaseworker_thenThrowResourceNotFoundException() {
             UUID existingApplicationId = UUID.randomUUID();
             ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
                     builder.id(existingApplicationId).caseworker(null)
@@ -717,7 +716,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // when
             Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds, eventHistory));
             assertThat(thrown)
-                    .isInstanceOf(ApplicationNotFoundException.class)
+                    .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessage("No application found with ids: " + applicationIds.stream()
                             .filter(id -> !id.equals(existingApplicationId))
                             .map(UUID::toString)
@@ -852,7 +851,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
         @ParameterizedTest
         @MethodSource("invalidUnassignApplicationIdCases")
-        void givenNonexistentApplication_whenUnassignCaseworker_thenThrowApplicationNotFoundException(
+        void givenNonexistentApplication_whenUnassignCaseworker_thenThrowResourceNotFoundException(
                 UUID applicationId
         ) {
 
@@ -862,7 +861,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // when
             Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(applicationId, new EventHistory()));
             assertThat(thrown)
-                    .isInstanceOf(ApplicationNotFoundException.class)
+                    .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessage("No application found with id: " + applicationId);
 
             // then
