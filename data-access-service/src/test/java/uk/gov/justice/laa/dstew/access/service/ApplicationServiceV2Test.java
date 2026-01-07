@@ -556,6 +556,31 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         @Test
+        void givenNullApplicationIdInList_whenAsssignCaseworker_thenThrowValidationException() {
+            setSecurityContext(TestConstants.Roles.WRITER);
+            List<UUID> applicationIdsWithNull = Arrays.asList(UUID.randomUUID(), null, UUID.randomUUID());
+            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+            when(caseworkerRepository.findById(expectedCaseworker.getId()))
+                    .thenReturn(Optional.of(expectedCaseworker));
+
+            ValidationException expectedValidationException = new ValidationException(
+                    List.of("Request contains null values for ids")
+            );
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIdsWithNull, new EventHistory()));
+            assertThat(thrown)
+                    .isInstanceOf(ValidationException.class)
+                    .usingRecursiveComparison()
+                    .isEqualTo(expectedValidationException);
+
+            // then
+            verify(applicationRepository, never()).findAllById(any(Iterable.class));
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        @Test
         void givenNonexistentCaseworker_whenAssignCaseworker_thenThrowResourceNotFoundException() {
             UUID nonexistentCaseworkerId = UUID.randomUUID();
 
