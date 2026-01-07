@@ -16,7 +16,7 @@ jobs:
     if: startsWith(github.head_ref || github.ref_name, 'openapi/') == false
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -49,7 +49,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload service JAR artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: service-jar
           path: data-access-service/build/libs/*.jar
@@ -57,7 +57,7 @@ jobs:
 
       - name: Upload checkstyle report for data-access-service
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: checkstyle-report
           path: data-access-service/build/reports/checkstyle
@@ -65,7 +65,7 @@ jobs:
 
       - name: Upload test report for data-access-service
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-report
           path: data-access-service/build/reports/tests
@@ -73,7 +73,7 @@ jobs:
 
       - name: Upload jacoco coverage report for data-access-service
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: jacoco-coverage-report
           path: data-access-service/build/reports/jacoco
@@ -89,7 +89,7 @@ jobs:
       SNYK_TARGET_REFERENCE: main
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Run Snyk to check app for vulnerabilities
         uses: snyk/actions/gradle@master
@@ -105,7 +105,7 @@ jobs:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -142,17 +142,17 @@ jobs:
       contents: read
     steps:
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Download JAR artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: service-jar
           path: data-access-service/build/libs/
 
         # ---------- AWS auth (OIDC) ----------
       - name: Configure AWS creds
-        uses: aws-actions/configure-aws-credentials@v5.1.0
+        uses: aws-actions/configure-aws-credentials@v5.1.1
         with:
           role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
           aws-region: ${{  vars.ECR_REGION }}
@@ -183,7 +183,7 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Deploy UAT branch
         id: deploy_uat_branch
@@ -213,7 +213,7 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Deploy staging
         id: deploy_staging
@@ -240,7 +240,7 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Deploy production
         id: deploy_production
