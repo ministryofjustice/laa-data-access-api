@@ -75,7 +75,7 @@ public class DomainEventService {
       ApplicationEntity applicationEntity,
       String createdBy) {
 
-    CreateApplicationDomainEventDetails data =
+    CreateApplicationDomainEventDetails domainEventDetails =
         CreateApplicationDomainEventDetails.builder()
             .applicationId(applicationEntity.getId())
             .createdDate(applicationEntity.getCreatedAt())
@@ -84,25 +84,15 @@ public class DomainEventService {
             .applicationContent(String.valueOf(applicationEntity))
             .build();
 
-    DomainEventEntity domainEventEntity;
-    try {
-      domainEventEntity =
+    DomainEventEntity domainEventEntity =
           DomainEventEntity.builder()
               .applicationId(applicationEntity.getId())
               .caseworkerId(null)
               .type(DomainEventType.APPLICATION_CREATED)
-              .data(objectMapper.writeValueAsString(data))
               .createdAt(Instant.now())
               .createdBy(createdBy)
+              .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER))
               .build();
-    } catch (JsonProcessingException e) {
-      throw new DomainEventPublishException(
-          String.format(
-              "Unable to save Domain Event of type: %s",
-              DomainEventType.APPLICATION_CREATED.name()
-          )
-      );
-    }
 
     domainEventRepository.save(domainEventEntity);
   }
@@ -168,15 +158,12 @@ public class DomainEventService {
         .eventDescription(eventDescription)
         .build();
 
-    DomainEventEntity domainEventEntity = DomainEventEntity.builder()
-        .applicationId(applicationId)
-        .caseworkerId(caseworkerId)
-        .createdAt(Instant.now())
-        .createdBy(defaultCreatedByName)
-        .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
-        .data(getEventDetailsAsJson(eventDetails, DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER))
-        .build();
-    domainEventRepository.save(domainEventEntity);
+    saveDomainEvent(
+        applicationId,
+        caseworkerId,
+        DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
+        eventDetails
+    );
   }
 
   /**
