@@ -118,7 +118,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             Application application = new Application();
             application.setId(applicationEntity.getId());
             application.setApplicationContent(applicationEntity.getApplicationContent());
-            application.setStatus(applicationEntity.getStatus());
+            application.setApplicationStatus(applicationEntity.getStatus());
             application.setSchemaVersion(applicationEntity.getSchemaVersion());
             if (applicationEntity.getCaseworker() != null) {
                 application.setCaseworkerId(applicationEntity.getCaseworker().getId());
