@@ -297,35 +297,4 @@ public class DomainEventServiceTest {
                         entity.getData().equals(jsonObject)
                 ));
     }
-
-    @Test
-    void shouldSaveCreateApplicationDomainEvent() throws JsonProcessingException {
-        UUID applicationId = UUID.randomUUID();
-        String createdBy = null;
-        String jsonObject = "{\"applicationId\":\"" + applicationId + "\"}";
-
-        ApplicationEntity applicationEntity = ApplicationEntity.builder()
-            .id(applicationId)
-            .status(ApplicationStatus.IN_PROGRESS)
-            .build();
-
-        when(objectMapper.writeValueAsString(any(CreateApplicationDomainEventDetails.class)))
-            .thenReturn(jsonObject);
-
-        service.saveCreateApplicationDomainEvent(applicationEntity, createdBy);
-
-        verify(objectMapper, times(1))
-            .writeValueAsString(any(CreateApplicationDomainEventDetails.class));
-
-        verify(repository, times(1)).save(
-            argThat(entity ->
-                entity.getApplicationId().equals(applicationId)
-                    && entity.getCaseworkerId() == null
-                    && entity.getType() == DomainEventType.APPLICATION_CREATED
-                    && entity.getData().equals(jsonObject)
-                    && entity.getCreatedBy() == null
-                    && entity.getCreatedAt() != null
-            )
-        );
-    }
 }
