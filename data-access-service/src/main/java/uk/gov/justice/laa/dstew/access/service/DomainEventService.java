@@ -117,20 +117,20 @@ public class DomainEventService {
       UUID caseworkerId,
       String eventDescription) {
 
-    AssignApplicationDomainEventDetails data =
+    AssignApplicationDomainEventDetails domainEventDetails =
         AssignApplicationDomainEventDetails.builder()
-            .applicationId(applicationId)
-            .caseWorkerId(caseworkerId)
-            .createdAt(Instant.now())
-            .createdBy(defaultCreatedByName)
-            .eventDescription(eventDescription)
-            .build();
+          .applicationId(applicationId)
+          .caseWorkerId(caseworkerId)
+          .createdAt(Instant.now())
+          .createdBy(defaultCreatedByName)
+          .eventDescription(eventDescription)
+          .build();
 
     saveDomainEvent(
         applicationId,
         caseworkerId,
         DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
-        data
+        domainEventDetails
     );
   }
 
