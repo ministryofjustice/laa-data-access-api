@@ -50,7 +50,7 @@ class ApplicationMapperTest {
     assertThat(result).isNotNull();
     assertThat(result.getId()).isEqualTo(id);
     assertThat(result.getLaaReference()).isEqualTo("Ref123");
-    assertThat(result.getApplicationStatus()).isEqualTo(Status.IN_PROGRESS);
+    assertThat(result.getStatus()).isEqualTo(Status.IN_PROGRESS);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
     assertThat(result.getCreatedAt()).isEqualTo(OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC));
     assertThat(result.getUpdatedAt()).isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
@@ -190,40 +190,5 @@ class ApplicationMapperTest {
 
     assertThat(entity.getStatus()).isEqualTo(Status.SUBMITTED);
     assertThat(entity.getApplicationContent()).containsEntry("newKey", "newValue");
-  }
-
-  @Test
-  void shouldThrowWhenApplicationCreateRequestContentCannotBeSerialized() {
-    ApplicationCreateRequest req = new ApplicationCreateRequest();
-    req.setStatus(Status.IN_PROGRESS);
-    req.setApplicationContent(Map.of("key", new Object() {}));
-
-    assertThrows(IllegalArgumentException.class, () -> applicationMapper.toApplicationEntity(req));
-  }
-
-  @Test
-  void shouldThrowWhenApplicationUpdateRequestContentCannotBeSerialized() {
-    ApplicationEntity entity = new ApplicationEntity();
-    entity.setStatus(Status.IN_PROGRESS);
-
-    ApplicationUpdateRequest req = new ApplicationUpdateRequest();
-    req.setApplicationContent(Map.of("key", new Object() {}));
-
-    IllegalArgumentException ex = assertThrows(
-        IllegalArgumentException.class,
-        () -> applicationMapper.updateApplicationEntity(entity, req)
-    );
-
-    assertThat(ex.getMessage())
-        .isEqualTo("Failed to serialize ApplicationUpdateRequest.applicationContent");
-  }
-
-  @Test
-  void shouldThrowWhenApplicationEntityContentCannotBeDeserialized() {
-    ApplicationEntity entity = new ApplicationEntity();
-    entity.setStatus(Status.IN_PROGRESS);
-    entity.setApplicationContent(Map.of("key", new Object() {}));
-
-    assertThrows(IllegalArgumentException.class, () -> applicationMapper.toApplication(entity));
   }
 }

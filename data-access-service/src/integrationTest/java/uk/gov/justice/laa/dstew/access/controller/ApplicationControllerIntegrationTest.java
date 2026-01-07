@@ -294,7 +294,7 @@ public class ApplicationControllerIntegrationTest {
         .andExpect(MockMvcResultMatchers.status().isOk())
         .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.first_name").value("Jane"))
         .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.last_name").value("Smith"))
-        .andExpect(MockMvcResultMatchers.jsonPath("$.applicationStatus").value("IN_PROGRESS"));
+        .andExpect(MockMvcResultMatchers.jsonPath("$.status").value("IN_PROGRESS"));
   }
 
 
@@ -324,7 +324,7 @@ public class ApplicationControllerIntegrationTest {
         .andExpect(MockMvcResultMatchers.status().isOk())
         .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.first_name").value("Alice"))
         .andExpect(MockMvcResultMatchers.jsonPath("$.applicationContent.last_name").value("Wonder"))
-        .andExpect(MockMvcResultMatchers.jsonPath("$.applicationStatus").value("SUBMITTED")); // original status
+        .andExpect(MockMvcResultMatchers.jsonPath("$.status").value("SUBMITTED")); // original status
   }
 
   @Test
