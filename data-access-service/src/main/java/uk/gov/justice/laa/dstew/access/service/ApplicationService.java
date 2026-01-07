@@ -158,6 +158,7 @@ public class ApplicationService {
    * @return found entity
    */
   private List<ApplicationEntity> checkIfAllApplicationsExist(@NonNull final List<UUID> ids) {
+    applicationValidations.checkApplicationIdList(ids);
     var idsToFetch = ids.stream().distinct().toList();
     var applications = applicationRepository.findAllById(idsToFetch);
     List<UUID> fetchedApplicationsIds = applications.stream().map(app -> app.getId()).toList();
