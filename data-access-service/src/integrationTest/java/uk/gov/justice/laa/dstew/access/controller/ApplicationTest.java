@@ -1564,7 +1564,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         private ApplicationSummary createApplicationSummary(ApplicationEntity applicationEntity) {
             ApplicationSummary applicationSummary = new ApplicationSummary();
             applicationSummary.setApplicationId(applicationEntity.getId());
-            applicationSummary.setStatus(applicationEntity.getStatus());
+            applicationSummary.setApplicationStatus(applicationEntity.getStatus());
             applicationSummary.setSubmittedAt(applicationEntity.getSubmittedAt().atOffset(ZoneOffset.UTC));
             applicationSummary.setLastUpdated(applicationEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
             applicationSummary.setUsedDelegatedFunctions(applicationEntity.isUseDelegatedFunctions());

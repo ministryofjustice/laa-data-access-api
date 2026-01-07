@@ -74,12 +74,12 @@ public class ApplicationSummaryServiceTest {
     ApplicationSummary firstSummary = new ApplicationSummary();
     firstSummary.setApplicationId(entities.getFirst().getId());
     firstSummary.setLaaReference(entities.getFirst().getLaaReference());
-    firstSummary.setStatus(entities.getFirst().getStatus());
+    firstSummary.setApplicationStatus(entities.getFirst().getStatus());
 
     ApplicationSummary secondSummary = new ApplicationSummary();
     secondSummary.setApplicationId(entities.get(1).getId());
     secondSummary.setLaaReference(entities.get(1).getLaaReference());
-    secondSummary.setStatus(entities.get(1).getStatus());
+    secondSummary.setApplicationStatus(entities.get(1).getStatus());
 
     return List.of(firstSummary, secondSummary);
 
