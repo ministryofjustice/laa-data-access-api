@@ -359,7 +359,7 @@ components:
           type: string
           format: uuid
           description: The unique reference used to identify the application.
-        status:
+        applicationStatus:
           $ref: "#/components/schemas/status"
         submittedAt:
           type: string

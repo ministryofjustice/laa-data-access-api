@@ -64,7 +64,7 @@ public class ApplicationSummaryMapperTest {
     assertThat(result.getMatterType()).isEqualTo(MatterType.SCA);
     assertThat(result.getUsedDelegatedFunctions()).isTrue();
     assertThat(result.getLaaReference()).isEqualTo("ref1");
-    assertThat(result.getStatus()).isEqualTo(Status.IN_PROGRESS);
+    assertThat(result.getApplicationStatus()).isEqualTo(Status.IN_PROGRESS);
     assertThat(result.getAssignedTo() == caseworkerId);
     assertThat(result.getClientFirstName()).isEqualTo("John");
     assertThat(result.getClientLastName()).isEqualTo("Doe");

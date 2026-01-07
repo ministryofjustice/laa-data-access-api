@@ -36,7 +36,7 @@ public interface ApplicationSummaryMapper {
       app.setMatterType(applicationSummaryEntity.getMatterType());
       app.setUsedDelegatedFunctions(applicationSummaryEntity.isUsedDelegatedFunctions());
       app.setLaaReference(applicationSummaryEntity.getLaaReference());
-      app.setStatus(applicationSummaryEntity.getStatus());
+      app.setApplicationStatus(applicationSummaryEntity.getStatus());
       app.setAssignedTo(applicationSummaryEntity.getCaseworker() != null 
                         ? 
                         applicationSummaryEntity.getCaseworker().getId() : 
