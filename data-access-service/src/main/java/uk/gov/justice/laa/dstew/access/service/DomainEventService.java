@@ -75,7 +75,7 @@ public class DomainEventService {
             .createdDate(applicationEntity.getCreatedAt())
             .createdBy(applicationEntity.getCreatedBy())
             .applicationStatus(String.valueOf(applicationEntity.getStatus()))
-            .applicationContent(String.valueOf(applicationEntity))
+            .applicationContent(applicationEntity.getApplicationContent().toString())
             .build();
 
     DomainEventEntity domainEventEntity =
@@ -100,36 +100,34 @@ public class DomainEventService {
       ApplicationEntity applicationEntity,
       String updatedBy) {
 
-    UpdateApplicationDomainEventDetails data =
+    UpdateApplicationDomainEventDetails domainEventDetails =
         UpdateApplicationDomainEventDetails.builder()
             .applicationId(applicationEntity.getId())
             .updatedAt(applicationEntity.getModifiedAt())
             .updatedBy(updatedBy)
             .applicationStatus(String.valueOf(applicationEntity.getStatus()))
-            .applicationContent(String.valueOf(applicationEntity))
+            .applicationContent(applicationEntity.getApplicationContent().toString())
             .build();
 
-    DomainEventEntity domainEventEntity;
-    try {
-      domainEventEntity =
-          DomainEventEntity.builder()
-              .applicationId(applicationEntity.getId())
-              .caseworkerId(null)
-              .type(DomainEventType.APPLICATION_UPDATED)
-              .data(objectMapper.writeValueAsString(data))
-              .createdAt(Instant.now())
-              .createdBy(updatedBy)
-              .build();
-    } catch (JsonProcessingException e) {
-      throw new DomainEventPublishException(
-          String.format(
-              "Unable to save Domain Event of type: %s",
-              DomainEventType.APPLICATION_UPDATED.name()
-          )
-      );
-    }
+    saveDomainEvent(
+        applicationEntity.getId(),
+        applicationEntity.getCaseworker() != null ? applicationEntity.getCaseworker().getId() : null,
+        DomainEventType.APPLICATION_UPDATED,
+        domainEventDetails
+    );
 
-    domainEventRepository.save(domainEventEntity);
+    /*
+    DomainEventEntity domainEventEntity =
+        DomainEventEntity.builder()
+            .applicationId(applicationEntity.getId())
+            .caseworkerId(null)
+            .type(DomainEventType.APPLICATION_UPDATED)
+            .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.APPLICATION_UPDATED))
+            .createdAt(Instant.now())
+            .createdBy(updatedBy)
+            .build();
+
+    domainEventRepository.save(domainEventEntity);*/
   }
 
 

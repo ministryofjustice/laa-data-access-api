@@ -215,6 +215,7 @@ public class DomainEventServiceTest {
         ApplicationEntity applicationEntity = ApplicationEntity.builder()
             .id(applicationId)
             .status(ApplicationStatus.IN_PROGRESS)
+            .applicationContent(Map.of("foo", "bar"))
             .build();
 
         when(objectMapper.writeValueAsString(any(CreateApplicationDomainEventDetails.class)))
