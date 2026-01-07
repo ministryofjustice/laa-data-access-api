@@ -387,9 +387,6 @@ components:
           format: date
         laaReference:
           type: string
-        createdAt:
-          type: string
-          format: date-time
         applicationType:
           $ref: "#/components/schemas/applicationType"
 

@@ -48,7 +48,6 @@ public interface ApplicationSummaryMapper {
         app.setClientDateOfBirth(client.getDateOfBirth());
       });
       app.setApplicationType(applicationSummaryEntity.getType());
-      app.setCreatedAt(applicationSummaryEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
       app.setLastUpdated(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
       return app;
     } catch (Exception e) {
