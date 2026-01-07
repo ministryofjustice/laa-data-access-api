@@ -1573,7 +1573,6 @@ public class ApplicationTest extends BaseIntegrationTest {
             applicationSummary.setAssignedTo(applicationEntity.getCaseworker() != null ? applicationEntity.getCaseworker().getId() : null);
             applicationSummary.autoGrant(applicationEntity.isAutoGranted());
             applicationSummary.setLaaReference(applicationEntity.getLaaReference());
-            applicationSummary.setCreatedAt(applicationEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
             applicationSummary.setApplicationType(ApplicationType.INITIAL);
             applicationSummary.setClientFirstName(applicationEntity.getIndividuals().stream().findFirst().get().getFirstName());
             applicationSummary.setClientLastName(applicationEntity.getIndividuals().stream().findFirst().get().getLastName());

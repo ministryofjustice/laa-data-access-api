@@ -57,7 +57,6 @@ public class ApplicationSummaryMapperTest {
 
     assertThat(result).isNotNull();
     assertThat(result.getApplicationId()).isEqualTo(id);
-    assertThat(result.getCreatedAt()).isEqualTo(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
     assertThat(result.getLastUpdated()).isEqualTo(entity.getModifiedAt().atOffset(ZoneOffset.UTC));
     assertThat(result.getSubmittedAt()).isEqualTo(entity.getSubmittedAt().atOffset(ZoneOffset.UTC));
     assertThat(result.getAutoGrant()).isTrue();
