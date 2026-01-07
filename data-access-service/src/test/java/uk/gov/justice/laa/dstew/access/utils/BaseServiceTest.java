@@ -22,6 +22,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEnti
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationSummaryFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateRequestFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.domainEvent.DomainEventFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactory;
 
 import java.util.stream.Stream;
@@ -66,6 +67,9 @@ public class BaseServiceTest {
 
     @Autowired
     protected CaseworkerFactory caseworkerFactory;
+
+    @Autowired
+    protected DomainEventFactory domainEventFactory;
 
     @AfterEach
     void tearDown() {

@@ -157,7 +157,6 @@ public class ApplicationSummaryServiceV2Test extends BaseServiceTest {
             // given
             // when
             // then
-            verify(applicationSummaryRepository, never()).findAll();
             assertThatExceptionOfType(AuthorizationDeniedException.class)
                     .isThrownBy(() -> serviceUnderTest.getAllApplications(
                             null,
@@ -169,6 +168,7 @@ public class ApplicationSummaryServiceV2Test extends BaseServiceTest {
                             null
                     ))
                     .withMessageContaining("Access Denied");
+            verify(applicationSummaryRepository, never()).findAll();
         }
 
         private void assertApplicationSummaryListsEqual(List<ApplicationSummary> actualList, List<ApplicationSummaryEntity> expectedList) {

@@ -1,29 +1,32 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.domainEvent;
 
+import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 
+import java.time.Instant;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-public class DomainEventFactory {
-    public static DomainEventEntity create() {
+@Component
+public class DomainEventFactory extends BaseFactory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder> {
+
+    public DomainEventFactory() {
+        super(DomainEventEntity::toBuilder, DomainEventEntity.DomainEventEntityBuilder::build);
+    }
+
+    public DomainEventEntity createDefault() {
 
         DomainEventEntity entity = DomainEventEntity.builder()
                 .applicationId(UUID.randomUUID())
                 .caseworkerId(UUID.randomUUID())
+                .createdAt(Instant.now())
                 .createdBy("")
                 .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
                 .data("")
                 .build();
 
         return entity;
-    }
-
-    public static DomainEventEntity create(Consumer<DomainEventEntity.DomainEventEntityBuilder> customiser) {
-        DomainEventEntity entity = create();
-        DomainEventEntity.DomainEventEntityBuilder builder = entity.toBuilder();
-        customiser.accept(builder);
-        return builder.build();
     }
 }
