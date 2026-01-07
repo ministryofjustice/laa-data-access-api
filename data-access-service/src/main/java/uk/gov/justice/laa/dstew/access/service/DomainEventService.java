@@ -11,11 +11,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
@@ -35,7 +37,61 @@ public class DomainEventService {
   private final DomainEventMapper mapper;
 
   /**
-   * posts a domain event {@link DomainEventEntity} object.
+   * Shared internal logic for persisting domain events.
+   *
+   */
+  private void saveDomainEvent(
+      UUID applicationId,
+      UUID caseworkerId,
+      DomainEventType eventType,
+      Object data) {
+
+    DomainEventEntity entity =
+        DomainEventEntity.builder()
+            .applicationId(applicationId)
+            .caseworkerId(caseworkerId)
+            .createdAt(Instant.now())
+            .createdBy(defaultCreatedByName)
+            .type(eventType)
+            .data(getEventDetailsAsJson(data, eventType))
+            .build();
+
+    domainEventRepository.save(entity);
+  }
+
+  /**
+   * Posts an APPLICATION_CREATED domain event.
+   *
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  public void saveCreateApplicationDomainEvent(
+      ApplicationEntity applicationEntity,
+      String createdBy) {
+
+    CreateApplicationDomainEventDetails domainEventDetails =
+        CreateApplicationDomainEventDetails.builder()
+            .applicationId(applicationEntity.getId())
+            .createdDate(applicationEntity.getCreatedAt())
+            .createdBy(applicationEntity.getCreatedBy())
+            .applicationStatus(String.valueOf(applicationEntity.getStatus()))
+            .applicationContent(String.valueOf(applicationEntity))
+            .build();
+
+    DomainEventEntity domainEventEntity =
+          DomainEventEntity.builder()
+              .applicationId(applicationEntity.getId())
+              .caseworkerId(null)
+              .type(DomainEventType.APPLICATION_CREATED)
+              .createdAt(Instant.now())
+              .createdBy(createdBy)
+              .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.APPLICATION_CREATED))
+              .build();
+
+    domainEventRepository.save(domainEventEntity);
+  }
+
+  /**
+   * Posts an ASSIGN_APPLICATION_TO_CASEWORKER domain event.
    *
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
@@ -44,24 +100,21 @@ public class DomainEventService {
       UUID caseworkerId,
       String eventDescription) {
 
-    AssignApplicationDomainEventDetails domainEventDetails = AssignApplicationDomainEventDetails.builder()
-        .applicationId(applicationId)
-        .caseWorkerId(caseworkerId)
-        .createdAt(Instant.now())
-        .createdBy(defaultCreatedByName)
-        .eventDescription(eventDescription)
-        .build();
+    AssignApplicationDomainEventDetails domainEventDetails =
+        AssignApplicationDomainEventDetails.builder()
+          .applicationId(applicationId)
+          .caseWorkerId(caseworkerId)
+          .createdAt(Instant.now())
+          .createdBy(defaultCreatedByName)
+          .eventDescription(eventDescription)
+          .build();
 
-    DomainEventEntity domainEventEntity = DomainEventEntity.builder()
-        .applicationId(applicationId)
-        .caseworkerId(caseworkerId)
-        .createdAt(Instant.now())
-        .createdBy(defaultCreatedByName)
-        .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
-        .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER))
-        .build();
-
-    domainEventRepository.save(domainEventEntity);
+    saveDomainEvent(
+        applicationId,
+        caseworkerId,
+        DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
+        domainEventDetails
+    );
   }
 
   /**
@@ -98,15 +151,12 @@ public class DomainEventService {
         .eventDescription(eventDescription)
         .build();
 
-    DomainEventEntity domainEventEntity = DomainEventEntity.builder()
-        .applicationId(applicationId)
-        .caseworkerId(caseworkerId)
-        .createdAt(Instant.now())
-        .createdBy(defaultCreatedByName)
-        .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
-        .data(getEventDetailsAsJson(eventDetails, DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER))
-        .build();
-    domainEventRepository.save(domainEventEntity);
+    saveDomainEvent(
+        applicationId,
+        caseworkerId,
+        DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
+        eventDetails
+    );
   }
 
   /**
