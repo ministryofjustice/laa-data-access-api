@@ -46,24 +46,17 @@ public class DomainEventService {
       DomainEventType eventType,
       Object data) {
 
-    try {
-      DomainEventEntity entity =
-          DomainEventEntity.builder()
-              .applicationId(applicationId)
-              .caseworkerId(caseworkerId)
-              .createdAt(Instant.now())
-              .createdBy(defaultCreatedByName)
-              .type(eventType)
-              .data(objectMapper.writeValueAsString(data))
-              .build();
+    DomainEventEntity entity =
+        DomainEventEntity.builder()
+            .applicationId(applicationId)
+            .caseworkerId(caseworkerId)
+            .createdAt(Instant.now())
+            .createdBy(defaultCreatedByName)
+            .type(eventType)
+            .data(getEventDetailsAsJson(data, eventType))
+            .build();
 
-      domainEventRepository.save(entity);
-
-    } catch (JsonProcessingException e) {
-      throw new DomainEventPublishException(
-          String.format("Unable to save Domain Event of type: %s", eventType.name())
-      );
-    }
+    domainEventRepository.save(entity);
   }
 
   /**
@@ -91,7 +84,7 @@ public class DomainEventService {
               .type(DomainEventType.APPLICATION_CREATED)
               .createdAt(Instant.now())
               .createdBy(createdBy)
-              .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER))
+              .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.APPLICATION_CREATED))
               .build();
 
     domainEventRepository.save(domainEventEntity);
