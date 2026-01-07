@@ -26,14 +26,11 @@ public class GenericEnumDeserializer<E extends Enum> extends JsonDeserializer<E>
     if (value == null || value.isEmpty()) {
       return null;
     }
-    try {
-      // Use case-insensitive matching to find the corresponding enum constant
-      return Arrays.stream(enumType.getEnumConstants())
-          .filter(e -> e.name().equalsIgnoreCase(value.trim()))
-          .findFirst()
-          .orElse(null);
-    } catch (IllegalArgumentException e) {
-      return null;
-    }
+
+    return Arrays.stream(enumType.getEnumConstants())
+        .filter(e -> e.name().equalsIgnoreCase(value.trim()))
+        .findFirst()
+        .orElse(null);
+
   }
 }

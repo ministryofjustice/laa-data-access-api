@@ -23,10 +23,12 @@ import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.enums.MatterType;
 import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.Proceeding;
 
 class ApplicationMapperTest {
 
@@ -136,23 +138,27 @@ class ApplicationMapperTest {
   @Test
   void shouldMapApplicationCreateRequestToApplicationEntity() throws IOException {
 
-    String appContentJson = """
-        {
-              "id": "d2839704-bdcf-4258-b294-ac0cb1d1d6d7",
-              "laaReference": "L-XCX-0WB",
-              "submittedAt": "2025-12-03T14:02:37.303+00:00",
-              "autoGrant": "true",
-              "proceedings": [
-                { "leadProceeding": true,
-                  "id": "f6e2c4e1-5d32-4c3e-9f0a-1e2b3c4d5e6f",
-                  "categoryOfLaw": "Family",
-                  "matterType": "SCA",
-                  "useDelegatedFunctions": true
-                  }
-                  ]
-              }
-        """;
-    Map<String, Object> appContentMap = objectMapper.readValue(appContentJson, Map.class);
+    Proceeding leadProceeding = Proceeding.builder()
+        .leadProceeding(true)
+        .id("f6e2c4e1-5d32-4c3e-9f0a-1e2b3c4d5e6f")
+        .categoryOfLaw(CategoryOfLaw.Family)
+        .matterType(MatterType.SCA)
+        .useDelegatedFunctions(true)
+        .build();
+    Proceeding nonLeadProceeding = Proceeding.builder()
+        .leadProceeding(false)
+        .id("a1b2c3d4-e5f6-7a8b-9c0d-e1f2a3b4c5d6")
+        .categoryOfLaw(null)
+        .matterType(null)
+        .useDelegatedFunctions(false)
+        .build();
+    ApplicationContent applicationContent = ApplicationContent.builder()
+        .proceedings(List.of(leadProceeding, nonLeadProceeding))
+        .autoGrant(true)
+        .laaReference("L-XCX-0WB")
+        .build();
+    Map<String, Object> appContentMap = objectMapper.readValue(
+        objectMapper.writeValueAsString(applicationContent), Map.class);
     ApplicationCreateRequest req = ApplicationCreateRequest.builder()
         .status(ApplicationStatus.SUBMITTED)
         .applicationContent(appContentMap)
