@@ -69,6 +69,41 @@ public class ApplicationSummaryServiceV2Test extends BaseServiceTest {
 
         @ParameterizedTest
         @ValueSource(ints = {0, 10})
+        public void givenPageZeroAndCaseworkerFound_whenGetApplications_thenReturnApplications(int count) {
+            // given
+
+            UUID caseworkerId = UUID.randomUUID();
+            when(caseworkerRepository.countById(caseworkerId)).thenReturn(1L);
+
+            List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(count);
+            // ensure that at least one application has no caseworker assigned
+            if (count > 0) { expectedApplications.getFirst().setCaseworker(null); }
+
+            Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
+            Pageable pageable = PageRequest.of(0, 10);
+
+            setSecurityContext(TestConstants.Roles.READER);
+
+            when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+
+            // when
+            List<ApplicationSummary> actualApplications = serviceUnderTest.getAllApplications(
+                    null,
+                    null,
+                    null,
+                    null,
+                    caseworkerId,
+                    0,
+                    10
+            ).stream().toList();
+
+            // then
+            verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+            assertApplicationSummaryListsEqual(actualApplications, expectedApplications);
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {0, 10})
         public void givenPageZeroAndUserId_whenGetApplicationsAndNoCaseworkerFound_thenThrowValidationException() {
 
             // given
@@ -161,7 +196,9 @@ public class ApplicationSummaryServiceV2Test extends BaseServiceTest {
             assertThat(expected.getStatus()).isEqualTo(actual.getApplicationStatus());
             assertThat(expected.getCreatedAt().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(actual.getCreatedAt().toInstant().truncatedTo(ChronoUnit.SECONDS));
             assertThat(expected.getModifiedAt().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(actual.getModifiedAt().toInstant().truncatedTo(ChronoUnit.SECONDS));
-            assertThat(expected.getCaseworker().getId()).isEqualTo(actual.getAssignedTo());
+            if (expected.getCaseworker() != null) {
+                assertThat(expected.getCaseworker().getId()).isEqualTo(actual.getAssignedTo());
+            }
         }
     }
 }

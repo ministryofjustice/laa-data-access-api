@@ -37,8 +37,4 @@ public interface ApplicationSummaryMapper {
     app.setModifiedAt(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
     return app;
   }
-
-  default OffsetDateTime map(Instant value) {
-    return value != null ? value.atOffset(ZoneOffset.UTC) : null;
-  }
 }
