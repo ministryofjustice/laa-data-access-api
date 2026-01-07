@@ -17,7 +17,7 @@ import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.ProceedingDetail;
+import uk.gov.justice.laa.dstew.access.model.Proceeding;
 
 
 /**
@@ -69,14 +69,14 @@ public interface ApplicationMapper {
     if (applicationContent.getProceedings() == null || applicationContent.getProceedings().isEmpty()) {
       return;
     }
-    ProceedingDetail leadProceeding = applicationContent.getProceedings().stream()
+    Proceeding leadProceeding = applicationContent.getProceedings().stream()
         .filter(Objects::nonNull)
-        .filter(ProceedingDetail::leadProceeding)
+        .filter(Proceeding::leadProceeding)
         .findFirst()
         .orElseThrow(() -> new IllegalArgumentException("No lead proceeding found in application content"));
     boolean usedDelegatedFunction =
         applicationContent.getProceedings().stream().filter(Objects::nonNull)
-            .anyMatch(ProceedingDetail::useDelegatedFunctions);
+            .anyMatch(Proceeding::useDelegatedFunctions);
     entity.setAutoGranted(applicationContent.isAutoGrant());
     entity.setUseDelegatedFunctions(usedDelegatedFunction);
     entity.setCategoryOfLaw(leadProceeding.categoryOfLaw());

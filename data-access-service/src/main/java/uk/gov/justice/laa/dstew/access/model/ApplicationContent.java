@@ -22,6 +22,6 @@ public class ApplicationContent {
   private String status;
   private Instant submittedAt;
   private boolean autoGrant;
-  private List<ProceedingDetail> proceedings;
+  private List<Proceeding> proceedings;
 
 }
