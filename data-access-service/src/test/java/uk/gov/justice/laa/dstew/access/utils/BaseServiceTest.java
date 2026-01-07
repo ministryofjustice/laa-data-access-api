@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
@@ -33,6 +34,7 @@ import java.util.stream.Stream;
         HibernateJpaAutoConfiguration.class,
 })
 @ExtendWith(MockitoExtension.class)
+@ActiveProfiles("unit-test")
 public class BaseServiceTest {
 
     @MockitoBean

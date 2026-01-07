@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.individual;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
@@ -8,6 +9,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
+@Profile("unit-test")
 @Component
 public class IndividualFactory extends BaseFactory<Individual, Individual.Builder> {
 

@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -10,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactor
 import java.time.Instant;
 import java.util.UUID;
 
+@Profile("unit-test")
 @Component
 public class ApplicationSummaryFactory extends BaseFactory<ApplicationSummaryEntity, ApplicationSummaryEntity.ApplicationSummaryEntityBuilder> {
 

@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.factory;
 
 import net.datafaker.Faker;
+import org.springframework.context.annotation.Profile;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -11,6 +12,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+@Profile("unit-test")
 public abstract class BaseFactory<TEntity, TBuilder> {
 
     private final Function<TEntity, TBuilder> toBuilder;

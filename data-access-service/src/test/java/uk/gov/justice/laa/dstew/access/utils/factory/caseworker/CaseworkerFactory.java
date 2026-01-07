@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.caseworker;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
@@ -7,6 +8,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 import java.time.Instant;
 import java.util.UUID;
 
+@Profile("unit-test")
 @Component
 public class CaseworkerFactory extends BaseFactory<CaseworkerEntity, CaseworkerEntity.CaseworkerEntityBuilder> {
 
