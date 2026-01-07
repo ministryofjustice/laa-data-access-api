@@ -56,21 +56,21 @@ public class MeritsDecisionEntity implements AuditableEntity {
 
   @Override
   public Instant getCreatedAt() {
-        return createdAt;
-    }
+    return createdAt;
+  }
 
   @Override
   public String getCreatedBy() {
-        return null;
-    }
+    return null;
+  }
 
   @Override
   public Instant getUpdatedAt() {
-        return modifiedAt;
-    }
+    return modifiedAt;
+  }
 
   @Override
   public String getUpdatedBy() {
-        return null;
-    }
+    return null;
+  }
 }

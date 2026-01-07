@@ -2,13 +2,18 @@ package uk.gov.justice.laa.dstew.access.entity;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -46,6 +51,14 @@ public class DecisionEntity implements AuditableEntity {
   @Column(name = "modified_at")
   @UpdateTimestamp
   private Instant modifiedAt;
+
+  @ManyToMany(cascade = CascadeType.PERSIST)
+  @JoinTable(
+          name = "linked_merits_decisions",
+          joinColumns = @JoinColumn(name = "decisions_id"),
+          inverseJoinColumns = @JoinColumn(name = "merits_decisions_id")
+  )
+  private Set<MeritsDecisionEntity> meritsDecisions;
 
   @Column(name = "overall_decision")
   private DecisionStatus overallDecision;
