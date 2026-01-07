@@ -715,7 +715,8 @@ public class ApplicationTest extends BaseIntegrationTest {
         private Stream<Arguments> invalidApplicationIdListsCases() {
             return Stream.of(
                     Arguments.of(Collections.emptyList()),
-                    Arguments.of((Object)null)
+                    Arguments.of((Object)null),
+                    Arguments.of(Arrays.asList(new UUID[] { UUID.randomUUID(), null }))
             );
         }
     }
