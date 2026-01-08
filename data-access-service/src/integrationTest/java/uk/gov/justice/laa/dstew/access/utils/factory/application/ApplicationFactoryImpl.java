@@ -7,6 +7,7 @@ import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.Status;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
+import uk.gov.justice.laa.dstew.access.utils.DateTimeHelper;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
 import java.time.InstantSource;
@@ -28,14 +29,12 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                         "test", "content"
                 )))
                 .build();
-
-        var instant = InstantSource.system().instant();
-        var instantWithoutNanos = instant.minusNanos(instant.getNano());
+        var instant = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();
         return ApplicationEntity.builder()
-                .createdAt(instantWithoutNanos)
+                .createdAt(instant)
                 .status(Status.IN_PROGRESS)
-                .modifiedAt(instantWithoutNanos)
-                .submittedAt(instantWithoutNanos)
+                .modifiedAt(instant)
+                .submittedAt(instant)
                 .individuals(new HashSet<>(Set.of(individualEntity)))
                 .applicationContent(new LinkedHashMap<>(Map.of(
                         "test", "content"
