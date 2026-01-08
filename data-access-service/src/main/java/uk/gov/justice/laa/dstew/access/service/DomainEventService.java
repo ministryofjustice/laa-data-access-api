@@ -103,7 +103,7 @@ public class DomainEventService {
     UpdateApplicationDomainEventDetails domainEventDetails =
         UpdateApplicationDomainEventDetails.builder()
             .applicationId(applicationEntity.getId())
-            .updatedAt(applicationEntity.getModifiedAt())
+            .updatedDate(applicationEntity.getModifiedAt())
             .updatedBy(updatedBy)
             .applicationStatus(String.valueOf(applicationEntity.getStatus()))
             .applicationContent(applicationEntity.getApplicationContent().toString())

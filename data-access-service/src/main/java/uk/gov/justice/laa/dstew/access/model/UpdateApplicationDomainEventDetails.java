@@ -21,6 +21,6 @@ public class UpdateApplicationDomainEventDetails {
   private UUID applicationId;
   private String applicationStatus;
   private String applicationContent;
-  private Instant updatedAt;
+  private Instant updatedDate;
   private String updatedBy;
 }
