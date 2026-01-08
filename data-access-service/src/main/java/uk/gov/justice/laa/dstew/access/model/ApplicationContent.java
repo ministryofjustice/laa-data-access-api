@@ -19,7 +19,7 @@ import lombok.NoArgsConstructor;
 public class ApplicationContent {
   private String id;
   private String laaReference;
-  private String status;
+  private ApplicationStatus status;
   private Instant submittedAt;
   private boolean autoGrant;
   private List<Proceeding> proceedings;

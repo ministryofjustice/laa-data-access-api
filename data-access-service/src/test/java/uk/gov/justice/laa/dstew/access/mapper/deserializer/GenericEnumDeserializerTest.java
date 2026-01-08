@@ -12,6 +12,9 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.deserializer.CategoryOfLawTypeDeserializer;
+import uk.gov.justice.laa.dstew.access.deserializer.GenericEnumDeserializer;
+import uk.gov.justice.laa.dstew.access.deserializer.MatterTypeDeserializer;
 import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.enums.MatterType;
 

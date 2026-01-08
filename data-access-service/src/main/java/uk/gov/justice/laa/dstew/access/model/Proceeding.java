@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Builder;
 import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.enums.MatterType;
-import uk.gov.justice.laa.dstew.access.mapper.deserializer.CategoryOfLawTypeDeserializer;
-import uk.gov.justice.laa.dstew.access.mapper.deserializer.MatterTypeDeserializer;
+import uk.gov.justice.laa.dstew.access.deserializer.CategoryOfLawTypeDeserializer;
+import uk.gov.justice.laa.dstew.access.deserializer.MatterTypeDeserializer;
 
 /**
  * Record represents details of a proceeding.
