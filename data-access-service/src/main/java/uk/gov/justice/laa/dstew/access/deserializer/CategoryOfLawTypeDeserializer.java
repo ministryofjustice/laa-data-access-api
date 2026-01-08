@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.mapper.deserializer;
+package uk.gov.justice.laa.dstew.access.deserializer;
 
 import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
 
