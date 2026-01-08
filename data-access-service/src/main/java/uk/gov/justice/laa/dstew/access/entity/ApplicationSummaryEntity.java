@@ -16,8 +16,11 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
-
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 

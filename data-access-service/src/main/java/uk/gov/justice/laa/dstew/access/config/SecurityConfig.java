@@ -49,6 +49,11 @@ public class SecurityConfig {
     return http.build();
   }
 
+  /**
+   * Effective authorization provider bean.
+   *
+   * @return the authorization provider
+   */
   @Bean("entra")
   public EffectiveAuthorizationProvider authProvider() {
     return new EffectiveAuthorizationProvider() {
