@@ -165,7 +165,7 @@ class ApplicationMapperTest {
         .laaReference("laa_reference")
         .build();
 
-    ApplicationEntity result = applicationMapper.toApplicationEntity(req, objectMapper);
+    ApplicationEntity result = applicationMapper.toApplicationEntity(req);
     assertThat(result.getCategoryOfLaw()).isEqualTo(CategoryOfLaw.Family);
     assertThat(result.getMatterType()).isEqualTo(MatterType.SCA);
     assertThat(result.isAutoGranted()).isTrue();
@@ -188,7 +188,7 @@ class ApplicationMapperTest {
         .laaReference("laa_reference")
         .individuals(List.of(individual))
         .build();
-    ApplicationEntity result = applicationMapper.toApplicationEntity(req, objectMapper);
+    ApplicationEntity result = applicationMapper.toApplicationEntity(req);
     assertThat(result.getIndividuals()).hasSize(1);
     var mappedIndividual = result.getIndividuals()
         .stream()
@@ -202,7 +202,7 @@ class ApplicationMapperTest {
 
   @Test
   void shouldReturnNullWhenMappingNullCreateRequest() {
-    assertThat(applicationMapper.toApplicationEntity(null, objectMapper)).isNull();
+    assertThat(applicationMapper.toApplicationEntity(null)).isNull();
   }
 
   @Test
