@@ -233,6 +233,34 @@ paths:
         '404': { description: Not found }
         '500': { description: Internal server error }
 
+  /api/v0/applications/{id}/decision:
+    patch:
+      tags:
+        - application
+      operationId: createDecision
+      summary: create a decision for an application
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        description: event history describing the create decision action
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignDecisionRequest'
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
+
 components:
   schemas:
     applicationStatus:
@@ -467,3 +495,73 @@ components:
         totalRecords:
           type: integer
 
+    decisionStatus:
+      type: string
+      enum:
+        - GRANTED
+        - PARTIALLY_GRANTED
+        - REFUSED
+
+    meritsDecisionStatus:
+      type: string
+      enum:
+        - GRANTED
+        - REFUSED
+
+    RefusalDetails:
+      type: object
+      required:
+        - reason
+        - justification
+      properties:
+        reason:
+          type: string
+        justification:
+          type: string
+
+    MeritsDecisionDetails:
+      type: object
+      required:
+        - decision
+        - refusal
+      properties:
+        decision:
+          $ref: "#/components/schemas/meritsDecisionStatus"
+        refusal:
+          $ref: "#/components/schemas/RefusalDetails"
+
+    proceedingDetails:
+      type: object
+      required:
+        - proceedingId
+        - meritsDecision
+      properties:
+        proceedingId:
+          type: string
+          format: uuid
+        meritsDecision:
+          $ref: "#/components/schemas/MeritsDecisionDetails"
+
+    AssignDecisionRequest:
+      type: object
+      required:
+        - userId
+        - applicationId
+        - applicationStatus
+        - overallDecision
+        - proceedings
+      properties:
+        userId:
+          type: string
+          format: uuid
+        applicationId:
+          type: string
+          format: uuid
+        applicationStatus:
+          $ref: "#/components/schemas/applicationStatus"
+        overallDecision:
+          $ref: "#/components/schemas/decisionStatus"
+        proceedings:
+          type: array
+          items:
+            $ref: "#/components/schemas/proceedingDetails"
