@@ -20,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
@@ -74,7 +75,7 @@ public class DomainEventService {
             .createdDate(applicationEntity.getCreatedAt())
             .createdBy(applicationEntity.getCreatedBy())
             .applicationStatus(String.valueOf(applicationEntity.getStatus()))
-            .applicationContent(String.valueOf(applicationEntity))
+            .applicationContent(applicationEntity.getApplicationContent().toString())
             .build();
 
     DomainEventEntity domainEventEntity =
@@ -89,6 +90,33 @@ public class DomainEventService {
 
     domainEventRepository.save(domainEventEntity);
   }
+
+  /**
+   * Posts an APPLICATION_UPDATED domain event.
+   *
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  public void saveUpdateApplicationDomainEvent(
+      ApplicationEntity applicationEntity,
+      String updatedBy) {
+
+    UpdateApplicationDomainEventDetails domainEventDetails =
+        UpdateApplicationDomainEventDetails.builder()
+            .applicationId(applicationEntity.getId())
+            .updatedDate(applicationEntity.getModifiedAt())
+            .updatedBy(updatedBy)
+            .applicationStatus(String.valueOf(applicationEntity.getStatus()))
+            .applicationContent(applicationEntity.getApplicationContent().toString())
+            .build();
+
+    saveDomainEvent(
+        applicationEntity.getId(),
+        applicationEntity.getCaseworker() != null ? applicationEntity.getCaseworker().getId() : null,
+        DomainEventType.APPLICATION_UPDATED,
+        domainEventDetails
+    );
+  }
+
 
   /**
    * Posts an ASSIGN_APPLICATION_TO_CASEWORKER domain event.

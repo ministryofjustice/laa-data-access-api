@@ -245,6 +245,7 @@ components:
       type: string
       enum:
         - APPLICATION_CREATED
+        - APPLICATION_UPDATED
         - ASSIGN_APPLICATION_TO_CASEWORKER
         - UNASSIGN_APPLICATION_TO_CASEWORKER
 
