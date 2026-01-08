@@ -5,6 +5,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 
 /**
@@ -41,12 +42,12 @@ public interface ApplicationSummaryMapper {
                         ? 
                         applicationSummaryEntity.getCaseworker().getId() : 
                         null);
-      var individual = applicationSummaryEntity.getIndividuals().stream().findFirst();
-      individual.ifPresent(client -> {
-        app.setClientFirstName(client.getFirstName());
-        app.setClientLastName(client.getLastName());
-        app.setClientDateOfBirth(client.getDateOfBirth());
-      });
+      var individual = getLeadIndividual(applicationSummaryEntity);
+      if (individual != null) {
+        app.setClientFirstName(individual.getFirstName());
+        app.setClientLastName(individual.getLastName());
+        app.setClientDateOfBirth(individual.getDateOfBirth());
+      }
       app.setApplicationType(applicationSummaryEntity.getType());
       app.setLastUpdated(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
       return app;
@@ -57,5 +58,13 @@ public interface ApplicationSummaryMapper {
 
   default OffsetDateTime map(Instant value) {
     return value != null ? value.atOffset(ZoneOffset.UTC) : null;
+  }
+
+  private static IndividualEntity getLeadIndividual(ApplicationSummaryEntity entity) {
+    var individuals = entity.getIndividuals();
+    if (individuals == null || individuals.size() == 0) {
+      return null;
+    }
+    return individuals.iterator().next();
   }
 }
