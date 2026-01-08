@@ -133,6 +133,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .data(objectMapper.writeValueAsString(CreateApplicationDomainEventDetails.builder()
                             .applicationId(expectedId)
                             .applicationStatus(ApplicationStatus.IN_PROGRESS.toString())
+                            .applicationContent(withExpectedId.getApplicationContent().toString())
                             .build()))
                     .build();
 
@@ -160,6 +161,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .withMessageContaining("Access Denied");
 
             verify(applicationRepository, times(0)).findById(any(UUID.class));
+            verify(domainEventRepository, never()).save(any());
         }
 
         @Test
@@ -170,6 +172,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .withMessageContaining("Access Denied");
 
             verify(applicationRepository, times(0)).findById(any(UUID.class));
+            verify(domainEventRepository, never()).save(any());
         }
 
         @ParameterizedTest
@@ -188,27 +191,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             verify(applicationRepository, never()).findById(any(UUID.class));
             verify(applicationRepository, never()).save(any());
-        }
-
-        private void verifyThatCreateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled) throws JsonProcessingException {
-            ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
-            verify(domainEventRepository, times(timesCalled)).save(captor.capture());
-            DomainEventEntity actualDomainEvent = captor.getValue();
-            assertThat(expectedDomainEvent)
-                    .usingRecursiveComparison()
-                    .ignoringFields("createdAt", "data")
-                    .isEqualTo(actualDomainEvent);
-            assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
-
-            Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
-            Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
-            assertThat(expectedData)
-                    .usingRecursiveComparison()
-                    .ignoringCollectionOrder()
-                    .ignoringFields("createdDate", "applicationContent")
-                    //.ignoringFields("createdDate")
-                    .isEqualTo(actualData);
-            assertThat(actualData.get("createdDate")).isNotNull();
+            verify(domainEventRepository, never()).save(any());
         }
 
         private Stream<Arguments> invalidApplicationRequests() {
@@ -382,6 +365,26 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             assertIndividualCollectionsEqual(applicationCreateRequest.getIndividuals(), actualApplicationEntity.getIndividuals());
         }
+
+        private void verifyThatCreateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled) throws JsonProcessingException {
+            ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
+            verify(domainEventRepository, times(timesCalled)).save(captor.capture());
+            DomainEventEntity actualDomainEvent = captor.getValue();
+            assertThat(expectedDomainEvent)
+                    .usingRecursiveComparison()
+                    .ignoringFields("createdAt", "data")
+                    .isEqualTo(actualDomainEvent);
+            assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
+
+            Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
+            Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
+            assertThat(expectedData)
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .ignoringFields("createdDate")
+                    .isEqualTo(actualData);
+            assertThat(actualData.get("createdDate")).isNotNull();
+        }
     }
 
     @Nested
@@ -400,20 +403,36 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .isThrownBy(() -> serviceUnderTest.updateApplication(applicationId, new ApplicationUpdateRequest()))
                     .withMessageContaining("No application found with id: " + applicationId);
             verify(applicationRepository, times(1)).findById(applicationId);
+            verify(domainEventRepository, never()).save(any());
         }
 
         @Test
-        void givenApplication_whenUpdateApplication_thenUpdateAndSave() {
+        void givenApplication_whenUpdateApplication_thenUpdateAndSave() throws JsonProcessingException {
             // given
             UUID applicationId = UUID.randomUUID();
             ApplicationEntity expectedEntity = applicationEntityFactory.createDefault(builder ->
                     builder.id(applicationId)
                             .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
             );
+            ApplicationEntity updatedEntity = expectedEntity.toBuilder()
+                    .applicationContent(new HashMap<>(Map.of("test", "changed")))
+                    .build();
+
             ApplicationUpdateRequest updateRequest = applicationUpdateRequestFactory.createDefault();
             when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
 
             setSecurityContext(TestConstants.Roles.WRITER);
+
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(applicationId)
+                    .type(DomainEventType.APPLICATION_UPDATED)
+                    .createdBy("")
+                    .data(objectMapper.writeValueAsString(UpdateApplicationDomainEventDetails.builder()
+                            .applicationId(applicationId)
+                            .applicationStatus(ApplicationStatus.IN_PROGRESS.toString())
+                            .applicationContent(updatedEntity.getApplicationContent().toString())
+                            .build()))
+                    .build();
 
             // when
             serviceUnderTest.updateApplication(applicationId, updateRequest);
@@ -421,6 +440,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // then
             verify(applicationRepository, times(1)).findById(applicationId);
             verifyThatApplicationUpdated(updateRequest, 1);
+            verifyThatUpdateDomainEventSaved(expectedDomainEvent, 1);
             assertThat(expectedEntity.getModifiedAt()).isNotNull();
         }
 
@@ -449,6 +469,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .isEqualTo(validationException);
             verify(applicationRepository, times(1)).findById(applicationId);
             verify(applicationRepository, never()).save(any());
+            verify(domainEventRepository, never()).save(any());
         }
 
         @Test
@@ -465,6 +486,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .withMessageContaining("Access Denied");
             verify(applicationRepository, never()).findById(applicationId);
             verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any());
         }
 
         @Test
@@ -479,6 +501,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .withMessageContaining("Access Denied");
             verify(applicationRepository, never()).findById(applicationId);
             verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any());
         }
 
         public final Stream<Arguments> invalidApplicationUpdateRequests() {
@@ -510,6 +533,26 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .usingRecursiveComparison()
                     .ignoringCollectionOrder()
                     .isEqualTo(applicationUpdateRequest.getApplicationContent());
+        }
+
+        private void verifyThatUpdateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled) throws JsonProcessingException {
+            ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
+            verify(domainEventRepository, times(timesCalled)).save(captor.capture());
+            DomainEventEntity actualDomainEvent = captor.getValue();
+            assertThat(expectedDomainEvent)
+                    .usingRecursiveComparison()
+                    .ignoringFields("createdAt", "data")
+                    .isEqualTo(actualDomainEvent);
+            assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
+
+            Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
+            Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
+            assertThat(expectedData)
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .ignoringFields("updatedDate")
+                    .isEqualTo(actualData);
+            assertThat(actualData.get("updatedDate")).isNotNull();
         }
     }
 
