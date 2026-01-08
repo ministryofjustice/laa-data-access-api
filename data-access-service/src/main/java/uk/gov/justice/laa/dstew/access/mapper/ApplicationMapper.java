@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
@@ -14,10 +13,8 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.Proceeding;
 
 
 /**
@@ -37,14 +34,11 @@ public interface ApplicationMapper {
    * @return a new {@link ApplicationEntity} populated from the request, or {@code null} if the request is null
    * @throws IllegalArgumentException if the {@code applicationContent} cannot be serialized
    */
-  default ApplicationEntity toApplicationEntity(ApplicationCreateRequest req, ObjectMapper mapper) {
+  default ApplicationEntity toApplicationEntity(ApplicationCreateRequest req) {
     if (req == null) {
       return null;
     }
-
     ApplicationEntity entity = new ApplicationEntity();
-    ApplicationContent applicationContent = mapper.convertValue(req.getApplicationContent(), ApplicationContent.class);
-    processingApplicationContent(entity, applicationContent);
     entity.setStatus(req.getStatus());
     entity.setLaaReference(req.getLaaReference());
     var individuals = req.getIndividuals()
@@ -56,32 +50,6 @@ public interface ApplicationMapper {
     return entity;
   }
 
-  /**
-   * Processes application content to extract and set key fields in the entity.
-   *
-   * @param entity             the application entity to update
-   * @param applicationContent the application content to process
-   */
-  private void processingApplicationContent(ApplicationEntity entity, ApplicationContent applicationContent) {
-    if (applicationContent == null) {
-      return;
-    }
-    if (applicationContent.getProceedings() == null || applicationContent.getProceedings().isEmpty()) {
-      return;
-    }
-    Proceeding leadProceeding = applicationContent.getProceedings().stream()
-        .filter(Objects::nonNull)
-        .filter(Proceeding::leadProceeding)
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("No lead proceeding found in application content"));
-    boolean usedDelegatedFunction =
-        applicationContent.getProceedings().stream().filter(Objects::nonNull)
-            .anyMatch(Proceeding::useDelegatedFunctions);
-    entity.setAutoGranted(applicationContent.isAutoGrant());
-    entity.setUseDelegatedFunctions(usedDelegatedFunction);
-    entity.setCategoryOfLaw(leadProceeding.categoryOfLaw());
-    entity.setMatterType(leadProceeding.matterType());
-  }
 
   /**
    * Updates an existing {@link ApplicationEntity} using values from an {@link ApplicationUpdateRequest}.

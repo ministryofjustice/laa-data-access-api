@@ -37,6 +37,7 @@ public class ApplicationService {
   private final ObjectMapper objectMapper;
   private final CaseworkerRepository caseworkerRepository;
   private final DomainEventService domainEventService;
+  private final ApplicationMapperService applicationMapperService;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -51,10 +52,11 @@ public class ApplicationService {
                             final ApplicationValidations applicationValidations,
                             final ObjectMapper objectMapper,
                             final CaseworkerRepository caseworkerRepository,
-                            final DomainEventService domainEventService) {
+                            final DomainEventService domainEventService, ApplicationMapperService applicationMapperService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
+    this.applicationMapperService = applicationMapperService;
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
     this.caseworkerRepository = caseworkerRepository;
@@ -82,8 +84,7 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public UUID createApplication(final ApplicationCreateRequest req) {
     applicationValidations.checkApplicationCreateRequest(req);
-    final ApplicationEntity entity = applicationMapper.toApplicationEntity(req, objectMapper);
-    entity.setSchemaVersion(applicationVersion);
+    final ApplicationEntity entity = applicationMapperService.toApplicationEntity(req, applicationVersion);
     final ApplicationEntity saved = applicationRepository.save(entity);
 
     domainEventService.saveCreateApplicationDomainEvent(saved, null);
