@@ -143,7 +143,7 @@ public class ApplicationService {
    * @param ids Collection of UUIDs of applications
    * @return found entity
    */
-  private List<ApplicationEntity> checkIfAllApplicationsExist(@NonNull final List<UUID> ids) {
+  private List<ApplicationEntity> checkIfAllApplicationsExist(final List<UUID> ids) {
     applicationValidations.checkApplicationIdList(ids);
     var idsToFetch = ids.stream().distinct().toList();
     var applications = applicationRepository.findAllById(idsToFetch);

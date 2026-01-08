@@ -115,7 +115,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     class CreateApplication {
 
         @Test
-        public void givenNewApplication_whenCreateApplication_thenReturnNewId() {
+        public void givenNewApplication_whenCreateApplication_thenReturnNewId() throws JsonProcessingException {
 
             // given
             UUID expectedId = UUID.randomUUID();
@@ -127,6 +127,15 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             when(applicationRepository.save(any())).thenReturn(withExpectedId);
 
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(expectedId)
+                    .type(DomainEventType.APPLICATION_CREATED)
+                    .data(objectMapper.writeValueAsString(CreateApplicationDomainEventDetails.builder()
+                            .applicationId(expectedId)
+                            .applicationStatus(ApplicationStatus.IN_PROGRESS.toString())
+                            .build()))
+                    .build();
+
             setSecurityContext(TestConstants.Roles.WRITER);
 
             // when
@@ -136,6 +145,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             assertEquals(expectedId, actualId);
 
             verifyThatApplicationSaved(applicationCreateRequest, 1);
+            verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
         }
 
         @Test
@@ -178,6 +188,27 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             verify(applicationRepository, never()).findById(any(UUID.class));
             verify(applicationRepository, never()).save(any());
+        }
+
+        private void verifyThatCreateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled) throws JsonProcessingException {
+            ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
+            verify(domainEventRepository, times(timesCalled)).save(captor.capture());
+            DomainEventEntity actualDomainEvent = captor.getValue();
+            assertThat(expectedDomainEvent)
+                    .usingRecursiveComparison()
+                    .ignoringFields("createdAt", "data")
+                    .isEqualTo(actualDomainEvent);
+            assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
+
+            Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
+            Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
+            assertThat(expectedData)
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .ignoringFields("createdDate", "applicationContent")
+                    //.ignoringFields("createdDate")
+                    .isEqualTo(actualData);
+            assertThat(actualData.get("createdDate")).isNotNull();
         }
 
         private Stream<Arguments> invalidApplicationRequests() {
