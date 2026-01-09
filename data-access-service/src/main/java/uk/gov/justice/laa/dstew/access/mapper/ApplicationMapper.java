@@ -63,12 +63,8 @@ public interface ApplicationMapper {
     if (req.getStatus() != null) {
       entity.setStatus(req.getStatus());
     }
-    if (req.getApplicationContent() != null) {
-      entity.setApplicationContent(req.getApplicationContent());
-    }
+    entity.setApplicationContent(req.getApplicationContent());
   }
-
-
 
   /**
    * Maps a {@link ApplicationEntity} to an API-facing {@link Application} model.
@@ -103,6 +99,4 @@ public interface ApplicationMapper {
 
     return application;
   }
-
-
 }
