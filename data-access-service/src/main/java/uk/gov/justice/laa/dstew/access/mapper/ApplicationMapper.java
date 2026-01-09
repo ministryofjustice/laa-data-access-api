@@ -38,24 +38,24 @@ public interface ApplicationMapper {
     if (req == null) {
       return null;
     }
-
     ApplicationEntity entity = new ApplicationEntity();
     entity.setStatus(req.getStatus());
     entity.setLaaReference(req.getLaaReference());
     var individuals = req.getIndividuals()
-                         .stream()
-                         .map(individualMapper::toIndividualEntity)
-                         .collect(Collectors.toSet());
+        .stream()
+        .map(individualMapper::toIndividualEntity)
+        .collect(Collectors.toSet());
     entity.setIndividuals(individuals);
     entity.setApplicationContent(req.getApplicationContent());
     return entity;
   }
 
+
   /**
    * Updates an existing {@link ApplicationEntity} using values from an {@link ApplicationUpdateRequest}.
    *
    * @param entity the entity to update
-   * @param req the update request containing new values
+   * @param req    the update request containing new values
    * @throws IllegalArgumentException if the {@code applicationContent} cannot be serialized
    */
   @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -67,7 +67,6 @@ public interface ApplicationMapper {
       entity.setApplicationContent(req.getApplicationContent());
     }
   }
-
 
 
   /**
@@ -93,12 +92,12 @@ public interface ApplicationMapper {
     application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
 
     application.setIndividuals(
-            Optional.ofNullable(entity.getIndividuals())
-                    .orElse(Set.of())
-                    .stream()
-                    .map(individualMapper::toIndividual)
-                    .filter(Objects::nonNull)
-                    .toList()
+        Optional.ofNullable(entity.getIndividuals())
+            .orElse(Set.of())
+            .stream()
+            .map(individualMapper::toIndividual)
+            .filter(Objects::nonNull)
+            .toList()
     );
 
     return application;
