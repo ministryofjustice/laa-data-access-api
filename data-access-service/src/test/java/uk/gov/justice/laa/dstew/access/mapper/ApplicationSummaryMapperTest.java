@@ -6,52 +6,86 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.InjectMocks;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 
-
-@ExtendWith(MockitoExtension.class)
 public class ApplicationSummaryMapperTest {
 
-  @InjectMocks
-  private ApplicationSummaryMapper applicationMapper = new ApplicationSummaryMapperImpl();
+    private final ApplicationSummaryMapper applicationSummaryMapper = Mappers.getMapper(ApplicationSummaryMapper.class);
 
-  @ParameterizedTest
-  @NullSource
-  @ValueSource(strings = "95bb88f1-99ca-4ecf-b867-659b55a8cf93")
-  void shouldMapApplicationSummaryEntityToApplicationSummary(UUID caseworkerId) {
-    UUID id = UUID.randomUUID();
-    ApplicationSummaryEntity entity = new ApplicationSummaryEntity();
-    entity.setId(id);
-    entity.setCreatedAt(Instant.now());
-    entity.setModifiedAt(Instant.now());
-    entity.setLaaReference("ref1");
-    entity.setStatus(ApplicationStatus.IN_PROGRESS);
-    entity.setCaseworker(CaseworkerEntity.builder().id(caseworkerId).build());
+    @Test
+    void givenApplicationSummaryEntity_whenToApplicationSummary_thenMapsFieldsCorrectly() {
+        UUID id = UUID.randomUUID();
+        Instant createdAt = Instant.now();
+        Instant modifiedAt = Instant.now();
+        String laaReference = "ref1";
+        ApplicationStatus status = ApplicationStatus.IN_PROGRESS;
 
-    ApplicationSummary result = applicationMapper.toApplicationSummary(entity);
+        ApplicationSummaryEntity expectedApplicationSummaryEntity = ApplicationSummaryEntity.builder()
+                .id(id)
+                .createdAt(createdAt)
+                .modifiedAt(modifiedAt)
+                .laaReference(laaReference)
+                .status(status)
+                .build();
 
-    assertThat(result).isNotNull();
-    assertThat(result.getApplicationId()).isEqualTo(id);
-    assertThat(result.getLaaReference()).isEqualTo("ref1");
-    assertThat(result.getApplicationStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
-    assertThat(result.getAssignedTo() == caseworkerId);
-    assertThat(result.getModifiedAt()).isEqualTo(entity.getModifiedAt().atOffset(ZoneOffset.UTC));
-    assertThat(result.getCreatedAt()).isEqualTo(entity.getCreatedAt().atOffset(ZoneOffset.UTC));
-  }
+        ApplicationSummary actualApplicationSummary = applicationSummaryMapper
+                .toApplicationSummary(expectedApplicationSummaryEntity);
 
-  @Test
-  void shouldReturnNullWhenMappingNullEntity() {
-    assertThat(applicationMapper.toApplicationSummary(null)).isNull();
-  }
+        assertThat(actualApplicationSummary).isNotNull();
+        assertThat(actualApplicationSummary.getApplicationId()).isEqualTo(id);
+        assertThat(actualApplicationSummary.getLaaReference()).isEqualTo(laaReference);
+        assertThat(actualApplicationSummary.getApplicationStatus()).isEqualTo(status);
+        assertThat(actualApplicationSummary.getModifiedAt()).isEqualTo(modifiedAt.atOffset(ZoneOffset.UTC));
+        assertThat(actualApplicationSummary.getCreatedAt()).isEqualTo(createdAt.atOffset(ZoneOffset.UTC));
+    }
 
-  
+    @Test
+    void givenApplicationSummaryEntityWithCaseworker_whenToApplicationSummary_thenMapsAssignedToCorrectly() {
+        UUID caseworkerId = UUID.randomUUID();
+        Instant createdAt = Instant.now();
+        Instant modifiedAt = Instant.now();
+
+        CaseworkerEntity caseworkerEntity = CaseworkerEntity.builder()
+                .id(caseworkerId)
+                .build();
+
+        ApplicationSummaryEntity expectedApplicationSummaryEntity = ApplicationSummaryEntity.builder()
+                .createdAt(createdAt)
+                .modifiedAt(modifiedAt)
+                .caseworker(caseworkerEntity)
+                .build();
+
+        ApplicationSummary actualApplicationSummary = applicationSummaryMapper
+                .toApplicationSummary(expectedApplicationSummaryEntity);
+
+        assertThat(actualApplicationSummary).isNotNull();
+        assertThat(actualApplicationSummary.getAssignedTo()).isEqualTo(caseworkerId);
+    }
+
+    @Test
+    void givenApplicationSummaryEntityWithoutCaseworker_whenToApplicationSummary_thenAssignedToIsNull() {
+        Instant createdAt = Instant.now();
+        Instant modifiedAt = Instant.now();
+
+        ApplicationSummaryEntity expectedApplicationSummaryEntity = ApplicationSummaryEntity.builder()
+                .createdAt(createdAt)
+                .modifiedAt(modifiedAt)
+                .build();
+
+        ApplicationSummary actualApplicationSummary = applicationSummaryMapper
+                .toApplicationSummary(expectedApplicationSummaryEntity);
+
+        assertThat(actualApplicationSummary).isNotNull();
+        assertThat(actualApplicationSummary.getAssignedTo()).isNull();
+    }
+
+    @Test
+    void givenNullApplicationEntity_whenToApplicationSummary_thenReturnNull() {
+        ApplicationSummaryEntity entity = null;
+        assertThat(applicationSummaryMapper.toApplicationSummary(entity)).isNull();
+    }
 }

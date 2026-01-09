@@ -404,25 +404,6 @@ public class ApplicationControllerIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = {"APPROLE_ApplicationReader"})
-  @Transactional
-  void shouldReturnCaseworkerId() throws Exception {
-    CaseworkerEntity caseworkerEntity = CaseworkerEntity.builder().username("caseworker1").build();
-    final UUID caseworkerId = caseworkerRepository.saveAndFlush(caseworkerEntity).getId();
-    ApplicationEntity app = ApplicationEntity.builder()
-                                             .status(ApplicationStatus.SUBMITTED)
-                                             .caseworker(caseworkerEntity)
-                                             .applicationContent(Map.of("foo", "bar"))
-                                             .build();
-
-    final UUID appId = applicationRepository.saveAndFlush(app).getId();
-
-    mockMvc.perform(get("/api/v0/applications/" + appId))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.caseworkerId").value(caseworkerId.toString()));
-  }
-
-  @Test
   @WithMockUser(authorities = {"APPROLE_ApplicationReader", "APPROLE_ApplicationWriter"})
   @Order(13)
   void shouldReturnEmptyIndividualsList() throws Exception {

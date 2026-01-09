@@ -3,8 +3,6 @@ package uk.gov.justice.laa.dstew.access.mapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -63,12 +61,8 @@ public interface ApplicationMapper {
     if (req.getStatus() != null) {
       entity.setStatus(req.getStatus());
     }
-    if (req.getApplicationContent() != null) {
-      entity.setApplicationContent(req.getApplicationContent());
-    }
+    entity.setApplicationContent(req.getApplicationContent());
   }
-
-
 
   /**
    * Maps a {@link ApplicationEntity} to an API-facing {@link Application} model.
@@ -93,8 +87,7 @@ public interface ApplicationMapper {
     application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
 
     application.setIndividuals(
-            Optional.ofNullable(entity.getIndividuals())
-                    .orElse(Set.of())
+            entity.getIndividuals()
                     .stream()
                     .map(individualMapper::toIndividual)
                     .filter(Objects::nonNull)
@@ -103,6 +96,4 @@ public interface ApplicationMapper {
 
     return application;
   }
-
-
 }
