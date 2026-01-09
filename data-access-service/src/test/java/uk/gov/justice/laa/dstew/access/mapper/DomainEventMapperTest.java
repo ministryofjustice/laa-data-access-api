@@ -20,27 +20,34 @@ public class DomainEventMapperTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource( strings = { "377adde8-632f-43c6-b10b-0843433759d3" })
-    void givenDomainEntity_whenToDomainEvent_thenMapsFieldsCorrectly(String caseworkerId) {
-        final String eventDescription = "{ \"eventDescription\" : \"eventDescription\" }";
-        Instant createdAt = Instant.ofEpochMilli(999999000);
+    @ValueSource(strings = { "377adde8-632f-43c6-b10b-0843433759d3" })
+    void givenDomainEntity_whenToDomainEvent_thenMapsFieldsCorrectly(String caseworkerIdStr) {
+        UUID id = UUID.randomUUID();
+        UUID applicationId = UUID.randomUUID();
+        UUID caseworkerId = caseworkerIdStr != null ? UUID.fromString(caseworkerIdStr) : null;
+        Instant createdAt = Instant.ofEpochMilli(999_999_000);
         OffsetDateTime expectedCreatedDateTime = OffsetDateTime.of(1970, 1, 12, 13, 46, 39, 0, ZoneOffset.UTC);
-        DomainEventEntity expectedDomainEventEntity = DomainEventEntity.builder()
-                                                    .id(UUID.randomUUID())
-                                                    .applicationId(UUID.randomUUID())
-                                                    .caseworkerId(caseworkerId != null ? UUID.fromString(caseworkerId) : null)
-                                                    .createdAt(createdAt)
-                                                    .createdBy("John.Doe")
-                                                    .data(eventDescription)
-                                                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
-                                                    .build();
-        ApplicationDomainEvent actualDomainEvent = mapper.toDomainEvent(expectedDomainEventEntity);
-        
-        assertThat(actualDomainEvent.getApplicationId()).isEqualTo(expectedDomainEventEntity.getApplicationId());
-        assertThat(actualDomainEvent.getCaseworkerId()).isEqualTo(expectedDomainEventEntity.getCaseworkerId());
+        String createdBy = "John.Doe";
+        String eventDescription = "{ \"eventDescription\" : \"eventDescription\" }";
+        DomainEventType eventType = DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER;
+
+        DomainEventEntity domainEventEntity = DomainEventEntity.builder()
+                .id(id)
+                .applicationId(applicationId)
+                .caseworkerId(caseworkerId)
+                .createdAt(createdAt)
+                .createdBy(createdBy)
+                .data(eventDescription)
+                .type(eventType)
+                .build();
+
+        ApplicationDomainEvent actualDomainEvent = mapper.toDomainEvent(domainEventEntity);
+
+        assertThat(actualDomainEvent.getApplicationId()).isEqualTo(applicationId);
+        assertThat(actualDomainEvent.getCaseworkerId()).isEqualTo(caseworkerId);
         assertThat(actualDomainEvent.getCreatedAt()).isEqualTo(expectedCreatedDateTime);
-        assertThat(actualDomainEvent.getCreatedBy()).isEqualTo(expectedDomainEventEntity.getCreatedBy());
-        assertThat(actualDomainEvent.getDomainEventType()).isEqualTo(expectedDomainEventEntity.getType());
+        assertThat(actualDomainEvent.getCreatedBy()).isEqualTo(createdBy);
+        assertThat(actualDomainEvent.getDomainEventType()).isEqualTo(eventType);
         assertThat(actualDomainEvent.getEventDescription()).isEqualTo(eventDescription);
     }
 }

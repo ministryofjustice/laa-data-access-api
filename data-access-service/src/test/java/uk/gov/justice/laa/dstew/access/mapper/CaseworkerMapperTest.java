@@ -12,19 +12,23 @@ public class CaseworkerMapperTest {
 
     @Test
     void givenCaseworkerEntity_whenToCaseworker_thenMapsFieldsCorrectly() {
-    CaseworkerEntity expectedCaseworkerEntity = CaseworkerEntity.builder()
-                                                  .id(UUID.randomUUID())
-                                                  .username("caseworker1")
-                                                  .build();
-    var actualCaseworker = mapper.toCaseworker(expectedCaseworkerEntity);
+        UUID id = UUID.randomUUID();
+        String username = "caseworker1";
 
-    assertThat(actualCaseworker.getId()).isEqualTo(expectedCaseworkerEntity.getId());
-    assertThat(actualCaseworker.getUsername()).isEqualTo(expectedCaseworkerEntity.getUsername());
+        CaseworkerEntity expectedCaseworkerEntity = CaseworkerEntity.builder()
+                .id(id)
+                .username(username)
+                .build();
+
+        var actualCaseworker = mapper.toCaseworker(expectedCaseworkerEntity);
+
+        assertThat(actualCaseworker.getId()).isEqualTo(id);
+        assertThat(actualCaseworker.getUsername()).isEqualTo(username);
     }
 
     @Test
     void givenNullCaseworker_whenToCaseworker_thenReturnNull() {
-
-      assertThat(mapper.toCaseworker(null)).isNull();
+        CaseworkerEntity entity = null;
+        assertThat(mapper.toCaseworker(entity)).isNull();
     }
 }

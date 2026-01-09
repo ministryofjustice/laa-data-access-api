@@ -14,78 +14,78 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 
 public class ApplicationSummaryMapperTest {
 
-  private final ApplicationSummaryMapper applicationSummaryMapper = Mappers.getMapper(ApplicationSummaryMapper.class);
+    private final ApplicationSummaryMapper applicationSummaryMapper = Mappers.getMapper(ApplicationSummaryMapper.class);
 
-  @Test
-  void givenApplicationSummaryEntity_whenToApplicationSummary_thenMapsFieldsCorrectly() {
+    @Test
+    void givenApplicationSummaryEntity_whenToApplicationSummary_thenMapsFieldsCorrectly() {
+        UUID id = UUID.randomUUID();
+        Instant createdAt = Instant.now();
+        Instant modifiedAt = Instant.now();
+        String laaReference = "ref1";
+        ApplicationStatus status = ApplicationStatus.IN_PROGRESS;
 
-    ApplicationSummaryEntity expectedApplicationSummaryEntity = ApplicationSummaryEntity.builder()
-                    .id(UUID.randomUUID())
-                    .createdAt(Instant.now())
-                    .modifiedAt(Instant.now())
-                    .laaReference("ref1")
-                    .status(ApplicationStatus.IN_PROGRESS)
-                    .build();
+        ApplicationSummaryEntity expectedApplicationSummaryEntity = ApplicationSummaryEntity.builder()
+                .id(id)
+                .createdAt(createdAt)
+                .modifiedAt(modifiedAt)
+                .laaReference(laaReference)
+                .status(status)
+                .build();
 
-    ApplicationSummary actualApplicationSummary = applicationSummaryMapper
-            .toApplicationSummary(expectedApplicationSummaryEntity);
+        ApplicationSummary actualApplicationSummary = applicationSummaryMapper
+                .toApplicationSummary(expectedApplicationSummaryEntity);
 
-    assertThat(actualApplicationSummary).isNotNull();
-    assertThat(actualApplicationSummary.getApplicationId())
-            .isEqualTo(expectedApplicationSummaryEntity.getId());
-    assertThat(actualApplicationSummary.getLaaReference())
-            .isEqualTo(expectedApplicationSummaryEntity.getLaaReference());
-    assertThat(actualApplicationSummary.getApplicationStatus())
-            .isEqualTo(expectedApplicationSummaryEntity.getStatus());
-    assertThat(actualApplicationSummary.getModifiedAt())
-            .isEqualTo(expectedApplicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-    assertThat(actualApplicationSummary.getCreatedAt())
-            .isEqualTo(expectedApplicationSummaryEntity.getCreatedAt().atOffset(ZoneOffset.UTC));
-  }
+        assertThat(actualApplicationSummary).isNotNull();
+        assertThat(actualApplicationSummary.getApplicationId()).isEqualTo(id);
+        assertThat(actualApplicationSummary.getLaaReference()).isEqualTo(laaReference);
+        assertThat(actualApplicationSummary.getApplicationStatus()).isEqualTo(status);
+        assertThat(actualApplicationSummary.getModifiedAt()).isEqualTo(modifiedAt.atOffset(ZoneOffset.UTC));
+        assertThat(actualApplicationSummary.getCreatedAt()).isEqualTo(createdAt.atOffset(ZoneOffset.UTC));
+    }
 
-  @Test
-  void givenApplicationSummaryEntityWithCaseworker_whenToApplicationSummary_thenMapsAssignedToCorrectly() {
+    @Test
+    void givenApplicationSummaryEntityWithCaseworker_whenToApplicationSummary_thenMapsAssignedToCorrectly() {
+        UUID caseworkerId = UUID.randomUUID();
+        Instant createdAt = Instant.now();
+        Instant modifiedAt = Instant.now();
 
-    UUID caseworkerId = UUID.randomUUID();
-    CaseworkerEntity caseworkerEntity = CaseworkerEntity.builder()
-            .id(caseworkerId)
-            .build();
+        CaseworkerEntity caseworkerEntity = CaseworkerEntity.builder()
+                .id(caseworkerId)
+                .build();
 
-    ApplicationSummaryEntity expectedApplicationSummaryEntity = ApplicationSummaryEntity.builder()
-            .createdAt(Instant.now())
-            .modifiedAt(Instant.now())
-            .caseworker(caseworkerEntity)
-            .build();
+        ApplicationSummaryEntity expectedApplicationSummaryEntity = ApplicationSummaryEntity.builder()
+                .createdAt(createdAt)
+                .modifiedAt(modifiedAt)
+                .caseworker(caseworkerEntity)
+                .build();
 
-    ApplicationSummary actualApplicationSummary = applicationSummaryMapper
-            .toApplicationSummary(expectedApplicationSummaryEntity);
+        ApplicationSummary actualApplicationSummary = applicationSummaryMapper
+                .toApplicationSummary(expectedApplicationSummaryEntity);
 
-    assertThat(actualApplicationSummary).isNotNull();
-    assertThat(actualApplicationSummary.getAssignedTo())
-            .isEqualTo(caseworkerId);
-  }
+        assertThat(actualApplicationSummary).isNotNull();
+        assertThat(actualApplicationSummary.getAssignedTo()).isEqualTo(caseworkerId);
+    }
 
-  @Test
-  void givenApplicationSummaryEntityWithoutCaseworker_whenToApplicationSummary_thenAssignedToIsNull() {
+    @Test
+    void givenApplicationSummaryEntityWithoutCaseworker_whenToApplicationSummary_thenAssignedToIsNull() {
+        Instant createdAt = Instant.now();
+        Instant modifiedAt = Instant.now();
 
-    ApplicationSummaryEntity expectedApplicationSummaryEntity = ApplicationSummaryEntity.builder()
-            .createdAt(Instant.now())
-            .modifiedAt(Instant.now())
-            .build();
+        ApplicationSummaryEntity expectedApplicationSummaryEntity = ApplicationSummaryEntity.builder()
+                .createdAt(createdAt)
+                .modifiedAt(modifiedAt)
+                .build();
 
-    ApplicationSummary actualApplicationSummary = applicationSummaryMapper
-            .toApplicationSummary(expectedApplicationSummaryEntity);
+        ApplicationSummary actualApplicationSummary = applicationSummaryMapper
+                .toApplicationSummary(expectedApplicationSummaryEntity);
 
-    assertThat(actualApplicationSummary).isNotNull();
-    assertThat(actualApplicationSummary.getAssignedTo())
-            .isNull();
-  }
+        assertThat(actualApplicationSummary).isNotNull();
+        assertThat(actualApplicationSummary.getAssignedTo()).isNull();
+    }
 
-  @Test
-  void givenNullApplicationEntity_whenToApplicationSummary_thenReturnNull() {
-
-      assertThat(
-              applicationSummaryMapper.toApplicationSummary(null))
-              .isNull();
-  }
+    @Test
+    void givenNullApplicationEntity_whenToApplicationSummary_thenReturnNull() {
+        ApplicationSummaryEntity entity = null;
+        assertThat(applicationSummaryMapper.toApplicationSummary(entity)).isNull();
+    }
 }
