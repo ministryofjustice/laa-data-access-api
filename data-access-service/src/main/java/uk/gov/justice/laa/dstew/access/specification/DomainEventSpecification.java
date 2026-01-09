@@ -22,7 +22,7 @@ public class DomainEventSpecification {
 
   /**
   * Filters to one of the supplied domain types, does no filtering if 
-  * the colleciton is empty.
+  * the collection is empty.
   *
   */
   public static Specification<DomainEventEntity> filterEventTypes(List<DomainEventType> eventTypes) {
