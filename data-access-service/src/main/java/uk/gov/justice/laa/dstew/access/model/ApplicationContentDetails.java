@@ -16,12 +16,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ApplicationContent {
+public class ApplicationContentDetails {
   private String id;
-  private String laaReference;
-  private ApplicationStatus status;
   private Instant submittedAt;
   private boolean autoGrant;
-  private List<Proceeding> proceedings;
+  private List<ProceedingDetails> proceedings;
 
 }

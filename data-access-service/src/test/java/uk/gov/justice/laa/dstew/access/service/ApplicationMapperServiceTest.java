@@ -28,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
  */
 class ApplicationMapperServiceTest extends BaseServiceTest {
   static ObjectMapper objectMapper = new ObjectMapper();
+  private static String submittedAt;
 
   @Autowired
   ApplicationMapperService serviceUnderTest;
@@ -46,7 +47,8 @@ class ApplicationMapperServiceTest extends BaseServiceTest {
   @MethodSource("provideProceedingsForMapping")
   void mapToApplicationEntity_usedDelegatedFunctionsMapped(
       Map<String, Object> appContentMap,
-      boolean expectedUseDelegatedFunctions) {
+      boolean expectedUseDelegatedFunctions,
+      boolean autoGranted) {
 
 
     // Given
@@ -58,15 +60,21 @@ class ApplicationMapperServiceTest extends BaseServiceTest {
 
     // Then
     assertAll(
-        () -> assertEquals(expectedUseDelegatedFunctions, entity.isUseDelegatedFunctions())
+        () -> assertEquals(expectedUseDelegatedFunctions, entity.isUseDelegatedFunctions()),
+        () -> assertEquals(autoGranted, entity.isAutoGranted()),
+        () -> assertEquals(submittedAt, entity.getSubmittedAt().toString())
+
+
     );
   }
 
-  private static Map<String, Object> getAppContentMap(List<ProceedingJsonObject> proceedings) {
+  private static Map<String, Object> getAppContentMap(List<ProceedingJsonObject> proceedings, boolean autoGrant) {
+    submittedAt = "2026-01-15T10:20:30Z";
     AppContentJsonObject applicationContent = AppContentJsonObject.builder()
         .proceedings(proceedings)
-        .autoGrant(true)
-        .laaReference("L-XCX-0WB")
+        .autoGrant(autoGrant)
+        .id("f1e2d3c4-b5a6-7d8e-9f0a-1b2c3d4e5f6g")
+        .submittedAt(submittedAt)
         .build();
 
     return getContentMap(applicationContent);
@@ -74,7 +82,7 @@ class ApplicationMapperServiceTest extends BaseServiceTest {
 
 
   private static ProceedingJsonObject getProceedingJsonObject(boolean useDelegatedFunctions, boolean leadProceeding) {
-    return  ProceedingJsonObject.builder()
+    return ProceedingJsonObject.builder()
         .id("f6e2c4e1-5d32-4c3e-9f0a-1e2b3c4d5e6f")
         .leadProceeding(leadProceeding)
         .categoryOfLaw(CategoryOfLaw.Family.name())
@@ -84,13 +92,14 @@ class ApplicationMapperServiceTest extends BaseServiceTest {
   }
 
   private static Stream<Arguments> provideProceedingsForMapping() {
+    //App Content Map, expected useDelegatedFunctions, isAutoGrant
     return Stream.of(
-        Arguments.of(getAppContentMap(List.of(getProceedingJsonObject(true, true))), true),
-        Arguments.of(getAppContentMap(List.of(getProceedingJsonObject(false, true))), false),
+        Arguments.of(getAppContentMap(List.of(getProceedingJsonObject(true, true)), false), true, false),
+        Arguments.of(getAppContentMap(List.of(getProceedingJsonObject(false, true)), true), false, true),
         Arguments.of(getAppContentMap(List.of(getProceedingJsonObject(false, true),
-            getProceedingJsonObject(true, false))), true),
+            getProceedingJsonObject(true, false)), true), true, true),
         Arguments.of(getAppContentMap(List.of(getProceedingJsonObject(false, true),
-            getProceedingJsonObject(false, false))), false)
+            getProceedingJsonObject(false, false)), true), false, true)
     );
   }
 
@@ -108,23 +117,27 @@ class ApplicationMapperServiceTest extends BaseServiceTest {
 
   /**
    * Application Content JSON Object for testing
+   *
    * @param proceedings
-   * @param laaReference
+   * @param id
    * @param autoGrant
+   * @param submittedAt
    */
   @Builder
   record AppContentJsonObject(
       List<ProceedingJsonObject> proceedings,
-      String laaReference,
-      boolean autoGrant) {
+      String id,
+      boolean autoGrant,
+      String submittedAt) {
   }
 
   /**
    * Proceeding JSON Object for testing
+   *
    * @param id
-   * @param leadProceeding is this the lead proceeding
-   * @param categoryOfLaw categoryOfLaw as string
-   * @param matterType matterType as string
+   * @param leadProceeding        is this the lead proceeding
+   * @param categoryOfLaw         categoryOfLaw as string
+   * @param matterType            matterType as string
    * @param useDelegatedFunctions useDelegatedFunctions flag
    */
   @Builder
