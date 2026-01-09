@@ -1,14 +1,20 @@
 package uk.gov.justice.laa.dstew.access.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContentDetails;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.Proceeding;
+import uk.gov.justice.laa.dstew.access.model.ProceedingDetails;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
+/**
+ * Service for mapping application requests to application entities.
+ * Handles the conversion and processing of application content.
+ */
 @Service
 public class ApplicationMapperService {
 
@@ -20,10 +26,18 @@ public class ApplicationMapperService {
     this.objectMapper = objectMapper;
   }
 
+  /**
+   * Converts an ApplicationCreateRequest to an ApplicationEntity.
+   *
+   * @param req                the application create request
+   * @param applicationVersion the version of the application schema
+   * @return the mapped application entity
+   */
   public ApplicationEntity toApplicationEntity(ApplicationCreateRequest req, Integer applicationVersion) {
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
-    ApplicationContent applicationContent = objectMapper.convertValue(req.getApplicationContent(), ApplicationContent.class);
-    processingApplicationContent(entity, applicationContent);
+    ApplicationContentDetails
+        applicationContentDetails = objectMapper.convertValue(req.getApplicationContent(), ApplicationContentDetails.class);
+    processingApplicationContent(entity, applicationContentDetails);
     entity.setSchemaVersion(applicationVersion);
     return entity;
   }
@@ -34,24 +48,24 @@ public class ApplicationMapperService {
    * @param entity             the application entity to update
    * @param applicationContent the application content to process
    */
-  private void processingApplicationContent(ApplicationEntity entity, ApplicationContent applicationContent) {
-    if (applicationContent == null) {
-      return;
-    }
+  private void processingApplicationContent(ApplicationEntity entity, ApplicationContentDetails applicationContent) {
     if (applicationContent.getProceedings() == null || applicationContent.getProceedings().isEmpty()) {
-      return;
+      throw new ValidationException(List.of("No proceedings found in application content"));
     }
-    Proceeding leadProceeding = applicationContent.getProceedings().stream()
+    ProceedingDetails leadProceeding = applicationContent.getProceedings().stream()
         .filter(Objects::nonNull)
-        .filter(Proceeding::leadProceeding)
+        .filter(ProceedingDetails::leadProceeding)
         .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("No lead proceeding found in application content"));
+        .orElseThrow(() -> new ValidationException(List.of("No lead proceeding found in application content")));
     boolean usedDelegatedFunction =
-        applicationContent.getProceedings().stream().filter(Objects::nonNull)
-            .anyMatch(Proceeding::useDelegatedFunctions);
+        applicationContent.getProceedings().stream()
+            .filter(Objects::nonNull)
+            .filter(proceeding -> null != proceeding.useDelegatedFunctions())
+            .anyMatch(ProceedingDetails::useDelegatedFunctions);
     entity.setAutoGranted(applicationContent.isAutoGrant());
     entity.setUseDelegatedFunctions(usedDelegatedFunction);
     entity.setCategoryOfLaw(leadProceeding.categoryOfLaw());
     entity.setMatterType(leadProceeding.matterType());
+    entity.setSubmittedAt(applicationContent.getSubmittedAt());
   }
 }
