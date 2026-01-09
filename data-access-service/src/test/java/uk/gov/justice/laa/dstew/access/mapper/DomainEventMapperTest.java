@@ -24,7 +24,7 @@ public class DomainEventMapperTest {
     void givenDomainEntity_whenToDomainEvent_thenMapsFieldsCorrectly(String caseworkerId) {
         final String eventDescription = "{ \"eventDescription\" : \"eventDescription\" }";
         Instant createdAt = Instant.ofEpochMilli(999999000);
-        OffsetDateTime expectedCreatedDateTime = OffsetDateTime.of(1970, 01, 12, 13, 46, 39, 0, ZoneOffset.UTC);
+        OffsetDateTime expectedCreatedDateTime = OffsetDateTime.of(1970, 1, 12, 13, 46, 39, 0, ZoneOffset.UTC);
         DomainEventEntity expectedDomainEventEntity = DomainEventEntity.builder()
                                                     .id(UUID.randomUUID())
                                                     .applicationId(UUID.randomUUID())
