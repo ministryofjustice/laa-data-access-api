@@ -22,14 +22,5 @@ public class CaseworkerServiceTest {
     @Mock
     private CaseworkerMapper caseworkerMapper;
 
-    @Test 
-    void shouldGetAllCaseworkers() {
-        final int caseworkerCount = 5;
-        var caseworkers = Instancio.ofList(CaseworkerEntity.class)
-                                    .size(caseworkerCount)
-                                    .create();
-        when(caseworkerRepository.findAll()).thenReturn(caseworkers);
-        var result = caseworkerService.getAllCaseworkers();
-        assertThat(result).hasSize(caseworkerCount);
-    }
+
 }

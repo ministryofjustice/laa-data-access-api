@@ -27,20 +27,6 @@ class ValidationErrors {
     return condition ? add(error) : this;
   }
 
-  ValidationErrors throwIfAny(String message) {
-    if (!errors.isEmpty()) {
-      throw new ValidationException(message, List.copyOf(errors));
-    }
-    return this;
-  }
-
-  ValidationErrors throwIfAny() {
-    if (!errors.isEmpty()) {
-      throw new ValidationException(List.copyOf(errors));
-    }
-    return this;
-  }
-
   List<String> errors() {
     return List.copyOf(errors);
   }

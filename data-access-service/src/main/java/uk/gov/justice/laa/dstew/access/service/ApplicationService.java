@@ -62,18 +62,6 @@ public class ApplicationService {
   }
 
   /**
-   * Retrieve all applications.
-   *
-   * @return list of applications
-   */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<Application> getAllApplications() {
-    return applicationRepository.findAll().stream()
-        .map(applicationMapper::toApplication)
-        .toList();
-  }
-
-  /**
    * Retrieve a single application by ID.
    *
    * @param id application UUID
@@ -157,7 +145,7 @@ public class ApplicationService {
    * @param ids Collection of UUIDs of applications
    * @return found entity
    */
-  private List<ApplicationEntity> checkIfAllApplicationsExist(@NonNull final List<UUID> ids) {
+  private List<ApplicationEntity> checkIfAllApplicationsExist(final List<UUID> ids) {
     applicationValidations.checkApplicationIdList(ids);
     var idsToFetch = ids.stream().distinct().toList();
     var applications = applicationRepository.findAllById(idsToFetch);

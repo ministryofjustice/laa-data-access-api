@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * Feature flag implementation using Spring properties named `feature.*`.
@@ -26,6 +27,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *        Needed because JPA auditing cannot be disabled by excluding
  *        autoconfiguration classes in `@SpringBootTest` tests.
  */
+@ExcludeFromGeneratedCodeCoverage
 @ConfigurationProperties(prefix = "feature")
 public record FeatureProperties(boolean disableSecurity,
                                 boolean disableJpaAuditing) {

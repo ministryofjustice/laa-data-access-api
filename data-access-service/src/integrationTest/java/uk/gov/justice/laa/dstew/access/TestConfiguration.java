@@ -89,7 +89,7 @@ public class TestConfiguration {
     }
 
     @Bean
-    public Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder> domainEventFactory(){
+    public Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder> domainEventFactory() {
         return new DomainEventFactoryImpl();
     }
 }

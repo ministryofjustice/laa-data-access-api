@@ -81,11 +81,6 @@ public class ApplicationValidations {
    * Validates a list of application ids and throw ValidationException.
   */
   public void checkApplicationIdList(final List<UUID> appIds) {
-    if (appIds == null) {
-      throw new ValidationException(
-        List.of("Ids cannot be null")
-      );
-    }
     if (appIds.stream().anyMatch(id -> id == null)) {
       throw new ValidationException(
         List.of("Request contains null values for ids")
