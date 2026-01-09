@@ -10,6 +10,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
+import lombok.Builder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -19,11 +20,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.enums.MatterType;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 
+/**
+ * Test class for ApplicationMapperService
+ */
 class ApplicationMapperServiceTest extends BaseServiceTest {
   static ObjectMapper objectMapper = new ObjectMapper();
 
@@ -42,7 +44,7 @@ class ApplicationMapperServiceTest extends BaseServiceTest {
 
   @ParameterizedTest
   @MethodSource("provideProceedingsForMapping")
-  void mapToApplicationEntity_usedDelegatedfunctionsMapped(
+  void mapToApplicationEntity_usedDelegatedFunctionsMapped(
       Map<String, Object> appContentMap,
       boolean expectedUseDelegatedFunctions) {
 
@@ -56,17 +58,13 @@ class ApplicationMapperServiceTest extends BaseServiceTest {
 
     // Then
     assertAll(
-        () -> assertEquals(entity.isUseDelegatedFunctions(), expectedUseDelegatedFunctions)
+        () -> assertEquals(expectedUseDelegatedFunctions, entity.isUseDelegatedFunctions())
     );
   }
 
-  private static Map<String, Object> getAppContentMap(boolean useDelegatedFunctions) {
-    List<Proceeding> proceedingList = List.of(
-        getProceeding(useDelegatedFunctions, true),
-        getProceeding(useDelegatedFunctions, false)
-    );
-    ApplicationContent applicationContent = ApplicationContent.builder()
-        .proceedings(proceedingList)
+  private static Map<String, Object> getAppContentMap(List<ProceedingJsonObject> proceedings) {
+    AppContentJsonObject applicationContent = AppContentJsonObject.builder()
+        .proceedings(proceedings)
         .autoGrant(true)
         .laaReference("L-XCX-0WB")
         .build();
@@ -74,15 +72,30 @@ class ApplicationMapperServiceTest extends BaseServiceTest {
     return getContentMap(applicationContent);
   }
 
+
+  private static ProceedingJsonObject getProceedingJsonObject(boolean useDelegatedFunctions, boolean leadProceeding) {
+    return  ProceedingJsonObject.builder()
+        .id("f6e2c4e1-5d32-4c3e-9f0a-1e2b3c4d5e6f")
+        .leadProceeding(leadProceeding)
+        .categoryOfLaw(CategoryOfLaw.Family.name())
+        .matterType(MatterType.SCA.name())
+        .useDelegatedFunctions(useDelegatedFunctions)
+        .build();
+  }
+
   private static Stream<Arguments> provideProceedingsForMapping() {
     return Stream.of(
-        Arguments.of(getAppContentMap(true), true),
-        Arguments.of(getAppContentMap(false), false)
+        Arguments.of(getAppContentMap(List.of(getProceedingJsonObject(true, true))), true),
+        Arguments.of(getAppContentMap(List.of(getProceedingJsonObject(false, true))), false),
+        Arguments.of(getAppContentMap(List.of(getProceedingJsonObject(false, true),
+            getProceedingJsonObject(true, false))), true),
+        Arguments.of(getAppContentMap(List.of(getProceedingJsonObject(false, true),
+            getProceedingJsonObject(false, false))), false)
     );
   }
 
 
-  private static Map<String, Object> getContentMap(ApplicationContent applicationContent) {
+  private static Map<String, Object> getContentMap(AppContentJsonObject applicationContent) {
     Map<String, Object> appContentMap;
     try {
       appContentMap = objectMapper.readValue(
@@ -93,14 +106,33 @@ class ApplicationMapperServiceTest extends BaseServiceTest {
     return appContentMap;
   }
 
+  /**
+   * Application Content JSON Object for testing
+   * @param proceedings
+   * @param laaReference
+   * @param autoGrant
+   */
+  @Builder
+  record AppContentJsonObject(
+      List<ProceedingJsonObject> proceedings,
+      String laaReference,
+      boolean autoGrant) {
+  }
 
-  private static Proceeding getProceeding(boolean useDelegatedFunctions, boolean leadProceeding) {
-    return Proceeding.builder()
-        .leadProceeding(leadProceeding)
-        .id("f6e2c4e1-5d32-4c3e-9f0a-1e2b3c4d5e6f")
-        .categoryOfLaw(CategoryOfLaw.Family)
-        .matterType(MatterType.SCA)
-        .useDelegatedFunctions(useDelegatedFunctions)
-        .build();
+  /**
+   * Proceeding JSON Object for testing
+   * @param id
+   * @param leadProceeding is this the lead proceeding
+   * @param categoryOfLaw categoryOfLaw as string
+   * @param matterType matterType as string
+   * @param useDelegatedFunctions useDelegatedFunctions flag
+   */
+  @Builder
+  record ProceedingJsonObject(
+      String id,
+      boolean leadProceeding,
+      String categoryOfLaw,
+      String matterType,
+      boolean useDelegatedFunctions) {
   }
 }
