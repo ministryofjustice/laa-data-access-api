@@ -3,13 +3,15 @@ package uk.gov.justice.laa.dstew.access.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 
 public class CaseworkerMapperTest {
-  private CaseworkerMapper mapper = new CaseworkerMapperImpl();
 
-  @Test
-  void givenCaseworkerEntity_whenToCaseworker_thenMapsFieldsCorrectly() {
+    private final CaseworkerMapper mapper = Mappers.getMapper(CaseworkerMapper.class);
+
+    @Test
+    void givenCaseworkerEntity_whenToCaseworker_thenMapsFieldsCorrectly() {
     CaseworkerEntity expectedCaseworkerEntity = CaseworkerEntity.builder()
                                                   .id(UUID.randomUUID())
                                                   .username("caseworker1")
@@ -18,11 +20,11 @@ public class CaseworkerMapperTest {
 
     assertThat(actualCaseworker.getId()).isEqualTo(expectedCaseworkerEntity.getId());
     assertThat(actualCaseworker.getUsername()).isEqualTo(expectedCaseworkerEntity.getUsername());
-  }
+    }
 
-  @Test
-  void givenNullCaseworker_whenToCaseworker_thenReturnNull() {
+    @Test
+    void givenNullCaseworker_whenToCaseworker_thenReturnNull() {
 
       assertThat(mapper.toCaseworker(null)).isNull();
-  }
+    }
 }
