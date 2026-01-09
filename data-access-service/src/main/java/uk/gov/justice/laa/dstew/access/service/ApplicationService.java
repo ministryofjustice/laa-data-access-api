@@ -16,10 +16,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
-import uk.gov.justice.laa.dstew.access.model.Application;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
@@ -232,5 +229,25 @@ public class ApplicationService {
   private static boolean applicationCurrentCaseworkerIsCaseworker(ApplicationEntity application, CaseworkerEntity caseworker) {
     return application.getCaseworker() != null
             && application.getCaseworker().equals(caseworker);
+  }
+
+  /**
+   * Update an existing application to add the decision details.
+   *
+   * @param id application UUID
+   * @param request DTO with update fields
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  public void assignDecision(final UUID id, final AssignDecisionRequest request) {
+    final ApplicationEntity entity = checkIfApplicationExists(id);
+
+    final CaseworkerEntity caseworker = caseworkerRepository.findById(request.getUserId())
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    String.format("No caseworker found with id: %s", request.getUserId())));
+
+    //applicationValidations.checkApplicationUpdateRequest(request, entity);
+    //applicationMapper.updateApplicationEntity(entity, request);
+    entity.setModifiedAt(Instant.now());
+    applicationRepository.save(entity);
   }
 }

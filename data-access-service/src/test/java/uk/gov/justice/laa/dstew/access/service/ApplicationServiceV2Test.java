@@ -1081,6 +1081,37 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
     }
 
+    @Nested
+    class AssignDecisionToApplication {
+        @Test
+        void givenCaseworkerAndApplication_whenAssignDecision_thenAssignAndSave() {
+            // given
+            UUID applicationId = UUID.randomUUID();
+
+            /*
+            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+
+            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+                    builder.id(applicationId).caseworker(null)
+            );
+            */
+
+            AssignDecisionRequest assignDecisionRequest = applicationAssignDecisionRequestFactory.createDefault();;
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            serviceUnderTest.assignDecision(applicationId, assignDecisionRequest);
+
+            // then
+            //verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
+            //verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
+
+            //verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
+        }
+
+    }
+
     // <editor-fold desc="Shared asserts">
 
     private void assertIndividualCollectionsEqual(List<Individual> expectedList, Set<IndividualEntity> actualList) {

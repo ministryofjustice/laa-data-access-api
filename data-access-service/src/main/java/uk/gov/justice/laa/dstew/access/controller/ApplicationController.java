@@ -137,7 +137,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   public ResponseEntity<Void> createDecision(UUID id, @Valid AssignDecisionRequest request) {
 
-    //service.unassignCaseworker(id, request.getEventHistory());
+    service.assignDecision(id, request);
 
     return ResponseEntity.ok().build();
   }
