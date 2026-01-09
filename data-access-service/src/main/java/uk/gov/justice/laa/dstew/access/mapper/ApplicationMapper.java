@@ -89,8 +89,7 @@ public interface ApplicationMapper {
     application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
 
     application.setIndividuals(
-            Optional.ofNullable(entity.getIndividuals())
-                    .orElse(Set.of())
+            entity.getIndividuals()
                     .stream()
                     .map(individualMapper::toIndividual)
                     .filter(Objects::nonNull)

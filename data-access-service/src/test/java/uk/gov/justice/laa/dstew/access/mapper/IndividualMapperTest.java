@@ -4,65 +4,70 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
 import java.util.Map;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 
 class IndividualMapperTest {
 
-  private IndividualMapper mapper;
+    private final IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
 
-  @BeforeEach
-  void setUp() {
-    mapper = new IndividualMapper() {};
-  }
+    @Test
+    void givenNullIndividualEntity_whenToIndividual_thenReturnNull() {
+        IndividualEntity entity = null;
+        assertThat(individualMapper.toIndividual(entity)).isNull();
+    }
 
-  @Test
-  void toIndividual_shouldReturnNull_whenEntityIsNull() {
-    assertThat(mapper.toIndividual(null)).isNull();
-  }
+    @Test
+    void givenIndividualEntity_whenToIndividual_thenMapsFieldsCorrectly() {
+        String firstName = "John";
+        String lastName = "Doe";
+        LocalDate dateOfBirth = LocalDate.of(1980, 5, 15);
+        Map<String, Object> individualContent = Map.of("key", "value");
 
-  @Test
-  void toIndividual_shouldMapFieldsCorrectly() {
-    IndividualEntity entity = new IndividualEntity();
-    entity.setId(UUID.randomUUID());
-    entity.setFirstName("John");
-    entity.setLastName("Doe");
-    entity.setDateOfBirth(LocalDate.of(1980, 5, 15));
-    entity.setIndividualContent(Map.of("key", "value"));
+        IndividualEntity expectedIndividualEntity = IndividualEntity.builder()
+                .firstName(firstName)
+                .lastName(lastName)
+                .dateOfBirth(dateOfBirth)
+                .individualContent(individualContent)
+                .build();
 
-    Individual result = mapper.toIndividual(entity);
+        Individual actualIndividual = individualMapper.toIndividual(expectedIndividualEntity);
 
-    assertThat(result).isNotNull();
-    assertThat(result.getFirstName()).isEqualTo("John");
-    assertThat(result.getLastName()).isEqualTo("Doe");
-    assertThat(result.getDateOfBirth()).isEqualTo(LocalDate.of(1980, 5, 15));
-    assertThat(result.getDetails()).isEqualTo(Map.of("key", "value"));
-  }
+        assertThat(actualIndividual).isNotNull();
+        assertThat(actualIndividual.getFirstName()).isEqualTo(firstName);
+        assertThat(actualIndividual.getLastName()).isEqualTo(lastName);
+        assertThat(actualIndividual.getDateOfBirth()).isEqualTo(dateOfBirth);
+        assertThat(actualIndividual.getDetails()).isEqualTo(individualContent);
+    }
 
-  @Test
-  void toIndividualEntitY_shouldReturnNull_WhenIndividualIsNull() {
-    Individual individual = null;
-    IndividualEntity result = mapper.toIndividualEntity(individual);
-    assertThat(result).isNull();
-  }
+    @Test
+    void givenNullIndividual_whenToIndividualEntity_thenReturnNull() {
+        Individual individual = null;
+        assertThat(individualMapper.toIndividualEntity(individual)).isNull();
+    }
 
-  @Test
-  void toIndividualEntity_shouldMapFieldsCorrectly() {
-    Individual individual = Individual.builder()
-                                      .firstName("John")
-                                      .lastName("Doe")
-                                      .dateOfBirth(LocalDate.of(2025, 11, 24))
-                                      .details(Map.of("key", "value"))
-                                      .build();
-    IndividualEntity result = mapper.toIndividualEntity(individual);
+    @Test
+    void givenIndividual_whenToIndividualEntity_thenMapsFieldsCorrectly() {
+        String firstName = "John";
+        String lastName = "Doe";
+        LocalDate dateOfBirth = LocalDate.of(2025, 11, 24);
+        Map<String, Object> details = Map.of("key", "value");
 
-    assertThat(result).isNotNull();
-    assertThat(result.getFirstName()).isEqualTo("John");
-    assertThat(result.getLastName()).isEqualTo("Doe");
-    assertThat(result.getDateOfBirth()).isEqualTo(LocalDate.of(2025, 11, 24));
-    assertThat(result.getIndividualContent()).isEqualTo(Map.of("key", "value"));
-  }
+        Individual expectedIndividual = Individual.builder()
+                .firstName(firstName)
+                .lastName(lastName)
+                .dateOfBirth(dateOfBirth)
+                .details(details)
+                .build();
+
+        IndividualEntity actualIndividualEntity = individualMapper.toIndividualEntity(expectedIndividual);
+
+        assertThat(actualIndividualEntity).isNotNull();
+        assertThat(actualIndividualEntity.getFirstName()).isEqualTo(firstName);
+        assertThat(actualIndividualEntity.getLastName()).isEqualTo(lastName);
+        assertThat(actualIndividualEntity.getDateOfBirth()).isEqualTo(dateOfBirth);
+        assertThat(actualIndividualEntity.getIndividualContent()).isEqualTo(details);
+    }
 }

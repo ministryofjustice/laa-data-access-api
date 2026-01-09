@@ -5,10 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -38,6 +36,7 @@ class ApplicationMapperTest {
     expectedApplicationEntity.setApplicationContent(Map.of("key1", "value1", "key2", 456));
     expectedApplicationEntity.setCreatedAt(createdAt);
     expectedApplicationEntity.setModifiedAt(updatedAt);
+    expectedApplicationEntity.setIndividuals(Set.of());
 
     Application actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
 
@@ -76,22 +75,6 @@ class ApplicationMapperTest {
   }
 
   @Test
-  void givenApplicationEntityWithNullIndividuals_whenToApplication_thenMapsToEmptySet() {
-
-    ApplicationEntity expectedApplicationEntity = ApplicationEntity.builder()
-        .individuals(null)
-        .createdAt(Instant.now())
-        .modifiedAt(Instant.now())
-        .build();
-
-    Application actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
-
-    assertThat(actualApplication.getIndividuals())
-        .isNotNull()
-        .isEmpty();
-  }
-
-  @Test
   void givenNullApplicationEntity_whenToApplication_thenReturnsNull() {
 
     assertThat(applicationMapper.toApplication(null)).isNull();
@@ -104,6 +87,7 @@ class ApplicationMapperTest {
                                             .createdAt(Instant.now())
                                             .modifiedAt(Instant.now())
                                             .caseworker(null)
+                                            .individuals(Set.of())
                                             .build();
 
     var actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
@@ -117,6 +101,7 @@ class ApplicationMapperTest {
                                                 .createdAt(Instant.now())
                                                 .modifiedAt(Instant.now())
                                                 .caseworker(CaseworkerEntity.builder().id(caseworkerId).build())
+                                                .individuals(Set.of())
                                                 .build();
 
     var actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
