@@ -16,18 +16,24 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 /**
  * Represents an application summary for legal aid.
  * Will be removed when merged into new application structures
  */
+@ExcludeFromGeneratedCodeCoverage
+@Builder(toBuilder = true)
+@AllArgsConstructor
+@NoArgsConstructor
 @Getter
 @Setter
-@RequiredArgsConstructor
 @Entity
 @Table(name = "applications")
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)

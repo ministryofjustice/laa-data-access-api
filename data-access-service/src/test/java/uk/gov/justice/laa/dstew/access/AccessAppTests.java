@@ -16,7 +16,7 @@ import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
     DataSourceAutoConfiguration.class,
     HibernateJpaAutoConfiguration.class,
 })
-class AccessAppTests {
+public class AccessAppTests {
   @MockitoBean
   private ApplicationRepository applicationRepository;
 

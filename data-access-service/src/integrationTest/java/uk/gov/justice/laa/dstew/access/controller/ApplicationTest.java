@@ -1,5 +1,7 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -164,6 +166,11 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertNotNull(createdApplicationId);
             ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId).orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
             assertApplicationEqual(applicationCreateRequest, createdApplication);
+
+            assertDomainEventForApplication(
+                createdApplication,
+                DomainEventType.APPLICATION_CREATED
+            );
         }
 
         @ParameterizedTest
@@ -310,6 +317,11 @@ public class ApplicationTest extends BaseIntegrationTest {
                     .ignoringCollectionOrder()
                     .isEqualTo(actual.getApplicationContent());
             assertEquals(ApplicationStatus.SUBMITTED, actual.getStatus());
+
+            assertDomainEventForApplication(
+                actual,
+                DomainEventType.APPLICATION_UPDATED
+            );
         }
 
         @ParameterizedTest
@@ -715,7 +727,8 @@ public class ApplicationTest extends BaseIntegrationTest {
         private Stream<Arguments> invalidApplicationIdListsCases() {
             return Stream.of(
                     Arguments.of(Collections.emptyList()),
-                    Arguments.of((Object)null)
+                    Arguments.of((Object)null),
+                    Arguments.of(Arrays.asList(new UUID[] { UUID.randomUUID(), null }))
             );
         }
     }
@@ -1744,6 +1757,47 @@ public class ApplicationTest extends BaseIntegrationTest {
             }
         }
     }
+
+    private void assertDomainEventForApplication(
+        ApplicationEntity application,
+        DomainEventType expectedType
+    ) throws Exception {
+
+        List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
+
+        DomainEventEntity event = domainEvents.get(0);
+
+        assertThat(event.getApplicationId()).isEqualTo(application.getId());
+        assertThat(event.getType()).isEqualTo(expectedType);
+        assertThat(event.getCreatedAt()).isNotNull();
+
+        // ---- JSON payload assertions ----
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode json = mapper.readTree(event.getData());
+
+        assertThat(json.get("applicationId").asText())
+            .isEqualTo(application.getId().toString());
+
+        assertThat(json.get("applicationStatus").asText())
+            .isEqualTo(application.getStatus().name());
+
+        assertThat(json.get("applicationContent").asText())
+            .contains("{"); // stored as stringified JSON
+
+        if (expectedType == DomainEventType.APPLICATION_CREATED) {
+
+            assertThat(json.has("createdDate")).isTrue();
+            assertThat(json.get("createdDate").asText())
+                .isEqualTo(application.getCreatedAt().toString());
+
+        } else if (expectedType == DomainEventType.APPLICATION_UPDATED) {
+
+            assertThat(json.has("updatedDate")).isTrue();
+            assertThat(json.get("updatedDate").asText())
+                .isEqualTo(application.getModifiedAt().toString());
+        }
+    }
+
 
     // </editor-fold>
 }
