@@ -6,9 +6,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
@@ -17,7 +14,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 
 public class ApplicationSummaryMapperTest {
 
-  private ApplicationSummaryMapper applicationSummaryMapper = Mappers.getMapper(ApplicationSummaryMapper.class);
+  private final ApplicationSummaryMapper applicationSummaryMapper = Mappers.getMapper(ApplicationSummaryMapper.class);
 
   @Test
   void givenApplicationSummaryEntity_whenToApplicationSummary_thenMapsFieldsCorrectly() {
