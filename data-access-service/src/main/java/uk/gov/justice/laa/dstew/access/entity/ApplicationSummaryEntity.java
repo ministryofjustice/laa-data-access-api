@@ -89,4 +89,7 @@ public class ApplicationSummaryEntity {
   @OneToOne
   @JoinColumn(name = "caseworker_id", referencedColumnName = "id")
   private CaseworkerEntity caseworker;
+
+  @Column(name = "is_auto_granted")
+  private Boolean isAutoGranted;
 }
