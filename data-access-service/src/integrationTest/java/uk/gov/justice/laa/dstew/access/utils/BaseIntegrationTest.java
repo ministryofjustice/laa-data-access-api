@@ -41,7 +41,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@SpringBootTest(classes = AccessApp.class)
+@SpringBootTest(classes = AccessApp.class, properties = {"feature.disable-security=false"})
 @Transactional
 public abstract class BaseIntegrationTest {
 
@@ -112,13 +112,16 @@ public abstract class BaseIntegrationTest {
     // for use in tests and factories where applicable (i.e. default in ApplicationFactoryImpl)
     public static CaseworkerEntity CaseworkerJohnDoe;
     public static CaseworkerEntity CaseworkerJaneDoe;
+    public static List<CaseworkerEntity> Caseworkers;
 
     @BeforeAll
     void setupCaseworkers() {
+        caseworkerRepository.deleteAll();
         CaseworkerJohnDoe = persistedCaseworkerFactory.createAndPersist(builder ->
                 builder.username("JohnDoe").build());
         CaseworkerJaneDoe = persistedCaseworkerFactory.createAndPersist(builder ->
                 builder.username("JaneDoe").build());
+        Caseworkers = List.of(CaseworkerJohnDoe, CaseworkerJaneDoe);
     }
 
     public MvcResult getUri(String uri) throws Exception {
