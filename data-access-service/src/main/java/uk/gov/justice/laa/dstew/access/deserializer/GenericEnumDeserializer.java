@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.deserializer;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import java.io.IOException;
 import java.util.Arrays;
 
 /**
@@ -19,16 +20,17 @@ public class GenericEnumDeserializer<E extends Enum> extends JsonDeserializer<E>
   }
 
   @Override
-  public E deserialize(JsonParser p,
-                       DeserializationContext ctxt)
-      throws java.io.IOException {
-    String value = p.getText();
+  public E deserialize(JsonParser parser, DeserializationContext ctxt) throws IOException {
+
+    String value = parser.getText();
     if (value == null || value.isEmpty()) {
       return null;
     }
 
     return Arrays.stream(enumType.getEnumConstants())
-        .filter(e -> e.name().equalsIgnoreCase(value.trim()))
+        .filter(enumConstant -> enumConstant
+            .name()
+            .equalsIgnoreCase(value.trim()))
         .findFirst()
         .orElse(null);
 

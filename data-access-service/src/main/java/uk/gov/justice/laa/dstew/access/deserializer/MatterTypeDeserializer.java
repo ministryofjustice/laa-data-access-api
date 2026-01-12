@@ -10,5 +10,4 @@ public class MatterTypeDeserializer extends GenericEnumDeserializer<MatterType> 
     super(MatterType.class);
   }
 
-
 }

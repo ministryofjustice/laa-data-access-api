@@ -191,7 +191,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
       ApplicationCreateRequest applicationCreateRequest = getApplicationCreateRequest();
       when(applicationRepository.save(any())).thenReturn(withExpectedId);
 
-
       setSecurityContext(TestConstants.Roles.WRITER);
 
       //when

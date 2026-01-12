@@ -46,8 +46,6 @@ class ApplicationMapperServiceTest extends BaseServiceTest {
       Map<String, Object> appContentMap,
       boolean expectedUseDelegatedFunctions,
       boolean autoGranted) {
-
-
     // Given
     ApplicationCreateRequest application =
         applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(appContentMap));
@@ -60,8 +58,6 @@ class ApplicationMapperServiceTest extends BaseServiceTest {
         () -> assertEquals(expectedUseDelegatedFunctions, entity.isUseDelegatedFunctions()),
         () -> assertEquals(autoGranted, entity.isAutoGranted()),
         () -> assertEquals(submittedAt, entity.getSubmittedAt().toString())
-
-
     );
   }
 

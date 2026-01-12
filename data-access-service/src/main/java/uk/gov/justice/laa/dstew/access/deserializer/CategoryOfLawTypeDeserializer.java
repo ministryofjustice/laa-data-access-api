@@ -10,5 +10,4 @@ public class CategoryOfLawTypeDeserializer extends GenericEnumDeserializer<Categ
     super(CategoryOfLaw.class);
   }
 
-
 }
