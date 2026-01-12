@@ -241,10 +241,6 @@ public class ApplicationService {
   public void assignDecision(final UUID id, final AssignDecisionRequest request) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
 
-    final CaseworkerEntity caseworker = caseworkerRepository.findById(request.getUserId())
-            .orElseThrow(() -> new ResourceNotFoundException(
-                    String.format("No caseworker found with id: %s", request.getUserId())));
-
     //applicationValidations.checkApplicationUpdateRequest(request, entity);
     //applicationMapper.updateApplicationEntity(entity, request);
     entity.setModifiedAt(Instant.now());

@@ -1084,32 +1084,28 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     @Nested
     class AssignDecisionToApplication {
         @Test
-        void givenCaseworkerAndApplication_whenAssignDecision_thenAssignAndSave() {
+        void givenApplication_whenAssignDecision_thenAssignDecisionAndSave() {
             // given
-            UUID applicationId = UUID.randomUUID();
+            AssignDecisionRequest assignDecisionRequest = applicationAssignDecisionRequestFactory.createDefault();
+            ;
 
-            /*
-            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
-
-            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
-                    builder.id(applicationId).caseworker(null)
+            ApplicationEntity expectedEntity = applicationEntityFactory.createDefault(builder ->
+                    builder.id(assignDecisionRequest.getApplicationId())
+                            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
             );
-            */
-
-            AssignDecisionRequest assignDecisionRequest = applicationAssignDecisionRequestFactory.createDefault();;
 
             setSecurityContext(TestConstants.Roles.WRITER);
 
             // when
-            serviceUnderTest.assignDecision(applicationId, assignDecisionRequest);
+            when(applicationRepository.findById(expectedEntity.getId())).thenReturn(Optional.of(expectedEntity));
+            serviceUnderTest.assignDecision(expectedEntity.getId(), assignDecisionRequest);
 
             // then
-            //verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
-            //verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
-
-            //verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
+            verify(applicationRepository, times(1)).findById(expectedEntity.getId());
+            //verifyThatApplicationUpdated(updateRequest, 1);
+            //verifyThatUpdateDomainEventSaved(expectedDomainEvent, 1);
+            assertThat(expectedEntity.getModifiedAt()).isNotNull();
         }
-
     }
 
     // <editor-fold desc="Shared asserts">
