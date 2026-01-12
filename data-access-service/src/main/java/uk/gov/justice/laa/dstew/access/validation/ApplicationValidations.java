@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -23,43 +24,45 @@ public class ApplicationValidations {
    * Validates an incoming POST.
    */
   public void checkApplicationCreateRequest(final ApplicationCreateRequest dto) {
-    
+
     if (dto == null || dto.getApplicationContent() == null) {
       throw new ValidationException(
           List.of("ApplicationCreateRequest and its content cannot be null")
       );
     }
 
-    if (dto.getStatus() == null) {
-      throw new ValidationException(
-          List.of("Application status cannot be null")
-      );
-    }
+    ValidationErrors validationErrors = ValidationErrors.empty()
+        .addIf(invalidLaaReference(dto), "Application reference cannot be blank")
+        .addIf(dto.getApplicationContent().isEmpty(), "Application content cannot be empty")
+        .addIf(invalidStatus(dto), "Application status cannot be null")
+        .addIf(dto.getIndividuals() == null, "Application individual cannot be null");
+    List<String> allErrors = new ArrayList<>(validationErrors.errors());
 
-    if (dto.getApplicationContent().isEmpty()) {
-      throw new ValidationException(
-          List.of("Application content cannot be empty")
-      );
+    if (dto.getIndividuals() != null) {
+      List<String> individualsValidationErrors = dto.getIndividuals()
+          .stream()
+          .map(individualValidator::validateIndividual)
+          .flatMap(s -> s.errors().stream())
+          .distinct()
+          .toList();
+      allErrors.addAll(individualsValidationErrors);
     }
-
-    if (dto.getLaaReference() == null || dto.getLaaReference().isBlank()) {
-      throw new ValidationException(
-        List.of("Application reference cannot be blank")
-      );
-    }
-
-    List<String> individualsValidationErrors = dto.getIndividuals()
-                                                  .stream()
-                                                  .map(individualValidator::validateIndividual)
-                                                  .flatMap(s -> s.errors().stream())
-                                                  .distinct()
-                                                  .toList();
-    if (!individualsValidationErrors.isEmpty()) {
-      throw new ValidationException(individualsValidationErrors);
+    if (!allErrors.isEmpty()) {
+      throw new ValidationException(allErrors);
     }
   }
 
-  /**One by
+  private boolean invalidLaaReference(ApplicationCreateRequest dto) {
+    return dto.getLaaReference() == null || dto.getLaaReference().isBlank();
+  }
+
+
+  private static boolean invalidStatus(ApplicationCreateRequest dto) {
+    return dto.getStatus() == null;
+  }
+
+  /**
+   * One by
    * Validates an incoming PATCH.
    */
   public void checkApplicationUpdateRequest(final ApplicationUpdateRequest dto,
@@ -79,11 +82,11 @@ public class ApplicationValidations {
 
   /**
    * Validates a list of application ids and throw ValidationException.
-  */
+   */
   public void checkApplicationIdList(final List<UUID> appIds) {
     if (appIds.stream().anyMatch(id -> id == null)) {
       throw new ValidationException(
-        List.of("Request contains null values for ids")
+          List.of("Request contains null values for ids")
       );
     }
   }
