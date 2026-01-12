@@ -1075,6 +1075,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         public static final String SEARCH_FIRSTNAME_PARAM = "clientFirstName=";
         public static final String SEARCH_LASTNAME_PARAM = "clientLastName=";
         public static final String SEARCH_CASEWORKERID_PARAM = "userId=";
+        public static final String SEARCH_ISAUTOGRANTED_PARAM = "isAutoGranted=";
         public static final String SEARCH_CLIENTDOB_PARAM = "clientDateOfBirth=";
 
         @Test
@@ -1595,6 +1596,32 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertPaging(actual, 4, 10, 1, 4);
             assertThat(actual.getApplications().size()).isEqualTo(4);
             assertArrayEquals(expectedApplicationsSummary.toArray(), actual.getApplications().toArray());
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        public void givenApplicationFilteredByAutoGrant_whenGetApplications_thenReturnExpectedApplicationsCorrectly(boolean isAutoGranted) throws Exception {
+            // given
+            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(4, builder ->
+                    builder.isAutoGranted(isAutoGranted));
+            persistedApplicationFactory.createAndPersistMultiple(6, builder ->
+                    builder.isAutoGranted(!isAutoGranted));
+            List<ApplicationSummary> expectedApplicationsSummary = expectedApplications.stream()
+                    .map(this::createApplicationSummary)
+                    .toList();
+
+            // when
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_ISAUTOGRANTED_PARAM + isAutoGranted);
+            ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+                        // then
+            assertContentHeaders(result);
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+            assertPaging(actual, 4, 10, 1, 4);
+            assertThat(actual.getApplications().size()).isEqualTo(4);
+            assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
         }
 
         @Test
