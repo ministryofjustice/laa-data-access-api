@@ -76,7 +76,8 @@ public class ApplicationSummaryService {
                                     clientFirstName,
                                     clientLastName,
                                     clientDateOfBirth,
-                                    userId),
+                                    userId,
+                                    isAutoGranted),
                     pageDetails)
             .map(mapper::toApplicationSummary);
   }
