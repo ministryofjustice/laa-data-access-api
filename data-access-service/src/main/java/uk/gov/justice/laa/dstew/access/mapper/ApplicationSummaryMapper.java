@@ -26,34 +26,30 @@ public interface ApplicationSummaryMapper {
     if (applicationSummaryEntity == null) {
       return null;
     }
-    try {
-      ApplicationSummary app = new ApplicationSummary();
-      app.setApplicationId(applicationSummaryEntity.getId());
-      app.setSubmittedAt(applicationSummaryEntity.getSubmittedAt() != null 
+    ApplicationSummary app = new ApplicationSummary();
+    app.setApplicationId(applicationSummaryEntity.getId());
+    app.setSubmittedAt(applicationSummaryEntity.getSubmittedAt() != null 
                           ? applicationSummaryEntity.getSubmittedAt().atOffset(ZoneOffset.UTC) 
                           : null);
-      app.setAutoGrant(applicationSummaryEntity.isAutoGranted());
-      app.setCategoryOfLaw(applicationSummaryEntity.getCategoryOfLaw());
-      app.setMatterType(applicationSummaryEntity.getMatterType());
-      app.setUsedDelegatedFunctions(applicationSummaryEntity.isUsedDelegatedFunctions());
-      app.setLaaReference(applicationSummaryEntity.getLaaReference());
-      app.setStatus(applicationSummaryEntity.getStatus());
-      app.setAssignedTo(applicationSummaryEntity.getCaseworker() != null 
+    app.setAutoGrant(applicationSummaryEntity.isAutoGranted());
+    app.setCategoryOfLaw(applicationSummaryEntity.getCategoryOfLaw());
+    app.setMatterType(applicationSummaryEntity.getMatterType());
+    app.setUsedDelegatedFunctions(applicationSummaryEntity.isUsedDelegatedFunctions());
+    app.setLaaReference(applicationSummaryEntity.getLaaReference());
+    app.setStatus(applicationSummaryEntity.getStatus());
+    app.setAssignedTo(applicationSummaryEntity.getCaseworker() != null 
                         ? 
                         applicationSummaryEntity.getCaseworker().getId() : 
                         null);
-      var individual = getLeadIndividual(applicationSummaryEntity);
-      if (individual != null) {
-        app.setClientFirstName(individual.getFirstName());
-        app.setClientLastName(individual.getLastName());
-        app.setClientDateOfBirth(individual.getDateOfBirth());
-      }
-      app.setApplicationType(applicationSummaryEntity.getType());
-      app.setLastUpdated(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-      return app;
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Failed to deserialize applicationContent from entity", e);
+    var individual = getLeadIndividual(applicationSummaryEntity);
+    if (individual != null) {
+      app.setClientFirstName(individual.getFirstName());
+      app.setClientLastName(individual.getLastName());
+      app.setClientDateOfBirth(individual.getDateOfBirth());
     }
+    app.setApplicationType(applicationSummaryEntity.getType());
+    app.setLastUpdated(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+    return app;
   }
 
   default OffsetDateTime map(Instant value) {
@@ -62,7 +58,7 @@ public interface ApplicationSummaryMapper {
 
   private static IndividualEntity getLeadIndividual(ApplicationSummaryEntity entity) {
     var individuals = entity.getIndividuals();
-    if (individuals == null || individuals.size() == 0) {
+    if (individuals == null || individuals.isEmpty()) {
       return null;
     }
     return individuals.iterator().next();
