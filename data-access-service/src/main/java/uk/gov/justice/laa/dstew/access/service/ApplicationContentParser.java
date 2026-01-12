@@ -4,51 +4,44 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContentDetails;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.model.ProceedingDetails;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
- * Service for mapping application requests to application entities.
- * Handles the conversion and processing of application content.
+ * Service class for parsing and normalising application content.
  */
 @Service
-public class ApplicationMapperService {
+public class ApplicationContentParser {
 
-  private final ApplicationMapper applicationMapper;
   private final ObjectMapper objectMapper;
 
-  public ApplicationMapperService(final ApplicationMapper applicationMapper, final ObjectMapper objectMapper) {
-    this.applicationMapper = applicationMapper;
+  public ApplicationContentParser(final ObjectMapper objectMapper) {
     this.objectMapper = objectMapper;
   }
 
   /**
-   * Converts an ApplicationCreateRequest to an ApplicationEntity.
+   * Normalises application content details from the create request.
    *
-   * @param req                the application create request
-   * @param applicationVersion the version of the application schema
-   * @return the mapped application entity
+   * @param req the application create request
+   * @return the extracted application content details
    */
-  public ApplicationEntity toApplicationEntity(ApplicationCreateRequest req, Integer applicationVersion) {
-    ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
+  public ParsedAppContentDetails normaliseApplicationContentDetails(ApplicationCreateRequest req) {
     ApplicationContentDetails
         applicationContentDetails = objectMapper.convertValue(req.getApplicationContent(), ApplicationContentDetails.class);
-    processingApplicationContent(entity, applicationContentDetails);
-    entity.setSchemaVersion(applicationVersion);
-    return entity;
+    return processingApplicationContent(applicationContentDetails);
+
   }
 
   /**
    * Processes application content to extract and set key fields in the entity.
    *
-   * @param entity             the application entity to update
    * @param applicationContent the application content to process
+   * @return the extracted application content details
    */
-  private void processingApplicationContent(ApplicationEntity entity, ApplicationContentDetails applicationContent) {
+  private static ParsedAppContentDetails processingApplicationContent(ApplicationContentDetails applicationContent) {
     if (applicationContent.getProceedings() == null || applicationContent.getProceedings().isEmpty()) {
       throw new ValidationException(List.of("No proceedings found in application content"));
     }
@@ -62,10 +55,13 @@ public class ApplicationMapperService {
             .filter(Objects::nonNull)
             .filter(proceeding -> null != proceeding.useDelegatedFunctions())
             .anyMatch(ProceedingDetails::useDelegatedFunctions);
-    entity.setAutoGranted(applicationContent.isAutoGrant());
-    entity.setUseDelegatedFunctions(usedDelegatedFunction);
-    entity.setCategoryOfLaw(leadProceeding.categoryOfLaw());
-    entity.setMatterType(leadProceeding.matterType());
-    entity.setSubmittedAt(applicationContent.getSubmittedAt());
+    return ParsedAppContentDetails
+        .builder()
+        .autoGranted(applicationContent.isAutoGrant())
+        .categoryOfLaw(leadProceeding.categoryOfLaw())
+        .matterType(leadProceeding.matterType())
+        .submittedAt(applicationContent.getSubmittedAt())
+        .useDelegatedFunctions(usedDelegatedFunction)
+        .build();
   }
 }

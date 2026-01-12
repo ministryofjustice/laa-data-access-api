@@ -37,7 +37,7 @@ public class ApplicationService {
   private final ObjectMapper objectMapper;
   private final CaseworkerRepository caseworkerRepository;
   private final DomainEventService domainEventService;
-  private final ApplicationMapperService applicationMapperService;
+  private final ApplicationContentParser applicationContentParser;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -52,11 +52,11 @@ public class ApplicationService {
                             final ApplicationValidations applicationValidations,
                             final ObjectMapper objectMapper,
                             final CaseworkerRepository caseworkerRepository,
-                            final DomainEventService domainEventService, ApplicationMapperService applicationMapperService) {
+                            final DomainEventService domainEventService, ApplicationContentParser applicationContentParser) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
-    this.applicationMapperService = applicationMapperService;
+    this.applicationContentParser = applicationContentParser;
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
     this.caseworkerRepository = caseworkerRepository;
@@ -84,14 +84,33 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public UUID createApplication(final ApplicationCreateRequest req) {
     applicationValidations.checkApplicationCreateRequest(req);
-    final ApplicationEntity entity = applicationMapperService.toApplicationEntity(req, applicationVersion);
+    ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
+    setValuesFromApplicationContent(req, entity);
+    entity.setSchemaVersion(applicationVersion);
+
     final ApplicationEntity saved = applicationRepository.save(entity);
+
 
     domainEventService.saveCreateApplicationDomainEvent(saved, null);
 
     createAndSendHistoricRecord(saved, null);
 
     return saved.getId();
+  }
+
+  /**
+   * Sets key fields in the application entity based on parsed application content.
+   *
+   * @param req    application create request
+   * @param entity application entity to update
+   */
+  private void setValuesFromApplicationContent(ApplicationCreateRequest req, ApplicationEntity entity) {
+    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(req);
+    entity.setAutoGranted(parsedContentDetails.autoGranted());
+    entity.setUseDelegatedFunctions(parsedContentDetails.useDelegatedFunctions());
+    entity.setCategoryOfLaw(parsedContentDetails.categoryOfLaw());
+    entity.setMatterType(parsedContentDetails.matterType());
+    entity.setSubmittedAt(parsedContentDetails.submittedAt());
   }
 
 
