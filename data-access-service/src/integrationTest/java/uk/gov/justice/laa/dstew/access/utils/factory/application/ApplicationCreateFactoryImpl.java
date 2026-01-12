@@ -6,6 +6,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
 import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.enums.MatterType;
@@ -22,7 +23,7 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
   public ApplicationCreateRequest create() {
     ProceedingDetails proceedingDetails = ProceedingDetails
         .builder()
-        .id("123ABC")
+        .id(UUID.randomUUID())
         .categoryOfLaw(CategoryOfLaw.Family)
         .matterType(MatterType.SCA)
         .leadProceeding(true)
@@ -30,7 +31,7 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
         .build();
 
     ApplicationContentDetails applicationContentDetails = ApplicationContentDetails.builder()
-        .id("123")
+        .id(UUID.randomUUID())
         .autoGrant(true)
         .proceedings(List.of(proceedingDetails))
         .build();
