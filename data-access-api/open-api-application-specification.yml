@@ -32,6 +32,12 @@ paths:
           schema:
             type: string
         - in: query
+          name: clientdateofbirth
+          description: The linked individuals date of dateOfBirth
+          schema:
+            type: string
+            format: date
+        - in: query
           name: userId
           description: The caseworkers id
           schema:
