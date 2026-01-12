@@ -1503,21 +1503,18 @@ public class ApplicationTest extends BaseIntegrationTest {
         
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
-        void givenApplicationsFilteredByClientDateOfBirth_whenGetAllApplications_thenReturnExceptedApplication() throws Exception {
+        void givenApplicationsFilteredByClientDateOfBirth_whenGetAllApplications_thenReturnExpectedApplication() throws Exception {
             //given
-            LocalDate clientDOB = LocalDate.of(1929, 01, 01);
-            var persistedApplication = persistedApplicationFactory.createAndPersist(builder -> {
-                var individual = individualFactory.create(individualBuilder 
-                    -> individualBuilder.firstName("Jimi")
-                                        .lastName("Hendrix")
-                                        .dateOfBirth(clientDOB));
-                });
-            var expectedApplicationSummary = createApplicationSummary(persistedApplication);
+            LocalDate clientDOB = LocalDate.of(1942, 11, 27);
+            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(2, builder ->
+                    builder.status(ApplicationStatus.IN_PROGRESS)
+                            .individuals(Set.of(individualFactory.create(i -> i.firstName("Jimi").lastName("Hendrix").dateOfBirth(clientDOB)))));
+            var expectedApplicationSummary = expectedApplications.stream().map(this::createApplicationSummary).toList();
             persistedApplicationFactory.createAndPersist();
 
             //when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
-                    + "?" + SEARCH_CLIENTDOB_PARAM + clientDOB.format(DateTimeFormatter.ISO_DATE));
+                    + "?" + SEARCH_CLIENTDOB_PARAM + "1942-11-27");
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             //then
@@ -1525,9 +1522,9 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            assertPaging(actual, 1, 10, 1, 1);
-            assertThat(actual.getApplications().size()).isEqualTo(1);
-            assertTrue(actual.getApplications().contains(expectedApplicationSummary));
+            assertPaging(actual, 2, 10, 1, 2);
+            assertThat(actual.getApplications().size()).isEqualTo(2);
+            assertArrayEquals(actual.getApplications().toArray(), expectedApplicationSummary.toArray());
         }
         
         @Test
