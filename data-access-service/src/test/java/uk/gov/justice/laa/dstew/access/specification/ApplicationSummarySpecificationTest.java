@@ -237,4 +237,19 @@ public class ApplicationSummarySpecificationTest {
 
         assertThat(result).isNotNull();
     }
+
+    @Test 
+    void givenIsAutoGranted_whenToPredicate_thenReturnPredicate() {
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(null, null, null, null, null, true);
+
+        Predicate summaryPredicate = mock(Predicate.class);
+
+        when(root.get("isAutoGranted"))
+                .thenReturn(mock(jakarta.persistence.criteria.Path.class));
+        when(builder.equal(any(), eq(true))).thenReturn(summaryPredicate);
+
+        Predicate result = spec.toPredicate(root, query, builder);
+        assertThat(result).isNotNull();
+    }
 }
