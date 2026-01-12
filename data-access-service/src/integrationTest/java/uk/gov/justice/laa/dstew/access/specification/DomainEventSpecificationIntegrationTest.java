@@ -25,7 +25,7 @@ import jakarta.transaction.Transactional;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.Status;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
@@ -118,7 +118,7 @@ public class DomainEventSpecificationIntegrationTest {
                                 .laaReference("ref")
                                 .createdAt(Instant.now())
                                 .individuals(individuals)
-                                .status(Status.IN_PROGRESS)
+                                .status(ApplicationStatus.IN_PROGRESS)
                                 .build();
     }
 }

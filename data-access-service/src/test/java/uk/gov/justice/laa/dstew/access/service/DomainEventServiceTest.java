@@ -16,10 +16,10 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.Status;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -182,7 +182,7 @@ public class DomainEventServiceTest {
 
         ApplicationEntity applicationEntity = ApplicationEntity.builder()
             .id(applicationId)
-            .status(Status.IN_PROGRESS)
+            .status(ApplicationStatus.IN_PROGRESS)
             .applicationContent(Map.of("foo", "bar"))
             .build();
 
@@ -214,7 +214,7 @@ public class DomainEventServiceTest {
 
         ApplicationEntity applicationEntity = ApplicationEntity.builder()
             .id(applicationId)
-            .status(Status.IN_PROGRESS)
+            .status(ApplicationStatus.IN_PROGRESS)
             .applicationContent(Map.of("foo", "bar"))
             .build();
 

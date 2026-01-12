@@ -28,7 +28,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.Status;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 
@@ -76,7 +76,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
 
     private ApplicationEntity createApplicationEntity(
             String laaReference,
-            Status status,
+            ApplicationStatus status,
             Map<String,Object> content,
             Set individuals,
             CaseworkerEntity caseworker
@@ -106,49 +106,49 @@ public class ApplicationSummarySpecificationIntegrationTests {
         prePopulatedApplications = new ArrayList<>();
         prePopulatedApplications.add(
                 createApplicationEntity(
-                        "Appref1", Status.SUBMITTED,
+                        "Appref1", ApplicationStatus.SUBMITTED,
                         map, Set.of(individual1, individual2), caseworker1)
         );
 
         prePopulatedApplications.add(
                 createApplicationEntity(
-                        "APPref2", Status.SUBMITTED,
+                        "APPref2", ApplicationStatus.SUBMITTED,
                         map, Set.of(individual2, individual3), caseworker2)
         );
 
         prePopulatedApplications.add(
                 createApplicationEntity(
-                        "unknown", Status.SUBMITTED,
+                        "unknown", ApplicationStatus.SUBMITTED,
                         map, Set.of(individual3, individual4), caseworker1)
         );
 
         prePopulatedApplications.add(
                 createApplicationEntity(
-                        "Appref1", Status.SUBMITTED,
+                        "Appref1", ApplicationStatus.SUBMITTED,
                         map, Set.of(individual4, individual1), caseworker2)
         );
 
         prePopulatedApplications.add (
                 createApplicationEntity(
-                        "Appref1", Status.IN_PROGRESS,
+                        "Appref1", ApplicationStatus.IN_PROGRESS,
                         map, Set.of(individual1, individual2), caseworker1)
         );
 
         prePopulatedApplications.add(
                 createApplicationEntity(
-                        "APPref2", Status.IN_PROGRESS,
+                        "APPref2", ApplicationStatus.IN_PROGRESS,
                         map, Set.of(individual2, individual3), caseworker2)
         );
 
         prePopulatedApplications.add(
                 createApplicationEntity(
-                        "unknown", Status.IN_PROGRESS,
+                        "unknown", ApplicationStatus.IN_PROGRESS,
                         map, Set.of(individual3, individual4), caseworker1)
         );
 
         prePopulatedApplications.add(
                 createApplicationEntity(
-                        "Appref1", Status.IN_PROGRESS,
+                        "Appref1", ApplicationStatus.IN_PROGRESS,
                         map, Set.of(individual4, individual1), caseworker2)
         );
 
@@ -197,30 +197,30 @@ public class ApplicationSummarySpecificationIntegrationTests {
 
     @Test void isStatusSpecification() {
         long expectedNumberOfInProgress = prePopulatedApplications.stream()
-                .filter(a -> a.getStatus().equals(Status.IN_PROGRESS)).count();
+                .filter(a -> a.getStatus().equals(ApplicationStatus.IN_PROGRESS)).count();
         long expectedNumberOfSubmitted = prePopulatedApplications.stream()
-                .filter(a -> a.getStatus().equals(Status.SUBMITTED)).count();
+                .filter(a -> a.getStatus().equals(ApplicationStatus.SUBMITTED)).count();
         assertNotEquals(0, expectedNumberOfInProgress);
         assertNotEquals(0, expectedNumberOfSubmitted);
 
 
         Specification<ApplicationSummaryEntity> inProgressEntities =
-                ApplicationSummarySpecification.filterBy(Status.IN_PROGRESS, "", "", "", null);
+                ApplicationSummarySpecification.filterBy(ApplicationStatus.IN_PROGRESS, "", "", "", null);
         Specification<ApplicationSummaryEntity> submittedEntities =
-                ApplicationSummarySpecification.filterBy(Status.SUBMITTED, "", "", "", null);
+                ApplicationSummarySpecification.filterBy(ApplicationStatus.SUBMITTED, "", "", "", null);
 
         assertEquals(expectedNumberOfInProgress, applicationSummaryRepository.count(inProgressEntities));
         applicationSummaryRepository
                 .findAll(inProgressEntities, PageRequest.of(0, 10))
                 .getContent().forEach(
-                        a -> assertEquals(Status.IN_PROGRESS, a.getStatus())
+                        a -> assertEquals(ApplicationStatus.IN_PROGRESS, a.getStatus())
                 );
 
         assertEquals(expectedNumberOfSubmitted, applicationSummaryRepository.count(submittedEntities));
         applicationSummaryRepository
                 .findAll(submittedEntities, PageRequest.of(0, 10))
                 .getContent().forEach(
-                        a -> assertEquals(Status.SUBMITTED, a.getStatus())
+                        a -> assertEquals(ApplicationStatus.SUBMITTED, a.getStatus())
                 );
     }
 
@@ -304,14 +304,14 @@ public class ApplicationSummarySpecificationIntegrationTests {
         long expectedNumberOfSubmittedAppref1 = prePopulatedApplications
                 .stream()
                 .filter(a ->
-                        a.getStatus().equals(Status.SUBMITTED)
+                        a.getStatus().equals(ApplicationStatus.SUBMITTED)
                         && a.getLaaReference().endsWith("ref1"))
                 .count();
          assertNotEquals(0, expectedNumberOfSubmittedAppref1);
 
         Specification<ApplicationSummaryEntity> apprefEntities =
                 ApplicationSummarySpecification.filterBy(
-                        Status.SUBMITTED, "ref1", "","", null);
+                        ApplicationStatus.SUBMITTED, "ref1", "","", null);
 
         assertEquals(expectedNumberOfSubmittedAppref1, applicationSummaryRepository.count(apprefEntities));
 
@@ -319,7 +319,7 @@ public class ApplicationSummarySpecificationIntegrationTests {
                 .findAll(apprefEntities, PageRequest.of(0, 10))
                 .getContent().forEach(
                         a -> assertThat(a.getLaaReference().toLowerCase().endsWith("ef1")
-                                                    && a.getStatus().equals(Status.SUBMITTED))
+                                                    && a.getStatus().equals(ApplicationStatus.SUBMITTED))
                 );
     }
 

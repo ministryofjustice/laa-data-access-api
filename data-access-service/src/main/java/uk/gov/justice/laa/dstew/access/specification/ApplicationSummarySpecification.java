@@ -8,7 +8,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.Status;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 /**
  * Defines the filtering of Application Summaries.
@@ -21,7 +21,7 @@ public class ApplicationSummarySpecification {
    *
    */
   public static Specification<ApplicationSummaryEntity> filterBy(
-          Status status,
+          ApplicationStatus status,
           String reference,
           String firstName,
           String lastName,
@@ -33,7 +33,7 @@ public class ApplicationSummarySpecification {
             .and(isCaseworkerId(userId));
   }
 
-  private static Specification<ApplicationSummaryEntity> isStatus(Status status) {
+  private static Specification<ApplicationSummaryEntity> isStatus(ApplicationStatus status) {
     if (status != null) {
       return (root, query, builder)
               -> builder.equal(root.get("status"), status);

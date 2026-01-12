@@ -8,8 +8,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
-import uk.gov.justice.laa.dstew.access.model.Status;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
@@ -53,7 +53,7 @@ public class ApplicationSummaryService {
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public Page<ApplicationSummary> getAllApplications(
-          Status applicationStatus,
+          ApplicationStatus applicationStatus,
           String laaReference,
           String clientFirstName,
           String clientLastName,

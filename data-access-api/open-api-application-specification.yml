@@ -15,7 +15,7 @@ paths:
           name: status
           description: The current overall status of the applications' decision.
           schema:
-            $ref: "#/components/schemas/status"
+            $ref: "#/components/schemas/applicationStatus"
         - in: query
           name: laaReference
           description: The LAA reference number of the application
@@ -235,7 +235,7 @@ paths:
 
 components:
   schemas:
-    status:
+    applicationStatus:
       type: string
       enum:
         - IN_PROGRESS
@@ -284,7 +284,7 @@ components:
     Application:
       type: object
       required:
-        - id
+        - idß
         - status
         - applicationContent
         - laaReference
@@ -295,8 +295,8 @@ components:
         id:
           type: string
           format: uuid
-        applicationStatus:
-          $ref: "#/components/schemas/status"
+        status:
+          $ref: "#/components/schemas/applicationStatus"
         schemaVersion:
           type: integer
         applicationContent:
@@ -327,7 +327,7 @@ components:
         - individuals
       properties:
         status:
-          $ref: "#/components/schemas/status"
+          $ref: "#/components/schemas/applicationStatus"
         applicationContent:
           type: object
           additionalProperties: true
@@ -345,7 +345,7 @@ components:
         - applicationContent
       properties:
         status:
-          $ref: "#/components/schemas/status"
+          $ref: "#/components/schemas/applicationStatus"
         applicationContent:
           type: object
           description: Application data to update
@@ -359,8 +359,8 @@ components:
           type: string
           format: uuid
           description: The unique reference used to identify the application.
-        applicationStatus:
-          $ref: "#/components/schemas/status"
+        status:
+          $ref: "#/components/schemas/applicationStatus"
         submittedAt:
           type: string
           format: date-time

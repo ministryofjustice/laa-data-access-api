@@ -1,6 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
-import uk.gov.justice.laa.dstew.access.model.Status;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
@@ -12,7 +12,7 @@ public class ApplicationUpdateFactoryImpl implements Factory<ApplicationUpdateRe
     @Override
     public ApplicationUpdateRequest create() {
         return ApplicationUpdateRequest.builder()
-                .status(Status.IN_PROGRESS)
+                .status(ApplicationStatus.IN_PROGRESS)
                 .applicationContent(new HashMap<>() {
                     {
                         put("test", "value");

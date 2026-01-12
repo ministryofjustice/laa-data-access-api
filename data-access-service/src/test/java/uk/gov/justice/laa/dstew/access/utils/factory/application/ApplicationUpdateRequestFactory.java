@@ -2,7 +2,7 @@ package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.model.Status;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 
@@ -20,7 +20,7 @@ public class ApplicationUpdateRequestFactory extends BaseFactory<ApplicationUpda
     @Override
     public ApplicationUpdateRequest createDefault() {
         return ApplicationUpdateRequest.builder()
-                .status(Status.IN_PROGRESS)
+                .status(ApplicationStatus.IN_PROGRESS)
                 .applicationContent(new HashMap<>(Map.of("test", "changed")))
                 .build();
     }

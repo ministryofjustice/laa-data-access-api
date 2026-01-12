@@ -5,7 +5,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
-import uk.gov.justice.laa.dstew.access.model.Status;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.DateTimeHelper;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
@@ -32,7 +32,7 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
         var instant = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();
         return ApplicationEntity.builder()
                 .createdAt(instant)
-                .status(Status.IN_PROGRESS)
+                .status(ApplicationStatus.IN_PROGRESS)
                 .modifiedAt(instant)
                 .submittedAt(instant)
                 .individuals(new HashSet<>(Set.of(individualEntity)))

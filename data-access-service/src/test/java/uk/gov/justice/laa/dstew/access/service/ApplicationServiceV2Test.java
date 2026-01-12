@@ -33,6 +33,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.*;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 public class ApplicationServiceV2Test extends BaseServiceTest {
@@ -105,7 +107,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         public void assertApplicationEqual(ApplicationEntity expectedApplication, Application actualApplication) {
-            assertThat(actualApplication.getApplicationStatus()).isEqualTo(expectedApplication.getStatus());
+            assertThat(actualApplication.getStatus()).isEqualTo(expectedApplication.getStatus());
             assertThat(actualApplication.getLaaReference()).isEqualTo(expectedApplication.getLaaReference());
             assertThat(actualApplication.getApplicationContent())
                     .usingRecursiveComparison()
@@ -138,7 +140,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .type(DomainEventType.APPLICATION_CREATED)
                     .data(objectMapper.writeValueAsString(CreateApplicationDomainEventDetails.builder()
                             .applicationId(expectedId)
-                            .applicationStatus(Status.IN_PROGRESS.toString())
+                            .applicationStatus(ApplicationStatus.IN_PROGRESS.toString())
                             .applicationContent(withExpectedId.getApplicationContent().toString())
                             .build()))
                     .build();
@@ -560,7 +562,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .createdBy("")
                     .data(objectMapper.writeValueAsString(UpdateApplicationDomainEventDetails.builder()
                             .applicationId(applicationId)
-                            .applicationStatus(Status.IN_PROGRESS.toString())
+                            .applicationStatus(ApplicationStatus.IN_PROGRESS.toString())
                             .applicationContent(updatedEntity.getApplicationContent().toString())
                             .build()))
                     .build();

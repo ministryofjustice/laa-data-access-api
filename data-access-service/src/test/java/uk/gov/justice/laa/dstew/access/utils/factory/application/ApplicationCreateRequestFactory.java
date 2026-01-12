@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.Status;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactory;
 
@@ -27,7 +27,7 @@ public class ApplicationCreateRequestFactory extends BaseFactory<ApplicationCrea
     @Override
     public ApplicationCreateRequest createDefault() {
         return ApplicationCreateRequest.builder()
-                .status(Status.IN_PROGRESS)
+                .status(ApplicationStatus.IN_PROGRESS)
                 .laaReference("REF7327")
                 .individuals(List.of(individualFactory.createDefault()))
                 .applicationContent(applicationContentFactory.createDefaultAsMap())

@@ -17,7 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.Status;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
@@ -49,7 +49,7 @@ public class ApplicationSummaryMapperTest {
     entity.setMatterType(MatterType.SCA);
     entity.setUsedDelegatedFunctions(true);
     entity.setLaaReference("ref1");
-    entity.setStatus(Status.IN_PROGRESS);
+    entity.setStatus(ApplicationStatus.IN_PROGRESS);
     entity.setCaseworker(CaseworkerEntity.builder().id(caseworkerId).build());
     entity.setIndividuals(Set.of(individual));
 
@@ -64,7 +64,7 @@ public class ApplicationSummaryMapperTest {
     assertThat(result.getMatterType()).isEqualTo(MatterType.SCA);
     assertThat(result.getUsedDelegatedFunctions()).isTrue();
     assertThat(result.getLaaReference()).isEqualTo("ref1");
-    assertThat(result.getApplicationStatus()).isEqualTo(Status.IN_PROGRESS);
+    assertThat(result.getStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
     assertThat(result.getAssignedTo() == caseworkerId);
     assertThat(result.getClientFirstName()).isEqualTo("John");
     assertThat(result.getClientLastName()).isEqualTo("Doe");

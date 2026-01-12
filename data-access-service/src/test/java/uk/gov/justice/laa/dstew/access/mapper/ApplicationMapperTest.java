@@ -18,7 +18,7 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.Status;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 
@@ -38,7 +38,7 @@ class ApplicationMapperTest {
     Instant updatedAt = Instant.now();
     ApplicationEntity entity = new ApplicationEntity();
     entity.setId(id);
-    entity.setStatus(Status.IN_PROGRESS);
+    entity.setStatus(ApplicationStatus.IN_PROGRESS);
     entity.setLaaReference("Ref123");
     entity.setSchemaVersion(1);
     entity.setApplicationContent(Map.of("foo", "bar", "baz", 123));
@@ -50,7 +50,7 @@ class ApplicationMapperTest {
     assertThat(result).isNotNull();
     assertThat(result.getId()).isEqualTo(id);
     assertThat(result.getLaaReference()).isEqualTo("Ref123");
-    assertThat(result.getApplicationStatus()).isEqualTo(Status.IN_PROGRESS);
+    assertThat(result.getStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
     assertThat(result.getCreatedAt()).isEqualTo(OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC));
     assertThat(result.getUpdatedAt()).isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
@@ -69,7 +69,7 @@ class ApplicationMapperTest {
     ApplicationEntity applicationEntity = ApplicationEntity.builder()
         .id(UUID.randomUUID())
         .laaReference("laa_reference_1")
-        .status(Status.IN_PROGRESS)
+        .status(ApplicationStatus.IN_PROGRESS)
         .individuals(Set.of(individual))
         .createdAt(Instant.now())
         .modifiedAt(Instant.now())
@@ -121,14 +121,14 @@ class ApplicationMapperTest {
   @Test
   void shouldMapApplicationCreateRequestToApplicationEntity() {
     ApplicationCreateRequest req = ApplicationCreateRequest.builder()
-        .status(Status.SUBMITTED)
+        .status(ApplicationStatus.SUBMITTED)
         .applicationContent(Map.of("foo", "bar"))
         .laaReference("laa_reference")
         .build();
 
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
 
-    assertThat(result.getStatus()).isEqualTo(Status.SUBMITTED);
+    assertThat(result.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
     assertThat(result.getLaaReference()).isEqualTo("laa_reference");
   }
@@ -142,7 +142,7 @@ class ApplicationMapperTest {
                                       .details(Map.of("foo", "bar"))
                                       .build();
     ApplicationCreateRequest req = ApplicationCreateRequest.builder()
-        .status(Status.SUBMITTED)
+        .status(ApplicationStatus.SUBMITTED)
         .applicationContent(Map.of("foo", "bar"))
         .laaReference("laa_reference")
         .individuals(List.of(individual))
@@ -167,28 +167,28 @@ class ApplicationMapperTest {
   @Test
   void shouldUpdateApplicationEntityWithoutOverwritingNulls() {
     ApplicationEntity entity = new ApplicationEntity();
-    entity.setStatus(Status.IN_PROGRESS);
+    entity.setStatus(ApplicationStatus.IN_PROGRESS);
 
     ApplicationUpdateRequest req = new ApplicationUpdateRequest(); // all nulls
     applicationMapper.updateApplicationEntity(entity, req);
 
-    assertThat(entity.getStatus()).isEqualTo(Status.IN_PROGRESS);
+    assertThat(entity.getStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
   }
 
   @Test
   void shouldUpdateApplicationEntityWithNewValues() {
     ApplicationEntity entity = new ApplicationEntity();
-    entity.setStatus(Status.IN_PROGRESS);
+    entity.setStatus(ApplicationStatus.IN_PROGRESS);
     entity.setSchemaVersion(1);
     entity.setApplicationContent(Map.of("oldKey", "oldValue"));
 
     ApplicationUpdateRequest req = new ApplicationUpdateRequest();
-    req.setStatus(Status.SUBMITTED);
+    req.setStatus(ApplicationStatus.SUBMITTED);
     req.setApplicationContent(Map.of("newKey", "newValue"));
 
     applicationMapper.updateApplicationEntity(entity, req);
 
-    assertThat(entity.getStatus()).isEqualTo(Status.SUBMITTED);
+    assertThat(entity.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
     assertThat(entity.getApplicationContent()).containsEntry("newKey", "newValue");
   }
 }

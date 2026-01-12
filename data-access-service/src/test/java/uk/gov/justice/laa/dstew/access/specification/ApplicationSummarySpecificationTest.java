@@ -18,7 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
-import uk.gov.justice.laa.dstew.access.model.Status;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 import java.util.UUID;
 
@@ -70,13 +70,13 @@ public class ApplicationSummarySpecificationTest {
     void givenApplicationStatus_whenToPredicate_thenReturnPredicate(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(Status.IN_PROGRESS, null, null, null, null);
+                .filterBy(ApplicationStatus.IN_PROGRESS, null, null, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
         when(root.get("status"))
                 .thenReturn(mock(jakarta.persistence.criteria.Path.class));
-        when(builder.equal(any(), eq(Status.IN_PROGRESS))).thenReturn(summaryPredicate);
+        when(builder.equal(any(), eq(ApplicationStatus.IN_PROGRESS))).thenReturn(summaryPredicate);
 
         Predicate result = spec.toPredicate(root, query, builder);
         assertThat(result).isNotNull();

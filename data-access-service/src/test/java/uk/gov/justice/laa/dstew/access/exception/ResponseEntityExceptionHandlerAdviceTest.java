@@ -32,7 +32,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
-import uk.gov.justice.laa.dstew.access.model.Status;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 
 class ResponseEntityExceptionHandlerAdviceTest {
@@ -47,7 +47,7 @@ class ResponseEntityExceptionHandlerAdviceTest {
         Arguments.of(Double.class, "Double."),
         Arguments.of(Boolean.class, "Boolean."),
         Arguments.of(null, "Object."),
-        Arguments.of(Status.class, Arrays.toString(Status.values()) + ".")
+        Arguments.of(ApplicationStatus.class, Arrays.toString(ApplicationStatus.values()) + ".")
     );
   }
 
@@ -57,13 +57,13 @@ class ResponseEntityExceptionHandlerAdviceTest {
         Arguments.of(String.class, "String."),
         Arguments.of(Double.class, "Double."),
         Arguments.of(Boolean.class, "Boolean."),
-        Arguments.of(Status.class, Arrays.toString(Status.values()) + ".")
+        Arguments.of(ApplicationStatus.class, Arrays.toString(ApplicationStatus.values()) + ".")
     );
   }
 
   public static Stream<Arguments> getPathAndErrors() {
     return Stream.of(
-        Arguments.of("uk.gov.justice.laa.dstew.access.model.Status",
+        Arguments.of("uk.gov.justice.laa.dstew.access.model.ApplicationStatus",
             "PROGRESS. Valid values are: IN_PROGRESS, SUBMITTED"),
         Arguments.of("uk.gov.justice.laa.dstew.access.model.AnotherEnumClass", "PROGRESS"));
   }

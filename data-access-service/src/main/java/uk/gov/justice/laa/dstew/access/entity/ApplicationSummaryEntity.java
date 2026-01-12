@@ -23,10 +23,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
-import uk.gov.justice.laa.dstew.access.model.Status;
+
 
 /**
  * Represents an application summary for legal aid.
@@ -48,7 +49,7 @@ public class ApplicationSummaryEntity {
 
   @Column(name = "status", nullable = false)
   @Enumerated(EnumType.STRING)
-  private Status status;
+  private ApplicationStatus status;
 
   @Column(name = "laa_reference")
   private String laaReference;
