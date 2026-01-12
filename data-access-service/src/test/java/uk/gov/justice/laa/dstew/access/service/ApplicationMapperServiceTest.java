@@ -79,7 +79,7 @@ class ApplicationMapperServiceTest extends BaseServiceTest {
     assertEquals(expectedMessage, caughtException.errors().getFirst());
   }
 
-  private Map<String, Object> getAppContentMap(List<ProceedingJsonObject> proceedings, boolean autoGrant) {
+  private Map<String, Object> getAppContentMap(boolean autoGrant, List<ProceedingJsonObject> proceedings) {
     submittedAt = "2026-01-15T10:20:30Z";
     AppContentJsonObject applicationContent = AppContentJsonObject.builder()
         .proceedings(proceedings)
@@ -106,15 +106,15 @@ class ApplicationMapperServiceTest extends BaseServiceTest {
     //App Content Map, expected useDelegatedFunctions, isAutoGrant
     return Stream.of(
         Arguments.of(getAppContentMap(
-            List.of(getProceedingJsonObject(true, true)), false), true, false),
+            false, List.of(getProceedingJsonObject(true, true))), true, false),
         Arguments.of(getAppContentMap(
-            List.of(getProceedingJsonObject(false, true)), true), false, true),
+            true, List.of(getProceedingJsonObject(false, true))), false, true),
         Arguments.of(getAppContentMap(
-            List.of(getProceedingJsonObject(false, true),
-                getProceedingJsonObject(true, false)), true), true, true),
+            true, List.of(getProceedingJsonObject(false, true),
+                getProceedingJsonObject(true, false))), true, true),
         Arguments.of(getAppContentMap(
-            List.of(getProceedingJsonObject(false, true),
-                getProceedingJsonObject(false, false)), true), false, true)
+            true, List.of(getProceedingJsonObject(false, true),
+                getProceedingJsonObject(false, false))), false, true)
     );
   }
 
@@ -134,17 +134,17 @@ class ApplicationMapperServiceTest extends BaseServiceTest {
     return Stream.of(
         Arguments.of(
             getAppContentMap(
-                List.of(), true),
+                true, List.of()),
             "No proceedings found in application content"
         ),
         Arguments.of(
             getAppContentMap(
-                null, true),
+                true, null),
             "No proceedings found in application content"
         ),
         Arguments.of(
             getAppContentMap(
-                List.of(getProceedingJsonObject(true, false)), false),
+                false, List.of(getProceedingJsonObject(true, false))),
             "No lead proceeding found in application content"
         )
     );

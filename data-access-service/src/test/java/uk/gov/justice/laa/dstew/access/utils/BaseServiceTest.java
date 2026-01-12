@@ -18,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateRequestFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationSummaryFactory;
@@ -72,6 +73,9 @@ public class BaseServiceTest {
 
     @Autowired
     protected DomainEventFactory domainEventFactory;
+
+    @Autowired
+    protected ApplicationContentFactory applicationContentFactory;
 
     @AfterEach
     void tearDown() {

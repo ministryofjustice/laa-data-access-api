@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
  * Class represents the content of an application.
  */
 @Data
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
