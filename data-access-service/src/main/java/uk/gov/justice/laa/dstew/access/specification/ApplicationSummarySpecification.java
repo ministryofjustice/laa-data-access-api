@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.specification;
 
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -26,10 +27,12 @@ public class ApplicationSummarySpecification {
           String reference,
           String firstName,
           String lastName,
+          LocalDate clientDateOfBirth,
           UUID userId) {
     return isStatus(status)
             .and(likeLaaReference(reference))
             .and(IndividualFilterSpecification.filterIndividual(firstName, lastName))
+            .and(isDateOfBirth(clientDateOfBirth))
             .and(isCaseworkerId(userId));
   }
 

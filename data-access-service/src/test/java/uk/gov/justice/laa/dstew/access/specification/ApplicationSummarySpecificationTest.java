@@ -20,6 +20,7 @@ import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,7 +47,7 @@ public class ApplicationSummarySpecificationTest {
 
         String reference = "some-reference";
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, reference, null, null, null);
+                .filterBy(null, reference, null, null, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
         when(builder.like(any(), eq("%"+reference+"%"))).thenReturn(summaryPredicate);
@@ -59,7 +60,7 @@ public class ApplicationSummarySpecificationTest {
     void givenBlankReference_whenToPredicate_thenReturnNull() {
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, "", null, null, null);
+                .filterBy(null, "", null, null, null, null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 
@@ -70,7 +71,7 @@ public class ApplicationSummarySpecificationTest {
     void givenApplicationStatus_whenToPredicate_thenReturnPredicate(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(ApplicationStatus.IN_PROGRESS, null, null, null, null);
+                .filterBy(ApplicationStatus.IN_PROGRESS, null, null, null, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
@@ -87,7 +88,7 @@ public class ApplicationSummarySpecificationTest {
 
         String firstName = "some-name";
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, firstName, null, null);
+                .filterBy(null, null, firstName, null, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
@@ -111,7 +112,7 @@ public class ApplicationSummarySpecificationTest {
     void givenBlankFirstName_whenToPredicate_thenReturnNull() {
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, "", null, null);
+                .filterBy(null, null, "", null, null, null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 
@@ -122,7 +123,7 @@ public class ApplicationSummarySpecificationTest {
     void givenBlankLastName_whenToPredicate_thenReturnNull() {
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, null, "", null);
+                .filterBy(null, null, null, "", null, null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 
@@ -134,7 +135,7 @@ public class ApplicationSummarySpecificationTest {
 
         String lastName = "some-name";
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, null, lastName, null);
+                .filterBy(null, null, null, lastName, null, null);
 
         Predicate summaryPredicate = mock(Predicate.class);
 
@@ -160,7 +161,7 @@ public class ApplicationSummarySpecificationTest {
         UUID caseworkerId = UUID.randomUUID();
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, null, null, caseworkerId);
+                .filterBy(null, null, null, null, null, caseworkerId);
 
         Predicate summaryPredicate = mock(Predicate.class);
         when(
@@ -183,7 +184,7 @@ public class ApplicationSummarySpecificationTest {
     void givenNullCaseworkerId_whenToPredicate_thenReturnNull() {
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, null, null, null);
+                .filterBy(null, null, null, null, null, null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 

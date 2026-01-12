@@ -81,6 +81,7 @@ public class ApplicationController implements ApplicationApi {
                     laaReference,
                     clientFirstName,
                     clientLastName,
+                    clientDateOfBirth,
                     userId,
                     page - 1, pageSize);
 

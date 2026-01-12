@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -57,6 +58,7 @@ public class ApplicationSummaryService {
           String laaReference,
           String clientFirstName,
           String clientLastName,
+          LocalDate clientDateOfBirth,
           UUID userId,
           Integer page,
           Integer pageSize) {
@@ -72,6 +74,7 @@ public class ApplicationSummaryService {
                                     laaReference,
                                     clientFirstName,
                                     clientLastName,
+                                    clientDateOfBirth,
                                     userId),
                     pageDetails)
             .map(mapper::toApplicationSummary);
