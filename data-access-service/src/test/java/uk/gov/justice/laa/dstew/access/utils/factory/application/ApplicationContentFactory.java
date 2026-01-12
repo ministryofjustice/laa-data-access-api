@@ -4,14 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.enums.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContentDetails;
-import uk.gov.justice.laa.dstew.access.model.ProceedingDetails;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 
 @Profile("unit-test")
@@ -21,6 +19,8 @@ public class ApplicationContentFactory
 
   @Autowired
   ObjectMapper objectMapper;
+  @Autowired
+  ProceedingDetailsFactory proceedingDetailsFactory;
 
   public ApplicationContentFactory() {
     super(ApplicationContentDetails::toBuilder, ApplicationContentDetails.ApplicationContentDetailsBuilder::build);
@@ -28,19 +28,12 @@ public class ApplicationContentFactory
 
   @Override
   public ApplicationContentDetails createDefault() {
-    ProceedingDetails proceedingDetails = ProceedingDetails
-        .builder()
-        .id("123ABC")
-        .categoryOfLaw(CategoryOfLaw.Family)
-        .matterType(MatterType.SCA)
-        .leadProceeding(true)
-        .useDelegatedFunctions(true)
-        .build();
+    UUID applicationId = UUID.randomUUID();
     return ApplicationContentDetails.builder()
-        .id("123")
+        .id(applicationId)
         .autoGrant(true)
         .submittedAt(Instant.now())
-        .proceedings(List.of(proceedingDetails))
+        .proceedings(List.of(proceedingDetailsFactory.createDefault()))
         .build();
   }
 

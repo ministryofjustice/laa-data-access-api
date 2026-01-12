@@ -1,30 +1,7 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
-import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -41,32 +18,30 @@ import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.enums.MatterType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.Application;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContentDetails;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
-import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
-import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
-import uk.gov.justice.laa.dstew.access.model.Individual;
-import uk.gov.justice.laa.dstew.access.model.ProceedingDetails;
-import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.records.AppContentJsonObject;
+import uk.gov.justice.laa.dstew.access.utils.records.ProceedingJsonObject;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
+
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.*;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
 
 public class ApplicationServiceV2Test extends BaseServiceTest {
 
     @Autowired
     private ApplicationService serviceUnderTest;
 
-  @Autowired
-  private ObjectMapper objectMapper;
-
-  @Nested
-  class GetApplication {
+    @Nested
+    class GetApplication {
 
         @Test
         public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {
@@ -180,51 +155,30 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
         }
 
-    @Test
-    public void givenNewApplication_ApplicationContentMapsCorrectly() {
-      // given
-      UUID expectedId = UUID.randomUUID();
-      ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder ->
-          builder.id(expectedId)
-      );
+      @ParameterizedTest
+      @MethodSource("provideProceedingsForMapping")
+      void mapToApplicationEntity_SuccessfullyMapFromApplicationContentFields(ApplicationCreateRequest application,
+                                                                              boolean expectedUseDelegatedFunctions,
+                                                                              boolean autoGranted) {
+        // Given
+        setSecurityContext(TestConstants.Roles.WRITER);
 
-      ApplicationCreateRequest applicationCreateRequest = getApplicationCreateRequest();
-      when(applicationRepository.save(any())).thenReturn(withExpectedId);
+        UUID expectedId = UUID.randomUUID();
+        ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder -> builder.id(expectedId));
+        when(applicationRepository.save(any())).thenReturn(withExpectedId);
 
-      setSecurityContext(TestConstants.Roles.WRITER);
+        // When
+        UUID entity = serviceUnderTest.createApplication(application);
+        ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
+        verify(applicationRepository, times(1)).save(captor.capture());
+        ApplicationEntity actualApplicationEntity = captor.getValue();
+        // Then
+        assertEquals(expectedId, entity);
 
-      //when
-      UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
-      // then
-      assertEquals(expectedId, actualId);
-      ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
-      verify(applicationRepository, times(1)).save(captor.capture());
-      ApplicationEntity actualApplicationEntity = captor.getValue();
-
-      assertThat(actualApplicationEntity.getStatus()).isEqualTo(applicationCreateRequest.getStatus());
-      assertThat(actualApplicationEntity.getLaaReference()).isEqualTo(applicationCreateRequest.getLaaReference());
-      ApplicationContentDetails applicationContentDetails =
-          parseApplicationContentDetails(applicationCreateRequest.getApplicationContent());
-      assertThat(actualApplicationEntity.isUseDelegatedFunctions()).isEqualTo(
-          applicationContentDetails.getProceedings().getFirst()
-              .useDelegatedFunctions());
-      assertThat(actualApplicationEntity.getCategoryOfLaw()).isEqualTo(
-          applicationContentDetails.getProceedings().getFirst()
-              .categoryOfLaw());
-      assertThat(actualApplicationEntity.getMatterType()).isEqualTo(
-          applicationContentDetails.getProceedings().getFirst()
-              .matterType());
-      assertThat(actualApplicationEntity.isAutoGranted()).isEqualTo(
-          applicationContentDetails.isAutoGrant());
-      assertThat(actualApplicationEntity.getApplicationContent())
-          .usingRecursiveComparison()
-          .ignoringCollectionOrder()
-          .isEqualTo(applicationCreateRequest.getApplicationContent());
-
-      assertIndividualCollectionsEqual(applicationCreateRequest.getIndividuals(), actualApplicationEntity.getIndividuals());
-
-    }
-
+        assertAll(() -> assertEquals(expectedUseDelegatedFunctions, actualApplicationEntity.isUseDelegatedFunctions()),
+            () -> assertEquals(autoGranted, actualApplicationEntity.isAutoGranted()),
+            () -> assertEquals(      Instant.parse("2026-01-15T10:20:30Z"), actualApplicationEntity.getSubmittedAt()));
+      }
 
         @Test
         public void givenNewApplicationAndNotRoleReader_whenCreateApplication_thenThrowUnauthorizedException() {
@@ -272,10 +226,11 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         private Stream<Arguments> invalidApplicationRequests() {
-            return Stream.concat(
+            return Stream.of(
                     invalidApplicationSpecificCases(),
-                    invalidIndividualSpecificCases()
-            );
+                    invalidIndividualSpecificCases(),
+                    invalidApplicationContentProvider()
+            ).flatMap(argumentsStream -> argumentsStream);
         }
 
     private Stream<Arguments> invalidApplicationSpecificCases() {
@@ -321,8 +276,8 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                   .applicationContent(
                       applicationContentFactory.createDefaultAsMap(detailsBuilder ->
                           detailsBuilder.proceedings(List.of(
-                              new ProceedingDetails(false, "123", CategoryOfLaw.Family, MatterType.SCA,
-                                  true)
+                              proceedingDetailsFactory.createDefault(proceedingDetailsBuilder ->
+                                  proceedingDetailsBuilder.leadProceeding(false))
                           ))))),
               new ValidationException(List.of(
                   "No lead proceeding found in application content"
@@ -446,20 +401,68 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             );
         }
 
-    private @NonNull ApplicationCreateRequest getApplicationCreateRequest() {
-      ProceedingDetails proceedingOne =
-          new ProceedingDetails(true, "321", CategoryOfLaw.Family, MatterType.SCA, false);
-      Map<String, Object> appContentMap = applicationContentFactory.createDefaultAsMap(
-          builder ->
-              builder.submittedAt(Instant.now())
-                  .autoGrant(false)
-                  .id("123")
-                  .proceedings(List.of(proceedingOne)).build()
-      );
-      ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault();
-      applicationCreateRequest.setApplicationContent(appContentMap);
-      return applicationCreateRequest;
-    }
+      private Stream<Arguments> invalidApplicationContentProvider() {
+        return Stream.of(
+            Arguments.of(applicationCreateRequestFactory
+                    .createDefault(builder ->
+                        builder.applicationContent(
+                            getAppContentMap(true, List.of(), UUID.randomUUID().toString()))),
+                new ValidationException(List.of("No proceedings found in application content")),
+                Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                        builder.applicationContent(
+                            getAppContentMap(true, null, UUID.randomUUID().toString()))),
+                    new ValidationException(List.of("No proceedings found in application content")),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                            builder.applicationContent(
+                                getAppContentMap(false,
+                                    List.of(getProceedingJsonObject(true, false)),
+                                    UUID.randomUUID().toString()))),
+                        new ValidationException(List.of("No lead proceeding found in application content"))))
+            )
+        );
+      }
+
+      private Map<String, Object> getAppContentMap(boolean autoGrant, List<ProceedingJsonObject> proceedings,
+                                                   String appContentId) {
+        String submittedAt = "2026-01-15T10:20:30Z";
+        AppContentJsonObject applicationContent =
+            AppContentJsonObject.builder().proceedings(proceedings).autoGrant(autoGrant).id(appContentId)
+                .submittedAt(submittedAt).build();
+        Map<String, Object> appContentMap;
+
+        try {
+          appContentMap = objectMapper.readValue(objectMapper.writeValueAsString(applicationContent), Map.class);
+        } catch (JsonProcessingException e) {
+          throw new RuntimeException(e);
+        }
+        return appContentMap;
+      }
+
+
+      private static ProceedingJsonObject getProceedingJsonObject(boolean useDelegatedFunctions, boolean leadProceeding) {
+        return ProceedingJsonObject.builder().id("f6e2c4e1-5d32-4c3e-9f0a-1e2b3c4d5e6f").leadProceeding(leadProceeding)
+            .categoryOfLaw(CategoryOfLaw.Family.name()).matterType(MatterType.SCA.name())
+            .useDelegatedFunctions(useDelegatedFunctions).build();
+      }
+
+      private Stream<Arguments> provideProceedingsForMapping() {
+        //App Content Map, expected useDelegatedFunctions, isAutoGrant
+        return Stream.of(Arguments.of(applicationCreateRequestFactory.createDefault(
+                builder -> builder.applicationContent(getAppContentMap(false, List.of(getProceedingJsonObject(true, true)),
+                    UUID.randomUUID().toString()))), true,
+            false), Arguments.of(applicationCreateRequestFactory.createDefault(
+                builder -> builder.applicationContent(getAppContentMap(true, List.of(getProceedingJsonObject(false, true)),
+                    UUID.randomUUID().toString()))), false,
+            true), Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
+                getAppContentMap(true, List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(true, false)),
+                    UUID.randomUUID().toString()))), true,
+            true), Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
+                getAppContentMap(true, List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(false, false)),
+                    UUID.randomUUID().toString()))), false,
+            true));
+      }
+
+
 
     private void verifyThatApplicationSaved(ApplicationCreateRequest applicationCreateRequest, int timesCalled) {
       ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
