@@ -60,6 +60,7 @@ public class ApplicationSummaryService {
           String clientLastName,
           LocalDate clientDateOfBirth,
           UUID userId,
+          Boolean isAutoGranted,
           Integer page,
           Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);

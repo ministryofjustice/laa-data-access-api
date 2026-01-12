@@ -44,6 +44,11 @@ paths:
             type: string
             format: uuid
         - in: query
+          name: isautogranted
+          description: Has the application been marked as auto granted
+          schema:
+            type: boolean
+        - in: query
           name: page
           description: Page number of data to be returned (defaults to 1 when 0 or less)
           schema:

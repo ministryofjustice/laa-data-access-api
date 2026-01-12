@@ -95,6 +95,7 @@ public class ApplicationSummaryServiceV2Test extends BaseServiceTest {
                     null,
                     null,
                     caseworkerId,
+                    null,
                     0,
                     10
             ).stream().toList();
@@ -123,6 +124,7 @@ public class ApplicationSummaryServiceV2Test extends BaseServiceTest {
                     null,
                     null,
                     UUID.randomUUID(),
+                    null,
                     0,
                     10
             ));
