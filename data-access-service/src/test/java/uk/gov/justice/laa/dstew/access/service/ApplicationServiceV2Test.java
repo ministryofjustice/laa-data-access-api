@@ -59,8 +59,8 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 public class ApplicationServiceV2Test extends BaseServiceTest {
 
-  @Autowired
-  private ApplicationService serviceUnderTest;
+    @Autowired
+    private ApplicationService serviceUnderTest;
 
   @Autowired
   private ObjectMapper objectMapper;
@@ -68,120 +68,120 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
   @Nested
   class GetApplication {
 
-    @Test
-    public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {
-      // given
-      ApplicationEntity expectedApplication = applicationEntityFactory.createDefault();
+        @Test
+        public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {
+            // given
+            ApplicationEntity expectedApplication = applicationEntityFactory.createDefault();
 
-      when(applicationRepository.findById(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
+            when(applicationRepository.findById(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
 
-      setSecurityContext(TestConstants.Roles.READER);
+            setSecurityContext(TestConstants.Roles.READER);
 
-      // when
-      Application actualApplication = serviceUnderTest.getApplication(expectedApplication.getId());
+            // when
+            Application actualApplication = serviceUnderTest.getApplication(expectedApplication.getId());
 
-      // then
-      assertApplicationEqual(expectedApplication, actualApplication);
-      verify(applicationRepository, times(1)).findById(expectedApplication.getId());
+            // then
+            assertApplicationEqual(expectedApplication, actualApplication);
+            verify(applicationRepository, times(1)).findById(expectedApplication.getId());
+        }
+
+        @Test
+        public void givenNoApplicationAndRoleReader_whenGetApplication_thenThrowResourceNotFoundException() {
+
+            // given
+            UUID applicationId = UUID.randomUUID();
+            when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
+
+            setSecurityContext(TestConstants.Roles.READER);
+
+            // when
+            // then
+            assertThatExceptionOfType(ResourceNotFoundException.class)
+                    .isThrownBy(() -> serviceUnderTest.getApplication(applicationId))
+                    .withMessageContaining("No application found with id: " + applicationId);
+            verify(applicationRepository, times(1)).findById(applicationId);
+        }
+
+        @Test
+        public void givenApplicationAndNotRoleReader_whenGetApplication_thenThrowUnauthorizedException() {
+
+            // given
+            UUID applicationId = UUID.randomUUID();
+
+            setSecurityContext(TestConstants.Roles.NO_ROLE);
+
+            // when
+            // then
+            assertThatExceptionOfType(AuthorizationDeniedException.class)
+                    .isThrownBy(() -> serviceUnderTest.getApplication(applicationId))
+            .withMessageContaining("Access Denied");
+
+            verify(applicationRepository, times(0)).findById(applicationId);
+        }
+
+        @Test
+        public void givenApplicationAndNoRole_whenGetApplication_thenThrowUnauthorizedException() {
+
+            assertThatExceptionOfType(AuthorizationDeniedException.class)
+                    .isThrownBy(() -> serviceUnderTest.getApplication(UUID.randomUUID()))
+                    .withMessageContaining("Access Denied");
+
+            verify(applicationRepository, times(0)).findById(any(UUID.class));
+        }
+
+        public void assertApplicationEqual(ApplicationEntity expectedApplication, Application actualApplication) {
+            assertThat(actualApplication.getApplicationStatus()).isEqualTo(expectedApplication.getStatus());
+            assertThat(actualApplication.getLaaReference()).isEqualTo(expectedApplication.getLaaReference());
+            assertThat(actualApplication.getApplicationContent())
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .isEqualTo(expectedApplication.getApplicationContent());
+
+            assertIndividualCollectionsEqual(actualApplication.getIndividuals(), expectedApplication.getIndividuals());
+        }
     }
 
-    @Test
-    public void givenNoApplicationAndRoleReader_whenGetApplication_thenThrowResourceNotFoundException() {
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class CreateApplication {
 
-      // given
-      UUID applicationId = UUID.randomUUID();
-      when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
+        @Test
+        public void givenNewApplication_whenCreateApplication_thenReturnNewId() throws JsonProcessingException {
 
-      setSecurityContext(TestConstants.Roles.READER);
+            // given
+            UUID expectedId = UUID.randomUUID();
+            ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder ->
+                    builder.id(expectedId)
+            );
 
-      // when
-      // then
-      assertThatExceptionOfType(ResourceNotFoundException.class)
-          .isThrownBy(() -> serviceUnderTest.getApplication(applicationId))
-          .withMessageContaining("No application found with id: " + applicationId);
-      verify(applicationRepository, times(1)).findById(applicationId);
-    }
+            ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault();
 
-    @Test
-    public void givenApplicationAndNotRoleReader_whenGetApplication_thenThrowUnauthorizedException() {
+            when(applicationRepository.save(any())).thenReturn(withExpectedId);
 
-      // given
-      UUID applicationId = UUID.randomUUID();
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(expectedId)
+                    .type(DomainEventType.APPLICATION_CREATED)
+                    .data(objectMapper.writeValueAsString(CreateApplicationDomainEventDetails.builder()
+                            .applicationId(expectedId)
+                            .applicationStatus(ApplicationStatus.IN_PROGRESS.toString())
+                            .applicationContent(withExpectedId.getApplicationContent().toString())
+                            .build()))
+                    .build();
 
-      setSecurityContext(TestConstants.Roles.NO_ROLE);
+            setSecurityContext(TestConstants.Roles.WRITER);
 
-      // when
-      // then
-      assertThatExceptionOfType(AuthorizationDeniedException.class)
-          .isThrownBy(() -> serviceUnderTest.getApplication(applicationId))
-          .withMessageContaining("Access Denied");
+            // when
+            UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
 
-      verify(applicationRepository, times(0)).findById(applicationId);
-    }
+            // then
+            assertEquals(expectedId, actualId);
 
-    @Test
-    public void givenApplicationAndNoRole_whenGetApplication_thenThrowUnauthorizedException() {
-
-      assertThatExceptionOfType(AuthorizationDeniedException.class)
-          .isThrownBy(() -> serviceUnderTest.getApplication(UUID.randomUUID()))
-          .withMessageContaining("Access Denied");
-
-      verify(applicationRepository, times(0)).findById(any(UUID.class));
-    }
-
-    public void assertApplicationEqual(ApplicationEntity expectedApplication, Application actualApplication) {
-      assertThat(actualApplication.getApplicationStatus()).isEqualTo(expectedApplication.getStatus());
-      assertThat(actualApplication.getLaaReference()).isEqualTo(expectedApplication.getLaaReference());
-      assertThat(actualApplication.getApplicationContent())
-          .usingRecursiveComparison()
-          .ignoringCollectionOrder()
-          .isEqualTo(expectedApplication.getApplicationContent());
-
-      assertIndividualCollectionsEqual(actualApplication.getIndividuals(), expectedApplication.getIndividuals());
-    }
-  }
-
-  @Nested
-  @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-  class CreateApplication {
+            verifyThatApplicationSaved(applicationCreateRequest, 1);
+            verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
+        }
 
     @Test
-    public void givenNewApplication_whenCreateApplication_thenReturnNewId() throws JsonProcessingException {
-
-      // given
-      UUID expectedId = UUID.randomUUID();
-      ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder ->
-          builder.id(expectedId)
-      );
-
-      ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault();
-
-      when(applicationRepository.save(any())).thenReturn(withExpectedId);
-
-      DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
-          .applicationId(expectedId)
-          .type(DomainEventType.APPLICATION_CREATED)
-          .data(objectMapper.writeValueAsString(CreateApplicationDomainEventDetails.builder()
-              .applicationId(expectedId)
-              .applicationStatus(ApplicationStatus.IN_PROGRESS.toString())
-              .applicationContent(withExpectedId.getApplicationContent().toString())
-              .build()))
-          .build();
-
-      setSecurityContext(TestConstants.Roles.WRITER);
-
-      // when
-      UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
-
-      // then
-      assertEquals(expectedId, actualId);
-
-      verifyThatApplicationSaved(applicationCreateRequest, 1);
-      verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
-    }
-
-    @Test
-    public void givenNewApplication_ApplicationContentMapsCorrectly(){
+    public void givenNewApplication_ApplicationContentMapsCorrectly() {
       // given
       UUID expectedId = UUID.randomUUID();
       ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder ->
@@ -226,73 +226,58 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
     }
 
-    private @NonNull ApplicationCreateRequest getApplicationCreateRequest() {
-      ProceedingDetails proceedingOne =
-          new ProceedingDetails(true, "321", CategoryOfLaw.Family, MatterType.SCA, false);
-      Map<String, Object> appContentMap = applicationContentFactory.createDefaultAsMap(
-          builder ->
-              builder.submittedAt(Instant.now())
-                  .autoGrant(false)
-                  .id("123")
-                  .proceedings(List.of(proceedingOne)).build()
-      );
-      ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault();
-      applicationCreateRequest.setApplicationContent(appContentMap);
-      return applicationCreateRequest;
-    }
 
+        @Test
+        public void givenNewApplicationAndNotRoleReader_whenCreateApplication_thenThrowUnauthorizedException() {
+            // given
+            setSecurityContext(TestConstants.Roles.NO_ROLE);
 
-    @Test
-    public void givenNewApplicationAndNotRoleReader_whenCreateApplication_thenThrowUnauthorizedException() {
-      // given
-      setSecurityContext(TestConstants.Roles.NO_ROLE);
+            // when
+            // then
+            assertThatExceptionOfType(AuthorizationDeniedException.class)
+                    .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
+                    .withMessageContaining("Access Denied");
 
-      // when
-      // then
-      assertThatExceptionOfType(AuthorizationDeniedException.class)
-          .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
-          .withMessageContaining("Access Denied");
+            verify(applicationRepository, times(0)).findById(any(UUID.class));
+            verify(domainEventRepository, never()).save(any());
+        }
 
-      verify(applicationRepository, times(0)).findById(any(UUID.class));
-      verify(domainEventRepository, never()).save(any());
-    }
+        @Test
+        public void givenNewApplicationAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
 
-    @Test
-    public void givenNewApplicationAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
+            assertThatExceptionOfType(AuthorizationDeniedException.class)
+                    .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
+                    .withMessageContaining("Access Denied");
 
-      assertThatExceptionOfType(AuthorizationDeniedException.class)
-          .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
-          .withMessageContaining("Access Denied");
+            verify(applicationRepository, times(0)).findById(any(UUID.class));
+            verify(domainEventRepository, never()).save(any());
+        }
 
-      verify(applicationRepository, times(0)).findById(any(UUID.class));
-      verify(domainEventRepository, never()).save(any());
-    }
+        @ParameterizedTest
+        @MethodSource("invalidApplicationRequests")
+        public void GivenInvalidApplicationAndRoleWriter_whenCreateApplication_thenValidationExceptionWithCorrectMessage(
+                ApplicationCreateRequest applicationCreateRequest,
+                ValidationException validationException
+        ) {
+            setSecurityContext(TestConstants.Roles.WRITER);
 
-    @ParameterizedTest
-    @MethodSource("invalidApplicationRequests")
-    public void GivenInvalidApplicationAndRoleWriter_whenCreateApplication_thenValidationExceptionWithCorrectMessage(
-        ApplicationCreateRequest applicationCreateRequest,
-        ValidationException validationException
-    ) {
-      setSecurityContext(TestConstants.Roles.WRITER);
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));
+            assertThat(thrown)
+                    .isInstanceOf(ValidationException.class)
+                    .usingRecursiveComparison()
+                    .isEqualTo(validationException);
 
-      Throwable thrown = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));
-      assertThat(thrown)
-          .isInstanceOf(ValidationException.class)
-          .usingRecursiveComparison()
-          .isEqualTo(validationException);
+            verify(applicationRepository, never()).findById(any(UUID.class));
+            verify(applicationRepository, never()).save(any());
+            verify(domainEventRepository, never()).save(any());
+        }
 
-      verify(applicationRepository, never()).findById(any(UUID.class));
-      verify(applicationRepository, never()).save(any());
-      verify(domainEventRepository, never()).save(any());
-    }
-
-    private Stream<Arguments> invalidApplicationRequests() {
-      return Stream.concat(
-          invalidApplicationSpecificCases(),
-          invalidIndividualSpecificCases()
-      );
-    }
+        private Stream<Arguments> invalidApplicationRequests() {
+            return Stream.concat(
+                    invalidApplicationSpecificCases(),
+                    invalidIndividualSpecificCases()
+            );
+        }
 
     private Stream<Arguments> invalidApplicationSpecificCases() {
       return Stream.of(
@@ -347,119 +332,134 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
       );
     }
 
-    private Stream<Arguments> invalidIndividualSpecificCases() {
-      return Stream.of(
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.individuals(Collections.singletonList(null))),
-              new ValidationException(List.of(
-                  "Individual cannot be null."
-              ))
-          ),
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.individuals(List.of(individualFactory.createDefault(builderInd ->
-                      builderInd.firstName(null))))),
-              new ValidationException(List.of(
-                  "First name must be populated."
-              ))
-          ),
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.individuals(List.of(individualFactory.createDefault(builderInd ->
-                      builderInd.firstName(""))))),
-              new ValidationException(List.of(
-                  "First name must be populated."
-              ))
-          ),
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.individuals(List.of(individualFactory.createDefault(builderInd ->
-                      builderInd.lastName(null))))),
-              new ValidationException(List.of(
-                  "Last name must be populated."
-              ))
-          ),
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.individuals(List.of(individualFactory.createDefault(builderInd ->
-                      builderInd.lastName(""))))),
-              new ValidationException(List.of(
-                  "Last name must be populated."
-              ))
-          ),
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.individuals(List.of(individualFactory.createDefault(builderInd ->
-                      builderInd.details(null))))),
-              new ValidationException(List.of(
-                  "Individual details must be populated."
-              ))
-          ),
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.individuals(List.of(individualFactory.createDefault(builderInd ->
-                      builderInd.details(new HashMap<>()))))),
-              new ValidationException(List.of(
-                  "Individual details must be populated."
-              ))
-          ),
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.individuals(List.of(individualFactory.createDefault(builderInd ->
-                      builderInd.dateOfBirth(null))))),
-              new ValidationException(List.of(
-                  "Date of birth must be populated."
-              ))
-          ),
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.individuals(List.of(individualFactory.createDefault(builderInd ->
-                      builderInd
-                          .firstName(null)
-                          .lastName(null)
-                          .dateOfBirth(null)
-                          .details(new HashMap<>()))))),
-              new ValidationException(List.of(
-                  "First name must be populated.",
-                  "Last name must be populated.",
-                  "Individual details must be populated.",
-                  "Date of birth must be populated."
-              ))
-          ),
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.individuals(List.of(individualFactory.createDefault(builderInd ->
-                      builderInd
-                          .firstName(null)
-                          .lastName(null)
-                          .dateOfBirth(null)
-                          .details(null))))),
-              new ValidationException(List.of(
-                  "First name must be populated.",
-                  "Last name must be populated.",
-                  "Individual details must be populated.",
-                  "Date of birth must be populated."
-              ))
-          ),
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.individuals(List.of(
-                          individualFactory.createRandom(builderInd ->
-                              builderInd.firstName(null)),
-                          individualFactory.createRandom(builderInd ->
-                              builderInd.lastName(null))
-                      )
-                  )),
-              new ValidationException(List.of(
-                  "First name must be populated.",
-                  "Last name must be populated."
-              ))
-          ),
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.individuals(List.of(
-                          individualFactory.createRandom(builderInd ->
-                              builderInd.firstName(null).lastName(null)),
-                          individualFactory.createRandom(builderInd ->
-                              builderInd.lastName(null).dateOfBirth(null))
-                      )
-                  )),
-              new ValidationException(List.of(
-                  "First name must be populated.",
-                  "Last name must be populated.",
-                  "Date of birth must be populated."
-              ))
-          )
+        private Stream<Arguments> invalidIndividualSpecificCases() {
+            return Stream.of(
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(Collections.singletonList(null))),
+                            new ValidationException(List.of(
+                                    "Individual cannot be null."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd.firstName(null))))),
+                            new ValidationException(List.of(
+                                    "First name must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd.firstName(""))))),
+                            new ValidationException(List.of(
+                                    "First name must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd.lastName(null))))),
+                            new ValidationException(List.of(
+                                    "Last name must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd.lastName(""))))),
+                            new ValidationException(List.of(
+                                    "Last name must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd.details(null))))),
+                            new ValidationException(List.of(
+                                    "Individual details must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd.details(new HashMap<>()))))),
+                            new ValidationException(List.of(
+                                    "Individual details must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd.dateOfBirth(null))))),
+                            new ValidationException(List.of(
+                                    "Date of birth must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd
+                                                    .firstName(null)
+                                                    .lastName(null)
+                                                    .dateOfBirth(null)
+                                                    .details(new HashMap<>()))))),
+                            new ValidationException(List.of(
+                                    "First name must be populated.",
+                                    "Last name must be populated.",
+                                    "Individual details must be populated.",
+                                    "Date of birth must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(individualFactory.createDefault(builderInd ->
+                                            builderInd
+                                                    .firstName(null)
+                                                    .lastName(null)
+                                                    .dateOfBirth(null)
+                                                    .details(null))))),
+                            new ValidationException(List.of(
+                                    "First name must be populated.",
+                                    "Last name must be populated.",
+                                    "Individual details must be populated.",
+                                    "Date of birth must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(
+                                            individualFactory.createRandom(builderInd ->
+                                                builderInd.firstName(null)),
+                                            individualFactory.createRandom(builderInd ->
+                                                builderInd.lastName(null))
+                                       )
+                                    )),
+                            new ValidationException(List.of(
+                                    "First name must be populated.",
+                                    "Last name must be populated."
+                            ))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                                    builder.individuals(List.of(
+                                                    individualFactory.createRandom(builderInd ->
+                                                            builderInd.firstName(null).lastName(null)),
+                                                    individualFactory.createRandom(builderInd ->
+                                                            builderInd.lastName(null).dateOfBirth(null))
+                                            )
+                                    )),
+                            new ValidationException(List.of(
+                                    "First name must be populated.",
+                                    "Last name must be populated.",
+                                    "Date of birth must be populated."
+                            ))
+                    )
+            );
+        }
+
+    private @NonNull ApplicationCreateRequest getApplicationCreateRequest() {
+      ProceedingDetails proceedingOne =
+          new ProceedingDetails(true, "321", CategoryOfLaw.Family, MatterType.SCA, false);
+      Map<String, Object> appContentMap = applicationContentFactory.createDefaultAsMap(
+          builder ->
+              builder.submittedAt(Instant.now())
+                  .autoGrant(false)
+                  .id("123")
+                  .proceedings(List.of(proceedingOne)).build()
       );
+      ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault();
+      applicationCreateRequest.setApplicationContent(appContentMap);
+      return applicationCreateRequest;
     }
 
     private void verifyThatApplicationSaved(ApplicationCreateRequest applicationCreateRequest, int timesCalled) {
@@ -495,783 +495,772 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
           .isEqualTo(actualDomainEvent);
       assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
 
-      Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
-      Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
-      assertThat(expectedData)
-          .usingRecursiveComparison()
-          .ignoringCollectionOrder()
-          .ignoringFields("createdDate")
-          .isEqualTo(actualData);
-      assertThat(actualData.get("createdDate")).isNotNull();
-    }
-  }
-
-  @Nested
-  @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-  class UpdateApplication {
-    @Test
-    void givenNoApplication_whenUpdateApplication_thenThrowResourceNotFoundException() {
-      // given
-      UUID applicationId = UUID.randomUUID();
-      when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
-
-      setSecurityContext(TestConstants.Roles.WRITER);
-
-      // when / then
-      assertThatExceptionOfType(ResourceNotFoundException.class)
-          .isThrownBy(() -> serviceUnderTest.updateApplication(applicationId, new ApplicationUpdateRequest()))
-          .withMessageContaining("No application found with id: " + applicationId);
-      verify(applicationRepository, times(1)).findById(applicationId);
-      verify(domainEventRepository, never()).save(any());
+            Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
+            Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
+            assertThat(expectedData)
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .ignoringFields("createdDate")
+                    .isEqualTo(actualData);
+            assertThat(actualData.get("createdDate")).isNotNull();
+        }
     }
 
-    @Test
-    void givenApplication_whenUpdateApplication_thenUpdateAndSave() throws JsonProcessingException {
-      // given
-      UUID applicationId = UUID.randomUUID();
-      ApplicationEntity expectedEntity = applicationEntityFactory.createDefault(builder ->
-          builder.id(applicationId)
-              .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
-      );
-      ApplicationEntity updatedEntity = expectedEntity.toBuilder()
-          .applicationContent(new HashMap<>(Map.of("test", "changed")))
-          .build();
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class UpdateApplication {
+        @Test
+        void givenNoApplication_whenUpdateApplication_thenThrowResourceNotFoundException() {
+            // given
+            UUID applicationId = UUID.randomUUID();
+            when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
 
-      ApplicationUpdateRequest updateRequest = applicationUpdateRequestFactory.createDefault();
-      when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
+            setSecurityContext(TestConstants.Roles.WRITER);
 
-      setSecurityContext(TestConstants.Roles.WRITER);
+            // when / then
+            assertThatExceptionOfType(ResourceNotFoundException.class)
+                    .isThrownBy(() -> serviceUnderTest.updateApplication(applicationId, new ApplicationUpdateRequest()))
+                    .withMessageContaining("No application found with id: " + applicationId);
+            verify(applicationRepository, times(1)).findById(applicationId);
+            verify(domainEventRepository, never()).save(any());
+        }
 
-      DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
-          .applicationId(applicationId)
-          .type(DomainEventType.APPLICATION_UPDATED)
-          .createdBy("")
-          .data(objectMapper.writeValueAsString(UpdateApplicationDomainEventDetails.builder()
-              .applicationId(applicationId)
-              .applicationStatus(ApplicationStatus.IN_PROGRESS.toString())
-              .applicationContent(updatedEntity.getApplicationContent().toString())
-              .build()))
-          .build();
+        @Test
+        void givenApplication_whenUpdateApplication_thenUpdateAndSave() throws JsonProcessingException {
+            // given
+            UUID applicationId = UUID.randomUUID();
+            ApplicationEntity expectedEntity = applicationEntityFactory.createDefault(builder ->
+                    builder.id(applicationId)
+                            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+            );
+            ApplicationEntity updatedEntity = expectedEntity.toBuilder()
+                    .applicationContent(new HashMap<>(Map.of("test", "changed")))
+                    .build();
 
-      // when
-      serviceUnderTest.updateApplication(applicationId, updateRequest);
+            ApplicationUpdateRequest updateRequest = applicationUpdateRequestFactory.createDefault();
+            when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
 
-      // then
-      verify(applicationRepository, times(1)).findById(applicationId);
-      verifyThatApplicationUpdated(updateRequest, 1);
-      verifyThatUpdateDomainEventSaved(expectedDomainEvent, 1);
-      assertThat(expectedEntity.getModifiedAt()).isNotNull();
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(applicationId)
+                    .type(DomainEventType.APPLICATION_UPDATED)
+                    .createdBy("")
+                    .data(objectMapper.writeValueAsString(UpdateApplicationDomainEventDetails.builder()
+                            .applicationId(applicationId)
+                            .applicationStatus(ApplicationStatus.IN_PROGRESS.toString())
+                            .applicationContent(updatedEntity.getApplicationContent().toString())
+                            .build()))
+                    .build();
+
+            // when
+            serviceUnderTest.updateApplication(applicationId, updateRequest);
+
+            // then
+            verify(applicationRepository, times(1)).findById(applicationId);
+            verifyThatApplicationUpdated(updateRequest, 1);
+            verifyThatUpdateDomainEventSaved(expectedDomainEvent, 1);
+            assertThat(expectedEntity.getModifiedAt()).isNotNull();
+        }
+
+        @ParameterizedTest
+        @MethodSource("invalidApplicationUpdateRequests")
+        void givenApplicationAndInvalidUpdateRequest_whenUpdateApplication_thenValidationExceptionWithCorrectMessage(
+                UUID applicationId,
+                ApplicationUpdateRequest applicationUpdateRequest,
+                ValidationException validationException
+        ) {
+            // given
+            ApplicationEntity expectedEntity = applicationEntityFactory.createDefault(builder ->
+                    builder.id(applicationId)
+                            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+            );
+            when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            // then
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.updateApplication(applicationId, applicationUpdateRequest));
+            assertThat(thrown)
+                    .isInstanceOf(ValidationException.class)
+                    .usingRecursiveComparison()
+                    .isEqualTo(validationException);
+            verify(applicationRepository, times(1)).findById(applicationId);
+            verify(applicationRepository, never()).save(any());
+            verify(domainEventRepository, never()).save(any());
+        }
+
+        @Test
+        public void givenApplicationUpdateAndNotRoleWriter_whenCreateApplication_thenThrowUnauthorizedException() {
+            // given
+            UUID applicationId = UUID.randomUUID();
+
+            setSecurityContext(TestConstants.Roles.READER);
+
+            // when
+            // then
+            assertThatExceptionOfType(AuthorizationDeniedException.class)
+                    .isThrownBy(() -> serviceUnderTest.updateApplication(applicationId, new ApplicationUpdateRequest()))
+                    .withMessageContaining("Access Denied");
+            verify(applicationRepository, never()).findById(applicationId);
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any());
+        }
+
+        @Test
+        public void givenApplicationUpdateAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
+            // given
+            UUID applicationId = UUID.randomUUID();
+
+            // when
+            // then
+            assertThatExceptionOfType(AuthorizationDeniedException.class)
+                    .isThrownBy(() -> serviceUnderTest.updateApplication(applicationId, new ApplicationUpdateRequest()))
+                    .withMessageContaining("Access Denied");
+            verify(applicationRepository, never()).findById(applicationId);
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any());
+        }
+
+        public final Stream<Arguments> invalidApplicationUpdateRequests() {
+            return Stream.of(
+                    Arguments.of(UUID.randomUUID(),
+                            applicationUpdateRequestFactory.createDefault(builder -> builder
+                                    .applicationContent(null)),
+                            new ValidationException(List.of(
+                                    "ApplicationUpdateRequest and its content cannot be null"
+                            ))
+                    ),
+                    Arguments.of(UUID.randomUUID(),
+                            applicationUpdateRequestFactory.createDefault(builder -> builder
+                                    .applicationContent(new HashMap<>())),
+                            new ValidationException(List.of(
+                                    "Application content cannot be empty"
+                            ))
+                    )
+            );
+        }
+
+        private void verifyThatApplicationUpdated(ApplicationUpdateRequest applicationUpdateRequest, int timesCalled) {
+            ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
+            verify(applicationRepository, times(timesCalled)).save(captor.capture());
+            ApplicationEntity actualApplicationEntity = captor.getValue();
+
+            assertThat(actualApplicationEntity.getStatus()).isEqualTo(applicationUpdateRequest.getStatus());
+            assertThat(actualApplicationEntity.getApplicationContent())
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .isEqualTo(applicationUpdateRequest.getApplicationContent());
+        }
+
+        private void verifyThatUpdateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled) throws JsonProcessingException {
+            ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
+            verify(domainEventRepository, times(timesCalled)).save(captor.capture());
+            DomainEventEntity actualDomainEvent = captor.getValue();
+            assertThat(expectedDomainEvent)
+                    .usingRecursiveComparison()
+                    .ignoringFields("createdAt", "data")
+                    .isEqualTo(actualDomainEvent);
+            assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
+
+            Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
+            Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
+            assertThat(expectedData)
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .ignoringFields("updatedDate")
+                    .isEqualTo(actualData);
+            assertThat(actualData.get("updatedDate")).isNotNull();
+        }
     }
 
-    @ParameterizedTest
-    @MethodSource("invalidApplicationUpdateRequests")
-    void givenApplicationAndInvalidUpdateRequest_whenUpdateApplication_thenValidationExceptionWithCorrectMessage(
-        UUID applicationId,
-        ApplicationUpdateRequest applicationUpdateRequest,
-        ValidationException validationException
-    ) {
-      // given
-      ApplicationEntity expectedEntity = applicationEntityFactory.createDefault(builder ->
-          builder.id(applicationId)
-              .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
-      );
-      when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class AssignCaseworker {
 
-      setSecurityContext(TestConstants.Roles.WRITER);
+        @ParameterizedTest
+        @MethodSource("validAssignEventDescriptionCases")
+        void givenCaseworkerAndApplications_whenAssignCaseworker_thenAssignAndSave(
+                String eventDescription
+        ) throws JsonProcessingException {
+            // given
+            UUID applicationId = UUID.randomUUID();
 
-      // when
-      // then
-      Throwable thrown = catchThrowable(() -> serviceUnderTest.updateApplication(applicationId, applicationUpdateRequest));
-      assertThat(thrown)
-          .isInstanceOf(ValidationException.class)
-          .usingRecursiveComparison()
-          .isEqualTo(validationException);
-      verify(applicationRepository, times(1)).findById(applicationId);
-      verify(applicationRepository, never()).save(any());
-      verify(domainEventRepository, never()).save(any());
+            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+
+            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+                    builder.id(applicationId).caseworker(null)
+            );
+
+            ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
+
+            EventHistory eventHistory = EventHistory.builder()
+                    .eventDescription(eventDescription)
+                    .build();
+
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(applicationId)
+                    .caseworkerId(expectedCaseworker.getId())
+                    .createdBy("")
+                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
+                    .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
+                            .applicationId(existingApplicationEntity.getId())
+                            .caseWorkerId(expectedCaseworker.getId())
+                            .eventDescription(eventHistory.getEventDescription())
+                            .createdBy("")
+                            .build()))
+                    .build();
+
+            List<UUID> applicationIds = List.of(applicationId);
+
+            when(applicationRepository.findAllById(eq(applicationIds))).thenReturn(List.of(existingApplicationEntity));
+            when(caseworkerRepository.findById(expectedCaseworker.getId()))
+                    .thenReturn(Optional.of(expectedCaseworker));
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), List.of(applicationId), eventHistory);
+
+            // then
+            verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
+            verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
+
+            verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
+            verifyThatDomainEventSaved(expectedDomainEvent, 1);
+        }
+
+        @Test
+        void givenNullCasworkerId_whenAsssignCaseworker_thenThrowNullPointerException() {
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(null, null, null));
+            assertThat(thrown)
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessage("caseworkerId is marked non-null but is null");
+
+            // then
+            verify(applicationRepository, never()).findAllById(any(Iterable.class));
+            verify(caseworkerRepository, never()).findById(any(UUID.class));
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        @Test
+        void givenNullApplicationIdInList_whenAsssignCaseworker_thenThrowValidationException() {
+            setSecurityContext(TestConstants.Roles.WRITER);
+            List<UUID> applicationIdsWithNull = Arrays.asList(UUID.randomUUID(), null, UUID.randomUUID());
+            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+            when(caseworkerRepository.findById(expectedCaseworker.getId()))
+                    .thenReturn(Optional.of(expectedCaseworker));
+
+            ValidationException expectedValidationException = new ValidationException(
+                    List.of("Request contains null values for ids")
+            );
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIdsWithNull, new EventHistory()));
+            assertThat(thrown)
+                    .isInstanceOf(ValidationException.class)
+                    .usingRecursiveComparison()
+                    .isEqualTo(expectedValidationException);
+
+            // then
+            verify(applicationRepository, never()).findAllById(any(Iterable.class));
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        @Test
+        void givenNonexistentCaseworker_whenAssignCaseworker_thenThrowResourceNotFoundException() {
+            UUID nonexistentCaseworkerId = UUID.randomUUID();
+
+            when(caseworkerRepository.findById(nonexistentCaseworkerId))
+                    .thenReturn(Optional.empty());
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(nonexistentCaseworkerId, List.of(UUID.randomUUID()), new EventHistory()));
+            assertThat(thrown)
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("No caseworker found with id: " + nonexistentCaseworkerId);
+
+            // then
+            verify(applicationRepository, never()).findAllById(any(Iterable.class));
+            verify(caseworkerRepository, times(1)).findById(nonexistentCaseworkerId);
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        @Test
+        void givenEmptyApplicationIds_whenAssignCaseworker_thenNoActionTaken() {
+
+            // given
+            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+            when(caseworkerRepository.findById(expectedCaseworker.getId()))
+                    .thenReturn(Optional.of(expectedCaseworker));
+
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            List<UUID> emptyApplicationIds = Collections.emptyList();
+
+            // when
+            serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), emptyApplicationIds, new EventHistory());
+
+            // then
+            verify(applicationRepository, times(1)).findAllById(emptyApplicationIds);
+            verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        @Test
+        void givenDuplicateApplicationIds_whenAssignCaseworker_thenOnlyDistinctIdsUsed() throws JsonProcessingException {
+            UUID existingApplicationId = UUID.randomUUID();
+            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+                    builder.id(existingApplicationId).caseworker(null)
+            );
+
+            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+
+            List<UUID> applicationIds = List.of(existingApplicationId, existingApplicationId, existingApplicationId);
+            List<UUID> distinctApplicationIds = Stream.of(existingApplicationId).toList();
+
+            ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
+
+            EventHistory eventHistory = EventHistory.builder()
+                    .eventDescription("Caseworker assigned.")
+                    .build();
+
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(expectedApplicationEntity.getId())
+                    .caseworkerId(expectedCaseworker.getId())
+                    .createdBy("")
+                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
+                    .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
+                            .applicationId(existingApplicationEntity.getId())
+                            .caseWorkerId(expectedCaseworker.getId())
+                            .eventDescription(eventHistory.getEventDescription())
+                            .createdBy("")
+                            .build()))
+                    .build();
+
+            when(applicationRepository.findAllById(eq(distinctApplicationIds))).thenReturn(List.of(existingApplicationEntity));
+            when(caseworkerRepository.findById(expectedCaseworker.getId()))
+                    .thenReturn(Optional.of(expectedCaseworker));
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds, eventHistory);
+
+            // then
+            verify(applicationRepository, times(1)).findAllById(eq(distinctApplicationIds));
+            verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
+
+            verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
+            verifyThatDomainEventSaved(expectedDomainEvent, 1);
+        }
+
+        @Test
+        void givenApplicationIsAlreadyAssignedToCaseworker_whenAssignCaseworker_thenNotUpdateApplication_andCreateDomainEvent() throws JsonProcessingException {
+
+            UUID existingApplicationId = UUID.randomUUID();
+            CaseworkerEntity existingCaseworker = caseworkerFactory.createDefault();
+            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+                    builder.id(existingApplicationId).caseworker(existingCaseworker)
+            );
+
+            List<UUID> applicationIds = List.of(existingApplicationId);
+
+            EventHistory eventHistory = EventHistory.builder()
+                    .eventDescription("Caseworker assigned.")
+                    .build();
+
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(existingApplicationEntity.getId())
+                    .caseworkerId(existingCaseworker.getId())
+                    .createdBy("")
+                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
+                    .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
+                            .applicationId(existingApplicationEntity.getId())
+                            .caseWorkerId(existingCaseworker.getId())
+                            .eventDescription(eventHistory.getEventDescription())
+                            .createdBy("")
+                            .build()))
+                    .build();
+
+            when(applicationRepository.findAllById(eq(applicationIds))).thenReturn(List.of(existingApplicationEntity));
+            when(caseworkerRepository.findById(existingCaseworker.getId()))
+                    .thenReturn(Optional.of(existingCaseworker));
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            serviceUnderTest.assignCaseworker(existingCaseworker.getId(), applicationIds, eventHistory);
+
+            // then
+            verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
+            verify(caseworkerRepository, times(1)).findById(existingCaseworker.getId());
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verifyThatDomainEventSaved(expectedDomainEvent, 1);
+        }
+
+        @Test
+        void givenMissingApplications_whenAssignCaseworker_thenThrowResourceNotFoundException() {
+            UUID existingApplicationId = UUID.randomUUID();
+            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+                    builder.id(existingApplicationId).caseworker(null)
+            );
+
+            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+
+            List<UUID> applicationIds = List.of(UUID.randomUUID(), existingApplicationId, UUID.randomUUID());
+
+            EventHistory eventHistory = EventHistory.builder()
+                    .eventDescription("Case assigned.")
+                    .build();
+
+            when(applicationRepository.findAllById(eq(applicationIds))).thenReturn(List.of(existingApplicationEntity));
+            when(caseworkerRepository.findById(expectedCaseworker.getId()))
+                    .thenReturn(Optional.of(expectedCaseworker));
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds, eventHistory));
+            assertThat(thrown)
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("No application found with ids: " + applicationIds.stream()
+                            .filter(id -> !id.equals(existingApplicationId))
+                            .map(UUID::toString)
+                            .collect(Collectors.joining(",")));
+
+            // then
+            verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
+            verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        @Test
+        void givenRoleReader_whenAssignCaseworker_thenThrowUnauthorizedException() {
+            // given
+            setSecurityContext(TestConstants.Roles.READER);
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(UUID.randomUUID(), List.of(UUID.randomUUID()), new EventHistory()));
+            assertThat(thrown)
+                    .isInstanceOf(AuthorizationDeniedException.class)
+                    .hasMessage("Access Denied");
+
+            // then
+            verify(applicationRepository, never()).findAllById(any(Iterable.class));
+            verify(caseworkerRepository, never()).findById(any(UUID.class));
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        @Test
+        void givenNoRole_whenAssignCaseworker_thenThrowUnauthorizedException() {
+            // given
+            // no security context set
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(UUID.randomUUID(), List.of(UUID.randomUUID()), new EventHistory()));
+            assertThat(thrown)
+                    .isInstanceOf(AuthorizationDeniedException.class)
+                    .hasMessage("Access Denied");
+
+            // then
+            verify(applicationRepository, never()).findAllById(any(Iterable.class));
+            verify(caseworkerRepository, never()).findById(any(UUID.class));
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        private Stream<Arguments> validAssignEventDescriptionCases() {
+            return Stream.of(
+                    Arguments.of("Assigned by system"),
+                    Arguments.of(""),
+                    Arguments.of((Object)null)
+            );
+        }
     }
 
-    @Test
-    public void givenApplicationUpdateAndNotRoleWriter_whenCreateApplication_thenThrowUnauthorizedException() {
-      // given
-      UUID applicationId = UUID.randomUUID();
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class UnassignCaseworker {
 
-      setSecurityContext(TestConstants.Roles.READER);
+        @ParameterizedTest
+        @MethodSource("validUnassignEventDescriptionCases")
+        void givenAssignedCaseworker_whenUnassignCaseworker_thenUnassignAndSave(
+                String eventDescription
+        ) throws JsonProcessingException {
+            // given
+            UUID applicationId = UUID.randomUUID();
 
-      // when
-      // then
-      assertThatExceptionOfType(AuthorizationDeniedException.class)
-          .isThrownBy(() -> serviceUnderTest.updateApplication(applicationId, new ApplicationUpdateRequest()))
-          .withMessageContaining("Access Denied");
-      verify(applicationRepository, never()).findById(applicationId);
-      verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-      verify(domainEventRepository, never()).save(any());
+            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+
+            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+                    builder.id(applicationId).caseworker(expectedCaseworker)
+            );
+
+            ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(null).build();
+
+            EventHistory eventHistory = EventHistory.builder()
+                    .eventDescription(eventDescription)
+                    .build();
+
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(applicationId)
+                    .caseworkerId(null)
+                    .createdBy("")
+                    .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
+                    .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
+                            .applicationId(existingApplicationEntity.getId())
+                            .caseWorkerId(null)
+                            .eventDescription(eventHistory.getEventDescription())
+                            .createdBy("")
+                            .build()))
+                    .build();
+
+            when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            serviceUnderTest.unassignCaseworker(applicationId, eventHistory);
+
+            // then
+            verify(applicationRepository, times(1)).findById(applicationId);
+
+            verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
+            verifyThatDomainEventSaved(expectedDomainEvent, 1);
+        }
+
+        @Test
+        void givenAlreadyUnassigned_whenUnassignCaseworker_thenNotSave() throws JsonProcessingException {
+            UUID applicationId = UUID.randomUUID();
+            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+                    builder.id(applicationId).caseworker(null)
+            );
+
+            EventHistory eventHistory = EventHistory.builder()
+                    .eventDescription("Unassigned")
+                    .build();
+
+            when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            serviceUnderTest.unassignCaseworker(applicationId, eventHistory);
+
+            // then
+            verify(applicationRepository, times(1)).findById(applicationId);
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        @ParameterizedTest
+        @MethodSource("invalidUnassignApplicationIdCases")
+        void givenNonexistentApplication_whenUnassignCaseworker_thenThrowResourceNotFoundException(
+                UUID applicationId
+        ) {
+
+            // given
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(applicationId, new EventHistory()));
+            assertThat(thrown)
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("No application found with id: " + applicationId);
+
+            // then
+            verify(applicationRepository, times(1)).findById(applicationId);
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        @Test
+        void givenRoleReader_whenUnassignCaseworker_thenThrowUnauthorizedException() {
+            // given
+            setSecurityContext(TestConstants.Roles.READER);
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistory()));
+            assertThat(thrown)
+                    .isInstanceOf(AuthorizationDeniedException.class)
+                    .hasMessage("Access Denied");
+
+            // then
+            verify(applicationRepository, never()).findAllById(any(Iterable.class));
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        @Test
+        void givenNoRole_whenUnassignCaseworker_thenThrowUnauthorizedException() {
+            // given
+            // no security context set
+
+            // when
+            Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistory()));
+            assertThat(thrown)
+                    .isInstanceOf(AuthorizationDeniedException.class)
+                    .hasMessage("Access Denied");
+
+            // then
+            verify(applicationRepository, never()).findAllById(any(Iterable.class));
+            verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        }
+
+        private Stream<Arguments> validUnassignEventDescriptionCases() {
+            return Stream.of(
+                    Arguments.of("Assigned by system"),
+                    Arguments.of(""),
+                    Arguments.of((Object)null)
+            );
+        }
+
+        private Stream<Arguments> invalidUnassignApplicationIdCases() {
+            return Stream.of(
+                    Arguments.of(UUID.randomUUID()),
+                    Arguments.of((UUID)null)
+            );
+        }
     }
 
-    @Test
-    public void givenApplicationUpdateAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
-      // given
-      UUID applicationId = UUID.randomUUID();
+    @Nested
+    class ReassignCaseworker {
 
-      // when
-      // then
-      assertThatExceptionOfType(AuthorizationDeniedException.class)
-          .isThrownBy(() -> serviceUnderTest.updateApplication(applicationId, new ApplicationUpdateRequest()))
-          .withMessageContaining("Access Denied");
-      verify(applicationRepository, never()).findById(applicationId);
-      verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-      verify(domainEventRepository, never()).save(any());
+        @Test
+        void givenApplicationWithCaseworker_whenReassignCaseworker_thenSaveAndCreateDomainEvent() throws JsonProcessingException {
+
+            // given
+            UUID applicationId = UUID.randomUUID();
+
+            CaseworkerEntity existingCaseworker = caseworkerFactory.createDefault(builder ->
+                    builder.id(UUID.randomUUID())
+                            .username("John Doe")
+            );
+
+            CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault(builder ->
+                    builder.id(UUID.randomUUID())
+                            .username("Jane Doe")
+            );
+
+            ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+                    builder.id(applicationId).caseworker(existingCaseworker)
+            );
+
+            ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
+
+            EventHistory eventHistory = EventHistory.builder()
+                    .eventDescription("Case reassigned.")
+                    .build();
+
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(applicationId)
+                    .caseworkerId(expectedCaseworker.getId())
+                    .createdBy("")
+                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
+                    .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
+                            .applicationId(existingApplicationEntity.getId())
+                            .caseWorkerId(expectedCaseworker.getId())
+                            .eventDescription(eventHistory.getEventDescription())
+                            .createdBy("")
+                            .build()))
+                    .build();
+
+            List<UUID> applicationIds = List.of(applicationId);
+
+            when(applicationRepository.findAllById(eq(applicationIds))).thenReturn(List.of(existingApplicationEntity));
+            when(caseworkerRepository.findById(expectedCaseworker.getId()))
+                    .thenReturn(Optional.of(expectedCaseworker));
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), List.of(applicationId), eventHistory);
+
+            // then
+            verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
+            verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
+
+            verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
+            verifyThatDomainEventSaved(expectedDomainEvent, 1);
+        }
     }
 
-    public final Stream<Arguments> invalidApplicationUpdateRequests() {
-      return Stream.of(
-          Arguments.of(UUID.randomUUID(),
-              applicationUpdateRequestFactory.createDefault(builder -> builder
-                  .applicationContent(null)),
-              new ValidationException(List.of(
-                  "ApplicationUpdateRequest and its content cannot be null"
-              ))
-          ),
-          Arguments.of(UUID.randomUUID(),
-              applicationUpdateRequestFactory.createDefault(builder -> builder
-                  .applicationContent(new HashMap<>())),
-              new ValidationException(List.of(
-                  "Application content cannot be empty"
-              ))
-          )
-      );
+    private void assertIndividualCollectionsEqual(List<Individual> expectedList, Set<IndividualEntity> actualList) {
+
+        assertThat(actualList).hasSameSizeAs(expectedList);
+
+        for (Individual expected : expectedList) {
+            boolean match = actualList.stream()
+                    .anyMatch(actual -> {
+                        try {
+                            assertIndividualEqual(expected, actual);
+                            return true;
+                        } catch (AssertionError e) {
+                            return false;
+                        }
+                    });
+            assertThat(match)
+                    .as("No matching IndividualEntity found for expected: " + expected)
+                    .isTrue();
+        }
     }
 
-    private void verifyThatApplicationUpdated(ApplicationUpdateRequest applicationUpdateRequest, int timesCalled) {
-      ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
-      verify(applicationRepository, times(timesCalled)).save(captor.capture());
-      ApplicationEntity actualApplicationEntity = captor.getValue();
-
-      assertThat(actualApplicationEntity.getStatus()).isEqualTo(applicationUpdateRequest.getStatus());
-      assertThat(actualApplicationEntity.getApplicationContent())
-          .usingRecursiveComparison()
-          .ignoringCollectionOrder()
-          .isEqualTo(applicationUpdateRequest.getApplicationContent());
+    private void assertIndividualEqual(Individual expected, IndividualEntity actual) {
+        assertThat(actual.getFirstName()).isEqualTo(expected.getFirstName());
+        assertThat(actual.getLastName()).isEqualTo(expected.getLastName());
+        assertThat(actual.getDateOfBirth()).isEqualTo(expected.getDateOfBirth());
+        assertThat(actual.getIndividualContent())
+                .usingRecursiveComparison()
+                .ignoringCollectionOrder()
+                .isEqualTo(expected.getDetails());
     }
 
-    private void verifyThatUpdateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled)
-        throws JsonProcessingException {
-      ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
-      verify(domainEventRepository, times(timesCalled)).save(captor.capture());
-      DomainEventEntity actualDomainEvent = captor.getValue();
-      assertThat(expectedDomainEvent)
-          .usingRecursiveComparison()
-          .ignoringFields("createdAt", "data")
-          .isEqualTo(actualDomainEvent);
-      assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
-
-      Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
-      Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
-      assertThat(expectedData)
-          .usingRecursiveComparison()
-          .ignoringCollectionOrder()
-          .ignoringFields("updatedDate")
-          .isEqualTo(actualData);
-      assertThat(actualData.get("updatedDate")).isNotNull();
-    }
-  }
-
-  @Nested
-  @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-  class AssignCaseworker {
-
-    @ParameterizedTest
-    @MethodSource("validAssignEventDescriptionCases")
-    void givenCaseworkerAndApplications_whenAssignCaseworker_thenAssignAndSave(
-        String eventDescription
-    ) throws JsonProcessingException {
-      // given
-      UUID applicationId = UUID.randomUUID();
-
-      CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
-
-      ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
-          builder.id(applicationId).caseworker(null)
-      );
-
-      ApplicationEntity expectedApplicationEntity =
-          existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
-
-      EventHistory eventHistory = EventHistory.builder()
-          .eventDescription(eventDescription)
-          .build();
-
-      DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
-          .applicationId(applicationId)
-          .caseworkerId(expectedCaseworker.getId())
-          .createdBy("")
-          .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
-          .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
-              .applicationId(existingApplicationEntity.getId())
-              .caseWorkerId(expectedCaseworker.getId())
-              .eventDescription(eventHistory.getEventDescription())
-              .createdBy("")
-              .build()))
-          .build();
-
-      List<UUID> applicationIds = List.of(applicationId);
-
-      when(applicationRepository.findAllById(eq(applicationIds))).thenReturn(List.of(existingApplicationEntity));
-      when(caseworkerRepository.findById(expectedCaseworker.getId()))
-          .thenReturn(Optional.of(expectedCaseworker));
-
-      setSecurityContext(TestConstants.Roles.WRITER);
-
-      // when
-      serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), List.of(applicationId), eventHistory);
-
-      // then
-      verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
-      verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
-
-      verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
-      verifyThatDomainEventSaved(expectedDomainEvent, 1);
+    private void verifyThatApplicationEntitySaved(ApplicationEntity expectedApplicationEntity, int timesCalled) {
+        ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
+        verify(applicationRepository, times(timesCalled)).save(captor.capture());
+        ApplicationEntity actualApplicationEntity = captor.getValue();
+        assertThat(expectedApplicationEntity)
+                .usingRecursiveComparison()
+                .ignoringCollectionOrder()
+                .ignoringFields("createdAt", "modifiedAt")
+                .isEqualTo(actualApplicationEntity);
+        assertThat(actualApplicationEntity.getCreatedAt()).isNotNull();
+        assertThat(actualApplicationEntity.getModifiedAt()).isNotNull();
     }
 
-    @Test
-    void givenNullCasworkerId_whenAsssignCaseworker_thenThrowNullPointerException() {
-      setSecurityContext(TestConstants.Roles.WRITER);
+    private void verifyThatDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled) throws JsonProcessingException {
+        ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
+        verify(domainEventRepository, times(timesCalled)).save(captor.capture());
+        DomainEventEntity actualDomainEvent = captor.getValue();
+        assertThat(expectedDomainEvent)
+                .usingRecursiveComparison()
+                .ignoringFields("createdAt", "data")
+                .isEqualTo(actualDomainEvent);
+        assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
 
-      // when
-      Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(null, null, null));
-      assertThat(thrown)
-          .isInstanceOf(NullPointerException.class)
-          .hasMessage("caseworkerId is marked non-null but is null");
-
-      // then
-      verify(applicationRepository, never()).findAllById(any(Iterable.class));
-      verify(caseworkerRepository, never()).findById(any(UUID.class));
-      verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-      verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+        Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
+        Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
+        assertThat(expectedData)
+                .usingRecursiveComparison()
+                .ignoringCollectionOrder()
+                .ignoringFields("createdAt")
+                .isEqualTo(actualData);
+        assertThat(actualData.get("createdAt")).isNotNull();
     }
-
-    @Test
-    void givenNullApplicationIdInList_whenAsssignCaseworker_thenThrowValidationException() {
-      setSecurityContext(TestConstants.Roles.WRITER);
-      List<UUID> applicationIdsWithNull = Arrays.asList(UUID.randomUUID(), null, UUID.randomUUID());
-      CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
-      when(caseworkerRepository.findById(expectedCaseworker.getId()))
-          .thenReturn(Optional.of(expectedCaseworker));
-
-      ValidationException expectedValidationException = new ValidationException(
-          List.of("Request contains null values for ids")
-      );
-
-      // when
-      Throwable thrown = catchThrowable(
-          () -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIdsWithNull, new EventHistory()));
-      assertThat(thrown)
-          .isInstanceOf(ValidationException.class)
-          .usingRecursiveComparison()
-          .isEqualTo(expectedValidationException);
-
-      // then
-      verify(applicationRepository, never()).findAllById(any(Iterable.class));
-      verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-      verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    }
-
-    @Test
-    void givenNonexistentCaseworker_whenAssignCaseworker_thenThrowResourceNotFoundException() {
-      UUID nonexistentCaseworkerId = UUID.randomUUID();
-
-      when(caseworkerRepository.findById(nonexistentCaseworkerId))
-          .thenReturn(Optional.empty());
-
-      setSecurityContext(TestConstants.Roles.WRITER);
-
-      // when
-      Throwable thrown = catchThrowable(
-          () -> serviceUnderTest.assignCaseworker(nonexistentCaseworkerId, List.of(UUID.randomUUID()), new EventHistory()));
-      assertThat(thrown)
-          .isInstanceOf(ResourceNotFoundException.class)
-          .hasMessage("No caseworker found with id: " + nonexistentCaseworkerId);
-
-      // then
-      verify(applicationRepository, never()).findAllById(any(Iterable.class));
-      verify(caseworkerRepository, times(1)).findById(nonexistentCaseworkerId);
-      verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-      verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    }
-
-    @Test
-    void givenEmptyApplicationIds_whenAssignCaseworker_thenNoActionTaken() {
-
-      // given
-      CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
-      when(caseworkerRepository.findById(expectedCaseworker.getId()))
-          .thenReturn(Optional.of(expectedCaseworker));
-
-
-      setSecurityContext(TestConstants.Roles.WRITER);
-
-      List<UUID> emptyApplicationIds = Collections.emptyList();
-
-      // when
-      serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), emptyApplicationIds, new EventHistory());
-
-      // then
-      verify(applicationRepository, times(1)).findAllById(emptyApplicationIds);
-      verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
-      verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-      verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    }
-
-    @Test
-    void givenDuplicateApplicationIds_whenAssignCaseworker_thenOnlyDistinctIdsUsed() throws JsonProcessingException {
-      UUID existingApplicationId = UUID.randomUUID();
-      ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
-          builder.id(existingApplicationId).caseworker(null)
-      );
-
-      CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
-
-      List<UUID> applicationIds = List.of(existingApplicationId, existingApplicationId, existingApplicationId);
-      List<UUID> distinctApplicationIds = Stream.of(existingApplicationId).toList();
-
-      ApplicationEntity expectedApplicationEntity =
-          existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
-
-      EventHistory eventHistory = EventHistory.builder()
-          .eventDescription("Caseworker assigned.")
-          .build();
-
-      DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
-          .applicationId(expectedApplicationEntity.getId())
-          .caseworkerId(expectedCaseworker.getId())
-          .createdBy("")
-          .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
-          .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
-              .applicationId(existingApplicationEntity.getId())
-              .caseWorkerId(expectedCaseworker.getId())
-              .eventDescription(eventHistory.getEventDescription())
-              .createdBy("")
-              .build()))
-          .build();
-
-      when(applicationRepository.findAllById(eq(distinctApplicationIds))).thenReturn(List.of(existingApplicationEntity));
-      when(caseworkerRepository.findById(expectedCaseworker.getId()))
-          .thenReturn(Optional.of(expectedCaseworker));
-
-      setSecurityContext(TestConstants.Roles.WRITER);
-
-      // when
-      serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds, eventHistory);
-
-      // then
-      verify(applicationRepository, times(1)).findAllById(eq(distinctApplicationIds));
-      verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
-
-      verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
-      verifyThatDomainEventSaved(expectedDomainEvent, 1);
-    }
-
-    @Test
-    void givenApplicationIsAlreadyAssignedToCaseworker_whenAssignCaseworker_thenNotUpdateApplication_andCreateDomainEvent()
-        throws JsonProcessingException {
-
-      UUID existingApplicationId = UUID.randomUUID();
-      CaseworkerEntity existingCaseworker = caseworkerFactory.createDefault();
-      ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
-          builder.id(existingApplicationId).caseworker(existingCaseworker)
-      );
-
-      List<UUID> applicationIds = List.of(existingApplicationId);
-
-      EventHistory eventHistory = EventHistory.builder()
-          .eventDescription("Caseworker assigned.")
-          .build();
-
-      DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
-          .applicationId(existingApplicationEntity.getId())
-          .caseworkerId(existingCaseworker.getId())
-          .createdBy("")
-          .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
-          .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
-              .applicationId(existingApplicationEntity.getId())
-              .caseWorkerId(existingCaseworker.getId())
-              .eventDescription(eventHistory.getEventDescription())
-              .createdBy("")
-              .build()))
-          .build();
-
-      when(applicationRepository.findAllById(eq(applicationIds))).thenReturn(List.of(existingApplicationEntity));
-      when(caseworkerRepository.findById(existingCaseworker.getId()))
-          .thenReturn(Optional.of(existingCaseworker));
-
-      setSecurityContext(TestConstants.Roles.WRITER);
-
-      // when
-      serviceUnderTest.assignCaseworker(existingCaseworker.getId(), applicationIds, eventHistory);
-
-      // then
-      verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
-      verify(caseworkerRepository, times(1)).findById(existingCaseworker.getId());
-      verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-      verifyThatDomainEventSaved(expectedDomainEvent, 1);
-    }
-
-    @Test
-    void givenMissingApplications_whenAssignCaseworker_thenThrowResourceNotFoundException() {
-      UUID existingApplicationId = UUID.randomUUID();
-      ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
-          builder.id(existingApplicationId).caseworker(null)
-      );
-
-      CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
-
-      List<UUID> applicationIds = List.of(UUID.randomUUID(), existingApplicationId, UUID.randomUUID());
-
-      EventHistory eventHistory = EventHistory.builder()
-          .eventDescription("Case assigned.")
-          .build();
-
-      when(applicationRepository.findAllById(eq(applicationIds))).thenReturn(List.of(existingApplicationEntity));
-      when(caseworkerRepository.findById(expectedCaseworker.getId()))
-          .thenReturn(Optional.of(expectedCaseworker));
-
-      setSecurityContext(TestConstants.Roles.WRITER);
-
-      // when
-      Throwable thrown =
-          catchThrowable(() -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds, eventHistory));
-      assertThat(thrown)
-          .isInstanceOf(ResourceNotFoundException.class)
-          .hasMessage("No application found with ids: " + applicationIds.stream()
-              .filter(id -> !id.equals(existingApplicationId))
-              .map(UUID::toString)
-              .collect(Collectors.joining(",")));
-
-      // then
-      verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
-      verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
-      verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-      verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    }
-
-    @Test
-    void givenRoleReader_whenAssignCaseworker_thenThrowUnauthorizedException() {
-      // given
-      setSecurityContext(TestConstants.Roles.READER);
-
-      // when
-      Throwable thrown = catchThrowable(
-          () -> serviceUnderTest.assignCaseworker(UUID.randomUUID(), List.of(UUID.randomUUID()), new EventHistory()));
-      assertThat(thrown)
-          .isInstanceOf(AuthorizationDeniedException.class)
-          .hasMessage("Access Denied");
-
-      // then
-      verify(applicationRepository, never()).findAllById(any(Iterable.class));
-      verify(caseworkerRepository, never()).findById(any(UUID.class));
-      verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-      verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    }
-
-    @Test
-    void givenNoRole_whenAssignCaseworker_thenThrowUnauthorizedException() {
-      // given
-      // no security context set
-
-      // when
-      Throwable thrown = catchThrowable(
-          () -> serviceUnderTest.assignCaseworker(UUID.randomUUID(), List.of(UUID.randomUUID()), new EventHistory()));
-      assertThat(thrown)
-          .isInstanceOf(AuthorizationDeniedException.class)
-          .hasMessage("Access Denied");
-
-      // then
-      verify(applicationRepository, never()).findAllById(any(Iterable.class));
-      verify(caseworkerRepository, never()).findById(any(UUID.class));
-      verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-      verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    }
-
-    private Stream<Arguments> validAssignEventDescriptionCases() {
-      return Stream.of(
-          Arguments.of("Assigned by system"),
-          Arguments.of(""),
-          Arguments.of((Object) null)
-      );
-    }
-  }
-
-  @Nested
-  @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-  class UnassignCaseworker {
-
-    @ParameterizedTest
-    @MethodSource("validUnassignEventDescriptionCases")
-    void givenAssignedCaseworker_whenUnassignCaseworker_thenUnassignAndSave(
-        String eventDescription
-    ) throws JsonProcessingException {
-      // given
-      UUID applicationId = UUID.randomUUID();
-
-      CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
-
-      ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
-          builder.id(applicationId).caseworker(expectedCaseworker)
-      );
-
-      ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(null).build();
-
-      EventHistory eventHistory = EventHistory.builder()
-          .eventDescription(eventDescription)
-          .build();
-
-      DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
-          .applicationId(applicationId)
-          .caseworkerId(null)
-          .createdBy("")
-          .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
-          .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
-              .applicationId(existingApplicationEntity.getId())
-              .caseWorkerId(null)
-              .eventDescription(eventHistory.getEventDescription())
-              .createdBy("")
-              .build()))
-          .build();
-
-      when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
-
-      setSecurityContext(TestConstants.Roles.WRITER);
-
-      // when
-      serviceUnderTest.unassignCaseworker(applicationId, eventHistory);
-
-      // then
-      verify(applicationRepository, times(1)).findById(applicationId);
-
-      verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
-      verifyThatDomainEventSaved(expectedDomainEvent, 1);
-    }
-
-    @Test
-    void givenAlreadyUnassigned_whenUnassignCaseworker_thenNotSave() throws JsonProcessingException {
-      UUID applicationId = UUID.randomUUID();
-      ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
-          builder.id(applicationId).caseworker(null)
-      );
-
-      EventHistory eventHistory = EventHistory.builder()
-          .eventDescription("Unassigned")
-          .build();
-
-      when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
-
-      setSecurityContext(TestConstants.Roles.WRITER);
-
-      // when
-      serviceUnderTest.unassignCaseworker(applicationId, eventHistory);
-
-      // then
-      verify(applicationRepository, times(1)).findById(applicationId);
-      verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-      verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    }
-
-    @ParameterizedTest
-    @MethodSource("invalidUnassignApplicationIdCases")
-    void givenNonexistentApplication_whenUnassignCaseworker_thenThrowResourceNotFoundException(
-        UUID applicationId
-    ) {
-
-      // given
-      setSecurityContext(TestConstants.Roles.WRITER);
-
-      // when
-      Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(applicationId, new EventHistory()));
-      assertThat(thrown)
-          .isInstanceOf(ResourceNotFoundException.class)
-          .hasMessage("No application found with id: " + applicationId);
-
-      // then
-      verify(applicationRepository, times(1)).findById(applicationId);
-      verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-      verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    }
-
-    @Test
-    void givenRoleReader_whenUnassignCaseworker_thenThrowUnauthorizedException() {
-      // given
-      setSecurityContext(TestConstants.Roles.READER);
-
-      // when
-      Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistory()));
-      assertThat(thrown)
-          .isInstanceOf(AuthorizationDeniedException.class)
-          .hasMessage("Access Denied");
-
-      // then
-      verify(applicationRepository, never()).findAllById(any(Iterable.class));
-      verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-      verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    }
-
-    @Test
-    void givenNoRole_whenUnassignCaseworker_thenThrowUnauthorizedException() {
-      // given
-      // no security context set
-
-      // when
-      Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistory()));
-      assertThat(thrown)
-          .isInstanceOf(AuthorizationDeniedException.class)
-          .hasMessage("Access Denied");
-
-      // then
-      verify(applicationRepository, never()).findAllById(any(Iterable.class));
-      verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-      verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    }
-
-    private Stream<Arguments> validUnassignEventDescriptionCases() {
-      return Stream.of(
-          Arguments.of("Assigned by system"),
-          Arguments.of(""),
-          Arguments.of((Object) null)
-      );
-    }
-
-    private Stream<Arguments> invalidUnassignApplicationIdCases() {
-      return Stream.of(
-          Arguments.of(UUID.randomUUID()),
-          Arguments.of((UUID) null)
-      );
-    }
-  }
-
-  @Nested
-  class ReassignCaseworker {
-
-    @Test
-    void givenApplicationWithCaseworker_whenReassignCaseworker_thenSaveAndCreateDomainEvent() throws JsonProcessingException {
-
-      // given
-      UUID applicationId = UUID.randomUUID();
-
-      CaseworkerEntity existingCaseworker = caseworkerFactory.createDefault(builder ->
-          builder.id(UUID.randomUUID())
-              .username("John Doe")
-      );
-
-      CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault(builder ->
-          builder.id(UUID.randomUUID())
-              .username("Jane Doe")
-      );
-
-      ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
-          builder.id(applicationId).caseworker(existingCaseworker)
-      );
-
-      ApplicationEntity expectedApplicationEntity =
-          existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
-
-      EventHistory eventHistory = EventHistory.builder()
-          .eventDescription("Case reassigned.")
-          .build();
-
-      DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
-          .applicationId(applicationId)
-          .caseworkerId(expectedCaseworker.getId())
-          .createdBy("")
-          .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
-          .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
-              .applicationId(existingApplicationEntity.getId())
-              .caseWorkerId(expectedCaseworker.getId())
-              .eventDescription(eventHistory.getEventDescription())
-              .createdBy("")
-              .build()))
-          .build();
-
-      List<UUID> applicationIds = List.of(applicationId);
-
-      when(applicationRepository.findAllById(eq(applicationIds))).thenReturn(List.of(existingApplicationEntity));
-      when(caseworkerRepository.findById(expectedCaseworker.getId()))
-          .thenReturn(Optional.of(expectedCaseworker));
-
-      setSecurityContext(TestConstants.Roles.WRITER);
-
-      // when
-      serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), List.of(applicationId), eventHistory);
-
-      // then
-      verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
-      verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
-
-      verifyThatApplicationEntitySaved(expectedApplicationEntity, 1);
-      verifyThatDomainEventSaved(expectedDomainEvent, 1);
-    }
-  }
-
-  private void assertIndividualCollectionsEqual(List<Individual> expectedList, Set<IndividualEntity> actualList) {
-
-    assertThat(actualList).hasSameSizeAs(expectedList);
-
-    for (Individual expected : expectedList) {
-      boolean match = actualList.stream()
-          .anyMatch(actual -> {
-            try {
-              assertIndividualEqual(expected, actual);
-              return true;
-            } catch (AssertionError e) {
-              return false;
-            }
-          });
-      assertThat(match)
-          .as("No matching IndividualEntity found for expected: " + expected)
-          .isTrue();
-    }
-  }
-
-  private void assertIndividualEqual(Individual expected, IndividualEntity actual) {
-    assertThat(actual.getFirstName()).isEqualTo(expected.getFirstName());
-    assertThat(actual.getLastName()).isEqualTo(expected.getLastName());
-    assertThat(actual.getDateOfBirth()).isEqualTo(expected.getDateOfBirth());
-    assertThat(actual.getIndividualContent())
-        .usingRecursiveComparison()
-        .ignoringCollectionOrder()
-        .isEqualTo(expected.getDetails());
-  }
-
-  private void verifyThatApplicationEntitySaved(ApplicationEntity expectedApplicationEntity, int timesCalled) {
-    ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
-    verify(applicationRepository, times(timesCalled)).save(captor.capture());
-    ApplicationEntity actualApplicationEntity = captor.getValue();
-    assertThat(expectedApplicationEntity)
-        .usingRecursiveComparison()
-        .ignoringCollectionOrder()
-        .ignoringFields("createdAt", "modifiedAt")
-        .isEqualTo(actualApplicationEntity);
-    assertThat(actualApplicationEntity.getCreatedAt()).isNotNull();
-    assertThat(actualApplicationEntity.getModifiedAt()).isNotNull();
-  }
-
-  private void verifyThatDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled)
-      throws JsonProcessingException {
-    ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
-    verify(domainEventRepository, times(timesCalled)).save(captor.capture());
-    DomainEventEntity actualDomainEvent = captor.getValue();
-    assertThat(expectedDomainEvent)
-        .usingRecursiveComparison()
-        .ignoringFields("createdAt", "data")
-        .isEqualTo(actualDomainEvent);
-    assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
-
-    Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
-    Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
-    assertThat(expectedData)
-        .usingRecursiveComparison()
-        .ignoringCollectionOrder()
-        .ignoringFields("createdAt")
-        .isEqualTo(actualData);
-    assertThat(actualData.get("createdAt")).isNotNull();
-  }
 
 }

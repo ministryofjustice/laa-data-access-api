@@ -11,11 +11,12 @@ import uk.gov.justice.laa.dstew.access.enums.MatterType;
  * Record represents details of a proceeding.
  */
 @Builder
-public record ProceedingDetails(boolean leadProceeding,
-                                String id,
-                                @JsonDeserialize(using = CategoryOfLawTypeDeserializer.class)
-                         CategoryOfLaw categoryOfLaw,
-                                @JsonDeserialize(using = MatterTypeDeserializer.class)
-                         MatterType matterType,
-                                Boolean useDelegatedFunctions) {
+public record ProceedingDetails(
+    boolean leadProceeding,
+    String id,
+    @JsonDeserialize(using = CategoryOfLawTypeDeserializer.class)
+    CategoryOfLaw categoryOfLaw,
+    @JsonDeserialize(using = MatterTypeDeserializer.class)
+    MatterType matterType,
+    Boolean useDelegatedFunctions) {
 }
