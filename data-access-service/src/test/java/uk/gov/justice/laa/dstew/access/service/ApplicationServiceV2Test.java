@@ -138,7 +138,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .type(DomainEventType.APPLICATION_CREATED)
                     .data(objectMapper.writeValueAsString(CreateApplicationDomainEventDetails.builder()
                             .applicationId(expectedId)
-                            .applicationStatus(ApplicationStatus.IN_PROGRESS.toString())
+                            .applicationStatus(Status.IN_PROGRESS.toString())
                             .applicationContent(withExpectedId.getApplicationContent().toString())
                             .build()))
                     .build();
@@ -560,7 +560,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .createdBy("")
                     .data(objectMapper.writeValueAsString(UpdateApplicationDomainEventDetails.builder()
                             .applicationId(applicationId)
-                            .applicationStatus(ApplicationStatus.IN_PROGRESS.toString())
+                            .applicationStatus(Status.IN_PROGRESS.toString())
                             .applicationContent(updatedEntity.getApplicationContent().toString())
                             .build()))
                     .build();

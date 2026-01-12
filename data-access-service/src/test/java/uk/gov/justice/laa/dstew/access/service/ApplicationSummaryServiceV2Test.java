@@ -194,8 +194,7 @@ public class ApplicationSummaryServiceV2Test extends BaseServiceTest {
             assertThat(expected.getId()).isEqualTo(actual.getApplicationId());
             assertThat(expected.getLaaReference()).isEqualTo(actual.getLaaReference());
             assertThat(expected.getStatus()).isEqualTo(actual.getApplicationStatus());
-            assertThat(expected.getCreatedAt().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(actual.getCreatedAt().toInstant().truncatedTo(ChronoUnit.SECONDS));
-            assertThat(expected.getModifiedAt().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(actual.getModifiedAt().toInstant().truncatedTo(ChronoUnit.SECONDS));
+            assertThat(expected.getModifiedAt().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(actual.getLastUpdated().toInstant().truncatedTo(ChronoUnit.SECONDS));
             if (expected.getCaseworker() != null) {
                 assertThat(expected.getCaseworker().getId()).isEqualTo(actual.getAssignedTo());
             }
