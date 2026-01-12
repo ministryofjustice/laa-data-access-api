@@ -224,4 +224,24 @@ public class ApplicationSummarySpecificationTest {
 
         assertThat(result).isNotNull();
     }
+
+    @Test
+    void givenClientDateOfBirth_whenToPredicate_thenReturnsPredicate() {
+        LocalDate clientDOB = LocalDate.of(2026, 01, 12);
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(null, null, null, null, clientDOB, null);
+
+        Predicate summaryPredicate = mock(Predicate.class);
+
+        when(
+                root.join(eq("individuals"), eq(JoinType.INNER))
+        ).thenReturn(mock());
+
+        when(root.get("dateOfBirth"))
+                .thenReturn(mock(jakarta.persistence.criteria.Path.class));
+        when(builder.equal(any(), eq(clientDOB))).thenReturn(summaryPredicate);
+
+        Predicate result = spec.toPredicate(root, query, builder);
+        assertThat(result).isNotNull();
+    }
 }
