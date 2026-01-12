@@ -28,7 +28,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactor
 
 import java.util.stream.Stream;
 
-@SpringBootTest(properties = {"feature.disable-jpa-auditing=true"})
+@SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=false"})
 @ImportAutoConfiguration(exclude = {
         DataSourceAutoConfiguration.class,
         HibernateJpaAutoConfiguration.class,
