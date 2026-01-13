@@ -278,8 +278,10 @@ components:
       properties:
         firstName:
           type: string
+          minLength: 1
         lastName:
           type: string
+          minLength: 1
         dateOfBirth:
           type: string
           format: date
@@ -322,6 +324,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Individual"
+          minItems: 1
         caseworkerId:
           type: string
           format: uuid
@@ -339,8 +342,10 @@ components:
         applicationContent:
           type: object
           additionalProperties: true
+          minProperties: 1
         laaReference:
           type: string
+          minLength: 1
         individuals:
           type: array
           minItems: 1
@@ -358,6 +363,7 @@ components:
           type: object
           description: Application data to update
           additionalProperties: true
+          minProperties: 1
 
     ApplicationSummary:
       type: object

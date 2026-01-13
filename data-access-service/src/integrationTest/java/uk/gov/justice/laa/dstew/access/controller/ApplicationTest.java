@@ -177,14 +177,16 @@ public class ApplicationTest extends BaseIntegrationTest {
         @ParameterizedTest
         @MethodSource("applicationCreateRequestInvalidDataCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenInvalidApplicationRequestData_whenCreateApplication_thenReturnBadRequest(
+        public void givenNullApplicationRequestData_whenCreateApplication_thenReturnBadRequest(
                 ApplicationCreateRequest request,
-                ProblemDetail expectedDetail) throws Exception {
+                ProblemDetail expectedDetail,
+                Map<String, Object> problemDetailProperties) throws Exception {
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
             ProblemDetail detail = deserialise(result, ProblemDetail.class);
 
             // then
+          expectedDetail.setProperties(problemDetailProperties);
             assertSecurityHeaders(result);
             assertProblemRecord(HttpStatus.BAD_REQUEST, expectedDetail, result, detail);
             assertEquals(0, applicationRepository.count());
@@ -192,25 +194,55 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenInvalidApplicationContent_whenCreateApplication_thenReturnBadRequest() throws Exception {
+        public void givenInvalidApplicationContent_EmptyMap_whenCreateApplication_thenReturnBadRequest() throws Exception {
             ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder -> {
-                builder.applicationContent(null);
+                builder.applicationContent(new HashMap<>());
             });
 
             ValidationException expectedValidationException = ValidationExceptionBuilder
                     .create()
                     .errors(List.of("Application content cannot be empty"))
                     .build();
+            Map<String, String> invalidFields = new HashMap<>();
+            invalidFields.put("applicationContent", "size must be between 1 and " + Integer.MAX_VALUE);
 
+            ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
+            expectedProblemDetail.setProperty("invalidFields", invalidFields);
             // when
             MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
-            ValidationException validationException = deserialise(result, ValidationException.class);
+            ProblemDetail validationException = deserialise(result, ProblemDetail.class);
 
             // then
             assertSecurityHeaders(result);
-            assertValidationException(HttpStatus.BAD_REQUEST, expectedValidationException.errors(), result, validationException);
+            assertProblemRecord(HttpStatus.BAD_REQUEST, expectedProblemDetail, result, validationException);
             assertEquals(0, applicationRepository.count());
         }
+
+      @Test
+      @WithMockUser(authorities = TestConstants.Roles.WRITER)
+      public void givenInvalidApplicationContent_whenCreateApplication_thenReturnBadRequest() throws Exception {
+        ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder -> {
+          builder.applicationContent(null);
+        });
+
+        ValidationException expectedValidationException = ValidationExceptionBuilder
+            .create()
+            .errors(List.of("Application content cannot be empty"))
+            .build();
+        Map<String, String> invalidFields = new HashMap<>();
+        invalidFields.put("applicationContent", "size must be between 1 and " + Integer.MAX_VALUE);
+
+        ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
+        expectedProblemDetail.setProperty("invalidFields", invalidFields);
+        // when
+        MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
+        ProblemDetail validationException = deserialise(result, ProblemDetail.class);
+
+        // then
+        assertSecurityHeaders(result);
+        assertProblemRecord(HttpStatus.BAD_REQUEST, expectedProblemDetail, result, validationException);
+        assertEquals(0, applicationRepository.count());
+      }
 
         @ParameterizedTest
         @ValueSource(strings = {"", "{}"})
@@ -222,7 +254,8 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             // then
             assertSecurityHeaders(result);
-            assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request", "Invalid data type for field 'unknown'. Expected: ApplicationCreateRequest.", result, detail);
+            assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request", "Invalid data type for field 'unknown'. Expected: ApplicationCreateRequest.", result, detail,
+                null);
             assertEquals(0, applicationRepository.count());
         }
 
@@ -264,14 +297,35 @@ public class ApplicationTest extends BaseIntegrationTest {
             return Stream.of(
                     Arguments.of(applicationCreateRequestFactory.create(builder -> {
                                 builder.status(null);
-                            }), problemDetail
+                            }),
+                        problemDetail, Map.of("invalidFields", Map.of("status", "must not be null"))
                     ),
                     Arguments.of(applicationCreateRequestFactory.create(builder -> {
                                 builder.laaReference(null);
-                            }), problemDetail
-                    )
+                            }),
+                        problemDetail, Map.of("invalidFields", Map.of("laaReference", "must not be null"))
+                    ),
+                    Arguments.of(applicationCreateRequestFactory.create(builder -> {
+                      builder.individuals(null);
+                            }),
+                        problemDetail,  Map.of("invalidFields", Map.of("individuals", "size must be between 1 and 2147483647"))),
+                    Arguments.of(applicationCreateRequestFactory.create(builder -> {
+                      builder.individuals(List.of());}),
+                        problemDetail,
+                        Map.of("invalidFields", Map.of("individuals",
+                            "size must be between 1 and " + Integer.MAX_VALUE))),
+                    Arguments.of(applicationCreateRequestFactory.create(builder ->
+                        builder.individuals(List.of(
+                            individualFactory.create(
+                                individualBuilder -> individualBuilder.firstName("")))
+                        )
+                    ), problemDetail,
+                        Map.of("invalidFields", Map.of("individuals[0].firstName",
+                            "size must be between 1 and " + Integer.MAX_VALUE)))
             );
         }
+
+
 
         private void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual) {
             assertNotNull(actual.getId());
@@ -944,7 +998,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                     });
 
             CaseworkerAssignRequest caseworkerReassignRequest = caseworkerAssignRequestFactory.create(builder -> {
-                
+
                 builder.caseworkerId(BaseIntegrationTest.CaseworkerJaneDoe.getId())
                         .applicationIds(expectedReassignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()))
                         .eventHistory(EventHistory.builder()
@@ -1184,10 +1238,10 @@ public class ApplicationTest extends BaseIntegrationTest {
         ) throws Exception {
             // given
             persistedApplicationFactory.createAndPersistMultiple(3, builder ->
-                    builder.individuals(Set.of(individualFactory.create(i -> i.firstName("John")))));
+                    builder.individuals(Set.of(individualEntityFactory.create(i -> i.firstName("John")))));
 
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory.createAndPersistMultiple(expectedCount, builder ->
-                            builder.individuals(Set.of(individualFactory.create(i -> i.firstName(persistedFirstName)))))
+                            builder.individuals(Set.of(individualEntityFactory.create(i -> i.firstName(persistedFirstName)))))
                     .stream()
                     .map(this::createApplicationSummary)
                     .toList();
@@ -1212,11 +1266,11 @@ public class ApplicationTest extends BaseIntegrationTest {
             // given
             persistedApplicationFactory.createAndPersistMultiple(8, builder ->
                     builder.status(ApplicationStatus.IN_PROGRESS)
-                            .individuals(Set.of(individualFactory.create(i -> i.firstName("Jane")))));
+                            .individuals(Set.of(individualEntityFactory.create(i -> i.firstName("Jane")))));
 
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory.createAndPersistMultiple(7, builder ->
                             builder.status(ApplicationStatus.SUBMITTED)
-                                    .individuals(Set.of(individualFactory.create(i -> i.firstName("Jane")))))
+                                    .individuals(Set.of(individualEntityFactory.create(i -> i.firstName("Jane")))))
                     .stream()
                     .map(this::createApplicationSummary)
                     .toList();
@@ -1247,9 +1301,9 @@ public class ApplicationTest extends BaseIntegrationTest {
         ) throws Exception {
             // given
             persistedApplicationFactory.createAndPersistMultiple(3, builder ->
-                    builder.individuals(Set.of(individualFactory.create(i -> i.lastName("Johnson")))));
+                    builder.individuals(Set.of(individualEntityFactory.create(i -> i.lastName("Johnson")))));
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory.createAndPersistMultiple(expectedCount, builder ->
-                            builder.individuals(Set.of(individualFactory.create(i -> i.lastName(persistedLastName)))))
+                            builder.individuals(Set.of(individualEntityFactory.create(i -> i.lastName(persistedLastName)))))
                     .stream()
                     .map(this::createApplicationSummary)
                     .toList();
@@ -1274,15 +1328,15 @@ public class ApplicationTest extends BaseIntegrationTest {
             // given
             persistedApplicationFactory.createAndPersistMultiple(1, builder ->
                     builder.status(ApplicationStatus.IN_PROGRESS)
-                            .individuals(Set.of(individualFactory.create(i -> i.lastName("David")))));
+                            .individuals(Set.of(individualEntityFactory.create(i -> i.lastName("David")))));
 
             List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(7, builder ->
                     builder.status(ApplicationStatus.SUBMITTED)
-                            .individuals(Set.of(individualFactory.create(i -> i.lastName("David")))));
+                            .individuals(Set.of(individualEntityFactory.create(i -> i.lastName("David")))));
 
             persistedApplicationFactory.createAndPersistMultiple(5, builder ->
                     builder.status(ApplicationStatus.IN_PROGRESS)
-                            .individuals(Set.of(individualFactory.create(i -> i.lastName("Smith")))));
+                            .individuals(Set.of(individualEntityFactory.create(i -> i.lastName("Smith")))));
 
             List<ApplicationSummary> expectedApplicationsSummary = expectedApplications.stream()
                     .map(this::createApplicationSummary)
@@ -1309,14 +1363,14 @@ public class ApplicationTest extends BaseIntegrationTest {
         void givenApplicationsFilteredByFirstNameAndLastName_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
             // given
             persistedApplicationFactory.createAndPersistMultiple(3, builder ->
-                    builder.individuals(Set.of(individualFactory.create(i -> i.firstName("George").lastName("Taylor")))));
+                    builder.individuals(Set.of(individualEntityFactory.create(i -> i.firstName("George").lastName("Taylor")))));
             List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory.createAndPersistMultiple(2, builder ->
-                            builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Lucas").lastName("Taylor")))))
+                            builder.individuals(Set.of(individualEntityFactory.create(i -> i.firstName("Lucas").lastName("Taylor")))))
                     .stream()
                     .map(this::createApplicationSummary)
                     .toList();
             persistedApplicationFactory.createAndPersistMultiple(5, builder ->
-                    builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Victoria").lastName("Williams")))));
+                    builder.individuals(Set.of(individualEntityFactory.create(i -> i.firstName("Victoria").lastName("Williams")))));
 
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
@@ -1340,12 +1394,14 @@ public class ApplicationTest extends BaseIntegrationTest {
             // given
             List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(1, builder ->
                     builder.status(ApplicationStatus.IN_PROGRESS)
-                            .individuals(Set.of(individualFactory.create(i -> i.firstName("George").lastName("Theodore")))));
+                            .individuals(Set.of(individualEntityFactory.create(i -> i.firstName("George").lastName("Theodore")))));
 
             persistedApplicationFactory.createAndPersistMultiple(3, builder -> builder.status(ApplicationStatus.SUBMITTED)
-                    .individuals(Set.of(individualFactory.create(i -> i.firstName("George").lastName("Theodore")))));
-            persistedApplicationFactory.createAndPersistMultiple(2, builder -> builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Lucas").lastName("Jones")))));
-            persistedApplicationFactory.createAndPersistMultiple(5, builder -> builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Victoria").lastName("Theodore")))));
+                    .individuals(Set.of(individualEntityFactory.create(i -> i.firstName("George").lastName("Theodore")))));
+            persistedApplicationFactory.createAndPersistMultiple(2, builder -> builder.individuals(Set.of(
+                individualEntityFactory.create(i -> i.firstName("Lucas").lastName("Jones")))));
+            persistedApplicationFactory.createAndPersistMultiple(5, builder -> builder.individuals(Set.of(
+                individualEntityFactory.create(i -> i.firstName("Victoria").lastName("Theodore")))));
 
             List<ApplicationSummary> expectedApplicationsSummary = expectedApplications.stream()
                     .map(this::createApplicationSummary)
@@ -1374,12 +1430,14 @@ public class ApplicationTest extends BaseIntegrationTest {
             // given
             List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(13, builder ->
                     builder.status(ApplicationStatus.IN_PROGRESS)
-                            .individuals(Set.of(individualFactory.create(i -> i.firstName("George").lastName("Theodore")))));
+                            .individuals(Set.of(individualEntityFactory.create(i -> i.firstName("George").lastName("Theodore")))));
 
             persistedApplicationFactory.createAndPersistMultiple(3, builder -> builder.status(ApplicationStatus.SUBMITTED)
-                    .individuals(Set.of(individualFactory.create(i -> i.firstName("George").lastName("Theodore")))));
-            persistedApplicationFactory.createAndPersistMultiple(2, builder -> builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Lucas").lastName("Jones")))));
-            persistedApplicationFactory.createAndPersistMultiple(5, builder -> builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Victoria").lastName("Theodore")))));
+                    .individuals(Set.of(individualEntityFactory.create(i -> i.firstName("George").lastName("Theodore")))));
+            persistedApplicationFactory.createAndPersistMultiple(2, builder -> builder.individuals(Set.of(
+                individualEntityFactory.create(i -> i.firstName("Lucas").lastName("Jones")))));
+            persistedApplicationFactory.createAndPersistMultiple(5, builder -> builder.individuals(Set.of(
+                individualEntityFactory.create(i -> i.firstName("Victoria").lastName("Theodore")))));
 
             List<ApplicationSummary> expectedApplicationsSummary = expectedApplications.stream()
                     .map(this::createApplicationSummary)
@@ -1410,17 +1468,17 @@ public class ApplicationTest extends BaseIntegrationTest {
             persistedApplicationFactory.createAndPersistMultiple(7, builder ->
                     builder
                             .status(ApplicationStatus.IN_PROGRESS)
-                            .individuals(Set.of(individualFactory.create(i -> i.firstName("George").lastName("Theodore")))));
+                            .individuals(Set.of(individualEntityFactory.create(i -> i.firstName("George").lastName("Theodore")))));
             persistedApplicationFactory.createAndPersistMultiple(3, builder ->
                     builder
                             .status(ApplicationStatus.SUBMITTED)
-                            .individuals(Set.of(individualFactory.create(i -> i.firstName("George").lastName("Theodore")))));
+                            .individuals(Set.of(individualEntityFactory.create(i -> i.firstName("George").lastName("Theodore")))));
             persistedApplicationFactory.createAndPersistMultiple(2, builder ->
                     builder
                             .status(ApplicationStatus.SUBMITTED)
-                            .individuals(Set.of(individualFactory.create(i -> i.firstName("Lucas").lastName("Jones")))));
+                            .individuals(Set.of(individualEntityFactory.create(i -> i.firstName("Lucas").lastName("Jones")))));
             persistedApplicationFactory.createAndPersistMultiple(5, builder ->
-                    builder.individuals(Set.of(individualFactory.create(i -> i.firstName("Victoria").lastName("Theodore")))));
+                    builder.individuals(Set.of(individualEntityFactory.create(i -> i.firstName("Victoria").lastName("Theodore")))));
 
             // when
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
@@ -1595,7 +1653,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             // given
             var domainEvents = setUpDomainEvents(appId);
             var expectedDomainEvents = domainEvents.stream().map(GetDomainEvents::toEvent).toList();
-            
+
             // when
             MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
             ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
@@ -1605,7 +1663,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            
+
             assertThat(actualResponse).isNotNull();
             assertTrue(actualResponse.getEvents().containsAll(expectedDomainEvents));
         }
@@ -1620,10 +1678,10 @@ public class ApplicationTest extends BaseIntegrationTest {
                                                     .filter(s -> s.getType().equals(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER))
                                                     .map(GetDomainEvents::toEvent)
                                                     .toList();
-            
+
             // when
-            MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH + 
-                                        "?" + SEARCH_EVENT_TYPE_PARAM + DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER, 
+            MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH +
+                                        "?" + SEARCH_EVENT_TYPE_PARAM + DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
                                       appId);
             ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
 
@@ -1632,7 +1690,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            
+
             assertThat(actualResponse).isNotNull();
             assertTrue(actualResponse.getEvents().containsAll(expectedAssignDomainEvents));
         }
@@ -1648,23 +1706,23 @@ public class ApplicationTest extends BaseIntegrationTest {
                                                                 s.getType().equals(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER))
                                                     .map(GetDomainEvents::toEvent)
                                                     .toList();
-            
+
             // when
-            String address = TestConstants.URIs.APPLICATION_HISTORY_SEARCH + 
-                                        "?" + SEARCH_EVENT_TYPE_PARAM + 
+            String address = TestConstants.URIs.APPLICATION_HISTORY_SEARCH +
+                                        "?" + SEARCH_EVENT_TYPE_PARAM +
                                             DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER +
-                                        "&" + SEARCH_EVENT_TYPE_PARAM + 
+                                        "&" + SEARCH_EVENT_TYPE_PARAM +
                                             DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER;
 
             MvcResult result = getUri(address, appId);
             ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
-            
+
             // then
             assertContentHeaders(result);
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertOK(result);
-            
+
             assertThat(actualResponse).isNotNull();
             assertTrue(actualResponse.getEvents().containsAll(expectedAssignDomainEvents));
         }

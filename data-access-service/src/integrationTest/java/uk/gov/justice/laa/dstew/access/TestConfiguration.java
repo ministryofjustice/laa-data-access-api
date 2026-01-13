@@ -21,7 +21,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerAssign
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerUnassignFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.domainevents.DomainEventFactoryImpl;
-import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactoryImpl;
+import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualEntityFactoryImpl;
 
 import java.util.UUID;
 
@@ -80,7 +80,7 @@ public class TestConfiguration {
 
     @Bean
     public Factory<IndividualEntity, IndividualEntity.IndividualEntityBuilder> individualFactory() {
-        return new IndividualFactoryImpl();
+        return new IndividualEntityFactoryImpl();
     }
 
     @Bean

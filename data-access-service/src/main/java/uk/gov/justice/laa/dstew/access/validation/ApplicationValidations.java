@@ -32,7 +32,6 @@ public class ApplicationValidations {
     }
 
     ValidationErrors validationErrors = ValidationErrors.empty()
-        .addIf(invalidLaaReference(dto), "Application reference cannot be blank")
         .addIf(dto.getApplicationContent().isEmpty(), "Application content cannot be empty")
         .addIf(invalidStatus(dto), "Application status cannot be null")
         .addIf(dto.getIndividuals() == null, "Application individual cannot be null");
@@ -52,9 +51,6 @@ public class ApplicationValidations {
     }
   }
 
-  private boolean invalidLaaReference(ApplicationCreateRequest dto) {
-    return dto.getLaaReference() == null || dto.getLaaReference().isBlank();
-  }
 
 
   private static boolean invalidStatus(ApplicationCreateRequest dto) {
