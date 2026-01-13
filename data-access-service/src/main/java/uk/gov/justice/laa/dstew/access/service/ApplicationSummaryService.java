@@ -43,7 +43,7 @@ public class ApplicationSummaryService {
   /**
    * Retrieves a paginated list of {@link ApplicationSummary} objects filtered by application status.
    *
-   * @param applicationStatus the {@link ApplicationStatus} used to filter results on application status
+   * @param applicationStatus the {@link Status} used to filter results on application status
    * @param laaReference used to filter results on application reference
    * @param clientFirstName used to filter results on linked individuals first name
    * @param clientLastName used to filter results on  linked individuals last name

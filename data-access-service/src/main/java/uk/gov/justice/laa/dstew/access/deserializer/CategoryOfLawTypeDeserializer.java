@@ -1,6 +1,6 @@
 package uk.gov.justice.laa.dstew.access.deserializer;
 
-import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 
 /**
  * Deserializer for CategoryOfLaw enum.

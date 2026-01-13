@@ -15,8 +15,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.deserializer.CategoryOfLawTypeDeserializer;
 import uk.gov.justice.laa.dstew.access.deserializer.GenericEnumDeserializer;
 import uk.gov.justice.laa.dstew.access.deserializer.MatterTypeDeserializer;
-import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.enums.MatterType;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
 
 @ExtendWith(MockitoExtension.class)
 class GenericEnumDeserializerTest {
@@ -87,8 +87,8 @@ class GenericEnumDeserializerTest {
 
   private static Stream<Arguments> provideCategoryOfLawTypeEnumValues() {
     return Stream.of(
-        Arguments.of("Family", CategoryOfLaw.Family),
-        Arguments.of("FAMILY", CategoryOfLaw.Family),
+        Arguments.of("Family", CategoryOfLaw.FAMILY),
+        Arguments.of("FAMILY", CategoryOfLaw.FAMILY),
         Arguments.of("", null),
         Arguments.of(null, null),
         Arguments.of("INVALID", null)

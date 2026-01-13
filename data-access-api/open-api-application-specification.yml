@@ -258,6 +258,10 @@ components:
       type: string
       enum:
         - SCA
+    applicationType:
+      type: string
+      enum:
+        - INITIAL
 
     Individual:
       type: object
@@ -281,7 +285,7 @@ components:
       type: object
       required:
         - id
-        - applicationStatus
+        - status
         - applicationContent
         - laaReference
         - schemaVersion
@@ -291,7 +295,7 @@ components:
         id:
           type: string
           format: uuid
-        applicationStatus:
+        status:
           $ref: "#/components/schemas/applicationStatus"
         schemaVersion:
           type: integer
@@ -355,19 +359,36 @@ components:
           type: string
           format: uuid
           description: The unique reference used to identify the application.
-        applicationStatus:
+        status:
           $ref: "#/components/schemas/applicationStatus"
-        laaReference:
-          type: string
-        createdAt:
+        submittedAt:
           type: string
           format: date-time
-        modifiedAt:
+        lastUpdated:
           type: string
           format: date-time
+        usedDelegatedFunctions:
+          type: boolean
+        categoryOfLaw:
+          $ref: "#/components/schemas/categoryOfLaw"
+        matterType:
+          $ref: "#/components/schemas/matterType"
         assignedTo:
           type: string
           format: uuid
+        autoGrant:
+          type: boolean
+        clientFirstName:
+          type: string
+        clientLastName:
+          type: string 
+        clientDateOfBirth:
+          type: string
+          format: date
+        laaReference:
+          type: string
+        applicationType:
+          $ref: "#/components/schemas/applicationType"
 
     ApplicationSummaryResponse:
       type: object

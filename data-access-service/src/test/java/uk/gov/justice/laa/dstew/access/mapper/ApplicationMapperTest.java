@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -49,7 +50,7 @@ class ApplicationMapperTest {
     assertThat(result).isNotNull();
     assertThat(result.getId()).isEqualTo(id);
     assertThat(result.getLaaReference()).isEqualTo("Ref123");
-    assertThat(result.getApplicationStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
+    assertThat(result.getStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
     assertThat(result.getCreatedAt()).isEqualTo(OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC));
     assertThat(result.getUpdatedAt()).isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
@@ -190,5 +191,4 @@ class ApplicationMapperTest {
     assertThat(entity.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
     assertThat(entity.getApplicationContent()).containsEntry("newKey", "newValue");
   }
-
 }

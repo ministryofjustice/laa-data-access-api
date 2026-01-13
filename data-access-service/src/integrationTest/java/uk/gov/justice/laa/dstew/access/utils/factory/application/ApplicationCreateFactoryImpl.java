@@ -8,8 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
-import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.enums.MatterType;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContentDetails;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -24,7 +24,7 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
     ProceedingDetails proceedingDetails = ProceedingDetails
         .builder()
         .id(UUID.randomUUID())
-        .categoryOfLaw(CategoryOfLaw.Family)
+        .categoryOfLaw(CategoryOfLaw.FAMILY)
         .matterType(MatterType.SCA)
         .leadProceeding(true)
         .useDelegatedFunctions(true)
