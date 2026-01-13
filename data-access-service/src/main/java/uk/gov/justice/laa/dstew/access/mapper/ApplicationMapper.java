@@ -86,7 +86,7 @@ public interface ApplicationMapper {
 
     Application application = new Application();
     application.setId(entity.getId());
-    application.setApplicationStatus(entity.getStatus());
+    application.setStatus(entity.getStatus());
     application.setSchemaVersion(entity.getSchemaVersion());
     application.setApplicationContent(entity.getApplicationContent());
     application.setLaaReference(entity.getLaaReference());
