@@ -37,7 +37,7 @@ public class ApplicationService {
   private final ObjectMapper objectMapper;
   private final CaseworkerRepository caseworkerRepository;
   private final DomainEventService domainEventService;
-  private final ApplicationContentParser applicationContentParser;
+  private final ApplicationContentParserService applicationContentParser;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -52,11 +52,12 @@ public class ApplicationService {
                             final ApplicationValidations applicationValidations,
                             final ObjectMapper objectMapper,
                             final CaseworkerRepository caseworkerRepository,
-                            final DomainEventService domainEventService, ApplicationContentParser applicationContentParser) {
+                            final DomainEventService domainEventService,
+                            final ApplicationContentParserService applicationContentParserService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
-    this.applicationContentParser = applicationContentParser;
+    this.applicationContentParser = applicationContentParserService;
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
     this.caseworkerRepository = caseworkerRepository;

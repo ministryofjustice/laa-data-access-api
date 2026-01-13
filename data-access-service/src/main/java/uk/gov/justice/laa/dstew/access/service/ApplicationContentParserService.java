@@ -14,11 +14,11 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
  * Service class for parsing and normalising application content.
  */
 @Service
-public class ApplicationContentParser {
+public class ApplicationContentParserService {
 
   private final ObjectMapper objectMapper;
 
-  public ApplicationContentParser(final ObjectMapper objectMapper) {
+  public ApplicationContentParserService(final ObjectMapper objectMapper) {
     this.objectMapper = objectMapper;
   }
 
