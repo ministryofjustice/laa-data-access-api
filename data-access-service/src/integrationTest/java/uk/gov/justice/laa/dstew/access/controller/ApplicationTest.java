@@ -176,7 +176,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         @ParameterizedTest
         @MethodSource("applicationCreateRequestInvalidDataCases")
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenNullApplicationRequestData_whenCreateApplication_thenReturnBadRequest(
+        public void givenInvalidApplicationRequestData_whenCreateApplication_thenReturnBadRequest(
                 ApplicationCreateRequest request,
                 ProblemDetail expectedDetail,
                 Map<String, Object> problemDetailProperties) throws Exception {
@@ -277,44 +277,78 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertUnauthorised(result);
         }
 
-        private Stream<Arguments> applicationCreateRequestInvalidDataCases() {
-            ProblemDetail problemDetail = ProblemDetailBuilder
-                    .create()
-                    .status(HttpStatus.BAD_REQUEST)
-                    .title("Bad Request")
-                    .detail("Request validation failed")
-                    .build();
-            problemDetail.setType(null);
-            return Stream.of(
-                    Arguments.of(applicationCreateRequestFactory.create(builder -> {
-                                builder.status(null);
-                            }),
-                        problemDetail, Map.of("invalidFields", Map.of("status", "must not be null"))
-                    ),
-                    Arguments.of(applicationCreateRequestFactory.create(builder -> {
-                                builder.laaReference(null);
-                            }),
-                        problemDetail, Map.of("invalidFields", Map.of("laaReference", "must not be null"))
-                    ),
-                    Arguments.of(applicationCreateRequestFactory.create(builder -> {
-                      builder.individuals(null);
-                            }),
-                        problemDetail,  Map.of("invalidFields", Map.of("individuals", "size must be between 1 and 2147483647"))),
-                    Arguments.of(applicationCreateRequestFactory.create(builder -> {
-                      builder.individuals(List.of());}),
-                        problemDetail,
-                        Map.of("invalidFields", Map.of("individuals",
-                            "size must be between 1 and " + Integer.MAX_VALUE))),
-                    Arguments.of(applicationCreateRequestFactory.create(builder ->
-                        builder.individuals(List.of(
-                            individualFactory.create(
-                                individualBuilder -> individualBuilder.firstName("")))
-                        )
-                    ), problemDetail,
-                        Map.of("invalidFields", Map.of("individuals[0].firstName",
-                            "size must be between 1 and " + Integer.MAX_VALUE)))
-            );
-        }
+      private Stream<Arguments> applicationCreateRequestInvalidDataCases() {
+        ProblemDetail problemDetail =
+            ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request").detail("Request validation failed")
+                .build();
+        problemDetail.setType(null);
+        String minimumSizErrorMessage = "size must be between 1 and " + Integer.MAX_VALUE;
+        String mustNotBeNull = "must not be null";
+
+        return Stream.of(
+            Arguments.of(applicationCreateRequestFactory.create(builder -> {
+                  builder.status(null);
+                }), problemDetail,
+                Map.of("invalidFields", Map.of("status", mustNotBeNull))),
+            Arguments.of(applicationCreateRequestFactory.create(builder -> {
+                  builder.laaReference(null);
+                }), problemDetail,
+                Map.of("invalidFields", Map.of("laaReference", mustNotBeNull))),
+            Arguments.of(applicationCreateRequestFactory.create(builder -> {
+                  builder.individuals(null);
+                }), problemDetail,
+                Map.of("invalidFields", Map.of("individuals", "size must be between 1 and 2147483647"))),
+            Arguments.of(applicationCreateRequestFactory.create(builder -> {
+                  builder.individuals(List.of());
+                }), problemDetail,
+                Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))),
+            Arguments.of(
+                applicationCreateRequestFactory.create(builder -> builder.individuals(
+                    List.of(individualFactory.create(individualBuilder -> individualBuilder.firstName(""))))),
+                problemDetail,
+                Map.of("invalidFields", Map.of("individuals[0].firstName", minimumSizErrorMessage))),
+            Arguments.of(
+                applicationCreateRequestFactory.create(builder -> builder.individuals(
+                    List.of(individualFactory.create(individualBuilder -> individualBuilder.lastName(""))))),
+                problemDetail,
+                Map.of("invalidFields", Map.of("individuals[0].lastName", minimumSizErrorMessage))),
+            Arguments.of(applicationCreateRequestFactory.create(builder -> builder.individuals(
+                    List.of(individualFactory.create(individualBuilder -> individualBuilder.dateOfBirth(null))))),
+                problemDetail,
+                Map.of("invalidFields", Map.of("individuals[0].dateOfBirth", mustNotBeNull))),
+            Arguments.of(applicationCreateRequestFactory.create(builder -> builder.individuals(
+                    List.of(individualFactory.create(individualBuilder -> individualBuilder.details(null))))),
+                problemDetail,
+                Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
+            Arguments.of(applicationCreateRequestFactory.create(builder -> builder.individuals(
+                    List.of(individualFactory.create(individualBuilder -> individualBuilder.details(new HashMap<>()))))),
+                problemDetail,
+                Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
+            Arguments.of(applicationCreateRequestFactory.create(builder -> builder.individuals(List.of(individualFactory.create(
+                    individualBuilder -> individualBuilder.dateOfBirth(null)
+                        .firstName("")
+                        .lastName("")
+                        .details(new HashMap<>()))))),
+                problemDetail,
+                Map.of("invalidFields",
+                    Map.of("individuals[0].details", minimumSizErrorMessage,
+                        "individuals[0].lastName", minimumSizErrorMessage,
+                        "individuals[0].firstName", minimumSizErrorMessage,
+                        "individuals[0].dateOfBirth", mustNotBeNull))),
+            Arguments.of(applicationCreateRequestFactory.create(builder -> builder.individuals(List.of(individualFactory.create(
+                    individualBuilder ->
+                        individualBuilder
+                            .dateOfBirth(null)
+                            .firstName(null)
+                            .lastName(null)
+                            .details(null))))),
+                problemDetail,
+                Map.of("invalidFields",
+                    Map.of("individuals[0].details", minimumSizErrorMessage,
+                        "individuals[0].lastName", mustNotBeNull,
+                        "individuals[0].firstName", mustNotBeNull,
+                        "individuals[0].dateOfBirth", mustNotBeNull))));
+      }
 
 
 

@@ -5,7 +5,6 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
@@ -17,41 +16,25 @@ import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationPro
 public class ApplicationValidations {
 
   private final EffectiveAuthorizationProvider entra;
-  private final IndividualValidations individualValidator;
 
-  /**
-   * Validates an incoming POST.
-   */
-  public void checkApplicationCreateRequest(final ApplicationCreateRequest dto) {
-
-
-    List<String> individualsValidationErrors = dto.getIndividuals()
-        .stream()
-        .map(individualValidator::validateIndividual)
-        .flatMap(s -> s.errors().stream())
-        .distinct()
-        .toList();
-
-    if (!individualsValidationErrors.isEmpty()) {
-      throw new ValidationException(individualsValidationErrors);
-    }
-  }
 
   /**
    * One by
    * Validates an incoming PATCH.
    */
   public void checkApplicationUpdateRequest(final ApplicationUpdateRequest dto) {
-    if (dto == null || dto.getApplicationContent() == null) {
+    ValidationErrors validationErrors = ValidationErrors
+        .empty()
+        .addIf((dto == null), "ApplicationUpdateRequest and its content cannot be null")
+        .addIf(dto.getApplicationContent() == null, "Application content cannot be null")
+        .addIf(dto.getApplicationContent().isEmpty(), "Application content cannot be empty");
+    if (!validationErrors.errors().isEmpty()) {
       throw new ValidationException(
-          List.of("ApplicationUpdateRequest and its content cannot be null")
-      );
-    }
-
-    if (dto.getApplicationContent().isEmpty()) {
-      throw new ValidationException(
-          List.of("Application content cannot be empty")
-      );
+          validationErrors
+              .errors()
+              .stream()
+              .distinct()
+              .toList());
     }
   }
 

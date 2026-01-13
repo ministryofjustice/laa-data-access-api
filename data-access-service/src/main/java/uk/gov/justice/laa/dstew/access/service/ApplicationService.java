@@ -84,7 +84,6 @@ public class ApplicationService {
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public UUID createApplication(final ApplicationCreateRequest req) {
-    applicationValidations.checkApplicationCreateRequest(req);
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
     setValuesFromApplicationContent(req, entity);
     entity.setSchemaVersion(applicationVersion);
