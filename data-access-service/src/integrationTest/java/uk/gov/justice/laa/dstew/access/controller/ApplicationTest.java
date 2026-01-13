@@ -981,11 +981,11 @@ public class ApplicationTest extends BaseIntegrationTest {
     class GetApplications {
 
         public static final String SEARCH_PAGE_PARAM = "page=";
-        public static final String SEARCH_PAGE_SIZE_PARAM = "pagesize=";
+        public static final String SEARCH_PAGE_SIZE_PARAM = "pageSize=";
         public static final String SEARCH_STATUS_PARAM = "status=";
-        public static final String SEARCH_FIRSTNAME_PARAM = "firstname=";
-        public static final String SEARCH_LASTNAME_PARAM = "lastname=";
-        public static final String SEARCH_CASEWORKERID_PARAM = "userid=";
+        public static final String SEARCH_FIRSTNAME_PARAM = "clientFirstName=";
+        public static final String SEARCH_LASTNAME_PARAM = "clientLastName=";
+        public static final String SEARCH_CASEWORKERID_PARAM = "userId=";
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
