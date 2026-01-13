@@ -28,14 +28,18 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                 .build();
 
         return ApplicationEntity.builder()
+                .applyApplicationId(UUID.randomUUID())
                 .createdAt(InstantSource.system().instant())
                 .status(ApplicationStatus.IN_PROGRESS)
                 .modifiedAt(InstantSource.system().instant())
+                .submittedAt(InstantSource.system().instant())
                 .individuals(new HashSet<>(Set.of(individualEntity)))
                 .applicationContent(new LinkedHashMap<>(Map.of(
                         "test", "content"
                 )))
                 .caseworker(BaseIntegrationTest.CaseworkerJohnDoe)
+                .useDelegatedFunctions(false)
+                .isAutoGranted(true)
                 .build();
     }
 
