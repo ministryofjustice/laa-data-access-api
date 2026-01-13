@@ -34,7 +34,7 @@ public class ApplicationSummarySpecificationTest {
     void givenAllEmpty_whenToPredicate_thenReturnNull() {
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, null, null, null);
+                .filterBy(null, null, null, null, null, null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 
@@ -211,9 +211,10 @@ public class ApplicationSummarySpecificationTest {
         String firstName = "Andy";
         String lastName = "Green";
         UUID caseworkerId = UUID.randomUUID();
+        Boolean isAutoGranted = true;
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(status, reference, firstName, lastName, caseworkerId);
+                .filterBy(status, reference, firstName, lastName, caseworkerId, isAutoGranted);
 
         Join<Object,Object> individualsJoin = mock(Join.class);
         Join<Object,Object> caseworkerJoin = mock(Join.class);
@@ -232,6 +233,7 @@ public class ApplicationSummarySpecificationTest {
         when(builder.like(any(), eq("%" + firstName + "%"))).thenReturn(firstNamePredicate);
         when(builder.like(any(), eq("%" + lastName + "%"))).thenReturn(lastNamePredicate);
         when(builder.equal(any(), eq(caseworkerId))).thenReturn(caseworkerPredicate);
+        when(builder.equal(any(), eq(isAutoGranted))).thenReturn(mock(Predicate.class));
 
         Predicate result = spec.toPredicate(root, query, builder);
 
