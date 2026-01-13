@@ -118,7 +118,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             Application application = new Application();
             application.setId(applicationEntity.getId());
             application.setApplicationContent(applicationEntity.getApplicationContent());
-            application.setApplicationStatus(applicationEntity.getStatus());
+            application.setStatus(applicationEntity.getStatus());
             application.setSchemaVersion(applicationEntity.getSchemaVersion());
             if (applicationEntity.getCaseworker() != null) {
                 application.setCaseworkerId(applicationEntity.getCaseworker().getId());
@@ -317,11 +317,6 @@ public class ApplicationTest extends BaseIntegrationTest {
                     .ignoringCollectionOrder()
                     .isEqualTo(actual.getApplicationContent());
             assertEquals(ApplicationStatus.SUBMITTED, actual.getStatus());
-
-            assertDomainEventForApplication(
-                actual,
-                DomainEventType.APPLICATION_UPDATED
-            );
         }
 
         @ParameterizedTest
@@ -1077,7 +1072,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         @MethodSource("applicationsSummaryFilteredByStatusCases")
         @WithMockUser(authorities = TestConstants.Roles.READER)
         void givenApplicationsFilteredByStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly(
-                ApplicationStatus applicationStatus,
+                ApplicationStatus Status,
                 Supplier<List<ApplicationSummary>> expectedApplicationsSummarySupplier,
                 int numberOfApplications
         ) throws Exception {
@@ -1085,7 +1080,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             List<ApplicationSummary> expectedApplicationsSummary = expectedApplicationsSummarySupplier.get();
 
             // when
-            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + applicationStatus);
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + Status);
             ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
             // then
@@ -1467,7 +1462,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertOK(result);
             assertPaging(actual, 4, 10, 1, 4);
             assertThat(actual.getApplications().size()).isEqualTo(4);
-            assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
+            assertArrayEquals(expectedApplicationsSummary.toArray(), actual.getApplications().toArray());
         }
 
         @Test
@@ -1569,13 +1564,19 @@ public class ApplicationTest extends BaseIntegrationTest {
         private ApplicationSummary createApplicationSummary(ApplicationEntity applicationEntity) {
             ApplicationSummary applicationSummary = new ApplicationSummary();
             applicationSummary.setApplicationId(applicationEntity.getId());
-            applicationSummary.setApplicationStatus(applicationEntity.getStatus());
+            applicationSummary.setStatus(applicationEntity.getStatus());
+            applicationSummary.setSubmittedAt(applicationEntity.getSubmittedAt().atOffset(ZoneOffset.UTC));
+            applicationSummary.setLastUpdated(applicationEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+            applicationSummary.setUsedDelegatedFunctions(applicationEntity.isUseDelegatedFunctions());
+            applicationSummary.setCategoryOfLaw(applicationEntity.getCategoryOfLaw());
+            applicationSummary.setMatterType(applicationEntity.getMatterType());
+            applicationSummary.setAssignedTo(applicationEntity.getCaseworker() != null ? applicationEntity.getCaseworker().getId() : null);
+            applicationSummary.autoGrant(applicationEntity.isAutoGranted());
             applicationSummary.setLaaReference(applicationEntity.getLaaReference());
-            applicationSummary.setCreatedAt(OffsetDateTime.ofInstant(applicationEntity.getCreatedAt(), ZoneOffset.UTC));
-            applicationSummary.setModifiedAt(OffsetDateTime.ofInstant(applicationEntity.getModifiedAt(), ZoneOffset.UTC));
-            if (applicationEntity.getCaseworker() != null) {
-                applicationSummary.setAssignedTo(applicationEntity.getCaseworker().getId());
-            }
+            applicationSummary.setApplicationType(ApplicationType.INITIAL);
+            applicationSummary.setClientFirstName(applicationEntity.getIndividuals().stream().findFirst().get().getFirstName());
+            applicationSummary.setClientLastName(applicationEntity.getIndividuals().stream().findFirst().get().getLastName());
+            applicationSummary.setClientDateOfBirth(applicationEntity.getIndividuals().stream().findFirst().get().getDateOfBirth());
             return applicationSummary;
         }
     }

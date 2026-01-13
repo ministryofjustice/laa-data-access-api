@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.enums.MatterType;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ProceedingDetails;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 
@@ -25,7 +25,7 @@ public class ProceedingDetailsFactory
     return ProceedingDetails
         .builder()
         .id(UUID.randomUUID())
-        .categoryOfLaw(CategoryOfLaw.Family)
+        .categoryOfLaw(CategoryOfLaw.FAMILY)
         .matterType(MatterType.SCA)
         .leadProceeding(true)
         .useDelegatedFunctions(true)

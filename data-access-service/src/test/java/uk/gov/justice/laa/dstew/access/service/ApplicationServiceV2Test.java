@@ -15,8 +15,6 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.enums.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.enums.MatterType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
@@ -33,6 +31,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.*;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 public class ApplicationServiceV2Test extends BaseServiceTest {
@@ -105,7 +105,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         public void assertApplicationEqual(ApplicationEntity expectedApplication, Application actualApplication) {
-            assertThat(actualApplication.getApplicationStatus()).isEqualTo(expectedApplication.getStatus());
+            assertThat(actualApplication.getStatus()).isEqualTo(expectedApplication.getStatus());
             assertThat(actualApplication.getLaaReference()).isEqualTo(expectedApplication.getLaaReference());
             assertThat(actualApplication.getApplicationContent())
                     .usingRecursiveComparison()
@@ -448,7 +448,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
       private static ProceedingJsonObject getProceedingJsonObject(Boolean useDelegatedFunctions, boolean leadProceeding) {
         return ProceedingJsonObject.builder().id("f6e2c4e1-5d32-4c3e-9f0a-1e2b3c4d5e6f").leadProceeding(leadProceeding)
-            .categoryOfLaw(CategoryOfLaw.Family.name()).matterType(MatterType.SCA.name())
+            .categoryOfLaw(CategoryOfLaw.FAMILY.name()).matterType(MatterType.SCA.name())
             .useDelegatedFunctions(useDelegatedFunctions).build();
       }
 

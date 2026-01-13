@@ -3,8 +3,11 @@ package uk.gov.justice.laa.dstew.access.utils.factory.application;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
+import uk.gov.justice.laa.dstew.access.utils.DateTimeHelper;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
 import java.time.InstantSource;
@@ -26,13 +29,13 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                         "test", "content"
                 )))
                 .build();
-
+        var instant = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();
         return ApplicationEntity.builder()
                 .applyApplicationId(UUID.randomUUID())
-                .createdAt(InstantSource.system().instant())
+                .createdAt(instant)
                 .status(ApplicationStatus.IN_PROGRESS)
-                .modifiedAt(InstantSource.system().instant())
-                .submittedAt(InstantSource.system().instant())
+                .modifiedAt(instant)
+                .submittedAt(instant)
                 .individuals(new HashSet<>(Set.of(individualEntity)))
                 .applicationContent(new LinkedHashMap<>(Map.of(
                         "test", "content"
@@ -40,6 +43,8 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                 .caseworker(BaseIntegrationTest.CaseworkerJohnDoe)
                 .useDelegatedFunctions(false)
                 .isAutoGranted(true)
+                .categoryOfLaw(CategoryOfLaw.FAMILY)
+                .matterType(MatterType.SCA)
                 .build();
     }
 

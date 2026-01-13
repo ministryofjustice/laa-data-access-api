@@ -47,5 +47,4 @@ public class DomainEventServiceTest {
 
     @Mock
     private ObjectMapper objectMapper;
-
 }
