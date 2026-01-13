@@ -24,6 +24,7 @@ import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
 /**
  * Represents an individual.
@@ -56,6 +57,9 @@ public class IndividualEntity  implements AuditableEntity {
   @Type(JsonType.class)
   @Column(columnDefinition = "jsonb", nullable = false)
   private Map<String, Object> individualContent;
+
+  @Column(name = "individual_type", nullable = false)
+  private IndividualType type;
 
   @Column(name = "created_at")
   @CreationTimestamp
