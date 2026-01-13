@@ -17,5 +17,5 @@ import lombok.Builder;
       boolean leadProceeding,
       String categoryOfLaw,
       String matterType,
-      boolean useDelegatedFunctions) {
+      Boolean useDelegatedFunctions) {
   }

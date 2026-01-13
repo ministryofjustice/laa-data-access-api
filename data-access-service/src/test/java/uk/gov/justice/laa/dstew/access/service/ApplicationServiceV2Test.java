@@ -408,18 +408,25 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                         builder.applicationContent(
                             getAppContentMap(true, List.of(), UUID.randomUUID().toString()))),
                 new ValidationException(List.of("No proceedings found in application content")),
+
                 Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
                         builder.applicationContent(
                             getAppContentMap(true, null, UUID.randomUUID().toString()))),
                     new ValidationException(List.of("No proceedings found in application content")),
-                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                            builder.applicationContent(
-                                getAppContentMap(false,
-                                    List.of(getProceedingJsonObject(true, false)),
-                                    UUID.randomUUID().toString()))),
-                        new ValidationException(List.of("No lead proceeding found in application content"))))
+                Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                        builder.applicationContent(
+                            getAppContentMap(true,
+                                List.of(getProceedingJsonObject(null, false)),
+                                UUID.randomUUID().toString()))),
+                    new ValidationException(List.of("No proceedings found in application content")),
+                Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
+                        builder.applicationContent(
+                            getAppContentMap(false,
+                                List.of(getProceedingJsonObject(true, false)),
+                                UUID.randomUUID().toString()))),
+                    new ValidationException(List.of("No lead proceeding found in application content"))))
             )
-        );
+        ));
       }
 
       private Map<String, Object> getAppContentMap(boolean autoGrant, List<ProceedingJsonObject> proceedings,
@@ -439,7 +446,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
       }
 
 
-      private static ProceedingJsonObject getProceedingJsonObject(boolean useDelegatedFunctions, boolean leadProceeding) {
+      private static ProceedingJsonObject getProceedingJsonObject(Boolean useDelegatedFunctions, boolean leadProceeding) {
         return ProceedingJsonObject.builder().id("f6e2c4e1-5d32-4c3e-9f0a-1e2b3c4d5e6f").leadProceeding(leadProceeding)
             .categoryOfLaw(CategoryOfLaw.Family.name()).matterType(MatterType.SCA.name())
             .useDelegatedFunctions(useDelegatedFunctions).build();
@@ -471,8 +478,11 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
       assertThat(actualApplicationEntity.getStatus()).isEqualTo(applicationCreateRequest.getStatus());
       assertThat(actualApplicationEntity.getLaaReference()).isEqualTo(applicationCreateRequest.getLaaReference());
+      ApplicationContentDetails applicationContentDetails =
+          parseApplicationContentDetails(applicationCreateRequest.getApplicationContent());
+      assertThat(actualApplicationEntity.getApplyApplicationId()).isEqualTo(applicationContentDetails.getApplyApplicationId());
       assertThat(actualApplicationEntity.isUseDelegatedFunctions()).isEqualTo(
-          parseApplicationContentDetails(applicationCreateRequest.getApplicationContent()).getProceedings().get(0)
+      applicationContentDetails.getProceedings().get(0)
               .useDelegatedFunctions());
       assertThat(actualApplicationEntity.getApplicationContent())
           .usingRecursiveComparison()

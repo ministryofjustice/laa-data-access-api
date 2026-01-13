@@ -31,7 +31,7 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
         .build();
 
     ApplicationContentDetails applicationContentDetails = ApplicationContentDetails.builder()
-        .id(UUID.randomUUID())
+        .applyApplicationId(UUID.randomUUID())
         .autoGrant(true)
         .proceedings(List.of(proceedingDetails))
         .build();
