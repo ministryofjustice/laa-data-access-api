@@ -23,8 +23,7 @@ import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
-import uk.gov.justice.laa.dstew.access.utils.builders.ValidationExceptionBuilder;
-import uk.gov.justice.laa.dstew.access.validation.ValidationException;
+
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -199,10 +198,6 @@ public class ApplicationTest extends BaseIntegrationTest {
                 builder.applicationContent(new HashMap<>());
             });
 
-            ValidationException expectedValidationException = ValidationExceptionBuilder
-                    .create()
-                    .errors(List.of("Application content cannot be empty"))
-                    .build();
             Map<String, String> invalidFields = new HashMap<>();
             invalidFields.put("applicationContent", "size must be between 1 and " + Integer.MAX_VALUE);
 
@@ -225,10 +220,6 @@ public class ApplicationTest extends BaseIntegrationTest {
           builder.applicationContent(null);
         });
 
-        ValidationException expectedValidationException = ValidationExceptionBuilder
-            .create()
-            .errors(List.of("Application content cannot be empty"))
-            .build();
         Map<String, String> invalidFields = new HashMap<>();
         invalidFields.put("applicationContent", "size must be between 1 and " + Integer.MAX_VALUE);
 

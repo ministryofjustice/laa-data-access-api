@@ -235,36 +235,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
     private Stream<Arguments> invalidApplicationSpecificCases() {
       return Stream.of(
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.applicationContent(null)),
-              new ValidationException(List.of(
-                  "ApplicationCreateRequest and its content cannot be null"
-              ))
-          ),
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.status(null)),
-              new ValidationException(List.of(
-                  "Application status cannot be null"
-              ))
-          ),
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.laaReference(null)),
-              new ValidationException(List.of(
-                  "Application reference cannot be blank"
-              ))
-          ),
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.laaReference("")),
-              new ValidationException(List.of(
-                  "Application reference cannot be blank"
-              ))
-          ),
-          Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                  builder.applicationContent(new HashMap<>())),
-              new ValidationException(List.of(
-                  "Application content cannot be empty"
-              ))
-          ),
           Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder
                   .applicationContent(
                       applicationContentFactory.createDefaultAsMap(detailsBuilder -> detailsBuilder.proceedings(null)))),
@@ -281,44 +251,10 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                           ))))),
               new ValidationException(List.of(
                   "No lead proceeding found in application content"
-              ))
-          )
+              )))
       );
     }
-        private Stream<Arguments> invalidApplicationSpecificCases() {
-            return Stream.of(
-                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                                    builder.applicationContent(null)),
-                            new ValidationException(List.of(
-                                    "ApplicationCreateRequest and its content cannot be null"
-                            ))
-                    ),
-                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                                    builder.status(null)),
-                            new ValidationException(List.of(
-                                    "Application status cannot be null"
-                            ))
-                    ),
-                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                                    builder.applicationContent(new HashMap<>())),
-                            new ValidationException(List.of(
-                                    "Application content cannot be empty"
-                            ))
-                    ),
-                Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                        builder
-                            .status(null)
-                            .individuals(null)
-                            .laaReference(null)
-                            .applicationContent(new HashMap<>())),
-                    new ValidationException(List.of(
-                        "Application content cannot be empty",
-                        "Application status cannot be null",
-                        "Application individual cannot be null"
-                    ))
-                )
-            );
-        }
+
 
         private Stream<Arguments> invalidIndividualSpecificCases() {
             return Stream.of(

@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -25,36 +24,17 @@ public class ApplicationValidations {
    */
   public void checkApplicationCreateRequest(final ApplicationCreateRequest dto) {
 
-    if (dto == null || dto.getApplicationContent() == null) {
-      throw new ValidationException(
-          List.of("ApplicationCreateRequest and its content cannot be null")
-      );
+
+    List<String> individualsValidationErrors = dto.getIndividuals()
+        .stream()
+        .map(individualValidator::validateIndividual)
+        .flatMap(s -> s.errors().stream())
+        .distinct()
+        .toList();
+
+    if (!individualsValidationErrors.isEmpty()) {
+      throw new ValidationException(individualsValidationErrors);
     }
-
-    ValidationErrors validationErrors = ValidationErrors.empty()
-        .addIf(dto.getApplicationContent().isEmpty(), "Application content cannot be empty")
-        .addIf(invalidStatus(dto), "Application status cannot be null")
-        .addIf(dto.getIndividuals() == null, "Application individual cannot be null");
-    List<String> allErrors = new ArrayList<>(validationErrors.errors());
-
-    if (dto.getIndividuals() != null) {
-      List<String> individualsValidationErrors = dto.getIndividuals()
-          .stream()
-          .map(individualValidator::validateIndividual)
-          .flatMap(s -> s.errors().stream())
-          .distinct()
-          .toList();
-      allErrors.addAll(individualsValidationErrors);
-    }
-    if (!allErrors.isEmpty()) {
-      throw new ValidationException(allErrors);
-    }
-  }
-
-
-
-  private static boolean invalidStatus(ApplicationCreateRequest dto) {
-    return dto.getStatus() == null;
   }
 
   /**

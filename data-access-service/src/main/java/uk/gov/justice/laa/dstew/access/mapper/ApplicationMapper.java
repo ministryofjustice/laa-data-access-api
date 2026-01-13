@@ -43,7 +43,7 @@ public interface ApplicationMapper {
     }
     ApplicationEntity entity = new ApplicationEntity();
     entity.setStatus(req.getStatus());
-    entity.setLaaReference(req.getLaaReference().toString());
+    entity.setLaaReference(req.getLaaReference());
     var individuals = req.getIndividuals()
         .stream()
         .map(individualMapper::toIndividualEntity)
