@@ -16,7 +16,11 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
-import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.AssignDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
@@ -137,6 +141,18 @@ public class ApplicationService {
   }
 
   /**
+   * Check existence of a caseworker by ID.
+   *
+   * @param caseworkerId userid of caseworker
+   * @return found entity
+   */
+  private CaseworkerEntity checkIfCaseworkerExists(final UUID caseworkerId) {
+    return caseworkerRepository.findById(caseworkerId)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    String.format("No caseworker found with id: %s", caseworkerId)));
+  }
+
+  /**
    * Checks that applications exist for all the IDs provided.
    *
    * @param ids Collection of UUIDs of applications
@@ -170,9 +186,7 @@ public class ApplicationService {
   public void assignCaseworker(@NonNull final UUID caseworkerId,
                                final List<UUID> applicationIds,
                                final EventHistory eventHistory) {
-    final CaseworkerEntity caseworker = caseworkerRepository.findById(caseworkerId)
-        .orElseThrow(() -> new ResourceNotFoundException(
-            String.format("No caseworker found with id: %s", caseworkerId)));
+    final CaseworkerEntity caseworker = checkIfCaseworkerExists(caseworkerId);
 
     final List<ApplicationEntity> applications = checkIfAllApplicationsExist(applicationIds);
 
@@ -240,9 +254,15 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void assignDecision(final UUID id, final AssignDecisionRequest request) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
+    final CaseworkerEntity caseworker = checkIfCaseworkerExists(request.getUserId());
 
-    //applicationValidations.checkApplicationUpdateRequest(request, entity);
-    //applicationMapper.updateApplicationEntity(entity, request);
+    applicationValidations.checkApplicationAssignDecisionRequest(request);
+
+    // update applications
+    // save decision (insert or update)
+    // save merits
+    // save linked merits-decision
+    //applicationMapper.assignDecision(entity, request);
     entity.setModifiedAt(Instant.now());
     applicationRepository.save(entity);
   }
