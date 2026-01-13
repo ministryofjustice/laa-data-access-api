@@ -35,7 +35,7 @@ public class ApplicationSummarySpecificationTest {
     void givenAllEmpty_whenToPredicate_thenReturnNull() {
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, null, null, null);
+                .filterBy(null, null, null, null, null, null);
 
         Predicate result = spec.toPredicate(root, query, builder);
 
@@ -197,16 +197,18 @@ public class ApplicationSummarySpecificationTest {
         String reference = "ref2";
         String firstName = "Andy";
         String lastName = "Green";
+        LocalDate clientDateOfBirth = LocalDate.of(2025, 01, 13);
         UUID caseworkerId = UUID.randomUUID();
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(status, reference, firstName, lastName, caseworkerId);
+                .filterBy(status, reference, firstName, lastName, clientDateOfBirth, caseworkerId);
 
         Join<Object,Object> individualsJoin = mock(Join.class);
         Join<Object,Object> caseworkerJoin = mock(Join.class);
         Predicate referencePredicate = mock(Predicate.class);
         Predicate firstNamePredicate = mock(Predicate.class);
         Predicate lastNamePredicate = mock(Predicate.class);
+        Predicate clientDateOfBirthPredicate = mock(Predicate.class);
         Predicate caseworkerPredicate = mock(Predicate.class);
 
         when(root.get("status")).thenReturn(mock(Path.class));
@@ -218,6 +220,7 @@ public class ApplicationSummarySpecificationTest {
         when(builder.like(any(), eq("%" + reference + "%"))).thenReturn(referencePredicate);
         when(builder.like(any(), eq("%" + firstName + "%"))).thenReturn(firstNamePredicate);
         when(builder.like(any(), eq("%" + lastName + "%"))).thenReturn(lastNamePredicate);
+        when(builder.equal(any(), eq(clientDateOfBirth))).thenReturn(clientDateOfBirthPredicate);
         when(builder.equal(any(), eq(caseworkerId))).thenReturn(caseworkerPredicate);
 
         Predicate result = spec.toPredicate(root, query, builder);
