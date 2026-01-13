@@ -37,24 +37,27 @@ public class ApplicationService {
   private final ObjectMapper objectMapper;
   private final CaseworkerRepository caseworkerRepository;
   private final DomainEventService domainEventService;
+  private final ApplicationContentParserService applicationContentParser;
 
   /**
    * Constructs an ApplicationService with required dependencies.
    *
-   * @param applicationRepository the repository
-   * @param applicationMapper the mapper between entity and DTO
+   * @param applicationRepository  the repository
+   * @param applicationMapper      the mapper between entity and DTO
    * @param applicationValidations validations for requests
-   * @param objectMapper Jackson ObjectMapper for JSONB
+   * @param objectMapper           Jackson ObjectMapper for JSONB
    */
   public ApplicationService(final ApplicationRepository applicationRepository,
                             final ApplicationMapper applicationMapper,
                             final ApplicationValidations applicationValidations,
                             final ObjectMapper objectMapper,
                             final CaseworkerRepository caseworkerRepository,
-                            final DomainEventService domainEventService) {
+                            final DomainEventService domainEventService,
+                            final ApplicationContentParserService applicationContentParserService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
+    this.applicationContentParser = applicationContentParserService;
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
     this.caseworkerRepository = caseworkerRepository;
@@ -82,9 +85,12 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public UUID createApplication(final ApplicationCreateRequest req) {
     applicationValidations.checkApplicationCreateRequest(req);
-    final ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
+    ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
+    setValuesFromApplicationContent(req, entity);
     entity.setSchemaVersion(applicationVersion);
+
     final ApplicationEntity saved = applicationRepository.save(entity);
+
 
     domainEventService.saveCreateApplicationDomainEvent(saved, null);
 
@@ -94,9 +100,26 @@ public class ApplicationService {
   }
 
   /**
+   * Sets key fields in the application entity based on parsed application content.
+   *
+   * @param req    application create request
+   * @param entity application entity to update
+   */
+  private void setValuesFromApplicationContent(ApplicationCreateRequest req, ApplicationEntity entity) {
+    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(req);
+    entity.setApplyApplicationId(parsedContentDetails.applyApplicationId());
+    entity.setAutoGranted(parsedContentDetails.autoGranted());
+    entity.setUseDelegatedFunctions(parsedContentDetails.useDelegatedFunctions());
+    entity.setCategoryOfLaw(parsedContentDetails.categoryOfLaw());
+    entity.setMatterType(parsedContentDetails.matterType());
+    entity.setSubmittedAt(parsedContentDetails.submittedAt());
+  }
+
+
+  /**
    * Update an existing application.
    *
-   * @param id application UUID
+   * @param id  application UUID
    * @param req DTO with update fields
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
@@ -112,14 +135,15 @@ public class ApplicationService {
     // Optional: create snapshot for audit/history
     objectMapper.convertValue(
         applicationMapper.toApplication(entity),
-        new TypeReference<Map<String, Object>>() {}
+        new TypeReference<Map<String, Object>>() {
+        }
     );
   }
 
   /**
    * Placeholder for historic/audit record creation.
    *
-   * @param entity application entity
+   * @param entity     application entity
    * @param actionType optional action type
    */
   protected void createAndSendHistoricRecord(final ApplicationEntity entity, final Object actionType) {
@@ -149,11 +173,11 @@ public class ApplicationService {
     applicationValidations.checkApplicationIdList(ids);
     var idsToFetch = ids.stream().distinct().toList();
     var applications = applicationRepository.findAllById(idsToFetch);
-    List<UUID> fetchedApplicationsIds = applications.stream().map(app -> app.getId()).toList();
+    List<UUID> fetchedApplicationsIds = applications.stream().map(ApplicationEntity::getId).toList();
     String missingIds = idsToFetch.stream()
-                                  .filter(appId -> !fetchedApplicationsIds.contains(appId))
-                                  .map(appId -> appId.toString())
-                                  .collect(Collectors.joining(","));
+        .filter(appId -> !fetchedApplicationsIds.contains(appId))
+        .map(UUID::toString)
+        .collect(Collectors.joining(","));
     if (!missingIds.isEmpty()) {
       String exceptionMsg = "No application found with ids: " + missingIds;
       throw new ResourceNotFoundException(exceptionMsg);
@@ -164,9 +188,9 @@ public class ApplicationService {
   /**
    * Assigns a caseworker to an application.
    *
-   * @param caseworkerId the UUID of the caseworker to assign
+   * @param caseworkerId   the UUID of the caseworker to assign
    * @param applicationIds the UUIDs of the applications to assign the caseworker to
-   * @throws ResourceNotFoundException   if the application or caseworker does not exist
+   * @throws ResourceNotFoundException if the application or caseworker does not exist
    */
   @Transactional
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
@@ -188,9 +212,9 @@ public class ApplicationService {
       }
 
       domainEventService.saveAssignApplicationDomainEvent(
-              app.getId(),
-              caseworker.getId(),
-              eventHistory.getEventDescription());
+          app.getId(),
+          caseworker.getId(),
+          eventHistory.getEventDescription());
     });
 
   }
@@ -199,7 +223,7 @@ public class ApplicationService {
    * Unassigns a caseworker from an application.
    *
    * @param applicationId the UUID of the application to update
-   * @throws ResourceNotFoundException   if the application does not exist
+   * @throws ResourceNotFoundException if the application does not exist
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void unassignCaseworker(final UUID applicationId, EventHistory history) {
@@ -218,9 +242,9 @@ public class ApplicationService {
     applicationRepository.save(entity);
 
     domainEventService.saveUnassignApplicationDomainEvent(
-            entity.getId(),
-            null,
-            history.getEventDescription());
+        entity.getId(),
+        null,
+        history.getEventDescription());
 
   }
 
@@ -231,6 +255,6 @@ public class ApplicationService {
    */
   private static boolean applicationCurrentCaseworkerIsCaseworker(ApplicationEntity application, CaseworkerEntity caseworker) {
     return application.getCaseworker() != null
-            && application.getCaseworker().equals(caseworker);
+        && application.getCaseworker().equals(caseworker);
   }
 }
