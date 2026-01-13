@@ -125,7 +125,7 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void updateApplication(final UUID id, final ApplicationUpdateRequest req) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
-    applicationValidations.checkApplicationUpdateRequest(req, entity);
+    applicationValidations.checkApplicationUpdateRequest(req);
     applicationMapper.updateApplicationEntity(entity, req);
     entity.setModifiedAt(Instant.now());
     applicationRepository.save(entity);

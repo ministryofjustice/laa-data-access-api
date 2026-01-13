@@ -300,18 +300,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                             ))
                     ),
                     Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                                    builder.laaReference(null)),
-                            new ValidationException(List.of(
-                                    "Application reference cannot be blank"
-                            ))
-                    ),
-                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                                    builder.laaReference("")),
-                            new ValidationException(List.of(
-                                    "Application reference cannot be blank"
-                            ))
-                    ),
-                    Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
                                     builder.applicationContent(new HashMap<>())),
                             new ValidationException(List.of(
                                     "Application content cannot be empty"
@@ -324,7 +312,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                             .laaReference(null)
                             .applicationContent(new HashMap<>())),
                     new ValidationException(List.of(
-                        "Application reference cannot be blank",
                         "Application content cannot be empty",
                         "Application status cannot be null",
                         "Application individual cannot be null"

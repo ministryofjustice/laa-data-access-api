@@ -2,10 +2,10 @@ package uk.gov.justice.laa.dstew.access.validation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
@@ -61,8 +61,7 @@ public class ApplicationValidations {
    * One by
    * Validates an incoming PATCH.
    */
-  public void checkApplicationUpdateRequest(final ApplicationUpdateRequest dto,
-                                            final ApplicationEntity current) {
+  public void checkApplicationUpdateRequest(final ApplicationUpdateRequest dto) {
     if (dto == null || dto.getApplicationContent() == null) {
       throw new ValidationException(
           List.of("ApplicationUpdateRequest and its content cannot be null")
@@ -80,7 +79,7 @@ public class ApplicationValidations {
    * Validates a list of application ids and throw ValidationException.
    */
   public void checkApplicationIdList(final List<UUID> appIds) {
-    if (appIds.stream().anyMatch(id -> id == null)) {
+    if (appIds.stream().anyMatch(Objects::isNull)) {
       throw new ValidationException(
           List.of("Request contains null values for ids")
       );

@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access;
 
+import java.util.UUID;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -10,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
+import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
@@ -22,8 +24,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactor
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerUnassignFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.domainevents.DomainEventFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualEntityFactoryImpl;
-
-import java.util.UUID;
+import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactoryImpl;
 
 @Configuration
 public class TestConfiguration {
@@ -79,7 +80,7 @@ public class TestConfiguration {
     }
 
     @Bean
-    public Factory<IndividualEntity, IndividualEntity.IndividualEntityBuilder> individualFactory() {
+    public Factory<IndividualEntity, IndividualEntity.IndividualEntityBuilder> individualEntityFactory() {
         return new IndividualEntityFactoryImpl();
     }
 
@@ -91,5 +92,10 @@ public class TestConfiguration {
     @Bean
     public Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder> domainEventFactory() {
         return new DomainEventFactoryImpl();
+    }
+
+    @Bean
+    public Factory<Individual, Individual.Builder> individualFactory() {
+        return new IndividualFactoryImpl();
     }
 }
