@@ -8,7 +8,9 @@ import static org.mockito.Mockito.when;
 
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import org.junit.jupiter.api.Test;
@@ -29,7 +31,18 @@ public class ApplicationSummarySpecificationTest {
     private final CriteriaBuilder builder = mock(CriteriaBuilder.class);
 
     @Test
-    void shouldNotFailWhenReferenceIsNotBlank(){
+    void givenAllEmpty_whenToPredicate_thenReturnNull() {
+
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(null, null, null, null, null);
+
+        Predicate result = spec.toPredicate(root, query, builder);
+
+        assertThat(result).isNull();
+    }
+
+    @Test
+    void givenReference_whenToPredicate_thenReturnPredicate() {
 
         String reference = "some-reference";
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
@@ -43,7 +56,7 @@ public class ApplicationSummarySpecificationTest {
     }
 
     @Test
-    void shouldNotFailWhenReferenceIsBlank(){
+    void givenBlankReference_whenToPredicate_thenReturnNull() {
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
                 .filterBy(null, "", null, null, null);
@@ -54,7 +67,7 @@ public class ApplicationSummarySpecificationTest {
     }
 
     @Test
-    void shouldNotFailWhenStatusHasAValue(){
+    void givenApplicationStatus_whenToPredicate_thenReturnPredicate(){
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
                 .filterBy(ApplicationStatus.IN_PROGRESS, null, null, null, null);
@@ -70,59 +83,7 @@ public class ApplicationSummarySpecificationTest {
     }
 
     @Test
-    void shouldFailWhenStatusHasAValueThatDoesNotMatch(){
-
-        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(ApplicationStatus.SUBMITTED, null, null, null, null);
-
-        Predicate summaryPredicate = mock(Predicate.class);
-
-        when(root.get("status"))
-                .thenReturn(mock(jakarta.persistence.criteria.Path.class));
-        when(builder.equal(any(), eq(ApplicationStatus.IN_PROGRESS))).thenReturn(summaryPredicate);
-
-        Predicate result = spec.toPredicate(root, query, builder);
-        assertThat(result).isNull();
-    }
-
-    @Test
-    void shouldNotFailWhenAllFieldsAreNull(){
-
-        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, null, null, null);
-
-        Predicate result = spec.toPredicate(root, query, builder);
-
-        assertThat(result).isNull();
-    }
-
-    @Test
-    void shouldNotFailWhenAllFieldsAreSet(){
-
-        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(ApplicationStatus.SUBMITTED,
-                                "ref2",
-                                "Andy",
-                                "Green",
-                                        UUID.randomUUID());
-
-        when(
-                root.join(eq("individuals"), eq(JoinType.INNER))
-        )
-        .thenReturn(mock());
-
-        when(
-                root.join(eq("caseworker"), eq(JoinType.INNER))
-        )
-        .thenReturn(mock());
-
-        Predicate result = spec.toPredicate(root, query, builder);
-
-        assertThat(result).isNull();
-    }
-
-    @Test
-    void shouldNotFailWhenFirstNameIsNotBlank(){
+    void givenFirstName_whenToPredicate_thenReturnPredicate() {
 
         String firstName = "some-name";
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
@@ -147,7 +108,7 @@ public class ApplicationSummarySpecificationTest {
     }
 
     @Test
-    void shouldNotFailWhenFirstNameIsBlank(){
+    void givenBlankFirstName_whenToPredicate_thenReturnNull() {
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
                 .filterBy(null, null, "", null, null);
@@ -158,7 +119,7 @@ public class ApplicationSummarySpecificationTest {
     }
 
     @Test
-    void shouldNotFailWhenLastNameIsBlank(){
+    void givenBlankLastName_whenToPredicate_thenReturnNull() {
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
                 .filterBy(null, null, null, "", null);
@@ -169,7 +130,7 @@ public class ApplicationSummarySpecificationTest {
     }
 
     @Test
-    void shouldNotFailWhenLastNameIsNotBlank(){
+    void givenLastName_whenToPredicate_thenReturnPredicate() {
 
         String lastName = "some-name";
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
@@ -194,7 +155,7 @@ public class ApplicationSummarySpecificationTest {
     }
 
     @Test
-    void shouldNotFailWhenCaseworkerIdHasAValue(){
+    void givenCaseworkerId_whenToPredicate_thenReturnPredicate() {
 
         UUID caseworkerId = UUID.randomUUID();
 
@@ -219,26 +180,47 @@ public class ApplicationSummarySpecificationTest {
     }
 
     @Test
-    void shouldFailWhenCaseworkerIdHasAValueThatDoesNotMatch(){
+    void givenNullCaseworkerId_whenToPredicate_thenReturnNull() {
 
         Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
-                .filterBy(null, null, null, null, UUID.randomUUID());
-
-        Predicate summaryPredicate = mock(Predicate.class);
-
-        when(
-                root.join(eq("caseworker"), eq(JoinType.INNER))
-        )
-                .thenReturn(mock());
-
-        when(
-                builder.equal(
-                        any(),
-                        eq(UUID.randomUUID())
-                )
-        ).thenReturn(summaryPredicate);
+                .filterBy(null, null, null, null, null);
 
         Predicate result = spec.toPredicate(root, query, builder);
+
         assertThat(result).isNull();
+    }
+
+    @Test
+    void givenAllFilters_whenToPredicate_thenReturnPredicate() {
+        ApplicationStatus status = ApplicationStatus.SUBMITTED;
+        String reference = "ref2";
+        String firstName = "Andy";
+        String lastName = "Green";
+        UUID caseworkerId = UUID.randomUUID();
+
+        Specification<ApplicationSummaryEntity> spec = ApplicationSummarySpecification
+                .filterBy(status, reference, firstName, lastName, caseworkerId);
+
+        Join<Object,Object> individualsJoin = mock(Join.class);
+        Join<Object,Object> caseworkerJoin = mock(Join.class);
+        Predicate referencePredicate = mock(Predicate.class);
+        Predicate firstNamePredicate = mock(Predicate.class);
+        Predicate lastNamePredicate = mock(Predicate.class);
+        Predicate caseworkerPredicate = mock(Predicate.class);
+
+        when(root.get("status")).thenReturn(mock(Path.class));
+        when(root.get("laaReference")).thenReturn(mock(Path.class));
+        when(root.join(eq("individuals"), eq(JoinType.INNER))).thenReturn(individualsJoin);
+        when(root.join(eq("caseworker"), eq(JoinType.INNER))).thenReturn(caseworkerJoin);
+
+        when(builder.equal(any(), eq(status))).thenReturn(mock(Predicate.class));
+        when(builder.like(any(), eq("%" + reference + "%"))).thenReturn(referencePredicate);
+        when(builder.like(any(), eq("%" + firstName + "%"))).thenReturn(firstNamePredicate);
+        when(builder.like(any(), eq("%" + lastName + "%"))).thenReturn(lastNamePredicate);
+        when(builder.equal(any(), eq(caseworkerId))).thenReturn(caseworkerPredicate);
+
+        Predicate result = spec.toPredicate(root, query, builder);
+
+        assertThat(result).isNotNull();
     }
 }
