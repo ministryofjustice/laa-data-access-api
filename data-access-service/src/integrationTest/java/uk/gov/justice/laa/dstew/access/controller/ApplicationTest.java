@@ -328,12 +328,14 @@ public class ApplicationTest extends BaseIntegrationTest {
                     individualBuilder -> individualBuilder.dateOfBirth(null)
                         .firstName("")
                         .lastName("")
+                        .type(null)
                         .details(new HashMap<>()))))),
                 problemDetail,
                 Map.of("invalidFields",
                     Map.of("individuals[0].details", minimumSizErrorMessage,
                         "individuals[0].lastName", minimumSizErrorMessage,
                         "individuals[0].firstName", minimumSizErrorMessage,
+                        "individuals[0].type", mustNotBeNull,
                         "individuals[0].dateOfBirth", mustNotBeNull))),
             Arguments.of(applicationCreateRequestFactory.create(builder -> builder.individuals(List.of(individualFactory.create(
                     individualBuilder ->

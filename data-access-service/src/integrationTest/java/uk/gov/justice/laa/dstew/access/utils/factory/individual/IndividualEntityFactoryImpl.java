@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.individual;
 
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
 import java.time.LocalDate;
@@ -17,6 +18,7 @@ public class IndividualEntityFactoryImpl implements Factory<IndividualEntity, In
                 .individualContent(Map.of(
                         "test", "content"
                 ))
+                .type(IndividualType.CLIENT)
                 .build();
     }
 

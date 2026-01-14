@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.function.Consumer;
 import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
 public class IndividualFactoryImpl implements Factory<Individual, Individual.Builder> {
@@ -16,6 +17,7 @@ public class IndividualFactoryImpl implements Factory<Individual, Individual.Bui
         .details(Map.of(
             "test", "content"
         ))
+        .type(IndividualType.CLIENT)
         .build();
   }
 
