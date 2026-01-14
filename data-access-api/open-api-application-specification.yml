@@ -291,12 +291,18 @@ components:
       enum:
         - INITIAL
 
+    individualType:
+      type: string
+      enum:
+        - CLIENT
+
     Individual:
       type: object
       required:
         - firstName
         - lastName
         - dateOfBirth
+        - type
       properties:
         firstName:
           type: string
@@ -308,6 +314,8 @@ components:
         details:
           type: object
           additionalProperties: true
+        type:
+          $ref: "#/components/schemas/individualType"
 
     Application:
       type: object

@@ -9,6 +9,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
 /**
  * Defines the filtering of Application Summaries.
@@ -28,8 +29,7 @@ public class ApplicationSummarySpecification {
           UUID userId) {
     return isStatus(status)
             .and(likeLaaReference(reference))
-            .and(likeFirstName(firstName))
-            .and(likeLastName(lastName))
+            .and(IndividualFilterSpecification.filterIndividual(firstName, lastName))
             .and(isCaseworkerId(userId));
   }
 
@@ -52,32 +52,6 @@ public class ApplicationSummarySpecification {
     return Specification.unrestricted();
   }
 
-  private static Specification<ApplicationSummaryEntity> likeFirstName(String firstName) {
-    if (firstName != null && !firstName.isBlank()) {
-      return (root, query, builder)
-              -> {
-                Join<ApplicationEntity, IndividualEntity> individualsJoin = root.join("individuals", JoinType.INNER);
-                return builder.like(builder.lower(
-                                individualsJoin.get("firstName")),
-                                  "%" + firstName.toLowerCase() + "%");
-      };
-    }
-    return Specification.unrestricted();
-  }
-
-  private static Specification<ApplicationSummaryEntity> likeLastName(String lastName) {
-    if (lastName != null && !lastName.isBlank()) {
-      return (root, query, builder)
-              -> {
-                Join<ApplicationEntity, IndividualEntity> individualsJoin = root.join("individuals", JoinType.INNER);
-                return builder.like(builder.lower(
-                              individualsJoin.get("lastName")),
-                "%" + lastName.toLowerCase() + "%");
-      };
-    }
-    return Specification.unrestricted();
-  }
-
   private static Specification<ApplicationSummaryEntity> isCaseworkerId(UUID caseworkerId) {
 
     if (caseworkerId != null) {
@@ -89,5 +63,55 @@ public class ApplicationSummarySpecification {
     }
 
     return Specification.unrestricted();
+  }
+
+  private class IndividualFilterSpecification {
+    public static Specification<ApplicationSummaryEntity> filterIndividual(String firstName, String lastName) {
+      Specification<ApplicationSummaryEntity> baseSpecification = Specification.unrestricted();
+      if (isPopulated(firstName) || isPopulated(lastName)) {
+        baseSpecification = isClient();
+      }
+      return baseSpecification
+      .and(likeFirstName(firstName))
+      .and(likeLastName(lastName));
+    }
+
+    private static Specification<ApplicationSummaryEntity> isClient() {
+      return (root, query, builder)
+                -> {
+                  Join<ApplicationEntity, IndividualEntity> individualsJoin = root.join("individuals", JoinType.INNER);
+                  return builder.equal(individualsJoin.get("type"), IndividualType.CLIENT);
+      };
+    }
+
+    private static Specification<ApplicationSummaryEntity> likeFirstName(String firstName) {
+      if (firstName != null && !firstName.isBlank()) {
+        return (root, query, builder)
+                -> {
+                  Join<ApplicationEntity, IndividualEntity> individualsJoin = root.join("individuals", JoinType.INNER);
+                  return builder.like(builder.lower(
+                                  individualsJoin.get("firstName")),
+                                    "%" + firstName.toLowerCase() + "%");
+        };
+      }
+      return Specification.unrestricted();
+    }
+
+    private static Specification<ApplicationSummaryEntity> likeLastName(String lastName) {
+      if (lastName != null && !lastName.isBlank()) {
+        return (root, query, builder)
+                -> {
+                  Join<ApplicationEntity, IndividualEntity> individualsJoin = root.join("individuals", JoinType.INNER);
+                  return builder.like(builder.lower(
+                                individualsJoin.get("lastName")),
+                  "%" + lastName.toLowerCase() + "%");
+        };
+      }
+      return Specification.unrestricted();
+    }
+  }
+
+  private static boolean isPopulated(String str) {
+    return str != null && !str.isBlank();
   }
 }
