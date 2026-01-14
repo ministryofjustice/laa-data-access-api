@@ -51,7 +51,6 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
         .status(ApplicationStatus.IN_PROGRESS)
         .laaReference("TestReference")
         .applicationContent(applicationContent)
-        .submittedAt(submitted_at.atOffset(ZoneOffset.UTC))
         .individuals(List.of(
             Individual.builder()
                 .firstName("John")

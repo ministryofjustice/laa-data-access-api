@@ -124,7 +124,6 @@ class ApplicationMapperTest {
         .status(ApplicationStatus.SUBMITTED)
         .applicationContent(Map.of("foo", "bar"))
         .laaReference("laa_reference")
-        .submittedAt(OffsetDateTime.now())
         .build();
 
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
@@ -147,7 +146,6 @@ class ApplicationMapperTest {
         .applicationContent(Map.of("foo", "bar"))
         .laaReference("laa_reference")
         .individuals(List.of(individual))
-        .submittedAt(OffsetDateTime.now())
         .build();
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
     assertThat(result.getIndividuals()).hasSize(1);

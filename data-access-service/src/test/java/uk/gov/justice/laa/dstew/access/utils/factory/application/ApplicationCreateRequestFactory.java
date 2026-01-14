@@ -33,7 +33,6 @@ public class ApplicationCreateRequestFactory extends BaseFactory<ApplicationCrea
                 .laaReference("REF7327")
                 .individuals(List.of(individualFactory.createDefault()))
                 .applicationContent(applicationContentFactory.createDefaultAsMap())
-                .submittedAt(OffsetDateTime.now())
                 .build();
     }
 }

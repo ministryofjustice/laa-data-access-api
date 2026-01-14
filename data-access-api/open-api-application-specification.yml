@@ -325,7 +325,6 @@ components:
         - applicationContent
         - laaReference
         - individuals
-        - submittedAt
       properties:
         status:
           $ref: "#/components/schemas/applicationStatus"
@@ -339,9 +338,6 @@ components:
           minItems: 1
           items:
             $ref: "#/components/schemas/Individual"
-        submittedAt:
-          type: string
-          format: date-time
 
     ApplicationUpdateRequest:
       type: object
