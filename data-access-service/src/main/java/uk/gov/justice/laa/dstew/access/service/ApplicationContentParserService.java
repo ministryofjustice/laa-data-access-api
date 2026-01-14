@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContentDetails;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ParsedAppContentDetails;
-import uk.gov.justice.laa.dstew.access.model.ProceedingDetails;
+import uk.gov.justice.laa.dstew.access.model.ProceedingDto;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
@@ -45,16 +45,16 @@ public class ApplicationContentParserService {
     if (applicationContent.getProceedings() == null || applicationContent.getProceedings().isEmpty()) {
       throw new ValidationException(List.of("No proceedings found in application content"));
     }
-    ProceedingDetails leadProceeding = applicationContent.getProceedings().stream()
+    ProceedingDto leadProceeding = applicationContent.getProceedings().stream()
         .filter(Objects::nonNull)
-        .filter(ProceedingDetails::leadProceeding)
+        .filter(ProceedingDto::leadProceeding)
         .findFirst()
         .orElseThrow(() -> new ValidationException(List.of("No lead proceeding found in application content")));
     boolean usedDelegatedFunction =
         applicationContent.getProceedings().stream()
             .filter(Objects::nonNull)
             .filter(proceeding -> null != proceeding.useDelegatedFunctions())
-            .anyMatch(ProceedingDetails::useDelegatedFunctions);
+            .anyMatch(ProceedingDto::useDelegatedFunctions);
     return ParsedAppContentDetails
         .builder()
         .applyApplicationId(applicationContent.getApplyApplicationId())

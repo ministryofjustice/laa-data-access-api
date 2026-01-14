@@ -276,7 +276,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                   .applicationContent(
                       applicationContentFactory.createDefaultAsMap(detailsBuilder ->
                           detailsBuilder.proceedings(List.of(
-                              proceedingDetailsFactory.createDefault(proceedingDetailsBuilder ->
+                              proceedingDtoFactory.createDefault(proceedingDetailsBuilder ->
                                   proceedingDetailsBuilder.leadProceeding(false))
                           ))))),
               new ValidationException(List.of(

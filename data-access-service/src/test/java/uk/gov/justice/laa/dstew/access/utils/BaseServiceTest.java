@@ -23,12 +23,13 @@ import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCrea
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationSummaryFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateRequestFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.ProceedingDetailsFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ProceedingDtoFactory;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.*;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.domainEvent.DomainEventFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingDetailsFactory;
 
 import java.util.stream.Stream;
 
@@ -79,6 +80,9 @@ public class BaseServiceTest {
 
     @Autowired
     protected ApplicationContentFactory applicationContentFactory;
+
+    @Autowired
+    protected ProceedingDtoFactory proceedingDtoFactory;
 
     @Autowired
     protected ProceedingDetailsFactory proceedingDetailsFactory;
