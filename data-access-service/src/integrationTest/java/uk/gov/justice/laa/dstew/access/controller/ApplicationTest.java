@@ -1625,6 +1625,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         }
 
         @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
         public void givenApplicationFilteredByAutoGrant_whenGetApplicationsAndInvalidFormat_thenReturnBadRequest() throws Exception {
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_ISAUTOGRANTED_PARAM + "something");
             assertBadRequest(result);
