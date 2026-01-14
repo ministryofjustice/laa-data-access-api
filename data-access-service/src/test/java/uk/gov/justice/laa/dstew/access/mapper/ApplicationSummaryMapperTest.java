@@ -21,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 
 
@@ -38,6 +39,7 @@ public class ApplicationSummaryMapperTest {
     IndividualEntity individual = IndividualEntity.builder()
                                                   .firstName("John").lastName("Doe")
                                                   .dateOfBirth(LocalDate.of(1980, 5, 2))
+                                                  .type(IndividualType.CLIENT)
                                                   .build();
     ApplicationSummaryEntity entity = new ApplicationSummaryEntity();
     entity.setId(id);
