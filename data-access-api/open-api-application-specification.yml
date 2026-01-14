@@ -32,7 +32,7 @@ paths:
           schema:
             type: string
         - in: query
-          name: clientdateofbirth
+          name: clientDateOfBirth
           description: The linked individuals date of dateOfBirth
           schema:
             type: string
