@@ -31,8 +31,7 @@ public class ApplicationSummarySpecification {
           UUID userId) {
     return isStatus(status)
             .and(likeLaaReference(reference))
-            .and(IndividualFilterSpecification.filterIndividual(firstName, lastName))
-            .and(isDateOfBirth(clientDateOfBirth))
+            .and(IndividualFilterSpecification.filterIndividual(firstName, lastName, clientDateOfBirth))
             .and(isCaseworkerId(userId));
   }
 
@@ -69,14 +68,18 @@ public class ApplicationSummarySpecification {
   }
 
   private class IndividualFilterSpecification {
-    public static Specification<ApplicationSummaryEntity> filterIndividual(String firstName, String lastName) {
+    public static Specification<ApplicationSummaryEntity> filterIndividual(String firstName, 
+        String lastName, LocalDate dateOfBirth) {
       Specification<ApplicationSummaryEntity> baseSpecification = Specification.unrestricted();
-      if (isPopulated(firstName) || isPopulated(lastName)) {
+      if (isPopulated(firstName) 
+          || isPopulated(lastName) 
+          || dateOfBirth != null) {
         baseSpecification = isClient();
       }
       return baseSpecification
-      .and(likeFirstName(firstName))
-      .and(likeLastName(lastName));
+        .and(likeFirstName(firstName))
+        .and(likeLastName(lastName))
+        .and(isDateOfBirth(dateOfBirth));
     }
 
     private static Specification<ApplicationSummaryEntity> isClient() {
@@ -108,6 +111,17 @@ public class ApplicationSummarySpecification {
                   return builder.like(builder.lower(
                                 individualsJoin.get("lastName")),
                   "%" + lastName.toLowerCase() + "%");
+        };
+      }
+      return Specification.unrestricted();
+    }
+
+    private static Specification<ApplicationSummaryEntity> isDateOfBirth(LocalDate clientDateOfBirth) {
+      if (clientDateOfBirth != null) {
+        return (root, query, builder)
+              -> {
+                Join<ApplicationEntity, IndividualEntity> individualsJoin = root.join("individuals", JoinType.INNER);
+                return builder.equal(individualsJoin.get("dateOfBirth"), clientDateOfBirth);
         };
       }
       return Specification.unrestricted();

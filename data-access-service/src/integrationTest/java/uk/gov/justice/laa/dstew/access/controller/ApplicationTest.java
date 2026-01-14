@@ -1508,7 +1508,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             LocalDate clientDOB = LocalDate.of(1942, 11, 27);
             List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(2, builder ->
                     builder.status(ApplicationStatus.IN_PROGRESS)
-                            .individuals(Set.of(individualFactory.create(i -> i.firstName("Jimi").lastName("Hendrix").dateOfBirth(clientDOB)))));
+                            .individuals(Set.of(individualEntityFactory.create(i -> i.firstName("Jimi").lastName("Hendrix").dateOfBirth(clientDOB)))));
             var expectedApplicationSummary = expectedApplications.stream().map(this::createApplicationSummary).toList();
             persistedApplicationFactory.createAndPersist();
 
