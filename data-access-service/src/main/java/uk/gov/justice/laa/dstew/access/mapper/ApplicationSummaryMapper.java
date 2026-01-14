@@ -7,6 +7,7 @@ import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
 /**
  * Mapper between ApplicationSummaryEntity and DTOs.
@@ -61,6 +62,13 @@ public interface ApplicationSummaryMapper {
     if (individuals == null || individuals.isEmpty()) {
       return null;
     }
-    return individuals.iterator().next();
+    return individuals.stream()
+    .filter(ApplicationSummaryMapper::isClient)
+    .findFirst()
+    .orElse(null);
+  }
+
+  private static boolean isClient(IndividualEntity individual) {
+    return individual.getType() == IndividualType.CLIENT;
   }
 }

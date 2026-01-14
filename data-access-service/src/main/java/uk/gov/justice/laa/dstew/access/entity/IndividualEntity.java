@@ -6,6 +6,8 @@ import com.vladmihalcea.hibernate.type.json.JsonType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -24,6 +26,7 @@ import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
 /**
  * Represents an individual.
@@ -56,6 +59,10 @@ public class IndividualEntity  implements AuditableEntity {
   @Type(JsonType.class)
   @Column(columnDefinition = "jsonb", nullable = false)
   private Map<String, Object> individualContent;
+
+  @Column(name = "individual_type", nullable = false)
+  @Enumerated(EnumType.STRING)
+  private IndividualType type;
 
   @Column(name = "created_at")
   @CreationTimestamp

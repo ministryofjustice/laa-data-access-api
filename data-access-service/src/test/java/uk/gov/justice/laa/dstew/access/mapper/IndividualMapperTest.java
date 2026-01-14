@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
 class IndividualMapperTest {
 
@@ -32,6 +33,7 @@ class IndividualMapperTest {
     entity.setLastName("Doe");
     entity.setDateOfBirth(LocalDate.of(1980, 5, 15));
     entity.setIndividualContent(Map.of("key", "value"));
+    entity.setType(IndividualType.CLIENT);
 
     Individual result = mapper.toIndividual(entity);
 
@@ -40,10 +42,11 @@ class IndividualMapperTest {
     assertThat(result.getLastName()).isEqualTo("Doe");
     assertThat(result.getDateOfBirth()).isEqualTo(LocalDate.of(1980, 5, 15));
     assertThat(result.getDetails()).isEqualTo(Map.of("key", "value"));
+    assertThat(result.getType()).isEqualTo(IndividualType.CLIENT);
   }
 
   @Test
-  void toIndividualEntitY_shouldReturnNull_WhenIndividualIsNull() {
+  void toIndividualEntity_shouldReturnNull_WhenIndividualIsNull() {
     Individual individual = null;
     IndividualEntity result = mapper.toIndividualEntity(individual);
     assertThat(result).isNull();
@@ -56,6 +59,7 @@ class IndividualMapperTest {
                                       .lastName("Doe")
                                       .dateOfBirth(LocalDate.of(2025, 11, 24))
                                       .details(Map.of("key", "value"))
+                                      .type(IndividualType.CLIENT)
                                       .build();
     IndividualEntity result = mapper.toIndividualEntity(individual);
 
@@ -64,5 +68,6 @@ class IndividualMapperTest {
     assertThat(result.getLastName()).isEqualTo("Doe");
     assertThat(result.getDateOfBirth()).isEqualTo(LocalDate.of(2025, 11, 24));
     assertThat(result.getIndividualContent()).isEqualTo(Map.of("key", "value"));
+    assertThat(result.getType()).isEqualTo(IndividualType.CLIENT);
   }
 }

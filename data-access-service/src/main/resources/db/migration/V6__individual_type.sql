@@ -1,0 +1,5 @@
+ALTER TABLE individuals
+ADD COLUMN individual_type VARCHAR NOT NULL DEFAULT 'CLIENT';
+
+ALTER TABLE individuals
+ALTER COLUMN individual_type DROP DEFAULT;

@@ -131,6 +131,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                             individual.setLastName(individualEntity.getLastName());
                             individual.setDateOfBirth(individualEntity.getDateOfBirth());
                             individual.setDetails(individualEntity.getIndividualContent());
+                            individual.setType(individualEntity.getType());
                             return individual;
                         })
                         .collect(Collectors.toList());

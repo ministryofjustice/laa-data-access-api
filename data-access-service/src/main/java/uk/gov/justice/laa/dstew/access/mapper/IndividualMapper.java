@@ -31,6 +31,7 @@ public interface IndividualMapper {
     dto.setLastName(entity.getLastName());
     dto.setDateOfBirth(entity.getDateOfBirth());
     dto.setDetails(entity.getIndividualContent());
+    dto.setType(entity.getType());
     return dto;
   }
 
@@ -52,6 +53,7 @@ public interface IndividualMapper {
                             .lastName(individual.getLastName())
                             .dateOfBirth(individual.getDateOfBirth())
                             .individualContent(individual.getDetails())
+                            .type(individual.getType())
                             .build();
   }
 }
