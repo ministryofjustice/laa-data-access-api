@@ -50,6 +50,7 @@ public interface ApplicationMapper {
         .collect(Collectors.toSet());
     entity.setIndividuals(individuals);
     entity.setApplicationContent(req.getApplicationContent());
+    entity.setSubmittedAt(req.getSubmittedAt().toInstant());
     return entity;
   }
 

@@ -275,9 +275,24 @@ public class ApplicationTest extends BaseIntegrationTest {
         private void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual) {
             assertNotNull(actual.getId());
             assertEquals(expected.getLaaReference(), actual.getLaaReference());
-            assertEquals(expected.getApplicationContent(), actual.getApplicationContent());
             assertEquals(expected.getStatus(), actual.getStatus());
             assertEquals(applicationVersion, actual.getSchemaVersion());
+
+            Map<String, Object> content = expected.getApplicationContent();
+
+            assertEquals(
+                UUID.fromString(content.get("applyApplicationId").toString()),
+                actual.getApplyApplicationId()
+            );
+
+            assertEquals(
+                content.get("autoGrant"),
+                actual.isAutoGranted()
+            );
+
+          assertTrue(actual.isUseDelegatedFunctions());
+
+          assertNotNull(actual.getSubmittedAt());
         }
     }
 
