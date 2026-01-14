@@ -63,7 +63,6 @@ public class ApplicationService {
                             final ObjectMapper objectMapper,
                             final CaseworkerRepository caseworkerRepository,
                             final DecisionRepository decisionRepository,
-                            final DomainEventService domainEventService) {
                             final DomainEventService domainEventService,
                             final ApplicationContentParserService applicationContentParserService) {
     this.applicationRepository = applicationRepository;
