@@ -43,10 +43,10 @@ public class ApplicationSummaryService {
   /**
    * Retrieves a paginated list of {@link ApplicationSummary} objects filtered by application status.
    *
-   * @param applicationStatus the {@link ApplicationStatus} used to filter results on application status
+   * @param applicationStatus the {@link Status} used to filter results on application status
    * @param laaReference used to filter results on application reference
-   * @param firstName used to filter results on linked individuals first name
-   * @param lastName used to filter results on  linked individuals last name
+   * @param clientFirstName used to filter results on linked individuals first name
+   * @param clientLastName used to filter results on  linked individuals last name
    * @param page the page number to retrieve (zero-based index)
    * @param pageSize the maximum number of results to return per page
    * @return a list of {@link ApplicationSummary} instances matching the filter criteria
@@ -55,8 +55,8 @@ public class ApplicationSummaryService {
   public Page<ApplicationSummary> getAllApplications(
           ApplicationStatus applicationStatus,
           String laaReference,
-          String firstName,
-          String lastName,
+          String clientFirstName,
+          String clientLastName,
           UUID userId,
           Integer page,
           Integer pageSize) {
@@ -70,8 +70,8 @@ public class ApplicationSummaryService {
             .findAll(ApplicationSummarySpecification
                             .filterBy(applicationStatus,
                                     laaReference,
-                                    firstName,
-                                    lastName,
+                                    clientFirstName,
+                                    clientLastName,
                                     userId),
                     pageDetails)
             .map(mapper::toApplicationSummary);

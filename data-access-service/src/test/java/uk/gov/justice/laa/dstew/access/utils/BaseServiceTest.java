@@ -18,6 +18,12 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateRequestFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEntityFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationSummaryFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateRequestFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ProceedingDetailsFactory;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.*;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactory;
@@ -70,6 +76,12 @@ public class BaseServiceTest {
 
     @Autowired
     protected DomainEventFactory domainEventFactory;
+
+    @Autowired
+    protected ApplicationContentFactory applicationContentFactory;
+
+    @Autowired
+    protected ProceedingDetailsFactory proceedingDetailsFactory;
 
     @Autowired
     protected ApplicationAssignDecisionRequestFactory applicationAssignDecisionRequestFactory;

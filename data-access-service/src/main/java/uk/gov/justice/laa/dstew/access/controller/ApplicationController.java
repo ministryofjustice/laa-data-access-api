@@ -29,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.service.DomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 
+
 /**
  * Controller for handling /api/v0/applications requests.
  */
@@ -64,9 +65,9 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   public ResponseEntity<ApplicationSummaryResponse> getApplications(
           ApplicationStatus status,
-          String reference,
-          String firstName,
-          String lastName,
+          String laaReference,
+          String clientFirstName,
+          String clientLastName,
           UUID userId,
           Integer page,
           Integer pageSize) {
@@ -75,9 +76,9 @@ public class ApplicationController implements ApplicationApi {
     Page<ApplicationSummary> applicationsReturned =
             summaryService.getAllApplications(
                     status,
-                    reference,
-                    firstName,
-                    lastName,
+                    laaReference,
+                    clientFirstName,
+                    clientLastName,
                     userId,
                     page - 1, pageSize);
 

@@ -23,7 +23,7 @@ public class PersistedFactory<
     }
 
     public void persist(TEntity entity) {
-        repository.save(entity);
+        repository.saveAndFlush(entity);
     }
 
     public TEntity createAndPersist() {
@@ -39,7 +39,7 @@ public class PersistedFactory<
     }
 
     public void persistMultiple(List<TEntity> entities) {
-        repository.saveAll(entities);
+        repository.saveAllAndFlush(entities);
     }
 
     public List<TEntity> createMultiple(int number, Consumer<TBuilder> customiser) {
