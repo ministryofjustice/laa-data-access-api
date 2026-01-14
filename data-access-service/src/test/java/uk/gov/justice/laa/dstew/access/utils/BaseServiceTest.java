@@ -18,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.*;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.domainEvent.DomainEventFactory;
@@ -72,6 +73,9 @@ public class BaseServiceTest {
 
     @Autowired
     protected ApplicationAssignDecisionRequestFactory applicationAssignDecisionRequestFactory;
+
+    @MockitoBean
+    protected DecisionRepository decisionRepository;
 
     @AfterEach
     void tearDown() {

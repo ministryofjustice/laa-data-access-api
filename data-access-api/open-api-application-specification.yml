@@ -548,15 +548,11 @@ components:
       type: object
       required:
         - userId
-        - applicationId
         - applicationStatus
         - overallDecision
         - proceedings
       properties:
         userId:
-          type: string
-          format: uuid
-        applicationId:
           type: string
           format: uuid
         applicationStatus:

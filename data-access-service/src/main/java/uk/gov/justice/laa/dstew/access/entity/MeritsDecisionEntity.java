@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -47,7 +49,8 @@ public class MeritsDecisionEntity implements AuditableEntity {
   @UpdateTimestamp
   private Instant modifiedAt;
 
-  @Column(name = "decision")
+  @Column(name = "decision", nullable = false)
+  @Enumerated(EnumType.STRING)
   private MeritsDecisionStatus decision;
 
   @Column(name = "reason")

@@ -5,8 +5,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.NonNull;
@@ -14,6 +16,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
+import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
+import uk.gov.justice.laa.dstew.access.enums.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
@@ -21,8 +27,10 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AssignDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.ProceedingDetails;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
+import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
 /**
@@ -38,6 +46,7 @@ public class ApplicationService {
   private final ObjectMapper objectMapper;
   private final CaseworkerRepository caseworkerRepository;
   private final DomainEventService domainEventService;
+  private final DecisionRepository decisionRepository;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -52,6 +61,7 @@ public class ApplicationService {
                             final ApplicationValidations applicationValidations,
                             final ObjectMapper objectMapper,
                             final CaseworkerRepository caseworkerRepository,
+                            final DecisionRepository decisionRepository,
                             final DomainEventService domainEventService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
@@ -60,6 +70,7 @@ public class ApplicationService {
     this.objectMapper = objectMapper;
     this.caseworkerRepository = caseworkerRepository;
     this.domainEventService = domainEventService;
+    this.decisionRepository = decisionRepository;
   }
 
   /**
@@ -248,22 +259,41 @@ public class ApplicationService {
   /**
    * Update an existing application to add the decision details.
    *
-   * @param id application UUID
+   * @param applicationId application UUID
    * @param request DTO with update fields
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public void assignDecision(final UUID id, final AssignDecisionRequest request) {
-    final ApplicationEntity entity = checkIfApplicationExists(id);
+  public void assignDecision(final UUID applicationId, final AssignDecisionRequest request) {
+    final ApplicationEntity entity = checkIfApplicationExists(applicationId);
     final CaseworkerEntity caseworker = checkIfCaseworkerExists(request.getUserId());
 
     applicationValidations.checkApplicationAssignDecisionRequest(request);
 
-    // update applications
-    // save decision (insert or update)
-    // save merits
-    // save linked merits-decision
-    //applicationMapper.assignDecision(entity, request);
+    applicationMapper.updateApplicationEntityWithAssignDecisionRequest(entity, request);
+
     entity.setModifiedAt(Instant.now());
     applicationRepository.save(entity);
+
+    DecisionEntity decisionEntity = decisionRepository.findByApplicationId(applicationId)
+            .orElse(DecisionEntity.builder()
+                    .applicationId(applicationId)
+                    .createdAt(Instant.now())
+                    .build());
+
+    decisionEntity.setOverallDecision(DecisionStatus.valueOf(request.getOverallDecision().getValue()));
+    Set<MeritsDecisionEntity> merits = new HashSet<>();
+    for (ProceedingDetails proceeding : request.getProceedings()) {
+      merits.add(
+          MeritsDecisionEntity.builder()
+          .decision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()))
+          .reason(proceeding.getMeritsDecision().getRefusal().getReason())
+          .justification(proceeding.getMeritsDecision().getRefusal().getJustification())
+          .proceedingId(proceeding.getProceedingId())
+          .build()
+      );
+    }
+    decisionEntity.setMeritsDecisions(merits);
+    decisionEntity.setModifiedAt(Instant.now());
+    decisionRepository.save(decisionEntity);
   }
 }

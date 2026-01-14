@@ -26,7 +26,6 @@ public class ApplicationAssignDecisionRequestFactory extends BaseFactory<AssignD
     @Override
     public AssignDecisionRequest createDefault() {
         return AssignDecisionRequest.builder()
-                .applicationId(UUID.randomUUID())
                 .applicationStatus(ApplicationStatus.IN_PROGRESS)
                 .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                 .userId(UUID.randomUUID())

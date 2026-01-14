@@ -16,7 +16,7 @@ paths:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1unassign"
   /api/v0/applications/{id}/history-search:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1history-search"
-  /api/v0/applications/decision:
+  /api/v0/applications/{id}/decision:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1decision"
 
 components:

@@ -1085,6 +1085,8 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     class AssignDecisionToApplication {
         @Test
         void givenApplication_whenAssignDecision_thenAssignDecisionAndSave() {
+            UUID applicationId = UUID.randomUUID();
+
             // given
             CaseworkerEntity caseworker = caseworkerFactory.createDefault();
             AssignDecisionRequest assignDecisionRequest = applicationAssignDecisionRequestFactory
@@ -1092,7 +1094,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             ApplicationEntity expectedEntity = applicationEntityFactory
                     .createDefault(builder ->
-                    builder.id(assignDecisionRequest.getApplicationId())
+                    builder.id(applicationId)
                             .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
             );
 

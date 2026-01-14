@@ -135,9 +135,9 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> createDecision(UUID id, @Valid AssignDecisionRequest request) {
+  public ResponseEntity<Void> createDecision(UUID applicationId, @Valid AssignDecisionRequest request) {
 
-    service.assignDecision(id, request);
+    service.assignDecision(applicationId, request);
 
     return ResponseEntity.ok().build();
   }
