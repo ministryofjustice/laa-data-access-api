@@ -44,7 +44,7 @@ paths:
             type: string
             format: uuid
         - in: query
-          name: isautogranted
+          name: isAutoGranted
           description: Has the application been marked as auto granted
           schema:
             type: boolean
