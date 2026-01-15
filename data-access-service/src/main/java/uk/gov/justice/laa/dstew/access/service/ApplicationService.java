@@ -300,15 +300,15 @@ public class ApplicationService {
     DecisionEntity decision = decisionRepository.findByApplicationId(applicationId)
             .orElse(DecisionEntity.builder()
                     .applicationId(applicationId)
-                    .meritsDecisions(new HashSet<>())
+                    .meritsDecisions(Set.of())
                     .build());
 
-    Set<MeritsDecisionEntity> merits = decision.getMeritsDecisions();
+    Set<MeritsDecisionEntity> merits = new HashSet<>();
 
     request.getProceedings().forEach(proceeding -> {
 
-      Optional<MeritsDecisionEntity> meritDecision = merits.stream()
-                                  .filter(m -> m.getProceedingId().equals(proceeding.getProceedingId()))
+      Optional<MeritsDecisionEntity> meritDecision = decision.getMeritsDecisions().stream()
+                                  .filter(m -> m.getProceedingId().compareTo(proceeding.getProceedingId()) == 0)
                                   .findFirst();
 
       MeritsDecisionEntity meritDecisionEntity;
@@ -319,14 +319,16 @@ public class ApplicationService {
       } else {
         meritDecisionEntity = MeritsDecisionEntity.builder().build();
         meritDecisionEntity.setProceedingId(proceeding.getProceedingId());
-        merits.add(meritDecisionEntity);
       }
 
       meritDecisionEntity.setDecision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()));
       meritDecisionEntity.setReason(proceeding.getMeritsDecision().getRefusal().getReason());
       meritDecisionEntity.setJustification(proceeding.getMeritsDecision().getRefusal().getJustification());
+      merits.add(meritDecisionEntity);
+
     });
 
+    decision.setMeritsDecisions(merits);
     decision.setOverallDecision(DecisionStatus.valueOf(request.getOverallDecision().getValue()));
     decision.setMeritsDecisions(merits);
     if (decision.getId() != null) {

@@ -1818,6 +1818,12 @@ public class ApplicationTest extends BaseIntegrationTest {
         }
     }
 
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class AssignDecision {
+
+    }
+
     // <editor-fold desc="Shared asserts">
 
     private void assertApplicationsMatchInRepository(List<ApplicationEntity> expected) {

@@ -1117,12 +1117,30 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-            verify(decisionRepository, times(1)).save(any(DecisionEntity.class));
+            ArgumentCaptor<DecisionEntity> decisionCaptor = ArgumentCaptor.forClass(DecisionEntity.class);
+            verify(decisionRepository, times(1)).save(decisionCaptor.capture());
+            DecisionEntity savedDecision = decisionCaptor.getValue();
+            assertNotNull(savedDecision);
+            assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
+            assertThat(savedDecision.getModifiedAt()).isNull();
+            assertSame(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
+            assertSame(1, savedDecision.getMeritsDecisions().size());
+
+            Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
+            MeritsDecisionEntity merit = meritsDecisionIterator.next();
+
+            assertSame(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
+            assertSame(assignDecisionRequest.getProceedings().getFirst().getProceedingId(), merit.getProceedingId());
+            assertSame(assignDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getReason(), merit.getReason());
+            assertSame(assignDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getJustification(), merit.getJustification());
+
         }
 
         @Test
         void givenApplication_whenAssignDecisionAndNoDecisionExistsAndMultipleProceedings_thenAssignDecisionAndSave() {
             UUID applicationId = UUID.randomUUID();
+            UUID grantedProceedingId = UUID.randomUUID();
+            UUID refusedProceedingId = UUID.randomUUID();
 
             // given
             CaseworkerEntity caseworker = caseworkerFactory.createDefault();
@@ -1139,7 +1157,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                                             proceedingDetailsFactory.createDefault(
                                             proceedingsBuilder ->
                                                     proceedingsBuilder
-                                                        .proceedingId(UUID.randomUUID())
+                                                        .proceedingId(grantedProceedingId)
                                                         .meritsDecision(
                                                             meritsDecisionDetailsFactory.createDefault(
                                                             meritsDecisionBuilder ->
@@ -1159,7 +1177,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                                             proceedingDetailsFactory.createDefault(
                                             proceedingsBuilder ->
                                                        proceedingsBuilder
-                                                        .proceedingId(UUID.randomUUID())
+                                                        .proceedingId(refusedProceedingId)
                                                         .meritsDecision(
                                                             meritsDecisionDetailsFactory.createDefault(
                                                             meritsDecisionBuilder ->
@@ -1203,7 +1221,30 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-            verify(decisionRepository, times(1)).save(any(DecisionEntity.class));
+            ArgumentCaptor<DecisionEntity> decisionCaptor = ArgumentCaptor.forClass(DecisionEntity.class);
+            verify(decisionRepository, times(1)).save(decisionCaptor.capture());
+            DecisionEntity savedDecision = decisionCaptor.getValue();
+            assertNotNull(savedDecision);
+            assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
+            assertThat(savedDecision.getModifiedAt()).isNull();
+            assertSame(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
+            assertSame(2, savedDecision.getMeritsDecisions().size());
+
+            savedDecision.getMeritsDecisions().forEach( savedMerit -> {
+                assertThat(savedMerit.getDecision()).isNotNull();
+
+                if (uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED == savedMerit.getDecision()) {
+                    assertSame("refusal 1", savedMerit.getReason());
+                    assertSame("justification 1", savedMerit.getJustification());
+                    assertSame(grantedProceedingId, savedMerit.getProceedingId());
+                }
+
+                if (uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED == savedMerit.getDecision()) {
+                    assertSame("refusal 2", savedMerit.getReason());
+                    assertSame("justification 2", savedMerit.getJustification());
+                    assertSame(refusedProceedingId, savedMerit.getProceedingId());
+                }
+            });
         }
 
         @Test
@@ -1254,7 +1295,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                                     .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
                     );
 
-            DecisionEntity expectedDecisionEntity = decisionEntityFactory.createDefault(
+            DecisionEntity currentSavedDecisionEntity = decisionEntityFactory.createDefault(
                     builder -> builder
                             .id(UUID.randomUUID())
                             .applicationId(applicationId)
@@ -1282,16 +1323,163 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .thenReturn(Optional.of(caseworker));
             when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
             when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
-                    .thenReturn(Optional.of(expectedDecisionEntity));
+                    .thenReturn(Optional.of(currentSavedDecisionEntity));
 
             serviceUnderTest.assignDecision(expectedApplicationEntity.getId(), assignDecisionRequest);
 
             // then
-
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-            verify(decisionRepository, times(1)).save(any(DecisionEntity.class));
+            ArgumentCaptor<DecisionEntity> decisionCaptor = ArgumentCaptor.forClass(DecisionEntity.class);
+            verify(decisionRepository, times(1)).save(decisionCaptor.capture());
+            DecisionEntity savedDecision = decisionCaptor.getValue();
+            assertNotNull(savedDecision);
+            assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
+            assertThat(savedDecision.getModifiedAt()).isNotNull();
+            assertSame(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
+            assertSame(1, savedDecision.getMeritsDecisions().size());
+
+            Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
+            MeritsDecisionEntity merit = meritsDecisionIterator.next();
+
+            assertSame(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
+            assertSame(assignDecisionRequest.getProceedings().getFirst().getProceedingId(), merit.getProceedingId());
+            assertSame(assignDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getReason(), merit.getReason());
+            assertSame(assignDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getJustification(), merit.getJustification());
+        }
+
+        @Test
+        void givenApplication_whenAssignDecisionAndDecisionExistsAndNewMerits_thenUpdateAssignDecisionAndSave() {
+            UUID applicationId = UUID.randomUUID();
+            UUID currentProceedingId = UUID.randomUUID();
+            UUID newProceedingId = UUID.randomUUID();
+
+            // given
+            CaseworkerEntity caseworker = caseworkerFactory.createDefault();
+
+            AssignDecisionRequest assignDecisionRequest = applicationAssignDecisionRequestFactory
+                    .createDefault(requestBuilder ->
+                            requestBuilder
+                                    .userId(caseworker.getId())
+                                    .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                                    .applicationStatus(ApplicationStatus.SUBMITTED)
+                                    .proceedings(
+                                            List.of(
+                                                    proceedingDetailsFactory.createDefault(
+                                                            proceedingsBuilder ->
+                                                                    proceedingsBuilder
+                                                                            .proceedingId(newProceedingId)
+                                                                            .meritsDecision(
+                                                                                    meritsDecisionDetailsFactory.createDefault(
+                                                                                            meritsDecisionBuilder ->
+                                                                                                    meritsDecisionBuilder
+                                                                                                            .decision(MeritsDecisionStatus.REFUSED)
+                                                                                                            .refusal(
+                                                                                                                    refusalDetailsFactory.createDefault(
+                                                                                                                            refusalBuilder ->
+                                                                                                                                    refusalBuilder
+                                                                                                                                            .reason("refusal new")
+                                                                                                                                            .justification("justification new")
+                                                                                                                    )
+                                                                                                            )
+                                                                                    )
+                                                                            )
+                                                    ),
+                                                    proceedingDetailsFactory.createDefault(
+                                                            proceedingsBuilder ->
+                                                                    proceedingsBuilder
+                                                                            .proceedingId(currentProceedingId)
+                                                                            .meritsDecision(
+                                                                                    meritsDecisionDetailsFactory.createDefault(
+                                                                                            meritsDecisionBuilder ->
+                                                                                                    meritsDecisionBuilder
+                                                                                                            .decision(MeritsDecisionStatus.GRANTED)
+                                                                                                            .refusal(
+                                                                                                                    refusalDetailsFactory.createDefault(
+                                                                                                                            refusalBuilder ->
+                                                                                                                                    refusalBuilder
+                                                                                                                                            .reason("refusal update")
+                                                                                                                                            .justification("justification update")
+                                                                                                                    )
+                                                                                                            )
+                                                                                    )
+                                                                            )
+                                                    )
+                                            )
+                                    )
+                    );
+
+            // expected saved application entity
+            ApplicationEntity expectedApplicationEntity = applicationEntityFactory
+                    .createDefault(builder ->
+                            builder
+                                    .id(applicationId)
+                                    .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+                    );
+
+            DecisionEntity currentSavedDecisionEntity = decisionEntityFactory.createDefault(
+                    builder -> builder
+                            .id(UUID.randomUUID())
+                            .applicationId(applicationId)
+                            .createdAt(Instant.now())
+                            .overallDecision(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED)
+                            .meritsDecisions(
+                                    Set.of(
+                                            meritsDecisionsEntityFactory.createDefault(
+                                                    meritsDecisionBuilder ->
+                                                            meritsDecisionBuilder
+                                                                    .id(UUID.randomUUID())
+                                                                    .createdAt(Instant.now())
+                                                                    .proceedingId(currentProceedingId)
+                                                                    .decision(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED)
+                                                                    .reason("current reason")
+                                                                    .justification("current justification")
+                                            )
+                                    )
+                            )
+            );
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            // when
+            when(caseworkerRepository.findById(caseworker.getId()))
+                    .thenReturn(Optional.of(caseworker));
+            when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
+            when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
+                    .thenReturn(Optional.of(currentSavedDecisionEntity));
+
+            serviceUnderTest.assignDecision(expectedApplicationEntity.getId(), assignDecisionRequest);
+
+            // then
+            verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
+            verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
+            verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
+            ArgumentCaptor<DecisionEntity> decisionCaptor = ArgumentCaptor.forClass(DecisionEntity.class);
+            verify(decisionRepository, times(1)).save(decisionCaptor.capture());
+            DecisionEntity savedDecision = decisionCaptor.getValue();
+            assertNotNull(savedDecision);
+            assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
+            assertThat(savedDecision.getModifiedAt()).isNotNull();
+            assertSame(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
+            assertSame(2, savedDecision.getMeritsDecisions().size());
+
+            savedDecision.getMeritsDecisions().forEach( savedMerit -> {
+                assertThat(savedMerit.getDecision()).isNotNull();
+
+                if (uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED == savedMerit.getDecision()) {
+                    assertSame("refusal update", savedMerit.getReason());
+                    assertSame("justification update", savedMerit.getJustification());
+                    assertSame(currentProceedingId, savedMerit.getProceedingId());
+                }
+
+                if (uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED == savedMerit.getDecision()) {
+                    assertSame("refusal new", savedMerit.getReason());
+                    assertSame("justification new", savedMerit.getJustification());
+                    assertSame(newProceedingId, savedMerit.getProceedingId());
+                }
+            });
+
         }
     }
 
