@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.asserters;
 
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.test.web.servlet.MvcResult;
@@ -44,16 +45,17 @@ public class ResponseAsserts {
     }
 
     public static void assertProblemRecord(
-            HttpStatus expectedStatus,
-            String expectedShortCode,
-            String expectedDetail,
-            MvcResult response,
-            ProblemDetail actualDetail) {
+        HttpStatus expectedStatus,
+        String expectedShortCode,
+        String expectedDetail,
+        MvcResult response,
+        ProblemDetail actualDetail, Map<String, Object> expectedProblemDetailProperties) {
 
         assertEquals("application/problem+json", response.getResponse().getContentType());
         assertEquals(expectedStatus.value(), response.getResponse().getStatus());
         assertEquals(expectedShortCode, actualDetail.getTitle());
         assertEquals(expectedDetail, actualDetail.getDetail());
+        assertEquals(expectedProblemDetailProperties, actualDetail.getProperties());
     }
 
     public static void assertValidationException(
@@ -68,7 +70,7 @@ public class ResponseAsserts {
     }
 
     public static void assertProblemRecord(HttpStatus status, ProblemDetail expectedDetail, MvcResult response, ProblemDetail actualDetail) {
-        assertProblemRecord(status, expectedDetail.getTitle(), expectedDetail.getDetail(), response, actualDetail);
+        assertProblemRecord(status, expectedDetail.getTitle(), expectedDetail.getDetail(), response, actualDetail, expectedDetail.getProperties());
     }
 
     public static void assertBadRequest(MvcResult response) {

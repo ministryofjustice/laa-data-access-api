@@ -6,6 +6,7 @@ import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.DateTimeHelper;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
@@ -28,9 +29,11 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                 .individualContent(new LinkedHashMap<>(Map.of(
                         "test", "content"
                 )))
+                .type(IndividualType.CLIENT)
                 .build();
         var instant = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();
         return ApplicationEntity.builder()
+                .applyApplicationId(UUID.randomUUID())
                 .createdAt(instant)
                 .status(ApplicationStatus.IN_PROGRESS)
                 .modifiedAt(instant)
@@ -40,6 +43,8 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                         "test", "content"
                 )))
                 .caseworker(BaseIntegrationTest.CaseworkerJohnDoe)
+                .useDelegatedFunctions(false)
+                .isAutoGranted(true)
                 .categoryOfLaw(CategoryOfLaw.FAMILY)
                 .matterType(MatterType.SCA)
                 .build();
