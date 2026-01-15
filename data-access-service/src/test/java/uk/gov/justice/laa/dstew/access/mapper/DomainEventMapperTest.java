@@ -5,42 +5,49 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 
 public class DomainEventMapperTest {
 
-    private DomainEventMapper mapper = new DomainEventMapperImpl();
+    private final DomainEventMapper mapper = Mappers.getMapper(DomainEventMapper.class);
 
     @ParameterizedTest
     @NullSource
-    @ValueSource( strings = { "377adde8-632f-43c6-b10b-0843433759d3" })
-    void shouldMapDomainEventEntityToDomainEvent(String caseworkerId) {
-        final String eventDescription = "{ \"eventDescription\" : \"eventDescription\" }";
-        Instant createdAt = Instant.ofEpochMilli(999999000);
-        OffsetDateTime expectedCreatedDateTime = OffsetDateTime.of(1970, 01, 12, 13, 46, 39, 0, ZoneOffset.UTC);
-        DomainEventEntity entity = DomainEventEntity.builder()
-                                                    .id(UUID.randomUUID())
-                                                    .applicationId(UUID.randomUUID())
-                                                    .caseworkerId(caseworkerId != null ? UUID.fromString(caseworkerId) : null)
-                                                    .createdAt(createdAt)
-                                                    .createdBy("John.Doe")
-                                                    .data(eventDescription)
-                                                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
-                                                    .build();
-        ApplicationDomainEvent result = mapper.toDomainEvent(entity);
-        
-        assertThat(result.getApplicationId()).isEqualTo(entity.getApplicationId());
-        assertThat(result.getCaseworkerId()).isEqualTo(entity.getCaseworkerId());
-        assertThat(result.getCreatedAt()).isEqualTo(expectedCreatedDateTime);
-        assertThat(result.getCreatedBy()).isEqualTo(entity.getCreatedBy());
-        assertThat(result.getDomainEventType()).isEqualTo(entity.getType());
-        assertThat(result.getEventDescription()).isEqualTo(eventDescription);
+    @ValueSource(strings = { "377adde8-632f-43c6-b10b-0843433759d3" })
+    void givenDomainEntity_whenToDomainEvent_thenMapsFieldsCorrectly(String caseworkerIdStr) {
+        UUID id = UUID.randomUUID();
+        UUID applicationId = UUID.randomUUID();
+        UUID caseworkerId = caseworkerIdStr != null ? UUID.fromString(caseworkerIdStr) : null;
+        Instant createdAt = Instant.ofEpochMilli(999_999_000);
+        OffsetDateTime expectedCreatedDateTime = OffsetDateTime.of(1970, 1, 12, 13, 46, 39, 0, ZoneOffset.UTC);
+        String createdBy = "John.Doe";
+        String eventDescription = "{ \"eventDescription\" : \"eventDescription\" }";
+        DomainEventType eventType = DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER;
+
+        DomainEventEntity domainEventEntity = DomainEventEntity.builder()
+                .id(id)
+                .applicationId(applicationId)
+                .caseworkerId(caseworkerId)
+                .createdAt(createdAt)
+                .createdBy(createdBy)
+                .data(eventDescription)
+                .type(eventType)
+                .build();
+
+        ApplicationDomainEvent actualDomainEvent = mapper.toDomainEvent(domainEventEntity);
+
+        assertThat(actualDomainEvent.getApplicationId()).isEqualTo(applicationId);
+        assertThat(actualDomainEvent.getCaseworkerId()).isEqualTo(caseworkerId);
+        assertThat(actualDomainEvent.getCreatedAt()).isEqualTo(expectedCreatedDateTime);
+        assertThat(actualDomainEvent.getCreatedBy()).isEqualTo(createdBy);
+        assertThat(actualDomainEvent.getDomainEventType()).isEqualTo(eventType);
+        assertThat(actualDomainEvent.getEventDescription()).isEqualTo(eventDescription);
     }
 }

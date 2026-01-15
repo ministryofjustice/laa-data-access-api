@@ -31,53 +31,77 @@ public class ApplicationSummaryMapperTest {
   @InjectMocks
   private ApplicationSummaryMapper applicationMapper = new ApplicationSummaryMapperImpl();
 
-  @ParameterizedTest
-  @NullSource
-  @ValueSource(strings = "95bb88f1-99ca-4ecf-b867-659b55a8cf93")
-  void shouldMapApplicationSummaryEntityToApplicationSummary(UUID caseworkerId) {
-    UUID id = UUID.randomUUID();
-    IndividualEntity individual = IndividualEntity.builder()
-                                                  .firstName("John").lastName("Doe")
-                                                  .dateOfBirth(LocalDate.of(1980, 5, 2))
-                                                  .type(IndividualType.CLIENT)
-                                                  .build();
-    ApplicationSummaryEntity entity = new ApplicationSummaryEntity();
-    entity.setId(id);
-    entity.setCreatedAt(Instant.now());
-    entity.setModifiedAt(Instant.now());
-    entity.setSubmittedAt(Instant.now());
-    entity.setAutoGranted(true);
-    entity.setCategoryOfLaw(CategoryOfLaw.FAMILY);
-    entity.setMatterType(MatterType.SCA);
-    entity.setUsedDelegatedFunctions(true);
-    entity.setLaaReference("ref1");
-    entity.setStatus(ApplicationStatus.IN_PROGRESS);
-    entity.setCaseworker(CaseworkerEntity.builder().id(caseworkerId).build());
-    entity.setIndividuals(Set.of(individual));
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "95bb88f1-99ca-4ecf-b867-659b55a8cf93")
+    void givenApplicationSummaryEntity_whenToApplicationSummary_thenMapsFieldsCorrectly(UUID caseworkerId) {
+        // Test data setup
+        UUID id = UUID.randomUUID();
+        Instant createdAt = Instant.now();
+        Instant modifiedAt = Instant.now();
+        Instant submittedAt = Instant.now();
+        boolean autoGranted = true;
+        CategoryOfLaw categoryOfLaw = CategoryOfLaw.FAMILY;
+        MatterType matterType = MatterType.SCA;
+        boolean usedDelegatedFunctions = true;
+        String laaReference = "ref1";
+        ApplicationStatus status = ApplicationStatus.IN_PROGRESS;
+        ApplicationType applicationType = ApplicationType.INITIAL;
+        String clientFirstName = "John";
+        String clientLastName = "Doe";
+        LocalDate clientDateOfBirth = LocalDate.of(1980, 5, 2);
+        IndividualType clientType = IndividualType.CLIENT;
 
-    ApplicationSummary result = applicationMapper.toApplicationSummary(entity);
+        // Builders use the data
+        IndividualEntity individual = IndividualEntity.builder()
+                .firstName(clientFirstName)
+                .lastName(clientLastName)
+                .dateOfBirth(clientDateOfBirth)
+                .type(clientType)
+                .build();
 
-    assertThat(result).isNotNull();
-    assertThat(result.getApplicationId()).isEqualTo(id);
-    assertThat(result.getLastUpdated()).isEqualTo(entity.getModifiedAt().atOffset(ZoneOffset.UTC));
-    assertThat(result.getSubmittedAt()).isEqualTo(entity.getSubmittedAt().atOffset(ZoneOffset.UTC));
-    assertThat(result.getAutoGrant()).isTrue();
-    assertThat(result.getCategoryOfLaw()).isEqualTo(CategoryOfLaw.FAMILY);
-    assertThat(result.getMatterType()).isEqualTo(MatterType.SCA);
-    assertThat(result.getUsedDelegatedFunctions()).isTrue();
-    assertThat(result.getLaaReference()).isEqualTo("ref1");
-    assertThat(result.getStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
-    assertThat(result.getAssignedTo() == caseworkerId);
-    assertThat(result.getClientFirstName()).isEqualTo("John");
-    assertThat(result.getClientLastName()).isEqualTo("Doe");
-    assertThat(result.getClientDateOfBirth()).isEqualTo(LocalDate.of(1980, 5, 2));
-    assertThat(result.getApplicationType()).isEqualTo(ApplicationType.INITIAL);
-  }
+        CaseworkerEntity caseworker = CaseworkerEntity.builder()
+                .id(caseworkerId)
+                .build();
 
-  @Test
-  void shouldReturnNullWhenMappingNullEntity() {
-    assertThat(applicationMapper.toApplicationSummary(null)).isNull();
-  }
+        ApplicationSummaryEntity entity = new ApplicationSummaryEntity();
+        entity.setId(id);
+        entity.setCreatedAt(createdAt);
+        entity.setModifiedAt(modifiedAt);
+        entity.setSubmittedAt(submittedAt);
+        entity.setAutoGranted(autoGranted);
+        entity.setCategoryOfLaw(categoryOfLaw);
+        entity.setMatterType(matterType);
+        entity.setUsedDelegatedFunctions(usedDelegatedFunctions);
+        entity.setLaaReference(laaReference);
+        entity.setStatus(status);
+        entity.setCaseworker(caseworker);
+        entity.setIndividuals(Set.of(individual));
+        entity.setType(applicationType);
 
-  
+        // Mapping
+        ApplicationSummary result = applicationMapper.toApplicationSummary(entity);
+
+        // Asserts use the data
+        assertThat(result).isNotNull();
+        assertThat(result.getApplicationId()).isEqualTo(id);
+        assertThat(result.getLastUpdated()).isEqualTo(modifiedAt.atOffset(ZoneOffset.UTC));
+        assertThat(result.getSubmittedAt()).isEqualTo(submittedAt.atOffset(ZoneOffset.UTC));
+        assertThat(result.getAutoGrant()).isEqualTo(autoGranted);
+        assertThat(result.getCategoryOfLaw()).isEqualTo(categoryOfLaw);
+        assertThat(result.getMatterType()).isEqualTo(matterType);
+        assertThat(result.getUsedDelegatedFunctions()).isEqualTo(usedDelegatedFunctions);
+        assertThat(result.getLaaReference()).isEqualTo(laaReference);
+        assertThat(result.getStatus()).isEqualTo(status);
+        assertThat(result.getAssignedTo()).isEqualTo(caseworkerId);
+        assertThat(result.getClientFirstName()).isEqualTo(clientFirstName);
+        assertThat(result.getClientLastName()).isEqualTo(clientLastName);
+        assertThat(result.getClientDateOfBirth()).isEqualTo(clientDateOfBirth);
+        assertThat(result.getApplicationType()).isEqualTo(applicationType);
+    }
+
+    @Test
+    void givenNullApplicationSummary_whenToApplicationSummary_thenReturnNull() {
+        assertThat(applicationMapper.toApplicationSummary(null)).isNull();
+    }
 }

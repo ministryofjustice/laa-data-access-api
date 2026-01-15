@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import lombok.NonNull;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
@@ -18,7 +17,6 @@ import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
-
 
 /**
  * Mapper interface.
@@ -48,11 +46,10 @@ public interface ApplicationMapper {
         .stream()
         .map(individualMapper::toIndividualEntity)
         .collect(Collectors.toSet());
-    entity.setIndividuals(individuals);
     entity.setApplicationContent(req.getApplicationContent());
+    entity.setIndividuals(individuals);
     return entity;
   }
-
 
   /**
    * Updates an existing {@link ApplicationEntity} using values from an {@link ApplicationUpdateRequest}.
@@ -66,11 +63,8 @@ public interface ApplicationMapper {
     if (req.getStatus() != null) {
       entity.setStatus(req.getStatus());
     }
-    if (req.getApplicationContent() != null) {
-      entity.setApplicationContent(req.getApplicationContent());
-    }
+    entity.setApplicationContent(req.getApplicationContent());
   }
-
 
   /**
    * Maps a {@link ApplicationEntity} to an API-facing {@link Application} model.
@@ -99,12 +93,11 @@ public interface ApplicationMapper {
     return application;
   }
 
-  private static @NonNull List<Individual> getIndividuals(Set<IndividualEntity> individuals) {
-    return individuals == null ? List.of() : 
-          individuals
-              .stream()
-              .map(individualMapper::toIndividual)
-              .filter(Objects::nonNull)
-              .toList();
+  private static List<Individual> getIndividuals(Set<IndividualEntity> individuals) {
+    return individuals
+          .stream()
+          .map(individualMapper::toIndividual)
+          .filter(Objects::nonNull)
+          .toList();
   }
 }
