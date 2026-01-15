@@ -1,4 +1,6 @@
-.PHONY: localstack-up init-local-resources localstack-down install-awslocal
+.PHONY: localstack-up init-local-resources localstack-down install-awslocal localstack-down-preserve localstack-down-clean prove-persistence
+
+SHELL := /usr/bin/env bash
 
 ENDPOINT := http://localhost:4566
 BUCKET := app-history-payloads
@@ -13,7 +15,7 @@ define aws_cmd
 endef
 
 localstack-up:
-	@docker-compose up -d localstack postgres
+	@docker compose -f docker-compose.yml up -d --remove-orphans localstack postgres
 
 init-local-resources: localstack-up
 	@echo "Checking LocalStack health at $(ENDPOINT)/health ..."
@@ -49,7 +51,42 @@ install-awslocal:
 	@pipx install awscli-local || true
 
 localstack-down:
-	@docker-compose down -v
+	@docker compose -f docker-compose.yml down -v
+
+localstack-down-preserve:
+	@docker compose -f docker-compose.yml down
+
+localstack-down-clean:
+	@docker compose -f docker-compose.yml down -v --rmi local
+
+# Prove persistence: create sample data, snapshot volume, restart stack (preserve volumes), and verify
+prove-persistence: localstack-up
+	@echo "=== Creating sample DynamoDB item and S3 object ==="
+	@docker exec laa-localstack awslocal dynamodb put-item --table-name $(TABLE) --item '{"pk":{"S":"test#make"},"sk":{"S":"meta"},"value":{"S":"persist-makefile"}}' >/dev/null 2>&1 || true
+	@echo "hello localstack" | docker exec -i laa-localstack awslocal s3 cp - s3://$(BUCKET)/persist-test.txt >/dev/null 2>&1 || true
+	@echo "=== Locating LocalStack state volume ==="
+	@VOLUME=$$(docker volume ls --format '{{.Name}}' | grep -i localstack | head -n1); \
+	if [ -z "$$VOLUME" ]; then echo "No localstack volume found" >&2; exit 2; fi; \
+	echo "Using volume: $$VOLUME"; \
+	echo "=== Snapshotting volume files (before) ==="; \
+	docker run --rm -v $$VOLUME:/vol alpine sh -c "find /vol -type f -exec stat -c '%n %s %Y' {} \; | sort" > /tmp/vol-before.txt; \
+	echo "Saved /tmp/vol-before.txt"; \
+	echo "=== Restarting compose stack (preserving volumes) ==="; \
+	docker compose -f docker-compose.yml down && docker compose -f docker-compose.yml up -d; \
+	echo "Waiting for LocalStack to settle..."; sleep 4; \
+	echo "=== Verifying resources after restart ==="; \
+	docker exec laa-localstack awslocal dynamodb get-item --table-name $(TABLE) --key '{"pk":{"S":"test#make"},"sk":{"S":"meta"}}' >/tmp/get-item-after.json 2>/dev/null || true; \
+	docker exec laa-localstack awslocal s3api head-object --bucket $(BUCKET) --key persist-test.txt >/tmp/head-after.txt 2>/dev/null || true; \
+	echo "=== Snapshotting volume files (after) ==="; \
+	docker run --rm -v $$VOLUME:/vol alpine sh -c "find /vol -type f -exec stat -c '%n %s %Y' {} \; | sort" > /tmp/vol-after.txt; \
+	echo "Saved /tmp/vol-after.txt"; \
+	DIFF=$$(diff /tmp/vol-before.txt /tmp/vol-after.txt || true); \
+	if [ -s /tmp/get-item-after.json ] || [ -s /tmp/head-after.txt ]; then \
+		echo "PERSISTENCE OK: resources are present after restart"; \
+	else \
+		echo "PERSISTENCE FAIL: resources missing" >&2; cat /tmp/get-item-after.json || true; cat /tmp/head-after.txt || true; exit 3; \
+	fi; \
+	echo "=== Volume diff (before vs after) ==="; echo "$$DIFF" || true
 
 # Escape comma for use inside $(call ...)
 , := ,

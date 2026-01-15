@@ -17,6 +17,12 @@ pluginManagement {
     }
 }
 
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+    }
+}
+
 rootProject.name = 'laa-data-access-api'
 
 include 'data-access-api'

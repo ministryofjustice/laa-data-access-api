@@ -7,7 +7,13 @@ plugins {
     id 'com.avast.gradle.docker-compose' version '0.17.12'
 }
 
-dockerCompose.isRequiredBy(integrationTest)
+repositories {
+    mavenCentral()
+}
+
+if (System.getenv('USE_DOCKER_COMPOSE') == 'true') {
+    dockerCompose.isRequiredBy(integrationTest)
+}
 
 dockerCompose {
     useComposeFiles = ['../docker-compose.yml']
@@ -18,6 +24,10 @@ dockerCompose {
     if (dockerPath) {
         dockerExecutable.set(dockerPath)
     }
+    // Avoid probing every exposed port (the compose file exposes a large range for LocalStack)
+    // which can cause spurious "disconnected right after connected" failures on some host setups.
+    // Let the plugin rely on container healthchecks instead.
+    waitForTcpPorts = false
 }
 
 test {
@@ -98,6 +108,8 @@ dependencies {
     testImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.1"
     testImplementation 'org.testcontainers:postgresql:1.21.3'
     testImplementation 'org.springframework.boot:spring-boot-testcontainers:3.5.7'
+    testImplementation 'org.testcontainers:localstack'
+
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
