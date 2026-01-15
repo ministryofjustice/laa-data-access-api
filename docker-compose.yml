@@ -1,7 +1,7 @@
+version: '3.8'
 services:
   postgres:
     image: postgres:17
-    container_name: laa-postgres
     restart: unless-stopped
     ports:
       - "5432:5432"
@@ -12,5 +12,28 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  localstack:
+    image: localstack/localstack:2.2
+    ports:
+      - "4566:4566" # LocalStack edge service (all services)
+      - "4510-4559:4510-4559" # additional ports used by some services (optional)
+    environment:
+      - SERVICES=s3,dynamodb
+      - PERSISTENCE=1
+      - DEFAULT_REGION=eu-west-2
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - localstack_state:/var/lib/localstack
+      - localstack_data:/tmp/localstack/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./scripts:/etc/localstack/init/ready.d:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   pgdata:
+  localstack_state:
+  localstack_data:
