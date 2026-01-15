@@ -19,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingsEntity;
 import uk.gov.justice.laa.dstew.access.enums.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -308,7 +309,7 @@ public class ApplicationService {
     request.getProceedings().forEach(proceeding -> {
 
       Optional<MeritsDecisionEntity> meritDecision = decision.getMeritsDecisions().stream()
-                                  .filter(m -> m.getProceedingId().compareTo(proceeding.getProceedingId()) == 0)
+                                  .filter(m -> m.getProceeding().getId().compareTo(proceeding.getProceedingId()) == 0)
                                   .findFirst();
 
       MeritsDecisionEntity meritDecisionEntity;
@@ -317,8 +318,11 @@ public class ApplicationService {
         meritDecisionEntity = meritDecision.get();
         meritDecisionEntity.setModifiedAt(Instant.now());
       } else {
-        meritDecisionEntity = MeritsDecisionEntity.builder().build();
-        meritDecisionEntity.setProceedingId(proceeding.getProceedingId());
+        meritDecisionEntity = MeritsDecisionEntity.builder()
+                .proceeding(ProceedingsEntity.builder()
+                        .id(proceeding.getProceedingId())
+                        .build())
+                .build();
       }
 
       meritDecisionEntity.setDecision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()));

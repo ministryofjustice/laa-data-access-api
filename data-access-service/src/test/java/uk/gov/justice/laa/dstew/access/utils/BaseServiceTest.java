@@ -34,6 +34,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactor
 import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionDetailsFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionsEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingDetailsFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingsEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.refusal.RefusalDetailsFactory;
 
 import java.util.stream.Stream;
@@ -106,6 +107,9 @@ public class BaseServiceTest {
 
     @Autowired
     protected MeritsDecisionsEntityFactory meritsDecisionsEntityFactory;
+
+    @Autowired
+    protected ProceedingsEntityFactory proceedingsEntityFactory;
 
     @Autowired
     protected RefusalDetailsFactory refusalDetailsFactory;

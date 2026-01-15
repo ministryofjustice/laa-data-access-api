@@ -100,13 +100,6 @@ public interface ApplicationMapper {
           .map(individualMapper::toIndividual)
           .filter(Objects::nonNull)
           .toList();
-  private static @NonNull List<Individual> getIndividuals(Set<IndividualEntity> individuals) {
-    return individuals == null ? List.of() :
-          individuals
-              .stream()
-              .map(individualMapper::toIndividual)
-              .filter(Objects::nonNull)
-              .toList();
   }
 
   /**
@@ -123,5 +116,4 @@ public interface ApplicationMapper {
       entity.setStatus(req.getApplicationStatus());
     }
   }
-
 }

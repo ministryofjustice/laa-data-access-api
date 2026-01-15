@@ -1130,7 +1130,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             MeritsDecisionEntity merit = meritsDecisionIterator.next();
 
             assertSame(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
-            assertSame(assignDecisionRequest.getProceedings().getFirst().getProceedingId(), merit.getProceedingId());
+            assertSame(assignDecisionRequest.getProceedings().getFirst().getProceedingId(), merit.getProceeding().getId());
             assertSame(assignDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getReason(), merit.getReason());
             assertSame(assignDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getJustification(), merit.getJustification());
 
@@ -1236,13 +1236,13 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                 if (uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED == savedMerit.getDecision()) {
                     assertSame("refusal 1", savedMerit.getReason());
                     assertSame("justification 1", savedMerit.getJustification());
-                    assertSame(grantedProceedingId, savedMerit.getProceedingId());
+                    assertSame(grantedProceedingId, savedMerit.getProceeding().getId());
                 }
 
                 if (uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED == savedMerit.getDecision()) {
                     assertSame("refusal 2", savedMerit.getReason());
                     assertSame("justification 2", savedMerit.getJustification());
-                    assertSame(refusedProceedingId, savedMerit.getProceedingId());
+                    assertSame(refusedProceedingId, savedMerit.getProceeding().getId());
                 }
             });
         }
@@ -1307,7 +1307,12 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                                             meritsDecisionBuilder
                                                 .id(UUID.randomUUID())
                                                 .createdAt(Instant.now())
-                                                .proceedingId(proceedingId)
+                                                .proceeding(
+                                                        proceedingsEntityFactory.createDefault(
+                                                        proceedingsBuilder ->
+                                                            proceedingsBuilder.id(proceedingId)
+                                                        )
+                                                )
                                                 .decision(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED)
                                                 .reason("initial reason")
                                                 .justification("initial justification")
@@ -1344,7 +1349,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             MeritsDecisionEntity merit = meritsDecisionIterator.next();
 
             assertSame(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
-            assertSame(assignDecisionRequest.getProceedings().getFirst().getProceedingId(), merit.getProceedingId());
+            assertSame(assignDecisionRequest.getProceedings().getFirst().getProceedingId(), merit.getProceeding().getId());
             assertSame(assignDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getReason(), merit.getReason());
             assertSame(assignDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getJustification(), merit.getJustification());
         }
@@ -1431,7 +1436,12 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                                                             meritsDecisionBuilder
                                                                     .id(UUID.randomUUID())
                                                                     .createdAt(Instant.now())
-                                                                    .proceedingId(currentProceedingId)
+                                                                    .proceeding(
+                                                                            proceedingsEntityFactory.createDefault(
+                                                                                    proceedingsBuilder ->
+                                                                                            proceedingsBuilder.id(currentProceedingId)
+                                                                            )
+                                                                    )
                                                                     .decision(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED)
                                                                     .reason("current reason")
                                                                     .justification("current justification")
@@ -1470,13 +1480,13 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                 if (uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED == savedMerit.getDecision()) {
                     assertSame("refusal update", savedMerit.getReason());
                     assertSame("justification update", savedMerit.getJustification());
-                    assertSame(currentProceedingId, savedMerit.getProceedingId());
+                    assertSame(currentProceedingId, savedMerit.getProceeding().getId());
                 }
 
                 if (uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED == savedMerit.getDecision()) {
                     assertSame("refusal new", savedMerit.getReason());
                     assertSame("justification new", savedMerit.getJustification());
-                    assertSame(newProceedingId, savedMerit.getProceedingId());
+                    assertSame(newProceedingId, savedMerit.getProceeding().getId());
                 }
             });
 
