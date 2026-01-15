@@ -43,7 +43,8 @@ public class DynamoDbStartupValidator {
       log.info("DynamoDB table '{}' exists and is reachable.", tableName);
     } catch (ResourceNotFoundException rnfe) {
       log.error(
-          "DynamoDB table '{}' not found. If running locally, create it in LocalStack (e.g. `make init-local-resources`) and ensure aws.endpoint points to http://localhost:4566.",
+          "DynamoDB table '{}' not found. If running locally, create it in LocalStack " +
+              "(e.g. `make init-local-resources`) and ensure aws.endpoint points to http://localhost:4566.",
           tableName);
       throw rnfe;
     }

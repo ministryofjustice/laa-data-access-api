@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.config.convertors;
+package uk.gov.justice.laa.dstew.access.config;
 
 import java.net.URI;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +11,9 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3ClientBuilder;
+import software.amazon.awssdk.services.s3.S3Configuration;
 
 /**
  * Configuration class for AWS-related beans and settings.
@@ -59,5 +62,25 @@ public class AwsConfig {
     return DynamoDbEnhancedClient.builder()
         .dynamoDbClient(dynamoDbClient())
         .build();
+  }
+
+  @Bean
+  public S3Client s3Client() {
+    S3ClientBuilder builder = S3Client.builder()
+        .forcePathStyle(true)
+        .serviceConfiguration(S3Configuration.builder().checksumValidationEnabled(false).build())
+        .region(Region.of(awsRegion));
+    // If an explicit endpoint is provided (localstack, etc.) configure it
+    if (awsEndpoint != null && !awsEndpoint.isBlank()) {
+      builder = builder.endpointOverride(URI.create(awsEndpoint));}
+    // If explicit credentials are provided (local/dev), use them. Otherwise rely on the default provider
+    // which in Kubernetes will pick up IRSA or other environment/metadata credentials.
+    if (awsAccessKey != null && !awsAccessKey.isBlank() && awsSecretKey != null && !awsSecretKey.isBlank()) {
+      builder = builder.credentialsProvider(StaticCredentialsProvider.create(
+          AwsBasicCredentials.create(awsAccessKey, awsSecretKey)));
+    } else {
+      builder = builder.credentialsProvider(DefaultCredentialsProvider.builder().build());
+    }
+    return builder.build();
   }
 }

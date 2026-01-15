@@ -19,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.Event;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
@@ -38,7 +39,8 @@ public class ApplicationService {
   private final CaseworkerRepository caseworkerRepository;
   private final DomainEventService domainEventService;
   private final ApplicationContentParserService applicationContentParser;
-
+  private final S3UploadService s3UploadService;
+  private final DynamoDbService dynamoDbService;
   /**
    * Constructs an ApplicationService with required dependencies.
    *
@@ -53,11 +55,15 @@ public class ApplicationService {
                             final ObjectMapper objectMapper,
                             final CaseworkerRepository caseworkerRepository,
                             final DomainEventService domainEventService,
-                            final ApplicationContentParserService applicationContentParserService) {
+                            final ApplicationContentParserService applicationContentParserService,
+                            final S3UploadService s3UploadService,
+                            final DynamoDbService dynamoDbService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
     this.applicationContentParser = applicationContentParserService;
+    this.s3UploadService = s3UploadService;
+    this.dynamoDbService = dynamoDbService;
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
     this.caseworkerRepository = caseworkerRepository;
@@ -84,12 +90,26 @@ public class ApplicationService {
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public UUID createApplication(final ApplicationCreateRequest req) {
+    Instant now =  Instant.now();
+    S3UploadResult upload = s3UploadService.upload(req.getApplicationContent(), "app-history-payloads",
+        req.getLaaReference() + "-applicationCreate-" + now.getEpochSecond());
+    if (!upload.isSuccess()) {
+        throw new RuntimeException("Failed to upload application create payload to S3");
+    }
+    Event event = Event.builder()
+        .eventId(req.getLaaReference())
+        .eventType("ApplicationCreate")
+        .description("Created application with LAA Reference: " + req.getLaaReference())
+        .timestamp(now)
+        .build();
+    dynamoDbService.saveDomainEvent(event, upload.getS3Url());
+
+    String s = s3UploadService.downloadObjectAsString("app-history-payloads", upload.getKey());
+
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
     setValuesFromApplicationContent(req, entity);
     entity.setSchemaVersion(applicationVersion);
-
     final ApplicationEntity saved = applicationRepository.save(entity);
-
 
     domainEventService.saveCreateApplicationDomainEvent(saved, null);
 

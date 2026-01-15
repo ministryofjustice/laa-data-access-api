@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedRequest;
+import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedResponse;
 import uk.gov.justice.laa.dstew.access.entity.dynamo.EventDynamoEntity;
 import uk.gov.justice.laa.dstew.access.model.Event;
 import uk.gov.justice.laa.dstew.access.shared.dynamo.DynamoKeyBuilder;
@@ -29,25 +31,29 @@ public class DynamoDbService {
   /**
    * Stores an Event in DynamoDB and returns the saved event.
    */
-  public Event saveDomainEvent(Event eventRecord) {
+  public Event saveDomainEvent(Event eventRecord, String s3url) {
     if (eventRecord == null) {
       throw new IllegalArgumentException("eventRecord must not be null");
     }
 
-    UUID eventId = eventRecord.eventId() != null ? eventRecord.eventId() : UUID.randomUUID();
+    String eventId = eventRecord.eventId() != null ? eventRecord.eventId() : UUID.randomUUID().toString();
     Instant timestamp = eventRecord.timestamp() != null ? eventRecord.timestamp() : Instant.now();
 
     EventDynamoEntity eventDynamoEntity = EventDynamoEntity.builder()
         .pk(DynamoKeyBuilder.pk(eventRecord.eventType(), eventId))
         .sk(DynamoKeyBuilder.sk(timestamp))
+        .s3location(s3url)
         .type(eventRecord.eventType())
         .description(eventRecord.description())
         .createdAt(DynamoKeyBuilder.sk(timestamp))
         .build();
 
-    eventTable.putItem(eventDynamoEntity);
+    // Use putItem variant that returns a PutItemEnhancedResponse so callers can inspect metadata
+    PutItemEnhancedRequest<EventDynamoEntity> putReq = PutItemEnhancedRequest.builder(EventDynamoEntity.class)
+        .item(eventDynamoEntity)
+        .build();
 
-    EventDynamoEntity saved = eventTable.getItem(DynamoKeyBuilder.key(eventDynamoEntity.getPk(), eventDynamoEntity.getSk()));
-    return Event.fromDynamoEntity(saved);
+    PutItemEnhancedResponse<EventDynamoEntity> putResponse = eventTable.putItemWithResponse(putReq);
+    return Event.fromDynamoEntity(putResponse.attributes());
   }
 }

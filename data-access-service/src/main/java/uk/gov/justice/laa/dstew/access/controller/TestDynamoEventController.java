@@ -30,11 +30,11 @@ public class TestDynamoEventController {
     // allow callers to omit id/timestamp
     Event event = new Event(
         request.eventType(),
-        request.eventId() != null ? request.eventId() : UUID.randomUUID(),
+        request.eventId() != null ? request.eventId().toString() : UUID.randomUUID().toString(),
         request.timestamp() != null ? request.timestamp() : Instant.now(),
         request.description());
 
-    return dynamoDbService.saveDomainEvent(event);
+    return dynamoDbService.saveDomainEvent(event, "s3://test-bucket/test-key");
   }
 
   public record SaveEventRequest(String eventType, UUID eventId, Instant timestamp, String description) {
