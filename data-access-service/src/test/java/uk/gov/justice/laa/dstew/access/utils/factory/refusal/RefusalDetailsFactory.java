@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.refusal;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.RefusalDetails;

@@ -105,6 +105,9 @@ public class BaseServiceTest {
     protected MeritsDecisionDetailsFactory meritsDecisionDetailsFactory;
 
     @Autowired
+    protected MeritsDecisionsEntityFactory meritsDecisionsEntityFactory;
+
+    @Autowired
     protected RefusalDetailsFactory refusalDetailsFactory;
 
     @AfterEach

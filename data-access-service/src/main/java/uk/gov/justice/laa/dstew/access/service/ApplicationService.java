@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -27,7 +28,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AssignDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
-import uk.gov.justice.laa.dstew.access.model.ProceedingDetails;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
@@ -300,23 +300,38 @@ public class ApplicationService {
     DecisionEntity decision = decisionRepository.findByApplicationId(applicationId)
             .orElse(DecisionEntity.builder()
                     .applicationId(applicationId)
+                    .meritsDecisions(new HashSet<>())
                     .build());
 
-    Set<MeritsDecisionEntity> merits = new HashSet<>();
-    for (ProceedingDetails proceeding : request.getProceedings()) {
-      merits.add(
-          MeritsDecisionEntity.builder()
-          .decision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()))
-          .reason(proceeding.getMeritsDecision().getRefusal().getReason())
-          .justification(proceeding.getMeritsDecision().getRefusal().getJustification())
-          .modifiedAt(Instant.now())
-          .proceedingId(proceeding.getProceedingId())
-          .build()
-      );
-    }
+    Set<MeritsDecisionEntity> merits = decision.getMeritsDecisions();
+
+    request.getProceedings().forEach(proceeding -> {
+
+      Optional<MeritsDecisionEntity> meritDecision = merits.stream()
+                                  .filter(m -> m.getProceedingId().equals(proceeding.getProceedingId()))
+                                  .findFirst();
+
+      MeritsDecisionEntity meritDecisionEntity;
+
+      if (meritDecision.isPresent()) {
+        meritDecisionEntity = meritDecision.get();
+        meritDecisionEntity.setModifiedAt(Instant.now());
+      } else {
+        meritDecisionEntity = MeritsDecisionEntity.builder().build();
+        meritDecisionEntity.setProceedingId(proceeding.getProceedingId());
+        merits.add(meritDecisionEntity);
+      }
+
+      meritDecisionEntity.setDecision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()));
+      meritDecisionEntity.setReason(proceeding.getMeritsDecision().getRefusal().getReason());
+      meritDecisionEntity.setJustification(proceeding.getMeritsDecision().getRefusal().getJustification());
+    });
+
     decision.setOverallDecision(DecisionStatus.valueOf(request.getOverallDecision().getValue()));
     decision.setMeritsDecisions(merits);
-    decision.setModifiedAt(Instant.now());
+    if (decision.getId() != null) {
+      decision.setModifiedAt(Instant.now());
+    }
     decisionRepository.save(decision);
   }
 }
