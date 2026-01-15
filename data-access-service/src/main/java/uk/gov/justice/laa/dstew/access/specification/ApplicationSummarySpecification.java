@@ -5,6 +5,7 @@ import jakarta.persistence.criteria.JoinType;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
@@ -16,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.model.IndividualType;
  * Defines the filtering of Application Summaries.
  *
  */
+@ExcludeFromGeneratedCodeCoverage
 public class ApplicationSummarySpecification {
 
   /**
