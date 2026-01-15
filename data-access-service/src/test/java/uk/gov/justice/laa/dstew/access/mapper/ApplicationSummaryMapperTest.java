@@ -26,7 +26,7 @@ public class ApplicationSummaryMapperTest {
 
         ApplicationSummaryEntity expectedApplicationSummaryEntity = ApplicationSummaryEntity.builder()
                 .id(id)
-                .createdAt(createdAt)
+                .submittedAt(createdAt)
                 .modifiedAt(modifiedAt)
                 .laaReference(laaReference)
                 .status(status)
@@ -38,9 +38,9 @@ public class ApplicationSummaryMapperTest {
         assertThat(actualApplicationSummary).isNotNull();
         assertThat(actualApplicationSummary.getApplicationId()).isEqualTo(id);
         assertThat(actualApplicationSummary.getLaaReference()).isEqualTo(laaReference);
-        assertThat(actualApplicationSummary.getApplicationStatus()).isEqualTo(status);
-        assertThat(actualApplicationSummary.getModifiedAt()).isEqualTo(modifiedAt.atOffset(ZoneOffset.UTC));
-        assertThat(actualApplicationSummary.getCreatedAt()).isEqualTo(createdAt.atOffset(ZoneOffset.UTC));
+        assertThat(actualApplicationSummary.getStatus()).isEqualTo(status);
+        assertThat(actualApplicationSummary.getLastUpdated()).isEqualTo(modifiedAt.atOffset(ZoneOffset.UTC));
+        assertThat(actualApplicationSummary.getSubmittedAt()).isEqualTo(createdAt.atOffset(ZoneOffset.UTC));
     }
 
     @Test

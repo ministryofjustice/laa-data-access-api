@@ -51,7 +51,7 @@ class ApplicationMapperTest {
         assertThat(actualApplication).isNotNull();
         assertThat(actualApplication.getId()).isEqualTo(id);
         assertThat(actualApplication.getLaaReference()).isEqualTo(laaReference);
-        assertThat(actualApplication.getApplicationStatus()).isEqualTo(status);
+        assertThat(actualApplication.getStatus()).isEqualTo(status);
         assertThat(actualApplication.getCreatedAt()).isEqualTo(OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC));
         assertThat(actualApplication.getUpdatedAt()).isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
         assertThat(actualApplication.getApplicationContent())
