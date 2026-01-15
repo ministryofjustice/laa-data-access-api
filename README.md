@@ -76,6 +76,52 @@ Then execute
 
 `./gradlew bootRun`
 
+### LocalStack and DynamoDB (Event Service)
+
+The application includes a DynamoDB-based event service for storing application history events. For local development, we use LocalStack to emulate AWS services.
+
+#### Quick start
+
+```bash
+# Install awslocal CLI helper (one-time)
+make install-awslocal
+
+# Start LocalStack + Postgres and create S3 bucket + DynamoDB table
+make init-local-resources
+```
+
+#### Run the application
+
+```bash
+export FEATURE_DISABLESECURITY=true
+./gradlew :data-access-service:bootRun
+```
+
+#### Test the DynamoDB event controller
+
+```bash
+curl -X POST http://localhost:8080/test/dynamo/events \
+  -H 'Content-Type: application/json' \
+  -d '{"eventType":"application","description":"Test event"}'
+```
+
+#### Verify saved events
+
+```bash
+awslocal dynamodb scan --table-name EventIndexTable
+```
+
+#### Makefile targets
+
+| Target | Description |
+|--------|-------------|
+| `make localstack-up` | Start LocalStack and Postgres containers |
+| `make init-local-resources` | Start containers + create S3 bucket and DynamoDB table |
+| `make localstack-down` | Stop containers and remove volumes |
+| `make install-awslocal` | Install awscli-local via pipx |
+
+For detailed setup instructions, see [docs/localstack-setup.md](docs/localstack-setup.md).
+
 ### Useful gradle commands
 
 Prior to pushing code, it's useful to run the following commands to check code style:

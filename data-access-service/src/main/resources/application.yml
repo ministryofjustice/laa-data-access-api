@@ -52,3 +52,14 @@ management:
 #feature:
 #  security: true
 #  transformation: true
+
+# AWS defaults (local dev)
+aws:
+  region: ${AWS_REGION:eu-west-2}
+  endpoint: ${AWS_ENDPOINT:http://localhost:4566}
+  access-key: ${AWS_ACCESS_KEY:test}
+  secret-key: ${AWS_SECRET_KEY:test}
+  dynamodb:
+    table-name: ${AWS_DYNAMODB_TABLE_NAME:EventIndexTable}
+
+# End of file

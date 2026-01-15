@@ -81,6 +81,13 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
     implementation 'org.javers:javers-core:7.8.0'
 
+    //aws sdk
+    // Source: https://mvnrepository.com/artifact/software.amazon.awssdk/bom
+    implementation(platform("software.amazon.awssdk:bom:2.41.7"))
+    implementation("software.amazon.awssdk:s3")
+    implementation("software.amazon.awssdk:dynamodb")
+    implementation("software.amazon.awssdk:dynamodb-enhanced")
+
     runtimeOnly 'org.postgresql:postgresql'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
