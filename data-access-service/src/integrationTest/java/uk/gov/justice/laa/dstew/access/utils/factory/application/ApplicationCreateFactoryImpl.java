@@ -3,7 +3,11 @@ package uk.gov.justice.laa.dstew.access.utils.factory.application;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -16,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.ProceedingDetails;
+import uk.gov.justice.laa.dstew.access.utils.DateTimeHelper;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
 public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> {
@@ -31,9 +36,11 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
         .useDelegatedFunctions(true)
         .build();
 
+    var submitted_at = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();
     ApplicationContentDetails applicationContentDetails = ApplicationContentDetails.builder()
         .applyApplicationId(UUID.randomUUID())
         .autoGrant(true)
+        .submittedAt(submitted_at)
         .proceedings(List.of(proceedingDetails))
         .build();
     ObjectMapper objectMapper = new ObjectMapper();

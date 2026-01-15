@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
@@ -354,12 +355,20 @@ public class ApplicationTest extends BaseIntegrationTest {
 
 
 
-        private void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual) {
+        private void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual)
+            throws JsonProcessingException {
             assertNotNull(actual.getId());
+
+            JsonNode expectedContentNode = objectMapper.readTree(objectMapper.writeValueAsString(expected.getApplicationContent()));
+            JsonNode actualContentNode = objectMapper.readTree(objectMapper.writeValueAsString(actual.getApplicationContent()));
+
+            assertEquals(expectedContentNode, actualContentNode);
+
             assertEquals(expected.getLaaReference(), actual.getLaaReference());
-            assertEquals(expected.getApplicationContent(), actual.getApplicationContent());
             assertEquals(expected.getStatus(), actual.getStatus());
             assertEquals(applicationVersion, actual.getSchemaVersion());
+
+            assertNotNull(actual.getSubmittedAt());
         }
     }
 
