@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -14,9 +16,7 @@ import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
-import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
@@ -25,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.model.Event;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
@@ -41,6 +42,9 @@ public class DomainEventService {
 
   private final DomainEventRepository domainEventRepository;
   private final ObjectMapper objectMapper;
+  private final EventHistoryPublisher eventHistoryPublisher;
+  @Value("${aws.event.history.enabled:false}")
+  private boolean awsEventHistoryEnabled;
   private final DomainEventMapper mapper;
   private final ServiceNameContext serviceNameContext;
 
@@ -64,7 +68,11 @@ public class DomainEventService {
             .serviceName(serviceNameContext.getServiceName())
             .build();
 
-    domainEventRepository.save(entity);
+    if(awsEventHistoryEnabled) {
+      eventHistoryPublisher.processEventAsync(Event.convertToEvent(entity));
+    } else {
+      domainEventRepository.save(entity);
+    }
   }
 
   /**
@@ -96,7 +104,12 @@ public class DomainEventService {
             .serviceName(serviceNameContext.getServiceName())
             .build();
 
-    domainEventRepository.save(domainEventEntity);
+    if(awsEventHistoryEnabled) {
+      eventHistoryPublisher.processEventAsync(Event.convertToEvent(domainEventEntity));
+    } else {
+        domainEventRepository.save(domainEventEntity);
+    }
+
   }
 
   /**
@@ -136,12 +149,12 @@ public class DomainEventService {
 
     AssignApplicationDomainEventDetails domainEventDetails =
         AssignApplicationDomainEventDetails.builder()
-          .applicationId(applicationId)
-          .caseWorkerId(caseworkerId)
-          .createdAt(Instant.now())
-          .createdBy(defaultCreatedByName)
-          .eventDescription(eventDescription)
-          .build();
+            .applicationId(applicationId)
+            .caseWorkerId(caseworkerId)
+            .createdAt(Instant.now())
+            .createdBy(defaultCreatedByName)
+            .eventDescription(eventDescription)
+            .build();
 
     saveDomainEvent(
         applicationId,

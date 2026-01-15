@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -32,6 +34,7 @@ import uk.gov.justice.laa.dstew.access.model.Paging;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
+import uk.gov.justice.laa.dstew.access.service.EventHistoryService;
 import uk.gov.justice.laa.dstew.access.service.CertificateService;
 import uk.gov.justice.laa.dstew.access.service.DomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
@@ -42,6 +45,7 @@ import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 /**
  * Controller for handling /api/v0/applications requests.
  */
+@Slf4j
 @RequiredArgsConstructor
 @RestController
 @ExcludeFromGeneratedCodeCoverage
@@ -49,8 +53,8 @@ public class ApplicationController implements ApplicationApi {
 
   private final ApplicationService service;
   private final ApplicationSummaryService summaryService;
-  private final DomainEventService domainService;
   private final CertificateService certificateService;
+  private final EventHistoryService eventHistoryService;
 
   @LogMethodArguments
   @LogMethodResponse
@@ -134,8 +138,8 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   public ResponseEntity<Void> assignCaseworker(@NotNull ServiceName serviceName, @Valid CaseworkerAssignRequest request) {
     service.assignCaseworker(request.getCaseworkerId(),
-                              request.getApplicationIds(),
-                              request.getEventHistory());
+        request.getApplicationIds(),
+        request.getEventHistory());
     return ResponseEntity.ok().build();
   }
 
@@ -161,8 +165,8 @@ public class ApplicationController implements ApplicationApi {
           @Valid List<DomainEventType> eventType) {
     var events = domainService.getEvents(applicationId, eventType);
     return ResponseEntity.ok(ApplicationHistoryResponse.builder()
-                                                 .events(events)
-                                                 .build());
+        .events(events)
+        .build());
   }
 
   @Override

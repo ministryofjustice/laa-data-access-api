@@ -31,6 +31,8 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.Event;
+import uk.gov.justice.laa.dstew.access.model.S3UploadResult;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
@@ -44,8 +46,9 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class UpdateApplicationTest extends BaseServiceTest {
 
-    @Autowired
-    private ApplicationService serviceUnderTest;
+
+  @Autowired
+  private ApplicationService serviceUnderTest;
 
     @Test
     void givenNoApplication_whenUpdateApplication_thenThrowResourceNotFoundException() {
@@ -55,13 +58,13 @@ public class UpdateApplicationTest extends BaseServiceTest {
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        // when / then
-        assertThatExceptionOfType(ResourceNotFoundException.class)
-                .isThrownBy(() -> serviceUnderTest.updateApplication(applicationId, new ApplicationUpdateRequest()))
-                .withMessageContaining("No application found with id: " + applicationId);
-        verify(applicationRepository, times(1)).findById(applicationId);
-        verify(domainEventRepository, never()).save(any());
-    }
+    // when / then
+    assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(() -> serviceUnderTest.updateApplication(applicationId, new ApplicationUpdateRequest()))
+        .withMessageContaining("No application found with id: " + applicationId);
+    verify(applicationRepository, times(1)).findById(applicationId);
+    verify(domainEventRepository, never()).save(any());
+  }
 
     @Test
     void givenApplication_whenUpdateApplication_thenUpdateAndSave() throws JacksonException {
@@ -75,31 +78,34 @@ public class UpdateApplicationTest extends BaseServiceTest {
                 .applicationContent(new HashMap<>(Map.of("test", "changed")))
                 .build();
 
-        ApplicationUpdateRequest updateRequest = DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
+    ApplicationUpdateRequest updateRequest = applicationUpdateRequestFactory.createDefault();
+    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
+    when(s3Service.upload(any(), any(String.class), any(String.class)))
+        .thenReturn(new S3UploadResult("bucket", "key", "etag", true, "s3://bucket/key"));
+    when(dynamoDbService.saveDomainEvent(any(Event.class), any(String.class))).thenReturn(null);
+    setSecurityContext(TestConstants.Roles.WRITER);
 
-        setSecurityContext(TestConstants.Roles.CASEWORKER);
+    DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+        .applicationId(applicationId)
+        .type(DomainEventType.APPLICATION_UPDATED)
+        .createdBy("")
+        .data(objectMapper.writeValueAsString(UpdateApplicationDomainEventDetails.builder()
+            .applicationId(applicationId)
+            .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS.toString())
+            .applicationContent(updatedEntity.getApplicationContent().toString())
+            .build()))
+        .build();
 
-        DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
-                .applicationId(applicationId)
-                .type(DomainEventType.APPLICATION_UPDATED)
-                .createdBy("")
-                .data(objectMapper.writeValueAsString(UpdateApplicationDomainEventDetails.builder()
-                        .applicationId(applicationId)
-                        .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS.toString())
-                        .applicationContent(updatedEntity.getApplicationContent().toString())
-                        .build()))
-                .build();
+    // when
+    serviceUnderTest.updateApplication(applicationId, updateRequest);
 
-        // when
-        serviceUnderTest.updateApplication(applicationId, updateRequest);
-
-        // then
-        verify(applicationRepository, times(1)).findById(applicationId);
-        verifyThatApplicationUpdated(updateRequest, 1);
-        verifyThatUpdateDomainEventSaved(expectedDomainEvent, 1);
-        assertThat(expectedEntity.getModifiedAt()).isNotNull();
-    }
+    // then
+    verify(applicationRepository, times(1)).findById(applicationId);
+//        verify(eventHistoryPublisher, times(1)).processEventAsync(any(Event.class));
+    verifyThatApplicationUpdated(updateRequest, 1);
+    verifyThatUpdateDomainEventSaved(expectedDomainEvent, 1);
+    assertThat(expectedEntity.getModifiedAt()).isNotNull();
+  }
 
     @ParameterizedTest
     @MethodSource("invalidApplicationUpdateRequests")
@@ -117,49 +123,49 @@ public class UpdateApplicationTest extends BaseServiceTest {
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        // when
-        // then
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.updateApplication(applicationId, applicationUpdateRequest));
-        assertThat(thrown)
-                .isInstanceOf(ValidationException.class)
-                .usingRecursiveComparison()
-                .isEqualTo(validationException);
-        verify(applicationRepository, times(1)).findById(applicationId);
-        verify(applicationRepository, never()).save(any());
-        verify(domainEventRepository, never()).save(any());
-    }
+    // when
+    // then
+    Throwable thrown = catchThrowable(() -> serviceUnderTest.updateApplication(applicationId, applicationUpdateRequest));
+    assertThat(thrown)
+        .isInstanceOf(ValidationException.class)
+        .usingRecursiveComparison()
+        .isEqualTo(validationException);
+    verify(applicationRepository, times(1)).findById(applicationId);
+    verify(applicationRepository, never()).save(any());
+    verify(domainEventRepository, never()).save(any());
+  }
 
-    @Test
-    public void givenApplicationUpdateAndNotRoleWriter_whenCreateApplication_thenThrowUnauthorizedException() {
-        // given
-        UUID applicationId = UUID.randomUUID();
+  @Test
+  public void givenApplicationUpdateAndNotRoleWriter_whenCreateApplication_thenThrowUnauthorizedException() {
+    // given
+    UUID applicationId = UUID.randomUUID();
 
         setSecurityContext(TestConstants.Roles.NO_ROLE);
 
-        // when
-        // then
-        assertThatExceptionOfType(AuthorizationDeniedException.class)
-                .isThrownBy(() -> serviceUnderTest.updateApplication(applicationId, new ApplicationUpdateRequest()))
-                .withMessageContaining("Access Denied");
-        verify(applicationRepository, never()).findById(applicationId);
-        verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-        verify(domainEventRepository, never()).save(any());
-    }
+    // when
+    // then
+    assertThatExceptionOfType(AuthorizationDeniedException.class)
+        .isThrownBy(() -> serviceUnderTest.updateApplication(applicationId, new ApplicationUpdateRequest()))
+        .withMessageContaining("Access Denied");
+    verify(applicationRepository, never()).findById(applicationId);
+    verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+    verify(domainEventRepository, never()).save(any());
+  }
 
-    @Test
-    public void givenApplicationUpdateAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
-        // given
-        UUID applicationId = UUID.randomUUID();
+  @Test
+  public void givenApplicationUpdateAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
+    // given
+    UUID applicationId = UUID.randomUUID();
 
-        // when
-        // then
-        assertThatExceptionOfType(AuthorizationDeniedException.class)
-                .isThrownBy(() -> serviceUnderTest.updateApplication(applicationId, new ApplicationUpdateRequest()))
-                .withMessageContaining("Access Denied");
-        verify(applicationRepository, never()).findById(applicationId);
-        verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-        verify(domainEventRepository, never()).save(any());
-    }
+    // when
+    // then
+    assertThatExceptionOfType(AuthorizationDeniedException.class)
+        .isThrownBy(() -> serviceUnderTest.updateApplication(applicationId, new ApplicationUpdateRequest()))
+        .withMessageContaining("Access Denied");
+    verify(applicationRepository, never()).findById(applicationId);
+    verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+    verify(domainEventRepository, never()).save(any());
+  }
 
     public final Stream<Arguments> invalidApplicationUpdateRequests() {
         return Stream.of(
@@ -173,17 +179,17 @@ public class UpdateApplicationTest extends BaseServiceTest {
         );
     }
 
-    private void verifyThatApplicationUpdated(ApplicationUpdateRequest applicationUpdateRequest, int timesCalled) {
-        ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
-        verify(applicationRepository, times(timesCalled)).save(captor.capture());
-        ApplicationEntity actualApplicationEntity = captor.getValue();
+  private void verifyThatApplicationUpdated(ApplicationUpdateRequest applicationUpdateRequest, int timesCalled) {
+    ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
+    verify(applicationRepository, times(timesCalled)).save(captor.capture());
+    ApplicationEntity actualApplicationEntity = captor.getValue();
 
-        assertThat(actualApplicationEntity.getStatus()).isEqualTo(applicationUpdateRequest.getStatus());
-        assertThat(actualApplicationEntity.getApplicationContent())
-                .usingRecursiveComparison()
-                .ignoringCollectionOrder()
-                .isEqualTo(applicationUpdateRequest.getApplicationContent());
-    }
+    assertThat(actualApplicationEntity.getStatus()).isEqualTo(applicationUpdateRequest.getStatus());
+    assertThat(actualApplicationEntity.getApplicationContent())
+        .usingRecursiveComparison()
+        .ignoringCollectionOrder()
+        .isEqualTo(applicationUpdateRequest.getApplicationContent());
+  }
 
     private void verifyThatUpdateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled) throws JacksonException {
         ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
@@ -196,13 +202,13 @@ public class UpdateApplicationTest extends BaseServiceTest {
         assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
         assertThat(actualDomainEvent.getServiceName()).isEqualTo(ServiceName.CIVIL_APPLY);
 
-        Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
-        Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
-        assertThat(expectedData)
-                .usingRecursiveComparison()
-                .ignoringCollectionOrder()
-                .ignoringFields("updatedDate")
-                .isEqualTo(actualData);
-        assertThat(actualData.get("updatedDate")).isNotNull();
-    }
+    Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
+    Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
+    assertThat(expectedData)
+        .usingRecursiveComparison()
+        .ignoringCollectionOrder()
+        .ignoringFields("updatedDate")
+        .isEqualTo(actualData);
+    assertThat(actualData.get("updatedDate")).isNotNull();
+  }
 }

@@ -5,11 +5,15 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MvcResult;
+import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
+import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDB;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
+import uk.gov.justice.laa.dstew.access.utils.DateTimeHelper;
+import uk.gov.justice.laa.dstew.access.utils.LocalStackTestUtility;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
@@ -28,10 +32,13 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
+import uk.gov.justice.laa.dstew.access.utils.factory.PersistedDynamoDbFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.domainEvent.DomainEventDynamoDBFactory;
+import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventDynamoDBGenerator;
 
 public class GetDomainEventTest extends BaseIntegrationTest {
 
-    private final String SEARCH_EVENT_TYPE_PARAM = "eventType=";
+  private final String SEARCH_EVENT_TYPE_PARAM = "eventType=";
 
     @ParameterizedTest
     @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
@@ -65,19 +72,19 @@ public class GetDomainEventTest extends BaseIntegrationTest {
         var domainEvents = setUpDomainEvents(appId);
         var expectedDomainEvents = domainEvents.stream().map(GetDomainEventTest::toEvent).toList();
 
-        // when
-        MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
-        ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
+    // when
+    MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
+    ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
 
-        // then
-        assertContentHeaders(result);
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertOK(result);
+    // then
+    assertContentHeaders(result);
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertOK(result);
 
-        assertThat(actualResponse).isNotNull();
-        assertTrue(actualResponse.getEvents().containsAll(expectedDomainEvents));
-    }
+    assertThat(actualResponse).isNotNull();
+    assertTrue(actualResponse.getEvents().containsAll(expectedDomainEvents));
+  }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
@@ -90,21 +97,21 @@ public class GetDomainEventTest extends BaseIntegrationTest {
                 .map(GetDomainEventTest::toEvent)
                 .toList();
 
-        // when
-        MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH +
-                        "?" + SEARCH_EVENT_TYPE_PARAM + DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
-                appId);
-        ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
+    // when
+    MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH +
+            "?" + SEARCH_EVENT_TYPE_PARAM + DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
+        appId);
+    ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
 
-        // then
-        assertContentHeaders(result);
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertOK(result);
+    // then
+    assertContentHeaders(result);
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertOK(result);
 
-        assertThat(actualResponse).isNotNull();
-        assertTrue(actualResponse.getEvents().containsAll(expectedAssignDomainEvents));
-    }
+    assertThat(actualResponse).isNotNull();
+    assertTrue(actualResponse.getEvents().containsAll(expectedAssignDomainEvents));
+  }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
@@ -118,56 +125,56 @@ public class GetDomainEventTest extends BaseIntegrationTest {
                 .map(GetDomainEventTest::toEvent)
                 .toList();
 
-        // when
-        String address = TestConstants.URIs.APPLICATION_HISTORY_SEARCH +
-                "?" + SEARCH_EVENT_TYPE_PARAM +
-                DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER +
-                "&" + SEARCH_EVENT_TYPE_PARAM +
-                DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER;
+    // when
+    String address = TestConstants.URIs.APPLICATION_HISTORY_SEARCH +
+        "?" + SEARCH_EVENT_TYPE_PARAM +
+        DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER +
+        "&" + SEARCH_EVENT_TYPE_PARAM +
+        DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER;
 
-        MvcResult result = getUri(address, appId);
-        ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
+    MvcResult result = getUri(address, appId);
+    ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
 
-        // then
-        assertContentHeaders(result);
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertOK(result);
+    // then
+    assertContentHeaders(result);
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertOK(result);
 
-        assertThat(actualResponse).isNotNull();
-        assertTrue(actualResponse.getEvents().containsAll(expectedAssignDomainEvents));
-    }
+    assertThat(actualResponse).isNotNull();
+    assertTrue(actualResponse.getEvents().containsAll(expectedAssignDomainEvents));
+  }
 
-    @Test
-    public void givenNoUser_whenApplicationHistorySearch_thenReturnUnauthorised() throws Exception {
-        // when
-        MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, UUID.randomUUID());
+  @Test
+  public void givenNoUser_whenApplicationHistorySearch_thenReturnUnauthorised() throws Exception {
+    // when
+    MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, UUID.randomUUID());
 
-        // then
-        assertSecurityHeaders(result);
-        assertUnauthorised(result);
-    }
+    // then
+    assertSecurityHeaders(result);
+    assertUnauthorised(result);
+  }
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
-    public void givenNoRole_whenApplicationHistorySearch_thenReturnForbidden() throws Exception {
-        // when
-        MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, UUID.randomUUID());
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
+  public void givenNoRole_whenApplicationHistorySearch_thenReturnForbidden() throws Exception {
+    // when
+    MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, UUID.randomUUID());
 
-        // then
-        assertSecurityHeaders(result);
-        assertForbidden(result);
-    }
+    // then
+    assertSecurityHeaders(result);
+    assertForbidden(result);
+  }
 
-    private List<DomainEventEntity> setUpDomainEvents(UUID appId) {
-        return List.of(
-                setupDomainEvent(appId, DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER),
-                setupDomainEvent(appId, DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER),
-                setupDomainEvent(appId, DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER),
-                setupDomainEvent(appId, DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER),
-                setupDomainEvent(appId, DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
-        );
-    }
+  private List<DomainEventEntity> setUpDomainEvents(UUID appId) {
+    return List.of(
+        setupDomainEvent(appId, DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER),
+        setupDomainEvent(appId, DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER),
+        setupDomainEvent(appId, DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER),
+        setupDomainEvent(appId, DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER),
+        setupDomainEvent(appId, DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
+    );
+  }
 
     private DomainEventEntity setupDomainEvent(UUID appId, DomainEventType eventType) {
         String eventDesc = "{\"eventDescription\": \"" + eventType.getValue() + "\"}";
@@ -180,14 +187,14 @@ public class GetDomainEventTest extends BaseIntegrationTest {
         );
     }
 
-    private static ApplicationDomainEvent toEvent(DomainEventEntity entity) {
-        return ApplicationDomainEvent.builder()
-                .applicationId(entity.getApplicationId())
-                .createdAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC))
-                .domainEventType(entity.getType())
-                .eventDescription(entity.getData())
-                .caseworkerId(entity.getCaseworkerId())
-                .createdBy(entity.getCreatedBy())
-                .build();
-    }
+  private static ApplicationDomainEvent toEvent(DomainEventEntity entity) {
+    return ApplicationDomainEvent.builder()
+        .applicationId(entity.getApplicationId())
+        .createdAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC))
+        .domainEventType(entity.getType())
+        .eventDescription(entity.getData())
+        .caseworkerId(entity.getCaseworkerId())
+        .createdBy(entity.getCreatedBy())
+        .build();
+  }
 }

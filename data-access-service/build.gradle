@@ -162,6 +162,13 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
     implementation 'org.javers:javers-core:7.10.0'
 
+    //aws sdk
+    // Source: https://mvnrepository.com/artifact/software.amazon.awssdk/bom
+    implementation(platform("software.amazon.awssdk:bom:2.41.7"))
+    implementation("software.amazon.awssdk:s3")
+    implementation("software.amazon.awssdk:dynamodb")
+    implementation("software.amazon.awssdk:dynamodb-enhanced")
+
     runtimeOnly 'org.postgresql:postgresql'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
@@ -177,6 +184,13 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 
+    testImplementation 'org.testcontainers:testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:localstack'
+
+
+
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // Security fix for SNYK-JAVA-ORGAPACHECOMMONS-10734078 (CVE-2025-48924)
@@ -186,4 +200,10 @@ dependencies {
     implementation platform("io.sentry:sentry-bom:$versions.sentry")
     implementation "io.sentry:sentry-logback:$versions.sentry"
     implementation "io.sentry:sentry-spring-boot-4:$versions.sentry"
+}
+configurations {
+    // expose the runtimeClasspath to the integrationTest task
+    integrationTestRuntimeClasspath {
+        extendsFrom runtimeClasspath
+    }
 }
