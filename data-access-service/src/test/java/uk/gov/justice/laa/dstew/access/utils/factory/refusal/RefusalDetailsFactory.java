@@ -17,8 +17,8 @@ public class RefusalDetailsFactory extends BaseFactory<RefusalDetails, RefusalDe
     @Override
     public RefusalDetails createDefault() {
         return RefusalDetails.builder()
-                .justification("Justification")
-                .reason("Reason")
+                .justification("refusal details justification")
+                .reason("refusal details reason")
                 .build();
     }
 }

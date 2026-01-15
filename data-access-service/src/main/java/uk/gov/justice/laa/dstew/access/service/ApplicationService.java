@@ -288,23 +288,21 @@ public class ApplicationService {
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void assignDecision(final UUID applicationId, final AssignDecisionRequest request) {
-    final ApplicationEntity entity = checkIfApplicationExists(applicationId);
+    final ApplicationEntity application = checkIfApplicationExists(applicationId);
     final CaseworkerEntity caseworker = checkIfCaseworkerExists(request.getUserId());
 
     applicationValidations.checkApplicationAssignDecisionRequest(request);
 
-    applicationMapper.updateApplicationEntityWithAssignDecisionRequest(entity, request);
+    applicationMapper.updateApplicationEntityWithAssignDecisionRequest(application, request);
 
-    entity.setModifiedAt(Instant.now());
-    applicationRepository.save(entity);
+    application.setModifiedAt(Instant.now());
+    applicationRepository.save(application);
 
-    DecisionEntity decisionEntity = decisionRepository.findByApplicationId(applicationId)
+    DecisionEntity decision = decisionRepository.findByApplicationId(applicationId)
             .orElse(DecisionEntity.builder()
                     .applicationId(applicationId)
-                    .createdAt(Instant.now())
                     .build());
 
-    decisionEntity.setOverallDecision(DecisionStatus.valueOf(request.getOverallDecision().getValue()));
     Set<MeritsDecisionEntity> merits = new HashSet<>();
     for (ProceedingDetails proceeding : request.getProceedings()) {
       merits.add(
@@ -312,12 +310,14 @@ public class ApplicationService {
           .decision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()))
           .reason(proceeding.getMeritsDecision().getRefusal().getReason())
           .justification(proceeding.getMeritsDecision().getRefusal().getJustification())
+          .modifiedAt(Instant.now())
           .proceedingId(proceeding.getProceedingId())
           .build()
       );
     }
-    decisionEntity.setMeritsDecisions(merits);
-    decisionEntity.setModifiedAt(Instant.now());
-    decisionRepository.save(decisionEntity);
+    decision.setOverallDecision(DecisionStatus.valueOf(request.getOverallDecision().getValue()));
+    decision.setMeritsDecisions(merits);
+    decision.setModifiedAt(Instant.now());
+    decisionRepository.save(decision);
   }
 }

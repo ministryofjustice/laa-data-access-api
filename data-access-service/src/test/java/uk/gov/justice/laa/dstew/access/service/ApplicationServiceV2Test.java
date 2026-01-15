@@ -11,10 +11,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
-import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.*;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
@@ -29,8 +26,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.*;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -1215,49 +1211,87 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     @Nested
     class AssignDecisionToApplication {
         @Test
-        void givenApplication_whenAssignDecision_thenAssignDecisionAndSave() {
+        void givenApplication_whenAssignDecisionAndNoDecisionExists_thenAssignDecisionAndSave() {
             UUID applicationId = UUID.randomUUID();
 
             // given
             CaseworkerEntity caseworker = caseworkerFactory.createDefault();
-            AssignDecisionRequest assignDecisionRequest = applicationAssignDecisionRequestFactory
-                    .createDefault(builder -> builder.userId(caseworker.getId()));
 
-            ApplicationEntity expectedEntity = applicationEntityFactory
+            // overwrite some fields of default assign decision request
+            AssignDecisionRequest assignDecisionRequest = applicationAssignDecisionRequestFactory
+                    .createDefault(requestBuilder ->
+                            requestBuilder
+                                .userId(caseworker.getId())
+                                .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                                .applicationStatus(ApplicationStatus.SUBMITTED)
+                                .proceedings(List.of(proceedingDetailsFactory.createDefault(
+                                proceedingsBuilder ->
+                                        proceedingsBuilder
+                                            .proceedingId(UUID.randomUUID())
+                                            .meritsDecision(
+                                                meritsDecisionDetailsFactory.createDefault(
+                                            meritsDecisionBuilder ->
+                                                    meritsDecisionBuilder
+                                                        .decision(MeritsDecisionStatus.GRANTED)
+                                                        .refusal(
+                                                             refusalDetailsFactory.createDefault(
+                                                                refusalBuilder ->
+                                                                refusalBuilder
+                                                                    .reason("refusal 1")
+                                                                    .justification("justification 1")
+                                                     )
+                                                )
+                                            )
+                                        )
+                                )))
+                    );
+
+            // expected saved application entity
+            ApplicationEntity expectedApplicationEntity = applicationEntityFactory
                     .createDefault(builder ->
-                    builder.id(applicationId)
-                            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+                    builder
+                        .id(applicationId)
+                        .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
             );
+
+            DecisionEntity expectedDecisionEntity = decisionEntityFactory.createDefault(
+                    builder -> builder
+                            .applicationId(applicationId)
+                            .createdAt(Instant.now())
+                    );
 
             setSecurityContext(TestConstants.Roles.WRITER);
 
             // when
-            when(applicationRepository.findById(expectedEntity.getId())).thenReturn(Optional.of(expectedEntity));
             when(caseworkerRepository.findById(caseworker.getId()))
                     .thenReturn(Optional.of(caseworker));
+            when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
+            when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
+                    .thenReturn(Optional.of(expectedDecisionEntity));
 
-            serviceUnderTest.assignDecision(expectedEntity.getId(), assignDecisionRequest);
+            serviceUnderTest.assignDecision(expectedApplicationEntity.getId(), assignDecisionRequest);
 
             // then
-            verify(applicationRepository, times(1)).findById(expectedEntity.getId());
-            verifyThatApplicationUpdated(assignDecisionRequest, 1);
-            assertThat(expectedEntity.getModifiedAt()).isNotNull();
+            verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
+            verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
+            verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
+            verify(decisionRepository, times(1)).save(any(DecisionEntity.class));
+            assertThat(expectedApplicationEntity.getModifiedAt()).isNotNull();
+            assertSame(ApplicationStatus.SUBMITTED, expectedApplicationEntity.getStatus());
+            assertSame(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, expectedDecisionEntity.getOverallDecision());
+            assertThat(expectedDecisionEntity.getModifiedAt()).isNotNull();
+            assertThat(expectedDecisionEntity.getMeritsDecisions().size()).isEqualTo(1);
+            assertThat(expectedDecisionEntity.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
+            MeritsDecisionEntity merit = expectedDecisionEntity.getMeritsDecisions().iterator().next();
+            assertSame(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
+            assertSame("justification 1", merit.getJustification());
+            assertSame("refusal 1", merit.getReason());
+            assertThat(merit.getModifiedAt()).isNotNull();
+            assertSame(assignDecisionRequest.getProceedings().getFirst().getProceedingId(), merit.getProceedingId());
+
+
         }
 
-        private void verifyThatApplicationUpdated(AssignDecisionRequest applicationDecisionRequest, int timesCalled) {
-        /*
-            ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
-            verify(applicationRepository, times(timesCalled)).save(captor.capture());
-            ApplicationEntity actualApplicationEntity = captor.getValue();
-
-            assertThat(actualApplicationEntity.getStatus()).isEqualTo(applicationUpdateRequest.getStatus());
-            assertThat(actualApplicationEntity.getApplicationContent())
-                    .usingRecursiveComparison()
-                    .ignoringCollectionOrder()
-                    .isEqualTo(applicationUpdateRequest.getApplicationContent());
-
-         */
-        }
     }
 
     // <editor-fold desc="Shared asserts">

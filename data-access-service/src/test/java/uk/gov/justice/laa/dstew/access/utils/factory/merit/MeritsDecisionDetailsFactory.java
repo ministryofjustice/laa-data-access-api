@@ -22,7 +22,7 @@ public class MeritsDecisionDetailsFactory extends BaseFactory<MeritsDecisionDeta
     @Override
     public MeritsDecisionDetails createDefault() {
         return MeritsDecisionDetails.builder()
-                .decision(MeritsDecisionStatus.GRANTED)
+                .decision(MeritsDecisionStatus.REFUSED)
                 .refusal(refusalDetailsFactory.createDefault())
                 .build();
     }

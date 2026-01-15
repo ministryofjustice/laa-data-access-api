@@ -27,7 +27,7 @@ public class ApplicationAssignDecisionRequestFactory extends BaseFactory<AssignD
     public AssignDecisionRequest createDefault() {
         return AssignDecisionRequest.builder()
                 .applicationStatus(ApplicationStatus.IN_PROGRESS)
-                .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                .overallDecision(DecisionStatus.REFUSED)
                 .userId(UUID.randomUUID())
                 .proceedings(List.of(proceedingDetailsFactory.createDefault()))
                 .build();

@@ -12,10 +12,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
@@ -25,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus;
  * Represents a merits decision.
  */
 @ExcludeFromGeneratedCodeCoverage
+@Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
