@@ -31,13 +31,17 @@ public class ApplicationEntityFactory extends BaseFactory<ApplicationEntity, App
         .schemaVersion(1)
         .createdAt(InstantSource.system().instant())
         .id(UUID.randomUUID())
+        .applyApplicationId(UUID.randomUUID())
         .status(ApplicationStatus.IN_PROGRESS)
         .modifiedAt(InstantSource.system().instant())
+        .submittedAt(InstantSource.system().instant())
         .laaReference("REF7327")
         .individuals(Set.of(
             individualEntityFactory.createDefault()
         ))
         .applicationContent(applicationContentFactory.createDefaultAsMap())
+        .useDelegatedFunctions(false)
+        .isAutoGranted(true)
         .build();
   }
 

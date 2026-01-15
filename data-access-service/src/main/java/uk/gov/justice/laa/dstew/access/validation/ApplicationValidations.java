@@ -1,11 +1,10 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AssignDecisionRequest;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
@@ -18,73 +17,35 @@ import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationPro
 public class ApplicationValidations {
 
   private final EffectiveAuthorizationProvider entra;
-  private final IndividualValidations individualValidator;
+
 
   /**
-   * Validates an incoming POST.
-   */
-  public void checkApplicationCreateRequest(final ApplicationCreateRequest dto) {
-    
-    if (dto == null || dto.getApplicationContent() == null) {
-      throw new ValidationException(
-          List.of("ApplicationCreateRequest and its content cannot be null")
-      );
-    }
-
-    if (dto.getStatus() == null) {
-      throw new ValidationException(
-          List.of("Application status cannot be null")
-      );
-    }
-
-    if (dto.getApplicationContent().isEmpty()) {
-      throw new ValidationException(
-          List.of("Application content cannot be empty")
-      );
-    }
-
-    if (dto.getLaaReference() == null || dto.getLaaReference().isBlank()) {
-      throw new ValidationException(
-        List.of("Application reference cannot be blank")
-      );
-    }
-
-    List<String> individualsValidationErrors = dto.getIndividuals()
-                                                  .stream()
-                                                  .map(individualValidator::validateIndividual)
-                                                  .flatMap(s -> s.errors().stream())
-                                                  .distinct()
-                                                  .toList();
-    if (!individualsValidationErrors.isEmpty()) {
-      throw new ValidationException(individualsValidationErrors);
-    }
-  }
-
-  /**One by
+   * One by
    * Validates an incoming PATCH.
    */
-  public void checkApplicationUpdateRequest(final ApplicationUpdateRequest dto,
-                                            final ApplicationEntity current) {
-    if (dto == null || dto.getApplicationContent() == null) {
+  public void checkApplicationUpdateRequest(final ApplicationUpdateRequest dto) {
+    ValidationErrors validationErrors = ValidationErrors
+        .empty()
+        .addIf((dto == null), "ApplicationUpdateRequest and its content cannot be null")
+        .addIf(dto.getApplicationContent() == null, "Application content cannot be null")
+        .addIf(dto.getApplicationContent().isEmpty(), "Application content cannot be empty");
+    if (!validationErrors.errors().isEmpty()) {
       throw new ValidationException(
-          List.of("ApplicationUpdateRequest and its content cannot be null")
-      );
-    }
-
-    if (dto.getApplicationContent().isEmpty()) {
-      throw new ValidationException(
-          List.of("Application content cannot be empty")
-      );
+          validationErrors
+              .errors()
+              .stream()
+              .distinct()
+              .toList());
     }
   }
 
   /**
    * Validates a list of application ids and throw ValidationException.
-  */
+   */
   public void checkApplicationIdList(final List<UUID> appIds) {
-    if (appIds.stream().anyMatch(id -> id == null)) {
+    if (appIds.stream().anyMatch(Objects::isNull)) {
       throw new ValidationException(
-        List.of("Request contains null values for ids")
+          List.of("Request contains null values for ids")
       );
     }
   }

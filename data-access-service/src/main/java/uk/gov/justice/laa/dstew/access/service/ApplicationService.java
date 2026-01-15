@@ -96,7 +96,6 @@ public class ApplicationService {
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public UUID createApplication(final ApplicationCreateRequest req) {
-    applicationValidations.checkApplicationCreateRequest(req);
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
     setValuesFromApplicationContent(req, entity);
     entity.setSchemaVersion(applicationVersion);
@@ -137,7 +136,7 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void updateApplication(final UUID id, final ApplicationUpdateRequest req) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
-    applicationValidations.checkApplicationUpdateRequest(req, entity);
+    applicationValidations.checkApplicationUpdateRequest(req);
     applicationMapper.updateApplicationEntity(entity, req);
     entity.setModifiedAt(Instant.now());
     applicationRepository.save(entity);

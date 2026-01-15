@@ -33,6 +33,7 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                 .build();
         var instant = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();
         return ApplicationEntity.builder()
+                .applyApplicationId(UUID.randomUUID())
                 .createdAt(instant)
                 .status(ApplicationStatus.IN_PROGRESS)
                 .modifiedAt(instant)
@@ -42,6 +43,8 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                         "test", "content"
                 )))
                 .caseworker(BaseIntegrationTest.CaseworkerJohnDoe)
+                .useDelegatedFunctions(false)
+                .isAutoGranted(true)
                 .categoryOfLaw(CategoryOfLaw.FAMILY)
                 .matterType(MatterType.SCA)
                 .build();

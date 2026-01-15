@@ -77,7 +77,7 @@ public interface ApplicationMapper {
    * Maps a {@link ApplicationEntity} to an API-facing {@link Application} model.
    *
    * @param entity the entity to map
-   * @return a new {@link Application} object, or {@code null} if the entity is null
+   * @return a new {@link Application} sobject, or {@code null} if the entity is null
    * @throws IllegalArgumentException if the {@code applicationContent} cannot be deserialized
    */
   default Application toApplication(ApplicationEntity entity) {
