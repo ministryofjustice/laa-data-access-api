@@ -90,6 +90,19 @@ Then execute
 
 `./gradlew bootRun`
 
+### LocalStack and DynamoDB (Event Service)
+
+The application includes a DynamoDB-based event service for storing application history events. For local development, we use LocalStack to emulate AWS services.
+
+#### Verify saved events
+
+```bash
+awslocal dynamodb scan --table-name EventIndexTable
+```
+
+
+For detailed setup instructions, see [docs/localstack-setup.md](docs/localstack-setup.md).
+
 ### Useful gradle commands
 
 Prior to pushing code, it's useful to run the following commands to check code style:

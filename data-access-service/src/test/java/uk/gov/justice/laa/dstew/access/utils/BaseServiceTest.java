@@ -9,11 +9,14 @@ import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import uk.gov.justice.laa.dstew.access.config.TestAsyncConfig;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
@@ -22,6 +25,8 @@ import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
+import uk.gov.justice.laa.dstew.access.service.DynamoDbService;
+import uk.gov.justice.laa.dstew.access.service.S3Service;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateRequestFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEntityFactory;
@@ -42,13 +47,23 @@ import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingsEntit
 import java.util.stream.Stream;
 
 @SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=false"})
+@TestPropertySource(properties = {
+        "spring.main.allow-bean-definition-overriding=true"
+})
 @ImportAutoConfiguration(exclude = {
         DataSourceAutoConfiguration.class,
         HibernateJpaAutoConfiguration.class,
 })
+@Import(TestAsyncConfig.class)
 @ExtendWith(MockitoExtension.class)
 @ActiveProfiles("unit-test")
 public class BaseServiceTest {
+
+    @MockitoBean
+    protected S3Service s3Service;
+
+    @MockitoBean
+    protected DynamoDbService dynamoDbService;
 
     @MockitoBean
     protected ApplicationRepository applicationRepository;

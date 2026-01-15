@@ -69,7 +69,7 @@ public class ApplicationEntity implements AuditableEntity {
   private String officeCode;
 
   @Type(JsonType.class)
-  @Column(columnDefinition = "json")
+  @Column(columnDefinition = "jsonb", name = "application_content")
   private Map<String, Object> applicationContent;
 
   @ManyToMany(cascade = CascadeType.PERSIST)
