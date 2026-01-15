@@ -4,6 +4,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.testcontainers.containers.localstack.LocalStackContainer.Service.DYNAMODB;
+import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertCreated;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
@@ -17,6 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -27,26 +31,155 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
+import org.testcontainers.containers.localstack.LocalStackContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DeleteTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
+import software.amazon.awssdk.services.dynamodb.model.TableStatus;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+import software.amazon.awssdk.services.s3.model.ListBucketsResponse;
+import software.amazon.awssdk.services.s3.model.S3Exception;
+import uk.gov.justice.laa.dstew.access.config.devlopment.LocalStackResourceInitializer;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
+import uk.gov.justice.laa.dstew.access.utils.LocalstackContainerInitializer;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 
+@Testcontainers
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CreateApplicationTest extends BaseIntegrationTest {
   private static final int applicationVersion = 1;
-
   private Stream<Arguments> createApplicationTestParameters() {
       return Stream.of(
               Arguments.of(new ApplicationOffice()),
               Arguments.of(ApplicationOffice.builder().code("XX456F").build())
       );
+  }
+
+  @BeforeEach
+  void initializeResources() {
+    createTableWithGsi();
+    createBucket();
+  }
+
+
+  private void createTableWithGsi() {
+    String tableName = "events";
+    if (dynamoDbClient.listTables().tableNames().contains(tableName)) {
+      dynamoDbClient.deleteTable(DeleteTableRequest.builder().tableName(tableName).build());
+    }
+
+    CreateTableRequest request = LocalStackResourceInitializer
+        .getCreateTableRequest(tableName);
+
+    try {
+      dynamoDbClient.createTable(request);
+    } catch (ResourceInUseException e) {
+      // Table already exists - make creation idempotent so tests can run against existing LocalStack
+      // (for example when Testcontainers can't create containers and we fallback to an existing compose-managed LocalStack).
+      // Continue to waiting for the table to be ACTIVE below.
+    }
+
+    // wait until ACTIVE
+    waitForTableActive(tableName);
+  }
+
+  private void waitForTableActive(String tableName) {
+    for (int i = 0; i < 30; i++) {
+      try {
+        DescribeTableResponse resp = dynamoDbClient.describeTable(DescribeTableRequest.builder().tableName(tableName).build());
+        if (resp.table().tableStatus() == TableStatus.ACTIVE) {
+          return;
+        }
+        Thread.sleep(500);
+      } catch (software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException rnfe) {
+        // continue waiting
+        try {
+          Thread.sleep(500);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new RuntimeException(e);
+      }
+    }
+    throw new RuntimeException("Table did not become active in time");
+  }
+
+  private void createBucket() {
+    String bucketName = "test-bucket";
+    int attempts = 0;
+    int maxAttempts = 30;
+    while (true) {
+      try {
+        s3Client.createBucket(CreateBucketRequest.builder().bucket(bucketName).build());
+        return;
+      } catch (S3Exception s3e) {
+        // If the bucket already exists, consider creation successful
+        try {
+          ListBucketsResponse list = s3Client.listBuckets();
+          boolean exists = list.buckets().stream().anyMatch(b -> bucketName.equals(b.name()));
+          if (exists) {
+            return;
+          }
+        } catch (Exception ignored) {
+          // ignore and fall through to retry
+        }
+
+        attempts++;
+        if (attempts >= maxAttempts) {
+          throw new RuntimeException("Failed to create S3 bucket after retries", s3e);
+        }
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          throw new RuntimeException(ie);
+        }
+      } catch (Exception e) {
+        // Non-S3 exceptions: attempt to detect if the bucket exists (fallback) then retry
+        try {
+          ListBucketsResponse list = s3Client.listBuckets();
+          boolean exists = list.buckets().stream().anyMatch(b -> bucketName.equals(b.name()));
+          if (exists) {
+            return;
+          }
+        } catch (Exception ignored) {
+          // ignore and fall through to retry
+        }
+
+        attempts++;
+        if (attempts >= maxAttempts) {
+          throw new RuntimeException("Failed to create S3 bucket after retries", e);
+        }
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          throw new RuntimeException(ie);
+        }
+      }
+    }
   }
 
   @ParameterizedTest
