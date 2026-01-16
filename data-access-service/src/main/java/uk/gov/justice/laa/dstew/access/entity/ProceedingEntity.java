@@ -9,8 +9,6 @@ import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Map;
@@ -40,16 +38,15 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @Table(name = "proceedings")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class ProceedingsEntity implements AuditableEntity {
+public class ProceedingEntity implements AuditableEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(columnDefinition = "UUID")
   private UUID id;
 
-  @ManyToOne(optional = false)
-  @JoinColumn(name = "application_id", nullable = false)
-  private ApplicationEntity application;
+  @Column(name = "application_id", nullable = false)
+  private UUID applicationId;
 
   @Column(name = "apply_proceeding_id", nullable = false)
   private UUID applyProceedingId;

@@ -40,7 +40,7 @@ public class MeritsDecisionEntity implements AuditableEntity {
 
   @ManyToOne(optional = false)
   @JoinColumn(name = "proceeding_id", nullable = false)
-  private ProceedingsEntity proceeding;
+  private ProceedingEntity proceeding;
 
   @Column(name = "created_at")
   @CreationTimestamp
