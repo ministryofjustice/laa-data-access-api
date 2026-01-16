@@ -14,6 +14,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import uk.gov.justice.laa.dstew.access.model.RefusalDetails;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
@@ -23,10 +24,18 @@ import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCrea
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationSummaryFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateRequestFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.ProceedingDetailsFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ProceedingDtoFactory;
+import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.*;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.decision.DecisionEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.domainEvent.DomainEventFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionDetailsFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionsEntityFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingDetailsFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingsEntityFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.refusal.RefusalDetailsFactory;
 
 import java.util.stream.Stream;
 
@@ -79,7 +88,31 @@ public class BaseServiceTest {
     protected ApplicationContentFactory applicationContentFactory;
 
     @Autowired
+    protected ProceedingDtoFactory proceedingDtoFactory;
+
+    @Autowired
+    protected ApplicationAssignDecisionRequestFactory applicationAssignDecisionRequestFactory;
+
+    @MockitoBean
+    protected DecisionRepository decisionRepository;
+
+    @Autowired
+    protected DecisionEntityFactory decisionEntityFactory;
+
+    @Autowired
     protected ProceedingDetailsFactory proceedingDetailsFactory;
+
+    @Autowired
+    protected MeritsDecisionDetailsFactory meritsDecisionDetailsFactory;
+
+    @Autowired
+    protected MeritsDecisionsEntityFactory meritsDecisionsEntityFactory;
+
+    @Autowired
+    protected ProceedingsEntityFactory proceedingsEntityFactory;
+
+    @Autowired
+    protected RefusalDetailsFactory refusalDetailsFactory;
 
     @AfterEach
     void tearDown() {

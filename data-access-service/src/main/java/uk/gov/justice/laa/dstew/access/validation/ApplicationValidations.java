@@ -6,6 +6,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.AssignDecisionRequest;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 /**
@@ -45,6 +46,17 @@ public class ApplicationValidations {
     if (appIds.stream().anyMatch(Objects::isNull)) {
       throw new ValidationException(
           List.of("Request contains null values for ids")
+      );
+    }
+  }
+
+  /**
+   * Validates an incoming apply Decision PATCH.
+   */
+  public void checkApplicationAssignDecisionRequest(final AssignDecisionRequest dto) {
+    if (dto == null || dto.getProceedings().isEmpty()) {
+      throw new ValidationException(
+              List.of("AssignDecisionRequest and its content cannot be empty")
       );
     }
   }
