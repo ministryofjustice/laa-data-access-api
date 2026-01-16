@@ -20,11 +20,13 @@ import org.springframework.security.web.SecurityFilterChain;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
-/**
- * Spring Security configuration if security is not disabled.
- */
+/** Spring Security configuration if security is not disabled. */
 @ExcludeFromGeneratedCodeCoverage
-@ConditionalOnProperty(prefix = "feature", name = "disable-security", havingValue = "false", matchIfMissing = true)
+@ConditionalOnProperty(
+    prefix = "feature",
+    name = "disable-security",
+    havingValue = "false",
+    matchIfMissing = true)
 @Configuration
 @EnableMethodSecurity
 @EnableWebSecurity
@@ -38,13 +40,18 @@ public class SecurityConfig {
    */
   @Bean
   SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
-    http
-        .authorizeHttpRequests(authorize -> authorize
-            .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-            .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-            .requestMatchers("/api/**").permitAll()
-            .anyRequest().authenticated())
-         .with(AadResourceServerHttpSecurityConfigurer.aadResourceServer(), withDefaults())
+    http.authorizeHttpRequests(
+            authorize ->
+                authorize
+                    .requestMatchers("/actuator/health", "/actuator/info")
+                    .permitAll()
+                    .requestMatchers("/swagger-ui/**", "/v3/api-docs/**")
+                    .permitAll()
+                    .requestMatchers("/api/**")
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated())
+        .with(AadResourceServerHttpSecurityConfigurer.aadResourceServer(), withDefaults())
         .csrf(AbstractHttpConfigurer::disable);
     return http.build();
   }
@@ -65,15 +72,16 @@ public class SecurityConfig {
       @Override
       public boolean hasAnyAppRole(String... names) {
         final var authorities = getAuthorities();
-        return Arrays.stream(names)
-            .anyMatch(name -> authorities.contains("APPROLE_" + name));
+        return Arrays.stream(names).anyMatch(name -> authorities.contains("APPROLE_" + name));
       }
 
       private Set<String> getAuthorities() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return (auth != null && auth.isAuthenticated()) ? auth.getAuthorities().stream()
-            .map(GrantedAuthority::getAuthority)
-            .collect(Collectors.toUnmodifiableSet()) : Set.of();
+        return (auth != null && auth.isAuthenticated())
+            ? auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toUnmodifiableSet())
+            : Set.of();
       }
     };
   }

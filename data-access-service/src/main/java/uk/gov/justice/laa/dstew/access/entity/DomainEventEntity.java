@@ -21,9 +21,7 @@ import org.hibernate.type.SqlTypes;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 
-/**
- * Represents a domain events table.
- */
+/** Represents a domain events table. */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter

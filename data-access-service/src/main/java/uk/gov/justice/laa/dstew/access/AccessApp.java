@@ -5,8 +5,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
- * Entry point for the Spring Boot microservice app.
- * Note using `App` to avoid confusion with the business entity `Application`.
+ * Entry point for the Spring Boot microservice app. Note using `App` to avoid confusion with the
+ * business entity `Application`.
  */
 @SpringBootApplication
 @ConfigurationPropertiesScan

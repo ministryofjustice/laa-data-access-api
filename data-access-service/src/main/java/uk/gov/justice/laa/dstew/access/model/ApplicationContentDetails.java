@@ -9,9 +9,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Class represents the content of an application.
- */
+/** Class represents the content of an application. */
 @Data
 @Builder(toBuilder = true)
 @NoArgsConstructor
@@ -22,5 +20,4 @@ public class ApplicationContentDetails {
   private Instant submittedAt;
   private boolean autoGrant;
   private List<ProceedingDetails> proceedings;
-
 }
