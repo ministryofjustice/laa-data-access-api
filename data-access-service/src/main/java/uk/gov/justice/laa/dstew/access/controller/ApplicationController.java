@@ -22,7 +22,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.model.Paging;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
@@ -30,10 +29,7 @@ import uk.gov.justice.laa.dstew.access.service.DomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 
-
-/**
- * Controller for handling /api/v0/applications requests.
- */
+/** Controller for handling /api/v0/applications requests. */
 @RequiredArgsConstructor
 @RestController
 @ExcludeFromGeneratedCodeCoverage
@@ -46,17 +42,20 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   @LogMethodResponse
   @Override
-  public ResponseEntity<Void> createApplication(@Valid ApplicationCreateRequest applicationCreateReq) {
+  public ResponseEntity<Void> createApplication(
+      @Valid ApplicationCreateRequest applicationCreateReq) {
     UUID id = service.createApplication(applicationCreateReq);
 
-    URI uri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
+    URI uri =
+        ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
     return ResponseEntity.created(uri).build();
   }
 
   @Override
   @LogMethodResponse
   @LogMethodArguments
-  public ResponseEntity<Void> updateApplication(UUID id, @Valid ApplicationUpdateRequest applicationUpdateReq) {
+  public ResponseEntity<Void> updateApplication(
+      UUID id, @Valid ApplicationUpdateRequest applicationUpdateReq) {
     service.updateApplication(id, applicationUpdateReq);
     return ResponseEntity.noContent().build();
   }
@@ -65,25 +64,26 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<ApplicationSummaryResponse> getApplications(
-          ApplicationStatus status,
-          String laaReference,
-          String clientFirstName,
-          String clientLastName,
-          LocalDate clientDateOfBirth,
-          UUID userId,
-          Integer page,
-          Integer pageSize) {
+      ApplicationStatus status,
+      String laaReference,
+      String clientFirstName,
+      String clientLastName,
+      LocalDate clientDateOfBirth,
+      UUID userId,
+      Integer page,
+      Integer pageSize) {
     page = (page == null || page < 1) ? 1 : page;
 
     Page<ApplicationSummary> applicationsReturned =
-            summaryService.getAllApplications(
-                    status,
-                    laaReference,
-                    clientFirstName,
-                    clientLastName,
-                    clientDateOfBirth,
-                    userId,
-                    page - 1, pageSize);
+        summaryService.getAllApplications(
+            status,
+            laaReference,
+            clientFirstName,
+            clientLastName,
+            clientDateOfBirth,
+            userId,
+            page - 1,
+            pageSize);
 
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
     List<ApplicationSummary> applications = applicationsReturned.stream().toList();
@@ -109,16 +109,16 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<Void> assignCaseworker(@Valid CaseworkerAssignRequest request) {
-    service.assignCaseworker(request.getCaseworkerId(),
-                              request.getApplicationIds(),
-                              request.getEventHistory());
+    service.assignCaseworker(
+        request.getCaseworkerId(), request.getApplicationIds(), request.getEventHistory());
     return ResponseEntity.ok().build();
   }
 
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> unassignCaseworker(UUID id, @Valid CaseworkerUnassignRequest request) {
+  public ResponseEntity<Void> unassignCaseworker(
+      UUID id, @Valid CaseworkerUnassignRequest request) {
 
     service.unassignCaseworker(id, request.getEventHistory());
 
@@ -128,11 +128,9 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(UUID applicationId,
-      @Valid List<DomainEventType> eventType) {
+  public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(
+      UUID applicationId, @Valid List<DomainEventType> eventType) {
     var events = domainService.getEvents(applicationId, eventType);
-    return ResponseEntity.ok(ApplicationHistoryResponse.builder()
-                                                 .events(events)
-                                                 .build());
+    return ResponseEntity.ok(ApplicationHistoryResponse.builder().events(events).build());
   }
 }

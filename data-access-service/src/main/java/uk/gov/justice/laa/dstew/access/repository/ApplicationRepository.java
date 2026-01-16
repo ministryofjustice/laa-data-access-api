@@ -5,10 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 
-/**
- * Repository for managing application entities.
- */
+/** Repository for managing application entities. */
 @Repository
-public interface ApplicationRepository extends JpaRepository<ApplicationEntity, UUID> {
-}
-
+public interface ApplicationRepository extends JpaRepository<ApplicationEntity, UUID> {}

@@ -24,9 +24,7 @@ import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
-/**
- * Service class for managing domain events.
- */
+/** Service class for managing domain events. */
 @Service
 @RequiredArgsConstructor
 public class DomainEventService {
@@ -37,15 +35,9 @@ public class DomainEventService {
   private final ObjectMapper objectMapper;
   private final DomainEventMapper mapper;
 
-  /**
-   * Shared internal logic for persisting domain events.
-   *
-   */
+  /** Shared internal logic for persisting domain events. */
   private void saveDomainEvent(
-      UUID applicationId,
-      UUID caseworkerId,
-      DomainEventType eventType,
-      Object data) {
+      UUID applicationId, UUID caseworkerId, DomainEventType eventType, Object data) {
 
     DomainEventEntity entity =
         DomainEventEntity.builder()
@@ -60,14 +52,10 @@ public class DomainEventService {
     domainEventRepository.save(entity);
   }
 
-  /**
-   * Posts an APPLICATION_CREATED domain event.
-   *
-   */
+  /** Posts an APPLICATION_CREATED domain event. */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void saveCreateApplicationDomainEvent(
-      ApplicationEntity applicationEntity,
-      String createdBy) {
+      ApplicationEntity applicationEntity, String createdBy) {
 
     CreateApplicationDomainEventDetails domainEventDetails =
         CreateApplicationDomainEventDetails.builder()
@@ -79,26 +67,22 @@ public class DomainEventService {
             .build();
 
     DomainEventEntity domainEventEntity =
-          DomainEventEntity.builder()
-              .applicationId(applicationEntity.getId())
-              .caseworkerId(null)
-              .type(DomainEventType.APPLICATION_CREATED)
-              .createdAt(Instant.now())
-              .createdBy(createdBy)
-              .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.APPLICATION_CREATED))
-              .build();
+        DomainEventEntity.builder()
+            .applicationId(applicationEntity.getId())
+            .caseworkerId(null)
+            .type(DomainEventType.APPLICATION_CREATED)
+            .createdAt(Instant.now())
+            .createdBy(createdBy)
+            .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.APPLICATION_CREATED))
+            .build();
 
     domainEventRepository.save(domainEventEntity);
   }
 
-  /**
-   * Posts an APPLICATION_UPDATED domain event.
-   *
-   */
+  /** Posts an APPLICATION_UPDATED domain event. */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void saveUpdateApplicationDomainEvent(
-      ApplicationEntity applicationEntity,
-      String updatedBy) {
+      ApplicationEntity applicationEntity, String updatedBy) {
 
     UpdateApplicationDomainEventDetails domainEventDetails =
         UpdateApplicationDomainEventDetails.builder()
@@ -111,94 +95,85 @@ public class DomainEventService {
 
     saveDomainEvent(
         applicationEntity.getId(),
-        applicationEntity.getCaseworker() != null ? applicationEntity.getCaseworker().getId() : null,
+        applicationEntity.getCaseworker() != null
+            ? applicationEntity.getCaseworker().getId()
+            : null,
         DomainEventType.APPLICATION_UPDATED,
-        domainEventDetails
-    );
+        domainEventDetails);
   }
 
-
-  /**
-   * Posts an ASSIGN_APPLICATION_TO_CASEWORKER domain event.
-   *
-   */
+  /** Posts an ASSIGN_APPLICATION_TO_CASEWORKER domain event. */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void saveAssignApplicationDomainEvent(
-      UUID applicationId,
-      UUID caseworkerId,
-      String eventDescription) {
+      UUID applicationId, UUID caseworkerId, String eventDescription) {
 
     AssignApplicationDomainEventDetails domainEventDetails =
         AssignApplicationDomainEventDetails.builder()
-          .applicationId(applicationId)
-          .caseWorkerId(caseworkerId)
-          .createdAt(Instant.now())
-          .createdBy(defaultCreatedByName)
-          .eventDescription(eventDescription)
-          .build();
+            .applicationId(applicationId)
+            .caseWorkerId(caseworkerId)
+            .createdAt(Instant.now())
+            .createdBy(defaultCreatedByName)
+            .eventDescription(eventDescription)
+            .build();
 
     saveDomainEvent(
         applicationId,
         caseworkerId,
         DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
-        domainEventDetails
-    );
+        domainEventDetails);
   }
 
   /**
    * Converts domain event details to JSON string.
    *
    * @param domainEventDetails the domain event details
-   * @param domainEventType    domain event type enum
+   * @param domainEventType domain event type enum
    * @return JSON string representation of the domain event details
    */
   private String getEventDetailsAsJson(Object domainEventDetails, DomainEventType domainEventType) {
     try {
       return objectMapper.writeValueAsString(domainEventDetails);
     } catch (JsonProcessingException e) {
-      throw new DomainEventPublishException(String.format("Unable to save Domain Event of type: %s",
-          domainEventType.name()));
+      throw new DomainEventPublishException(
+          String.format("Unable to save Domain Event of type: %s", domainEventType.name()));
     }
   }
 
-  /**
-   * Posts a domain event {@link DomainEventEntity} object.
-   *
-   */
+  /** Posts a domain event {@link DomainEventEntity} object. */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void saveUnassignApplicationDomainEvent(
-      UUID applicationId,
-      UUID caseworkerId,
-      String eventDescription) {
+      UUID applicationId, UUID caseworkerId, String eventDescription) {
 
-    UnassignApplicationDomainEventDetails eventDetails = UnassignApplicationDomainEventDetails.builder()
-        .applicationId(applicationId)
-        .caseworkerId(caseworkerId)
-        .createdAt(Instant.now())
-        .createdBy(defaultCreatedByName)
-        .eventDescription(eventDescription)
-        .build();
+    UnassignApplicationDomainEventDetails eventDetails =
+        UnassignApplicationDomainEventDetails.builder()
+            .applicationId(applicationId)
+            .caseworkerId(caseworkerId)
+            .createdAt(Instant.now())
+            .createdBy(defaultCreatedByName)
+            .eventDescription(eventDescription)
+            .build();
 
     saveDomainEvent(
         applicationId,
         caseworkerId,
         DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
-        eventDetails
-    );
+        eventDetails);
   }
 
-  /**
-   * Provides a list of events associated with an application in createdAt ascending order.
-   */
+  /** Provides a list of events associated with an application in createdAt ascending order. */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<ApplicationDomainEvent> getEvents(UUID applicationId,
-                                                @Valid List<DomainEventType> eventType) {
+  public List<ApplicationDomainEvent> getEvents(
+      UUID applicationId, @Valid List<DomainEventType> eventType) {
 
     var filterEventType = DomainEventSpecification.filterEventTypes(eventType);
-    Specification<DomainEventEntity> filter = DomainEventSpecification.filterApplicationId(applicationId)
-        .and(filterEventType);
+    Specification<DomainEventEntity> filter =
+        DomainEventSpecification.filterApplicationId(applicationId).and(filterEventType);
 
-    Comparator<ApplicationDomainEvent> comparer = Comparator.comparing(ApplicationDomainEvent::getCreatedAt);
-    return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
+    Comparator<ApplicationDomainEvent> comparer =
+        Comparator.comparing(ApplicationDomainEvent::getCreatedAt);
+    return domainEventRepository.findAll(filter).stream()
+        .map(mapper::toDomainEvent)
+        .sorted(comparer)
+        .toList();
   }
 }

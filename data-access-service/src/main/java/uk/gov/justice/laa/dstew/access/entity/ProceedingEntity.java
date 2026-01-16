@@ -24,10 +24,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-
-/**
- * Represents a proceeding.
- */
+/** Represents a proceeding. */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter

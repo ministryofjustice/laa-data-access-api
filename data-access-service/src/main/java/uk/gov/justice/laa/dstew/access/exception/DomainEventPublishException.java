@@ -1,8 +1,6 @@
 package uk.gov.justice.laa.dstew.access.exception;
 
-/**
- * The exception thrown when a domain event cannot be published.
- */
+/** The exception thrown when a domain event cannot be published. */
 public class DomainEventPublishException extends RuntimeException {
 
   /**

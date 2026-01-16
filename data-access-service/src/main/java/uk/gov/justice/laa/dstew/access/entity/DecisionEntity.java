@@ -25,9 +25,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.enums.DecisionStatus;
 
-/**
- * Represents a decision.
- */
+/** Represents a decision. */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter
@@ -56,10 +54,9 @@ public class DecisionEntity implements AuditableEntity {
 
   @ManyToMany(cascade = CascadeType.PERSIST)
   @JoinTable(
-          name = "linked_merits_decisions",
-          joinColumns = @JoinColumn(name = "decisions_id"),
-          inverseJoinColumns = @JoinColumn(name = "merits_decisions_id")
-  )
+      name = "linked_merits_decisions",
+      joinColumns = @JoinColumn(name = "decisions_id"),
+      inverseJoinColumns = @JoinColumn(name = "merits_decisions_id"))
   private Set<MeritsDecisionEntity> meritsDecisions;
 
   @Column(name = "overall_decision")

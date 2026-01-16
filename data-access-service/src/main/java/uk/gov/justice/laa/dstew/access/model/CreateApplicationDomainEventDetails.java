@@ -8,9 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Class represents data associated with a domain event.
- */
+/** Class represents data associated with a domain event. */
 @Data
 @Builder
 @NoArgsConstructor

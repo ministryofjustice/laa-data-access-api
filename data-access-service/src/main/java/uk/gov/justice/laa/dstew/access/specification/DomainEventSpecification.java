@@ -7,29 +7,18 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 
-/**
- * Defines the filtering of Domain Events.
- *
- */
-@ExcludeFromGeneratedCodeCoverage
+/** Defines the filtering of Domain Events. */
 public class DomainEventSpecification {
-  /**
-  * Filters to a specific application.
-  *
-  */
+  /** Filters to a specific application. */
   public static Specification<DomainEventEntity> filterApplicationId(UUID appId) {
-    return (root, query, builder)
-        -> builder.equal(root.get("applicationId"), appId);
+    return (root, query, builder) -> builder.equal(root.get("applicationId"), appId);
   }
 
-  /**
-  * Filters to one of the supplied domain types, does no filtering if 
-  * the collection is empty.
-  *
-  */
-  public static Specification<DomainEventEntity> filterEventTypes(List<DomainEventType> eventTypes) {
-    return (eventTypes == null || eventTypes.isEmpty())  
-            ? Specification.unrestricted()  
-            : (root, query, builder) -> root.get("type").in(eventTypes);  
+  /** Filters to one of the supplied domain types, does no filtering if the collection is empty. */
+  public static Specification<DomainEventEntity> filterEventTypes(
+      List<DomainEventType> eventTypes) {
+    return (eventTypes == null || eventTypes.isEmpty())
+        ? Specification.unrestricted()
+        : (root, query, builder) -> root.get("type").in(eventTypes);
   }
 }

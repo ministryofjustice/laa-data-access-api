@@ -16,9 +16,7 @@ import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
-/**
- * Service class responsible for retrieving and managing {@link ApplicationSummary} data.
- */
+/** Service class responsible for retrieving and managing {@link ApplicationSummary} data. */
 @Service
 public class ApplicationSummaryService {
   private final ApplicationSummaryRepository applicationSummaryRepository;
@@ -34,34 +32,34 @@ public class ApplicationSummaryService {
   public ApplicationSummaryService(
       final ApplicationSummaryRepository applicationSummaryRepository,
       final ApplicationSummaryMapper applicationSummaryMapper,
-      final CaseworkerRepository caseworkerRepository
-  ) {
+      final CaseworkerRepository caseworkerRepository) {
     this.applicationSummaryRepository = applicationSummaryRepository;
     this.mapper = applicationSummaryMapper;
     this.caseworkerRepository = caseworkerRepository;
   }
 
   /**
-   * Retrieves a paginated list of {@link ApplicationSummary} objects filtered by application status.
+   * Retrieves a paginated list of {@link ApplicationSummary} objects filtered by application
+   * status.
    *
    * @param applicationStatus the {@link Status} used to filter results on application status
    * @param laaReference used to filter results on application reference
    * @param clientFirstName used to filter results on linked individuals first name
-   * @param clientLastName used to filter results on  linked individuals last name
+   * @param clientLastName used to filter results on linked individuals last name
    * @param page the page number to retrieve (zero-based index)
    * @param pageSize the maximum number of results to return per page
    * @return a list of {@link ApplicationSummary} instances matching the filter criteria
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public Page<ApplicationSummary> getAllApplications(
-          ApplicationStatus applicationStatus,
-          String laaReference,
-          String clientFirstName,
-          String clientLastName,
-          LocalDate clientDateOfBirth,
-          UUID userId,
-          Integer page,
-          Integer pageSize) {
+      ApplicationStatus applicationStatus,
+      String laaReference,
+      String clientFirstName,
+      String clientLastName,
+      LocalDate clientDateOfBirth,
+      UUID userId,
+      Integer page,
+      Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
 
     if (userId != null && caseworkerRepository.countById(userId) == 0L) {
@@ -69,14 +67,15 @@ public class ApplicationSummaryService {
     }
 
     return applicationSummaryRepository
-            .findAll(ApplicationSummarySpecification
-                            .filterBy(applicationStatus,
-                                    laaReference,
-                                    clientFirstName,
-                                    clientLastName,
-                                    clientDateOfBirth,
-                                    userId),
-                    pageDetails)
-            .map(mapper::toApplicationSummary);
+        .findAll(
+            ApplicationSummarySpecification.filterBy(
+                applicationStatus,
+                laaReference,
+                clientFirstName,
+                clientLastName,
+                clientDateOfBirth,
+                userId),
+            pageDetails)
+        .map(mapper::toApplicationSummary);
   }
 }
