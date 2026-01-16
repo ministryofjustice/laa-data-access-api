@@ -1122,7 +1122,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             DecisionEntity savedDecision = decisionCaptor.getValue();
             assertNotNull(savedDecision);
             assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
-            assertThat(savedDecision.getModifiedAt()).isNull();
             assertSame(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
             assertSame(1, savedDecision.getMeritsDecisions().size());
 
@@ -1226,7 +1225,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             DecisionEntity savedDecision = decisionCaptor.getValue();
             assertNotNull(savedDecision);
             assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
-            assertThat(savedDecision.getModifiedAt()).isNull();
             assertSame(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
             assertSame(2, savedDecision.getMeritsDecisions().size());
 
@@ -1341,7 +1339,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             DecisionEntity savedDecision = decisionCaptor.getValue();
             assertNotNull(savedDecision);
             assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
-            assertThat(savedDecision.getModifiedAt()).isNotNull();
             assertSame(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
             assertSame(1, savedDecision.getMeritsDecisions().size());
 
@@ -1470,7 +1467,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             DecisionEntity savedDecision = decisionCaptor.getValue();
             assertNotNull(savedDecision);
             assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
-            assertThat(savedDecision.getModifiedAt()).isNotNull();
             assertSame(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
             assertSame(2, savedDecision.getMeritsDecisions().size());
 

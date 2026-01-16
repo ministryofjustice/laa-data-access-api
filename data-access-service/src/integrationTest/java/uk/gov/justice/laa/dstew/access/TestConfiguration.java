@@ -63,10 +63,10 @@ public class TestConfiguration {
     @Bean
     public PersistedFactory<
             ProceedingRepository,
-            Factory<ProceedingsEntity, ProceedingsEntity.ProceedingsEntityBuilder>,
-            ProceedingsEntity,
-            ProceedingsEntity.ProceedingsEntityBuilder,
-            UUID> persistedProceedingFactory(ProceedingRepository repository, Factory<ProceedingsEntity, ProceedingsEntity.ProceedingsEntityBuilder> proceedingFactory) {
+            Factory<ProceedingEntity, ProceedingEntity.ProceedingEntityBuilder>,
+            ProceedingEntity,
+            ProceedingEntity.ProceedingEntityBuilder,
+            UUID> persistedProceedingFactory(ProceedingRepository repository, Factory<ProceedingEntity, ProceedingEntity.ProceedingEntityBuilder> proceedingFactory) {
         return new PersistedFactory<>(repository, proceedingFactory);
     }
 
@@ -116,7 +116,7 @@ public class TestConfiguration {
     }
 
     @Bean
-    public Factory<ProceedingsEntity, ProceedingsEntity.ProceedingsEntityBuilder> proceedingFactory() {
+    public Factory<ProceedingEntity, ProceedingEntity.ProceedingEntityBuilder> proceedingFactory() {
         return new ProceedingFactoryImpl();
     }
 }

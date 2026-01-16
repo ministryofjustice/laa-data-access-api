@@ -17,9 +17,9 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
+import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.entity.ProceedingsEntity;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
@@ -1833,9 +1833,9 @@ public class ApplicationTest extends BaseIntegrationTest {
                 )));
             });
 
-            ProceedingsEntity proceedingsEntity = persistedProceedingFactory.createAndPersist(
+            ProceedingEntity proceedingEntity = persistedProceedingFactory.createAndPersist(
                     builder -> {builder
-                            .application(applicationEntity);}
+                            .applicationId(applicationEntity.getId());}
             );
 
             AssignDecisionRequest applicationRequest = assignDecisionRequestFactory.create(builder -> {
@@ -1845,7 +1845,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                     .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                     .proceedings(List.of(
                            ProceedingDetails.builder()
-                           .proceedingId(proceedingsEntity.getId())
+                           .proceedingId(proceedingEntity.getId())
                            .meritsDecision(
                                 MeritsDecisionDetails.builder()
                                 .decision(MeritsDecisionStatus.REFUSED)
@@ -1869,8 +1869,13 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertNoCacheHeaders(result);
             assertNoContent(result);
 
-            ApplicationEntity actual = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
-            assertEquals(ApplicationStatus.SUBMITTED, actual.getStatus());
+            ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+            assertEquals(ApplicationStatus.SUBMITTED, actualApplication.getStatus());
+            DecisionEntity actualDecision = decisionRepository.findByApplicationId(applicationEntity.getId()).orElseThrow();
+            assertEquals(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, actualDecision.getOverallDecision());
+            assertThat(actualDecision.getCreatedAt()).isNotNull();
+            assertThat(actualDecision.getModifiedAt()).isNotNull();
+
         }
     }
 

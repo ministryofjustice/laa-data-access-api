@@ -17,10 +17,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.entity.*;
 import uk.gov.justice.laa.dstew.access.model.*;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
-import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
-import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
-import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
+import uk.gov.justice.laa.dstew.access.repository.*;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
 
@@ -51,6 +48,9 @@ public abstract class BaseIntegrationTest {
 
     @Autowired
     protected DomainEventRepository domainEventRepository;
+
+    @Autowired
+    protected DecisionRepository decisionRepository;
 
     @Autowired
     protected Factory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder> applicationFactory;
@@ -110,9 +110,9 @@ public abstract class BaseIntegrationTest {
     @Autowired
     protected PersistedFactory<
             ProceedingRepository,
-            Factory<ProceedingsEntity, ProceedingsEntity.ProceedingsEntityBuilder>,
-            ProceedingsEntity,
-            ProceedingsEntity.ProceedingsEntityBuilder,
+            Factory<ProceedingEntity, ProceedingEntity.ProceedingEntityBuilder>,
+            ProceedingEntity,
+            ProceedingEntity.ProceedingEntityBuilder,
             UUID> persistedProceedingFactory;
 
     // for use in tests and factories where applicable (i.e. default in ApplicationFactoryImpl)
