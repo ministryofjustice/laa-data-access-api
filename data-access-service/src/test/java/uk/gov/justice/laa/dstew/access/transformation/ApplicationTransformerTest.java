@@ -22,7 +22,7 @@ public class ApplicationTransformerTest {
   EffectiveAuthorizationProvider mockEntra;
 
   @Test
-  void shouldTransformApplication() {
+  void givenApplicationAndRoleProceedingsReader_whenTransform_thenOnlyCorrectFieldsArePresent() {
     Application request = Application.builder()
         .id(UUID.randomUUID())
         .build();

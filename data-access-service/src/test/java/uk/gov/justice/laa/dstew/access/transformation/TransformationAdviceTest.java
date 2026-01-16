@@ -33,7 +33,7 @@ class TransformationAdviceTest {
     }
 
     @Test
-    void supports_shouldReturnTrue_whenTransformerExists() throws NoSuchMethodException {
+    void givenTransformerExists_whenSupports_thenReturnTrue() throws NoSuchMethodException {
         Method method = SampleController.class.getMethod("getDto");
         MethodParameter parameter = new MethodParameter(method, -1);
 
@@ -45,7 +45,7 @@ class TransformationAdviceTest {
     }
 
     @Test
-    void supports_shouldReturnFalse_whenNoTransformer() throws NoSuchMethodException {
+    void givenNoTransformer_whenSupports_thenReturnFalse() throws NoSuchMethodException {
         Method method = SampleController.class.getMethod("getString");
         MethodParameter parameter = new MethodParameter(method, -1);
 
@@ -57,7 +57,7 @@ class TransformationAdviceTest {
     }
 
     @Test
-    void beforeBodyWrite_shouldReturnTransformedObject() {
+    void givenTransformerExists_whenBeforeBodyWrite_thenReturnTransformedObject() {
         DummyDto input = new DummyDto("in");
         DummyDto output = new DummyDto("out");
 
@@ -75,7 +75,7 @@ class TransformationAdviceTest {
     }
 
     @Test
-    void beforeBodyWrite_shouldReturnListOfTransformedObjects() {
+    void givenTransformerExists_whenBeforeBodyWriteWithList_thenReturnListOfTransformedObjects() {
         DummyDto input = new DummyDto("in");
         DummyDto output = new DummyDto("out");
 
@@ -93,7 +93,7 @@ class TransformationAdviceTest {
     }
 
     @Test
-    void beforeBodyWrite_shouldThrowNotFound_whenTransformerReturnsNull() {
+    void givenTransformerReturnsNull_whenBeforeBodyWrite_thenThrowNotFound() {
         DummyDto input = new DummyDto("in");
 
         ResponseTransformer<DummyDto> transformer = mock(ResponseTransformer.class);
@@ -110,7 +110,7 @@ class TransformationAdviceTest {
     }
 
     @Test
-    void beforeBodyWrite_shouldReturnOriginal_whenNoTransformer() {
+    void givenNoTransformer_whenBeforeBodyWrite_thenReturnOriginal() {
         DummyDto input = new DummyDto("unchanged");
 
         when(transformerRegistry.getTransformer(DummyDto.class)).thenReturn(Optional.empty());
@@ -124,13 +124,37 @@ class TransformationAdviceTest {
     }
 
     @Test
-    void beforeBodyWrite_shouldReturnOriginal_whenInputIsNull() {
+    void givenNullInput_whenBeforeBodyWrite_thenReturnOriginal() {
         Object result = advice.beforeBodyWrite(
                 null, null, MediaType.APPLICATION_JSON, StringHttpMessageConverter.class,
                 mock(ServerHttpRequest.class), mock(ServerHttpResponse.class)
         );
 
         assertNull(result);
+    }
+
+    @Test
+    void givenCollectionOfTransformable_whenSupports_thenReturnTrue() throws NoSuchMethodException {
+        Method method = SampleCollectionController.class.getMethod("getDummyDtoList");
+        MethodParameter parameter = new MethodParameter(method, -1);
+
+        when(transformerRegistry.hasTransformer(DummyDto.class)).thenReturn(true);
+
+        boolean result = advice.supports(parameter, StringHttpMessageConverter.class);
+
+        assertTrue(result);
+    }
+
+    @Test
+    void givenCollectionOfNonTransformable_whenSupports_thenReturnFalse() throws NoSuchMethodException {
+        Method method = SampleCollectionController.class.getMethod("getStringList");
+        MethodParameter parameter = new MethodParameter(method, -1);
+
+        when(transformerRegistry.hasTransformer(String.class)).thenReturn(false);
+
+        boolean result = advice.supports(parameter, StringHttpMessageConverter.class);
+
+        assertFalse(result);
     }
 
     // Simple dummy DTO
@@ -167,29 +191,6 @@ class TransformationAdviceTest {
             return "";
         }
     }
-    @Test
-    void supports_shouldReturnTrue_forCollectionOfTransformable() throws NoSuchMethodException {
-        Method method = SampleCollectionController.class.getMethod("getDummyDtoList");
-        MethodParameter parameter = new MethodParameter(method, -1);
-
-        when(transformerRegistry.hasTransformer(DummyDto.class)).thenReturn(true);
-
-        boolean result = advice.supports(parameter, StringHttpMessageConverter.class);
-
-        assertTrue(result);
-    }
-
-    @Test
-    void supports_shouldReturnFalse_forCollectionOfNonTransformable() throws NoSuchMethodException {
-        Method method = SampleCollectionController.class.getMethod("getStringList");
-        MethodParameter parameter = new MethodParameter(method, -1);
-
-        when(transformerRegistry.hasTransformer(String.class)).thenReturn(false);
-
-        boolean result = advice.supports(parameter, StringHttpMessageConverter.class);
-
-        assertFalse(result);
-    }
 
     // New dummy controller for collection return types
     static class SampleCollectionController {
@@ -201,6 +202,4 @@ class TransformationAdviceTest {
             return List.of();
         }
     }
-
 }
-
