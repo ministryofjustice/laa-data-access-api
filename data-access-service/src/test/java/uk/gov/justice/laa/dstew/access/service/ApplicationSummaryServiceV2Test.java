@@ -1,10 +1,18 @@
 package uk.gov.justice.laa.dstew.access.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -19,185 +27,159 @@ import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
-import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-
 public class ApplicationSummaryServiceV2Test extends BaseServiceTest {
 
-    @Autowired
-    private ApplicationSummaryService serviceUnderTest;
+  @Autowired private ApplicationSummaryService serviceUnderTest;
 
-    @Nested
-    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-    class GetApplications {
+  @Nested
+  @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+  class GetApplications {
 
-        @ParameterizedTest
-        @ValueSource(ints = {0, 10})
-        public void givenPageZeroAndNoFilters_whenGetApplications_thenReturnApplications(int count) {
-            // given
-            List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(count);
-            Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
-            Pageable pageable = PageRequest.of(0, 10);
+    @ParameterizedTest
+    @ValueSource(ints = {0, 10})
+    public void givenPageZeroAndNoFilters_whenGetApplications_thenReturnApplications(int count) {
+      // given
+      List<ApplicationSummaryEntity> expectedApplications =
+          applicationSummaryEntityFactory.createMultipleRandom(count);
+      Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
+      Pageable pageable = PageRequest.of(0, 10);
 
-            setSecurityContext(TestConstants.Roles.READER);
+      setSecurityContext(TestConstants.Roles.READER);
 
-            when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+      when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class)))
+          .thenReturn(pageResult);
 
-            // when
-            List<ApplicationSummary> actualApplications = serviceUnderTest.getAllApplications(
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    0,
-                    10
-            ).stream().toList();
+      // when
+      List<ApplicationSummary> actualApplications =
+          serviceUnderTest.getAllApplications(null, null, null, null, null, 0, 10).stream()
+              .toList();
 
-            // then
-            verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
-            assertApplicationSummaryListsEqual(actualApplications, expectedApplications);
-        }
-
-        @ParameterizedTest
-        @ValueSource(ints = {0, 10})
-        public void givenPageZeroAndCaseworkerFound_whenGetApplications_thenReturnApplications(int count) {
-            // given
-
-            UUID caseworkerId = UUID.randomUUID();
-            when(caseworkerRepository.countById(caseworkerId)).thenReturn(1L);
-
-            List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(count);
-            // ensure that at least one application has no caseworker assigned
-            if (count > 0) { expectedApplications.getFirst().setCaseworker(null); }
-
-            Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
-            Pageable pageable = PageRequest.of(0, 10);
-
-            setSecurityContext(TestConstants.Roles.READER);
-
-            when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
-
-            // when
-            List<ApplicationSummary> actualApplications = serviceUnderTest.getAllApplications(
-                    null,
-                    null,
-                    null,
-                    null,
-                    caseworkerId,
-                    0,
-                    10
-            ).stream().toList();
-
-            // then
-            verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
-            assertApplicationSummaryListsEqual(actualApplications, expectedApplications);
-        }
-
-        @ParameterizedTest
-        @ValueSource(ints = {0, 10})
-        public void givenPageZeroAndUserId_whenGetApplicationsAndNoCaseworkerFound_thenThrowValidationException() {
-
-            // given
-            setSecurityContext(TestConstants.Roles.READER);
-            ValidationException validationException = new ValidationException(List.of(
-                "Caseworker not found"
-            ));
-
-            // when
-            // then
-            Throwable thrown = catchThrowable(() -> serviceUnderTest.getAllApplications(
-                    null,
-                    null,
-                    null,
-                    null,
-                    UUID.randomUUID(),
-                    0,
-                    10
-            ));
-            assertThat(thrown)
-                    .isInstanceOf(ValidationException.class)
-                    .usingRecursiveComparison()
-                    .isEqualTo(validationException);
-
-            verify(applicationSummaryRepository, never()).findAll(any(Specification.class), any(Pageable.class));
-        }
-
-        @Test
-        public void givenNotRoleReader_whenGetAllCaseworkers_thenThrowUnauthorizedException() {
-            // given
-            setSecurityContext(TestConstants.Roles.NO_ROLE);
-
-            // when
-            // then
-            assertThatExceptionOfType(AuthorizationDeniedException.class)
-                    .isThrownBy(() -> serviceUnderTest.getAllApplications(
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null
-                    ))
-                    .withMessageContaining("Access Denied");
-            verify(applicationSummaryRepository, never()).findAll(any(Specification.class), any(Pageable.class));
-        }
-
-        @Test
-        public void givenNoRole_whenGetAllCaseworkers_thenThrowUnauthorizedException() {
-            // given
-            // when
-            // then
-            assertThatExceptionOfType(AuthorizationDeniedException.class)
-                    .isThrownBy(() -> serviceUnderTest.getAllApplications(
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null
-                    ))
-                    .withMessageContaining("Access Denied");
-            verify(applicationSummaryRepository, never()).findAll();
-        }
-
-        private void assertApplicationSummaryListsEqual(List<ApplicationSummary> actualList, List<ApplicationSummaryEntity> expectedList) {
-            assertThat(actualList).hasSameSizeAs(expectedList);
-
-            for (ApplicationSummaryEntity expected : expectedList) {
-                boolean match = actualList.stream()
-                        .anyMatch(actual -> {
-                            try {
-                                assertApplicationSummaryEqual(expected, actual);
-                                return true;
-                            } catch (AssertionError e) {
-                                return false;
-                            }
-                        });
-                assertThat(match)
-                        .as("No matching ApplicationSummaryEntity found for expected: " + expected)
-                        .isTrue();
-            }
-        }
-
-        private void assertApplicationSummaryEqual(ApplicationSummaryEntity expected, ApplicationSummary actual) {
-            assertThat(expected.getId()).isEqualTo(actual.getApplicationId());
-            assertThat(expected.getLaaReference()).isEqualTo(actual.getLaaReference());
-            assertThat(expected.getStatus()).isEqualTo(actual.getStatus());
-            assertThat(expected.getModifiedAt().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(actual.getLastUpdated().toInstant().truncatedTo(ChronoUnit.SECONDS));
-            if (expected.getCaseworker() != null) {
-                assertThat(expected.getCaseworker().getId()).isEqualTo(actual.getAssignedTo());
-            }
-        }
+      // then
+      verify(applicationSummaryRepository, times(1))
+          .findAll(any(Specification.class), eq(pageable));
+      assertApplicationSummaryListsEqual(actualApplications, expectedApplications);
     }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 10})
+    public void givenPageZeroAndCaseworkerFound_whenGetApplications_thenReturnApplications(
+        int count) {
+      // given
+
+      UUID caseworkerId = UUID.randomUUID();
+      when(caseworkerRepository.countById(caseworkerId)).thenReturn(1L);
+
+      List<ApplicationSummaryEntity> expectedApplications =
+          applicationSummaryEntityFactory.createMultipleRandom(count);
+      // ensure that at least one application has no caseworker assigned
+      if (count > 0) {
+        expectedApplications.getFirst().setCaseworker(null);
+      }
+
+      Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
+      Pageable pageable = PageRequest.of(0, 10);
+
+      setSecurityContext(TestConstants.Roles.READER);
+
+      when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class)))
+          .thenReturn(pageResult);
+
+      // when
+      List<ApplicationSummary> actualApplications =
+          serviceUnderTest.getAllApplications(null, null, null, null, caseworkerId, 0, 10).stream()
+              .toList();
+
+      // then
+      verify(applicationSummaryRepository, times(1))
+          .findAll(any(Specification.class), eq(pageable));
+      assertApplicationSummaryListsEqual(actualApplications, expectedApplications);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 10})
+    public void
+        givenPageZeroAndUserId_whenGetApplicationsAndNoCaseworkerFound_thenThrowValidationException() {
+
+      // given
+      setSecurityContext(TestConstants.Roles.READER);
+      ValidationException validationException =
+          new ValidationException(List.of("Caseworker not found"));
+
+      // when
+      // then
+      Throwable thrown =
+          catchThrowable(
+              () ->
+                  serviceUnderTest.getAllApplications(
+                      null, null, null, null, UUID.randomUUID(), 0, 10));
+      assertThat(thrown)
+          .isInstanceOf(ValidationException.class)
+          .usingRecursiveComparison()
+          .isEqualTo(validationException);
+
+      verify(applicationSummaryRepository, never())
+          .findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    public void givenNotRoleReader_whenGetAllCaseworkers_thenThrowUnauthorizedException() {
+      // given
+      setSecurityContext(TestConstants.Roles.NO_ROLE);
+
+      // when
+      // then
+      assertThatExceptionOfType(AuthorizationDeniedException.class)
+          .isThrownBy(
+              () -> serviceUnderTest.getAllApplications(null, null, null, null, null, null, null))
+          .withMessageContaining("Access Denied");
+      verify(applicationSummaryRepository, never())
+          .findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    public void givenNoRole_whenGetAllCaseworkers_thenThrowUnauthorizedException() {
+      // given
+      // when
+      // then
+      assertThatExceptionOfType(AuthorizationDeniedException.class)
+          .isThrownBy(
+              () -> serviceUnderTest.getAllApplications(null, null, null, null, null, null, null))
+          .withMessageContaining("Access Denied");
+      verify(applicationSummaryRepository, never()).findAll();
+    }
+
+    private void assertApplicationSummaryListsEqual(
+        List<ApplicationSummary> actualList, List<ApplicationSummaryEntity> expectedList) {
+      assertThat(actualList).hasSameSizeAs(expectedList);
+
+      for (ApplicationSummaryEntity expected : expectedList) {
+        boolean match =
+            actualList.stream()
+                .anyMatch(
+                    actual -> {
+                      try {
+                        assertApplicationSummaryEqual(expected, actual);
+                        return true;
+                      } catch (AssertionError e) {
+                        return false;
+                      }
+                    });
+        assertThat(match)
+            .as("No matching ApplicationSummaryEntity found for expected: " + expected)
+            .isTrue();
+      }
+    }
+
+    private void assertApplicationSummaryEqual(
+        ApplicationSummaryEntity expected, ApplicationSummary actual) {
+      assertThat(expected.getId()).isEqualTo(actual.getApplicationId());
+      assertThat(expected.getLaaReference()).isEqualTo(actual.getLaaReference());
+      assertThat(expected.getStatus()).isEqualTo(actual.getStatus());
+      assertThat(expected.getModifiedAt().truncatedTo(ChronoUnit.SECONDS))
+          .isEqualTo(actual.getLastUpdated().toInstant().truncatedTo(ChronoUnit.SECONDS));
+      if (expected.getCaseworker() != null) {
+        assertThat(expected.getCaseworker().getId()).isEqualTo(actual.getAssignedTo());
+      }
+    }
+  }
 }

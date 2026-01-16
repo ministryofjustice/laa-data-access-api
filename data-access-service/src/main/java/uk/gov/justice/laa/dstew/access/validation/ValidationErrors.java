@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Simple state of validation of an incoming DTO.
- * Contains list of validation errors. Consider it like a builder for a ValidationException.
+ * Simple state of validation of an incoming DTO. Contains list of validation errors. Consider it
+ * like a builder for a ValidationException.
  */
 class ValidationErrors {
   private final List<String> errors;
@@ -22,7 +22,7 @@ class ValidationErrors {
     errors.add(error);
     return this;
   }
-  
+
   ValidationErrors addIf(boolean condition, String error) {
     return condition ? add(error) : this;
   }

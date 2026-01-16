@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -52,34 +51,36 @@ class ApplicationMapperTest {
     assertThat(result.getLaaReference()).isEqualTo("Ref123");
     assertThat(result.getStatus()).isEqualTo(ApplicationStatus.IN_PROGRESS);
     assertThat(result.getApplicationContent()).containsEntry("foo", "bar");
-    assertThat(result.getCreatedAt()).isEqualTo(OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC));
-    assertThat(result.getUpdatedAt()).isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
+    assertThat(result.getCreatedAt())
+        .isEqualTo(OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC));
+    assertThat(result.getUpdatedAt())
+        .isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
   }
 
   @Test
   void toApplication_mapsLinkedIndividualsCorrectly() {
-    IndividualEntity individual = IndividualEntity.builder()
-        .id(UUID.randomUUID())
-        .firstName("John")
-        .lastName("Doe")
-        .dateOfBirth(LocalDate.of(1990, 1, 1))
-        .individualContent(Map.of("notes", "Test"))
-        .build();
+    IndividualEntity individual =
+        IndividualEntity.builder()
+            .id(UUID.randomUUID())
+            .firstName("John")
+            .lastName("Doe")
+            .dateOfBirth(LocalDate.of(1990, 1, 1))
+            .individualContent(Map.of("notes", "Test"))
+            .build();
 
-    ApplicationEntity applicationEntity = ApplicationEntity.builder()
-        .id(UUID.randomUUID())
-        .laaReference("laa_reference_1")
-        .status(ApplicationStatus.IN_PROGRESS)
-        .individuals(Set.of(individual))
-        .createdAt(Instant.now())
-        .modifiedAt(Instant.now())
-        .build();
+    ApplicationEntity applicationEntity =
+        ApplicationEntity.builder()
+            .id(UUID.randomUUID())
+            .laaReference("laa_reference_1")
+            .status(ApplicationStatus.IN_PROGRESS)
+            .individuals(Set.of(individual))
+            .createdAt(Instant.now())
+            .modifiedAt(Instant.now())
+            .build();
 
     Application application = applicationMapper.toApplication(applicationEntity);
 
-    assertThat(application.getIndividuals())
-        .isNotNull()
-        .hasSize(1);
+    assertThat(application.getIndividuals()).isNotNull().hasSize(1);
 
     Individual mapped = application.getIndividuals().get(0);
     assertThat(mapped.getFirstName()).isEqualTo("John");
@@ -95,12 +96,13 @@ class ApplicationMapperTest {
 
   @Test
   void shouldMapApplicationEntityCaseworkerNullToApplication() {
-    ApplicationEntity entity = ApplicationEntity.builder()
-                                                .applicationContent(Map.of("foo", "bar"))
-                                                .createdAt(Instant.now())
-                                                .modifiedAt(Instant.now())
-                                                .caseworker(null)
-                                                .build();
+    ApplicationEntity entity =
+        ApplicationEntity.builder()
+            .applicationContent(Map.of("foo", "bar"))
+            .createdAt(Instant.now())
+            .modifiedAt(Instant.now())
+            .caseworker(null)
+            .build();
     var result = applicationMapper.toApplication(entity);
     assertThat(result.getCaseworkerId()).isNull();
   }
@@ -108,23 +110,25 @@ class ApplicationMapperTest {
   @Test
   void shouldMapApplicationEntityCaseworkerToApplication() {
     final UUID caseworkerId = UUID.randomUUID();
-    ApplicationEntity entity = ApplicationEntity.builder()
-                                                .applicationContent(Map.of("foo", "bar"))
-                                                .createdAt(Instant.now())
-                                                .modifiedAt(Instant.now())
-                                                .caseworker(CaseworkerEntity.builder().id(caseworkerId).build())
-                                                .build();
+    ApplicationEntity entity =
+        ApplicationEntity.builder()
+            .applicationContent(Map.of("foo", "bar"))
+            .createdAt(Instant.now())
+            .modifiedAt(Instant.now())
+            .caseworker(CaseworkerEntity.builder().id(caseworkerId).build())
+            .build();
     var result = applicationMapper.toApplication(entity);
     assertThat(result.getCaseworkerId()).isEqualTo(caseworkerId);
   }
 
   @Test
   void shouldMapApplicationCreateRequestToApplicationEntity() {
-    ApplicationCreateRequest req = ApplicationCreateRequest.builder()
-        .status(ApplicationStatus.SUBMITTED)
-        .applicationContent(Map.of("foo", "bar"))
-        .laaReference("laa_reference")
-        .build();
+    ApplicationCreateRequest req =
+        ApplicationCreateRequest.builder()
+            .status(ApplicationStatus.SUBMITTED)
+            .applicationContent(Map.of("foo", "bar"))
+            .laaReference("laa_reference")
+            .build();
 
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
 
@@ -135,24 +139,23 @@ class ApplicationMapperTest {
 
   @Test
   void shouldMapApplicationCreateRequestToIndividuals() {
-    Individual individual = Individual.builder()
-                                      .firstName("John")
-                                      .lastName("Doe")
-                                      .dateOfBirth(LocalDate.of(2025, 11, 24))
-                                      .details(Map.of("foo", "bar"))
-                                      .build();
-    ApplicationCreateRequest req = ApplicationCreateRequest.builder()
-        .status(ApplicationStatus.SUBMITTED)
-        .applicationContent(Map.of("foo", "bar"))
-        .laaReference("laa_reference")
-        .individuals(List.of(individual))
-        .build();
+    Individual individual =
+        Individual.builder()
+            .firstName("John")
+            .lastName("Doe")
+            .dateOfBirth(LocalDate.of(2025, 11, 24))
+            .details(Map.of("foo", "bar"))
+            .build();
+    ApplicationCreateRequest req =
+        ApplicationCreateRequest.builder()
+            .status(ApplicationStatus.SUBMITTED)
+            .applicationContent(Map.of("foo", "bar"))
+            .laaReference("laa_reference")
+            .individuals(List.of(individual))
+            .build();
     ApplicationEntity result = applicationMapper.toApplicationEntity(req);
     assertThat(result.getIndividuals()).hasSize(1);
-    var mappedIndividual = result.getIndividuals()
-                                 .stream()
-                                 .findFirst()
-                                 .get();
+    var mappedIndividual = result.getIndividuals().stream().findFirst().get();
     assertThat(mappedIndividual.getFirstName()).isEqualTo("John");
     assertThat(mappedIndividual.getLastName()).isEqualTo("Doe");
     assertThat(mappedIndividual.getDateOfBirth()).isEqualTo(LocalDate.of(2025, 11, 24));

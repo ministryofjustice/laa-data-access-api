@@ -9,9 +9,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
-/**
- * Spring Security configuration if security is disabled (e.g. for development).
- */
+/** Spring Security configuration if security is disabled (e.g. for development). */
 @ExcludeFromGeneratedCodeCoverage
 @ConditionalOnProperty(prefix = "feature", name = "disable-security", havingValue = "true")
 @Configuration
@@ -25,10 +23,8 @@ class NoSecurityConfig {
    */
   @Bean
   SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
-    http
-        .authorizeHttpRequests(authorize -> authorize
-            .anyRequest().permitAll())
-        //.oauth2ResourceServer(AbstractHttpConfigurer::disable)
+    http.authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
+        // .oauth2ResourceServer(AbstractHttpConfigurer::disable)
         .csrf(AbstractHttpConfigurer::disable);
     return http.build();
   }

@@ -14,12 +14,11 @@ import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualEntity
 
 @Profile("unit-test")
 @Component
-public class ApplicationEntityFactory extends BaseFactory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder> {
+public class ApplicationEntityFactory
+    extends BaseFactory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder> {
 
-  @Autowired
-  private IndividualEntityFactory individualEntityFactory;
-  @Autowired
-  private ApplicationContentFactory applicationContentFactory;
+  @Autowired private IndividualEntityFactory individualEntityFactory;
+  @Autowired private ApplicationContentFactory applicationContentFactory;
 
   public ApplicationEntityFactory() {
     super(ApplicationEntity::toBuilder, ApplicationEntity.ApplicationEntityBuilder::build);
@@ -34,9 +33,7 @@ public class ApplicationEntityFactory extends BaseFactory<ApplicationEntity, App
         .status(ApplicationStatus.IN_PROGRESS)
         .modifiedAt(InstantSource.system().instant())
         .laaReference("REF7327")
-        .individuals(Set.of(
-            individualEntityFactory.createDefault()
-        ))
+        .individuals(Set.of(individualEntityFactory.createDefault()))
         .applicationContent(applicationContentFactory.createDefaultAsMap())
         .build();
   }
@@ -45,12 +42,8 @@ public class ApplicationEntityFactory extends BaseFactory<ApplicationEntity, App
   public ApplicationEntity createRandom() {
     return createDefault().toBuilder()
         .laaReference(faker.bothify("REF####"))
-        .individuals(Set.of(
-            individualEntityFactory.createRandom()
-        ))
-        .applicationContent(Map.of(
-            "test", faker.text().text(50)
-        ))
+        .individuals(Set.of(individualEntityFactory.createRandom()))
+        .applicationContent(Map.of("test", faker.text().text(50)))
         .build();
   }
 }

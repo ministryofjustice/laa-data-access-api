@@ -35,9 +35,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 
-/**
- * Represents an application.
- */
+/** Represents an application. */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter
@@ -70,8 +68,7 @@ public class ApplicationEntity implements AuditableEntity {
   @JoinTable(
       name = "linked_individuals",
       joinColumns = @JoinColumn(name = "application_id"),
-      inverseJoinColumns = @JoinColumn(name = "individual_id")
-  )
+      inverseJoinColumns = @JoinColumn(name = "individual_id"))
   private Set<IndividualEntity> individuals;
 
   @Column(name = "schema_version")

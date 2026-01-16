@@ -25,9 +25,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/**
- * Represents an individual.
- */
+/** Represents an individual. */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter
@@ -38,7 +36,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @Table(name = "individuals")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class IndividualEntity  implements AuditableEntity {
+public class IndividualEntity implements AuditableEntity {
   @Id
   @Column(columnDefinition = "UUID")
   @GeneratedValue(strategy = GenerationType.IDENTITY)

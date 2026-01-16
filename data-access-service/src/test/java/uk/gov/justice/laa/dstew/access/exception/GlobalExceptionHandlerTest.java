@@ -19,7 +19,9 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleApplicationNotFound_returnsGenericNotFoundExceptionAndErrorMessage() {
-    var result = globalExceptionHandler.handleResourceNotFound(new ResourceNotFoundException("Application not found"));
+    var result =
+        globalExceptionHandler.handleResourceNotFound(
+            new ResourceNotFoundException("Application not found"));
 
     assertThat(result).isNotNull();
     assertThat(result.getStatusCode()).isEqualTo(NOT_FOUND);
@@ -29,7 +31,9 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleCaseworkerNotFound_returnsGenericNotFoundExceptionAndErrorMessage() {
-    var result = globalExceptionHandler.handleResourceNotFound(new ResourceNotFoundException("Caseworker not found"));
+    var result =
+        globalExceptionHandler.handleResourceNotFound(
+            new ResourceNotFoundException("Caseworker not found"));
 
     assertThat(result).isNotNull();
     assertThat(result.getStatusCode()).isEqualTo(NOT_FOUND);
@@ -39,7 +43,9 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleValidationException_returnsBadRequestStatusAndErrors() {
-    ResponseEntity<ProblemDetail> result = globalExceptionHandler.handleValidationException(new ValidationException(List.of("error1")));
+    ResponseEntity<ProblemDetail> result =
+        globalExceptionHandler.handleValidationException(
+            new ValidationException(List.of("error1")));
 
     assertThat(result).isNotNull();
     ProblemDetail problemDetail = result.getBody();
@@ -53,7 +59,8 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleGenericException_returnsInternalServerErrorStatusAndErrorMessage() {
-    var result = globalExceptionHandler.handleGenericException(new RuntimeException("Something went wrong"));
+    var result =
+        globalExceptionHandler.handleGenericException(new RuntimeException("Something went wrong"));
 
     assertThat(result).isNotNull();
     assertThat(result.getStatusCode()).isEqualTo(INTERNAL_SERVER_ERROR);
@@ -61,21 +68,26 @@ class GlobalExceptionHandlerTest {
     assertThat(result.getBody().getDetail()).isEqualTo("An unexpected error has occurred.");
   }
 
-  @Test void handleAuthorizationDeniedException_throwsException_for_ExceptionTranslationFilter_to_handle() {
+  @Test
+  void
+      handleAuthorizationDeniedException_throwsException_for_ExceptionTranslationFilter_to_handle() {
     assertThatException()
-      .isThrownBy(() -> globalExceptionHandler.handleAuthorizationDeniedException(new AuthorizationDeniedException("")))
+        .isThrownBy(
+            () ->
+                globalExceptionHandler.handleAuthorizationDeniedException(
+                    new AuthorizationDeniedException("")))
         .isInstanceOf(AuthorizationDeniedException.class);
   }
 
   @Test
   void handleDataAccessException_returnsInternalServerErrorStatusAndErrorMessage() {
-    var result = globalExceptionHandler.handleDataAccessException(new DataRetrievalFailureException("Database error") {
-    });
+    var result =
+        globalExceptionHandler.handleDataAccessException(
+            new DataRetrievalFailureException("Database error") {});
 
     assertThat(result).isNotNull();
     assertThat(result.getStatusCode()).isEqualTo(INTERNAL_SERVER_ERROR);
     assertThat(result.getBody()).isNotNull();
     assertThat(result.getBody().getDetail()).isEqualTo("An unexpected error has occurred.");
   }
-
 }

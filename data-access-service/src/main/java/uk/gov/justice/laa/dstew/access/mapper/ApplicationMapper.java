@@ -19,13 +19,13 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 
-
 /**
- * Mapper interface.
- * All mapping operations are performed safely, throwing an
- * {@link IllegalArgumentException} if JSON conversion fails.
+ * Mapper interface. All mapping operations are performed safely, throwing an {@link
+ * IllegalArgumentException} if JSON conversion fails.
  */
-@Mapper(componentModel = "spring", uses = {IndividualMapper.class})
+@Mapper(
+    componentModel = "spring",
+    uses = {IndividualMapper.class})
 public interface ApplicationMapper {
 
   IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
@@ -34,7 +34,8 @@ public interface ApplicationMapper {
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
    *
    * @param req the CREATE request to map
-   * @return a new {@link ApplicationEntity} populated from the request, or {@code null} if the request is null
+   * @return a new {@link ApplicationEntity} populated from the request, or {@code null} if the
+   *     request is null
    * @throws IllegalArgumentException if the {@code applicationContent} cannot be serialized
    */
   default ApplicationEntity toApplicationEntity(ApplicationCreateRequest req) {
@@ -44,25 +45,26 @@ public interface ApplicationMapper {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setStatus(req.getStatus());
     entity.setLaaReference(req.getLaaReference());
-    var individuals = req.getIndividuals()
-        .stream()
-        .map(individualMapper::toIndividualEntity)
-        .collect(Collectors.toSet());
+    var individuals =
+        req.getIndividuals().stream()
+            .map(individualMapper::toIndividualEntity)
+            .collect(Collectors.toSet());
     entity.setIndividuals(individuals);
     entity.setApplicationContent(req.getApplicationContent());
     return entity;
   }
 
-
   /**
-   * Updates an existing {@link ApplicationEntity} using values from an {@link ApplicationUpdateRequest}.
+   * Updates an existing {@link ApplicationEntity} using values from an {@link
+   * ApplicationUpdateRequest}.
    *
    * @param entity the entity to update
-   * @param req    the update request containing new values
+   * @param req the update request containing new values
    * @throws IllegalArgumentException if the {@code applicationContent} cannot be serialized
    */
   @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  default void updateApplicationEntity(@MappingTarget ApplicationEntity entity, ApplicationUpdateRequest req) {
+  default void updateApplicationEntity(
+      @MappingTarget ApplicationEntity entity, ApplicationUpdateRequest req) {
     if (req.getStatus() != null) {
       entity.setStatus(req.getStatus());
     }
@@ -70,7 +72,6 @@ public interface ApplicationMapper {
       entity.setApplicationContent(req.getApplicationContent());
     }
   }
-
 
   /**
    * Maps a {@link ApplicationEntity} to an API-facing {@link Application} model.
@@ -90,7 +91,8 @@ public interface ApplicationMapper {
     application.setSchemaVersion(entity.getSchemaVersion());
     application.setApplicationContent(entity.getApplicationContent());
     application.setLaaReference(entity.getLaaReference());
-    application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
+    application.caseworkerId(
+        entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
     application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
     application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
 
@@ -100,11 +102,11 @@ public interface ApplicationMapper {
   }
 
   private static @NonNull List<Individual> getIndividuals(Set<IndividualEntity> individuals) {
-    return individuals == null ? List.of() : 
-          individuals
-              .stream()
-              .map(individualMapper::toIndividual)
-              .filter(Objects::nonNull)
-              .toList();
+    return individuals == null
+        ? List.of()
+        : individuals.stream()
+            .map(individualMapper::toIndividual)
+            .filter(Objects::nonNull)
+            .toList();
   }
 }

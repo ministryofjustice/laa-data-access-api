@@ -15,15 +15,16 @@ import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 @Profile("unit-test")
 @Component
 public class ApplicationContentFactory
-    extends BaseFactory<ApplicationContentDetails, ApplicationContentDetails.ApplicationContentDetailsBuilder> {
+    extends BaseFactory<
+        ApplicationContentDetails, ApplicationContentDetails.ApplicationContentDetailsBuilder> {
 
-  @Autowired
-  ObjectMapper objectMapper;
-  @Autowired
-  ProceedingDetailsFactory proceedingDetailsFactory;
+  @Autowired ObjectMapper objectMapper;
+  @Autowired ProceedingDetailsFactory proceedingDetailsFactory;
 
   public ApplicationContentFactory() {
-    super(ApplicationContentDetails::toBuilder, ApplicationContentDetails.ApplicationContentDetailsBuilder::build);
+    super(
+        ApplicationContentDetails::toBuilder,
+        ApplicationContentDetails.ApplicationContentDetailsBuilder::build);
   }
 
   @Override
@@ -37,7 +38,6 @@ public class ApplicationContentFactory
         .build();
   }
 
-
   public Map<String, Object> createDefaultAsMap() {
     return objectMapper.convertValue(this.createDefault(), Map.class);
   }
@@ -46,6 +46,4 @@ public class ApplicationContentFactory
       Consumer<ApplicationContentDetails.ApplicationContentDetailsBuilder> customiser) {
     return objectMapper.convertValue(this.createDefault(customiser), Map.class);
   }
-
-
 }

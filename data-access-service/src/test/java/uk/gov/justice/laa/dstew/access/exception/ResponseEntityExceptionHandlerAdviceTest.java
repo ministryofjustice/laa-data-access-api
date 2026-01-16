@@ -34,9 +34,7 @@ import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
-
 class ResponseEntityExceptionHandlerAdviceTest {
-
 
   ResponseEntityExceptionHandlerAdvice handler = new ResponseEntityExceptionHandlerAdvice();
 
@@ -47,8 +45,7 @@ class ResponseEntityExceptionHandlerAdviceTest {
         Arguments.of(Double.class, "Double."),
         Arguments.of(Boolean.class, "Boolean."),
         Arguments.of(null, "Object."),
-        Arguments.of(ApplicationStatus.class, Arrays.toString(ApplicationStatus.values()) + ".")
-    );
+        Arguments.of(ApplicationStatus.class, Arrays.toString(ApplicationStatus.values()) + "."));
   }
 
   public static Stream<Arguments> getDataTypesForTypeMismatch() {
@@ -57,13 +54,13 @@ class ResponseEntityExceptionHandlerAdviceTest {
         Arguments.of(String.class, "String."),
         Arguments.of(Double.class, "Double."),
         Arguments.of(Boolean.class, "Boolean."),
-        Arguments.of(ApplicationStatus.class, Arrays.toString(ApplicationStatus.values()) + ".")
-    );
+        Arguments.of(ApplicationStatus.class, Arrays.toString(ApplicationStatus.values()) + "."));
   }
 
   public static Stream<Arguments> getPathAndErrors() {
     return Stream.of(
-        Arguments.of("uk.gov.justice.laa.dstew.access.model.ApplicationStatus",
+        Arguments.of(
+            "uk.gov.justice.laa.dstew.access.model.ApplicationStatus",
             "PROGRESS. Valid values are: IN_PROGRESS, SUBMITTED"),
         Arguments.of("uk.gov.justice.laa.dstew.access.model.AnotherEnumClass", "PROGRESS"));
   }
@@ -72,13 +69,15 @@ class ResponseEntityExceptionHandlerAdviceTest {
   @MethodSource("getDataTypes")
   void handleHttpMessageNotReadable(Class<?> clazz, String expectedType) {
 
-    HttpMessageNotReadableException exception = getHttpMessageNotReadableExceptionMismatchedInput(clazz);
+    HttpMessageNotReadableException exception =
+        getHttpMessageNotReadableExceptionMismatchedInput(clazz);
     ResponseEntity<Object> objectResponseEntity = getResponseEntity(exception);
     assertThat(objectResponseEntity).isNotNull();
     assertInstanceOf(ProblemDetail.class, objectResponseEntity.getBody());
     ProblemDetail problemDetail = (ProblemDetail) objectResponseEntity.getBody();
     assertEquals(400, problemDetail.getStatus());
-    assertEquals("Invalid data type for field 'testField'. Expected: %s".formatted(expectedType),
+    assertEquals(
+        "Invalid data type for field 'testField'. Expected: %s".formatted(expectedType),
         problemDetail.getDetail());
   }
 
@@ -86,21 +85,23 @@ class ResponseEntityExceptionHandlerAdviceTest {
   @MethodSource("getDataTypes")
   void handleHttpMessageNotReadable_EmptyField(Class<?> clazz, String expectedType) {
 
-    HttpMessageNotReadableException exception = getHttpMessageNotReadableExceptionMismatchedInput_EmptyField(clazz);
+    HttpMessageNotReadableException exception =
+        getHttpMessageNotReadableExceptionMismatchedInput_EmptyField(clazz);
     ResponseEntity<Object> objectResponseEntity = getResponseEntity(exception);
     assertThat(objectResponseEntity).isNotNull();
     assertInstanceOf(ProblemDetail.class, objectResponseEntity.getBody());
     ProblemDetail problemDetail = (ProblemDetail) objectResponseEntity.getBody();
     assertEquals(400, problemDetail.getStatus());
-    assertEquals("Invalid data type for field 'unknown'. Expected: %s".formatted(expectedType),
+    assertEquals(
+        "Invalid data type for field 'unknown'. Expected: %s".formatted(expectedType),
         problemDetail.getDetail());
   }
 
   @ParameterizedTest
   @MethodSource("getPathAndErrors")
   void handleHttpMessageNotReadable_IllegalArgument(String classPath, String expectedMessage) {
-    HttpMessageNotReadableException exception = getHttpMessageNotReadableExceptionIllegalArgumentException(
-        classPath);
+    HttpMessageNotReadableException exception =
+        getHttpMessageNotReadableExceptionIllegalArgumentException(classPath);
     ResponseEntity<Object> objectResponseEntity = getResponseEntity(exception);
     assertThat(objectResponseEntity).isNotNull();
     assertInstanceOf(ProblemDetail.class, objectResponseEntity.getBody());
@@ -109,44 +110,46 @@ class ResponseEntityExceptionHandlerAdviceTest {
     assertEquals("Unexpected value : %s".formatted(expectedMessage), problemDetail.getDetail());
   }
 
-
   @ParameterizedTest
   @MethodSource("getDataTypesForTypeMismatch")
   void handleTypeMismatch(Class<?> clazz, String expectedType) {
 
-    PropertyChangeEvent propertyChangeEvent = new PropertyChangeEvent(this, "testField", null, null);
+    PropertyChangeEvent propertyChangeEvent =
+        new PropertyChangeEvent(this, "testField", null, null);
     TypeMismatchException exception = new TypeMismatchException(propertyChangeEvent, clazz);
 
     HttpHeaders headers = new HttpHeaders();
     HttpStatus status = HttpStatus.BAD_REQUEST;
     WebRequest request = new ServletWebRequest(new MockHttpServletRequest());
-    ResponseEntity<Object> objectResponseEntity = handler.handleTypeMismatch(exception,
-        headers, status, request);
+    ResponseEntity<Object> objectResponseEntity =
+        handler.handleTypeMismatch(exception, headers, status, request);
     assertThat(objectResponseEntity).isNotNull();
     assertInstanceOf(ProblemDetail.class, objectResponseEntity.getBody());
     ProblemDetail problemDetail = (ProblemDetail) objectResponseEntity.getBody();
     assertEquals(400, problemDetail.getStatus());
-    assertEquals("Invalid data type for field 'testField'. Expected: %s".formatted(expectedType), problemDetail.getDetail());
+    assertEquals(
+        "Invalid data type for field 'testField'. Expected: %s".formatted(expectedType),
+        problemDetail.getDetail());
   }
 
   @Test
   void handleTypeMismatchNull() {
 
-    PropertyChangeEvent propertyChangeEvent = new PropertyChangeEvent(this, "testField", null, null);
+    PropertyChangeEvent propertyChangeEvent =
+        new PropertyChangeEvent(this, "testField", null, null);
     TypeMismatchException exception = new TypeMismatchException(propertyChangeEvent, null);
 
     HttpHeaders headers = new HttpHeaders();
     HttpStatus status = HttpStatus.BAD_REQUEST;
     WebRequest request = new ServletWebRequest(new MockHttpServletRequest());
-    ResponseEntity<Object> objectResponseEntity = handler.handleTypeMismatch(exception,
-        headers, status, request);
+    ResponseEntity<Object> objectResponseEntity =
+        handler.handleTypeMismatch(exception, headers, status, request);
     assertThat(objectResponseEntity).isNotNull();
     assertInstanceOf(ProblemDetail.class, objectResponseEntity.getBody());
     ProblemDetail problemDetail = (ProblemDetail) objectResponseEntity.getBody();
     assertEquals(400, problemDetail.getStatus());
     assertEquals("Failed to convert 'testField' with value: 'null'", problemDetail.getDetail());
   }
-
 
   @Test
   void handleMethodArgumentNotValid() {
@@ -155,17 +158,16 @@ class ResponseEntityExceptionHandlerAdviceTest {
     HttpStatus status = HttpStatus.BAD_REQUEST;
     WebRequest request = new ServletWebRequest(new MockHttpServletRequest());
 
-    MethodArgumentNotValidException methodArgumentNotValidException = mock(MethodArgumentNotValidException.class);
+    MethodArgumentNotValidException methodArgumentNotValidException =
+        mock(MethodArgumentNotValidException.class);
     BindingResult bindingResult = mock(BindingResult.class);
-    when(methodArgumentNotValidException.getBindingResult())
-        .thenReturn(bindingResult);
+    when(methodArgumentNotValidException.getBindingResult()).thenReturn(bindingResult);
     when(bindingResult.hasErrors()).thenReturn(true);
     FieldError fieldError = new FieldError("testField", "testField", "testMessage");
-    when(bindingResult.getFieldErrors())
-        .thenReturn(List.of(fieldError));
-    ResponseEntity<Object> responseEntity = handler.handleMethodArgumentNotValid(
-        methodArgumentNotValidException,
-        headers, status, request);
+    when(bindingResult.getFieldErrors()).thenReturn(List.of(fieldError));
+    ResponseEntity<Object> responseEntity =
+        handler.handleMethodArgumentNotValid(
+            methodArgumentNotValidException, headers, status, request);
 
     assertThat(responseEntity).isNotNull();
     assertInstanceOf(ProblemDetail.class, responseEntity.getBody());
@@ -178,20 +180,18 @@ class ResponseEntityExceptionHandlerAdviceTest {
     Map<String, String> invalidFieldsMap = (Map<String, String>) invalidFields;
     assertEquals(1, invalidFieldsMap.size());
     assertEquals("testMessage", invalidFieldsMap.get("testField"));
-
   }
 
-
-  private @Nullable ResponseEntity<Object> getResponseEntity(HttpMessageNotReadableException notReadableException) {
+  private @Nullable ResponseEntity<Object> getResponseEntity(
+      HttpMessageNotReadableException notReadableException) {
     HttpHeaders headers = new HttpHeaders();
     HttpStatus status = HttpStatus.BAD_REQUEST;
     WebRequest request = new ServletWebRequest(new MockHttpServletRequest());
-    return handler.handleHttpMessageNotReadable(notReadableException,
-        headers, status, request);
+    return handler.handleHttpMessageNotReadable(notReadableException, headers, status, request);
   }
 
-  private static @NonNull HttpMessageNotReadableException getHttpMessageNotReadableExceptionMismatchedInput(
-      Class<?> classExpected) {
+  private static @NonNull HttpMessageNotReadableException
+      getHttpMessageNotReadableExceptionMismatchedInput(Class<?> classExpected) {
     HttpMessageNotReadableException exception = mock(HttpMessageNotReadableException.class);
     MismatchedInputException mismatchedInputException = mock(MismatchedInputException.class);
     JsonMappingException.Reference reference = mock(JsonMappingException.Reference.class);
@@ -203,8 +203,8 @@ class ResponseEntityExceptionHandlerAdviceTest {
     return exception;
   }
 
-  private static @NonNull HttpMessageNotReadableException getHttpMessageNotReadableExceptionMismatchedInput_EmptyField(
-      Class<?> classExpected) {
+  private static @NonNull HttpMessageNotReadableException
+      getHttpMessageNotReadableExceptionMismatchedInput_EmptyField(Class<?> classExpected) {
     HttpMessageNotReadableException exception = mock(HttpMessageNotReadableException.class);
     MismatchedInputException mismatchedInputException = mock(MismatchedInputException.class);
     JsonMappingException.Reference reference = mock(JsonMappingException.Reference.class);
@@ -216,18 +216,15 @@ class ResponseEntityExceptionHandlerAdviceTest {
     return exception;
   }
 
-  private static @NonNull HttpMessageNotReadableException getHttpMessageNotReadableExceptionIllegalArgumentException(
-      String classPath) {
+  private static @NonNull HttpMessageNotReadableException
+      getHttpMessageNotReadableExceptionIllegalArgumentException(String classPath) {
     HttpMessageNotReadableException exception = mock(HttpMessageNotReadableException.class);
     IllegalArgumentException illegalArgumentException = mock(IllegalArgumentException.class);
     StackTraceElement stacktrace = mock(StackTraceElement.class);
     when(stacktrace.getClassName()).thenReturn(classPath);
     when(illegalArgumentException.getStackTrace()).thenReturn(new StackTraceElement[] {stacktrace});
     when(exception.getRootCause()).thenReturn(illegalArgumentException);
-    when(illegalArgumentException.getLocalizedMessage())
-        .thenReturn("Unexpected value : PROGRESS");
+    when(illegalArgumentException.getLocalizedMessage()).thenReturn("Unexpected value : PROGRESS");
     return exception;
   }
-
-
 }

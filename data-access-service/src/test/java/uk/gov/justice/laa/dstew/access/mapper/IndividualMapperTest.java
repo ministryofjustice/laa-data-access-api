@@ -51,12 +51,13 @@ class IndividualMapperTest {
 
   @Test
   void toIndividualEntity_shouldMapFieldsCorrectly() {
-    Individual individual = Individual.builder()
-                                      .firstName("John")
-                                      .lastName("Doe")
-                                      .dateOfBirth(LocalDate.of(2025, 11, 24))
-                                      .details(Map.of("key", "value"))
-                                      .build();
+    Individual individual =
+        Individual.builder()
+            .firstName("John")
+            .lastName("Doe")
+            .dateOfBirth(LocalDate.of(2025, 11, 24))
+            .details(Map.of("key", "value"))
+            .build();
     IndividualEntity result = mapper.toIndividualEntity(individual);
 
     assertThat(result).isNotNull();

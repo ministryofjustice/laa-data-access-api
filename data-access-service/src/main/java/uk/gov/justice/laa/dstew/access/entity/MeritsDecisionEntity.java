@@ -19,9 +19,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus;
 
-/**
- * Represents a merits decision.
- */
+/** Represents a merits decision. */
 @ExcludeFromGeneratedCodeCoverage
 @Setter
 @NoArgsConstructor

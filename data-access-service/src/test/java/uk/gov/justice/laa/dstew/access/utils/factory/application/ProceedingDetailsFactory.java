@@ -15,15 +15,13 @@ import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 public class ProceedingDetailsFactory
     extends BaseFactory<ProceedingDetails, ProceedingDetails.ProceedingDetailsBuilder> {
 
-
   public ProceedingDetailsFactory() {
     super(ProceedingDetails::toBuilder, ProceedingDetails.ProceedingDetailsBuilder::build);
   }
 
   @Override
   public ProceedingDetails createDefault() {
-    return ProceedingDetails
-        .builder()
+    return ProceedingDetails.builder()
         .id(UUID.randomUUID())
         .categoryOfLaw(CategoryOfLaw.FAMILY)
         .matterType(MatterType.SCA)
@@ -37,7 +35,8 @@ public class ProceedingDetailsFactory
     List<ProceedingDetails> proceedingDetails = new ArrayList<>();
     proceedingDetails.add(createDefault());
     for (int i = 0; i < count - 1; i++) {
-      proceedingDetails.add(createDefault().toBuilder().id(UUID.randomUUID()).leadProceeding(false).build());
+      proceedingDetails.add(
+          createDefault().toBuilder().id(UUID.randomUUID()).leadProceeding(false).build());
     }
     return proceedingDetails;
   }

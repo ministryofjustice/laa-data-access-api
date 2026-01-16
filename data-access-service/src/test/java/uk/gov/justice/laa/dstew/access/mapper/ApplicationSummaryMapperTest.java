@@ -23,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 
-
 @ExtendWith(MockitoExtension.class)
 public class ApplicationSummaryMapperTest {
 
@@ -35,10 +34,12 @@ public class ApplicationSummaryMapperTest {
   @ValueSource(strings = "95bb88f1-99ca-4ecf-b867-659b55a8cf93")
   void shouldMapApplicationSummaryEntityToApplicationSummary(UUID caseworkerId) {
     UUID id = UUID.randomUUID();
-    IndividualEntity individual = IndividualEntity.builder()
-                                                  .firstName("John").lastName("Doe")
-                                                  .dateOfBirth(LocalDate.of(1980, 5, 2))
-                                                  .build();
+    IndividualEntity individual =
+        IndividualEntity.builder()
+            .firstName("John")
+            .lastName("Doe")
+            .dateOfBirth(LocalDate.of(1980, 5, 2))
+            .build();
     ApplicationSummaryEntity entity = new ApplicationSummaryEntity();
     entity.setId(id);
     entity.setCreatedAt(Instant.now());
@@ -76,6 +77,4 @@ public class ApplicationSummaryMapperTest {
   void shouldReturnNullWhenMappingNullEntity() {
     assertThat(applicationMapper.toApplicationSummary(null)).isNull();
   }
-
-  
 }
