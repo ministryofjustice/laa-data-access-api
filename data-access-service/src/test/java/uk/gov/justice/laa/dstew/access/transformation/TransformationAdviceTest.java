@@ -157,6 +157,75 @@ class TransformationAdviceTest {
         assertFalse(result);
     }
 
+    // --- Additional tests for missing scenarios ---
+
+    @Test
+    void givenRawList_whenSupports_thenReturnFalse() throws NoSuchMethodException {
+        Method method = SampleRawCollectionController.class.getMethod("getRawList");
+        MethodParameter parameter = new MethodParameter(method, -1);
+
+        boolean result = advice.supports(parameter, StringHttpMessageConverter.class);
+        assertFalse(result);
+    }
+
+    @Test
+    void givenEmptyList_whenBeforeBodyWrite_thenReturnOriginal() {
+        List<DummyDto> emptyList = List.of();
+        Object result = advice.beforeBodyWrite(
+                emptyList, null, MediaType.APPLICATION_JSON, StringHttpMessageConverter.class,
+                mock(ServerHttpRequest.class), mock(ServerHttpResponse.class)
+        );
+        assertSame(emptyList, result);
+    }
+
+    @Test
+    void givenListWithNoTransformer_whenBeforeBodyWrite_thenReturnOriginal() {
+        List<DummyDto> list = List.of(new DummyDto("a"), new DummyDto("b"));
+        when(transformerRegistry.getTransformer(DummyDto.class)).thenReturn(Optional.empty());
+        Object result = advice.beforeBodyWrite(
+                list, null, MediaType.APPLICATION_JSON, StringHttpMessageConverter.class,
+                mock(ServerHttpRequest.class), mock(ServerHttpResponse.class)
+        );
+        assertSame(list, result);
+    }
+
+    @Test
+    void givenListWithSomeNullsFromTransformer_whenBeforeBodyWrite_thenFilterNulls() {
+        DummyDto a = new DummyDto("a");
+        DummyDto b = new DummyDto("b");
+        DummyDto c = new DummyDto("c");
+        List<DummyDto> list = List.of(a, b, c);
+        ResponseTransformer<DummyDto> transformer = mock(ResponseTransformer.class);
+        when(transformer.transform(a)).thenReturn(new DummyDto("A"));
+        when(transformer.transform(b)).thenReturn(null);
+        when(transformer.transform(c)).thenReturn(new DummyDto("C"));
+        when(transformerRegistry.getTransformer(DummyDto.class)).thenReturn(Optional.of(transformer));
+        Object result = advice.beforeBodyWrite(
+                list, null, MediaType.APPLICATION_JSON, StringHttpMessageConverter.class,
+                mock(ServerHttpRequest.class), mock(ServerHttpResponse.class)
+        );
+        assertEquals(List.of(new DummyDto("A"), new DummyDto("C")), result);
+    }
+
+    @Test
+    void givenNonCollectionNonTransformable_whenSupports_thenReturnFalse() throws NoSuchMethodException {
+        Method method = SampleController.class.getMethod("getString");
+        MethodParameter parameter = new MethodParameter(method, -1);
+        when(transformerRegistry.hasTransformer(String.class)).thenReturn(false);
+        boolean result = advice.supports(parameter, StringHttpMessageConverter.class);
+        assertFalse(result);
+    }
+
+    @Test
+    void givenRawListWithNoTransformer_whenBeforeBodyWrite_thenReturnOriginal() {
+        List rawList = List.of("a", "b");
+        Object result = advice.beforeBodyWrite(
+                rawList, null, MediaType.APPLICATION_JSON, StringHttpMessageConverter.class,
+                mock(ServerHttpRequest.class), mock(ServerHttpResponse.class)
+        );
+        assertSame(rawList, result);
+    }
+
     // Simple dummy DTO
     static class DummyDto {
         String value;
@@ -199,6 +268,13 @@ class TransformationAdviceTest {
         }
 
         public List<String> getStringList() {
+            return List.of();
+        }
+    }
+
+    // Dummy controller for raw collection
+    static class SampleRawCollectionController {
+        public List getRawList() {
             return List.of();
         }
     }
