@@ -12,11 +12,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
- * Configuration for JPA auditing (automatic created & lastModified metadata).
- * Configuration can be disabled for AccessAppTests.contextLoads().
+ * Configuration for JPA auditing (automatic created & lastModified metadata). Configuration can be
+ * disabled for AccessAppTests.contextLoads().
  */
 @ExcludeFromGeneratedCodeCoverage
-@ConditionalOnProperty(prefix = "feature", name = "disable-jpa-auditing", havingValue = "false", matchIfMissing = true)
+@ConditionalOnProperty(
+    prefix = "feature",
+    name = "disable-jpa-auditing",
+    havingValue = "false",
+    matchIfMissing = true)
 @Configuration
 @EnableJpaAuditing(auditorAwareRef = "auditorProvider")
 class JpaAuditingConfig {
@@ -27,9 +31,10 @@ class JpaAuditingConfig {
    */
   @Bean("auditorProvider")
   AuditorAware<String> auditorProvider() {
-    return () -> Optional.of(SecurityContextHolder.getContext())
-              .map(SecurityContext::getAuthentication)
-              .filter(Authentication::isAuthenticated)
-              .map(Authentication::getName);
+    return () ->
+        Optional.of(SecurityContextHolder.getContext())
+            .map(SecurityContext::getAuthentication)
+            .filter(Authentication::isAuthenticated)
+            .map(Authentication::getName);
   }
 }

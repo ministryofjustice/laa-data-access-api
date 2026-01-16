@@ -10,9 +10,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/**
- * Represents the common audit fields in entities.
- */
+/** Represents the common audit fields in entities. */
 @ExcludeFromGeneratedCodeCoverage
 @Embeddable
 @Data
@@ -20,10 +18,10 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 public class EmbeddedRecordHistoryEntity {
 
   @Column(name = "created_at", updatable = false)
-  @CreatedDate  //@CreationTimestamp
+  @CreatedDate // @CreationTimestamp
   private Instant createdAt;
 
   @Column(name = "modified_at")
-  @LastModifiedDate  //@UpdateTimestamp
+  @LastModifiedDate // @UpdateTimestamp
   private Instant updatedAt;
 }

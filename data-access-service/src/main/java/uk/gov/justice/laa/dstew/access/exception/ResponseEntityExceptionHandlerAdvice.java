@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.exception;
 
-
 import static uk.gov.justice.laa.dstew.access.exception.ProblemDetailUtility.getCustomProblemDetail;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -28,51 +27,50 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-
 /**
- * Dedicated advice for framework /MVC exceptions that produce ResponseEntity/ProblemDetail.
- * Runs before other handlers so framework exceptions are handled here first.
+ * Dedicated advice for framework /MVC exceptions that produce ResponseEntity/ProblemDetail. Runs
+ * before other handlers so framework exceptions are handled here first.
  */
 @RestControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @Slf4j
 public class ResponseEntityExceptionHandlerAdvice extends ResponseEntityExceptionHandler {
 
-
   /**
-   * Handles validation errors for @Valid annotated request bodies.
-   * Produces a ProblemDetail with all field errors listed.
+   * Handles validation errors for @Valid annotated request bodies. Produces a ProblemDetail with
+   * all field errors listed.
    */
   @Override
   protected ResponseEntity<Object> handleMethodArgumentNotValid(
-      MethodArgumentNotValidException ex, @NonNull HttpHeaders headers,
-      @NonNull HttpStatusCode status, @NonNull WebRequest request) {
+      MethodArgumentNotValidException ex,
+      @NonNull HttpHeaders headers,
+      @NonNull HttpStatusCode status,
+      @NonNull WebRequest request) {
 
-    ProblemDetail problemDetail = getCustomProblemDetail(
-        HttpStatus.BAD_REQUEST, "Request validation failed");
+    ProblemDetail problemDetail =
+        getCustomProblemDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
 
     // Add field errors as additional properties
     Map<String, String> invalidFields = new HashMap<>();
-    ex.getBindingResult().getFieldErrors().forEach(error ->
-        invalidFields.put(error.getField(), error.getDefaultMessage())
-    );
+    ex.getBindingResult()
+        .getFieldErrors()
+        .forEach(error -> invalidFields.put(error.getField(), error.getDefaultMessage()));
 
     problemDetail.setProperty("invalidFields", invalidFields);
 
     return ResponseEntity.badRequest().body(problemDetail);
-
   }
 
   /**
-   * Handles deserialization errors due to malformed types (like sending an Object instead of String).
-   * Produces a ProblemDetail with a helpful message when a field has incorrect type.
+   * Handles deserialization errors due to malformed types (like sending an Object instead of
+   * String). Produces a ProblemDetail with a helpful message when a field has incorrect type.
    */
-
   @Override
-  protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
-                                                                @NonNull HttpHeaders headers,
-                                                                @NonNull HttpStatusCode status,
-                                                                @NonNull WebRequest request) {
+  protected ResponseEntity<Object> handleHttpMessageNotReadable(
+      HttpMessageNotReadableException ex,
+      @NonNull HttpHeaders headers,
+      @NonNull HttpStatusCode status,
+      @NonNull WebRequest request) {
     Throwable root = ex.getRootCause();
     String message = "Invalid request payload";
 
@@ -86,30 +84,33 @@ public class ResponseEntityExceptionHandlerAdvice extends ResponseEntityExceptio
       log.error("Failed to read request body", ex);
     }
 
-    ProblemDetail problemDetail = getCustomProblemDetail(
-        HttpStatus.BAD_REQUEST, message);
+    ProblemDetail problemDetail = getCustomProblemDetail(HttpStatus.BAD_REQUEST, message);
     return ResponseEntity.badRequest().body(problemDetail);
   }
 
-  private static String getMessageForIllegalArgumentException(IllegalArgumentException illegalArgumentException) {
+  private static String getMessageForIllegalArgumentException(
+      IllegalArgumentException illegalArgumentException) {
     // OpenAI generated enums throw IllegalArgumentException with message "Unexpected value 'XYZ'"
     // when an invalid enum value is provided.
     return illegalArgumentException.getLocalizedMessage().contains("Unexpected value")
-        ? getMessageWhenInvalidEnum(illegalArgumentException) : illegalArgumentException.getLocalizedMessage();
+        ? getMessageWhenInvalidEnum(illegalArgumentException)
+        : illegalArgumentException.getLocalizedMessage();
   }
 
-  private static @NonNull String getMessageForMismatchedInputException(HttpMessageNotReadableException ex,
-                                                                       MismatchedInputException mie) {
-    String field = mie.getPath().stream()
-        .map(JsonMappingException.Reference::getFieldName)
-        .filter(Objects::nonNull)
-        .collect(Collectors.joining("."));
+  private static @NonNull String getMessageForMismatchedInputException(
+      HttpMessageNotReadableException ex, MismatchedInputException mie) {
+    String field =
+        mie.getPath().stream()
+            .map(JsonMappingException.Reference::getFieldName)
+            .filter(Objects::nonNull)
+            .collect(Collectors.joining("."));
 
     if (field.isEmpty()) {
       field = "unknown";
     }
 
-    String expectedType = mie.getTargetType() != null ? mie.getTargetType().getSimpleName() : "unknown";
+    String expectedType =
+        mie.getTargetType() != null ? mie.getTargetType().getSimpleName() : "unknown";
     Object[] args = {field};
     log.warn("Type mismatch for field {}: expected {}", field, expectedType, ex);
 
@@ -119,20 +120,28 @@ public class ResponseEntityExceptionHandlerAdvice extends ResponseEntityExceptio
   private static @NonNull String getMessage(Object[] args, Class<?> requiredType) {
 
     Class<?> classToCheck = requiredType != null ? requiredType : Object.class;
-    return String.format("Invalid data type for field '%s'. Expected: %s.",
-        args[0], !classToCheck.isEnum() ? classToCheck.getSimpleName() : List.of(classToCheck.getEnumConstants()));
+    return String.format(
+        "Invalid data type for field '%s'. Expected: %s.",
+        args[0],
+        !classToCheck.isEnum()
+            ? classToCheck.getSimpleName()
+            : List.of(classToCheck.getEnumConstants()));
   }
 
-  private static String getMessageWhenInvalidEnum(IllegalArgumentException illegalArgumentException) {
+  private static String getMessageWhenInvalidEnum(
+      IllegalArgumentException illegalArgumentException) {
     String message;
     StackTraceElement[] stackTraceElements = illegalArgumentException.getStackTrace();
     String classPath = stackTraceElements[0].getClassName();
     try {
       Class<? extends Enum> enumClass = (Class<? extends Enum>) Class.forName(classPath);
-      String validValues = Arrays.stream(enumClass.getEnumConstants())
-          .map(Enum::name)
-          .collect(Collectors.joining(", "));
-      message = "%s. Valid values are: %s".formatted(illegalArgumentException.getLocalizedMessage(), validValues);
+      String validValues =
+          Arrays.stream(enumClass.getEnumConstants())
+              .map(Enum::name)
+              .collect(Collectors.joining(", "));
+      message =
+          "%s. Valid values are: %s"
+              .formatted(illegalArgumentException.getLocalizedMessage(), validValues);
     } catch (ClassNotFoundException e) {
       message = illegalArgumentException.getLocalizedMessage();
     }
@@ -140,17 +149,23 @@ public class ResponseEntityExceptionHandlerAdvice extends ResponseEntityExceptio
   }
 
   /**
-   * Handles deserialization errors due to malformed types (like sending an Object instead of String).
-   * Produces a ProblemDetail with a helpful message when a field has incorrect type.
+   * Handles deserialization errors due to malformed types (like sending an Object instead of
+   * String). Produces a ProblemDetail with a helpful message when a field has incorrect type.
    */
   @Override
-  protected ResponseEntity<Object> handleTypeMismatch(TypeMismatchException ex, @NonNull HttpHeaders headers,
-                                                      @NonNull HttpStatusCode status, @NonNull WebRequest request) {
+  protected ResponseEntity<Object> handleTypeMismatch(
+      TypeMismatchException ex,
+      @NonNull HttpHeaders headers,
+      @NonNull HttpStatusCode status,
+      @NonNull WebRequest request) {
 
     Object[] args = {ex.getPropertyName(), ex.getValue()};
-    String message = ex.getRequiredType() == null
-        ? "Failed to convert '" + args[0] + "' with value: '" + args[1] + "'" : getMessage(args, ex.getRequiredType());
-    String messageCode = ErrorResponse.getDefaultDetailMessageCode(TypeMismatchException.class, null);
+    String message =
+        ex.getRequiredType() == null
+            ? "Failed to convert '" + args[0] + "' with value: '" + args[1] + "'"
+            : getMessage(args, ex.getRequiredType());
+    String messageCode =
+        ErrorResponse.getDefaultDetailMessageCode(TypeMismatchException.class, null);
     ProblemDetail body = createProblemDetail(ex, status, message, messageCode, args, request);
     body.setType(null);
     return handleExceptionInternal(ex, body, headers, status, request);

@@ -21,11 +21,9 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 @ExtendWith(MockitoExtension.class)
 class GenericEnumDeserializerTest {
 
-  @Mock
-  DeserializationContext ctx;
+  @Mock DeserializationContext ctx;
 
-  @Mock
-  JsonParser jsonParser;
+  @Mock JsonParser jsonParser;
 
   enum TestEnum {
     ONE,
@@ -40,7 +38,6 @@ class GenericEnumDeserializerTest {
     when(jsonParser.getText()).thenReturn(input);
     TestEnum result = deserializer.deserialize(jsonParser, ctx);
     assertEquals(expected, result);
-
   }
 
   private static Stream<Arguments> provideEnumValues() {
@@ -52,8 +49,7 @@ class GenericEnumDeserializerTest {
         Arguments.of(" two ", TestEnum.TWO),
         Arguments.of("", null),
         Arguments.of(null, null),
-        Arguments.of("INVALID", null)
-    );
+        Arguments.of("INVALID", null));
   }
 
   @ParameterizedTest
@@ -71,19 +67,18 @@ class GenericEnumDeserializerTest {
         Arguments.of("sca", MatterType.SCA),
         Arguments.of("", null),
         Arguments.of(null, null),
-        Arguments.of("INVALID", null)
-    );
+        Arguments.of("INVALID", null));
   }
 
   @ParameterizedTest
   @MethodSource("provideCategoryOfLawTypeEnumValues")
   void testCategoryOfLawTypeDeserialize(String input, CategoryOfLaw expected) throws Exception {
-    CategoryOfLawTypeDeserializer categoryOfLawTypeDeserializer = new CategoryOfLawTypeDeserializer();
+    CategoryOfLawTypeDeserializer categoryOfLawTypeDeserializer =
+        new CategoryOfLawTypeDeserializer();
     when(jsonParser.getText()).thenReturn(input);
     CategoryOfLaw result = categoryOfLawTypeDeserializer.deserialize(jsonParser, ctx);
     assertEquals(expected, result);
   }
-
 
   private static Stream<Arguments> provideCategoryOfLawTypeEnumValues() {
     return Stream.of(
@@ -91,8 +86,6 @@ class GenericEnumDeserializerTest {
         Arguments.of("FAMILY", CategoryOfLaw.FAMILY),
         Arguments.of("", null),
         Arguments.of(null, null),
-        Arguments.of("INVALID", null)
-    );
+        Arguments.of("INVALID", null));
   }
-
 }

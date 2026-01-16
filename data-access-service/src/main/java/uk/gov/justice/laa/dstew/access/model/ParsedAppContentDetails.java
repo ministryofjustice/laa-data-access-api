@@ -4,9 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 import lombok.Builder;
 
-/**
- * Record representing extracted details from application content.
- */
+/** Record representing extracted details from application content. */
 @Builder
 public record ParsedAppContentDetails(
     UUID applyApplicationId,
@@ -14,5 +12,4 @@ public record ParsedAppContentDetails(
     CategoryOfLaw categoryOfLaw,
     MatterType matterType,
     Instant submittedAt,
-    boolean useDelegatedFunctions) {
-}
+    boolean useDelegatedFunctions) {}

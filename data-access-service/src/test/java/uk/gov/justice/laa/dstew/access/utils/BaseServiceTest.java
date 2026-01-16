@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -28,76 +29,60 @@ import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactor
 import uk.gov.justice.laa.dstew.access.utils.factory.domainEvent.DomainEventFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactory;
 
-import java.util.stream.Stream;
-
-@SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=false"})
-@ImportAutoConfiguration(exclude = {
-        DataSourceAutoConfiguration.class,
-        HibernateJpaAutoConfiguration.class,
-})
+@SpringBootTest(
+    properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=false"})
+@ImportAutoConfiguration(
+    exclude = {
+      DataSourceAutoConfiguration.class,
+      HibernateJpaAutoConfiguration.class,
+    })
 @ExtendWith(MockitoExtension.class)
 @ActiveProfiles("unit-test")
 public class BaseServiceTest {
 
-    @MockitoBean
-    protected ApplicationRepository applicationRepository;
+  @MockitoBean protected ApplicationRepository applicationRepository;
 
-    @MockitoBean
-    protected DomainEventRepository domainEventRepository;
+  @MockitoBean protected DomainEventRepository domainEventRepository;
 
-    @MockitoBean
-    protected CaseworkerRepository caseworkerRepository;
+  @MockitoBean protected CaseworkerRepository caseworkerRepository;
 
-    @MockitoBean
-    protected ApplicationSummaryRepository applicationSummaryRepository;
+  @MockitoBean protected ApplicationSummaryRepository applicationSummaryRepository;
 
-    @Autowired
-    protected ObjectMapper objectMapper;
+  @Autowired protected ObjectMapper objectMapper;
 
-    @Autowired
-    protected ApplicationEntityFactory applicationEntityFactory;
+  @Autowired protected ApplicationEntityFactory applicationEntityFactory;
 
-    @Autowired
-    protected ApplicationCreateRequestFactory applicationCreateRequestFactory;
+  @Autowired protected ApplicationCreateRequestFactory applicationCreateRequestFactory;
 
-    @Autowired
-    protected ApplicationUpdateRequestFactory applicationUpdateRequestFactory;
+  @Autowired protected ApplicationUpdateRequestFactory applicationUpdateRequestFactory;
 
-    @Autowired
-    protected ApplicationSummaryFactory applicationSummaryEntityFactory;
+  @Autowired protected ApplicationSummaryFactory applicationSummaryEntityFactory;
 
-    @Autowired
-    protected IndividualFactory individualFactory;
+  @Autowired protected IndividualFactory individualFactory;
 
-    @Autowired
-    protected CaseworkerFactory caseworkerFactory;
+  @Autowired protected CaseworkerFactory caseworkerFactory;
 
-    @Autowired
-    protected DomainEventFactory domainEventFactory;
+  @Autowired protected DomainEventFactory domainEventFactory;
 
-    @Autowired
-    protected ApplicationContentFactory applicationContentFactory;
+  @Autowired protected ApplicationContentFactory applicationContentFactory;
 
-    @Autowired
-    protected ProceedingDetailsFactory proceedingDetailsFactory;
+  @Autowired protected ProceedingDetailsFactory proceedingDetailsFactory;
 
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
-    }
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
 
-    protected void setSecurityContext(String[] roles) {
-        var authorities = Stream.of(roles)
-                .map(SimpleGrantedAuthority::new)
-                .toList();
+  protected void setSecurityContext(String[] roles) {
+    var authorities = Stream.of(roles).map(SimpleGrantedAuthority::new).toList();
 
-        var authentication = new TestingAuthenticationToken("user", "password", authorities);
-        authentication.setAuthenticated(true);
+    var authentication = new TestingAuthenticationToken("user", "password", authorities);
+    authentication.setAuthenticated(true);
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-    }
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+  }
 
-    protected void setSecurityContext(String role) {
-        setSecurityContext(new String[] {role});
-    }
+  protected void setSecurityContext(String role) {
+    setSecurityContext(new String[] {role});
+  }
 }

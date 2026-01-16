@@ -4,17 +4,13 @@ import java.util.List;
 import lombok.Builder;
 
 /**
-   * Application Content JSON Object for testing
-   *
-   * @param proceedings
-   * @param id
-   * @param autoGrant
-   * @param submittedAt
-   */
-  @Builder
-  public record AppContentJsonObject(
-      List<ProceedingJsonObject> proceedings,
-      String id,
-      boolean autoGrant,
-      String submittedAt) {
-  }
+ * Application Content JSON Object for testing
+ *
+ * @param proceedings
+ * @param id
+ * @param autoGrant
+ * @param submittedAt
+ */
+@Builder
+public record AppContentJsonObject(
+    List<ProceedingJsonObject> proceedings, String id, boolean autoGrant, String submittedAt) {}

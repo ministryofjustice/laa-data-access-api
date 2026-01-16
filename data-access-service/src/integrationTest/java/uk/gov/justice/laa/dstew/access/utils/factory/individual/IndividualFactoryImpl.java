@@ -14,9 +14,7 @@ public class IndividualFactoryImpl implements Factory<Individual, Individual.Bui
         .firstName("John")
         .lastName("Doe")
         .dateOfBirth(LocalDate.now())
-        .details(Map.of(
-            "test", "content"
-        ))
+        .details(Map.of("test", "content"))
         .type(IndividualType.CLIENT)
         .build();
   }

@@ -12,24 +12,20 @@ import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 
 @SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=true"})
-@ImportAutoConfiguration(exclude = {
-    DataSourceAutoConfiguration.class,
-    HibernateJpaAutoConfiguration.class,
-})
+@ImportAutoConfiguration(
+    exclude = {
+      DataSourceAutoConfiguration.class,
+      HibernateJpaAutoConfiguration.class,
+    })
 public class AccessAppTests {
-  @MockitoBean
-  private ApplicationRepository applicationRepository;
+  @MockitoBean private ApplicationRepository applicationRepository;
 
-  @MockitoBean
-  private ApplicationSummaryRepository applicationSummaryRepository;
+  @MockitoBean private ApplicationSummaryRepository applicationSummaryRepository;
 
-  @MockitoBean
-  private CaseworkerRepository caseworkerRepository;
+  @MockitoBean private CaseworkerRepository caseworkerRepository;
 
-  @MockitoBean
-  private DomainEventRepository domainEventRepository;
+  @MockitoBean private DomainEventRepository domainEventRepository;
 
   @Test
-  void contextLoads() {
-  }
+  void contextLoads() {}
 }

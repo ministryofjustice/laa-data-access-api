@@ -18,9 +18,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/**
- * Represents a case worker.
- */
+/** Represents a case worker. */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter

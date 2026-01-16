@@ -28,10 +28,9 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 
-
 /**
- * Represents an application summary for legal aid.
- * Will be removed when merged into new application structures
+ * Represents an application summary for legal aid. Will be removed when merged into new application
+ * structures
  */
 @ExcludeFromGeneratedCodeCoverage
 @Builder(toBuilder = true)
@@ -75,15 +74,13 @@ public class ApplicationSummaryEntity {
   @Column(name = "is_auto_granted")
   private boolean isAutoGranted;
 
-  @Transient
-  private ApplicationType type = ApplicationType.INITIAL;
+  @Transient private ApplicationType type = ApplicationType.INITIAL;
 
   @ManyToMany(cascade = CascadeType.PERSIST)
   @JoinTable(
-          name = "linked_individuals",
-          joinColumns = @JoinColumn(name = "application_id"),
-          inverseJoinColumns = @JoinColumn(name = "individual_id")
-  )
+      name = "linked_individuals",
+      joinColumns = @JoinColumn(name = "application_id"),
+      inverseJoinColumns = @JoinColumn(name = "individual_id"))
   private Set<IndividualEntity> individuals;
 
   @OneToOne
