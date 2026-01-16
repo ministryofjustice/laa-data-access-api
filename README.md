@@ -23,6 +23,9 @@ project.ext.gitPackageKey = PAT_CREATED_ABOVE
 
 Go back to Github to authorize MOJ for SSO
 
+### Add spotless pre-commit hook
+Run `./gradlew spotlessInstallGitPrePushHook` to install the pre-commit hook
+
 ### Project structure
 Includes the following subprojects:
 
@@ -86,6 +89,9 @@ To generate coverage reports locally:
 - `./gradlew jacocoAggregatedReport` - generates aggregate coverage report
 
 The report will be available in `data-access-service/build/reports/jacoco/jacocoAggregatedReport/html/index.html`
+
+Fix spotless violations:
+- `./gradlew spotlessApply`
 
 ### Dropping database tables (may not be applicable)
 You may need to drop database tables manually prior to running app so Flyway can create the latest schema. To do this:
