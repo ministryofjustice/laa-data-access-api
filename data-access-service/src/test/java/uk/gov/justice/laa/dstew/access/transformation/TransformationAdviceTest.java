@@ -157,8 +157,6 @@ class TransformationAdviceTest {
         assertFalse(result);
     }
 
-    // --- Additional tests for missing scenarios ---
-
     @Test
     void givenRawList_whenSupports_thenReturnFalse() throws NoSuchMethodException {
         Method method = SampleRawCollectionController.class.getMethod("getRawList");
