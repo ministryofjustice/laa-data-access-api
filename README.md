@@ -23,8 +23,8 @@ project.ext.gitPackageKey = PAT_CREATED_ABOVE
 
 Go back to Github to authorize MOJ for SSO
 
-### Add spotless pre-commit hook
-Run `./gradlew spotlessInstallGitPrePushHook` to install the pre-commit hook
+### Add git hooks
+Run `./scripts/setup-hooks.sh`
 
 ### Project structure
 Includes the following subprojects:
