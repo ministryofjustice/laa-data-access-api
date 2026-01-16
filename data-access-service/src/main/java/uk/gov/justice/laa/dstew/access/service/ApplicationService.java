@@ -226,10 +226,7 @@ public class ApplicationService {
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void unassignCaseworker(final UUID applicationId, EventHistory history) {
-    final ApplicationEntity entity = applicationRepository.findById(applicationId)
-        .orElseThrow(() -> new ResourceNotFoundException(
-            String.format("No application found with id: %s", applicationId)
-        ));
+    final ApplicationEntity entity = checkIfApplicationExists(applicationId);
 
     if (entity.getCaseworker() == null) {
       return;
