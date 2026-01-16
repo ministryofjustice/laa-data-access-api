@@ -1875,6 +1875,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertEquals(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, actualDecision.getOverallDecision());
             assertThat(actualDecision.getCreatedAt()).isNotNull();
             assertThat(actualDecision.getModifiedAt()).isNotNull();
+            assertEquals(1, actualDecision.getMeritsDecisions().size());
 
         }
     }
