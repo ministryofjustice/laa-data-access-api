@@ -2,8 +2,10 @@ package uk.gov.justice.laa.dstew.access.specification;
 
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
@@ -15,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.model.IndividualType;
  * Defines the filtering of Application Summaries.
  *
  */
+@ExcludeFromGeneratedCodeCoverage
 public class ApplicationSummarySpecification {
 
   /**
@@ -26,10 +29,11 @@ public class ApplicationSummarySpecification {
           String reference,
           String firstName,
           String lastName,
+          LocalDate clientDateOfBirth,
           UUID userId) {
     return isStatus(status)
             .and(likeLaaReference(reference))
-            .and(IndividualFilterSpecification.filterIndividual(firstName, lastName))
+            .and(IndividualFilterSpecification.filterIndividual(firstName, lastName, clientDateOfBirth))
             .and(isCaseworkerId(userId));
   }
 
@@ -66,14 +70,18 @@ public class ApplicationSummarySpecification {
   }
 
   private class IndividualFilterSpecification {
-    public static Specification<ApplicationSummaryEntity> filterIndividual(String firstName, String lastName) {
+    public static Specification<ApplicationSummaryEntity> filterIndividual(String firstName, 
+        String lastName, LocalDate dateOfBirth) {
       Specification<ApplicationSummaryEntity> baseSpecification = Specification.unrestricted();
-      if (isPopulated(firstName) || isPopulated(lastName)) {
+      if (isPopulated(firstName) 
+          || isPopulated(lastName) 
+          || dateOfBirth != null) {
         baseSpecification = isClient();
       }
       return baseSpecification
-      .and(likeFirstName(firstName))
-      .and(likeLastName(lastName));
+        .and(likeFirstName(firstName))
+        .and(likeLastName(lastName))
+        .and(isDateOfBirth(dateOfBirth));
     }
 
     private static Specification<ApplicationSummaryEntity> isClient() {
@@ -105,6 +113,17 @@ public class ApplicationSummarySpecification {
                   return builder.like(builder.lower(
                                 individualsJoin.get("lastName")),
                   "%" + lastName.toLowerCase() + "%");
+        };
+      }
+      return Specification.unrestricted();
+    }
+
+    private static Specification<ApplicationSummaryEntity> isDateOfBirth(LocalDate clientDateOfBirth) {
+      if (clientDateOfBirth != null) {
+        return (root, query, builder)
+              -> {
+                Join<ApplicationEntity, IndividualEntity> individualsJoin = root.join("individuals", JoinType.INNER);
+                return builder.equal(individualsJoin.get("dateOfBirth"), clientDateOfBirth);
         };
       }
       return Specification.unrestricted();

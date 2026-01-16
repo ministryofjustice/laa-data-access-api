@@ -18,6 +18,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
@@ -27,8 +28,10 @@ import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.regex.MatchResult;
@@ -1072,6 +1075,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         public static final String SEARCH_FIRSTNAME_PARAM = "clientFirstName=";
         public static final String SEARCH_LASTNAME_PARAM = "clientLastName=";
         public static final String SEARCH_CASEWORKERID_PARAM = "userId=";
+        public static final String SEARCH_CLIENTDOB_PARAM = "clientDateOfBirth=";
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
@@ -1496,7 +1500,40 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertThat(actual.getApplications().size()).isEqualTo(3);
             assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(10, 13)));
         }
+        
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        void givenApplicationsFilteredByClientDateOfBirth_whenGetAllApplications_thenReturnExpectedApplication() throws Exception {
+            //given
+            LocalDate clientDOB = LocalDate.of(1942, 11, 27);
+            List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(2, builder ->
+                    builder.status(ApplicationStatus.IN_PROGRESS)
+                            .individuals(Set.of(individualEntityFactory.create(i -> i.firstName("Jimi").lastName("Hendrix").dateOfBirth(clientDOB)))));
+            var expectedApplicationSummary = expectedApplications.stream().map(this::createApplicationSummary).toList();
+            persistedApplicationFactory.createAndPersist();
 
+            //when
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
+                    + "?" + SEARCH_CLIENTDOB_PARAM + "1942-11-27");
+            ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+            //then
+            assertContentHeaders(result);
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertOK(result);
+            assertPaging(actual, 2, 10, 1, 2);
+            assertThat(actual.getApplications().size()).isEqualTo(2);
+            assertArrayEquals(actual.getApplications().toArray(), expectedApplicationSummary.toArray());
+        }
+        
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.READER)
+        void givenApplicationFilteredByClientDateOfBirth_whenGetAllApplicationsAndInvalidFormat_thenReturnBadRequest() throws Exception {
+            MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_CLIENTDOB_PARAM + "something");
+            assertBadRequest(result);
+        }
+        
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
         void givenApplicationsFilteredByStatusAndNoApplicationsMatch_whenGetApplications_thenReturnEmptyResult() throws Exception {

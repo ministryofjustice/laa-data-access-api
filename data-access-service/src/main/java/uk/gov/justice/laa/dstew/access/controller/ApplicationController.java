@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.controller;
 
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -68,6 +69,7 @@ public class ApplicationController implements ApplicationApi {
           String laaReference,
           String clientFirstName,
           String clientLastName,
+          LocalDate clientDateOfBirth,
           UUID userId,
           Integer page,
           Integer pageSize) {
@@ -79,6 +81,7 @@ public class ApplicationController implements ApplicationApi {
                     laaReference,
                     clientFirstName,
                     clientLastName,
+                    clientDateOfBirth,
                     userId,
                     page - 1, pageSize);
 
