@@ -1833,7 +1833,10 @@ public class ApplicationTest extends BaseIntegrationTest {
                 )));
             });
 
-            ProceedingsEntity proceedingsEntity = persistedProceedingsFactory
+            ProceedingsEntity proceedingsEntity = persistedProceedingFactory.createAndPersist(
+                    builder -> {builder
+                            .application(applicationEntity);}
+            );
 
             AssignDecisionRequest applicationRequest = assignDecisionRequestFactory.create(builder -> {
                 builder

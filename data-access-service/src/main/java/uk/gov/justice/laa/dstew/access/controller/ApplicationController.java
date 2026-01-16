@@ -140,6 +140,6 @@ public class ApplicationController implements ApplicationApi {
 
     service.assignDecision(applicationId, request);
 
-    return ResponseEntity.ok().build();
+    return ResponseEntity.noContent().build();
   }
 }

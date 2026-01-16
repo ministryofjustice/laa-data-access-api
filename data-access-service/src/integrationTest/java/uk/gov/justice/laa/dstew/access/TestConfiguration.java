@@ -3,10 +3,7 @@ package uk.gov.justice.laa.dstew.access;
 import java.util.UUID;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
-import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.*;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AssignDecisionRequest;
@@ -16,6 +13,7 @@ import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationAssignDecisionFactoryImpl;
@@ -27,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerUnassi
 import uk.gov.justice.laa.dstew.access.utils.factory.domainevents.DomainEventFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualEntityFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactoryImpl;
+import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingFactoryImpl;
 
 @Configuration
 public class TestConfiguration {
@@ -59,6 +58,16 @@ public class TestConfiguration {
             DomainEventEntity.DomainEventEntityBuilder,
             UUID> persistedDomainEventFactory(DomainEventRepository repository, Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder> domainEventFactory) {
         return new PersistedFactory<>(repository, domainEventFactory);
+    }
+
+    @Bean
+    public PersistedFactory<
+            ProceedingRepository,
+            Factory<ProceedingsEntity, ProceedingsEntity.ProceedingsEntityBuilder>,
+            ProceedingsEntity,
+            ProceedingsEntity.ProceedingsEntityBuilder,
+            UUID> persistedProceedingFactory(ProceedingRepository repository, Factory<ProceedingsEntity, ProceedingsEntity.ProceedingsEntityBuilder> proceedingFactory) {
+        return new PersistedFactory<>(repository, proceedingFactory);
     }
 
     @Bean
@@ -106,4 +115,8 @@ public class TestConfiguration {
         return new ApplicationAssignDecisionFactoryImpl();
     }
 
+    @Bean
+    public Factory<ProceedingsEntity, ProceedingsEntity.ProceedingsEntityBuilder> proceedingFactory() {
+        return new ProceedingFactoryImpl();
+    }
 }
