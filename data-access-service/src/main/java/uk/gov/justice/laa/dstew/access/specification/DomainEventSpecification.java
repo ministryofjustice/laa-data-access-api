@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.specification;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 
@@ -10,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
  * Defines the filtering of Domain Events.
  *
  */
+@ExcludeFromGeneratedCodeCoverage
 public class DomainEventSpecification {
   /**
   * Filters to a specific application.

@@ -69,6 +69,7 @@ public class ApplicationSummarySpecification {
     return Specification.unrestricted();
   }
 
+  @ExcludeFromGeneratedCodeCoverage
   private class IndividualFilterSpecification {
     public static Specification<ApplicationSummaryEntity> filterIndividual(String firstName, 
         String lastName, LocalDate dateOfBirth) {
