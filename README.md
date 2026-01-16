@@ -23,6 +23,9 @@ project.ext.gitPackageKey = PAT_CREATED_ABOVE
 
 Go back to Github to authorize MOJ for SSO
 
+### Add git hooks
+Run `./scripts/setup-hooks.sh`
+
 ### Project structure
 Includes the following subprojects:
 
