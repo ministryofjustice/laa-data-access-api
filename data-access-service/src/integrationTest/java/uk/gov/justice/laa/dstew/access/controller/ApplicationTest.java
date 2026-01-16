@@ -17,7 +17,9 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingsEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
@@ -1821,7 +1823,52 @@ public class ApplicationTest extends BaseIntegrationTest {
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class AssignDecision {
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenAssignDecisionRequestWithNewContent_whenAssignDecisionApplication_thenReturnOK_andUpdate() throws Exception {
+            // given
+            ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+                builder.applicationContent(new HashMap<>(Map.of(
+                        "test", "content"
+                )));
+            });
 
+            ProceedingsEntity proceedingsEntity = persistedProceedingsFactory
+
+            AssignDecisionRequest applicationRequest = assignDecisionRequestFactory.create(builder -> {
+                builder
+                    .userId(CaseworkerJohnDoe.getId())
+                    .applicationStatus(ApplicationStatus.SUBMITTED)
+                    .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                    .proceedings(List.of(
+                           ProceedingDetails.builder()
+                           .proceedingId(proceedingsEntity.getId())
+                           .meritsDecision(
+                                MeritsDecisionDetails.builder()
+                                .decision(MeritsDecisionStatus.REFUSED)
+                                .refusal(
+                                    RefusalDetails.builder()
+                                    .justification("justification")
+                                    .reason("reason")
+                                    .build()
+                                )
+                                .build()
+                           )
+                           .build()
+                    ));
+            });
+
+            // when
+            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, applicationRequest, applicationEntity.getId());
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertNoContent(result);
+
+            ApplicationEntity actual = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+            assertEquals(ApplicationStatus.SUBMITTED, actual.getStatus());
+        }
     }
 
     // <editor-fold desc="Shared asserts">

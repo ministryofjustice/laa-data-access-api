@@ -9,6 +9,7 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.AssignDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
@@ -17,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationAssignDecisionFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerAssignFactoryImpl;
@@ -98,4 +100,10 @@ public class TestConfiguration {
     public Factory<Individual, Individual.Builder> individualFactory() {
         return new IndividualFactoryImpl();
     }
+
+    @Bean
+    public Factory<AssignDecisionRequest, AssignDecisionRequest.Builder> applicationAssignDecisionRequestFactory() {
+        return new ApplicationAssignDecisionFactoryImpl();
+    }
+
 }
