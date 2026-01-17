@@ -334,7 +334,6 @@ public class ApplicationService {
 
     decision.setMeritsDecisions(merits);
     decision.setOverallDecision(DecisionStatus.valueOf(request.getOverallDecision().getValue()));
-    decision.setMeritsDecisions(merits);
     decision.setModifiedAt(Instant.now());
     decisionRepository.save(decision);
   }

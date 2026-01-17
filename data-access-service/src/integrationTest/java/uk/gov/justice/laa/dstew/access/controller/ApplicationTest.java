@@ -2115,7 +2115,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                         .proceedings(List.of(
-                                /* ProceedingDetails.builder()
+                                ProceedingDetails.builder()
                                         .proceedingId(newProceedingEntity.getId())
                                         .meritsDecision(
                                                 MeritsDecisionDetails.builder()
@@ -2128,7 +2128,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                                                         )
                                                         .build()
                                         )
-                                        .build(), */
+                                        .build(),
                                 ProceedingDetails.builder()
                                         .proceedingId(proceedingEntity.getId())
                                         .meritsDecision(
