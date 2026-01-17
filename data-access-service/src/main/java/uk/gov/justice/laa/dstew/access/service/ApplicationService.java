@@ -289,7 +289,7 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void assignDecision(final UUID applicationId, final AssignDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
-    final CaseworkerEntity caseworker = checkIfCaseworkerExists(request.getUserId());
+    checkIfCaseworkerExists(request.getUserId());
 
     applicationValidations.checkApplicationAssignDecisionRequest(request);
 

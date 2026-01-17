@@ -38,7 +38,6 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
 @ActiveProfiles("test")
@@ -2180,6 +2179,100 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertEquals("justification update", merit.getJustification());
             assertEquals(merit.getProceeding().getId(), proceedingEntity.getId()); */
         }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenAssignDecisionRequestWithNewContent_whenNoApplication_thenReturnNotFoundAndMessage()
+                throws Exception {
+            // given
+            UUID applicationId = UUID.randomUUID();
+            AssignDecisionRequest applicationRequest = assignDecisionRequestFactory.create(builder -> {
+                builder
+                        .userId(CaseworkerJohnDoe.getId())
+                        .applicationStatus(ApplicationStatus.SUBMITTED)
+                        .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                        .proceedings(List.of(
+                                ProceedingDetails.builder()
+                                        .proceedingId(UUID.randomUUID())
+                                        .meritsDecision(
+                                                MeritsDecisionDetails.builder()
+                                                        .decision(MeritsDecisionStatus.REFUSED)
+                                                        .refusal(
+                                                                RefusalDetails.builder()
+                                                                        .justification("justification")
+                                                                        .reason("reason")
+                                                                        .build()
+                                                        )
+                                                        .build()
+                                        )
+                                        .build()
+                        ));
+            });
+
+            // when
+            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, applicationRequest, applicationId);
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertNotFound(result);
+            assertEquals("application/problem+json", result.getResponse().getContentType());
+            ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+            assertEquals("No application found with id: " + applicationId, problemDetail.getDetail());
+
+
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenAssignDecisionRequestWithNewContent_whenNoCaseworker_thenReturnNotFoundAndMessage()
+                throws Exception {
+            // given
+            UUID caseworkerId = UUID.randomUUID();
+
+            ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+                builder.applicationContent(new HashMap<>(Map.of(
+                        "test", "content"
+                )));
+            });
+
+            AssignDecisionRequest applicationRequest = assignDecisionRequestFactory.create(builder -> {
+                builder
+                        .userId(caseworkerId)
+                        .applicationStatus(ApplicationStatus.SUBMITTED)
+                        .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                        .proceedings(List.of(
+                                ProceedingDetails.builder()
+                                        .proceedingId(UUID.randomUUID())
+                                        .meritsDecision(
+                                                MeritsDecisionDetails.builder()
+                                                        .decision(MeritsDecisionStatus.REFUSED)
+                                                        .refusal(
+                                                                RefusalDetails.builder()
+                                                                        .justification("justification")
+                                                                        .reason("reason")
+                                                                        .build()
+                                                        )
+                                                        .build()
+                                        )
+                                        .build()
+                        ));
+            });
+
+            // when
+            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, applicationRequest, applicationEntity.getId());
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertNotFound(result);
+            assertEquals("application/problem+json", result.getResponse().getContentType());
+            ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+            assertEquals("No caseworker found with id: " + caseworkerId, problemDetail.getDetail());
+
+
+        }
+
 
     }
 

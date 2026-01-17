@@ -1481,6 +1481,113 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             assertEquals(currentProceedingId, merit.getProceeding().getId());
 
         }
+
+        @Test
+        void givenApplication_whenAssignDecisionAndNoCaseworkerExists_thenExceptionIsThrown() {
+            UUID applicationId = UUID.randomUUID();
+            UUID caseworkerId = UUID.randomUUID();
+
+            // given
+            AssignDecisionRequest assignDecisionRequest = applicationAssignDecisionRequestFactory
+                    .createDefault(requestBuilder ->
+                            requestBuilder
+                                    .userId(caseworkerId)
+                                    .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                                    .applicationStatus(ApplicationStatus.SUBMITTED)
+                                    .proceedings(List.of(proceedingDetailsFactory.createDefault(
+                                            proceedingsBuilder ->
+                                                    proceedingsBuilder
+                                                            .proceedingId(UUID.randomUUID())
+                                                            .meritsDecision(
+                                                                    meritsDecisionDetailsFactory.createDefault(
+                                                                            meritsDecisionBuilder ->
+                                                                                    meritsDecisionBuilder
+                                                                                            .decision(MeritsDecisionStatus.GRANTED)
+                                                                                            .refusal(
+                                                                                                    refusalDetailsFactory.createDefault(
+                                                                                                            refusalBuilder ->
+                                                                                                                    refusalBuilder
+                                                                                                                            .reason("refusal 1")
+                                                                                                                            .justification("justification 1")
+                                                                                                    )
+                                                                                            )
+                                                                    )
+                                                            )
+                                    )))
+                    );
+
+            // expected saved application entity
+            ApplicationEntity expectedApplicationEntity = applicationEntityFactory
+                    .createDefault(builder ->
+                            builder
+                                    .id(applicationId)
+                                    .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+                    );
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
+
+            Throwable thrown = catchThrowable(() ->
+                    serviceUnderTest.assignDecision(expectedApplicationEntity.getId(), assignDecisionRequest));
+
+            assertThat(thrown)
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("No caseworker found with id: "+caseworkerId.toString());
+
+        }
+
+        @Test
+        void givenApplication_whenAssignDecisionAndNoApplicationExists_thenExceptionIsThrown() {
+            UUID applicationId = UUID.randomUUID();
+            // given
+            AssignDecisionRequest assignDecisionRequest = applicationAssignDecisionRequestFactory
+                    .createDefault(requestBuilder ->
+                            requestBuilder
+                                    .userId(UUID.randomUUID())
+                                    .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                                    .applicationStatus(ApplicationStatus.SUBMITTED)
+                                    .proceedings(List.of(proceedingDetailsFactory.createDefault(
+                                            proceedingsBuilder ->
+                                                    proceedingsBuilder
+                                                            .proceedingId(UUID.randomUUID())
+                                                            .meritsDecision(
+                                                                    meritsDecisionDetailsFactory.createDefault(
+                                                                            meritsDecisionBuilder ->
+                                                                                    meritsDecisionBuilder
+                                                                                            .decision(MeritsDecisionStatus.GRANTED)
+                                                                                            .refusal(
+                                                                                                    refusalDetailsFactory.createDefault(
+                                                                                                            refusalBuilder ->
+                                                                                                                    refusalBuilder
+                                                                                                                            .reason("refusal 1")
+                                                                                                                            .justification("justification 1")
+                                                                                                    )
+                                                                                            )
+                                                                    )
+                                                            )
+                                    )))
+                    );
+
+            // expected saved application entity
+            ApplicationEntity expectedApplicationEntity = applicationEntityFactory
+                    .createDefault(builder ->
+                            builder
+                                    .id(applicationId)
+                                    .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+                    );
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            Throwable thrown = catchThrowable(() ->
+                    serviceUnderTest.assignDecision(expectedApplicationEntity.getId(), assignDecisionRequest));
+
+            assertThat(thrown)
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("No application found with id: "+applicationId.toString());
+
+        }
+
     }
 
     // <editor-fold desc="Shared asserts">
