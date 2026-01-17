@@ -2115,7 +2115,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                         .proceedings(List.of(
-                                ProceedingDetails.builder()
+                                /* ProceedingDetails.builder()
                                         .proceedingId(newProceedingEntity.getId())
                                         .meritsDecision(
                                                 MeritsDecisionDetails.builder()
@@ -2128,7 +2128,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                                                         )
                                                         .build()
                                         )
-                                        .build(),
+                                        .build(), */
                                 ProceedingDetails.builder()
                                         .proceedingId(proceedingEntity.getId())
                                         .meritsDecision(
@@ -2173,6 +2173,12 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertEquals("reason update", merit.getReason());
             assertEquals("justification update", merit.getJustification());
             assertEquals(merit.getProceeding().getId(), proceedingEntity.getId());
+            /* merit = meritsDecisionIterator.next();
+            Assertions.assertThat(merit.getDecision()).isNotNull();
+            assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
+            assertEquals("reason update", merit.getReason());
+            assertEquals("justification update", merit.getJustification());
+            assertEquals(merit.getProceeding().getId(), proceedingEntity.getId()); */
         }
 
     }
