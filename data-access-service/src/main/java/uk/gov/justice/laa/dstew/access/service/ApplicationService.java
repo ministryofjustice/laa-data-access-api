@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -304,7 +304,7 @@ public class ApplicationService {
                     .meritsDecisions(Set.of())
                     .build());
 
-    Set<MeritsDecisionEntity> merits = new HashSet<>();
+    Set<MeritsDecisionEntity> merits = new LinkedHashSet<>();
 
     request.getProceedings().forEach(proceeding -> {
 

@@ -1228,21 +1228,17 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             assertSame(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
             assertSame(2, savedDecision.getMeritsDecisions().size());
 
-            savedDecision.getMeritsDecisions().forEach( savedMerit -> {
-                assertThat(savedMerit.getDecision()).isNotNull();
-
-                if (uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED == savedMerit.getDecision()) {
-                    assertSame("refusal 1", savedMerit.getReason());
-                    assertSame("justification 1", savedMerit.getJustification());
-                    assertSame(grantedProceedingId, savedMerit.getProceeding().getId());
-                }
-
-                if (uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED == savedMerit.getDecision()) {
-                    assertSame("refusal 2", savedMerit.getReason());
-                    assertSame("justification 2", savedMerit.getJustification());
-                    assertSame(refusedProceedingId, savedMerit.getProceeding().getId());
-                }
-            });
+            Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
+            MeritsDecisionEntity merit = meritsDecisionIterator.next();
+            assertThat(merit.getDecision()).isNotNull();
+            assertSame("refusal 1", merit.getReason());
+            assertSame("justification 1", merit.getJustification());
+            assertSame(grantedProceedingId, merit.getProceeding().getId());
+            merit = meritsDecisionIterator.next();
+            assertThat(merit.getDecision()).isNotNull();
+            assertSame("refusal 2", merit.getReason());
+            assertSame("justification 2", merit.getJustification());
+            assertSame(refusedProceedingId, merit.getProceeding().getId());
         }
 
         @Test
@@ -1469,22 +1465,17 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
             assertSame(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
             assertSame(2, savedDecision.getMeritsDecisions().size());
-
-            savedDecision.getMeritsDecisions().forEach( savedMerit -> {
-                assertThat(savedMerit.getDecision()).isNotNull();
-
-                if (uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED == savedMerit.getDecision()) {
-                    assertSame("refusal update", savedMerit.getReason());
-                    assertSame("justification update", savedMerit.getJustification());
-                    assertSame(currentProceedingId, savedMerit.getProceeding().getId());
-                }
-
-                if (uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED == savedMerit.getDecision()) {
-                    assertSame("refusal new", savedMerit.getReason());
-                    assertSame("justification new", savedMerit.getJustification());
-                    assertSame(newProceedingId, savedMerit.getProceeding().getId());
-                }
-            });
+            Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
+            MeritsDecisionEntity merit = meritsDecisionIterator.next();
+            assertThat(merit.getDecision()).isNotNull();
+            assertSame("refusal new", merit.getReason());
+            assertSame("justification new", merit.getJustification());
+            assertSame(newProceedingId, merit.getProceeding().getId());
+            merit = meritsDecisionIterator.next();
+            assertThat(merit.getDecision()).isNotNull();
+            assertSame("refusal update", merit.getReason());
+            assertSame("justification update", merit.getJustification());
+            assertSame(currentProceedingId, merit.getProceeding().getId());
 
         }
     }
