@@ -22,7 +22,7 @@ public class ApplicationTransformerTest {
   EffectiveAuthorizationProvider mockEntra;
 
   @Test
-  void shouldTransformApplication() {
+  void givenApplicationAndRoleProceedingsReader_whenTransform_thenOnlyCorrectFieldsArePresent() {
     Application request = Application.builder()
         .id(UUID.randomUUID())
         .build();
@@ -31,5 +31,20 @@ public class ApplicationTransformerTest {
 
     Application response = classUnderTest.transform(request);
     assertThat(response.getId()).isEqualTo(request.getId());
+  }
+
+  @Test
+  void givenApplicationAndNoRole_whenTransform_thenNoFieldsAreTransformed() {
+    Application request = Application.builder()
+        .id(UUID.randomUUID())
+        .build();
+
+    when(mockEntra.hasAppRole("ProceedingReader")).thenReturn(false);
+
+    Application response = classUnderTest.transform(request);
+
+    assertThat(response)
+            .usingRecursiveComparison()
+            .isEqualTo(request);
   }
 }
