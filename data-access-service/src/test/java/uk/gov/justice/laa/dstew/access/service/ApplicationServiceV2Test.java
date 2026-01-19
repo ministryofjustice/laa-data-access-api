@@ -1061,6 +1061,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         @Test
         void givenApplication_whenAssignDecisionAndNoDecisionExists_thenAssignDecisionAndSave() {
             UUID applicationId = UUID.randomUUID();
+            UUID proceedingId = UUID.randomUUID();
 
             // given
             CaseworkerEntity caseworker = caseworkerFactory.createDefault();
@@ -1075,7 +1076,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                                 .proceedings(List.of(proceedingDetailsFactory.createDefault(
                                 proceedingsBuilder ->
                                         proceedingsBuilder
-                                            .proceedingId(UUID.randomUUID())
+                                            .proceedingId(proceedingId)
                                             .meritsDecision(
                                                 meritsDecisionDetailsFactory.createDefault(
                                             meritsDecisionBuilder ->
@@ -1102,9 +1103,16 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                         .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
             );
 
+            ProceedingEntity expectedProceedingEntity = proceedingsEntityFactory
+                    .createDefault(builder ->
+                            builder.id(proceedingId)
+                    );
+
             setSecurityContext(TestConstants.Roles.WRITER);
 
             // when
+            when(proceedingRepository.findById(proceedingId))
+                    .thenReturn(Optional.of(expectedProceedingEntity));
             when(caseworkerRepository.findById(caseworker.getId()))
                     .thenReturn(Optional.of(caseworker));
             when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
@@ -1207,9 +1215,23 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             setSecurityContext(TestConstants.Roles.WRITER);
 
+            ProceedingEntity grantedProceedingEntity = proceedingsEntityFactory
+                    .createDefault(builder ->
+                            builder.id(grantedProceedingId)
+                    );
+
+            ProceedingEntity refusedProceedingEntity = proceedingsEntityFactory
+                    .createDefault(builder ->
+                            builder.id(refusedProceedingId)
+                    );
+
             // when
             when(caseworkerRepository.findById(caseworker.getId()))
                     .thenReturn(Optional.of(caseworker));
+            when(proceedingRepository.findById(grantedProceedingId))
+                    .thenReturn(Optional.of(grantedProceedingEntity));
+            when(proceedingRepository.findById(refusedProceedingId))
+                    .thenReturn(Optional.of(refusedProceedingEntity));
             when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
             when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
                     .thenReturn(Optional.empty());
@@ -1319,7 +1341,14 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             setSecurityContext(TestConstants.Roles.WRITER);
 
+            ProceedingEntity proceedingEntity = proceedingsEntityFactory
+                    .createDefault(builder ->
+                            builder.id(proceedingId)
+                    );
+
             // when
+            when(proceedingRepository.findById(proceedingId))
+                    .thenReturn(Optional.of(proceedingEntity));
             when(caseworkerRepository.findById(caseworker.getId()))
                     .thenReturn(Optional.of(caseworker));
             when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
@@ -1444,9 +1473,23 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                             )
             );
 
+            ProceedingEntity currentProceedingEntity = proceedingsEntityFactory
+                    .createDefault(builder ->
+                            builder.id(currentProceedingId)
+                    );
+
+            ProceedingEntity newProceedingEntity = proceedingsEntityFactory
+                    .createDefault(builder ->
+                            builder.id(newProceedingId)
+                    );
+
             setSecurityContext(TestConstants.Roles.WRITER);
 
             // when
+            when(proceedingRepository.findById(currentProceedingId))
+                    .thenReturn(Optional.of(currentProceedingEntity));
+            when(proceedingRepository.findById(newProceedingId))
+                    .thenReturn(Optional.of(newProceedingEntity));
             when(caseworkerRepository.findById(caseworker.getId()))
                     .thenReturn(Optional.of(caseworker));
             when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
@@ -1469,16 +1512,16 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
             MeritsDecisionEntity merit = meritsDecisionIterator.next();
             assertThat(merit.getDecision()).isNotNull();
-            assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED, merit.getDecision());
-            assertEquals("refusal new", merit.getReason());
-            assertEquals("justification new", merit.getJustification());
-            assertEquals(newProceedingId, merit.getProceeding().getId());
-            merit = meritsDecisionIterator.next();
-            assertThat(merit.getDecision()).isNotNull();
             assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
             assertEquals("refusal update", merit.getReason());
             assertEquals("justification update", merit.getJustification());
             assertEquals(currentProceedingId, merit.getProceeding().getId());
+            merit = meritsDecisionIterator.next();
+            assertThat(merit.getDecision()).isNotNull();
+            assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED, merit.getDecision());
+            assertEquals("refusal new", merit.getReason());
+            assertEquals("justification new", merit.getJustification());
+            assertEquals(newProceedingId, merit.getProceeding().getId());
 
         }
 

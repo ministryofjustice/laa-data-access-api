@@ -302,10 +302,10 @@ public class ApplicationService {
     DecisionEntity decision = decisionRepository.findByApplicationId(applicationId)
             .orElse(DecisionEntity.builder()
                     .applicationId(applicationId)
-                    .meritsDecisions(new LinkedHashSet<>())
+                    .meritsDecisions(Set.of())
                     .build());
 
-    Set<MeritsDecisionEntity> merits = decision.getMeritsDecisions();
+    Set<MeritsDecisionEntity> merits = new LinkedHashSet<>(decision.getMeritsDecisions());
 
     request.getProceedings().forEach(proceeding -> {
 
@@ -321,8 +321,7 @@ public class ApplicationService {
       } else {
         ProceedingEntity proceedingEntity = proceedingRepository.findById(proceeding.getProceedingId()).orElseThrow();
         meritDecisionEntity = MeritsDecisionEntity.builder()
-                .proceeding(proceedingEntity)
-                .build();
+                .proceeding(proceedingEntity).build();
       }
 
       meritDecisionEntity.setDecision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()));

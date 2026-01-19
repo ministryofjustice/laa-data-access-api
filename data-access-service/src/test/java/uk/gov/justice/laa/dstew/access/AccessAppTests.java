@@ -29,6 +29,9 @@ public class AccessAppTests {
   @MockitoBean
   private DecisionRepository decisionRepository;
 
+  @MockitoBean
+  private ProceedingRepository proceedingRepository;
+
   @Test
   void contextLoads() {
   }
