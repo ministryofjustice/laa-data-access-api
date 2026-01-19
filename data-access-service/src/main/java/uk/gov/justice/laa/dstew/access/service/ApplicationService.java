@@ -32,6 +32,7 @@ import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
+import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
 /**
@@ -49,6 +50,7 @@ public class ApplicationService {
   private final DomainEventService domainEventService;
   private final ApplicationContentParserService applicationContentParser;
   private final DecisionRepository decisionRepository;
+  private final ProceedingRepository proceedingRepository;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -65,7 +67,8 @@ public class ApplicationService {
                             final CaseworkerRepository caseworkerRepository,
                             final DecisionRepository decisionRepository,
                             final DomainEventService domainEventService,
-                            final ApplicationContentParserService applicationContentParserService) {
+                            final ApplicationContentParserService applicationContentParserService,
+                            final ProceedingRepository proceedingRepository) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
@@ -75,6 +78,7 @@ public class ApplicationService {
     this.caseworkerRepository = caseworkerRepository;
     this.domainEventService = domainEventService;
     this.decisionRepository = decisionRepository;
+    this.proceedingRepository = proceedingRepository;
   }
 
   /**
@@ -298,10 +302,10 @@ public class ApplicationService {
     DecisionEntity decision = decisionRepository.findByApplicationId(applicationId)
             .orElse(DecisionEntity.builder()
                     .applicationId(applicationId)
-                    .meritsDecisions(Set.of())
+                    .meritsDecisions(new LinkedHashSet<>())
                     .build());
 
-    Set<MeritsDecisionEntity> merits = new LinkedHashSet<>();
+    Set<MeritsDecisionEntity> merits = decision.getMeritsDecisions();
 
     request.getProceedings().forEach(proceeding -> {
 
@@ -315,10 +319,9 @@ public class ApplicationService {
         meritDecisionEntity = meritDecision.get();
         meritDecisionEntity.setModifiedAt(Instant.now());
       } else {
+        ProceedingEntity proceedingEntity = proceedingRepository.findById(proceeding.getProceedingId()).orElseThrow();
         meritDecisionEntity = MeritsDecisionEntity.builder()
-                .proceeding(ProceedingEntity.builder()
-                        .id(proceeding.getProceedingId())
-                        .build())
+                .proceeding(proceedingEntity)
                 .build();
       }
 
