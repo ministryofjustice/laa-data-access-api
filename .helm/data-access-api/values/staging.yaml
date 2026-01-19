@@ -52,3 +52,8 @@ autoscaling:
   maxReplicas: 8
   targetCPUUtilizationPercentage: 60
   targetMemoryUtilizationPercentage: 70
+
+sentry:
+  enabled: true
+  environment: staging
+  tracesSampleRate: 1

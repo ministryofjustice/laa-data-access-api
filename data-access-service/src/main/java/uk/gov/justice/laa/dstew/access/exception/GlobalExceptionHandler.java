@@ -4,6 +4,7 @@ import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static uk.gov.justice.laa.dstew.access.exception.ProblemDetailUtility.getCustomProblemDetail;
 
+import io.sentry.Sentry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
@@ -89,6 +90,7 @@ public class GlobalExceptionHandler {
     final String responseMessage = "An unexpected error has occurred.";
     final String logMessage = "Database error has occurred type : %s".formatted(exception.getClass().getSimpleName());
     log.error(logMessage, exception);
+    Sentry.captureException(exception);
     return ResponseEntity.internalServerError().body(
             getCustomProblemDetail(INTERNAL_SERVER_ERROR, responseMessage));
   }

@@ -5,7 +5,12 @@ plugins {
     id "com.gorylenko.gradle-git-properties" version "2.4.1"
     id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin' version '1.0.4'
     id 'com.avast.gradle.docker-compose' version '0.17.12'
+    id 'io.sentry.jvm.gradle' version '5.12.2'
 }
+
+def versions = [
+        sentry : '8.28.0'
+]
 
 dockerCompose.isRequiredBy(integrationTest)
 
@@ -46,6 +51,15 @@ jacocoTestReport {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, exclude: ['**/AccessApp.class'])
         }))
+    }
+}
+
+dependencyManagement {
+    dependencies {
+        dependencySet(group: 'io.sentry', version: versions.sentry) {
+            entry 'sentry-spring-boot-starter'
+            entry 'sentry-logback'
+        }
     }
 }
 
@@ -96,4 +110,9 @@ dependencies {
 
     // Security fix for SNYK-JAVA-ORGAPACHECOMMONS-10734078 (CVE-2025-48924)
     implementation 'org.apache.commons:commons-lang3:3.18.0'
+
+    // Sentry
+    implementation platform("io.sentry:sentry-bom:$versions.sentry")
+    implementation "io.sentry:sentry-logback:$versions.sentry"
+    implementation "io.sentry:sentry-spring-boot-starter-jakarta:$versions.sentry"
 }
