@@ -111,6 +111,22 @@ public abstract class BaseIntegrationTest {
             ProceedingEntity.ProceedingEntityBuilder,
             UUID> persistedProceedingFactory;
 
+    @Autowired
+    protected PersistedFactory<
+            MeritsDecisionRepository,
+            Factory<MeritsDecisionEntity, MeritsDecisionEntity.MeritsDecisionEntityBuilder>,
+            MeritsDecisionEntity,
+            MeritsDecisionEntity.MeritsDecisionEntityBuilder,
+            UUID> persistedMeritsDecisionFactory;
+
+    @Autowired
+    protected PersistedFactory<
+            DecisionRepository,
+            Factory<DecisionEntity, DecisionEntity.DecisionEntityBuilder>,
+            DecisionEntity,
+            DecisionEntity.DecisionEntityBuilder,
+            UUID> persistedDecisionFactory;
+
     // for use in tests and factories where applicable (i.e. default in ApplicationFactoryImpl)
     public static CaseworkerEntity CaseworkerJohnDoe;
     public static CaseworkerEntity CaseworkerJaneDoe;
