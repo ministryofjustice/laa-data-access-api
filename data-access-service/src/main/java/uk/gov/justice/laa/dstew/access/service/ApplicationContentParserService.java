@@ -58,7 +58,6 @@ public class ApplicationContentParserService {
     return ParsedAppContentDetails
         .builder()
         .applyApplicationId(applicationContent.getId())
-        .autoGranted(applicationContent.isAutoGrant())
         .categoryOfLaw(leadProceeding.categoryOfLaw())
         .matterType(leadProceeding.matterType())
         .submittedAt(applicationContent.getSubmittedAt())

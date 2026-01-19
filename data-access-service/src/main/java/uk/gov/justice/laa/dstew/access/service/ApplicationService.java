@@ -107,7 +107,6 @@ public class ApplicationService {
   private void setValuesFromApplicationContent(ApplicationCreateRequest req, ApplicationEntity entity) {
     var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(req);
     entity.setApplyApplicationId(parsedContentDetails.applyApplicationId());
-    entity.setAutoGranted(parsedContentDetails.autoGranted());
     entity.setUseDelegatedFunctions(parsedContentDetails.useDelegatedFunctions());
     entity.setCategoryOfLaw(parsedContentDetails.categoryOfLaw());
     entity.setMatterType(parsedContentDetails.matterType());

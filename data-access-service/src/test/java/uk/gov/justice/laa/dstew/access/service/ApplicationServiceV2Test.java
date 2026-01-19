@@ -158,8 +158,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
       @ParameterizedTest
       @MethodSource("provideProceedingsForMapping")
       void mapToApplicationEntity_SuccessfullyMapFromApplicationContentFields(ApplicationCreateRequest application,
-                                                                              boolean expectedUseDelegatedFunctions,
-                                                                              boolean autoGranted) {
+                                                                              boolean expectedUseDelegatedFunctions) {
         // Given
         setSecurityContext(TestConstants.Roles.WRITER);
 
@@ -176,7 +175,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         assertEquals(expectedId, entity);
 
         assertAll(() -> assertEquals(expectedUseDelegatedFunctions, actualApplicationEntity.isUseDelegatedFunctions()),
-            () -> assertEquals(autoGranted, actualApplicationEntity.isAutoGranted()),
             () -> assertEquals(      Instant.parse("2026-01-15T10:20:30Z"), actualApplicationEntity.getSubmittedAt()));
       }
 
@@ -261,22 +259,22 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             Arguments.of(applicationCreateRequestFactory
                     .createDefault(builder ->
                         builder.applicationContent(
-                            getAppContentMap(true, List.of(), UUID.randomUUID().toString()))),
+                            getAppContentMap(List.of(), UUID.randomUUID().toString()))),
                 new ValidationException(List.of("No proceedings found in application content")),
 
                 Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
                         builder.applicationContent(
-                            getAppContentMap(true, null, UUID.randomUUID().toString()))),
+                            getAppContentMap(null, UUID.randomUUID().toString()))),
                     new ValidationException(List.of("No proceedings found in application content")),
                 Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
                         builder.applicationContent(
-                            getAppContentMap(true,
+                            getAppContentMap(
                                 List.of(getProceedingJsonObject(null, false)),
                                 UUID.randomUUID().toString()))),
                     new ValidationException(List.of("No proceedings found in application content")),
                 Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
                         builder.applicationContent(
-                            getAppContentMap(false,
+                            getAppContentMap(
                                 List.of(getProceedingJsonObject(true, false)),
                                 UUID.randomUUID().toString()))),
                     new ValidationException(List.of("No lead proceeding found in application content"))))
@@ -284,11 +282,11 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         ));
       }
 
-      private Map<String, Object> getAppContentMap(boolean autoGrant, List<ProceedingJsonObject> proceedings,
+      private Map<String, Object> getAppContentMap(List<ProceedingJsonObject> proceedings,
                                                    String appContentId) {
         String submittedAt = "2026-01-15T10:20:30Z";
         AppContentJsonObject applicationContent =
-            AppContentJsonObject.builder().proceedings(proceedings).autoGrant(autoGrant).id(appContentId)
+            AppContentJsonObject.builder().proceedings(proceedings).id(appContentId)
                 .submittedAt(submittedAt).build();
         Map<String, Object> appContentMap;
 
@@ -308,18 +306,18 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
       }
 
       private Stream<Arguments> provideProceedingsForMapping() {
-        //App Content Map, expected useDelegatedFunctions, isAutoGrant
+        //App Content Map, expected useDelegatedFunctions
         return Stream.of(Arguments.of(applicationCreateRequestFactory.createDefault(
-                builder -> builder.applicationContent(getAppContentMap(false, List.of(getProceedingJsonObject(true, true)),
-                    UUID.randomUUID().toString()))), true,
-            false), Arguments.of(applicationCreateRequestFactory.createDefault(
-                builder -> builder.applicationContent(getAppContentMap(true, List.of(getProceedingJsonObject(false, true)),
+                builder -> builder.applicationContent(getAppContentMap(List.of(getProceedingJsonObject(true, true)),
+                    UUID.randomUUID().toString()))), true),
+            Arguments.of(applicationCreateRequestFactory.createDefault(
+                builder -> builder.applicationContent(getAppContentMap(List.of(getProceedingJsonObject(false, true)),
                     UUID.randomUUID().toString()))), false,
             true), Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
-                getAppContentMap(true, List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(true, false)),
+                getAppContentMap(List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(true, false)),
                     UUID.randomUUID().toString()))), true,
             true), Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
-                getAppContentMap(true, List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(false, false)),
+                getAppContentMap(List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(false, false)),
                     UUID.randomUUID().toString()))), false,
             true));
       }
