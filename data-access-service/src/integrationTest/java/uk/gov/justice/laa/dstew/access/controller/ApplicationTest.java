@@ -2222,8 +2222,6 @@ public class ApplicationTest extends BaseIntegrationTest {
             patchUri(TestConstants.URIs.ASSIGN_DECISION, currentApplicationRequest, applicationEntity.getId());
             ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
             assertEquals(ApplicationStatus.SUBMITTED, actualApplication.getStatus());
-            DecisionEntity originalDecision = decisionRepository.findByApplicationId(applicationEntity.getId()).orElseThrow();
-
             MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, newApplicationRequest, applicationEntity.getId());
 
             // then
@@ -2245,12 +2243,12 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertEquals("reason update", merit.getReason());
             assertEquals("justification update", merit.getJustification());
             assertEquals(merit.getProceeding().getId(), proceedingEntity.getId());
-            /* merit = meritsDecisionIterator.next();
+            merit = meritsDecisionIterator.next();
             Assertions.assertThat(merit.getDecision()).isNotNull();
             assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
             assertEquals("reason update", merit.getReason());
             assertEquals("justification update", merit.getJustification());
-            assertEquals(merit.getProceeding().getId(), proceedingEntity.getId()); */
+            assertEquals(merit.getProceeding().getId(), proceedingEntity.getId());
         }
 
         @Test
