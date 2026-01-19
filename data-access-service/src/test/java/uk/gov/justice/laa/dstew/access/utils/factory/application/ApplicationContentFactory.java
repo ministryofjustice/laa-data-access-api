@@ -30,7 +30,7 @@ public class ApplicationContentFactory
   public ApplicationContentDetails createDefault() {
     UUID applicationId = UUID.randomUUID();
     return ApplicationContentDetails.builder()
-        .applyApplicationId(applicationId)
+        .id(applicationId)
         .autoGrant(true)
         .submittedAt(Instant.now())
         .proceedings(List.of(proceedingDetailsFactory.createDefault()))

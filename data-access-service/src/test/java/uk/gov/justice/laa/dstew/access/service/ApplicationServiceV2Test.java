@@ -335,7 +335,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
       assertThat(actualApplicationEntity.getLaaReference()).isEqualTo(applicationCreateRequest.getLaaReference());
       ApplicationContentDetails applicationContentDetails =
           parseApplicationContentDetails(applicationCreateRequest.getApplicationContent());
-      assertThat(actualApplicationEntity.getApplyApplicationId()).isEqualTo(applicationContentDetails.getApplyApplicationId());
+      assertThat(actualApplicationEntity.getApplyApplicationId()).isEqualTo(applicationContentDetails.getId());
       assertThat(actualApplicationEntity.isUseDelegatedFunctions()).isEqualTo(
       applicationContentDetails.getProceedings().get(0)
               .useDelegatedFunctions());

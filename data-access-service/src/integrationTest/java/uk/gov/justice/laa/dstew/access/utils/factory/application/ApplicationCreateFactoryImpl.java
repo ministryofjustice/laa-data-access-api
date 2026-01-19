@@ -3,11 +3,7 @@ package uk.gov.justice.laa.dstew.access.utils.factory.application;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -38,7 +34,7 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
 
     var submitted_at = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();
     ApplicationContentDetails applicationContentDetails = ApplicationContentDetails.builder()
-        .applyApplicationId(UUID.randomUUID())
+        .id(UUID.randomUUID())
         .autoGrant(true)
         .submittedAt(submitted_at)
         .proceedings(List.of(proceedingDetails))

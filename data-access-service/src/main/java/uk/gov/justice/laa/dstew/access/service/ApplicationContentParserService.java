@@ -57,7 +57,7 @@ public class ApplicationContentParserService {
             .anyMatch(ProceedingDetails::useDelegatedFunctions);
     return ParsedAppContentDetails
         .builder()
-        .applyApplicationId(applicationContent.getApplyApplicationId())
+        .applyApplicationId(applicationContent.getId())
         .autoGranted(applicationContent.isAutoGrant())
         .categoryOfLaw(leadProceeding.categoryOfLaw())
         .matterType(leadProceeding.matterType())
