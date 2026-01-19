@@ -2,18 +2,16 @@ package uk.gov.justice.laa.dstew.access.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.TestInstance;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-
-import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.entity.*;
 import uk.gov.justice.laa.dstew.access.model.*;
@@ -26,15 +24,13 @@ import java.util.*;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
-@Testcontainers
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(classes = AccessApp.class, properties = {"feature.disable-security=false"})
+@ContextConfiguration(initializers = PostgresContainerInitializer.class)
+@ExtendWith(SpringExtension.class)
 @Transactional
 public abstract class BaseIntegrationTest {
-
-    private static final Logger log = LoggerFactory.getLogger(BaseIntegrationTest.class);
 
     @Autowired protected MockMvc mockMvc;
     @Autowired protected ObjectMapper objectMapper;
@@ -120,7 +116,7 @@ public abstract class BaseIntegrationTest {
     public static CaseworkerEntity CaseworkerJaneDoe;
     public static List<CaseworkerEntity> Caseworkers;
 
-    @BeforeAll
+    @BeforeEach
     void setupCaseworkers() {
         caseworkerRepository.deleteAll();
         CaseworkerJohnDoe = persistedCaseworkerFactory.createAndPersist(builder ->
