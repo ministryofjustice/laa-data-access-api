@@ -71,6 +71,7 @@ public class ApplicationController implements ApplicationApi {
           String clientLastName,
           LocalDate clientDateOfBirth,
           UUID userId,
+          Boolean isAutoGranted,
           Integer page,
           Integer pageSize) {
     page = (page == null || page < 1) ? 1 : page;
@@ -83,6 +84,7 @@ public class ApplicationController implements ApplicationApi {
                     clientLastName,
                     clientDateOfBirth,
                     userId,
+                    isAutoGranted,
                     page - 1, pageSize);
 
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
