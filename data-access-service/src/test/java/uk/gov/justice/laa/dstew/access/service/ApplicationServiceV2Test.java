@@ -1059,7 +1059,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     @Nested
     class MakeDecisionForApplication {
         @Test
-        void givenApplication_whenAssignDecisionAndNoDecisionExists_thenAssignDecisionAndSave() {
+        void givenApplication_whenMakeDecisionAndNoDecisionExists_thenAssignDecisionAndSave() {
             UUID applicationId = UUID.randomUUID();
             UUID proceedingId = UUID.randomUUID();
 
@@ -1144,7 +1144,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         @Test
-        void givenApplication_whenAssignDecisionAndNoDecisionExistsAndMultipleProceedings_thenAssignDecisionAndSave() {
+        void givenApplication_whenMakeDecisionAndNoDecisionExistsAndMultipleProceedings_thenAssignDecisionAndSave() {
             UUID applicationId = UUID.randomUUID();
             UUID grantedProceedingId = UUID.randomUUID();
             UUID refusedProceedingId = UUID.randomUUID();
@@ -1255,26 +1255,25 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .filter(m -> m.getDecision() == MeritsDecisionStatus.GRANTED)
                     .toList();
             assertEquals(1, grantedItemsFound.size());
-            MeritsDecisionEntity grantedMerit = grantedItemsFound.getFirst();
-            assertEquals("refusal 1", grantedMerit.getReason());
-            assertEquals("justification 1", grantedMerit.getJustification());
-            assertThat(grantedMerit.getModifiedAt()).isNotNull();
-            assertEquals(grantedProceedingId, grantedMerit.getProceeding().getId());
+            verifyMeritStructure(grantedItemsFound.getFirst(),
+                        "refusal 1",
+                    "justification 1",
+                                    grantedProceedingId);
 
             List<MeritsDecisionEntity> refusedItemsFound = savedDecision.getMeritsDecisions()
                     .stream()
                     .filter(m -> m.getDecision() == MeritsDecisionStatus.REFUSED)
                     .toList();
             assertEquals(1, refusedItemsFound.size());
-            MeritsDecisionEntity refusedMerit = refusedItemsFound.getFirst();
-            assertEquals("refusal 2", refusedMerit.getReason());
-            assertEquals("justification 2", refusedMerit.getJustification());
-            assertThat(grantedMerit.getModifiedAt()).isNotNull();
-            assertEquals(refusedProceedingId, refusedMerit.getProceeding().getId());
+            verifyMeritStructure(refusedItemsFound.getFirst(),
+                    "refusal 2",
+                    "justification 2",
+                                refusedProceedingId);
+
         }
 
         @Test
-        void givenApplication_whenAssignDecisionAndDecisionExists_thenUpdateAssignDecisionAndSave() {
+        void givenApplication_whenMakeDecisionAndDecisionExists_thenUpdateAssignDecisionAndSave() {
             UUID applicationId = UUID.randomUUID();
             UUID proceedingId = UUID.randomUUID();
 
@@ -1386,7 +1385,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         @Test
-        void givenApplication_whenAssignDecisionAndDecisionExistsAndNewMerits_thenUpdateAssignDecisionAndSave() {
+        void givenApplication_whenMakeDecisionAndDecisionExistsAndNewMerits_thenUpdateAssignDecisionAndSave() {
             UUID applicationId = UUID.randomUUID();
             UUID currentProceedingId = UUID.randomUUID();
             UUID newProceedingId = UUID.randomUUID();
@@ -1517,24 +1516,29 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
             assertSame(DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
             assertSame(2, savedDecision.getMeritsDecisions().size());
-            Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
-            MeritsDecisionEntity merit = meritsDecisionIterator.next();
-            assertThat(merit.getDecision()).isNotNull();
-            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
-            assertEquals("refusal update", merit.getReason());
-            assertEquals("justification update", merit.getJustification());
-            assertEquals(currentProceedingId, merit.getProceeding().getId());
-            merit = meritsDecisionIterator.next();
-            assertThat(merit.getDecision()).isNotNull();
-            assertEquals(MeritsDecisionStatus.REFUSED, merit.getDecision());
-            assertEquals("refusal new", merit.getReason());
-            assertEquals("justification new", merit.getJustification());
-            assertEquals(newProceedingId, merit.getProceeding().getId());
+            List<MeritsDecisionEntity> grantedItemsFound = savedDecision.getMeritsDecisions()
+                    .stream()
+                    .filter(m -> m.getDecision() == MeritsDecisionStatus.GRANTED)
+                    .toList();
+            assertEquals(1, grantedItemsFound.size());
+            verifyMeritStructure(grantedItemsFound.getFirst(),
+                    "refusal update",
+                    "justification update",
+                    currentProceedingId);
 
+            List<MeritsDecisionEntity> refusedItemsFound = savedDecision.getMeritsDecisions()
+                    .stream()
+                    .filter(m -> m.getDecision() == MeritsDecisionStatus.REFUSED)
+                    .toList();
+            assertEquals(1, refusedItemsFound.size());
+            verifyMeritStructure(refusedItemsFound.getFirst(),
+                    "refusal new",
+                    "justification new",
+                    newProceedingId);
         }
 
         @Test
-        void givenApplication_whenAssignDecisionAndNoCaseworkerExists_thenExceptionIsThrown() {
+        void givenApplication_whenMakeDecisionAndNoCaseworkerExists_thenExceptionIsThrown() {
             UUID applicationId = UUID.randomUUID();
             UUID caseworkerId = UUID.randomUUID();
 
@@ -1589,7 +1593,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         @Test
-        void givenApplication_whenAssignDecisionAndNoApplicationExists_thenExceptionIsThrown() {
+        void givenApplication_whenMakeDecisionAndNoApplicationExists_thenExceptionIsThrown() {
             UUID applicationId = UUID.randomUUID();
             // given
             MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory
@@ -1639,6 +1643,15 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
         }
 
+        private void verifyMeritStructure(MeritsDecisionEntity merit,
+                                 String expectedReason,
+                                 String expectedJustification,
+                                 UUID expectedProceedingId) {
+            assertEquals(expectedReason, merit.getReason());
+            assertEquals(expectedJustification, merit.getJustification());
+            assertThat(merit.getModifiedAt()).isNotNull();
+            assertEquals(expectedProceedingId, merit.getProceeding().getId());
+        }
     }
 
     // <editor-fold desc="Shared asserts">
