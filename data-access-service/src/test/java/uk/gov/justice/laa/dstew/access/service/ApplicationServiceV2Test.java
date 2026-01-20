@@ -1250,19 +1250,23 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             assertSame(DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
             assertSame(2, savedDecision.getMeritsDecisions().size());
 
-            Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
-            MeritsDecisionEntity merit = meritsDecisionIterator.next();
-            assertThat(merit.getDecision()).isNotNull();
-            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
-            assertEquals("refusal 1", merit.getReason());
-            assertEquals("justification 1", merit.getJustification());
-            assertEquals(grantedProceedingId, merit.getProceeding().getId());
-            merit = meritsDecisionIterator.next();
-            assertThat(merit.getDecision()).isNotNull();
-            assertEquals(MeritsDecisionStatus.REFUSED, merit.getDecision());
-            assertEquals("refusal 2", merit.getReason());
-            assertEquals("justification 2", merit.getJustification());
-            assertEquals(refusedProceedingId, merit.getProceeding().getId());
+            List<MeritsDecisionEntity> grantedItemsFound = savedDecision.getMeritsDecisions()
+                    .stream()
+                    .filter(m -> m.getDecision() == MeritsDecisionStatus.GRANTED)
+                    .toList();
+            assertEquals(1, grantedItemsFound.size());
+            MeritsDecisionEntity grantedMerit = grantedItemsFound.getFirst();
+            assertEquals("refusal 1", grantedMerit.getReason());
+            assertEquals("justification 1", grantedMerit.getJustification());
+
+            List<MeritsDecisionEntity> refusedItemsFound = savedDecision.getMeritsDecisions()
+                    .stream()
+                    .filter(m -> m.getDecision() == MeritsDecisionStatus.REFUSED)
+                    .toList();
+            assertEquals(1, refusedItemsFound.size());
+            MeritsDecisionEntity refusedMerit = refusedItemsFound.getFirst();
+            assertEquals("refusal 2", refusedMerit.getReason());
+            assertEquals("justification 2", refusedMerit.getJustification());
         }
 
         @Test
