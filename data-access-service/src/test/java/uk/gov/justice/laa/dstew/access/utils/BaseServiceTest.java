@@ -58,6 +58,12 @@ public class BaseServiceTest {
     @MockitoBean
     protected ProceedingRepository proceedingRepository;
 
+    @MockitoBean
+    protected DecisionRepository decisionRepository;
+
+    @MockitoBean
+    protected MeritsDecisionRepository meritsDecisionRepository;
+
     @Autowired
     protected ObjectMapper objectMapper;
 
@@ -90,9 +96,6 @@ public class BaseServiceTest {
 
     @Autowired
     protected ApplicationMakeDecisionRequestFactory applicationMakeDecisionRequestFactory;
-
-    @MockitoBean
-    protected DecisionRepository decisionRepository;
 
     @Autowired
     protected DecisionEntityFactory decisionEntityFactory;
