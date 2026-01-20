@@ -35,6 +35,7 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
     var submitted_at = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();
     ApplicationContentDetails applicationContentDetails = ApplicationContentDetails.builder()
         .id(UUID.randomUUID())
+        .autoGrant(true)
         .submittedAt(submitted_at)
         .proceedings(List.of(proceedingDetails))
         .build();
