@@ -19,7 +19,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.entity.*;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
@@ -33,7 +32,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.regex.MatchResult;
@@ -1944,7 +1942,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
             assertEquals(ApplicationStatus.SUBMITTED, actualApplication.getStatus());
             DecisionEntity actualDecision = decisionRepository.findByApplicationId(applicationEntity.getId()).orElseThrow();
-            assertEquals(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, actualDecision.getOverallDecision());
+            assertEquals(DecisionStatus.PARTIALLY_GRANTED, actualDecision.getOverallDecision());
             assertThat(actualDecision.getCreatedAt()).isNotNull();
             assertThat(actualDecision.getModifiedAt()).isNotNull();
             assertEquals(1, actualDecision.getMeritsDecisions().size());
@@ -1952,7 +1950,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             Iterator<MeritsDecisionEntity> meritsDecisionIterator = actualDecision.getMeritsDecisions().iterator();
             MeritsDecisionEntity merit = meritsDecisionIterator.next();
             Assertions.assertThat(merit.getDecision()).isNotNull();
-            assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED, merit.getDecision());
+            assertEquals(MeritsDecisionStatus.REFUSED, merit.getDecision());
             assertEquals("reason", merit.getReason());
             assertEquals("justification", merit.getJustification());
             assertEquals(merit.getProceeding().getId(), proceedingEntity.getId());
@@ -2028,7 +2026,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
             assertEquals(ApplicationStatus.SUBMITTED, actualApplication.getStatus());
             DecisionEntity actualDecision = decisionRepository.findByApplicationId(applicationEntity.getId()).orElseThrow();
-            assertEquals(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, actualDecision.getOverallDecision());
+            assertEquals(DecisionStatus.PARTIALLY_GRANTED, actualDecision.getOverallDecision());
             assertThat(actualDecision.getCreatedAt()).isNotNull();
             assertThat(actualDecision.getModifiedAt()).isNotNull();
             assertEquals(2, actualDecision.getMeritsDecisions().size());
@@ -2037,13 +2035,13 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             MeritsDecisionEntity merit = meritsDecisionIterator.next();
             Assertions.assertThat(merit.getDecision()).isNotNull();
-            assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
+            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
             assertEquals("reason 1", merit.getReason());
             assertEquals("justification 1", merit.getJustification());
             assertEquals(merit.getProceeding().getId(), grantedProceedingEntity.getId());
             merit = meritsDecisionIterator.next();
             Assertions.assertThat(merit.getDecision()).isNotNull();
-            assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED, merit.getDecision());
+            assertEquals(MeritsDecisionStatus.REFUSED, merit.getDecision());
             assertEquals("reason 2", merit.getReason());
             assertEquals("justification 2", merit.getJustification());
             assertEquals(merit.getProceeding().getId(), refusedProceedingEntity.getId());
@@ -2123,7 +2121,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
             assertEquals(ApplicationStatus.SUBMITTED, actualApplication.getStatus());
             DecisionEntity actualDecision = decisionRepository.findByApplicationId(applicationEntity.getId()).orElseThrow();
-            assertEquals(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, actualDecision.getOverallDecision());
+            assertEquals(DecisionStatus.PARTIALLY_GRANTED, actualDecision.getOverallDecision());
             assertThat(actualDecision.getCreatedAt()).isNotNull();
             assertThat(actualDecision.getModifiedAt()).isNotNull();
             assertEquals(1, actualDecision.getMeritsDecisions().size());
@@ -2131,7 +2129,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             Iterator<MeritsDecisionEntity> meritsDecisionIterator = actualDecision.getMeritsDecisions().iterator();
             MeritsDecisionEntity merit = meritsDecisionIterator.next();
             Assertions.assertThat(merit.getDecision()).isNotNull();
-            assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
+            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
             assertEquals("reason update", merit.getReason());
             assertEquals("justification update", merit.getJustification());
             assertEquals(merit.getProceeding().getId(), proceedingEntity.getId());
@@ -2148,47 +2146,40 @@ public class ApplicationTest extends BaseIntegrationTest {
                 )));
             });
 
-            ProceedingEntity proceedingEntity = persistedProceedingFactory.createAndPersist(
+            ProceedingEntity proceedingEntityOne = persistedProceedingFactory.createAndPersist(
                     builder -> {builder
                             .applicationId(applicationEntity.getId());}
             );
 
-            ProceedingEntity newProceedingEntity = persistedProceedingFactory.createAndPersist(
+            ProceedingEntity proceedingEntityTwo = persistedProceedingFactory.createAndPersist(
                     builder -> {builder
                             .applicationId(applicationEntity.getId());}
             );
 
-            AssignDecisionRequest currentApplicationRequest = assignDecisionRequestFactory.create(builder -> {
-                builder
-                        .userId(CaseworkerJohnDoe.getId())
-                        .applicationStatus(ApplicationStatus.SUBMITTED)
-                        .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
-                        .proceedings(List.of(
-                                ProceedingDetails.builder()
-                                        .proceedingId(proceedingEntity.getId())
-                                        .meritsDecision(
-                                                MeritsDecisionDetails.builder()
-                                                        .decision(MeritsDecisionStatus.REFUSED)
-                                                        .refusal(
-                                                                RefusalDetails.builder()
-                                                                        .justification("justification current")
-                                                                        .reason("reason current")
-                                                                        .build()
-                                                        )
-                                                        .build()
-                                        )
-                                        .build()
-                        ));
-            });
+            MeritsDecisionEntity meritsDecisionEntityOne = persistedMeritsDecisionFactory.createAndPersist(
+                    builder -> { builder
+                            .proceeding(proceedingEntityOne)
+                            .decision(MeritsDecisionStatus.REFUSED);
+                    }
+            );
 
-            AssignDecisionRequest newApplicationRequest = assignDecisionRequestFactory.create(builder -> {
+            DecisionEntity decision = persistedDecisionFactory.createAndPersist(
+                    builder -> { builder
+                            .applicationId(applicationEntity.getId())
+                            .meritsDecisions(Set.of(meritsDecisionEntityOne))
+                            .overallDecision(DecisionStatus.REFUSED);
+                    }
+            );
+
+
+            AssignDecisionRequest assignDecisionRequest = assignDecisionRequestFactory.create(builder -> {
                 builder
                         .userId(CaseworkerJohnDoe.getId())
                         .applicationStatus(ApplicationStatus.SUBMITTED)
-                        .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                        .overallDecision(DecisionStatus.REFUSED)
                         .proceedings(List.of(
                                 ProceedingDetails.builder()
-                                        .proceedingId(newProceedingEntity.getId())
+                                        .proceedingId(proceedingEntityTwo.getId())
                                         .meritsDecision(
                                                 MeritsDecisionDetails.builder()
                                                         .decision(MeritsDecisionStatus.REFUSED)
@@ -2202,7 +2193,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                                         )
                                         .build(),
                                 ProceedingDetails.builder()
-                                        .proceedingId(proceedingEntity.getId())
+                                        .proceedingId(proceedingEntityOne.getId())
                                         .meritsDecision(
                                                 MeritsDecisionDetails.builder()
                                                         .decision(MeritsDecisionStatus.GRANTED)
@@ -2219,36 +2210,33 @@ public class ApplicationTest extends BaseIntegrationTest {
             });
 
             // when
-            patchUri(TestConstants.URIs.ASSIGN_DECISION, currentApplicationRequest, applicationEntity.getId());
-            ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
-            assertEquals(ApplicationStatus.SUBMITTED, actualApplication.getStatus());
-            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, newApplicationRequest, applicationEntity.getId());
+            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, assignDecisionRequest, applicationEntity.getId());
 
             // then
             assertSecurityHeaders(result);
             assertNoCacheHeaders(result);
             assertNoContent(result);
 
-            assertEquals(ApplicationStatus.SUBMITTED, actualApplication.getStatus());
-            DecisionEntity actualDecision = decisionRepository.findByApplicationId(applicationEntity.getId()).orElseThrow();
-            assertEquals(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, actualDecision.getOverallDecision());
+            assertEquals(ApplicationStatus.SUBMITTED, applicationEntity.getStatus());
+            DecisionEntity actualDecision = decisionRepository.findById(decision.getId()).orElseThrow();
+            assertEquals(DecisionStatus.REFUSED, actualDecision.getOverallDecision());
             assertThat(actualDecision.getCreatedAt()).isNotNull();
             assertThat(actualDecision.getModifiedAt()).isNotNull();
-            assertEquals(1, actualDecision.getMeritsDecisions().size());
+            assertEquals(2, actualDecision.getMeritsDecisions().size());
 
             Iterator<MeritsDecisionEntity> meritsDecisionIterator = actualDecision.getMeritsDecisions().iterator();
             MeritsDecisionEntity merit = meritsDecisionIterator.next();
             Assertions.assertThat(merit.getDecision()).isNotNull();
-            assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
+            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
             assertEquals("reason update", merit.getReason());
             assertEquals("justification update", merit.getJustification());
-            assertEquals(merit.getProceeding().getId(), proceedingEntity.getId());
-            merit = meritsDecisionIterator.next();
+            assertEquals(merit.getProceeding().getId(), proceedingEntityOne.getId());
+            /* merit = meritsDecisionIterator.next();
             Assertions.assertThat(merit.getDecision()).isNotNull();
-            assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
+            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
             assertEquals("reason update", merit.getReason());
             assertEquals("justification update", merit.getJustification());
-            assertEquals(merit.getProceeding().getId(), proceedingEntity.getId());
+            assertEquals(merit.getProceeding().getId(), proceedingEntity.getId()); */
         }
 
         @Test

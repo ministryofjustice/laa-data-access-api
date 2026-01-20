@@ -1130,7 +1130,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             DecisionEntity savedDecision = decisionCaptor.getValue();
             assertNotNull(savedDecision);
             assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
-            assertSame(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
+            assertSame(DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
             assertSame(1, savedDecision.getMeritsDecisions().size());
 
             Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
@@ -1247,19 +1247,19 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             DecisionEntity savedDecision = decisionCaptor.getValue();
             assertNotNull(savedDecision);
             assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
-            assertSame(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
+            assertSame(DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
             assertSame(2, savedDecision.getMeritsDecisions().size());
 
             Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
             MeritsDecisionEntity merit = meritsDecisionIterator.next();
             assertThat(merit.getDecision()).isNotNull();
-            assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
+            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
             assertEquals("refusal 1", merit.getReason());
             assertEquals("justification 1", merit.getJustification());
             assertEquals(grantedProceedingId, merit.getProceeding().getId());
             merit = meritsDecisionIterator.next();
             assertThat(merit.getDecision()).isNotNull();
-            assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED, merit.getDecision());
+            assertEquals(MeritsDecisionStatus.REFUSED, merit.getDecision());
             assertEquals("refusal 2", merit.getReason());
             assertEquals("justification 2", merit.getJustification());
             assertEquals(refusedProceedingId, merit.getProceeding().getId());
@@ -1331,7 +1331,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                                                             proceedingsBuilder.id(proceedingId)
                                                         )
                                                 )
-                                                .decision(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED)
+                                                .decision(MeritsDecisionStatus.REFUSED)
                                                 .reason("initial reason")
                                                 .justification("initial justification")
                                         )
@@ -1366,7 +1366,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             DecisionEntity savedDecision = decisionCaptor.getValue();
             assertNotNull(savedDecision);
             assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
-            assertSame(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
+            assertSame(DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
             assertSame(1, savedDecision.getMeritsDecisions().size());
 
             Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
@@ -1451,7 +1451,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                             .id(UUID.randomUUID())
                             .applicationId(applicationId)
                             .createdAt(Instant.now())
-                            .overallDecision(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED)
+                            .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                             .meritsDecisions(
                                     Set.of(
                                             meritsDecisionsEntityFactory.createDefault(
@@ -1465,7 +1465,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                                                                                             proceedingsBuilder.id(currentProceedingId)
                                                                             )
                                                                     )
-                                                                    .decision(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED)
+                                                                    .decision(MeritsDecisionStatus.REFUSED)
                                                                     .reason("current reason")
                                                                     .justification("current justification")
                                             )
@@ -1507,18 +1507,18 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             DecisionEntity savedDecision = decisionCaptor.getValue();
             assertNotNull(savedDecision);
             assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
-            assertSame(uk.gov.justice.laa.dstew.access.enums.DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
+            assertSame(DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
             assertSame(2, savedDecision.getMeritsDecisions().size());
             Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
             MeritsDecisionEntity merit = meritsDecisionIterator.next();
             assertThat(merit.getDecision()).isNotNull();
-            assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
+            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
             assertEquals("refusal update", merit.getReason());
             assertEquals("justification update", merit.getJustification());
             assertEquals(currentProceedingId, merit.getProceeding().getId());
             merit = meritsDecisionIterator.next();
             assertThat(merit.getDecision()).isNotNull();
-            assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.REFUSED, merit.getDecision());
+            assertEquals(MeritsDecisionStatus.REFUSED, merit.getDecision());
             assertEquals("refusal new", merit.getReason());
             assertEquals("justification new", merit.getJustification());
             assertEquals(newProceedingId, merit.getProceeding().getId());

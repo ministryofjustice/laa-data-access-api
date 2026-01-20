@@ -22,7 +22,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
-import uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 
 /**
  * Represents a merits decision.
