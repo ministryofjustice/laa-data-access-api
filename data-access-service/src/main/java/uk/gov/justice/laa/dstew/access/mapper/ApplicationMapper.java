@@ -16,8 +16,8 @@ import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.AssignDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 
 /**
  * Mapper interface.
@@ -103,7 +103,7 @@ public interface ApplicationMapper {
   }
 
   /**
-   * Updates an existing {@link ApplicationEntity} using values from an {@link AssignDecisionRequest}.
+   * Updates an existing {@link ApplicationEntity} using values from an {@link MakeDecisionRequest}.
    *
    * @param entity the entity to update
    * @param req the update request containing new values
@@ -111,7 +111,7 @@ public interface ApplicationMapper {
    */
   @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
   default void updateApplicationEntityWithAssignDecisionRequest(@MappingTarget ApplicationEntity entity,
-                                                                AssignDecisionRequest req) {
+                                                                MakeDecisionRequest req) {
     if (req.getApplicationStatus() != null) {
       entity.setStatus(req.getApplicationStatus());
     }

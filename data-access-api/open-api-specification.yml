@@ -41,5 +41,5 @@ components:
       $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationDomainEvent"
     Paging:
       $ref: "./open-api-application-specification.yml#/components/schemas/Paging"
-    AssignDecisionRequest:
-      $ref: "./open-api-application-specification.yml#/components/schemas/AssignDecisionRequest"
+    MakeDecisionRequest:
+      $ref: "./open-api-application-specification.yml#/components/schemas/MakeDecisionRequest"

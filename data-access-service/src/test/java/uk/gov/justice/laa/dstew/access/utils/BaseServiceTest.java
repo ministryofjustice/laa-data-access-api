@@ -14,7 +14,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import uk.gov.justice.laa.dstew.access.model.RefusalDetails;
 import uk.gov.justice.laa.dstew.access.repository.*;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateRequestFactory;
@@ -90,7 +89,7 @@ public class BaseServiceTest {
     protected ProceedingDtoFactory proceedingDtoFactory;
 
     @Autowired
-    protected ApplicationAssignDecisionRequestFactory applicationAssignDecisionRequestFactory;
+    protected ApplicationMakeDecisionRequestFactory applicationMakeDecisionRequestFactory;
 
     @MockitoBean
     protected DecisionRepository decisionRepository;

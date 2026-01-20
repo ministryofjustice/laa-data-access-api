@@ -6,7 +6,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.AssignDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 /**
@@ -53,7 +53,7 @@ public class ApplicationValidations {
   /**
    * Validates an incoming apply Decision PATCH.
    */
-  public void checkApplicationAssignDecisionRequest(final AssignDecisionRequest dto) {
+  public void checkApplicationAssignDecisionRequest(final MakeDecisionRequest dto) {
     if (dto == null || dto.getProceedings().isEmpty()) {
       throw new ValidationException(
               List.of("AssignDecisionRequest and its content cannot be empty")

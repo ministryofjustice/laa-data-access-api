@@ -1067,7 +1067,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             CaseworkerEntity caseworker = caseworkerFactory.createDefault();
 
             // overwrite some fields of default assign decision request
-            AssignDecisionRequest assignDecisionRequest = applicationAssignDecisionRequestFactory
+            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory
                     .createDefault(requestBuilder ->
                             requestBuilder
                                 .userId(caseworker.getId())
@@ -1119,7 +1119,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
                     .thenReturn(Optional.empty());
 
-            serviceUnderTest.assignDecision(expectedApplicationEntity.getId(), assignDecisionRequest);
+            serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
             // then
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
@@ -1137,9 +1137,9 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             MeritsDecisionEntity merit = meritsDecisionIterator.next();
 
             assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
-            assertEquals(assignDecisionRequest.getProceedings().getFirst().getProceedingId(), merit.getProceeding().getId());
-            assertEquals(assignDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getReason(), merit.getReason());
-            assertEquals(assignDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getJustification(), merit.getJustification());
+            assertEquals(makeDecisionRequest.getProceedings().getFirst().getProceedingId(), merit.getProceeding().getId());
+            assertEquals(makeDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getReason(), merit.getReason());
+            assertEquals(makeDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getJustification(), merit.getJustification());
 
         }
 
@@ -1153,7 +1153,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             CaseworkerEntity caseworker = caseworkerFactory.createDefault();
 
             // overwrite some fields of default assign decision request
-            AssignDecisionRequest assignDecisionRequest = applicationAssignDecisionRequestFactory
+            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory
                     .createDefault(requestBuilder ->
                             requestBuilder
                                     .userId(caseworker.getId())
@@ -1236,7 +1236,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
                     .thenReturn(Optional.empty());
 
-            serviceUnderTest.assignDecision(expectedApplicationEntity.getId(), assignDecisionRequest);
+            serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
             // then
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
@@ -1273,7 +1273,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // given
             CaseworkerEntity caseworker = caseworkerFactory.createDefault();
 
-            AssignDecisionRequest assignDecisionRequest = applicationAssignDecisionRequestFactory
+            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory
                     .createDefault(requestBuilder ->
                             requestBuilder
                                     .userId(caseworker.getId())
@@ -1355,7 +1355,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
                     .thenReturn(Optional.of(currentSavedDecisionEntity));
 
-            serviceUnderTest.assignDecision(expectedApplicationEntity.getId(), assignDecisionRequest);
+            serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
             // then
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
@@ -1372,9 +1372,9 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
             MeritsDecisionEntity merit = meritsDecisionIterator.next();
             assertEquals(uk.gov.justice.laa.dstew.access.enums.MeritsDecisionStatus.GRANTED, merit.getDecision());
-            assertEquals(assignDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getReason(), merit.getReason());
-            assertEquals(assignDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getJustification(), merit.getJustification());
-            assertEquals(assignDecisionRequest.getProceedings().getFirst().getProceedingId(), merit.getProceeding().getId());
+            assertEquals(makeDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getReason(), merit.getReason());
+            assertEquals(makeDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getJustification(), merit.getJustification());
+            assertEquals(makeDecisionRequest.getProceedings().getFirst().getProceedingId(), merit.getProceeding().getId());
         }
 
         @Test
@@ -1386,7 +1386,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // given
             CaseworkerEntity caseworker = caseworkerFactory.createDefault();
 
-            AssignDecisionRequest assignDecisionRequest = applicationAssignDecisionRequestFactory
+            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory
                     .createDefault(requestBuilder ->
                             requestBuilder
                                     .userId(caseworker.getId())
@@ -1496,7 +1496,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
                     .thenReturn(Optional.of(currentSavedDecisionEntity));
 
-            serviceUnderTest.assignDecision(expectedApplicationEntity.getId(), assignDecisionRequest);
+            serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
             // then
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
@@ -1531,7 +1531,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             UUID caseworkerId = UUID.randomUUID();
 
             // given
-            AssignDecisionRequest assignDecisionRequest = applicationAssignDecisionRequestFactory
+            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory
                     .createDefault(requestBuilder ->
                             requestBuilder
                                     .userId(caseworkerId)
@@ -1572,7 +1572,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
             Throwable thrown = catchThrowable(() ->
-                    serviceUnderTest.assignDecision(expectedApplicationEntity.getId(), assignDecisionRequest));
+                    serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest));
 
             assertThat(thrown)
                     .isInstanceOf(ResourceNotFoundException.class)
@@ -1584,7 +1584,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         void givenApplication_whenAssignDecisionAndNoApplicationExists_thenExceptionIsThrown() {
             UUID applicationId = UUID.randomUUID();
             // given
-            AssignDecisionRequest assignDecisionRequest = applicationAssignDecisionRequestFactory
+            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory
                     .createDefault(requestBuilder ->
                             requestBuilder
                                     .userId(UUID.randomUUID())
@@ -1623,7 +1623,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             setSecurityContext(TestConstants.Roles.WRITER);
 
             Throwable thrown = catchThrowable(() ->
-                    serviceUnderTest.assignDecision(expectedApplicationEntity.getId(), assignDecisionRequest));
+                    serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest));
 
             assertThat(thrown)
                     .isInstanceOf(ResourceNotFoundException.class)

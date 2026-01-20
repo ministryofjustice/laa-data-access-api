@@ -248,8 +248,8 @@ paths:
     patch:
       tags:
         - application
-      operationId: createDecision
-      summary: create a decision for an application
+      operationId: makeDecision
+      summary: make a decision for an application
       parameters:
         - name: id
           in: path
@@ -263,7 +263,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AssignDecisionRequest'
+              $ref: '#/components/schemas/MakeDecisionRequest'
       responses:
         '200': { description: OK }
         '400': { description: Bad request }
@@ -592,7 +592,7 @@ components:
         meritsDecision:
           $ref: "#/components/schemas/MeritsDecisionDetails"
 
-    AssignDecisionRequest:
+    MakeDecisionRequest:
       type: object
       required:
         - userId
