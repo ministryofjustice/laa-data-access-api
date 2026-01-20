@@ -1067,33 +1067,15 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             CaseworkerEntity caseworker = caseworkerFactory.createDefault();
 
             // overwrite some fields of default assign decision request
-            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory
-                    .createDefault(requestBuilder ->
-                            requestBuilder
-                                .userId(caseworker.getId())
-                                .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
-                                .applicationStatus(ApplicationStatus.SUBMITTED)
-                                .proceedings(List.of(proceedingDetailsFactory.createDefault(
-                                proceedingsBuilder ->
-                                        proceedingsBuilder
-                                            .proceedingId(proceedingId)
-                                            .meritsDecision(
-                                                meritsDecisionDetailsFactory.createDefault(
-                                            meritsDecisionBuilder ->
-                                                    meritsDecisionBuilder
-                                                        .decision(MeritsDecisionStatus.GRANTED)
-                                                        .refusal(
-                                                             refusalDetailsFactory.createDefault(
-                                                                refusalBuilder ->
-                                                                refusalBuilder
-                                                                    .reason("refusal 1")
-                                                                    .justification("justification 1")
-                                                     )
-                                                )
-                                            )
-                                        )
-                                )))
-                    );
+            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
+                    requestBuilder
+                            .userId(caseworker.getId())
+                            .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                            .applicationStatus(ApplicationStatus.SUBMITTED)
+                            .proceedings(List.of(
+                                    createProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "refusal 1", "justification 1")
+                            ))
+            );
 
             // expected saved application entity
             ApplicationEntity expectedApplicationEntity = applicationEntityFactory
@@ -1101,6 +1083,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     builder
                         .id(applicationId)
                         .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+                        .caseworker(caseworker)
             );
 
             ProceedingEntity expectedProceedingEntity = proceedingsEntityFactory
@@ -1125,22 +1108,8 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-            ArgumentCaptor<DecisionEntity> decisionCaptor = ArgumentCaptor.forClass(DecisionEntity.class);
-            verify(decisionRepository, times(1)).save(decisionCaptor.capture());
-            DecisionEntity savedDecision = decisionCaptor.getValue();
-            assertNotNull(savedDecision);
-            assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
-            assertSame(DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
-            assertSame(1, savedDecision.getMeritsDecisions().size());
 
-            Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
-            MeritsDecisionEntity merit = meritsDecisionIterator.next();
-
-            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
-            assertEquals(makeDecisionRequest.getProceedings().getFirst().getProceedingId(), merit.getProceeding().getId());
-            assertEquals(makeDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getReason(), merit.getReason());
-            assertEquals(makeDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getJustification(), merit.getJustification());
-
+            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity);
         }
 
         @Test
@@ -1149,60 +1118,25 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             UUID grantedProceedingId = UUID.randomUUID();
             UUID refusedProceedingId = UUID.randomUUID();
 
+            MeritsDecisionStatus grantedDecision = MeritsDecisionStatus.GRANTED;
+            String grantedReason = "refusal 1";
+            String grantedJustification = "justification 1";
+
+            MeritsDecisionStatus refusedDecision = MeritsDecisionStatus.REFUSED;
+            String refusedReason = "refusal 2";
+            String refusedJustification = "justification 2";
+
             // given
             CaseworkerEntity caseworker = caseworkerFactory.createDefault();
 
             // overwrite some fields of default assign decision request
-            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory
-                    .createDefault(requestBuilder ->
-                            requestBuilder
-                                    .userId(caseworker.getId())
-                                    .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
-                                    .applicationStatus(ApplicationStatus.SUBMITTED)
-                                    .proceedings(
-                                        List.of(
-                                            proceedingDetailsFactory.createDefault(
-                                            proceedingsBuilder ->
-                                                    proceedingsBuilder
-                                                        .proceedingId(grantedProceedingId)
-                                                        .meritsDecision(
-                                                            meritsDecisionDetailsFactory.createDefault(
-                                                            meritsDecisionBuilder ->
-                                                                    meritsDecisionBuilder
-                                                                        .decision(MeritsDecisionStatus.GRANTED)
-                                                                        .refusal(
-                                                                            refusalDetailsFactory.createDefault(
-                                                                            refusalBuilder ->
-                                                                                    refusalBuilder
-                                                                                        .reason("refusal 1")
-                                                                                        .justification("justification 1")
-                                                                            )
-                                                                        )
-                                                            )
-                                                        )
-                                            ),
-                                            proceedingDetailsFactory.createDefault(
-                                            proceedingsBuilder ->
-                                                       proceedingsBuilder
-                                                        .proceedingId(refusedProceedingId)
-                                                        .meritsDecision(
-                                                            meritsDecisionDetailsFactory.createDefault(
-                                                            meritsDecisionBuilder ->
-                                                                    meritsDecisionBuilder
-                                                                        .decision(MeritsDecisionStatus.REFUSED)
-                                                                        .refusal(
-                                                                            refusalDetailsFactory.createDefault(
-                                                                            refusalBuilder ->
-                                                                                    refusalBuilder
-                                                                                        .reason("refusal 2")
-                                                                                        .justification("justification 2")
-                                                                            )
-                                                                        )
-                                                            )
-                                                        )
-                                            )
-                                        )
-                             )
+            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
+                    requestBuilder
+                            .userId(caseworker.getId())
+                            .proceedings(List.of(
+                                    createProceedingDetails(grantedProceedingId, grantedDecision, grantedReason, grantedJustification),
+                                    createProceedingDetails(refusedProceedingId, refusedDecision, refusedReason, refusedJustification)
+                            ))
             );
 
             // expected saved application entity
@@ -1211,6 +1145,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                             builder
                                     .id(applicationId)
                                     .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+                                    .caseworker(caseworker)
                     );
 
             setSecurityContext(TestConstants.Roles.WRITER);
@@ -1242,27 +1177,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-            ArgumentCaptor<DecisionEntity> decisionCaptor = ArgumentCaptor.forClass(DecisionEntity.class);
-            verify(decisionRepository, times(1)).save(decisionCaptor.capture());
-            DecisionEntity savedDecision = decisionCaptor.getValue();
-            assertNotNull(savedDecision);
-            assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
-            assertSame(DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
-            assertSame(2, savedDecision.getMeritsDecisions().size());
-
-            Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
-            MeritsDecisionEntity merit = meritsDecisionIterator.next();
-            assertThat(merit.getDecision()).isNotNull();
-            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
-            assertEquals("refusal 1", merit.getReason());
-            assertEquals("justification 1", merit.getJustification());
-            assertEquals(grantedProceedingId, merit.getProceeding().getId());
-            merit = meritsDecisionIterator.next();
-            assertThat(merit.getDecision()).isNotNull();
-            assertEquals(MeritsDecisionStatus.REFUSED, merit.getDecision());
-            assertEquals("refusal 2", merit.getReason());
-            assertEquals("justification 2", merit.getJustification());
-            assertEquals(refusedProceedingId, merit.getProceeding().getId());
+            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity);
         }
 
         @Test
@@ -1273,37 +1188,13 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // given
             CaseworkerEntity caseworker = caseworkerFactory.createDefault();
 
-            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory
-                    .createDefault(requestBuilder ->
-                            requestBuilder
-                                    .userId(caseworker.getId())
-                                    .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
-                                    .applicationStatus(ApplicationStatus.SUBMITTED)
-                                    .proceedings(
-                                            List.of(
-                                                    proceedingDetailsFactory.createDefault(
-                                                            proceedingsBuilder ->
-                                                                    proceedingsBuilder
-                                                                            .proceedingId(proceedingId)
-                                                                            .meritsDecision(
-                                                                                    meritsDecisionDetailsFactory.createDefault(
-                                                                                            meritsDecisionBuilder ->
-                                                                                                    meritsDecisionBuilder
-                                                                                                            .decision(MeritsDecisionStatus.GRANTED)
-                                                                                                            .refusal(
-                                                                                                                    refusalDetailsFactory.createDefault(
-                                                                                                                            refusalBuilder ->
-                                                                                                                                    refusalBuilder
-                                                                                                                                            .reason("refusal update")
-                                                                                                                                            .justification("justification update")
-                                                                                                                    )
-                                                                                                            )
-                                                                                    )
-                                                                            )
-                                                    )
-                                            )
-                                    )
-                    );
+            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
+                    requestBuilder
+                            .userId(caseworker.getId())
+                            .proceedings(List.of(
+                                    createProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "refusal update", "justification update")
+                            ))
+            );
 
             // expected saved application entity
             ApplicationEntity expectedApplicationEntity = applicationEntityFactory
@@ -1311,32 +1202,15 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                             builder
                                     .id(applicationId)
                                     .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+                                    .caseworker(caseworker)
                     );
 
-            DecisionEntity currentSavedDecisionEntity = decisionEntityFactory.createDefault(
-                    builder -> builder
-                            .id(UUID.randomUUID())
-                            .applicationId(applicationId)
-                            .createdAt(Instant.now())
-                            .meritsDecisions(
-                                Set.of(
-                                        meritsDecisionsEntityFactory.createDefault(
-                                        meritsDecisionBuilder ->
-                                            meritsDecisionBuilder
-                                                .id(UUID.randomUUID())
-                                                .createdAt(Instant.now())
-                                                .proceeding(
-                                                        proceedingsEntityFactory.createDefault(
-                                                        proceedingsBuilder ->
-                                                            proceedingsBuilder.id(proceedingId)
-                                                        )
-                                                )
-                                                .decision(MeritsDecisionStatus.REFUSED)
-                                                .reason("initial reason")
-                                                .justification("initial justification")
-                                        )
-                                )
-                            )
+            DecisionEntity currentSavedDecisionEntity = createDecisionEntity(
+                    applicationId,
+                    proceedingId,
+                    MeritsDecisionStatus.REFUSED,
+                    "initial reason",
+                    "initial justification"
             );
 
             setSecurityContext(TestConstants.Roles.WRITER);
@@ -1361,20 +1235,8 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-            ArgumentCaptor<DecisionEntity> decisionCaptor = ArgumentCaptor.forClass(DecisionEntity.class);
-            verify(decisionRepository, times(1)).save(decisionCaptor.capture());
-            DecisionEntity savedDecision = decisionCaptor.getValue();
-            assertNotNull(savedDecision);
-            assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
-            assertSame(DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
-            assertSame(1, savedDecision.getMeritsDecisions().size());
 
-            Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
-            MeritsDecisionEntity merit = meritsDecisionIterator.next();
-            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
-            assertEquals(makeDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getReason(), merit.getReason());
-            assertEquals(makeDecisionRequest.getProceedings().getFirst().getMeritsDecision().getRefusal().getJustification(), merit.getJustification());
-            assertEquals(makeDecisionRequest.getProceedings().getFirst().getProceedingId(), merit.getProceeding().getId());
+            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity);
         }
 
         @Test
@@ -1386,57 +1248,14 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             // given
             CaseworkerEntity caseworker = caseworkerFactory.createDefault();
 
-            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory
-                    .createDefault(requestBuilder ->
-                            requestBuilder
-                                    .userId(caseworker.getId())
-                                    .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
-                                    .applicationStatus(ApplicationStatus.SUBMITTED)
-                                    .proceedings(
-                                            List.of(
-                                                    proceedingDetailsFactory.createDefault(
-                                                            proceedingsBuilder ->
-                                                                    proceedingsBuilder
-                                                                            .proceedingId(newProceedingId)
-                                                                            .meritsDecision(
-                                                                                    meritsDecisionDetailsFactory.createDefault(
-                                                                                            meritsDecisionBuilder ->
-                                                                                                    meritsDecisionBuilder
-                                                                                                            .decision(MeritsDecisionStatus.REFUSED)
-                                                                                                            .refusal(
-                                                                                                                    refusalDetailsFactory.createDefault(
-                                                                                                                            refusalBuilder ->
-                                                                                                                                    refusalBuilder
-                                                                                                                                            .reason("refusal new")
-                                                                                                                                            .justification("justification new")
-                                                                                                                    )
-                                                                                                            )
-                                                                                    )
-                                                                            )
-                                                    ),
-                                                    proceedingDetailsFactory.createDefault(
-                                                            proceedingsBuilder ->
-                                                                    proceedingsBuilder
-                                                                            .proceedingId(currentProceedingId)
-                                                                            .meritsDecision(
-                                                                                    meritsDecisionDetailsFactory.createDefault(
-                                                                                            meritsDecisionBuilder ->
-                                                                                                    meritsDecisionBuilder
-                                                                                                            .decision(MeritsDecisionStatus.GRANTED)
-                                                                                                            .refusal(
-                                                                                                                    refusalDetailsFactory.createDefault(
-                                                                                                                            refusalBuilder ->
-                                                                                                                                    refusalBuilder
-                                                                                                                                            .reason("refusal update")
-                                                                                                                                            .justification("justification update")
-                                                                                                                    )
-                                                                                                            )
-                                                                                    )
-                                                                            )
-                                                    )
-                                            )
-                                    )
-                    );
+            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
+                    requestBuilder
+                            .userId(caseworker.getId())
+                            .proceedings(List.of(
+                                    createProceedingDetails(newProceedingId, MeritsDecisionStatus.REFUSED, "refusal new", "justification new"),
+                                    createProceedingDetails(currentProceedingId, MeritsDecisionStatus.GRANTED, "refusal update", "justification update")
+                            ))
+            );
 
             // expected saved application entity
             ApplicationEntity expectedApplicationEntity = applicationEntityFactory
@@ -1444,33 +1263,15 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                             builder
                                     .id(applicationId)
                                     .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+                                    .caseworker(caseworker)
                     );
 
-            DecisionEntity currentSavedDecisionEntity = decisionEntityFactory.createDefault(
-                    builder -> builder
-                            .id(UUID.randomUUID())
-                            .applicationId(applicationId)
-                            .createdAt(Instant.now())
-                            .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
-                            .meritsDecisions(
-                                    Set.of(
-                                            meritsDecisionsEntityFactory.createDefault(
-                                                    meritsDecisionBuilder ->
-                                                            meritsDecisionBuilder
-                                                                    .id(UUID.randomUUID())
-                                                                    .createdAt(Instant.now())
-                                                                    .proceeding(
-                                                                            proceedingsEntityFactory.createDefault(
-                                                                                    proceedingsBuilder ->
-                                                                                            proceedingsBuilder.id(currentProceedingId)
-                                                                            )
-                                                                    )
-                                                                    .decision(MeritsDecisionStatus.REFUSED)
-                                                                    .reason("current reason")
-                                                                    .justification("current justification")
-                                            )
-                                    )
-                            )
+            DecisionEntity currentSavedDecisionEntity = createDecisionEntity(
+                    applicationId,
+                    currentProceedingId,
+                    MeritsDecisionStatus.REFUSED,
+                    "current reason",
+                    "current justification"
             );
 
             ProceedingEntity currentProceedingEntity = proceedingsEntityFactory
@@ -1502,27 +1303,8 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-            ArgumentCaptor<DecisionEntity> decisionCaptor = ArgumentCaptor.forClass(DecisionEntity.class);
-            verify(decisionRepository, times(1)).save(decisionCaptor.capture());
-            DecisionEntity savedDecision = decisionCaptor.getValue();
-            assertNotNull(savedDecision);
-            assertThat(savedDecision.getApplicationId()).isEqualTo(expectedApplicationEntity.getId());
-            assertSame(DecisionStatus.PARTIALLY_GRANTED, savedDecision.getOverallDecision());
-            assertSame(2, savedDecision.getMeritsDecisions().size());
-            Iterator<MeritsDecisionEntity> meritsDecisionIterator = savedDecision.getMeritsDecisions().iterator();
-            MeritsDecisionEntity merit = meritsDecisionIterator.next();
-            assertThat(merit.getDecision()).isNotNull();
-            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
-            assertEquals("refusal update", merit.getReason());
-            assertEquals("justification update", merit.getJustification());
-            assertEquals(currentProceedingId, merit.getProceeding().getId());
-            merit = meritsDecisionIterator.next();
-            assertThat(merit.getDecision()).isNotNull();
-            assertEquals(MeritsDecisionStatus.REFUSED, merit.getDecision());
-            assertEquals("refusal new", merit.getReason());
-            assertEquals("justification new", merit.getJustification());
-            assertEquals(newProceedingId, merit.getProceeding().getId());
 
+            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity);
         }
 
         @Test
@@ -1535,28 +1317,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .createDefault(requestBuilder ->
                             requestBuilder
                                     .userId(caseworkerId)
-                                    .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
-                                    .applicationStatus(ApplicationStatus.SUBMITTED)
-                                    .proceedings(List.of(proceedingDetailsFactory.createDefault(
-                                            proceedingsBuilder ->
-                                                    proceedingsBuilder
-                                                            .proceedingId(UUID.randomUUID())
-                                                            .meritsDecision(
-                                                                    meritsDecisionDetailsFactory.createDefault(
-                                                                            meritsDecisionBuilder ->
-                                                                                    meritsDecisionBuilder
-                                                                                            .decision(MeritsDecisionStatus.GRANTED)
-                                                                                            .refusal(
-                                                                                                    refusalDetailsFactory.createDefault(
-                                                                                                            refusalBuilder ->
-                                                                                                                    refusalBuilder
-                                                                                                                            .reason("refusal 1")
-                                                                                                                            .justification("justification 1")
-                                                                                                    )
-                                                                                            )
-                                                                    )
-                                                            )
-                                    )))
                     );
 
             // expected saved application entity
@@ -1583,34 +1343,9 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         @Test
         void givenApplication_whenAssignDecisionAndNoApplicationExists_thenExceptionIsThrown() {
             UUID applicationId = UUID.randomUUID();
+
             // given
-            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory
-                    .createDefault(requestBuilder ->
-                            requestBuilder
-                                    .userId(UUID.randomUUID())
-                                    .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
-                                    .applicationStatus(ApplicationStatus.SUBMITTED)
-                                    .proceedings(List.of(proceedingDetailsFactory.createDefault(
-                                            proceedingsBuilder ->
-                                                    proceedingsBuilder
-                                                            .proceedingId(UUID.randomUUID())
-                                                            .meritsDecision(
-                                                                    meritsDecisionDetailsFactory.createDefault(
-                                                                            meritsDecisionBuilder ->
-                                                                                    meritsDecisionBuilder
-                                                                                            .decision(MeritsDecisionStatus.GRANTED)
-                                                                                            .refusal(
-                                                                                                    refusalDetailsFactory.createDefault(
-                                                                                                            refusalBuilder ->
-                                                                                                                    refusalBuilder
-                                                                                                                            .reason("refusal 1")
-                                                                                                                            .justification("justification 1")
-                                                                                                    )
-                                                                                            )
-                                                                    )
-                                                            )
-                                    )))
-                    );
+            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault();
 
             // expected saved application entity
             ApplicationEntity expectedApplicationEntity = applicationEntityFactory
@@ -1628,9 +1363,114 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             assertThat(thrown)
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessage("No application found with id: "+applicationId.toString());
-
         }
 
+        private DecisionEntity createDecisionEntity(UUID applicationId, UUID proceedingId, MeritsDecisionStatus decision, String reason, String justification) {
+            return decisionEntityFactory.createDefault(
+                    builder -> builder
+                            .id(UUID.randomUUID())
+                            .applicationId(applicationId)
+                            .createdAt(Instant.now())
+                            .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                            .meritsDecisions(
+                                    Set.of(
+                                            meritsDecisionsEntityFactory.createDefault(
+                                                    meritsDecisionBuilder ->
+                                                            meritsDecisionBuilder
+                                                                    .id(UUID.randomUUID())
+                                                                    .createdAt(Instant.now())
+                                                                    .proceeding(
+                                                                            proceedingsEntityFactory.createDefault(
+                                                                                    proceedingsBuilder ->
+                                                                                            proceedingsBuilder.id(proceedingId)
+                                                                            )
+                                                                    )
+                                                                    .decision(decision)
+                                                                    .reason(reason)
+                                                                    .justification(justification)
+                                            )
+                                    )
+                            )
+            );
+        }
+
+        private ProceedingDetails createProceedingDetails(UUID proceedingId, MeritsDecisionStatus decision, String reason, String justification) {
+            return proceedingDetailsFactory.createDefault(proceedingsBuilder ->
+                    proceedingsBuilder
+                            .proceedingId(proceedingId)
+                            .meritsDecision(
+                                    meritsDecisionDetailsFactory.createDefault(meritsDecisionBuilder ->
+                                            meritsDecisionBuilder
+                                                    .decision(decision)
+                                                    .refusal(
+                                                            refusalDetailsFactory.createDefault(refusalBuilder ->
+                                                                    refusalBuilder
+                                                                            .reason(reason)
+                                                                            .justification(justification)
+                                                            )
+                                                    )
+                                    )
+                            )
+            );
+        }
+
+        private void verifyDecisionSavedCorrectly(MakeDecisionRequest expectedMakeDecisionRequest, ApplicationEntity expectedApplicationEntity) {
+            ArgumentCaptor<DecisionEntity> decisionCaptor = ArgumentCaptor.forClass(DecisionEntity.class);
+            verify(decisionRepository, times(1)).save(decisionCaptor.capture());
+            DecisionEntity savedDecision = decisionCaptor.getValue();
+
+            MakeDecisionRequest actual = mapToMakeDecisionRequest(savedDecision, expectedApplicationEntity);
+            assertThat(actual)
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .isEqualTo(expectedMakeDecisionRequest);
+
+            assertThat(savedDecision.getModifiedAt()).isNotNull();
+            assertThat(savedDecision.getMeritsDecisions())
+                    .allSatisfy(merits -> {
+                        assertThat(merits.getModifiedAt()).isNotNull();
+                    });
+        }
+
+        // DecisionEntity -> MakeDecisionRequest
+        private static MakeDecisionRequest mapToMakeDecisionRequest(DecisionEntity decisionEntity, ApplicationEntity applicationEntity) {
+            if (decisionEntity == null) return null;
+            return MakeDecisionRequest.builder()
+                    .applicationStatus(applicationEntity.getStatus())
+                    .overallDecision(decisionEntity.getOverallDecision())
+                    .userId(applicationEntity.getCaseworker().getId())
+                    .proceedings(decisionEntity.getMeritsDecisions().stream()
+                            .map(MakeDecisionForApplication::mapToProceedingDetails)
+                            .toList())
+                    .build();
+        }
+
+        // MeritsDecisionEntity -> ProceedingDetails
+        private static ProceedingDetails mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
+            if (meritsDecisionEntity == null) return null;
+            return ProceedingDetails.builder()
+                    .proceedingId(meritsDecisionEntity.getProceeding().getId())
+                    .meritsDecision(mapToMeritsDecisionDetails(meritsDecisionEntity))
+                    .build();
+        }
+
+        // MeritsDecisionEntity -> MeritsDecisionDetails
+        private static MeritsDecisionDetails mapToMeritsDecisionDetails(MeritsDecisionEntity entity) {
+            if (entity == null) return null;
+            return MeritsDecisionDetails.builder()
+                    .decision(entity.getDecision())
+                    .refusal(mapToRefusalDetails(entity))
+                    .build();
+        }
+
+        // MeritsDecisionEntity -> RefusalDetails
+        private static RefusalDetails mapToRefusalDetails(MeritsDecisionEntity entity) {
+            if (entity == null) return null;
+            return RefusalDetails.builder()
+                    .reason(entity.getReason())
+                    .justification(entity.getJustification())
+                    .build();
+        }
     }
 
     // <editor-fold desc="Shared asserts">

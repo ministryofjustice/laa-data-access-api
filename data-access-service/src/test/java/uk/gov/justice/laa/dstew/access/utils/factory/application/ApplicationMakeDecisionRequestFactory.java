@@ -26,8 +26,8 @@ public class ApplicationMakeDecisionRequestFactory extends BaseFactory<MakeDecis
     @Override
     public MakeDecisionRequest createDefault() {
         return MakeDecisionRequest.builder()
-                .applicationStatus(ApplicationStatus.IN_PROGRESS)
-                .overallDecision(DecisionStatus.REFUSED)
+                .applicationStatus(ApplicationStatus.SUBMITTED)
+                .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                 .userId(UUID.randomUUID())
                 .proceedings(List.of(proceedingDetailsFactory.createDefault()))
                 .build();
