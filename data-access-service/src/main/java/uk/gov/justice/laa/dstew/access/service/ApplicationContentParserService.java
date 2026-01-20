@@ -54,8 +54,8 @@ public class ApplicationContentParserService {
     boolean usedDelegatedFunction =
         applicationContent.getProceedings().stream()
             .filter(Objects::nonNull)
-            .filter(proceeding -> null != proceeding.useDelegatedFunctions())
-            .anyMatch(ProceedingDetails::useDelegatedFunctions);
+            .filter(proceeding -> null != proceeding.usedDelegatedFunctions())
+            .anyMatch(ProceedingDetails::usedDelegatedFunctions);
     return ParsedAppContentDetails
         .builder()
         .applyApplicationId(applicationContent.getId())

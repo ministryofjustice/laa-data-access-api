@@ -29,7 +29,7 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
         .categoryOfLaw(CategoryOfLaw.FAMILY)
         .matterType(MatterType.SCA)
         .leadProceeding(true)
-        .useDelegatedFunctions(true)
+        .usedDelegatedFunctions(true)
         .build();
 
     var submitted_at = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();

@@ -302,11 +302,11 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
       private static ProceedingJsonObject getProceedingJsonObject(Boolean useDelegatedFunctions, boolean leadProceeding) {
         return ProceedingJsonObject.builder().id("f6e2c4e1-5d32-4c3e-9f0a-1e2b3c4d5e6f").leadProceeding(leadProceeding)
             .categoryOfLaw(CategoryOfLaw.FAMILY.name()).matterType(MatterType.SCA.name())
-            .useDelegatedFunctions(useDelegatedFunctions).build();
+            .usedDelegatedFunctions(useDelegatedFunctions).build();
       }
 
       private Stream<Arguments> provideProceedingsForMapping() {
-        //App Content Map, expected useDelegatedFunctions
+        //App Content Map, expected usedDelegatedFunctions
         return Stream.of(Arguments.of(applicationCreateRequestFactory.createDefault(
                 builder -> builder.applicationContent(getAppContentMap(List.of(getProceedingJsonObject(true, true)),
                     UUID.randomUUID().toString()))), true),
@@ -336,7 +336,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
       assertThat(actualApplicationEntity.getApplyApplicationId()).isEqualTo(applicationContentDetails.getId());
       assertThat(actualApplicationEntity.isUseDelegatedFunctions()).isEqualTo(
       applicationContentDetails.getProceedings().get(0)
-              .useDelegatedFunctions());
+              .usedDelegatedFunctions());
       assertThat(actualApplicationEntity.getApplicationContent())
           .usingRecursiveComparison()
           .ignoringCollectionOrder()
