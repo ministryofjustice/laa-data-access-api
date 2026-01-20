@@ -32,6 +32,7 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
+import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
@@ -51,6 +52,7 @@ public class ApplicationService {
   private final ApplicationContentParserService applicationContentParser;
   private final DecisionRepository decisionRepository;
   private final ProceedingRepository proceedingRepository;
+  private final MeritsDecisionRepository meritsDecisionRepository;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -68,7 +70,8 @@ public class ApplicationService {
                             final DecisionRepository decisionRepository,
                             final DomainEventService domainEventService,
                             final ApplicationContentParserService applicationContentParserService,
-                            final ProceedingRepository proceedingRepository) {
+                            final ProceedingRepository proceedingRepository,
+                            final MeritsDecisionRepository meritsDecisionRepository) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
@@ -79,6 +82,7 @@ public class ApplicationService {
     this.domainEventService = domainEventService;
     this.decisionRepository = decisionRepository;
     this.proceedingRepository = proceedingRepository;
+    this.meritsDecisionRepository = meritsDecisionRepository;
   }
 
   /**
@@ -288,7 +292,7 @@ public class ApplicationService {
    * @param request DTO with update fields
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
+  public void assignDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     checkIfCaseworkerExists(request.getUserId());
 
@@ -308,25 +312,21 @@ public class ApplicationService {
     Set<MeritsDecisionEntity> merits = new LinkedHashSet<>(decision.getMeritsDecisions());
 
     request.getProceedings().forEach(proceeding -> {
+      MeritsDecisionEntity meritDecisionEntity = decision.getMeritsDecisions().stream()
+              .filter(m -> m.getProceeding().getId().equals(proceeding.getProceedingId()))
+              .findFirst()
+              .orElseGet(() -> {
+                ProceedingEntity proceedingEntity = proceedingRepository.findById(proceeding.getProceedingId()).orElseThrow();
+                MeritsDecisionEntity newEntity = new MeritsDecisionEntity();
+                newEntity.setProceeding(proceedingEntity);
+                return newEntity;
+              });
 
-      Optional<MeritsDecisionEntity> meritDecision = decision.getMeritsDecisions().stream()
-                                  .filter(m -> m.getProceeding().getId().compareTo(proceeding.getProceedingId()) == 0)
-                                  .findFirst();
-
-      MeritsDecisionEntity meritDecisionEntity;
-
-      if (meritDecision.isPresent()) {
-        meritDecisionEntity = meritDecision.get();
-        meritDecisionEntity.setModifiedAt(Instant.now());
-      } else {
-        ProceedingEntity proceedingEntity = proceedingRepository.findById(proceeding.getProceedingId()).orElseThrow();
-        meritDecisionEntity = MeritsDecisionEntity.builder()
-                .proceeding(proceedingEntity).build();
-      }
-
+      meritDecisionEntity.setModifiedAt(Instant.now());
       meritDecisionEntity.setDecision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()));
       meritDecisionEntity.setReason(proceeding.getMeritsDecision().getRefusal().getReason());
       meritDecisionEntity.setJustification(proceeding.getMeritsDecision().getRefusal().getJustification());
+      meritsDecisionRepository.saveAndFlush(meritDecisionEntity);
       merits.add(meritDecisionEntity);
 
     });
@@ -334,6 +334,6 @@ public class ApplicationService {
     decision.setMeritsDecisions(merits);
     decision.setOverallDecision(DecisionStatus.valueOf(request.getOverallDecision().getValue()));
     decision.setModifiedAt(Instant.now());
-    decisionRepository.save(decision);
+    decisionRepository.saveAndFlush(decision);
   }
 }

@@ -42,7 +42,7 @@ public class MeritsDecisionEntity implements AuditableEntity {
   @Column(columnDefinition = "UUID")
   private UUID id;
 
-  @OneToOne(optional = false)
+  @OneToOne()
   @JoinColumn(name = "proceeding_id", nullable = false)
   private ProceedingEntity proceeding;
 
