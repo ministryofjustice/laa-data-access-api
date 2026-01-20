@@ -234,14 +234,14 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
       return Stream.of(
           Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder
                   .applicationContent(
-                      applicationContentFactory.createDefaultAsMap(detailsBuilder -> detailsBuilder.proceedings(null)))),
+                      applicationContentFactory.createDefaultAsMapWithApplicationContent(detailsBuilder -> detailsBuilder.proceedings(null)))),
               new ValidationException(List.of(
                   "No proceedings found in application content"
               ))
           ),
           Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder
                   .applicationContent(
-                      applicationContentFactory.createDefaultAsMap(detailsBuilder ->
+                      applicationContentFactory.createDefaultAsMapWithApplicationContent(detailsBuilder ->
                           detailsBuilder.proceedings(List.of(
                               proceedingDetailsFactory.createDefault(proceedingDetailsBuilder ->
                                   proceedingDetailsBuilder.leadProceeding(false))
@@ -295,7 +295,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         } catch (JsonProcessingException e) {
           throw new RuntimeException(e);
         }
-        return appContentMap;
+        return Map.of("applicationContent", appContentMap);
       }
 
 
@@ -346,7 +346,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     }
 
     private ApplicationContentDetails parseApplicationContentDetails(Map<String, Object> applicationContentMap) {
-      return objectMapper.convertValue(applicationContentMap, ApplicationContentDetails.class);
+      return objectMapper.convertValue(applicationContentMap.get("applicationContent"), ApplicationContentDetails.class);
     }
 
     private void verifyThatCreateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled)

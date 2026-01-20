@@ -35,15 +35,17 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
     var submitted_at = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();
     ApplicationContentDetails applicationContentDetails = ApplicationContentDetails.builder()
         .id(UUID.randomUUID())
-        .autoGrant(true)
         .submittedAt(submitted_at)
         .proceedings(List.of(proceedingDetails))
         .build();
     ObjectMapper objectMapper = new ObjectMapper();
     objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     objectMapper.registerModule(new JavaTimeModule());
-    Map<String, Object> applicationContent = objectMapper.convertValue(applicationContentDetails, Map.class);
-    applicationContent.put("test", "value");
+    Map<String, Object> applicationContentDetailsMap = objectMapper.convertValue(applicationContentDetails, Map.class);
+    Map<String, Object> applicationContent = Map.of(
+        "applicationContent", applicationContentDetailsMap,
+        "test", "value"
+    );
     return ApplicationCreateRequest.builder()
         .status(ApplicationStatus.IN_PROGRESS)
         .laaReference("TestReference")

@@ -38,13 +38,14 @@ public class ApplicationContentFactory
   }
 
 
-  public Map<String, Object> createDefaultAsMap() {
-    return objectMapper.convertValue(this.createDefault(), Map.class);
+  public Map<String, Object> createDefaultAsMapWithApplicationContent() {
+    Map innerAppContentMap = objectMapper.convertValue(this.createDefault(), Map.class);
+    return Map.of("applicationContent", innerAppContentMap);
   }
 
-  public Map<String, Object> createDefaultAsMap(
+  public Map<String, Object> createDefaultAsMapWithApplicationContent(
       Consumer<ApplicationContentDetails.ApplicationContentDetailsBuilder> customiser) {
-    return objectMapper.convertValue(this.createDefault(customiser), Map.class);
+    return Map.of("applicationContent", objectMapper.convertValue(this.createDefault(customiser), Map.class));
   }
 
 
