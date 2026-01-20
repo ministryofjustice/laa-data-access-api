@@ -1894,7 +1894,7 @@ public class ApplicationTest extends BaseIntegrationTest {
     class ApplicationMakeDecision {
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenAssignDecisionRequestWithNewContent_whenAssignDecisionApplication_thenReturnOK_andUpdate()
+        public void givenMakeDecisionRequestWithNewContent_whenAssignDecisionApplication_thenReturnOK_andUpdate()
                                 throws Exception {
             // given
             ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
@@ -1908,7 +1908,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                             .applicationId(applicationEntity.getId());}
             );
 
-            AssignDecisionRequest applicationRequest = assignDecisionRequestFactory.create(builder -> {
+            MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
                 builder
                     .userId(CaseworkerJohnDoe.getId())
                     .applicationStatus(ApplicationStatus.SUBMITTED)
@@ -1932,7 +1932,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             });
 
             // when
-            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, applicationRequest, applicationEntity.getId());
+            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
 
             // then
             assertSecurityHeaders(result);
@@ -1977,7 +1977,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                             .applicationId(applicationEntity.getId());}
             );
 
-            AssignDecisionRequest applicationRequest = assignDecisionRequestFactory.create(builder -> {
+            MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
                 builder
                         .userId(CaseworkerJohnDoe.getId())
                         .applicationStatus(ApplicationStatus.SUBMITTED)
@@ -2016,7 +2016,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             });
 
             // when
-            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, applicationRequest, applicationEntity.getId());
+            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
 
             // then
             assertSecurityHeaders(result);
@@ -2049,7 +2049,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenAssignDecisionRequestWithExistingContent_whenAssignDecisionApplication_thenReturnOK_andUpdate()
+        public void givenMakeDecisionRequestWithExistingContent_whenAssignDecisionApplication_thenReturnOK_andUpdate()
                 throws Exception {
             // given
             ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
@@ -2063,7 +2063,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                             .applicationId(applicationEntity.getId());}
             );
 
-            AssignDecisionRequest currentApplicationRequest = assignDecisionRequestFactory.create(builder -> {
+            MakeDecisionRequest currentApplicationRequest = makeDecisionRequestFactory.create(builder -> {
                 builder
                         .userId(CaseworkerJohnDoe.getId())
                         .applicationStatus(ApplicationStatus.SUBMITTED)
@@ -2086,7 +2086,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                         ));
             });
 
-            AssignDecisionRequest newApplicationRequest = assignDecisionRequestFactory.create(builder -> {
+            MakeDecisionRequest newApplicationRequest = makeDecisionRequestFactory.create(builder -> {
                 builder
                         .userId(CaseworkerJohnDoe.getId())
                         .applicationStatus(ApplicationStatus.SUBMITTED)
@@ -2137,7 +2137,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenAssignDecisionRequestWithExistingContentAndNewContent_whenAssignDecisionApplication_thenReturnOK_andUpdate()
+        public void givenMakeDecisionRequestWithExistingContentAndNewContent_whenAssignDecisionApplication_thenReturnOK_andUpdate()
                 throws Exception {
             // given
             ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
@@ -2171,7 +2171,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                     }
             );
 
-            AssignDecisionRequest assignDecisionRequest = assignDecisionRequestFactory.create(builder -> {
+            MakeDecisionRequest assignDecisionRequest = makeDecisionRequestFactory.create(builder -> {
                 builder
                         .userId(CaseworkerJohnDoe.getId())
                         .applicationStatus(ApplicationStatus.SUBMITTED)
@@ -2216,11 +2216,11 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenAssignDecisionRequestWithNewContent_whenNoApplication_thenReturnNotFoundAndMessage()
+        public void givenMakeDecisionRequestWithNewContent_whenNoApplication_thenReturnNotFoundAndMessage()
                 throws Exception {
             // given
             UUID applicationId = UUID.randomUUID();
-            AssignDecisionRequest applicationRequest = assignDecisionRequestFactory.create(builder -> {
+            MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
                 builder
                         .userId(CaseworkerJohnDoe.getId())
                         .applicationStatus(ApplicationStatus.SUBMITTED)
@@ -2244,7 +2244,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             });
 
             // when
-            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, applicationRequest, applicationId);
+            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationId);
 
             // then
             assertSecurityHeaders(result);
@@ -2259,7 +2259,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenAssignDecisionRequestWithNewContent_whenNoCaseworker_thenReturnNotFoundAndMessage()
+        public void givenMakeDecisionRequestWithNewContent_whenNoCaseworker_thenReturnNotFoundAndMessage()
                 throws Exception {
             // given
             UUID caseworkerId = UUID.randomUUID();
@@ -2270,7 +2270,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                 )));
             });
 
-            AssignDecisionRequest applicationRequest = assignDecisionRequestFactory.create(builder -> {
+            MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
                 builder
                         .userId(caseworkerId)
                         .applicationStatus(ApplicationStatus.SUBMITTED)
@@ -2294,7 +2294,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             });
 
             // when
-            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, applicationRequest, applicationEntity.getId());
+            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
 
             // then
             assertSecurityHeaders(result);

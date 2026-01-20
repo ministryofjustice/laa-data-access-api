@@ -292,7 +292,7 @@ public class ApplicationService {
    * @param request DTO with update fields
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
-  public void assignDecision(final UUID applicationId, final MakeDecisionRequest request) {
+  public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     checkIfCaseworkerExists(request.getUserId());
 
