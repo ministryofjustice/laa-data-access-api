@@ -1891,7 +1891,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-    class AssignDecision {
+    class ApplicationMakeDecision {
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
         public void givenAssignDecisionRequestWithNewContent_whenAssignDecisionApplication_thenReturnOK_andUpdate()
@@ -2171,41 +2171,14 @@ public class ApplicationTest extends BaseIntegrationTest {
                     }
             );
 
-
             AssignDecisionRequest assignDecisionRequest = assignDecisionRequestFactory.create(builder -> {
                 builder
                         .userId(CaseworkerJohnDoe.getId())
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.REFUSED)
                         .proceedings(List.of(
-                                ProceedingDetails.builder()
-                                        .proceedingId(proceedingEntityTwo.getId())
-                                        .meritsDecision(
-                                                MeritsDecisionDetails.builder()
-                                                        .decision(MeritsDecisionStatus.REFUSED)
-                                                        .refusal(
-                                                                RefusalDetails.builder()
-                                                                        .justification("justification new")
-                                                                        .reason("reason new")
-                                                                        .build()
-                                                        )
-                                                        .build()
-                                        )
-                                        .build(),
-                                ProceedingDetails.builder()
-                                        .proceedingId(proceedingEntityOne.getId())
-                                        .meritsDecision(
-                                                MeritsDecisionDetails.builder()
-                                                        .decision(MeritsDecisionStatus.GRANTED)
-                                                        .refusal(
-                                                                RefusalDetails.builder()
-                                                                        .justification("justification update")
-                                                                        .reason("reason update")
-                                                                        .build()
-                                                        )
-                                                        .build()
-                                        )
-                                        .build()
+                                createProceedingDetails(proceedingEntityTwo.getId(), MeritsDecisionStatus.REFUSED, "justification new", "reason new"),
+                                createProceedingDetails(proceedingEntityOne.getId(), MeritsDecisionStatus.GRANTED, "justification update", "reason update")
                         ));
             });
 
@@ -2224,19 +2197,21 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertThat(actualDecision.getModifiedAt()).isNotNull();
             assertEquals(2, actualDecision.getMeritsDecisions().size());
 
-            Iterator<MeritsDecisionEntity> meritsDecisionIterator = actualDecision.getMeritsDecisions().iterator();
-            MeritsDecisionEntity merit = meritsDecisionIterator.next();
+            List<MeritsDecisionEntity> meritsDecisions = new ArrayList<>(actualDecision.getMeritsDecisions());
+
+            MeritsDecisionEntity merit = meritsDecisions.get(0);
             Assertions.assertThat(merit.getDecision()).isNotNull();
             assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
             assertEquals("reason update", merit.getReason());
             assertEquals("justification update", merit.getJustification());
             assertEquals(merit.getProceeding().getId(), proceedingEntityOne.getId());
-            /* merit = meritsDecisionIterator.next();
+
+            merit = meritsDecisions.get(1);
             Assertions.assertThat(merit.getDecision()).isNotNull();
-            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
-            assertEquals("reason update", merit.getReason());
-            assertEquals("justification update", merit.getJustification());
-            assertEquals(merit.getProceeding().getId(), proceedingEntity.getId()); */
+            assertEquals(MeritsDecisionStatus.REFUSED, merit.getDecision());
+            assertEquals("reason new", merit.getReason());
+            assertEquals("justification new", merit.getJustification());
+            assertEquals(merit.getProceeding().getId(), proceedingEntityTwo.getId());
         }
 
         @Test
@@ -2332,7 +2307,22 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         }
 
-
+        private ProceedingDetails createProceedingDetails(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
+            return ProceedingDetails.builder()
+                    .proceedingId(proceedingId)
+                    .meritsDecision(
+                            MeritsDecisionDetails.builder()
+                                    .decision(meritsDecisionStatus)
+                                    .refusal(
+                                            RefusalDetails.builder()
+                                                    .justification(justification)
+                                                    .reason(reason)
+                                                    .build()
+                                    )
+                                    .build()
+                    )
+                    .build();
+        }
     }
 
     // <editor-fold desc="Shared asserts">
