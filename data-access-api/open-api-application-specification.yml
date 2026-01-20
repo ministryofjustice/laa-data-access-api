@@ -279,6 +279,8 @@ components:
       enum:
         - IN_PROGRESS
         - SUBMITTED
+        - GRANTED
+        - REFUSED
       description: Application statuses
     domainEventType:
       type: string
