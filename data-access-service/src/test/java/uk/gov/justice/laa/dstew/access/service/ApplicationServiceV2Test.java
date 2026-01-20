@@ -1057,7 +1057,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     }
 
     @Nested
-    class AssignDecisionToApplication {
+    class MakeDecisionForApplication {
         @Test
         void givenApplication_whenAssignDecisionAndNoDecisionExists_thenAssignDecisionAndSave() {
             UUID applicationId = UUID.randomUUID();

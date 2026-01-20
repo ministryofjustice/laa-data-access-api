@@ -32,6 +32,9 @@ public class AccessAppTests {
   @MockitoBean
   private ProceedingRepository proceedingRepository;
 
+  @MockitoBean
+  private MeritsDecisionRepository meritsDecisionRepository;
+
   @Test
   void contextLoads() {
   }

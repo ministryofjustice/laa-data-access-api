@@ -1914,20 +1914,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                     .applicationStatus(ApplicationStatus.SUBMITTED)
                     .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                     .proceedings(List.of(
-                           ProceedingDetails.builder()
-                           .proceedingId(proceedingEntity.getId())
-                           .meritsDecision(
-                                MeritsDecisionDetails.builder()
-                                .decision(MeritsDecisionStatus.REFUSED)
-                                .refusal(
-                                    RefusalDetails.builder()
-                                    .justification("justification")
-                                    .reason("reason")
-                                    .build()
-                                )
-                                .build()
-                           )
-                           .build()
+                           createProceedingDetails(proceedingEntity.getId(), MeritsDecisionStatus.REFUSED, "justification", "reason")
                     ));
             });
 
@@ -1983,35 +1970,8 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                         .proceedings(List.of(
-                                ProceedingDetails.builder()
-                                        .proceedingId(grantedProceedingEntity.getId())
-                                        .meritsDecision(
-                                                MeritsDecisionDetails.builder()
-                                                        .decision(MeritsDecisionStatus.GRANTED)
-                                                        .refusal(
-                                                                RefusalDetails.builder()
-                                                                        .justification("justification 1")
-                                                                        .reason("reason 1")
-                                                                        .build()
-                                                        )
-                                                        .build()
-                                        )
-                                        .build(),
-                                ProceedingDetails.builder()
-                                        .proceedingId(refusedProceedingEntity.getId())
-                                        .meritsDecision(
-                                                MeritsDecisionDetails.builder()
-                                                        .decision(MeritsDecisionStatus.REFUSED)
-                                                        .refusal(
-                                                                RefusalDetails.builder()
-                                                                        .justification("justification 2")
-                                                                        .reason("reason 2")
-                                                                        .build()
-                                                        )
-                                                        .build()
-                                        )
-                                        .build()
-
+                            createProceedingDetails(grantedProceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1"),
+                            createProceedingDetails(refusedProceedingEntity.getId(), MeritsDecisionStatus.REFUSED, "justification 2", "reason 2")
                         ));
             });
 
@@ -2069,20 +2029,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                         .proceedings(List.of(
-                                ProceedingDetails.builder()
-                                        .proceedingId(proceedingEntity.getId())
-                                        .meritsDecision(
-                                                MeritsDecisionDetails.builder()
-                                                        .decision(MeritsDecisionStatus.REFUSED)
-                                                        .refusal(
-                                                                RefusalDetails.builder()
-                                                                        .justification("justification current")
-                                                                        .reason("reason current")
-                                                                        .build()
-                                                        )
-                                                        .build()
-                                        )
-                                        .build()
+                            createProceedingDetails(proceedingEntity.getId(), MeritsDecisionStatus.REFUSED, "justification current", "reason current")
                         ));
             });
 
@@ -2092,20 +2039,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                         .proceedings(List.of(
-                                ProceedingDetails.builder()
-                                        .proceedingId(proceedingEntity.getId())
-                                        .meritsDecision(
-                                                MeritsDecisionDetails.builder()
-                                                        .decision(MeritsDecisionStatus.GRANTED)
-                                                        .refusal(
-                                                                RefusalDetails.builder()
-                                                                        .justification("justification update")
-                                                                        .reason("reason update")
-                                                                        .build()
-                                                        )
-                                                        .build()
-                                        )
-                                        .build()
+                            createProceedingDetails(proceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification update", "reason update")
                         ));
             });
 
@@ -2197,21 +2131,22 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertThat(actualDecision.getModifiedAt()).isNotNull();
             assertEquals(2, actualDecision.getMeritsDecisions().size());
 
-            List<MeritsDecisionEntity> meritsDecisions = new ArrayList<>(actualDecision.getMeritsDecisions());
+            Iterator<MeritsDecisionEntity> meritsDecisions = actualDecision.getMeritsDecisions().iterator();
 
-            MeritsDecisionEntity merit = meritsDecisions.get(0);
+            MeritsDecisionEntity merit = meritsDecisions.next();
             Assertions.assertThat(merit.getDecision()).isNotNull();
             assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
             assertEquals("reason update", merit.getReason());
             assertEquals("justification update", merit.getJustification());
             assertEquals(merit.getProceeding().getId(), proceedingEntityOne.getId());
 
-            merit = meritsDecisions.get(1);
+            merit = meritsDecisions.next();
             Assertions.assertThat(merit.getDecision()).isNotNull();
             assertEquals(MeritsDecisionStatus.REFUSED, merit.getDecision());
             assertEquals("reason new", merit.getReason());
             assertEquals("justification new", merit.getJustification());
             assertEquals(merit.getProceeding().getId(), proceedingEntityTwo.getId());
+
         }
 
         @Test

@@ -326,7 +326,7 @@ public class ApplicationService {
       meritDecisionEntity.setDecision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()));
       meritDecisionEntity.setReason(proceeding.getMeritsDecision().getRefusal().getReason());
       meritDecisionEntity.setJustification(proceeding.getMeritsDecision().getRefusal().getJustification());
-      meritsDecisionRepository.saveAndFlush(meritDecisionEntity);
+      meritsDecisionRepository.save(meritDecisionEntity);
       merits.add(meritDecisionEntity);
 
     });
@@ -334,6 +334,6 @@ public class ApplicationService {
     decision.setMeritsDecisions(merits);
     decision.setOverallDecision(DecisionStatus.valueOf(request.getOverallDecision().getValue()));
     decision.setModifiedAt(Instant.now());
-    decisionRepository.saveAndFlush(decision);
+    decisionRepository.save(decision);
   }
 }

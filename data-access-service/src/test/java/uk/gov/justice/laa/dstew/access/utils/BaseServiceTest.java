@@ -58,6 +58,9 @@ public class BaseServiceTest {
     @MockitoBean
     protected ProceedingRepository proceedingRepository;
 
+    @MockitoBean
+    protected MeritsDecisionRepository meritsDecisionRepository;
+
     @Autowired
     protected ObjectMapper objectMapper;
 
