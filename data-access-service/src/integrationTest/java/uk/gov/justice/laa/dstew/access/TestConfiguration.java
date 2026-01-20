@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import uk.gov.justice.laa.dstew.access.entity.*;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.AssignDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
@@ -18,7 +18,7 @@ import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationAssignDecisionFactoryImpl;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationMakeDecisionFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerAssignFactoryImpl;
@@ -135,8 +135,8 @@ public class TestConfiguration {
     }
 
     @Bean
-    public Factory<AssignDecisionRequest, AssignDecisionRequest.Builder> applicationAssignDecisionRequestFactory() {
-        return new ApplicationAssignDecisionFactoryImpl();
+    public Factory<MakeDecisionRequest, MakeDecisionRequest.Builder> applicationMakeDecisionRequestFactory() {
+        return new ApplicationMakeDecisionFactoryImpl();
     }
 
     @Bean

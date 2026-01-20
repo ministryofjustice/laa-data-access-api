@@ -73,7 +73,7 @@ public abstract class BaseIntegrationTest {
     protected Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder> domainEventFactory;
 
     @Autowired
-    protected Factory<AssignDecisionRequest, AssignDecisionRequest.Builder> assignDecisionRequestFactory;
+    protected Factory<MakeDecisionRequest, MakeDecisionRequest.Builder> makeDecisionRequestFactory;
 
     @Autowired
     protected Factory<Individual, Individual.Builder> individualFactory;
