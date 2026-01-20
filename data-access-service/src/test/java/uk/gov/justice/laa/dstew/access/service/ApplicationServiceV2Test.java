@@ -1258,6 +1258,8 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             MeritsDecisionEntity grantedMerit = grantedItemsFound.getFirst();
             assertEquals("refusal 1", grantedMerit.getReason());
             assertEquals("justification 1", grantedMerit.getJustification());
+            assertThat(grantedMerit.getModifiedAt()).isNotNull();
+            assertEquals(grantedProceedingId, grantedMerit.getProceeding().getId());
 
             List<MeritsDecisionEntity> refusedItemsFound = savedDecision.getMeritsDecisions()
                     .stream()
@@ -1267,6 +1269,8 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             MeritsDecisionEntity refusedMerit = refusedItemsFound.getFirst();
             assertEquals("refusal 2", refusedMerit.getReason());
             assertEquals("justification 2", refusedMerit.getJustification());
+            assertThat(grantedMerit.getModifiedAt()).isNotNull();
+            assertEquals(refusedProceedingId, refusedMerit.getProceeding().getId());
         }
 
         @Test
