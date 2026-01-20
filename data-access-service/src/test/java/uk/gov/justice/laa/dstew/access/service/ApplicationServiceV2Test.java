@@ -1109,7 +1109,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
 
-            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity);
+            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, null);
         }
 
         @Test
@@ -1177,7 +1177,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity);
+            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, null);
         }
 
         @Test
@@ -1236,7 +1236,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
 
-            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity);
+            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, null);
         }
 
         @Test
@@ -1304,7 +1304,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
 
-            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity);
+            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity);
         }
 
         @Test
@@ -1414,7 +1414,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             );
         }
 
-        private void verifyDecisionSavedCorrectly(MakeDecisionRequest expectedMakeDecisionRequest, ApplicationEntity expectedApplicationEntity) {
+        private void verifyDecisionSavedCorrectly(MakeDecisionRequest expectedMakeDecisionRequest, ApplicationEntity expectedApplicationEntity, DecisionEntity currentSavedDecisionEntity) {
             ArgumentCaptor<DecisionEntity> decisionCaptor = ArgumentCaptor.forClass(DecisionEntity.class);
             verify(decisionRepository, times(1)).save(decisionCaptor.capture());
             DecisionEntity savedDecision = decisionCaptor.getValue();
@@ -1430,6 +1430,23 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .allSatisfy(merits -> {
                         assertThat(merits.getModifiedAt()).isNotNull();
                     });
+
+            if (currentSavedDecisionEntity != null) {
+                assertThat(savedDecision)
+                        .usingRecursiveComparison()
+                        .ignoringFields(
+                                "applicationId",
+                                "overallDecision",
+                                "meritsDecisions.decision",
+                                "meritsDecisions.reason",
+                                "meritsDecisions.justification",
+                                "meritsDecisions.proceeding.id",
+                                "modifiedAt",
+                                "meritsDecisions.modifiedAt",
+                                "meritsDecisions.proceeding.modifiedAt"
+                        )
+                        .isEqualTo(currentSavedDecisionEntity);
+            }
         }
 
         // DecisionEntity -> MakeDecisionRequest

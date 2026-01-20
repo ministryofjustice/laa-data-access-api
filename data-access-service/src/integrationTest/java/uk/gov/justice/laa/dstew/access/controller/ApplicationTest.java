@@ -12,6 +12,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -22,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.*;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.service.ApplicationServiceV2Test;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -41,6 +43,8 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
 @ActiveProfiles("test")
@@ -1928,19 +1932,13 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
             assertEquals(ApplicationStatus.SUBMITTED, actualApplication.getStatus());
-            DecisionEntity actualDecision = decisionRepository.findByApplicationId(applicationEntity.getId()).orElseThrow();
-            assertEquals(DecisionStatus.PARTIALLY_GRANTED, actualDecision.getOverallDecision());
-            assertThat(actualDecision.getCreatedAt()).isNotNull();
-            assertThat(actualDecision.getModifiedAt()).isNotNull();
-            assertEquals(1, actualDecision.getMeritsDecisions().size());
 
-            Iterator<MeritsDecisionEntity> meritsDecisionIterator = actualDecision.getMeritsDecisions().iterator();
-            MeritsDecisionEntity merit = meritsDecisionIterator.next();
-            Assertions.assertThat(merit.getDecision()).isNotNull();
-            assertEquals(MeritsDecisionStatus.REFUSED, merit.getDecision());
-            assertEquals("reason", merit.getReason());
-            assertEquals("justification", merit.getJustification());
-            assertEquals(merit.getProceeding().getId(), proceedingEntity.getId());
+            verifyDecisionSavedCorrectly(
+                    applicationEntity.getId(),
+                    makeDecisionRequest,
+                    applicationEntity,
+                    null
+            );
         }
 
         @Test
@@ -1985,26 +1983,13 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
             assertEquals(ApplicationStatus.SUBMITTED, actualApplication.getStatus());
-            DecisionEntity actualDecision = decisionRepository.findByApplicationId(applicationEntity.getId()).orElseThrow();
-            assertEquals(DecisionStatus.PARTIALLY_GRANTED, actualDecision.getOverallDecision());
-            assertThat(actualDecision.getCreatedAt()).isNotNull();
-            assertThat(actualDecision.getModifiedAt()).isNotNull();
-            assertEquals(2, actualDecision.getMeritsDecisions().size());
 
-            Iterator<MeritsDecisionEntity> meritsDecisionIterator = actualDecision.getMeritsDecisions().iterator();
-
-            MeritsDecisionEntity merit = meritsDecisionIterator.next();
-            Assertions.assertThat(merit.getDecision()).isNotNull();
-            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
-            assertEquals("reason 1", merit.getReason());
-            assertEquals("justification 1", merit.getJustification());
-            assertEquals(merit.getProceeding().getId(), grantedProceedingEntity.getId());
-            merit = meritsDecisionIterator.next();
-            Assertions.assertThat(merit.getDecision()).isNotNull();
-            assertEquals(MeritsDecisionStatus.REFUSED, merit.getDecision());
-            assertEquals("reason 2", merit.getReason());
-            assertEquals("justification 2", merit.getJustification());
-            assertEquals(merit.getProceeding().getId(), refusedProceedingEntity.getId());
+            verifyDecisionSavedCorrectly(
+                    applicationEntity.getId(),
+                    makeDecisionRequest,
+                    applicationEntity,
+                    null
+            );
         }
 
         @Test
@@ -2054,19 +2039,15 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
             assertEquals(ApplicationStatus.SUBMITTED, actualApplication.getStatus());
-            DecisionEntity actualDecision = decisionRepository.findByApplicationId(applicationEntity.getId()).orElseThrow();
-            assertEquals(DecisionStatus.PARTIALLY_GRANTED, actualDecision.getOverallDecision());
-            assertThat(actualDecision.getCreatedAt()).isNotNull();
-            assertThat(actualDecision.getModifiedAt()).isNotNull();
-            assertEquals(1, actualDecision.getMeritsDecisions().size());
 
-            Iterator<MeritsDecisionEntity> meritsDecisionIterator = actualDecision.getMeritsDecisions().iterator();
-            MeritsDecisionEntity merit = meritsDecisionIterator.next();
-            Assertions.assertThat(merit.getDecision()).isNotNull();
-            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
-            assertEquals("reason update", merit.getReason());
-            assertEquals("justification update", merit.getJustification());
-            assertEquals(merit.getProceeding().getId(), proceedingEntity.getId());
+            verifyDecisionSavedCorrectly(
+                    applicationEntity.getId(),
+                    newApplicationRequest,
+                    applicationEntity,
+                    // not checking whether the decision objects are OK here as we are adding.
+                    // The previous tests will check that we're not overwriting fields..
+                    null
+            );
         }
 
         @Test
@@ -2125,28 +2106,13 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertNoContent(result);
 
             assertEquals(ApplicationStatus.SUBMITTED, applicationEntity.getStatus());
-            DecisionEntity actualDecision = decisionRepository.findById(decision.getId()).orElseThrow();
-            assertEquals(DecisionStatus.REFUSED, actualDecision.getOverallDecision());
-            assertThat(actualDecision.getCreatedAt()).isNotNull();
-            assertThat(actualDecision.getModifiedAt()).isNotNull();
-            assertEquals(2, actualDecision.getMeritsDecisions().size());
 
-            Iterator<MeritsDecisionEntity> meritsDecisions = actualDecision.getMeritsDecisions().iterator();
-
-            MeritsDecisionEntity merit = meritsDecisions.next();
-            Assertions.assertThat(merit.getDecision()).isNotNull();
-            assertEquals(MeritsDecisionStatus.GRANTED, merit.getDecision());
-            assertEquals("reason update", merit.getReason());
-            assertEquals("justification update", merit.getJustification());
-            assertEquals(merit.getProceeding().getId(), proceedingEntityOne.getId());
-
-            merit = meritsDecisions.next();
-            Assertions.assertThat(merit.getDecision()).isNotNull();
-            assertEquals(MeritsDecisionStatus.REFUSED, merit.getDecision());
-            assertEquals("reason new", merit.getReason());
-            assertEquals("justification new", merit.getJustification());
-            assertEquals(merit.getProceeding().getId(), proceedingEntityTwo.getId());
-
+            verifyDecisionSavedCorrectly(
+                    applicationEntity.getId(),
+                    assignDecisionRequest,
+                    applicationEntity,
+                    decision
+            );
         }
 
         @Test
@@ -2188,8 +2154,6 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertEquals("application/problem+json", result.getResponse().getContentType());
             ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
             assertEquals("No application found with id: " + applicationId, problemDetail.getDetail());
-
-
         }
 
         @Test
@@ -2238,8 +2202,6 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertEquals("application/problem+json", result.getResponse().getContentType());
             ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
             assertEquals("No caseworker found with id: " + caseworkerId, problemDetail.getDetail());
-
-
         }
 
         private ProceedingDetails createProceedingDetails(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
@@ -2256,6 +2218,80 @@ public class ApplicationTest extends BaseIntegrationTest {
                                     )
                                     .build()
                     )
+                    .build();
+        }
+
+        private void verifyDecisionSavedCorrectly(UUID applicationId, MakeDecisionRequest expectedMakeDecisionRequest, ApplicationEntity expectedApplicationEntity, DecisionEntity currentSavedDecisionEntity) {
+            DecisionEntity savedDecision = decisionRepository.findByApplicationId(applicationId).orElseThrow();
+
+            MakeDecisionRequest actual = mapToMakeDecisionRequest(savedDecision, expectedApplicationEntity);
+            Assertions.assertThat(actual)
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .isEqualTo(expectedMakeDecisionRequest);
+
+            Assertions.assertThat(savedDecision.getModifiedAt()).isNotNull();
+            Assertions.assertThat(savedDecision.getMeritsDecisions())
+                    .allSatisfy(merits -> {
+                        Assertions.assertThat(merits.getModifiedAt()).isNotNull();
+                    });
+
+            if (currentSavedDecisionEntity != null) {
+                Assertions.assertThat(savedDecision)
+                        .usingRecursiveComparison()
+                        .ignoringCollectionOrder()
+                        .ignoringFields(
+                                "applicationId",
+                                "overallDecision",
+                                "meritsDecisions.decision",
+                                "meritsDecisions.reason",
+                                "meritsDecisions.justification",
+                                "meritsDecisions.proceeding.id",
+                                "modifiedAt",
+                                "meritsDecisions.modifiedAt",
+                                "meritsDecisions.proceeding.modifiedAt"
+                        )
+                        .isEqualTo(currentSavedDecisionEntity);
+            }
+        }
+
+        // DecisionEntity -> MakeDecisionRequest
+        private static MakeDecisionRequest mapToMakeDecisionRequest(DecisionEntity decisionEntity, ApplicationEntity applicationEntity) {
+            if (decisionEntity == null) return null;
+            return MakeDecisionRequest.builder()
+                    .applicationStatus(applicationEntity.getStatus())
+                    .overallDecision(decisionEntity.getOverallDecision())
+                    .userId(applicationEntity.getCaseworker().getId())
+                    .proceedings(decisionEntity.getMeritsDecisions().stream()
+                            .map(ApplicationMakeDecision::mapToProceedingDetails)
+                            .toList())
+                    .build();
+        }
+
+        // MeritsDecisionEntity -> ProceedingDetails
+        private static ProceedingDetails mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
+            if (meritsDecisionEntity == null) return null;
+            return ProceedingDetails.builder()
+                    .proceedingId(meritsDecisionEntity.getProceeding().getId())
+                    .meritsDecision(mapToMeritsDecisionDetails(meritsDecisionEntity))
+                    .build();
+        }
+
+        // MeritsDecisionEntity -> MeritsDecisionDetails
+        private static MeritsDecisionDetails mapToMeritsDecisionDetails(MeritsDecisionEntity entity) {
+            if (entity == null) return null;
+            return MeritsDecisionDetails.builder()
+                    .decision(entity.getDecision())
+                    .refusal(mapToRefusalDetails(entity))
+                    .build();
+        }
+
+        // MeritsDecisionEntity -> RefusalDetails
+        private static RefusalDetails mapToRefusalDetails(MeritsDecisionEntity entity) {
+            if (entity == null) return null;
+            return RefusalDetails.builder()
+                    .reason(entity.getReason())
+                    .justification(entity.getJustification())
                     .build();
         }
     }
