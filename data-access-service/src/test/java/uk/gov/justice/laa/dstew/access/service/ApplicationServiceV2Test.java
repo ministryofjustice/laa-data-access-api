@@ -154,8 +154,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
       @ParameterizedTest
       @MethodSource("provideProceedingsForMapping")
       void mapToApplicationEntity_SuccessfullyMapFromApplicationContentFields(ApplicationCreateRequest application,
-                                                                              boolean expectedUseDelegatedFunctions,
-                                                                              boolean autoGranted) {
+                                                                              boolean expectedUseDelegatedFunctions) {
         // Given
         setSecurityContext(TestConstants.Roles.WRITER);
 
@@ -172,7 +171,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         assertEquals(expectedId, entity);
 
         assertAll(() -> assertEquals(expectedUseDelegatedFunctions, actualApplicationEntity.isUseDelegatedFunctions()),
-            () -> assertEquals(autoGranted, actualApplicationEntity.isAutoGranted()),
             () -> assertEquals(      Instant.parse("2026-01-15T10:20:30Z"), actualApplicationEntity.getSubmittedAt()));
       }
 
@@ -232,14 +230,14 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
       return Stream.of(
           Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder
                   .applicationContent(
-                      applicationContentFactory.createDefaultAsMap(detailsBuilder -> detailsBuilder.proceedings(null)))),
+                      applicationContentFactory.createDefaultAsMapWithApplicationContent(detailsBuilder -> detailsBuilder.proceedings(null)))),
               new ValidationException(List.of(
                   "No proceedings found in application content"
               ))
           ),
           Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder
                   .applicationContent(
-                      applicationContentFactory.createDefaultAsMap(detailsBuilder ->
+                      applicationContentFactory.createDefaultAsMapWithApplicationContent(detailsBuilder ->
                           detailsBuilder.proceedings(List.of(
                               proceedingDtoFactory.createDefault(proceedingDetailsBuilder ->
                                   proceedingDetailsBuilder.leadProceeding(false))
@@ -257,22 +255,22 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             Arguments.of(applicationCreateRequestFactory
                     .createDefault(builder ->
                         builder.applicationContent(
-                            getAppContentMap(true, List.of(), UUID.randomUUID().toString()))),
+                            getAppContentMap(List.of(), UUID.randomUUID().toString()))),
                 new ValidationException(List.of("No proceedings found in application content")),
 
                 Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
                         builder.applicationContent(
-                            getAppContentMap(true, null, UUID.randomUUID().toString()))),
+                            getAppContentMap(null, UUID.randomUUID().toString()))),
                     new ValidationException(List.of("No proceedings found in application content")),
                 Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
                         builder.applicationContent(
-                            getAppContentMap(true,
+                            getAppContentMap(
                                 List.of(getProceedingJsonObject(null, false)),
                                 UUID.randomUUID().toString()))),
                     new ValidationException(List.of("No proceedings found in application content")),
                 Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
                         builder.applicationContent(
-                            getAppContentMap(false,
+                            getAppContentMap(
                                 List.of(getProceedingJsonObject(true, false)),
                                 UUID.randomUUID().toString()))),
                     new ValidationException(List.of("No lead proceeding found in application content"))))
@@ -280,11 +278,11 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         ));
       }
 
-      private Map<String, Object> getAppContentMap(boolean autoGrant, List<ProceedingJsonObject> proceedings,
+      private Map<String, Object> getAppContentMap(List<ProceedingJsonObject> proceedings,
                                                    String appContentId) {
         String submittedAt = "2026-01-15T10:20:30Z";
         AppContentJsonObject applicationContent =
-            AppContentJsonObject.builder().proceedings(proceedings).autoGrant(autoGrant).id(appContentId)
+            AppContentJsonObject.builder().proceedings(proceedings).id(appContentId)
                 .submittedAt(submittedAt).build();
         Map<String, Object> appContentMap;
 
@@ -293,29 +291,29 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         } catch (JsonProcessingException e) {
           throw new RuntimeException(e);
         }
-        return appContentMap;
+        return Map.of("applicationContent", appContentMap);
       }
 
 
       private static ProceedingJsonObject getProceedingJsonObject(Boolean useDelegatedFunctions, boolean leadProceeding) {
         return ProceedingJsonObject.builder().id("f6e2c4e1-5d32-4c3e-9f0a-1e2b3c4d5e6f").leadProceeding(leadProceeding)
             .categoryOfLaw(CategoryOfLaw.FAMILY.name()).matterType(MatterType.SCA.name())
-            .useDelegatedFunctions(useDelegatedFunctions).build();
+            .usedDelegatedFunctions(useDelegatedFunctions).build();
       }
 
       private Stream<Arguments> provideProceedingsForMapping() {
-        //App Content Map, expected useDelegatedFunctions, isAutoGrant
+        //App Content Map, expected usedDelegatedFunctions
         return Stream.of(Arguments.of(applicationCreateRequestFactory.createDefault(
-                builder -> builder.applicationContent(getAppContentMap(false, List.of(getProceedingJsonObject(true, true)),
-                    UUID.randomUUID().toString()))), true,
-            false), Arguments.of(applicationCreateRequestFactory.createDefault(
-                builder -> builder.applicationContent(getAppContentMap(true, List.of(getProceedingJsonObject(false, true)),
+                builder -> builder.applicationContent(getAppContentMap(List.of(getProceedingJsonObject(true, true)),
+                    UUID.randomUUID().toString()))), true),
+            Arguments.of(applicationCreateRequestFactory.createDefault(
+                builder -> builder.applicationContent(getAppContentMap(List.of(getProceedingJsonObject(false, true)),
                     UUID.randomUUID().toString()))), false,
             true), Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
-                getAppContentMap(true, List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(true, false)),
+                getAppContentMap(List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(true, false)),
                     UUID.randomUUID().toString()))), true,
             true), Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
-                getAppContentMap(true, List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(false, false)),
+                getAppContentMap(List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(false, false)),
                     UUID.randomUUID().toString()))), false,
             true));
       }
@@ -331,10 +329,10 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
       assertThat(actualApplicationEntity.getLaaReference()).isEqualTo(applicationCreateRequest.getLaaReference());
       ApplicationContentDetails applicationContentDetails =
           parseApplicationContentDetails(applicationCreateRequest.getApplicationContent());
-      assertThat(actualApplicationEntity.getApplyApplicationId()).isEqualTo(applicationContentDetails.getApplyApplicationId());
+      assertThat(actualApplicationEntity.getApplyApplicationId()).isEqualTo(applicationContentDetails.getId());
       assertThat(actualApplicationEntity.isUseDelegatedFunctions()).isEqualTo(
       applicationContentDetails.getProceedings().get(0)
-              .useDelegatedFunctions());
+              .usedDelegatedFunctions());
       assertThat(actualApplicationEntity.getApplicationContent())
           .usingRecursiveComparison()
           .ignoringCollectionOrder()
@@ -344,7 +342,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     }
 
     private ApplicationContentDetails parseApplicationContentDetails(Map<String, Object> applicationContentMap) {
-      return objectMapper.convertValue(applicationContentMap, ApplicationContentDetails.class);
+      return objectMapper.convertValue(applicationContentMap.get("applicationContent"), ApplicationContentDetails.class);
     }
 
     private void verifyThatCreateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled)
@@ -1124,7 +1122,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, null);
+            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, null, 2);
         }
 
         @Test
@@ -1183,7 +1181,74 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
 
-            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity);
+            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity, 1);
+        }
+
+        @Test
+        void givenApplicationAndExistingDecisionAndNewProceeding_whenAssignDecision_thenDecisionUpdated() {
+            UUID applicationId = UUID.randomUUID();
+            UUID proceedingId = UUID.randomUUID();
+            UUID newProceedingId = UUID.randomUUID();
+
+            // given
+            CaseworkerEntity caseworker = caseworkerFactory.createDefault();
+
+            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
+                    requestBuilder
+                            .userId(caseworker.getId())
+                            .proceedings(List.of(
+                                    createProceedingDetails(newProceedingId, MeritsDecisionStatus.GRANTED, "new refusal", "new justification")
+                            ))
+            );
+
+            // expected saved application entity
+            ApplicationEntity expectedApplicationEntity = applicationEntityFactory
+                    .createDefault(builder ->
+                            builder
+                                    .id(applicationId)
+                                    .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+                                    .caseworker(caseworker)
+                    );
+
+            DecisionEntity currentSavedDecisionEntity = createDecisionEntity(
+                    applicationId,
+                    proceedingId,
+                    MeritsDecisionStatus.REFUSED,
+                    "initial reason",
+                    "initial justification"
+            );
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            ProceedingEntity existingProceedingEntity = proceedingsEntityFactory
+                    .createDefault(builder ->
+                            builder.id(proceedingId)
+                    );
+
+            ProceedingEntity newProceedingEntity = proceedingsEntityFactory
+                    .createDefault(builder ->
+                            builder.id(newProceedingId)
+                    );
+
+            // when
+            when(proceedingRepository.findById(proceedingId))
+                    .thenReturn(Optional.of(existingProceedingEntity));
+            when(proceedingRepository.findById(newProceedingId))
+                    .thenReturn(Optional.of(newProceedingEntity));
+            when(caseworkerRepository.findById(caseworker.getId()))
+                    .thenReturn(Optional.of(caseworker));
+            when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
+            when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
+                    .thenReturn(Optional.of(currentSavedDecisionEntity));
+
+            serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
+
+            // then
+            verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
+            verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
+            verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
+
+            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity, 2);
         }
 
         @Test
@@ -1251,7 +1316,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
 
-            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity);
+            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity, 2);
         }
 
         @Test
@@ -1326,6 +1391,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                                                             meritsDecisionBuilder
                                                                     .id(UUID.randomUUID())
                                                                     .createdAt(Instant.now())
+                                                                    .modifiedAt(Instant.now())
                                                                     .proceeding(
                                                                             proceedingsEntityFactory.createDefault(
                                                                                     proceedingsBuilder ->
@@ -1361,16 +1427,39 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             );
         }
 
-        private void verifyDecisionSavedCorrectly(MakeDecisionRequest expectedMakeDecisionRequest, ApplicationEntity expectedApplicationEntity, DecisionEntity currentSavedDecisionEntity) {
+        private void verifyDecisionSavedCorrectly(
+                MakeDecisionRequest expectedMakeDecisionRequest,
+                ApplicationEntity expectedApplicationEntity,
+                DecisionEntity currentSavedDecisionEntity,
+                int expectedNumberOfMeritsDecisions) {
+
             ArgumentCaptor<DecisionEntity> decisionCaptor = ArgumentCaptor.forClass(DecisionEntity.class);
             verify(decisionRepository, times(1)).save(decisionCaptor.capture());
             DecisionEntity savedDecision = decisionCaptor.getValue();
 
             MakeDecisionRequest actual = mapToMakeDecisionRequest(savedDecision, expectedApplicationEntity);
+
+            assertThat(actual.getProceedings().size()).isEqualTo(expectedNumberOfMeritsDecisions);
+
+            // only check general fields, not proceedings as there may be a size discrepancy if
+            // adding a new merits decision.
             assertThat(actual)
                     .usingRecursiveComparison()
                     .ignoringCollectionOrder()
+                    .ignoringFields("proceedings")
                     .isEqualTo(expectedMakeDecisionRequest);
+
+            // Assert only on the set of proceedings that are updated or added via the request.
+            Set<UUID> expectedProceedingIds = expectedMakeDecisionRequest.getProceedings().stream()
+                    .map(ProceedingDetails::getProceedingId)
+                    .collect(Collectors.toSet());
+            List<ProceedingDetails> actualProceedings = actual.getProceedings().stream()
+                    .filter(p -> expectedProceedingIds.contains(p.getProceedingId()))
+                    .collect(Collectors.toList());
+            assertThat(actualProceedings)
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .isEqualTo(expectedMakeDecisionRequest.getProceedings());
 
             assertThat(savedDecision.getModifiedAt()).isNotNull();
             assertThat(savedDecision.getMeritsDecisions())
