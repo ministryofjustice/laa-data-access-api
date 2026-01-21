@@ -1896,54 +1896,10 @@ public class ApplicationTest extends BaseIntegrationTest {
     @Nested
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class ApplicationMakeDecision {
-        @Test
-        @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenMakeDecisionRequestWithNewContent_whenAssignDecisionApplication_thenReturnOK_andUpdate()
-                                throws Exception {
-            // given
-            ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
-                builder.applicationContent(new HashMap<>(Map.of(
-                        "test", "content"
-                )));
-            });
-
-            ProceedingEntity proceedingEntity = persistedProceedingFactory.createAndPersist(
-                    builder -> {builder
-                            .applicationId(applicationEntity.getId());}
-            );
-
-            MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
-                builder
-                    .userId(CaseworkerJohnDoe.getId())
-                    .applicationStatus(ApplicationStatus.SUBMITTED)
-                    .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
-                    .proceedings(List.of(
-                           createProceedingDetails(proceedingEntity.getId(), MeritsDecisionStatus.REFUSED, "justification", "reason")
-                    ));
-            });
-
-            // when
-            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
-
-            // then
-            assertSecurityHeaders(result);
-            assertNoCacheHeaders(result);
-            assertNoContent(result);
-
-            ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
-            assertEquals(ApplicationStatus.SUBMITTED, actualApplication.getStatus());
-
-            verifyDecisionSavedCorrectly(
-                    applicationEntity.getId(),
-                    makeDecisionRequest,
-                    applicationEntity,
-                    null
-            );
-        }
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenApplication_whenAssignDecisionAndNoDecisionExistsAndMultipleProceedings_thenAssignDecisionAndSave()
+        public void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenReturnOK_andDecisionSaved()
                             throws Exception {
             // given
             ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
@@ -1994,65 +1950,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenMakeDecisionRequestWithExistingContent_whenAssignDecisionApplication_thenReturnOK_andUpdate()
-                throws Exception {
-            // given
-            ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
-                builder.applicationContent(new HashMap<>(Map.of(
-                        "test", "content"
-                )));
-            });
-
-            ProceedingEntity proceedingEntity = persistedProceedingFactory.createAndPersist(
-                    builder -> {builder
-                            .applicationId(applicationEntity.getId());}
-            );
-
-            MakeDecisionRequest currentApplicationRequest = makeDecisionRequestFactory.create(builder -> {
-                builder
-                        .userId(CaseworkerJohnDoe.getId())
-                        .applicationStatus(ApplicationStatus.SUBMITTED)
-                        .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
-                        .proceedings(List.of(
-                            createProceedingDetails(proceedingEntity.getId(), MeritsDecisionStatus.REFUSED, "justification current", "reason current")
-                        ));
-            });
-
-            MakeDecisionRequest newApplicationRequest = makeDecisionRequestFactory.create(builder -> {
-                builder
-                        .userId(CaseworkerJohnDoe.getId())
-                        .applicationStatus(ApplicationStatus.SUBMITTED)
-                        .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
-                        .proceedings(List.of(
-                            createProceedingDetails(proceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification update", "reason update")
-                        ));
-            });
-
-            // when
-            patchUri(TestConstants.URIs.ASSIGN_DECISION, currentApplicationRequest, applicationEntity.getId());
-            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, newApplicationRequest, applicationEntity.getId());
-
-            // then
-            assertSecurityHeaders(result);
-            assertNoCacheHeaders(result);
-            assertNoContent(result);
-
-            ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
-            assertEquals(ApplicationStatus.SUBMITTED, actualApplication.getStatus());
-
-            verifyDecisionSavedCorrectly(
-                    applicationEntity.getId(),
-                    newApplicationRequest,
-                    applicationEntity,
-                    // not checking whether the decision objects are OK here as we are adding.
-                    // The previous tests will check that we're not overwriting fields..
-                    null
-            );
-        }
-
-        @Test
-        @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenMakeDecisionRequestWithExistingContentAndNewContent_whenAssignDecisionApplication_thenReturnOK_andUpdate()
+        public void givenMakeDecisionRequestWithExistingContentAndNewContent_whenAssignDecision_thenReturnOK_andDecisionUpdated()
                 throws Exception {
             // given
             ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
@@ -2117,7 +2015,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenMakeDecisionRequestWithNewContent_whenNoApplication_thenReturnNotFoundAndMessage()
+        public void givenNoApplication_whenAssignDecisionApplication_thenReturnNotFoundAndMessage()
                 throws Exception {
             // given
             UUID applicationId = UUID.randomUUID();
@@ -2158,7 +2056,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenMakeDecisionRequestWithNewContent_whenNoCaseworker_thenReturnNotFoundAndMessage()
+        public void givenNoCaseworker_whenAssignDecisionApplication_thenReturnNotFoundAndMessage()
                 throws Exception {
             // given
             UUID caseworkerId = UUID.randomUUID();

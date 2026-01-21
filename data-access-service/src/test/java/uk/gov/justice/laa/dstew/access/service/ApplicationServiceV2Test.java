@@ -1058,62 +1058,9 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
     @Nested
     class MakeDecisionForApplication {
-        @Test
-        void givenApplication_whenAssignDecisionAndNoDecisionExists_thenAssignDecisionAndSave() {
-            UUID applicationId = UUID.randomUUID();
-            UUID proceedingId = UUID.randomUUID();
-
-            // given
-            CaseworkerEntity caseworker = caseworkerFactory.createDefault();
-
-            // overwrite some fields of default assign decision request
-            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
-                    requestBuilder
-                            .userId(caseworker.getId())
-                            .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
-                            .applicationStatus(ApplicationStatus.SUBMITTED)
-                            .proceedings(List.of(
-                                    createProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "refusal 1", "justification 1")
-                            ))
-            );
-
-            // expected saved application entity
-            ApplicationEntity expectedApplicationEntity = applicationEntityFactory
-                    .createDefault(builder ->
-                    builder
-                        .id(applicationId)
-                        .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
-                        .caseworker(caseworker)
-            );
-
-            ProceedingEntity expectedProceedingEntity = proceedingsEntityFactory
-                    .createDefault(builder ->
-                            builder.id(proceedingId)
-                    );
-
-            setSecurityContext(TestConstants.Roles.WRITER);
-
-            // when
-            when(proceedingRepository.findById(proceedingId))
-                    .thenReturn(Optional.of(expectedProceedingEntity));
-            when(caseworkerRepository.findById(caseworker.getId()))
-                    .thenReturn(Optional.of(caseworker));
-            when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
-            when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
-                    .thenReturn(Optional.empty());
-
-            serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
-
-            // then
-            verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
-            verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
-            verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-
-            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, null);
-        }
 
         @Test
-        void givenApplication_whenAssignDecisionAndNoDecisionExistsAndMultipleProceedings_thenAssignDecisionAndSave() {
+        void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved() {
             UUID applicationId = UUID.randomUUID();
             UUID grantedProceedingId = UUID.randomUUID();
             UUID refusedProceedingId = UUID.randomUUID();
@@ -1181,7 +1128,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         @Test
-        void givenApplication_whenAssignDecisionAndDecisionExists_thenUpdateAssignDecisionAndSave() {
+        void givenApplicationAndExistingDecision_whenAssignDecision_thenDecisionUpdated() {
             UUID applicationId = UUID.randomUUID();
             UUID proceedingId = UUID.randomUUID();
 
@@ -1236,11 +1183,11 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
 
-            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, null);
+            verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity);
         }
 
         @Test
-        void givenApplication_whenAssignDecisionAndDecisionExistsAndNewMerits_thenUpdateAssignDecisionAndSave() {
+        void givenApplicationAndDecisionRequestWithMultipleProceedingsAndExistingDecision_whenAssignDecision_thenDecisionUpdated() {
             UUID applicationId = UUID.randomUUID();
             UUID currentProceedingId = UUID.randomUUID();
             UUID newProceedingId = UUID.randomUUID();
@@ -1308,7 +1255,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         @Test
-        void givenApplication_whenAssignDecisionAndNoCaseworkerExists_thenExceptionIsThrown() {
+        void givenNoCaseworker_whenAssignDecision_thenThrowResourceNotFoundException() {
             UUID applicationId = UUID.randomUUID();
             UUID caseworkerId = UUID.randomUUID();
 
@@ -1341,7 +1288,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         @Test
-        void givenApplication_whenAssignDecisionAndNoApplicationExists_thenExceptionIsThrown() {
+        void givenNoApplication_whenAssignDecision_thenThrowResourceNotFoundException() {
             UUID applicationId = UUID.randomUUID();
 
             // given
@@ -1431,16 +1378,16 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                         assertThat(merits.getModifiedAt()).isNotNull();
                     });
 
+            // this assert is checking that the fields that should not be changed have not been changed.
+            // things like reason, decision, etc, have been checked in the assert above.
             if (currentSavedDecisionEntity != null) {
                 assertThat(savedDecision)
                         .usingRecursiveComparison()
                         .ignoringFields(
-                                "applicationId",
                                 "overallDecision",
                                 "meritsDecisions.decision",
                                 "meritsDecisions.reason",
                                 "meritsDecisions.justification",
-                                "meritsDecisions.proceeding.id",
                                 "modifiedAt",
                                 "meritsDecisions.modifiedAt",
                                 "meritsDecisions.proceeding.modifiedAt"
