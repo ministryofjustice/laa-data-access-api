@@ -64,7 +64,7 @@ class ResponseEntityExceptionHandlerAdviceTest {
   public static Stream<Arguments> getPathAndErrors() {
     return Stream.of(
         Arguments.of("uk.gov.justice.laa.dstew.access.model.ApplicationStatus",
-            "PROGRESS. Valid values are: IN_PROGRESS, SUBMITTED, GRANTED, REFUSED"),
+            "PROGRESS. Valid values are: IN_PROGRESS, SUBMITTED"),
         Arguments.of("uk.gov.justice.laa.dstew.access.model.AnotherEnumClass", "PROGRESS"));
   }
 
