@@ -1899,7 +1899,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenReturnOK_andDecisionSaved()
+        public void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenReturnNoContent_andDecisionSaved()
                             throws Exception {
             // given
             ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
@@ -1940,6 +1940,9 @@ public class ApplicationTest extends BaseIntegrationTest {
             ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
             assertEquals(ApplicationStatus.SUBMITTED, actualApplication.getStatus());
 
+            assertThat(decisionRepository.countByApplicationId(applicationEntity.getId()))
+                    .isEqualTo(1);
+
             verifyDecisionSavedCorrectly(
                     applicationEntity.getId(),
                     makeDecisionRequest,
@@ -1950,7 +1953,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         @Test
         @WithMockUser(authorities = TestConstants.Roles.WRITER)
-        public void givenMakeDecisionRequestWithExistingContentAndNewContent_whenAssignDecision_thenReturnOK_andDecisionUpdated()
+        public void givenMakeDecisionRequestWithExistingContentAndNewContent_whenAssignDecision_thenReturnNoContent_andDecisionUpdated()
                 throws Exception {
             // given
             ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
@@ -2004,6 +2007,9 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertNoContent(result);
 
             assertEquals(ApplicationStatus.SUBMITTED, applicationEntity.getStatus());
+
+            assertThat(decisionRepository.countByApplicationId(applicationEntity.getId()))
+                    .isEqualTo(1);
 
             verifyDecisionSavedCorrectly(
                     applicationEntity.getId(),
