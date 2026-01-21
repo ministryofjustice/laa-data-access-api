@@ -105,9 +105,13 @@ public class ApplicationService {
    * @param entity application entity to update
    */
   private void setValuesFromApplicationContent(ApplicationCreateRequest req, ApplicationEntity entity) {
-    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(req);
+    if (!req.getApplicationContent().containsKey("applicationContent")) {
+      throw new ResourceNotFoundException("No application content found");
+    }
+    Map<String, Object> applicationContent =
+        objectMapper.convertValue(req.getApplicationContent().get("applicationContent"), Map.class);
+    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(applicationContent);
     entity.setApplyApplicationId(parsedContentDetails.applyApplicationId());
-    entity.setAutoGranted(parsedContentDetails.autoGranted());
     entity.setUseDelegatedFunctions(parsedContentDetails.useDelegatedFunctions());
     entity.setCategoryOfLaw(parsedContentDetails.categoryOfLaw());
     entity.setMatterType(parsedContentDetails.matterType());

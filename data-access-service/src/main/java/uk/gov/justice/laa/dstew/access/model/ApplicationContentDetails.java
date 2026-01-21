@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ApplicationContentDetails {
-  private UUID applyApplicationId;
+  private UUID id;
   private Instant submittedAt;
   private boolean autoGrant;
   private List<ProceedingDetails> proceedings;

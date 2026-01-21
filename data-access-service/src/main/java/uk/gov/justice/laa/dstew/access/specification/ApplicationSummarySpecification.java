@@ -30,11 +30,13 @@ public class ApplicationSummarySpecification {
           String firstName,
           String lastName,
           LocalDate clientDateOfBirth,
-          UUID userId) {
+          UUID userId,
+          Boolean isAutoGranted) {
     return isStatus(status)
             .and(likeLaaReference(reference))
             .and(IndividualFilterSpecification.filterIndividual(firstName, lastName, clientDateOfBirth))
-            .and(isCaseworkerId(userId));
+            .and(isCaseworkerId(userId))
+            .and(isAutoGranted(isAutoGranted));
   }
 
   private static Specification<ApplicationSummaryEntity> isStatus(ApplicationStatus status) {
@@ -133,5 +135,14 @@ public class ApplicationSummarySpecification {
 
   private static boolean isPopulated(String str) {
     return str != null && !str.isBlank();
+  }
+
+  private static Specification<ApplicationSummaryEntity> isAutoGranted(Boolean isAutoGranted) {
+    if (isAutoGranted != null) {
+      return (root, query, builder)
+            -> builder.equal(root.get("isAutoGranted"), isAutoGranted);
+      
+    }
+    return Specification.unrestricted();
   }
 }

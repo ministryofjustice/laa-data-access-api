@@ -10,7 +10,6 @@ import lombok.Builder;
 @Builder
 public record ParsedAppContentDetails(
     UUID applyApplicationId,
-    boolean autoGranted,
     CategoryOfLaw categoryOfLaw,
     MatterType matterType,
     Instant submittedAt,

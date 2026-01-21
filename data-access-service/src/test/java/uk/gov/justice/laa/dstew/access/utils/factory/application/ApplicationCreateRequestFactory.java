@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
-import java.time.Instant;
-import java.time.OffsetDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -32,7 +30,7 @@ public class ApplicationCreateRequestFactory extends BaseFactory<ApplicationCrea
                 .status(ApplicationStatus.IN_PROGRESS)
                 .laaReference("REF7327")
                 .individuals(List.of(individualFactory.createDefault()))
-                .applicationContent(applicationContentFactory.createDefaultAsMap())
+                .applicationContent(applicationContentFactory.createDefaultAsMapWithApplicationContent())
                 .build();
     }
 }
