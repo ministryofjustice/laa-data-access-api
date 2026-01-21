@@ -2028,7 +2028,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                         .proceedings(List.of(
-                                ProceedingDto.builder()
+                                ProceedingDetails.builder()
                                         .proceedingId(UUID.randomUUID())
                                         .meritsDecision(
                                                 MeritsDecisionDetails.builder()
@@ -2076,7 +2076,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                         .proceedings(List.of(
-                                ProceedingDto.builder()
+                                ProceedingDetails.builder()
                                         .proceedingId(UUID.randomUUID())
                                         .meritsDecision(
                                                 MeritsDecisionDetails.builder()
@@ -2105,8 +2105,8 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertEquals("No caseworker found with id: " + caseworkerId, problemDetail.getDetail());
         }
 
-        private ProceedingDto createProceedingDetails(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
-            return ProceedingDto.builder()
+        private ProceedingDetails createProceedingDetails(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
+            return ProceedingDetails.builder()
                     .proceedingId(proceedingId)
                     .meritsDecision(
                             MeritsDecisionDetails.builder()
@@ -2170,9 +2170,9 @@ public class ApplicationTest extends BaseIntegrationTest {
         }
 
         // MeritsDecisionEntity -> ProceedingDetails
-        private static ProceedingDto mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
+        private static ProceedingDetails mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
             if (meritsDecisionEntity == null) return null;
-            return ProceedingDto.builder()
+            return ProceedingDetails.builder()
                     .proceedingId(meritsDecisionEntity.getProceeding().getId())
                     .meritsDecision(mapToMeritsDecisionDetails(meritsDecisionEntity))
                     .build();
