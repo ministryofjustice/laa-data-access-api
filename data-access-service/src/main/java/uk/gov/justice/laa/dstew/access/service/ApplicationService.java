@@ -295,15 +295,15 @@ public class ApplicationService {
    * @param applicationId application UUID
    * @param request DTO with update fields
    */
+  @Transactional
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     checkIfCaseworkerExists(request.getUserId());
 
-    applicationValidations.checkApplicationAssignDecisionRequest(request);
+    applicationValidations.checkApplicationMakeDecisionRequest(request);
 
-    applicationMapper.updateApplicationEntityWithAssignDecisionRequest(application, request);
-
+    application.setStatus(request.getApplicationStatus());
     application.setModifiedAt(Instant.now());
     applicationRepository.save(application);
 
@@ -316,11 +316,17 @@ public class ApplicationService {
     Set<MeritsDecisionEntity> merits = new LinkedHashSet<>(decision.getMeritsDecisions());
 
     request.getProceedings().forEach(proceeding -> {
+
+      ProceedingEntity proceedingEntity = proceedingRepository.findById(proceeding.getProceedingId())
+              .orElseThrow(
+                      () -> new ResourceNotFoundException(
+                              String.format("No proceeding found with id: %s", proceeding.getProceedingId()))
+              );
+
       MeritsDecisionEntity meritDecisionEntity = decision.getMeritsDecisions().stream()
               .filter(m -> m.getProceeding().getId().equals(proceeding.getProceedingId()))
               .findFirst()
               .orElseGet(() -> {
-                ProceedingEntity proceedingEntity = proceedingRepository.findById(proceeding.getProceedingId()).orElseThrow();
                 MeritsDecisionEntity newEntity = new MeritsDecisionEntity();
                 newEntity.setProceeding(proceedingEntity);
                 return newEntity;

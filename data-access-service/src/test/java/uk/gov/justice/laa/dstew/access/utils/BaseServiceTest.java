@@ -28,7 +28,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.domainEvent.DomainEventFact
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionDetailsFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionsEntityFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingDetailsFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.MakeDecisionProceedingFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingsEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.refusal.RefusalDetailsFactory;
 
@@ -101,7 +101,7 @@ public class BaseServiceTest {
     protected DecisionEntityFactory decisionEntityFactory;
 
     @Autowired
-    protected ProceedingDetailsFactory proceedingDetailsFactory;
+    protected MakeDecisionProceedingFactory makeDecisionProceedingFactory;
 
     @Autowired
     protected MeritsDecisionDetailsFactory meritsDecisionDetailsFactory;

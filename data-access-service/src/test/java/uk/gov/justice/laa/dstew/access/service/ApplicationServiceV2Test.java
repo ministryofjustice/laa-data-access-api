@@ -1079,8 +1079,8 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     requestBuilder
                             .userId(caseworker.getId())
                             .proceedings(List.of(
-                                    createProceedingDetails(grantedProceedingId, grantedDecision, grantedReason, grantedJustification),
-                                    createProceedingDetails(refusedProceedingId, refusedDecision, refusedReason, refusedJustification)
+                                    createMakeDecisionProceedingDetails(grantedProceedingId, grantedDecision, grantedReason, grantedJustification),
+                                    createMakeDecisionProceedingDetails(refusedProceedingId, refusedDecision, refusedReason, refusedJustification)
                             ))
             );
 
@@ -1137,7 +1137,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     requestBuilder
                             .userId(caseworker.getId())
                             .proceedings(List.of(
-                                    createProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "refusal update", "justification update")
+                                    createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "refusal update", "justification update")
                             ))
             );
 
@@ -1197,7 +1197,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     requestBuilder
                             .userId(caseworker.getId())
                             .proceedings(List.of(
-                                    createProceedingDetails(newProceedingId, MeritsDecisionStatus.GRANTED, "new refusal", "new justification")
+                                    createMakeDecisionProceedingDetails(newProceedingId, MeritsDecisionStatus.GRANTED, "new refusal", "new justification")
                             ))
             );
 
@@ -1264,8 +1264,8 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     requestBuilder
                             .userId(caseworker.getId())
                             .proceedings(List.of(
-                                    createProceedingDetails(newProceedingId, MeritsDecisionStatus.REFUSED, "refusal new", "justification new"),
-                                    createProceedingDetails(currentProceedingId, MeritsDecisionStatus.GRANTED, "refusal update", "justification update")
+                                    createMakeDecisionProceedingDetails(newProceedingId, MeritsDecisionStatus.REFUSED, "refusal new", "justification new"),
+                                    createMakeDecisionProceedingDetails(currentProceedingId, MeritsDecisionStatus.GRANTED, "refusal update", "justification update")
                             ))
             );
 
@@ -1377,6 +1377,60 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .hasMessage("No application found with id: "+applicationId.toString());
         }
 
+        @Test
+        void givenNoProceeding_whenAssignDecision_thenThrowResourceNotFoundException() {
+            UUID applicationId = UUID.randomUUID();
+            UUID proceedingId = UUID.randomUUID();
+
+            MeritsDecisionStatus decision = MeritsDecisionStatus.GRANTED;
+            String reason = "refusal 1";
+            String justification = "justification 1";
+
+            // given
+            CaseworkerEntity caseworker = caseworkerFactory.createDefault();
+
+            // overwrite some fields of default assign decision request
+            MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
+                    requestBuilder
+                            .userId(caseworker.getId())
+                            .proceedings(List.of(
+                                    createMakeDecisionProceedingDetails(proceedingId, decision, reason, justification)
+                            ))
+            );
+
+            // expected saved application entity
+            ApplicationEntity expectedApplicationEntity = applicationEntityFactory
+                    .createDefault(builder ->
+                            builder
+                                    .id(applicationId)
+                                    .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+                                    .caseworker(caseworker)
+                    );
+
+            setSecurityContext(TestConstants.Roles.WRITER);
+
+            ProceedingEntity proceedingEntity = proceedingsEntityFactory
+                    .createDefault(builder ->
+                            builder.id(proceedingId)
+                    );
+
+            // when
+            when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
+            when(caseworkerRepository.findById(caseworker.getId()))
+                    .thenReturn(Optional.of(caseworker));
+            when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
+                    .thenReturn(Optional.empty());
+
+            Throwable thrown = catchThrowable(
+                    () -> serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest)
+                );
+
+            // then
+            assertThat(thrown)
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessage("No proceeding found with id: " + proceedingId);
+        }
+
         private DecisionEntity createDecisionEntity(UUID applicationId, UUID proceedingId, MeritsDecisionStatus decision, String reason, String justification) {
             return decisionEntityFactory.createDefault(
                     builder -> builder
@@ -1407,8 +1461,8 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             );
         }
 
-        private ProceedingDetails createProceedingDetails(UUID proceedingId, MeritsDecisionStatus decision, String reason, String justification) {
-            return proceedingDetailsFactory.createDefault(proceedingsBuilder ->
+        private MakeDecisionProceeding createMakeDecisionProceedingDetails(UUID proceedingId, MeritsDecisionStatus decision, String reason, String justification) {
+            return makeDecisionProceedingFactory.createDefault(proceedingsBuilder ->
                     proceedingsBuilder
                             .proceedingId(proceedingId)
                             .meritsDecision(
@@ -1451,9 +1505,9 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
 
             // Assert only on the set of proceedings that are updated or added via the request.
             Set<UUID> expectedProceedingIds = expectedMakeDecisionRequest.getProceedings().stream()
-                    .map(ProceedingDetails::getProceedingId)
+                    .map(MakeDecisionProceeding::getProceedingId)
                     .collect(Collectors.toSet());
-            List<ProceedingDetails> actualProceedings = actual.getProceedings().stream()
+            List<MakeDecisionProceeding> actualProceedings = actual.getProceedings().stream()
                     .filter(p -> expectedProceedingIds.contains(p.getProceedingId()))
                     .collect(Collectors.toList());
             assertThat(actualProceedings)
@@ -1499,9 +1553,9 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         // MeritsDecisionEntity -> ProceedingDetails
-        private static ProceedingDetails mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
+        private static MakeDecisionProceeding mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
             if (meritsDecisionEntity == null) return null;
-            return ProceedingDetails.builder()
+            return MakeDecisionProceeding.builder()
                     .proceedingId(meritsDecisionEntity.getProceeding().getId())
                     .meritsDecision(mapToMeritsDecisionDetails(meritsDecisionEntity))
                     .build();

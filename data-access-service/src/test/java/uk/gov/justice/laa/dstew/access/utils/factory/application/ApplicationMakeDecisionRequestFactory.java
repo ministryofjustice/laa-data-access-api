@@ -10,14 +10,14 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingDetailsFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.MakeDecisionProceedingFactory;
 
 @Profile("unit-test")
 @Component
 public class ApplicationMakeDecisionRequestFactory extends BaseFactory<MakeDecisionRequest, MakeDecisionRequest.Builder> {
 
     @Autowired
-    private ProceedingDetailsFactory proceedingDetailsFactory;
+    private MakeDecisionProceedingFactory makeDecisionProceedingFactory;
 
     public ApplicationMakeDecisionRequestFactory() {
         super(MakeDecisionRequest::toBuilder, MakeDecisionRequest.Builder::build);
@@ -29,7 +29,7 @@ public class ApplicationMakeDecisionRequestFactory extends BaseFactory<MakeDecis
                 .applicationStatus(ApplicationStatus.SUBMITTED)
                 .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                 .userId(UUID.randomUUID())
-                .proceedings(List.of(proceedingDetailsFactory.createDefault()))
+                .proceedings(List.of(makeDecisionProceedingFactory.createDefault()))
                 .build();
     }
 }

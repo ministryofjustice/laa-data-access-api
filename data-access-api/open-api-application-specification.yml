@@ -249,7 +249,7 @@ paths:
       tags:
         - application
       operationId: makeDecision
-      summary: make a decision for an application
+      summary: Make a decision request for an application
       parameters:
         - name: id
           in: path
@@ -580,7 +580,7 @@ components:
         refusal:
           $ref: "#/components/schemas/RefusalDetails"
 
-    proceedingDetails:
+    makeDecisionProceeding:
       type: object
       required:
         - proceedingId
@@ -611,4 +611,4 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: "#/components/schemas/proceedingDetails"
+            $ref: "#/components/schemas/makeDecisionProceeding"

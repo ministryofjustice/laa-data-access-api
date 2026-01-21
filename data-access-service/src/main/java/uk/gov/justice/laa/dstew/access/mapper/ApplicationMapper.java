@@ -101,19 +101,4 @@ public interface ApplicationMapper {
           .filter(Objects::nonNull)
           .toList();
   }
-
-  /**
-   * Updates an existing {@link ApplicationEntity} using values from an {@link MakeDecisionRequest}.
-   *
-   * @param entity the entity to update
-   * @param req the update request containing new values
-   * @throws IllegalArgumentException if the {@code applicationContent} cannot be serialized
-   */
-  @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  default void updateApplicationEntityWithAssignDecisionRequest(@MappingTarget ApplicationEntity entity,
-                                                                MakeDecisionRequest req) {
-    if (req.getApplicationStatus() != null) {
-      entity.setStatus(req.getApplicationStatus());
-    }
-  }
 }
