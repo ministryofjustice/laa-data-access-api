@@ -39,7 +39,7 @@ public class ApplicationEntityFactory extends BaseFactory<ApplicationEntity, App
         .individuals(Set.of(
             individualEntityFactory.createDefault()
         ))
-        .applicationContent(applicationContentFactory.createDefaultAsMap())
+        .applicationContent(applicationContentFactory.createDefaultAsMapWithApplicationContent())
         .useDelegatedFunctions(false)
         .isAutoGranted(true)
         .build();

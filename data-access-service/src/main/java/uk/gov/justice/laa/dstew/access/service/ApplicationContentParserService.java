@@ -2,10 +2,10 @@ package uk.gov.justice.laa.dstew.access.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContentDetails;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.model.ProceedingDto;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -25,12 +25,13 @@ public class ApplicationContentParserService {
   /**
    * Normalises application content details from the create request.
    *
-   * @param req the application create request
+   * @param appContentMap the application create request
    * @return the extracted application content details
    */
-  public ParsedAppContentDetails normaliseApplicationContentDetails(ApplicationCreateRequest req) {
+  public ParsedAppContentDetails normaliseApplicationContentDetails(
+      Map<String, Object> appContentMap) {
     ApplicationContentDetails
-        applicationContentDetails = objectMapper.convertValue(req.getApplicationContent(), ApplicationContentDetails.class);
+        applicationContentDetails = objectMapper.convertValue(appContentMap, ApplicationContentDetails.class);
     return processingApplicationContent(applicationContentDetails);
 
   }
@@ -53,12 +54,11 @@ public class ApplicationContentParserService {
     boolean usedDelegatedFunction =
         applicationContent.getProceedings().stream()
             .filter(Objects::nonNull)
-            .filter(proceeding -> null != proceeding.useDelegatedFunctions())
-            .anyMatch(ProceedingDto::useDelegatedFunctions);
+            .filter(proceeding -> null != proceeding.usedDelegatedFunctions())
+            .anyMatch(ProceedingDto::usedDelegatedFunctions);
     return ParsedAppContentDetails
         .builder()
-        .applyApplicationId(applicationContent.getApplyApplicationId())
-        .autoGranted(applicationContent.isAutoGrant())
+        .applyApplicationId(applicationContent.getId())
         .categoryOfLaw(leadProceeding.categoryOfLaw())
         .matterType(leadProceeding.matterType())
         .submittedAt(applicationContent.getSubmittedAt())

@@ -3,11 +3,7 @@ package uk.gov.justice.laa.dstew.access.utils.factory.application;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,7 +15,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
-import uk.gov.justice.laa.dstew.access.model.ProceedingDetails;
 import uk.gov.justice.laa.dstew.access.model.ProceedingDto;
 import uk.gov.justice.laa.dstew.access.utils.DateTimeHelper;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
@@ -34,12 +29,12 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
         .categoryOfLaw(CategoryOfLaw.FAMILY)
         .matterType(MatterType.SCA)
         .leadProceeding(true)
-        .useDelegatedFunctions(true)
+        .usedDelegatedFunctions(true)
         .build();
 
     var submitted_at = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();
     ApplicationContentDetails applicationContentDetails = ApplicationContentDetails.builder()
-        .applyApplicationId(UUID.randomUUID())
+        .id(UUID.randomUUID())
         .autoGrant(true)
         .submittedAt(submitted_at)
         .proceedings(List.of(proceedingDetails))
@@ -47,8 +42,11 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
     ObjectMapper objectMapper = new ObjectMapper();
     objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     objectMapper.registerModule(new JavaTimeModule());
-    Map<String, Object> applicationContent = objectMapper.convertValue(applicationContentDetails, Map.class);
-    applicationContent.put("test", "value");
+    Map<String, Object> applicationContentDetailsMap = objectMapper.convertValue(applicationContentDetails, Map.class);
+    Map<String, Object> applicationContent = Map.of(
+        "applicationContent", applicationContentDetailsMap,
+        "test", "value"
+    );
     return ApplicationCreateRequest.builder()
         .status(ApplicationStatus.IN_PROGRESS)
         .laaReference("TestReference")

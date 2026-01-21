@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.ProceedingDetails;
+import uk.gov.justice.laa.dstew.access.model.ProceedingDto;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionDetailsFactory;
 import java.util.UUID;

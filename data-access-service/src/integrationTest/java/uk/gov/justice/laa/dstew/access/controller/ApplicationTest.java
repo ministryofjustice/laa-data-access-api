@@ -12,7 +12,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -23,7 +22,6 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.*;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
-import uk.gov.justice.laa.dstew.access.service.ApplicationServiceV2Test;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -43,7 +41,6 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
@@ -2031,7 +2028,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                         .proceedings(List.of(
-                                ProceedingDetails.builder()
+                                ProceedingDto.builder()
                                         .proceedingId(UUID.randomUUID())
                                         .meritsDecision(
                                                 MeritsDecisionDetails.builder()
@@ -2079,7 +2076,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                         .proceedings(List.of(
-                                ProceedingDetails.builder()
+                                ProceedingDto.builder()
                                         .proceedingId(UUID.randomUUID())
                                         .meritsDecision(
                                                 MeritsDecisionDetails.builder()
@@ -2108,8 +2105,8 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertEquals("No caseworker found with id: " + caseworkerId, problemDetail.getDetail());
         }
 
-        private ProceedingDetails createProceedingDetails(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
-            return ProceedingDetails.builder()
+        private ProceedingDto createProceedingDetails(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
+            return ProceedingDto.builder()
                     .proceedingId(proceedingId)
                     .meritsDecision(
                             MeritsDecisionDetails.builder()
@@ -2173,9 +2170,9 @@ public class ApplicationTest extends BaseIntegrationTest {
         }
 
         // MeritsDecisionEntity -> ProceedingDetails
-        private static ProceedingDetails mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
+        private static ProceedingDto mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
             if (meritsDecisionEntity == null) return null;
-            return ProceedingDetails.builder()
+            return ProceedingDto.builder()
                     .proceedingId(meritsDecisionEntity.getProceeding().getId())
                     .meritsDecision(mapToMeritsDecisionDetails(meritsDecisionEntity))
                     .build();

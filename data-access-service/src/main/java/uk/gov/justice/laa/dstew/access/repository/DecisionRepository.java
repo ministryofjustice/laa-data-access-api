@@ -12,6 +12,7 @@ import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 @Repository
 public interface DecisionRepository extends JpaRepository<DecisionEntity, UUID> {
   Optional<DecisionEntity> findByApplicationId(UUID applicationId);
+
   // purely for testing purposes
   long countByApplicationId(UUID applicationId);
 }
