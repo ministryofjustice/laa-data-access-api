@@ -158,8 +158,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
       @ParameterizedTest
       @MethodSource("provideProceedingsForMapping")
       void mapToApplicationEntity_SuccessfullyMapFromApplicationContentFields(ApplicationCreateRequest application,
-                                                                              boolean expectedUseDelegatedFunctions,
-                                                                              boolean autoGranted) {
+                                                                              boolean expectedUseDelegatedFunctions) {
         // Given
         setSecurityContext(TestConstants.Roles.WRITER);
 
@@ -176,7 +175,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         assertEquals(expectedId, entity);
 
         assertAll(() -> assertEquals(expectedUseDelegatedFunctions, actualApplicationEntity.isUseDelegatedFunctions()),
-            () -> assertEquals(autoGranted, actualApplicationEntity.isAutoGranted()),
             () -> assertEquals(      Instant.parse("2026-01-15T10:20:30Z"), actualApplicationEntity.getSubmittedAt()));
       }
 
@@ -236,14 +234,14 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
       return Stream.of(
           Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder
                   .applicationContent(
-                      applicationContentFactory.createDefaultAsMap(detailsBuilder -> detailsBuilder.proceedings(null)))),
+                      applicationContentFactory.createDefaultAsMapWithApplicationContent(detailsBuilder -> detailsBuilder.proceedings(null)))),
               new ValidationException(List.of(
                   "No proceedings found in application content"
               ))
           ),
           Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder
                   .applicationContent(
-                      applicationContentFactory.createDefaultAsMap(detailsBuilder ->
+                      applicationContentFactory.createDefaultAsMapWithApplicationContent(detailsBuilder ->
                           detailsBuilder.proceedings(List.of(
                               proceedingDetailsFactory.createDefault(proceedingDetailsBuilder ->
                                   proceedingDetailsBuilder.leadProceeding(false))
@@ -261,22 +259,22 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             Arguments.of(applicationCreateRequestFactory
                     .createDefault(builder ->
                         builder.applicationContent(
-                            getAppContentMap(true, List.of(), UUID.randomUUID().toString()))),
+                            getAppContentMap(List.of(), UUID.randomUUID().toString()))),
                 new ValidationException(List.of("No proceedings found in application content")),
 
                 Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
                         builder.applicationContent(
-                            getAppContentMap(true, null, UUID.randomUUID().toString()))),
+                            getAppContentMap(null, UUID.randomUUID().toString()))),
                     new ValidationException(List.of("No proceedings found in application content")),
                 Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
                         builder.applicationContent(
-                            getAppContentMap(true,
+                            getAppContentMap(
                                 List.of(getProceedingJsonObject(null, false)),
                                 UUID.randomUUID().toString()))),
                     new ValidationException(List.of("No proceedings found in application content")),
                 Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
                         builder.applicationContent(
-                            getAppContentMap(false,
+                            getAppContentMap(
                                 List.of(getProceedingJsonObject(true, false)),
                                 UUID.randomUUID().toString()))),
                     new ValidationException(List.of("No lead proceeding found in application content"))))
@@ -284,11 +282,11 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         ));
       }
 
-      private Map<String, Object> getAppContentMap(boolean autoGrant, List<ProceedingJsonObject> proceedings,
+      private Map<String, Object> getAppContentMap(List<ProceedingJsonObject> proceedings,
                                                    String appContentId) {
         String submittedAt = "2026-01-15T10:20:30Z";
         AppContentJsonObject applicationContent =
-            AppContentJsonObject.builder().proceedings(proceedings).autoGrant(autoGrant).id(appContentId)
+            AppContentJsonObject.builder().proceedings(proceedings).id(appContentId)
                 .submittedAt(submittedAt).build();
         Map<String, Object> appContentMap;
 
@@ -297,29 +295,29 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         } catch (JsonProcessingException e) {
           throw new RuntimeException(e);
         }
-        return appContentMap;
+        return Map.of("applicationContent", appContentMap);
       }
 
 
       private static ProceedingJsonObject getProceedingJsonObject(Boolean useDelegatedFunctions, boolean leadProceeding) {
         return ProceedingJsonObject.builder().id("f6e2c4e1-5d32-4c3e-9f0a-1e2b3c4d5e6f").leadProceeding(leadProceeding)
             .categoryOfLaw(CategoryOfLaw.FAMILY.name()).matterType(MatterType.SCA.name())
-            .useDelegatedFunctions(useDelegatedFunctions).build();
+            .usedDelegatedFunctions(useDelegatedFunctions).build();
       }
 
       private Stream<Arguments> provideProceedingsForMapping() {
-        //App Content Map, expected useDelegatedFunctions, isAutoGrant
+        //App Content Map, expected usedDelegatedFunctions
         return Stream.of(Arguments.of(applicationCreateRequestFactory.createDefault(
-                builder -> builder.applicationContent(getAppContentMap(false, List.of(getProceedingJsonObject(true, true)),
-                    UUID.randomUUID().toString()))), true,
-            false), Arguments.of(applicationCreateRequestFactory.createDefault(
-                builder -> builder.applicationContent(getAppContentMap(true, List.of(getProceedingJsonObject(false, true)),
+                builder -> builder.applicationContent(getAppContentMap(List.of(getProceedingJsonObject(true, true)),
+                    UUID.randomUUID().toString()))), true),
+            Arguments.of(applicationCreateRequestFactory.createDefault(
+                builder -> builder.applicationContent(getAppContentMap(List.of(getProceedingJsonObject(false, true)),
                     UUID.randomUUID().toString()))), false,
             true), Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
-                getAppContentMap(true, List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(true, false)),
+                getAppContentMap(List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(true, false)),
                     UUID.randomUUID().toString()))), true,
             true), Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
-                getAppContentMap(true, List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(false, false)),
+                getAppContentMap(List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(false, false)),
                     UUID.randomUUID().toString()))), false,
             true));
       }
@@ -335,10 +333,10 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
       assertThat(actualApplicationEntity.getLaaReference()).isEqualTo(applicationCreateRequest.getLaaReference());
       ApplicationContentDetails applicationContentDetails =
           parseApplicationContentDetails(applicationCreateRequest.getApplicationContent());
-      assertThat(actualApplicationEntity.getApplyApplicationId()).isEqualTo(applicationContentDetails.getApplyApplicationId());
+      assertThat(actualApplicationEntity.getApplyApplicationId()).isEqualTo(applicationContentDetails.getId());
       assertThat(actualApplicationEntity.isUseDelegatedFunctions()).isEqualTo(
       applicationContentDetails.getProceedings().get(0)
-              .useDelegatedFunctions());
+              .usedDelegatedFunctions());
       assertThat(actualApplicationEntity.getApplicationContent())
           .usingRecursiveComparison()
           .ignoringCollectionOrder()
@@ -348,7 +346,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     }
 
     private ApplicationContentDetails parseApplicationContentDetails(Map<String, Object> applicationContentMap) {
-      return objectMapper.convertValue(applicationContentMap, ApplicationContentDetails.class);
+      return objectMapper.convertValue(applicationContentMap.get("applicationContent"), ApplicationContentDetails.class);
     }
 
     private void verifyThatCreateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled)

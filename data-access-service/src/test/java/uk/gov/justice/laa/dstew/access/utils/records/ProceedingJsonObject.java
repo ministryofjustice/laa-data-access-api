@@ -9,7 +9,7 @@ import lombok.Builder;
    * @param leadProceeding        is this the lead proceeding
    * @param categoryOfLaw         categoryOfLaw as string
    * @param matterType            matterType as string
-   * @param useDelegatedFunctions useDelegatedFunctions flag
+   * @param usedDelegatedFunctions usedDelegatedFunctions flag
    */
   @Builder
   public record ProceedingJsonObject(
@@ -17,5 +17,5 @@ import lombok.Builder;
       boolean leadProceeding,
       String categoryOfLaw,
       String matterType,
-      Boolean useDelegatedFunctions) {
+      Boolean usedDelegatedFunctions) {
   }

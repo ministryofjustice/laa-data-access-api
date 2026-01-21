@@ -17,5 +17,5 @@ public record ProceedingDetails(
     CategoryOfLaw categoryOfLaw,
     @JsonDeserialize(using = MatterTypeDeserializer.class)
     MatterType matterType,
-    Boolean useDelegatedFunctions) {
+    Boolean usedDelegatedFunctions) {
 }

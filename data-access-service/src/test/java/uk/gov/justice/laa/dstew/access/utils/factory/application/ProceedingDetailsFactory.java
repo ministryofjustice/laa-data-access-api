@@ -28,7 +28,7 @@ public class ProceedingDetailsFactory
         .categoryOfLaw(CategoryOfLaw.FAMILY)
         .matterType(MatterType.SCA)
         .leadProceeding(true)
-        .useDelegatedFunctions(true)
+        .usedDelegatedFunctions(true)
         .build();
   }
 
