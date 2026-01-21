@@ -67,9 +67,11 @@ public class ApplicationSummaryEntity {
   private boolean usedDelegatedFunctions;
 
   @Column(name = "category_of_law")
+  @Enumerated(EnumType.STRING)
   private CategoryOfLaw categoryOfLaw;
 
   @Column(name = "matter_types")
+  @Enumerated(EnumType.STRING)
   private MatterType matterType;
 
   @Column(name = "is_auto_granted")
