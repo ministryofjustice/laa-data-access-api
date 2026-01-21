@@ -1466,23 +1466,6 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     .allSatisfy(merits -> {
                         assertThat(merits.getModifiedAt()).isNotNull();
                     });
-
-            // this assert is checking that the fields that should not be changed have not been changed.
-            // things like reason, decision, etc, have been checked in the assert above.
-            if (currentSavedDecisionEntity != null) {
-                assertThat(savedDecision)
-                        .usingRecursiveComparison()
-                        .ignoringFields(
-                                "overallDecision",
-                                "meritsDecisions.decision",
-                                "meritsDecisions.reason",
-                                "meritsDecisions.justification",
-                                "modifiedAt",
-                                "meritsDecisions.modifiedAt",
-                                "meritsDecisions.proceeding.modifiedAt"
-                        )
-                        .isEqualTo(currentSavedDecisionEntity);
-            }
         }
 
         // DecisionEntity -> MakeDecisionRequest

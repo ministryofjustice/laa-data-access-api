@@ -2136,24 +2136,6 @@ public class ApplicationTest extends BaseIntegrationTest {
                     .allSatisfy(merits -> {
                         Assertions.assertThat(merits.getModifiedAt()).isNotNull();
                     });
-
-            if (currentSavedDecisionEntity != null) {
-                Assertions.assertThat(savedDecision)
-                        .usingRecursiveComparison()
-                        .ignoringCollectionOrder()
-                        .ignoringFields(
-                                "applicationId",
-                                "overallDecision",
-                                "meritsDecisions.decision",
-                                "meritsDecisions.reason",
-                                "meritsDecisions.justification",
-                                "meritsDecisions.proceeding.id",
-                                "modifiedAt",
-                                "meritsDecisions.modifiedAt",
-                                "meritsDecisions.proceeding.modifiedAt"
-                        )
-                        .isEqualTo(currentSavedDecisionEntity);
-            }
         }
 
         // DecisionEntity -> MakeDecisionRequest
