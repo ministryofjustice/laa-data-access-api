@@ -17,7 +17,6 @@ import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 
 /**
  * Mapper interface.

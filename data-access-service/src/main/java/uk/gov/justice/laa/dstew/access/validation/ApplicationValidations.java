@@ -49,15 +49,4 @@ public class ApplicationValidations {
       );
     }
   }
-
-  /**
-   * Validates an incoming apply Decision PATCH.
-   */
-  public void checkApplicationMakeDecisionRequest(final MakeDecisionRequest dto) {
-    if (dto == null || dto.getProceedings().isEmpty()) {
-      throw new ValidationException(
-              List.of("The Make Decision request must contain at least one proceeding")
-      );
-    }
-  }
 }

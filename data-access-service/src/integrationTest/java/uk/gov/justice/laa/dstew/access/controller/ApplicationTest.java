@@ -1921,8 +1921,8 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                         .proceedings(List.of(
-                            createProceedingDetails(grantedProceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1"),
-                            createProceedingDetails(refusedProceedingEntity.getId(), MeritsDecisionStatus.REFUSED, "justification 2", "reason 2")
+                            createMakeDecisionProceeding(grantedProceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1"),
+                            createMakeDecisionProceeding(refusedProceedingEntity.getId(), MeritsDecisionStatus.REFUSED, "justification 2", "reason 2")
                         ));
             });
 
@@ -1990,8 +1990,8 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.REFUSED)
                         .proceedings(List.of(
-                                createProceedingDetails(proceedingEntityTwo.getId(), MeritsDecisionStatus.REFUSED, "justification new", "reason new"),
-                                createProceedingDetails(proceedingEntityOne.getId(), MeritsDecisionStatus.GRANTED, "justification update", "reason update")
+                            createMakeDecisionProceeding(proceedingEntityTwo.getId(), MeritsDecisionStatus.REFUSED, "justification new", "reason new"),
+                            createMakeDecisionProceeding(proceedingEntityOne.getId(), MeritsDecisionStatus.GRANTED, "justification update", "reason update")
                         ));
             });
 
@@ -2028,20 +2028,11 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                         .proceedings(List.of(
-                                MakeDecisionProceeding.builder()
-                                        .proceedingId(UUID.randomUUID())
-                                        .meritsDecision(
-                                                MeritsDecisionDetails.builder()
-                                                        .decision(MeritsDecisionStatus.REFUSED)
-                                                        .refusal(
-                                                                RefusalDetails.builder()
-                                                                        .justification("justification")
-                                                                        .reason("reason")
-                                                                        .build()
-                                                        )
-                                                        .build()
-                                        )
-                                        .build()
+                                createMakeDecisionProceeding(
+                                        UUID.randomUUID(),
+                                        MeritsDecisionStatus.REFUSED,
+                                        "justification",
+                                        "reason")
                         ));
             });
 
@@ -2076,20 +2067,11 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                         .proceedings(List.of(
-                                MakeDecisionProceeding.builder()
-                                        .proceedingId(UUID.randomUUID())
-                                        .meritsDecision(
-                                                MeritsDecisionDetails.builder()
-                                                        .decision(MeritsDecisionStatus.REFUSED)
-                                                        .refusal(
-                                                                RefusalDetails.builder()
-                                                                        .justification("justification")
-                                                                        .reason("reason")
-                                                                        .build()
-                                                        )
-                                                        .build()
-                                        )
-                                        .build()
+                                createMakeDecisionProceeding(
+                                        UUID.randomUUID(),
+                                        MeritsDecisionStatus.REFUSED,
+                                        "justification",
+                                        "reason")
                         ));
             });
 
@@ -2105,7 +2087,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertEquals("No caseworker found with id: " + caseworkerId, problemDetail.getDetail());
         }
 
-        private MakeDecisionProceeding createProceedingDetails(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
+        private MakeDecisionProceeding createMakeDecisionProceeding(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
             return MakeDecisionProceeding.builder()
                     .proceedingId(proceedingId)
                     .meritsDecision(

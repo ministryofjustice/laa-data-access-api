@@ -301,8 +301,6 @@ public class ApplicationService {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     checkIfCaseworkerExists(request.getUserId());
 
-    applicationValidations.checkApplicationMakeDecisionRequest(request);
-
     application.setStatus(request.getApplicationStatus());
     application.setModifiedAt(Instant.now());
     applicationRepository.save(application);
