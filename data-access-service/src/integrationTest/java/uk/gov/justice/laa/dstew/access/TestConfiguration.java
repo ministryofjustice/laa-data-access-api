@@ -25,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerUnassi
 import uk.gov.justice.laa.dstew.access.utils.factory.domainevents.DomainEventFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualEntityFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactoryImpl;
+import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
 
 @Configuration
 public class TestConfiguration {

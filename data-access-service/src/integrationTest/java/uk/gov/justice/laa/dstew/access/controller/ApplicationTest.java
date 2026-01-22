@@ -25,6 +25,8 @@ import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
+import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
 
 
 import java.time.Instant;
@@ -1867,7 +1869,7 @@ public class ApplicationTest extends BaseIntegrationTest {
 
         private DomainEventEntity setupDomainEvent(UUID appId, DomainEventType eventType) {
             String eventDesc = "{ \"eventDescription\" : \"" + eventType.getValue() + "\"}";
-            return persistedDomainEventFactory.createAndPersist(builder ->
+            return persistedDataGenerator.createAndPersist(DomainEventGenerator.class, builder ->
                 {
                     builder.applicationId(appId);
                     builder.createdAt(Instant.now());

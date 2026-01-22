@@ -12,6 +12,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
 
 import java.util.List;
 import java.util.UUID;
@@ -34,7 +36,7 @@ public class DomainEventServiceV2Test extends BaseServiceTest {
         void givenExpectedDomainEvents_whenGetEvents_thenReturnDomainEventsInCreatedAtOrder() {
             // given
             setSecurityContext(TestConstants.Roles.READER);
-            List<DomainEventEntity> generatedDomainEvents = domainEventFactory.createMultipleDefault(20);
+            List<DomainEventEntity> generatedDomainEvents = DataGenerator.createMultipleDefault(DomainEventGenerator.class, 20);
 
             List<DomainEventEntity> expectedDomainEvents = generatedDomainEvents.stream()
                     .sorted((de1, de2) -> de2.getCreatedAt().compareTo(de1.getCreatedAt()))
