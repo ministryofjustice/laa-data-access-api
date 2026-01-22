@@ -20,7 +20,7 @@ public class ApplicationContentFactory
   @Autowired
   ObjectMapper objectMapper;
   @Autowired
-  ProceedingDetailsFactory proceedingDetailsFactory;
+  ProceedingDtoFactory proceedingDtoFactory;
 
   public ApplicationContentFactory() {
     super(ApplicationContentDetails::toBuilder, ApplicationContentDetails.ApplicationContentDetailsBuilder::build);
@@ -33,7 +33,7 @@ public class ApplicationContentFactory
         .id(applicationId)
         .autoGrant(true)
         .submittedAt(Instant.now())
-        .proceedings(List.of(proceedingDetailsFactory.createDefault()))
+        .proceedings(List.of(proceedingDtoFactory.createDefault()))
         .build();
   }
 

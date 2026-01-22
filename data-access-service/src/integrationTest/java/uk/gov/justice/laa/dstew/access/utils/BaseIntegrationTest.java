@@ -13,18 +13,9 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.AccessApp;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
-import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
-import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
-import uk.gov.justice.laa.dstew.access.model.Individual;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
-import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
-import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.entity.*;
+import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.repository.*;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
 
@@ -55,6 +46,9 @@ public abstract class BaseIntegrationTest {
     protected DomainEventRepository domainEventRepository;
 
     @Autowired
+    protected DecisionRepository decisionRepository;
+
+    @Autowired
     protected Factory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder> applicationFactory;
 
     @Autowired
@@ -77,6 +71,9 @@ public abstract class BaseIntegrationTest {
 
     @Autowired
     protected Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder> domainEventFactory;
+
+    @Autowired
+    protected Factory<MakeDecisionRequest, MakeDecisionRequest.Builder> makeDecisionRequestFactory;
 
     @Autowired
     protected Factory<Individual, Individual.Builder> individualFactory;
@@ -106,6 +103,29 @@ public abstract class BaseIntegrationTest {
               DomainEventEntity.DomainEventEntityBuilder,
               UUID> persistedDomainEventFactory;
 
+    @Autowired
+    protected PersistedFactory<
+            ProceedingRepository,
+            Factory<ProceedingEntity, ProceedingEntity.ProceedingEntityBuilder>,
+            ProceedingEntity,
+            ProceedingEntity.ProceedingEntityBuilder,
+            UUID> persistedProceedingFactory;
+
+    @Autowired
+    protected PersistedFactory<
+            MeritsDecisionRepository,
+            Factory<MeritsDecisionEntity, MeritsDecisionEntity.MeritsDecisionEntityBuilder>,
+            MeritsDecisionEntity,
+            MeritsDecisionEntity.MeritsDecisionEntityBuilder,
+            UUID> persistedMeritsDecisionFactory;
+
+    @Autowired
+    protected PersistedFactory<
+            DecisionRepository,
+            Factory<DecisionEntity, DecisionEntity.DecisionEntityBuilder>,
+            DecisionEntity,
+            DecisionEntity.DecisionEntityBuilder,
+            UUID> persistedDecisionFactory;
 
     // for use in tests and factories where applicable (i.e. default in ApplicationFactoryImpl)
     public static CaseworkerEntity CaseworkerJohnDoe;

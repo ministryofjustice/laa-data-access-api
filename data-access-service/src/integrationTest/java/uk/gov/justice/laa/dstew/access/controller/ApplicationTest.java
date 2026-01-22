@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -18,7 +19,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.entity.*;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
@@ -31,7 +32,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.regex.MatchResult;
@@ -41,6 +41,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
 @ActiveProfiles("test")
@@ -1501,7 +1502,7 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertThat(actual.getApplications().size()).isEqualTo(3);
             assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(10, 13)));
         }
-        
+
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
         void givenApplicationsFilteredByClientDateOfBirth_whenGetAllApplications_thenReturnExpectedApplication() throws Exception {
@@ -1527,14 +1528,14 @@ public class ApplicationTest extends BaseIntegrationTest {
             assertThat(actual.getApplications().size()).isEqualTo(2);
             assertArrayEquals(actual.getApplications().toArray(), expectedApplicationSummary.toArray());
         }
-        
+
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
         void givenApplicationFilteredByClientDateOfBirth_whenGetAllApplicationsAndInvalidFormat_thenReturnBadRequest() throws Exception {
             MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_CLIENTDOB_PARAM + "something");
             assertBadRequest(result);
         }
-        
+
         @Test
         @WithMockUser(authorities = TestConstants.Roles.READER)
         void givenApplicationsFilteredByStatusAndNoApplicationsMatch_whenGetApplications_thenReturnEmptyResult() throws Exception {
@@ -1886,6 +1887,277 @@ public class ApplicationTest extends BaseIntegrationTest {
                                          .caseworkerId(entity.getCaseworkerId())
                                          .createdBy(entity.getCreatedBy())
                                          .build();
+        }
+    }
+
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class ApplicationMakeDecision {
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenReturnNoContent_andDecisionSaved()
+                            throws Exception {
+            // given
+            ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+                builder.applicationContent(new HashMap<>(Map.of(
+                        "test", "content"
+                )));
+            });
+
+            ProceedingEntity refusedProceedingEntity = persistedProceedingFactory.createAndPersist(
+                    builder -> {builder
+                            .applicationId(applicationEntity.getId());}
+            );
+
+            ProceedingEntity grantedProceedingEntity = persistedProceedingFactory.createAndPersist(
+                    builder -> {builder
+                            .applicationId(applicationEntity.getId());}
+            );
+
+            MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
+                builder
+                        .userId(CaseworkerJohnDoe.getId())
+                        .applicationStatus(ApplicationStatus.SUBMITTED)
+                        .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                        .proceedings(List.of(
+                            createMakeDecisionProceeding(grantedProceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1"),
+                            createMakeDecisionProceeding(refusedProceedingEntity.getId(), MeritsDecisionStatus.REFUSED, "justification 2", "reason 2")
+                        ));
+            });
+
+            // when
+            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertNoContent(result);
+
+            ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+            assertEquals(ApplicationStatus.SUBMITTED, actualApplication.getStatus());
+
+            assertThat(decisionRepository.countByApplicationId(applicationEntity.getId()))
+                    .isEqualTo(1);
+
+            verifyDecisionSavedCorrectly(
+                    applicationEntity.getId(),
+                    makeDecisionRequest,
+                    applicationEntity,
+                    null
+            );
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenMakeDecisionRequestWithExistingContentAndNewContent_whenAssignDecision_thenReturnNoContent_andDecisionUpdated()
+                throws Exception {
+            // given
+            ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+                builder.applicationContent(new HashMap<>(Map.of(
+                        "test", "content"
+                )));
+            });
+
+            ProceedingEntity proceedingEntityOne = persistedProceedingFactory.createAndPersist(
+                    builder -> {builder
+                            .applicationId(applicationEntity.getId());}
+            );
+
+            ProceedingEntity proceedingEntityTwo = persistedProceedingFactory.createAndPersist(
+                    builder -> {builder
+                            .applicationId(applicationEntity.getId());}
+            );
+
+            MeritsDecisionEntity meritsDecisionEntityOne = persistedMeritsDecisionFactory.createAndPersist(
+                    builder -> { builder
+                            .proceeding(proceedingEntityOne)
+                            .decision(MeritsDecisionStatus.REFUSED);
+                    }
+            );
+
+            DecisionEntity decision = persistedDecisionFactory.createAndPersist(
+                    builder -> { builder
+                            .applicationId(applicationEntity.getId())
+                            .meritsDecisions(Set.of(meritsDecisionEntityOne))
+                            .overallDecision(DecisionStatus.REFUSED);
+                    }
+            );
+
+            MakeDecisionRequest assignDecisionRequest = makeDecisionRequestFactory.create(builder -> {
+                builder
+                        .userId(CaseworkerJohnDoe.getId())
+                        .applicationStatus(ApplicationStatus.SUBMITTED)
+                        .overallDecision(DecisionStatus.REFUSED)
+                        .proceedings(List.of(
+                            createMakeDecisionProceeding(proceedingEntityTwo.getId(), MeritsDecisionStatus.REFUSED, "justification new", "reason new"),
+                            createMakeDecisionProceeding(proceedingEntityOne.getId(), MeritsDecisionStatus.GRANTED, "justification update", "reason update")
+                        ));
+            });
+
+            // when
+            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, assignDecisionRequest, applicationEntity.getId());
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertNoContent(result);
+
+            assertEquals(ApplicationStatus.SUBMITTED, applicationEntity.getStatus());
+
+            assertThat(decisionRepository.countByApplicationId(applicationEntity.getId()))
+                    .isEqualTo(1);
+
+            verifyDecisionSavedCorrectly(
+                    applicationEntity.getId(),
+                    assignDecisionRequest,
+                    applicationEntity,
+                    decision
+            );
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenNoApplication_whenAssignDecisionApplication_thenReturnNotFoundAndMessage()
+                throws Exception {
+            // given
+            UUID applicationId = UUID.randomUUID();
+            MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
+                builder
+                        .userId(CaseworkerJohnDoe.getId())
+                        .applicationStatus(ApplicationStatus.SUBMITTED)
+                        .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                        .proceedings(List.of(
+                                createMakeDecisionProceeding(
+                                        UUID.randomUUID(),
+                                        MeritsDecisionStatus.REFUSED,
+                                        "justification",
+                                        "reason")
+                        ));
+            });
+
+            // when
+            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationId);
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertNotFound(result);
+            assertEquals("application/problem+json", result.getResponse().getContentType());
+            ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+            assertEquals("No application found with id: " + applicationId, problemDetail.getDetail());
+        }
+
+        @Test
+        @WithMockUser(authorities = TestConstants.Roles.WRITER)
+        public void givenNoCaseworker_whenAssignDecisionApplication_thenReturnNotFoundAndMessage()
+                throws Exception {
+            // given
+            UUID caseworkerId = UUID.randomUUID();
+
+            ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+                builder.applicationContent(new HashMap<>(Map.of(
+                        "test", "content"
+                )));
+            });
+
+            MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
+                builder
+                        .userId(caseworkerId)
+                        .applicationStatus(ApplicationStatus.SUBMITTED)
+                        .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                        .proceedings(List.of(
+                                createMakeDecisionProceeding(
+                                        UUID.randomUUID(),
+                                        MeritsDecisionStatus.REFUSED,
+                                        "justification",
+                                        "reason")
+                        ));
+            });
+
+            // when
+            MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+
+            // then
+            assertSecurityHeaders(result);
+            assertNoCacheHeaders(result);
+            assertNotFound(result);
+            assertEquals("application/problem+json", result.getResponse().getContentType());
+            ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+            assertEquals("No caseworker found with id: " + caseworkerId, problemDetail.getDetail());
+        }
+
+        private MakeDecisionProceeding createMakeDecisionProceeding(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
+            return MakeDecisionProceeding.builder()
+                    .proceedingId(proceedingId)
+                    .meritsDecision(
+                            MeritsDecisionDetails.builder()
+                                    .decision(meritsDecisionStatus)
+                                    .refusal(
+                                            RefusalDetails.builder()
+                                                    .justification(justification)
+                                                    .reason(reason)
+                                                    .build()
+                                    )
+                                    .build()
+                    )
+                    .build();
+        }
+
+        private void verifyDecisionSavedCorrectly(UUID applicationId, MakeDecisionRequest expectedMakeDecisionRequest, ApplicationEntity expectedApplicationEntity, DecisionEntity currentSavedDecisionEntity) {
+            DecisionEntity savedDecision = decisionRepository.findByApplicationId(applicationId).orElseThrow();
+
+            MakeDecisionRequest actual = mapToMakeDecisionRequest(savedDecision, expectedApplicationEntity);
+            Assertions.assertThat(actual)
+                    .usingRecursiveComparison()
+                    .ignoringCollectionOrder()
+                    .isEqualTo(expectedMakeDecisionRequest);
+
+            Assertions.assertThat(savedDecision.getModifiedAt()).isNotNull();
+            Assertions.assertThat(savedDecision.getMeritsDecisions())
+                    .allSatisfy(merits -> {
+                        Assertions.assertThat(merits.getModifiedAt()).isNotNull();
+                    });
+        }
+
+        // DecisionEntity -> MakeDecisionRequest
+        private static MakeDecisionRequest mapToMakeDecisionRequest(DecisionEntity decisionEntity, ApplicationEntity applicationEntity) {
+            if (decisionEntity == null) return null;
+            return MakeDecisionRequest.builder()
+                    .applicationStatus(applicationEntity.getStatus())
+                    .overallDecision(decisionEntity.getOverallDecision())
+                    .userId(applicationEntity.getCaseworker().getId())
+                    .proceedings(decisionEntity.getMeritsDecisions().stream()
+                            .map(ApplicationMakeDecision::mapToProceedingDetails)
+                            .toList())
+                    .build();
+        }
+
+        // MeritsDecisionEntity -> ProceedingDetails
+        private static MakeDecisionProceeding mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
+            if (meritsDecisionEntity == null) return null;
+            return MakeDecisionProceeding.builder()
+                    .proceedingId(meritsDecisionEntity.getProceeding().getId())
+                    .meritsDecision(mapToMeritsDecisionDetails(meritsDecisionEntity))
+                    .build();
+        }
+
+        // MeritsDecisionEntity -> MeritsDecisionDetails
+        private static MeritsDecisionDetails mapToMeritsDecisionDetails(MeritsDecisionEntity entity) {
+            if (entity == null) return null;
+            return MeritsDecisionDetails.builder()
+                    .decision(entity.getDecision())
+                    .refusal(mapToRefusalDetails(entity))
+                    .build();
+        }
+
+        // MeritsDecisionEntity -> RefusalDetails
+        private static RefusalDetails mapToRefusalDetails(MeritsDecisionEntity entity) {
+            if (entity == null) return null;
+            return RefusalDetails.builder()
+                    .reason(entity.getReason())
+                    .justification(entity.getJustification())
+                    .build();
         }
     }
 

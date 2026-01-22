@@ -15,7 +15,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
-import uk.gov.justice.laa.dstew.access.model.ProceedingDetails;
+import uk.gov.justice.laa.dstew.access.model.ProceedingDto;
 import uk.gov.justice.laa.dstew.access.utils.DateTimeHelper;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
@@ -23,7 +23,7 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
 
   @Override
   public ApplicationCreateRequest create() {
-    ProceedingDetails proceedingDetails = ProceedingDetails
+    ProceedingDto proceedingDetails = ProceedingDto
         .builder()
         .id(UUID.randomUUID())
         .categoryOfLaw(CategoryOfLaw.FAMILY)

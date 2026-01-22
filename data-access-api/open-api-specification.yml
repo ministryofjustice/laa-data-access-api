@@ -16,6 +16,8 @@ paths:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1unassign"
   /api/v0/applications/{id}/history-search:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1history-search"
+  /api/v0/applications/{id}/decision:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1decision"
 
 components:
   schemas:
@@ -39,3 +41,5 @@ components:
       $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationDomainEvent"
     Paging:
       $ref: "./open-api-application-specification.yml#/components/schemas/Paging"
+    MakeDecisionRequest:
+      $ref: "./open-api-application-specification.yml#/components/schemas/MakeDecisionRequest"
