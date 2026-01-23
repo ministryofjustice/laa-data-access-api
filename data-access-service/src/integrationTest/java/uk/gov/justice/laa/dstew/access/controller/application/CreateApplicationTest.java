@@ -17,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -89,11 +90,11 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenInvalidApplicationContent_EmptyMap_whenCreateApplication_thenReturnBadRequest() throws Exception {
         ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder -> {
-            builder.applicationContent(new HashMap<>());
+            builder.applicationContent(new RequestApplicationContent());
         });
 
         Map<String, String> invalidFields = new HashMap<>();
-        invalidFields.put("applicationContent", "size must be between 1 and " + Integer.MAX_VALUE);
+        invalidFields.put("applicationContent.applicationContent", "must not be null");
 
         ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
         expectedProblemDetail.setProperty("invalidFields", invalidFields);
@@ -115,7 +116,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         });
 
         Map<String, String> invalidFields = new HashMap<>();
-        invalidFields.put("applicationContent", "size must be between 1 and " + Integer.MAX_VALUE);
+        invalidFields.put("applicationContent", "must not be null");
 
         ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
         expectedProblemDetail.setProperty("invalidFields", invalidFields);
