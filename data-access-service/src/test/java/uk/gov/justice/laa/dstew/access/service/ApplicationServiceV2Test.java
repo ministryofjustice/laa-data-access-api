@@ -1078,6 +1078,12 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
                     requestBuilder
                             .userId(caseworker.getId())
+                            .overallDecision(DecisionStatus.REFUSED)
+                            .eventHistory(
+                                EventHistory.builder()
+                                .eventDescription("event")
+                                .build()
+                            )
                             .proceedings(List.of(
                                     createMakeDecisionProceedingDetails(grantedProceedingId, grantedDecision, grantedReason, grantedJustification),
                                     createMakeDecisionProceedingDetails(refusedProceedingId, refusedDecision, refusedReason, refusedJustification)
@@ -1122,6 +1128,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
             verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, null, 2);
         }
 
@@ -1136,6 +1143,11 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
                     requestBuilder
                             .userId(caseworker.getId())
+                            .eventHistory(
+                                    EventHistory.builder()
+                                            .eventDescription("event")
+                                            .build()
+                            )
                             .proceedings(List.of(
                                     createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "refusal update", "justification update")
                             ))
@@ -1180,6 +1192,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
 
             verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity, 1);
         }
@@ -1196,6 +1209,12 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
                     requestBuilder
                             .userId(caseworker.getId())
+                            .overallDecision(DecisionStatus.REFUSED)
+                            .eventHistory(
+                                    EventHistory.builder()
+                                            .eventDescription(null)
+                                            .build()
+                            )
                             .proceedings(List.of(
                                     createMakeDecisionProceedingDetails(newProceedingId, MeritsDecisionStatus.GRANTED, "new refusal", "new justification")
                             ))
@@ -1247,7 +1266,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-
+            verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
             verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity, 2);
         }
 
@@ -1263,6 +1282,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
                     requestBuilder
                             .userId(caseworker.getId())
+                            .eventHistory(EventHistory.builder().build())
                             .proceedings(List.of(
                                     createMakeDecisionProceedingDetails(newProceedingId, MeritsDecisionStatus.REFUSED, "refusal new", "justification new"),
                                     createMakeDecisionProceedingDetails(currentProceedingId, MeritsDecisionStatus.GRANTED, "refusal update", "justification update")
@@ -1315,7 +1335,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-
+            verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
             verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity, 2);
         }
 
@@ -1491,7 +1511,8 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(decisionRepository, times(1)).save(decisionCaptor.capture());
             DecisionEntity savedDecision = decisionCaptor.getValue();
 
-            MakeDecisionRequest actual = mapToMakeDecisionRequest(savedDecision, expectedApplicationEntity);
+            MakeDecisionRequest actual = mapToMakeDecisionRequest(
+                    savedDecision, expectedApplicationEntity, expectedMakeDecisionRequest.getEventHistory().getEventDescription());
 
             assertThat(actual.getProceedings().size()).isEqualTo(expectedNumberOfMeritsDecisions);
 
@@ -1523,12 +1544,16 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         // DecisionEntity -> MakeDecisionRequest
-        private static MakeDecisionRequest mapToMakeDecisionRequest(DecisionEntity decisionEntity, ApplicationEntity applicationEntity) {
+        private static MakeDecisionRequest mapToMakeDecisionRequest(
+                DecisionEntity decisionEntity,
+                ApplicationEntity applicationEntity,
+                String eventDescription) {
             if (decisionEntity == null) return null;
             return MakeDecisionRequest.builder()
                     .applicationStatus(applicationEntity.getStatus())
                     .overallDecision(decisionEntity.getOverallDecision())
                     .userId(applicationEntity.getCaseworker().getId())
+                    .eventHistory(EventHistory.builder().eventDescription(eventDescription).build())
                     .proceedings(decisionEntity.getMeritsDecisions().stream()
                             .map(MakeDecisionForApplication::mapToProceedingDetails)
                             .toList())
