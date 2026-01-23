@@ -382,9 +382,7 @@ components:
         status:
           $ref: "#/components/schemas/applicationStatus"
         applicationContent:
-          type: object
-          additionalProperties: true
-          minProperties: 1
+          $ref: "#/components/schemas/RequestApplicationContent"
         laaReference:
           type: string
           minLength: 1
@@ -393,6 +391,63 @@ components:
           minItems: 1
           items:
             $ref: "#/components/schemas/Individual"
+
+    RequestApplicationContent:
+        type: object
+        additionalProperties: true
+        required:
+          - applicationContent
+        properties:
+          status:
+            $ref: "#/components/schemas/applicationStatus"
+          applicationReference:
+            type: string
+          applicationContent:
+            $ref: "#/components/schemas/ApplicationContent"
+
+    ApplicationContent:
+      type: object
+      additionalProperties: true
+      required:
+        - id
+        - proceedings
+        - submittedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        proceedings:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/Proceeding"
+        submittedAt:
+          type: string
+          format: instant
+        applicationRef:
+          type: string
+
+    Proceeding:
+      type: object
+      required:
+            - id
+            - description
+            - leadProceeding
+      properties:
+        id:
+          type: string
+          format: uuid
+        categoryOfLaw:
+          type: string
+        matterType:
+          type: string
+        usedDelegatedFunctions:
+          type: boolean
+        leadProceeding:
+          type: boolean
+        description:
+          type: string
+      additionalProperties: true
 
     ApplicationUpdateRequest:
       type: object

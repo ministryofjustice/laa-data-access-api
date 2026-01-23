@@ -17,10 +17,10 @@ public class ApplicationCreateRequestFactory extends BaseFactory<ApplicationCrea
     @Autowired
     private IndividualFactory individualFactory;
 
-    @Autowired
-    private ApplicationContentFactory applicationContentFactory;
+  @Autowired
+  private RequestApplicationContentFactory requestApplicationContentFactory;
 
-    public ApplicationCreateRequestFactory() {
+  public ApplicationCreateRequestFactory() {
         super(ApplicationCreateRequest::toBuilder, ApplicationCreateRequest.Builder::build);
     }
 
@@ -30,7 +30,7 @@ public class ApplicationCreateRequestFactory extends BaseFactory<ApplicationCrea
                 .status(ApplicationStatus.IN_PROGRESS)
                 .laaReference("REF7327")
                 .individuals(List.of(individualFactory.createDefault()))
-                .applicationContent(applicationContentFactory.createDefaultAsMapWithApplicationContent())
+                .applicationContent(requestApplicationContentFactory.createDefault())
                 .build();
     }
 }

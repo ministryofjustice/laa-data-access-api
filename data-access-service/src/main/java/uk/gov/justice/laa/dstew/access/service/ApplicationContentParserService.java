@@ -1,13 +1,15 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContentDetails;
+import uk.gov.justice.laa.dstew.access.convertors.CategoryOfLawTypeConvertor;
+import uk.gov.justice.laa.dstew.access.convertors.MatterTypeConvertor;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ParsedAppContentDetails;
-import uk.gov.justice.laa.dstew.access.model.ProceedingDto;
+import uk.gov.justice.laa.dstew.access.model.Proceeding;
+import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
@@ -16,23 +18,21 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 @Service
 public class ApplicationContentParserService {
 
-  private final ObjectMapper objectMapper;
+  private static final MatterTypeConvertor matterTypeDeserializer = new MatterTypeConvertor();
+  private static final CategoryOfLawTypeConvertor categoryOfLawTypeDeserializer = new CategoryOfLawTypeConvertor();
 
-  public ApplicationContentParserService(final ObjectMapper objectMapper) {
-    this.objectMapper = objectMapper;
-  }
+
 
   /**
    * Normalises application content details from the create request.
    *
-   * @param appContentMap the application create request
+   * @param requestAppContent the application create request
    * @return the extracted application content details
    */
   public ParsedAppContentDetails normaliseApplicationContentDetails(
-      Map<String, Object> appContentMap) {
-    ApplicationContentDetails
-        applicationContentDetails = objectMapper.convertValue(appContentMap, ApplicationContentDetails.class);
-    return processingApplicationContent(applicationContentDetails);
+      RequestApplicationContent requestAppContent) {
+
+    return processingApplicationContent(requestAppContent.getApplicationContent());
 
   }
 
@@ -42,27 +42,31 @@ public class ApplicationContentParserService {
    * @param applicationContent the application content to process
    * @return the extracted application content details
    */
-  private static ParsedAppContentDetails processingApplicationContent(ApplicationContentDetails applicationContent) {
-    if (applicationContent.getProceedings() == null || applicationContent.getProceedings().isEmpty()) {
-      throw new ValidationException(List.of("No proceedings found in application content"));
-    }
-    ProceedingDto leadProceeding = applicationContent.getProceedings().stream()
-        .filter(Objects::nonNull)
-        .filter(ProceedingDto::leadProceeding)
+  private static ParsedAppContentDetails processingApplicationContent(
+      ApplicationContent applicationContent) {
+
+    List<Proceeding> proceedingList = applicationContent.getProceedings().stream()
+        .filter(Objects::nonNull).toList();
+    Proceeding leadProceeding = proceedingList
+        .stream()
+        .filter(proceeding -> proceeding.getLeadProceeding().equals(Boolean.TRUE))
         .findFirst()
         .orElseThrow(() -> new ValidationException(List.of("No lead proceeding found in application content")));
     boolean usedDelegatedFunction =
-        applicationContent.getProceedings().stream()
-            .filter(Objects::nonNull)
-            .filter(proceeding -> null != proceeding.usedDelegatedFunctions())
-            .anyMatch(ProceedingDto::usedDelegatedFunctions);
+        proceedingList
+            .stream()
+            .filter(proceeding -> null != proceeding.getUsedDelegatedFunctions())
+            .anyMatch(Proceeding::getUsedDelegatedFunctions);
+
     return ParsedAppContentDetails
         .builder()
         .applyApplicationId(applicationContent.getId())
-        .categoryOfLaw(leadProceeding.categoryOfLaw())
-        .matterType(leadProceeding.matterType())
-        .submittedAt(applicationContent.getSubmittedAt())
-        .useDelegatedFunctions(usedDelegatedFunction)
+        .categoryOfLaw(categoryOfLawTypeDeserializer.lenientEnumConversion(leadProceeding.getCategoryOfLaw()))
+        .matterType(matterTypeDeserializer.lenientEnumConversion(leadProceeding.getMatterType()))
+        .submittedAt(Instant.parse(applicationContent.getSubmittedAt()))
+        .usedDelegatedFunctions(usedDelegatedFunction)
         .build();
   }
+
+
 }
