@@ -52,6 +52,7 @@ public class ApplicationService {
   private final DecisionRepository decisionRepository;
   private final ProceedingRepository proceedingRepository;
   private final MeritsDecisionRepository meritsDecisionRepository;
+  private final ProceedingsService proceedingsService;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -70,17 +71,19 @@ public class ApplicationService {
                             final DomainEventService domainEventService,
                             final ApplicationContentParserService applicationContentParserService,
                             final ProceedingRepository proceedingRepository,
-                            final MeritsDecisionRepository meritsDecisionRepository) {
+                            final MeritsDecisionRepository meritsDecisionRepository,
+                            final ProceedingsService proceedingsService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
     this.applicationContentParser = applicationContentParserService;
+    this.proceedingRepository = proceedingRepository;
+    this.proceedingsService = proceedingsService;
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
     this.caseworkerRepository = caseworkerRepository;
     this.domainEventService = domainEventService;
     this.decisionRepository = decisionRepository;
-    this.proceedingRepository = proceedingRepository;
     this.meritsDecisionRepository = meritsDecisionRepository;
   }
 
@@ -111,8 +114,8 @@ public class ApplicationService {
     final ApplicationEntity saved = applicationRepository.save(entity);
 
 
+    proceedingsService.saveProceedings(req.getApplicationContent().getApplicationContent(), saved.getId());
     domainEventService.saveCreateApplicationDomainEvent(saved, null);
-
     createAndSendHistoricRecord(saved, null);
 
     return saved.getId();
@@ -125,14 +128,11 @@ public class ApplicationService {
    * @param entity application entity to update
    */
   private void setValuesFromApplicationContent(ApplicationCreateRequest req, ApplicationEntity entity) {
-    if (!req.getApplicationContent().containsKey("applicationContent")) {
-      throw new ResourceNotFoundException("No application content found");
-    }
-    Map<String, Object> applicationContent =
-        objectMapper.convertValue(req.getApplicationContent().get("applicationContent"), Map.class);
-    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(applicationContent);
+
+
+    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(req.getApplicationContent());
     entity.setApplyApplicationId(parsedContentDetails.applyApplicationId());
-    entity.setUseDelegatedFunctions(parsedContentDetails.useDelegatedFunctions());
+    entity.setUseDelegatedFunctions(parsedContentDetails.usedDelegatedFunctions());
     entity.setCategoryOfLaw(parsedContentDetails.categoryOfLaw());
     entity.setMatterType(parsedContentDetails.matterType());
     entity.setSubmittedAt(parsedContentDetails.submittedAt());
@@ -299,6 +299,8 @@ public class ApplicationService {
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     checkIfCaseworkerExists(request.getUserId());
+
+    applicationValidations.checkApplicationMakeDecisionRequest(request);
 
     application.setStatus(request.getApplicationStatus());
     application.setModifiedAt(Instant.now());
