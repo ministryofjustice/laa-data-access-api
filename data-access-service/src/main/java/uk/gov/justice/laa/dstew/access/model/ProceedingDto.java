@@ -10,7 +10,7 @@ import uk.gov.justice.laa.dstew.access.deserializer.MatterTypeDeserializer;
  * Record represents details of a proceeding.
  */
 @Builder(toBuilder = true)
-public record ProceedingDetails(
+public record ProceedingDto(
     boolean leadProceeding,
     UUID id,
     @JsonDeserialize(using = CategoryOfLawTypeDeserializer.class)

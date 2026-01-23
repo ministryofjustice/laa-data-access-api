@@ -22,7 +22,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.Paging;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
@@ -136,5 +136,15 @@ public class ApplicationController implements ApplicationApi {
     return ResponseEntity.ok(ApplicationHistoryResponse.builder()
                                                  .events(events)
                                                  .build());
+  }
+
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<Void> makeDecision(UUID applicationId, @Valid MakeDecisionRequest request) {
+
+    service.makeDecision(applicationId, request);
+
+    return ResponseEntity.noContent().build();
   }
 }

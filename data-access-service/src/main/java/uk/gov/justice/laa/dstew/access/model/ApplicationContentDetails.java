@@ -21,6 +21,6 @@ public class ApplicationContentDetails {
   private UUID id;
   private Instant submittedAt;
   private boolean autoGrant;
-  private List<ProceedingDetails> proceedings;
+  private List<ProceedingDto> proceedings;
 
 }

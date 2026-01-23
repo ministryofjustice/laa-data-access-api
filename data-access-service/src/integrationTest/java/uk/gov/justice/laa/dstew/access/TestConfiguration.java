@@ -3,28 +3,33 @@ package uk.gov.justice.laa.dstew.access;
 import java.util.UUID;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
-import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.*;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
+import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
+import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationMakeDecisionFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerAssignFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerUnassignFactoryImpl;
+import uk.gov.justice.laa.dstew.access.utils.factory.decision.DecisionFactoryImpl;
+import uk.gov.justice.laa.dstew.access.utils.factory.decision.MeritsDecisionFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.domainevents.DomainEventFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualEntityFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactoryImpl;
+import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingFactoryImpl;
 
 @Configuration
 public class TestConfiguration {
@@ -57,6 +62,36 @@ public class TestConfiguration {
             DomainEventEntity.DomainEventEntityBuilder,
             UUID> persistedDomainEventFactory(DomainEventRepository repository, Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder> domainEventFactory) {
         return new PersistedFactory<>(repository, domainEventFactory);
+    }
+
+    @Bean
+    public PersistedFactory<
+            ProceedingRepository,
+            Factory<ProceedingEntity, ProceedingEntity.ProceedingEntityBuilder>,
+            ProceedingEntity,
+            ProceedingEntity.ProceedingEntityBuilder,
+            UUID> persistedProceedingFactory(ProceedingRepository repository, Factory<ProceedingEntity, ProceedingEntity.ProceedingEntityBuilder> proceedingFactory) {
+        return new PersistedFactory<>(repository, proceedingFactory);
+    }
+
+    @Bean
+    public PersistedFactory<
+            MeritsDecisionRepository,
+            Factory<MeritsDecisionEntity, MeritsDecisionEntity.MeritsDecisionEntityBuilder>,
+            MeritsDecisionEntity,
+            MeritsDecisionEntity.MeritsDecisionEntityBuilder,
+            UUID> persistedMeritsDecisionFactory(MeritsDecisionRepository repository, Factory<MeritsDecisionEntity, MeritsDecisionEntity.MeritsDecisionEntityBuilder> meritsDecisionFactory) {
+        return new PersistedFactory<>(repository, meritsDecisionFactory);
+    }
+
+    @Bean
+    public PersistedFactory<
+            DecisionRepository,
+            Factory<DecisionEntity, DecisionEntity.DecisionEntityBuilder>,
+            DecisionEntity,
+            DecisionEntity.DecisionEntityBuilder,
+            UUID> persistedDecisionFactory(DecisionRepository repository, Factory<DecisionEntity, DecisionEntity.DecisionEntityBuilder> decisionFactory) {
+        return new PersistedFactory<>(repository, decisionFactory);
     }
 
     @Bean
@@ -97,5 +132,25 @@ public class TestConfiguration {
     @Bean
     public Factory<Individual, Individual.Builder> individualFactory() {
         return new IndividualFactoryImpl();
+    }
+
+    @Bean
+    public Factory<MakeDecisionRequest, MakeDecisionRequest.Builder> applicationMakeDecisionRequestFactory() {
+        return new ApplicationMakeDecisionFactoryImpl();
+    }
+
+    @Bean
+    public Factory<ProceedingEntity, ProceedingEntity.ProceedingEntityBuilder> proceedingFactory() {
+        return new ProceedingFactoryImpl();
+    }
+
+    @Bean
+    public Factory<MeritsDecisionEntity, MeritsDecisionEntity.MeritsDecisionEntityBuilder> meritsDecisionFactory() {
+        return new MeritsDecisionFactoryImpl();
+    }
+
+    @Bean
+    public Factory<DecisionEntity, DecisionEntity.DecisionEntityBuilder> decisionFactoryFactory() {
+        return new DecisionFactoryImpl();
     }
 }

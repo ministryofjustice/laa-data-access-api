@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -23,7 +25,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
-import uk.gov.justice.laa.dstew.access.enums.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 
 /**
  * Represents a decision.
@@ -62,7 +64,8 @@ public class DecisionEntity implements AuditableEntity {
   )
   private Set<MeritsDecisionEntity> meritsDecisions;
 
-  @Column(name = "overall_decision")
+  @Column(name = "overall_decision", nullable = false)
+  @Enumerated(EnumType.STRING)
   private DecisionStatus overallDecision;
 
   @Override
