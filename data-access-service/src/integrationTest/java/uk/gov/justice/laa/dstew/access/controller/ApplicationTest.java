@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import org.assertj.core.api.Assertions;
+import org.instancio.settings.BeanValidationTarget;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -1919,7 +1920,10 @@ public class ApplicationTest extends BaseIntegrationTest {
                 builder
                         .userId(CaseworkerJohnDoe.getId())
                         .applicationStatus(ApplicationStatus.SUBMITTED)
-                        .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                        .eventHistory(EventHistory.builder()
+                                .eventDescription("refusal event")
+                                .build())
+                        .overallDecision(DecisionStatus.REFUSED)
                         .proceedings(List.of(
                             createMakeDecisionProceeding(grantedProceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1"),
                             createMakeDecisionProceeding(refusedProceedingEntity.getId(), MeritsDecisionStatus.REFUSED, "justification 2", "reason 2")
@@ -1939,6 +1943,13 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             assertThat(decisionRepository.countByApplicationId(applicationEntity.getId()))
                     .isEqualTo(1);
+
+            assertDomainEventsCreatedForApplications(
+                    List.of(applicationEntity),
+                    BaseIntegrationTest.CaseworkerJohnDoe.getId(),
+                    DomainEventType.APPLICATION_MAKE_DECISION_REFUSED,
+                    makeDecisionRequest.getEventHistory()
+            );
 
             verifyDecisionSavedCorrectly(
                     applicationEntity.getId(),
@@ -1989,6 +2000,9 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .userId(CaseworkerJohnDoe.getId())
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.REFUSED)
+                        .eventHistory(EventHistory.builder()
+                                .eventDescription("refusal event")
+                                .build())
                         .proceedings(List.of(
                             createMakeDecisionProceeding(proceedingEntityTwo.getId(), MeritsDecisionStatus.REFUSED, "justification new", "reason new"),
                             createMakeDecisionProceeding(proceedingEntityOne.getId(), MeritsDecisionStatus.GRANTED, "justification update", "reason update")
@@ -2007,6 +2021,13 @@ public class ApplicationTest extends BaseIntegrationTest {
 
             assertThat(decisionRepository.countByApplicationId(applicationEntity.getId()))
                     .isEqualTo(1);
+
+            assertDomainEventsCreatedForApplications(
+                    List.of(applicationEntity),
+                    BaseIntegrationTest.CaseworkerJohnDoe.getId(),
+                    DomainEventType.APPLICATION_MAKE_DECISION_REFUSED,
+                    assignDecisionRequest.getEventHistory()
+            );
 
             verifyDecisionSavedCorrectly(
                     applicationEntity.getId(),
@@ -2027,6 +2048,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .userId(CaseworkerJohnDoe.getId())
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                        .eventHistory(EventHistory.builder().build())
                         .proceedings(List.of(
                                 createMakeDecisionProceeding(
                                         UUID.randomUUID(),
@@ -2066,6 +2088,7 @@ public class ApplicationTest extends BaseIntegrationTest {
                         .userId(caseworkerId)
                         .applicationStatus(ApplicationStatus.SUBMITTED)
                         .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                        .eventHistory(EventHistory.builder().build())
                         .proceedings(List.of(
                                 createMakeDecisionProceeding(
                                         UUID.randomUUID(),
@@ -2107,7 +2130,7 @@ public class ApplicationTest extends BaseIntegrationTest {
         private void verifyDecisionSavedCorrectly(UUID applicationId, MakeDecisionRequest expectedMakeDecisionRequest, ApplicationEntity expectedApplicationEntity, DecisionEntity currentSavedDecisionEntity) {
             DecisionEntity savedDecision = decisionRepository.findByApplicationId(applicationId).orElseThrow();
 
-            MakeDecisionRequest actual = mapToMakeDecisionRequest(savedDecision, expectedApplicationEntity);
+            MakeDecisionRequest actual = mapToMakeDecisionRequest(savedDecision, expectedApplicationEntity, expectedMakeDecisionRequest.getEventHistory().getEventDescription());
             Assertions.assertThat(actual)
                     .usingRecursiveComparison()
                     .ignoringCollectionOrder()
@@ -2121,12 +2144,13 @@ public class ApplicationTest extends BaseIntegrationTest {
         }
 
         // DecisionEntity -> MakeDecisionRequest
-        private static MakeDecisionRequest mapToMakeDecisionRequest(DecisionEntity decisionEntity, ApplicationEntity applicationEntity) {
+        private static MakeDecisionRequest mapToMakeDecisionRequest(DecisionEntity decisionEntity, ApplicationEntity applicationEntity, String eventDescription) {
             if (decisionEntity == null) return null;
             return MakeDecisionRequest.builder()
                     .applicationStatus(applicationEntity.getStatus())
                     .overallDecision(decisionEntity.getOverallDecision())
                     .userId(applicationEntity.getCaseworker().getId())
+                    .eventHistory(EventHistory.builder().eventDescription(eventDescription).build())
                     .proceedings(decisionEntity.getMeritsDecisions().stream()
                             .map(ApplicationMakeDecision::mapToProceedingDetails)
                             .toList())
