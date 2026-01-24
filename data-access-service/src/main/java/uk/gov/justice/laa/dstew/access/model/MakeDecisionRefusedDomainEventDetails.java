@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 public class MakeDecisionRefusedDomainEventDetails implements Serializable {
   private UUID applicationId;
   private UUID caseworkerId;
-  private String createdBy;
+  private String request;
   private String eventDescription;
   private Instant createdAt;
 }

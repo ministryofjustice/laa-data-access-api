@@ -1058,7 +1058,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
     class MakeDecisionForApplication {
 
         @Test
-        void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved() {
+        void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved() throws JsonProcessingException {
             UUID applicationId = UUID.randomUUID();
             UUID grantedProceedingId = UUID.randomUUID();
             UUID refusedProceedingId = UUID.randomUUID();

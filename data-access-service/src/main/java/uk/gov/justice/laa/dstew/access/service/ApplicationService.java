@@ -346,8 +346,7 @@ public class ApplicationService {
     if (decision.getOverallDecision() == DecisionStatus.REFUSED) {
       domainEventService.saveMakeDecisionRefusedDomainEvent(
               applicationId,
-              request.getUserId(),
-              request.getEventHistory().getEventDescription()
+              request
       );
     }
   }

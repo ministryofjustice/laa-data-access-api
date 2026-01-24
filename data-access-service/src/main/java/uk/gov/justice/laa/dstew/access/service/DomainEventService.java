@@ -20,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRefusedDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
@@ -210,15 +211,17 @@ public class DomainEventService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void saveMakeDecisionRefusedDomainEvent(
           UUID applicationId,
-          UUID caseworkerId,
-          String eventDescription) {
+          MakeDecisionRequest request) {
+
+    String eventDescription = request.getEventHistory().getEventDescription();
+    UUID caseworkerId = request.getUserId();
 
     MakeDecisionRefusedDomainEventDetails domainEventDetails =
             MakeDecisionRefusedDomainEventDetails.builder()
                     .applicationId(applicationId)
                     .caseworkerId(caseworkerId)
                     .createdAt(Instant.now())
-                    .createdBy(defaultCreatedByName)
+                    .request(getEventDetailsAsJson(request, DomainEventType.APPLICATION_MAKE_DECISION_REFUSED))
                     .eventDescription(eventDescription)
                     .build();
 
