@@ -1099,6 +1099,21 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                                     .caseworker(caseworker)
                     );
 
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(applicationId)
+                    .caseworkerId(caseworker.getId())
+                    .createdBy("")
+                    .type(DomainEventType.APPLICATION_MAKE_DECISION_REFUSED)
+                    .data(objectMapper.writeValueAsString(
+                            MakeDecisionRefusedDomainEventDetails.builder()
+                                .applicationId(applicationId)
+                                .caseworkerId(caseworker.getId())
+                                .eventDescription("event")
+                                .request(objectMapper.writeValueAsString(makeDecisionRequest))
+                                .build()
+                    ))
+                    .build();
+
             setSecurityContext(TestConstants.Roles.WRITER);
 
             ProceedingEntity grantedProceedingEntity = proceedingsEntityFactory
@@ -1129,6 +1144,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
             verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
+            verifyThatDomainEventSaved(expectedDomainEvent, 1);
             verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, null, 2);
         }
 
@@ -1198,7 +1214,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
         }
 
         @Test
-        void givenApplicationAndExistingDecisionAndNewProceeding_whenAssignDecision_thenDecisionUpdated() {
+        void givenApplicationAndExistingDecisionAndNewProceeding_whenAssignDecision_thenDecisionUpdated() throws JsonProcessingException {
             UUID applicationId = UUID.randomUUID();
             UUID proceedingId = UUID.randomUUID();
             UUID newProceedingId = UUID.randomUUID();
@@ -1237,6 +1253,21 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
                     "initial justification"
             );
 
+            DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                    .applicationId(applicationId)
+                    .caseworkerId(caseworker.getId())
+                    .createdBy("")
+                    .type(DomainEventType.APPLICATION_MAKE_DECISION_REFUSED)
+                    .data(objectMapper.writeValueAsString(
+                            MakeDecisionRefusedDomainEventDetails.builder()
+                                    .applicationId(applicationId)
+                                    .caseworkerId(caseworker.getId())
+                                    .eventDescription(null)
+                                    .request(objectMapper.writeValueAsString(makeDecisionRequest))
+                                    .build()
+                    ))
+                    .build();
+
             setSecurityContext(TestConstants.Roles.WRITER);
 
             ProceedingEntity existingProceedingEntity = proceedingsEntityFactory
@@ -1267,6 +1298,7 @@ public class ApplicationServiceV2Test extends BaseServiceTest {
             verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
             verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
             verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
+            verifyThatDomainEventSaved(expectedDomainEvent, 1);
             verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity, 2);
         }
 
