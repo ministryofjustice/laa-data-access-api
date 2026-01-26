@@ -21,17 +21,24 @@ import uk.gov.justice.laa.dstew.access.spike.dynamo.DomainEventDynamoDB;
 public class TestDynamoEventController {
 
   private final DynamoDbService dynamoDbService;
+  private final S3UploadService s3UploadService;
 
-  public TestDynamoEventController(DynamoDbService dynamoDbService) {
+
+  public TestDynamoEventController(DynamoDbService dynamoDbService, S3UploadService s3UploadService) {
     this.dynamoDbService = dynamoDbService;
+    this.s3UploadService = s3UploadService;
   }
 
   @PostMapping(value = "/events", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
   public Event saveEvent(@RequestBody Event event) {
-
-    return dynamoDbService.saveDomainEvent(event, "s3://test-bucket/test-key");
+    S3UploadResult s3UploadResult = s3UploadService.upload(event, "laa-data-stewardship-access-bucket", "test-key");
+    return dynamoDbService.saveDomainEvent(event, s3UploadResult.getS3Url());
   }
 
+  @GetMapping(value = "bucket/download", produces = MediaType.APPLICATION_JSON_VALUE)
+  public S3DownloadResult downloadEventFromS3(@RequestParam String bucket, @RequestParam String key) {
+    return s3UploadService.download(bucket, key);
+  }
 
   @GetMapping(value = "dynamo/events", produces = MediaType.APPLICATION_JSON_VALUE)
   public List<DomainEventDynamoDB> getAllEvents() {

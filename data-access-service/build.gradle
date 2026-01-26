@@ -9,7 +9,7 @@ plugins {
 }
 
 def versions = [
-        sentry : '8.28.0'
+        sentry: '8.28.0'
 ]
 
 dockerCompose {
@@ -21,10 +21,6 @@ dockerCompose {
     if (dockerPath) {
         dockerExecutable.set(dockerPath)
     }
-    // Avoid probing every exposed port (the compose file exposes a large range for LocalStack)
-    // which can cause spurious "disconnected right after connected" failures on some host setups.
-    // Let the plugin rely on container healthchecks instead.
-    waitForTcpPorts = false
 }
 
 test {
@@ -117,21 +113,22 @@ dependencies {
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:postgresql'
     testImplementation 'org.testcontainers:localstack'
-}
+
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // Security fix for SNYK-JAVA-ORGAPACHECOMMONS-10734078 (CVE-2025-48924)
     implementation 'org.apache.commons:commons-lang3:3.18.0'
-configurations {
-    // expose the runtimeClasspath to the integrationTest task
-    integrationTestRuntimeClasspath {
-        extendsFrom runtimeClasspath
-    }
-}
+
 
     // Sentry
     implementation platform("io.sentry:sentry-bom:$versions.sentry")
     implementation "io.sentry:sentry-logback:$versions.sentry"
     implementation "io.sentry:sentry-spring-boot-starter-jakarta:$versions.sentry"
+}
+configurations {
+    // expose the runtimeClasspath to the integrationTest task
+    integrationTestRuntimeClasspath {
+        extendsFrom runtimeClasspath
+    }
 }
