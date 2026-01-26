@@ -31,16 +31,13 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-import uk.gov.justice.laa.dstew.access.utils.records.ProceedingJsonObject;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -172,61 +169,41 @@ public class CreateApplicationTest extends BaseServiceTest {
         ));
   }
 
-  private RequestApplicationContent getAppContentParent(List<ProceedingJsonObject> proceedings,
+  private RequestApplicationContent getAppContentParent(List<Proceeding> proceedings,
                                                         String appContentId) {
 
-    String submittedAt = "2026-01-15T10:20:30Z";
-    List<Proceeding> proceedingList = proceedings.stream()
-        .map(jsonObject -> {
-          Proceeding base = proceedingFactory.createDefault(builder ->
-              builder.id(UUID.fromString(jsonObject.id()))
-                  .leadProceeding(jsonObject.leadProceeding())
-                  .categoryOfLaw(jsonObject.categoryOfLaw())
-                  .matterType(jsonObject.matterType())
-                  .usedDelegatedFunctions(jsonObject.usedDelegatedFunctions()));
-          // Ensure additionalProperties contains the fixed submittedAt value
-          base.putAdditionalProperty("submittedAt", submittedAt);
-          base.putAdditionalProperty("added in test", "addedValue");
-          return base;
-        })
-        .toList();
 
     ApplicationContent applicationContent = applicationContentFactory.createDefault(appContentBuilder ->
-        appContentBuilder.submittedAt("2026-01-15T10:20:30Z").proceedings(proceedingList).id(UUID.fromString(appContentId)));
+        appContentBuilder.submittedAt("2026-01-15T10:20:30Z").proceedings(proceedings).id(UUID.fromString(appContentId)));
 
-    RequestApplicationContent requestApplicationContentDefault = requestApplicationContentFactory.createDefault();
-
-
-    System.out.println("Properties from default: " + requestApplicationContentDefault.getAdditionalProperties());
-    applicationContent.putAdditionalProperty("submittedAt", submittedAt);
-    RequestApplicationContent RequestApplicationContent =
+    RequestApplicationContent requestApplicationContent =
         requestApplicationContentFactory.createDefault(builder -> builder.applicationContent(applicationContent));
-    RequestApplicationContent.putAdditionalProperty("testPropertyInTest", "testValue");
-    return RequestApplicationContent;
+    requestApplicationContent.putAdditionalProperty("testPropertyInTest", "testValue");
+    return requestApplicationContent;
   }
 
-  private static ProceedingJsonObject getProceedingJsonObject(Boolean useDelegatedFunctions, boolean leadProceeding) {
-    return ProceedingJsonObject.builder().id("f6e2c4e1-5d32-4c3e-9f0a-1e2b3c4d5e6f").leadProceeding(leadProceeding)
-        .categoryOfLaw(CategoryOfLaw.FAMILY.name()).matterType(MatterType.SCA.name())
-        .usedDelegatedFunctions(useDelegatedFunctions).build();
+  private Proceeding getProceeding(Boolean useDelegatedFunctions, boolean leadProceeding) {
+
+    return proceedingFactory.createDefault(
+        builder -> builder.leadProceeding(leadProceeding).usedDelegatedFunctions(useDelegatedFunctions));
   }
 
   private Stream<Arguments> provideProceedingsForMapping() {
     //App Content Map, expected usedDelegatedFunctions
     return Stream.of(
         Arguments.of(applicationCreateRequestFactory.createDefault(
-            builder -> builder.applicationContent(getAppContentParent(List.of(getProceedingJsonObject(true, true)),
+            builder -> builder.applicationContent(getAppContentParent(List.of(getProceeding(true, true)),
                 UUID.randomUUID().toString()))), true),
         Arguments.of(applicationCreateRequestFactory.createDefault(
-                builder -> builder.applicationContent(getAppContentParent(List.of(getProceedingJsonObject(false, true)),
+                builder -> builder.applicationContent(getAppContentParent(List.of(getProceeding(false, true)),
                     UUID.randomUUID().toString()))), false,
             true), Arguments.of(
             applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
-                getAppContentParent(List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(true, false)),
+                getAppContentParent(List.of(getProceeding(false, true), getProceeding(true, false)),
                     UUID.randomUUID().toString()))), true,
             true), Arguments.of(
             applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
-                getAppContentParent(List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(false, false)),
+                getAppContentParent(List.of(getProceeding(false, true), getProceeding(false, false)),
                     UUID.randomUUID().toString()))), false,
             true));
   }

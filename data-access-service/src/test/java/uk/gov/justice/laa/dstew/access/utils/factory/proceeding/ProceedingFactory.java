@@ -22,7 +22,7 @@ public class ProceedingFactory
 
   @Override
   public Proceeding createDefault() {
-    Proceeding proceeding = Proceeding
+    return Proceeding
         .builder()
         .id(UUID.randomUUID())
         .categoryOfLaw(String.valueOf(CategoryOfLaw.FAMILY))
@@ -31,11 +31,6 @@ public class ProceedingFactory
         .usedDelegatedFunctions(true)
         .description("The description")
         .build();
-
-    // Ensure additionalProperties is initialised and contains submittedAt
-    proceeding.putAdditionalProperty("submittedAt", String.valueOf(java.time.Instant.now()));
-
-    return proceeding;
   }
 
 
