@@ -261,4 +261,53 @@ public class S3UploadService {
          return payload.toString().getBytes(StandardCharsets.UTF_8);
      }
 
+    /**
+     * Downloads an object from S3 and returns details about the downloaded file.
+     *
+     * @param bucket the S3 bucket name
+     * @param key the object key
+     * @return S3DownloadResult with content, metadata and success flag
+     */
+    public S3DownloadResult download(String bucket, String key) {
+        Objects.requireNonNull(bucket, "bucket must not be null");
+        Objects.requireNonNull(key, "key must not be null");
+
+        ResponseInputStream<GetObjectResponse> resp = null;
+        try {
+            GetObjectRequest request = GetObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .build();
+
+            resp = s3Client.getObject(request);
+            GetObjectResponse response = resp.response();
+
+            byte[] content = toBytes(resp, response.contentLength() != null ? response.contentLength() : -1);
+
+            String eTag = response.eTag();
+            String contentType = response.contentType();
+            Long contentLength = response.contentLength();
+            String s3Url = formatS3Uri(bucket, key);
+
+            logger.debug("Downloaded object from {} (eTag={}, contentType={}, contentLength={})",
+                    s3Url, eTag, contentType, contentLength);
+
+            return new S3DownloadResult(bucket, key, eTag, true, s3Url, contentType, contentLength, content);
+        } catch (S3Exception e) {
+            logger.error("S3 download failed for s3://{}/{}: {}", bucket, key,
+                    e.awsErrorDetails() == null ? e.getMessage() : e.awsErrorDetails().errorMessage(), e);
+            return S3DownloadResult.failure(bucket, key);
+        } catch (IOException e) {
+            logger.error("Failed to read S3 object stream for s3://{}/{}: {}", bucket, key, e.getMessage(), e);
+            return S3DownloadResult.failure(bucket, key);
+        } finally {
+            if (resp != null) {
+                try {
+                    resp.close();
+                } catch (IOException ioe) {
+                    logger.warn("Failed to close S3 response stream for s3://{}/{}: {}", bucket, key, ioe.getMessage());
+                }
+            }
+        }
+    }
 }
