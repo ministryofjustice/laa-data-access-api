@@ -20,7 +20,7 @@ class DomainEventRepositoryTest extends BaseIntegrationTest {
     String jsonData = """
             {
               "applicationId": "11111111-1111-1111-1111-111111111111",
-              "applicationStatus": "IN_PROGRESS",
+              "applicationStatus": "APPLICATION_IN_PROGRESS",
               "applicationContent": "{\\"foo\\":\\"bar\\"}",
               "createdAt": "2025-01-01T10:00:00Z",
               "createdBy": null
@@ -59,7 +59,7 @@ class DomainEventRepositoryTest extends BaseIntegrationTest {
         .isEqualTo("11111111-1111-1111-1111-111111111111");
 
     assertThat(jsonNode.get("applicationStatus").asText())
-        .isEqualTo("IN_PROGRESS");
+        .isEqualTo("APPLICATION_IN_PROGRESS");
 
     assertThat(jsonNode.get("applicationContent").asText())
         .contains("foo");
@@ -74,7 +74,7 @@ class DomainEventRepositoryTest extends BaseIntegrationTest {
     String jsonData = """
         {
           "applicationId": "22222222-2222-2222-2222-222222222222",
-          "applicationStatus": "SUBMITTED",
+          "applicationStatus": "APPLICATION_SUBMITTED",
           "applicationContent": "{\\"bar\\":\\"baz\\"}",
           "updatedAt": "2025-02-01T12:30:00Z",
           "updatedBy": "caseworker-123"
@@ -112,7 +112,7 @@ class DomainEventRepositoryTest extends BaseIntegrationTest {
         .isEqualTo("22222222-2222-2222-2222-222222222222");
 
     assertThat(jsonNode.get("applicationStatus").asText())
-        .isEqualTo("SUBMITTED");
+        .isEqualTo("APPLICATION_SUBMITTED");
 
     assertThat(jsonNode.get("applicationContent").asText())
         .contains("bar");

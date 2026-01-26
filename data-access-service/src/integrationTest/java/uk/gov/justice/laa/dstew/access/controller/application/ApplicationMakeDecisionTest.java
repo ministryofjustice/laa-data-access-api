@@ -54,7 +54,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
             builder
                     .userId(CaseworkerJohnDoe.getId())
-                    .applicationStatus(ApplicationStatus.SUBMITTED)
+                    .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
                     .eventHistory(EventHistory.builder()
                             .eventDescription("refusal event")
                             .build())
@@ -74,7 +74,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         assertNoContent(result);
 
         ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
-        assertEquals(ApplicationStatus.SUBMITTED, actualApplication.getStatus());
+        assertEquals(ApplicationStatus.APPLICATION_SUBMITTED, actualApplication.getStatus());
 
         assertThat(decisionRepository.countByApplicationId(applicationEntity.getId()))
                 .isEqualTo(1);
@@ -133,7 +133,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest assignDecisionRequest = makeDecisionRequestFactory.create(builder -> {
             builder
                     .userId(CaseworkerJohnDoe.getId())
-                    .applicationStatus(ApplicationStatus.SUBMITTED)
+                    .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
                     .overallDecision(DecisionStatus.REFUSED)
                     .eventHistory(EventHistory.builder()
                             .eventDescription("refusal event")
@@ -152,7 +152,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         assertNoCacheHeaders(result);
         assertNoContent(result);
 
-        assertEquals(ApplicationStatus.SUBMITTED, applicationEntity.getStatus());
+        assertEquals(ApplicationStatus.APPLICATION_SUBMITTED, applicationEntity.getStatus());
 
         assertThat(decisionRepository.countByApplicationId(applicationEntity.getId()))
                 .isEqualTo(1);
@@ -181,7 +181,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
             builder
                     .userId(CaseworkerJohnDoe.getId())
-                    .applicationStatus(ApplicationStatus.SUBMITTED)
+                    .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
                     .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                     .eventHistory(EventHistory.builder().build())
                     .proceedings(List.of(
@@ -221,7 +221,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
             builder
                     .userId(caseworkerId)
-                    .applicationStatus(ApplicationStatus.SUBMITTED)
+                    .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
                     .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                     .eventHistory(EventHistory.builder().build())
                     .proceedings(List.of(

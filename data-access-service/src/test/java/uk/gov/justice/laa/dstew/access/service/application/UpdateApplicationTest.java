@@ -82,7 +82,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
                 .createdBy("")
                 .data(objectMapper.writeValueAsString(UpdateApplicationDomainEventDetails.builder()
                         .applicationId(applicationId)
-                        .applicationStatus(ApplicationStatus.IN_PROGRESS.toString())
+                        .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS.toString())
                         .applicationContent(updatedEntity.getApplicationContent().toString())
                         .build()))
                 .build();
