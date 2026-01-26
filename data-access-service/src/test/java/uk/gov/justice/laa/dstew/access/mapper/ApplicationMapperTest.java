@@ -27,7 +27,7 @@ class ApplicationMapperTest {
     @Test
     void givenApplicationEntity_whenToApplication_thenMapsFieldsCorrectly() {
         UUID id = UUID.randomUUID();
-        ApplicationStatus status = ApplicationStatus.SUBMITTED;
+        ApplicationStatus status = ApplicationStatus.APPLICATION_SUBMITTED;
         String laaReference = "Ref456";
         int schemaVersion = 2;
         Map<String, Object> applicationContent = Map.of("key1", "value1", "key2", 456);
@@ -131,7 +131,7 @@ class ApplicationMapperTest {
 
     @Test
     void givenApplicationCreateRequest_whenToApplicationEntity_thenMapsFieldsCorrectly() {
-        ApplicationStatus status = ApplicationStatus.SUBMITTED;
+        ApplicationStatus status = ApplicationStatus.APPLICATION_SUBMITTED;
         Map<String, Object> applicationContent = Map.of("foo", "bar");
         String laaReference = "laa_reference";
         List<Individual> expectedIndividuals = List.of(
@@ -170,7 +170,7 @@ class ApplicationMapperTest {
 
     @Test
     void givenEmptyApplicationUpdateRequest_whenUpdateApplicationEntity_thenMapperOnlyUpdatesMandatoryFields() {
-        ApplicationStatus initialStatus = ApplicationStatus.IN_PROGRESS;
+        ApplicationStatus initialStatus = ApplicationStatus.APPLICATION_IN_PROGRESS;
         Map<String, Object> initialContent = Map.of("key", "value");
         Instant createdAt = Instant.now().minusSeconds(10000);
         Instant modifiedAt = Instant.now().minusSeconds(5000);
@@ -193,7 +193,7 @@ class ApplicationMapperTest {
 
     @Test
     void givenApplicationUpdateRequest_whenUpdateApplicationEntity_thenMapperUpdatesRelevantFields() {
-        ApplicationStatus initialStatus = ApplicationStatus.IN_PROGRESS;
+        ApplicationStatus initialStatus = ApplicationStatus.APPLICATION_IN_PROGRESS;
         Map<String, Object> initialContent = Map.of("key", "value");
         Instant createdAt = Instant.now().minusSeconds(10000);
         Instant modifiedAt = Instant.now().minusSeconds(5000);
@@ -205,7 +205,7 @@ class ApplicationMapperTest {
                 .modifiedAt(modifiedAt)
                 .build();
 
-        ApplicationStatus updatedStatus = ApplicationStatus.SUBMITTED;
+        ApplicationStatus updatedStatus = ApplicationStatus.APPLICATION_SUBMITTED;
         Map<String, Object> updatedContent = Map.of("newKey", "newValue");
 
         ApplicationUpdateRequest applicationUpdateRequest = ApplicationUpdateRequest.builder()

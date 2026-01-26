@@ -277,8 +277,8 @@ components:
     applicationStatus:
       type: string
       enum:
-        - IN_PROGRESS
-        - SUBMITTED
+        - APPLICATION_IN_PROGRESS
+        - APPLICATION_SUBMITTED
       description: Application statuses
     domainEventType:
       type: string

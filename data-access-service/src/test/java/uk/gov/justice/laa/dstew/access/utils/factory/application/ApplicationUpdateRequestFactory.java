@@ -20,7 +20,7 @@ public class ApplicationUpdateRequestFactory extends BaseFactory<ApplicationUpda
     @Override
     public ApplicationUpdateRequest createDefault() {
         return ApplicationUpdateRequest.builder()
-                .status(ApplicationStatus.IN_PROGRESS)
+                .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
                 .applicationContent(new HashMap<>(Map.of("test", "changed")))
                 .build();
     }

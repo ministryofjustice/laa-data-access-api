@@ -32,7 +32,7 @@ public class ApplicationEntityFactory extends BaseFactory<ApplicationEntity, App
         .createdAt(InstantSource.system().instant())
         .id(UUID.randomUUID())
         .applyApplicationId(UUID.randomUUID())
-        .status(ApplicationStatus.IN_PROGRESS)
+        .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
         .modifiedAt(InstantSource.system().instant())
         .submittedAt(InstantSource.system().instant())
         .laaReference("REF7327")

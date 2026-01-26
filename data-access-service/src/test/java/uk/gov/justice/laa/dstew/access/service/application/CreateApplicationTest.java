@@ -67,7 +67,7 @@ public class CreateApplicationTest extends BaseServiceTest {
                 .type(DomainEventType.APPLICATION_CREATED)
                 .data(objectMapper.writeValueAsString(CreateApplicationDomainEventDetails.builder()
                         .applicationId(expectedId)
-                        .applicationStatus(ApplicationStatus.IN_PROGRESS.toString())
+                        .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS.toString())
                         .applicationContent(withExpectedId.getApplicationContent().toString())
                         .build()))
                 .build();

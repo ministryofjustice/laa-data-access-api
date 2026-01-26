@@ -12,7 +12,7 @@ public class ApplicationUpdateFactoryImpl implements Factory<ApplicationUpdateRe
     @Override
     public ApplicationUpdateRequest create() {
         return ApplicationUpdateRequest.builder()
-                .status(ApplicationStatus.IN_PROGRESS)
+                .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
                 .applicationContent(new HashMap<>() {
                     {
                         put("test", "value");
