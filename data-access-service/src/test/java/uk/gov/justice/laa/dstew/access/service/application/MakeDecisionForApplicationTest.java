@@ -1,23 +1,15 @@
 package uk.gov.justice.laa.dstew.access.service.application;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
-import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
-import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
-import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
+import uk.gov.justice.laa.dstew.access.entity.*;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetails;
-import uk.gov.justice.laa.dstew.access.model.RefusalDetails;
-import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -31,9 +23,8 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
+import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.DomainEvent.verifyThatDomainEventSaved;
 
 public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
@@ -41,7 +32,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     private ApplicationService serviceUnderTest;
 
     @Test
-    void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved() {
+    void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved() throws JsonProcessingException {
         UUID applicationId = UUID.randomUUID();
         UUID grantedProceedingId = UUID.randomUUID();
         UUID refusedProceedingId = UUID.randomUUID();
@@ -61,6 +52,12 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
                 requestBuilder
                         .userId(caseworker.getId())
+                        .overallDecision(DecisionStatus.REFUSED)
+                        .eventHistory(
+                                EventHistory.builder()
+                                        .eventDescription("event")
+                                        .build()
+                        )
                         .proceedings(List.of(
                                 createMakeDecisionProceedingDetails(grantedProceedingId, grantedDecision, grantedReason, grantedJustification),
                                 createMakeDecisionProceedingDetails(refusedProceedingId, refusedDecision, refusedReason, refusedJustification)
@@ -75,6 +72,21 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                                 .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
                                 .caseworker(caseworker)
                 );
+
+        DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                .applicationId(applicationId)
+                .caseworkerId(caseworker.getId())
+                .createdBy("")
+                .type(DomainEventType.APPLICATION_MAKE_DECISION_REFUSED)
+                .data(objectMapper.writeValueAsString(
+                        MakeDecisionRefusedDomainEventDetails.builder()
+                                .applicationId(applicationId)
+                                .caseworkerId(caseworker.getId())
+                                .eventDescription("event")
+                                .request(objectMapper.writeValueAsString(makeDecisionRequest))
+                                .build()
+                ))
+                .build();
 
         setSecurityContext(TestConstants.Roles.WRITER);
 
@@ -105,7 +117,12 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
         verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
         verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-        verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, null, 2);
+        verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
+        verifyThatDomainEventSaved(domainEventRepository, objectMapper, expectedDomainEvent, 1);
+        verifyDecisionSavedCorrectly(makeDecisionRequest,
+                                    expectedApplicationEntity,
+                null,
+                2);
     }
 
     @Test
@@ -119,6 +136,11 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
                 requestBuilder
                         .userId(caseworker.getId())
+                        .eventHistory(
+                                EventHistory.builder()
+                                        .eventDescription("event")
+                                        .build()
+                        )
                         .proceedings(List.of(
                                 createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "refusal update", "justification update")
                         ))
@@ -163,12 +185,13 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
         verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
         verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
+        verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
 
         verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity, 1);
     }
 
     @Test
-    void givenApplicationAndExistingDecisionAndNewProceeding_whenAssignDecision_thenDecisionUpdated() {
+    void givenApplicationAndExistingDecisionAndNewProceeding_whenAssignDecision_thenDecisionUpdated() throws JsonProcessingException {
         UUID applicationId = UUID.randomUUID();
         UUID proceedingId = UUID.randomUUID();
         UUID newProceedingId = UUID.randomUUID();
@@ -179,6 +202,12 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
                 requestBuilder
                         .userId(caseworker.getId())
+                        .overallDecision(DecisionStatus.REFUSED)
+                        .eventHistory(
+                                EventHistory.builder()
+                                        .eventDescription(null)
+                                        .build()
+                        )
                         .proceedings(List.of(
                                 createMakeDecisionProceedingDetails(newProceedingId, MeritsDecisionStatus.GRANTED, "new refusal", "new justification")
                         ))
@@ -200,6 +229,21 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                 "initial reason",
                 "initial justification"
         );
+
+        DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+                .applicationId(applicationId)
+                .caseworkerId(caseworker.getId())
+                .createdBy("")
+                .type(DomainEventType.APPLICATION_MAKE_DECISION_REFUSED)
+                .data(objectMapper.writeValueAsString(
+                        MakeDecisionRefusedDomainEventDetails.builder()
+                                .applicationId(applicationId)
+                                .caseworkerId(caseworker.getId())
+                                .eventDescription(null)
+                                .request(objectMapper.writeValueAsString(makeDecisionRequest))
+                                .build()
+                ))
+                .build();
 
         setSecurityContext(TestConstants.Roles.WRITER);
 
@@ -230,7 +274,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
         verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
         verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-
+        verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
+        verifyThatDomainEventSaved(domainEventRepository, objectMapper, expectedDomainEvent, 1);
         verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity, 2);
     }
 
@@ -246,6 +291,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
                 requestBuilder
                         .userId(caseworker.getId())
+                        .eventHistory(EventHistory.builder().build())
                         .proceedings(List.of(
                                 createMakeDecisionProceedingDetails(newProceedingId, MeritsDecisionStatus.REFUSED, "refusal new", "justification new"),
                                 createMakeDecisionProceedingDetails(currentProceedingId, MeritsDecisionStatus.GRANTED, "refusal update", "justification update")
@@ -298,7 +344,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
         verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
         verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-
+        verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
         verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity, 2);
     }
 
@@ -474,7 +520,10 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         verify(decisionRepository, times(1)).save(decisionCaptor.capture());
         DecisionEntity savedDecision = decisionCaptor.getValue();
 
-        MakeDecisionRequest actual = mapToMakeDecisionRequest(savedDecision, expectedApplicationEntity);
+        MakeDecisionRequest actual = mapToMakeDecisionRequest(
+                                        savedDecision,
+                                        expectedApplicationEntity,
+                                        expectedMakeDecisionRequest.getEventHistory());
 
         assertThat(actual.getProceedings().size()).isEqualTo(expectedNumberOfMeritsDecisions);
 
@@ -506,12 +555,16 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     }
 
     // DecisionEntity -> MakeDecisionRequest
-    private static MakeDecisionRequest mapToMakeDecisionRequest(DecisionEntity decisionEntity, ApplicationEntity applicationEntity) {
+    private static MakeDecisionRequest mapToMakeDecisionRequest(
+            DecisionEntity decisionEntity,
+            ApplicationEntity applicationEntity,
+            EventHistory eventHistory) {
         if (decisionEntity == null) return null;
         return MakeDecisionRequest.builder()
                 .applicationStatus(applicationEntity.getStatus())
                 .overallDecision(decisionEntity.getOverallDecision())
                 .userId(applicationEntity.getCaseworker().getId())
+                .eventHistory(eventHistory)
                 .proceedings(decisionEntity.getMeritsDecisions().stream()
                         .map(MakeDecisionForApplicationTest::mapToProceedingDetails)
                         .toList())
