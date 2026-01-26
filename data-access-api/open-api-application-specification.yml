@@ -287,6 +287,7 @@ components:
         - APPLICATION_UPDATED
         - ASSIGN_APPLICATION_TO_CASEWORKER
         - UNASSIGN_APPLICATION_TO_CASEWORKER
+        - APPLICATION_MAKE_DECISION_REFUSED
 
     categoryOfLaw:
       type: string
@@ -599,6 +600,7 @@ components:
         - applicationStatus
         - overallDecision
         - proceedings
+        - eventHistory
       properties:
         userId:
           type: string
@@ -612,3 +614,5 @@ components:
           minItems: 1
           items:
             $ref: "#/components/schemas/makeDecisionProceeding"
+        eventHistory:
+          $ref: "#/components/schemas/EventHistory"
