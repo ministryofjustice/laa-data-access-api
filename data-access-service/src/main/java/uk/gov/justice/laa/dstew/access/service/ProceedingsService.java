@@ -7,7 +7,6 @@ import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ProceedingMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
-import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
  * Processor for handling proceedings related operations.
@@ -31,10 +30,6 @@ public class ProceedingsService {
   public void saveProceedings(ApplicationContent applicationContent, UUID id) {
     List<ProceedingEntity> proceedingEntities = applicationContent.getProceedings().stream()
         .map(proceeding -> proceedingsMapper.toProceedingEntity(proceeding, id)).toList();
-    boolean hasLeadProceeding = proceedingEntities.stream().anyMatch(ProceedingEntity::isLead);
-    if (!hasLeadProceeding) {
-      throw new ValidationException(List.of("No lead proceedings found"));
-    }
     proceedingRepository.saveAll(proceedingEntities);
   }
 

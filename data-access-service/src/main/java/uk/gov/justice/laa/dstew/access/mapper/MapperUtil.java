@@ -5,10 +5,12 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.jspecify.annotations.NonNull;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * Utility class for configuring and providing a Jackson ObjectMapper instance.
  */
+@ExcludeFromGeneratedCodeCoverage
 public class MapperUtil {
 
   /**
