@@ -27,7 +27,7 @@ public class RequestApplicationContentFactory
     RequestApplicationContent requestApplicationContent = RequestApplicationContent.builder()
         .applicationContent(applicationContentFactory.createDefault())
         .applicationReference("LXB-111-111")
-        .status(ApplicationStatus.SUBMITTED)
+        .status(ApplicationStatus.APPLICATION_SUBMITTED)
         .build();
     requestApplicationContent.putAdditionalProperty("applicationId", applicationId.toString());
     return requestApplicationContent;

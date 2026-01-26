@@ -135,15 +135,6 @@ class ApplicationMapperTest {
     @Test
     void givenApplicationCreateRequest_whenToApplicationEntity_thenMapsFieldsCorrectly() {
         ApplicationStatus status = ApplicationStatus.APPLICATION_SUBMITTED;
-        Map<String, Object> applicationContent = Map.of("foo", "bar");
-        String laaReference = "laa_reference";
-        List<Individual> expectedIndividuals = List.of(
-                Individual.builder().build(),
-                Individual.builder().build()
-        );
-  @Test
-  void givenApplicationCreateRequest_whenToApplicationEntity_thenMapsFieldsCorrectly() {
-    ApplicationStatus status = ApplicationStatus.SUBMITTED;
     UUID applicationContentId = UUID.randomUUID();
 
     RequestApplicationContent requestApplicationContent =
