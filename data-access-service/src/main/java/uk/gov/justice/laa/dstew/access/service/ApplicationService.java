@@ -52,6 +52,7 @@ public class ApplicationService {
   private final DecisionRepository decisionRepository;
   private final ProceedingRepository proceedingRepository;
   private final MeritsDecisionRepository meritsDecisionRepository;
+  private final LinkedApplicationService linkedApplicationService;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -70,7 +71,8 @@ public class ApplicationService {
                             final DomainEventService domainEventService,
                             final ApplicationContentParserService applicationContentParserService,
                             final ProceedingRepository proceedingRepository,
-                            final MeritsDecisionRepository meritsDecisionRepository) {
+                            final MeritsDecisionRepository meritsDecisionRepository,
+                            final LinkedApplicationService linkedApplicationService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
@@ -82,6 +84,7 @@ public class ApplicationService {
     this.decisionRepository = decisionRepository;
     this.proceedingRepository = proceedingRepository;
     this.meritsDecisionRepository = meritsDecisionRepository;
+    this.linkedApplicationService = linkedApplicationService;
   }
 
   /**
@@ -110,6 +113,13 @@ public class ApplicationService {
 
     final ApplicationEntity saved = applicationRepository.save(entity);
 
+    Map<String, Object> applicationContent =
+        objectMapper.convertValue(
+            req.getApplicationContent().get("applicationContent"),
+            Map.class
+        );
+
+    linkedApplicationService.processLinkedApplications(applicationContent);
 
     domainEventService.saveCreateApplicationDomainEvent(saved, null);
 
