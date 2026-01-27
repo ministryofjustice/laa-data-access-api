@@ -55,7 +55,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         // given
         List<ApplicationEntity> expectedApplicationsWithNullAutoGrant =
                 persistedApplicationFactory.createAndPersistMultiple(1, builder ->
-                builder.status(ApplicationStatus.IN_PROGRESS));
+                builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS));
 
         expectedApplicationsWithNullAutoGrant.getFirst().setIsAutoGranted(null);
 
