@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.Individual;
@@ -25,7 +26,7 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
     return ApplicationCreateRequest.builder()
         .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
         .laaReference("TestReference")
-        .applicationContent(requestApplicationContent)
+        .applicationContent(MapperUtil.getObjectMapper().convertValue(requestApplicationContent, Map.class))
         .individuals(List.of(
             Individual.builder()
                 .firstName("John")

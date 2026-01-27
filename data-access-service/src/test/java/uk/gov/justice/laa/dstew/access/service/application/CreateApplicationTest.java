@@ -162,14 +162,14 @@ public class CreateApplicationTest extends BaseServiceTest {
         "No lead proceeding found in application content"
     ));
     ApplicationCreateRequest createRequest = applicationCreateRequestFactory.createDefault(builder -> builder
-        .applicationContent(requestApplicationContent));
+        .applicationContent(objectMapper.convertValue(requestApplicationContent, Map.class)));
     return Stream.of(
         Arguments.of(
             createRequest, validationException
         ));
   }
 
-  private RequestApplicationContent getAppContentParent(List<Proceeding> proceedings,
+  private Map<String, Object> getAppContentParent(List<Proceeding> proceedings,
                                                         String appContentId) {
 
 
@@ -179,7 +179,8 @@ public class CreateApplicationTest extends BaseServiceTest {
     RequestApplicationContent requestApplicationContent =
         requestApplicationContentFactory.createDefault(builder -> builder.applicationContent(applicationContent));
     requestApplicationContent.putAdditionalProperty("testPropertyInTest", "testValue");
-    return requestApplicationContent;
+    return objectMapper.convertValue(requestApplicationContent, Map.class);
+
   }
 
   private Proceeding getProceeding(Boolean useDelegatedFunctions, boolean leadProceeding) {
@@ -217,7 +218,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     assertThat(actualApplicationEntity.getStatus()).isEqualTo(applicationCreateRequest.getStatus());
     assertThat(actualApplicationEntity.getLaaReference()).isEqualTo(applicationCreateRequest.getLaaReference());
     RequestApplicationContent applicationContentDetails =
-        applicationCreateRequest.getApplicationContent();
+        objectMapper.convertValue(applicationCreateRequest.getApplicationContent(), RequestApplicationContent.class);
     assertThat(actualApplicationEntity.getApplyApplicationId()).isEqualTo(
         applicationContentDetails.getApplicationContent().getId());
     assertThat(actualApplicationEntity.isUseDelegatedFunctions()).isEqualTo(

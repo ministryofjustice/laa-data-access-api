@@ -1,7 +1,20 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertCreated;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertProblemRecord;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -17,7 +30,6 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -51,113 +63,115 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         // when
         MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
 
-        // then
-        assertSecurityHeaders(result);
-        assertCreated(result);
+    // then
+    assertSecurityHeaders(result);
+    assertCreated(result);
 
-        UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(
-                result.getResponse().getHeader("Location")
-        );
-        assertNotNull(createdApplicationId);
-        ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId).orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
-        assertApplicationEqual(applicationCreateRequest, createdApplication);
+    UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(
+        result.getResponse().getHeader("Location")
+    );
+    assertNotNull(createdApplicationId);
+    ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
+        .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
+    assertApplicationEqual(applicationCreateRequest, createdApplication);
 
-        domainEventAsserts.assertDomainEventForApplication(
-                createdApplication,
-                DomainEventType.APPLICATION_CREATED
-        );
-    }
+    domainEventAsserts.assertDomainEventForApplication(
+        createdApplication,
+        DomainEventType.APPLICATION_CREATED
+    );
+  }
 
-    @ParameterizedTest
-    @MethodSource("applicationCreateRequestInvalidDataCases")
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
-    public void givenInvalidApplicationRequestData_whenCreateApplication_thenReturnBadRequest(
-            ApplicationCreateRequest request,
-            ProblemDetail expectedDetail,
-            Map<String, Object> problemDetailProperties) throws Exception {
-        // when
-        MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
-        ProblemDetail detail = deserialise(result, ProblemDetail.class);
+  @ParameterizedTest
+  @MethodSource("applicationCreateRequestInvalidDataCases")
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenInvalidApplicationRequestData_whenCreateApplication_thenReturnBadRequest(
+      ApplicationCreateRequest request,
+      ProblemDetail expectedDetail,
+      Map<String, Object> problemDetailProperties) throws Exception {
+    // when
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+    ProblemDetail detail = deserialise(result, ProblemDetail.class);
 
-        // then
-        expectedDetail.setProperties(problemDetailProperties);
-        assertSecurityHeaders(result);
-        assertProblemRecord(HttpStatus.BAD_REQUEST, expectedDetail, result, detail);
-        assertEquals(0, applicationRepository.count());
-    }
+    // then
+    expectedDetail.setProperties(problemDetailProperties);
+    assertSecurityHeaders(result);
+    assertProblemRecord(HttpStatus.BAD_REQUEST, expectedDetail, result, detail);
+    assertEquals(0, applicationRepository.count());
+  }
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
-    public void givenInvalidApplicationContent_EmptyMap_whenCreateApplication_thenReturnBadRequest() throws Exception {
-        ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder -> {
-            builder.applicationContent(new RequestApplicationContent());
-        });
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenInvalidApplicationContent_EmptyMap_whenCreateApplication_thenReturnBadRequest() throws Exception {
+    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder -> {
+      builder.applicationContent(new HashMap<>());
+    });
 
-        Map<String, String> invalidFields = new HashMap<>();
-        invalidFields.put("applicationContent.applicationContent", "must not be null");
+    Map<String, String> invalidFields = new HashMap<>();
+    invalidFields.put("applicationContent", "size must be between 1 and 2147483647");
 
-        ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
-        expectedProblemDetail.setProperty("invalidFields", invalidFields);
-        // when
-        MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
-        ProblemDetail validationException = deserialise(result, ProblemDetail.class);
+    ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
+    expectedProblemDetail.setProperty("invalidFields", invalidFields);
+    // when
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
+    ProblemDetail validationException = deserialise(result, ProblemDetail.class);
 
-        // then
-        assertSecurityHeaders(result);
-        assertProblemRecord(HttpStatus.BAD_REQUEST, expectedProblemDetail, result, validationException);
-        assertEquals(0, applicationRepository.count());
-    }
+    // then
+    assertSecurityHeaders(result);
+    assertProblemRecord(HttpStatus.BAD_REQUEST, expectedProblemDetail, result, validationException);
+    assertEquals(0, applicationRepository.count());
+  }
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
-    public void givenInvalidApplicationContent_whenCreateApplication_thenReturnBadRequest() throws Exception {
-        ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder -> {
-            builder.applicationContent(null);
-        });
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenInvalidApplicationContent_whenCreateApplication_thenReturnBadRequest() throws Exception {
+    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder -> {
+      builder.applicationContent(null);
+    });
 
-        Map<String, String> invalidFields = new HashMap<>();
-        invalidFields.put("applicationContent", "must not be null");
+    Map<String, String> invalidFields = new HashMap<>();
+    invalidFields.put("applicationContent", "size must be between 1 and 2147483647");
 
-        ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
-        expectedProblemDetail.setProperty("invalidFields", invalidFields);
-        // when
-        MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
-        ProblemDetail validationException = deserialise(result, ProblemDetail.class);
+    ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
+    expectedProblemDetail.setProperty("invalidFields", invalidFields);
+    // when
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
+    ProblemDetail validationException = deserialise(result, ProblemDetail.class);
 
-        // then
-        assertSecurityHeaders(result);
-        assertProblemRecord(HttpStatus.BAD_REQUEST, expectedProblemDetail, result, validationException);
-        assertEquals(0, applicationRepository.count());
-    }
+    // then
+    assertSecurityHeaders(result);
+    assertProblemRecord(HttpStatus.BAD_REQUEST, expectedProblemDetail, result, validationException);
+    assertEquals(0, applicationRepository.count());
+  }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"", "{}"})
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
-    public void givenNoRequestBody_whenCreateApplication_thenReturnBadRequest(String request) throws Exception {
-        // when
-        MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
-        ProblemDetail detail = deserialise(result, ProblemDetail.class);
+  @ParameterizedTest
+  @ValueSource(strings = {"", "{}"})
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenNoRequestBody_whenCreateApplication_thenReturnBadRequest(String request) throws Exception {
+    // when
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+    ProblemDetail detail = deserialise(result, ProblemDetail.class);
 
-        // then
-        assertSecurityHeaders(result);
-        assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request", "Invalid data type for field 'unknown'. Expected: ApplicationCreateRequest.", result, detail,
-                null);
-        assertEquals(0, applicationRepository.count());
-    }
+    // then
+    assertSecurityHeaders(result);
+    assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request",
+        "Invalid data type for field 'unknown'. Expected: ApplicationCreateRequest.", result, detail,
+        null);
+    assertEquals(0, applicationRepository.count());
+  }
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
-    public void givenCorrectRequestBodyAndReaderRole_whenCreateApplication_thenReturnForbidden() throws Exception {
-        // given
-        ApplicationCreateRequest request = applicationCreateRequestFactory.create();
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.READER)
+  public void givenCorrectRequestBodyAndReaderRole_whenCreateApplication_thenReturnForbidden() throws Exception {
+    // given
+    ApplicationCreateRequest request = applicationCreateRequestFactory.create();
 
-        // when
-        MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+    // when
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
 
-        // then
-        assertSecurityHeaders(result);
-        assertForbidden(result);
-    }
+    // then
+    assertSecurityHeaders(result);
+    assertForbidden(result);
+  }
 
     @Test
     public void givenCorrectRequestBodyAndNoAuthentication_whenCreateApplication_thenReturnUnauthorised() throws Exception {
