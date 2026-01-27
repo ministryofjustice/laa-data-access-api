@@ -160,7 +160,7 @@ class ApplicationMapperTest {
 
     ApplicationCreateRequest expectedApplicationCreateRequest = ApplicationCreateRequest.builder()
         .status(status)
-        .applicationContent(requestApplicationContent)
+        .applicationContent(MapperUtil.getObjectMapper().convertValue(requestApplicationContent, Map.class))
         .laaReference(laaReference)
         .individuals(expectedIndividuals)
         .build();
