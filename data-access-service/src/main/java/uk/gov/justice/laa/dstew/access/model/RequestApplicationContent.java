@@ -11,11 +11,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.springframework.lang.Nullable;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * RequestApplicationContent.
  * Using the same format as the OpenAPI generator to enable switch when schema stable
  */
+@ExcludeFromGeneratedCodeCoverage
 public class RequestApplicationContent implements Serializable {
 
   private static final long serialVersionUID = 1L;
@@ -186,6 +188,7 @@ public class RequestApplicationContent implements Serializable {
   /**
    * A builder for RequestApplicationContent instances.
    */
+  @ExcludeFromGeneratedCodeCoverage
   public static class Builder {
 
     private RequestApplicationContent instance;

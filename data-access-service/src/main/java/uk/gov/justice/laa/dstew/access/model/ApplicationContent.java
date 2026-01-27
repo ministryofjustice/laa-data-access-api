@@ -15,12 +15,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import org.springframework.lang.Nullable;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * ApplicationContent pojo.
  * Using the same format as the OpenAPI generator to enable switch when schema stable
  */
-
+@ExcludeFromGeneratedCodeCoverage
 public class ApplicationContent implements Serializable {
 
   private static final long serialVersionUID = 1L;
@@ -234,6 +235,7 @@ public class ApplicationContent implements Serializable {
   /**
    * A builder for ApplicationContent instances.
    */
+  @ExcludeFromGeneratedCodeCoverage
   public static class Builder {
 
     private ApplicationContent instance;
