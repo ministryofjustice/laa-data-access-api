@@ -12,11 +12,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import org.springframework.lang.Nullable;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * Proceeding.
  * Using the same format as the OpenAPI generator to enable switch when schema stable
  */
+@ExcludeFromGeneratedCodeCoverage
 public class Proceeding implements Serializable {
 
   private static final long serialVersionUID = 1L;
@@ -265,6 +267,7 @@ public class Proceeding implements Serializable {
   /**
    * Builder for Proceeding instances.
    */
+  @ExcludeFromGeneratedCodeCoverage
   public static class Builder {
 
     private Proceeding instance;
