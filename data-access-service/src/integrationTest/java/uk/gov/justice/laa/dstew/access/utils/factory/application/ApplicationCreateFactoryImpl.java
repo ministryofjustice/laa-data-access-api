@@ -48,7 +48,7 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
         "test", "value"
     );
     return ApplicationCreateRequest.builder()
-        .status(ApplicationStatus.IN_PROGRESS)
+        .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
         .laaReference("TestReference")
         .applicationContent(applicationContent)
         .individuals(List.of(

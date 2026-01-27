@@ -49,7 +49,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
         ));
 
         ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create(builder -> {
-            builder.applicationContent(expectedContent).status(ApplicationStatus.SUBMITTED);
+            builder.applicationContent(expectedContent).status(ApplicationStatus.APPLICATION_SUBMITTED);
         });
 
         // when
@@ -65,7 +65,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
                 .usingRecursiveComparison()
                 .ignoringCollectionOrder()
                 .isEqualTo(actual.getApplicationContent());
-        assertEquals(ApplicationStatus.SUBMITTED, actual.getStatus());
+        assertEquals(ApplicationStatus.APPLICATION_SUBMITTED, actual.getStatus());
     }
 
     @ParameterizedTest

@@ -35,7 +35,7 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
         return ApplicationEntity.builder()
                 .applyApplicationId(UUID.randomUUID())
                 .createdAt(instant)
-                .status(ApplicationStatus.IN_PROGRESS)
+                .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
                 .modifiedAt(instant)
                 .submittedAt(instant)
                 .individuals(new HashSet<>(Set.of(individualEntity)))

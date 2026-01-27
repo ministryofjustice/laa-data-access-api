@@ -55,7 +55,7 @@ public class ApplicationSummaryMapperTest {
         MatterType matterType = MatterType.SCA;
         boolean usedDelegatedFunctions = true;
         String laaReference = "ref1";
-        ApplicationStatus status = ApplicationStatus.IN_PROGRESS;
+        ApplicationStatus status = ApplicationStatus.APPLICATION_IN_PROGRESS;
         ApplicationType applicationType = ApplicationType.INITIAL;
         String clientFirstName = "John";
         String clientLastName = "Doe";
