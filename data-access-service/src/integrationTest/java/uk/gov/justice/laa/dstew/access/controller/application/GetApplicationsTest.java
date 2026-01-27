@@ -51,7 +51,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
-    void givenApplicationsWithoutFilteringAndNullAutoGranted_whenGetApplications_thenReturnApplicationsWithPagingCorrectly() throws Exception {
+    void givenApplicationWithoutFilteringAndNullAutoGranted_whenGetApplications_thenReturnApplication() throws Exception {
         // given
         List<ApplicationEntity> expectedApplicationsWithNullAutoGrant =
                 persistedApplicationFactory.createAndPersistMultiple(1, builder ->
