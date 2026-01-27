@@ -709,7 +709,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         applicationSummary.setCategoryOfLaw(applicationEntity.getCategoryOfLaw());
         applicationSummary.setMatterType(applicationEntity.getMatterType());
         applicationSummary.setAssignedTo(applicationEntity.getCaseworker() != null ? applicationEntity.getCaseworker().getId() : null);
-        applicationSummary.autoGrant(applicationEntity.isAutoGranted());
+        applicationSummary.autoGrant(applicationEntity.getIsAutoGranted());
         applicationSummary.setLaaReference(applicationEntity.getLaaReference());
         applicationSummary.setApplicationType(ApplicationType.INITIAL);
         applicationSummary.setClientFirstName(applicationEntity.getIndividuals().stream().findFirst().get().getFirstName());
