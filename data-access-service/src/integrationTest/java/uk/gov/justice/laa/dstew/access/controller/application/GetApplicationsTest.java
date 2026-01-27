@@ -27,8 +27,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertBadRequest;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
@@ -49,6 +48,24 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     public static final String SEARCH_CASEWORKERID_PARAM = "userId=";
     public static final String SEARCH_ISAUTOGRANTED_PARAM = "isAutoGranted=";
     public static final String SEARCH_CLIENTDOB_PARAM = "clientDateOfBirth=";
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    void givenApplicationsWithoutFilteringAndNullAutoGranted_whenGetApplications_thenReturnApplicationsWithPagingCorrectly() throws Exception {
+        // given
+        List<ApplicationEntity> expectedApplicationsWithNullAutoGrant =
+                persistedApplicationFactory.createAndPersistMultiple(1, builder ->
+                builder.status(ApplicationStatus.IN_PROGRESS));
+
+        expectedApplicationsWithNullAutoGrant.getFirst().setIsAutoGranted(null);
+
+        // when
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
+        ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+        // then
+        assertNull(actual.getApplications().getFirst().getAutoGrant());
+    }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
