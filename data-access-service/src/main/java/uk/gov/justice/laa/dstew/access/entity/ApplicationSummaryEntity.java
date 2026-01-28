@@ -75,7 +75,7 @@ public class ApplicationSummaryEntity {
   private MatterType matterType;
 
   @Column(name = "is_auto_granted")
-  private boolean isAutoGranted;
+  private Boolean isAutoGranted;
 
   @Transient
   private ApplicationType type = ApplicationType.INITIAL;

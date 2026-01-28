@@ -27,8 +27,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertBadRequest;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
@@ -49,6 +48,24 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     public static final String SEARCH_CASEWORKERID_PARAM = "userId=";
     public static final String SEARCH_ISAUTOGRANTED_PARAM = "isAutoGranted=";
     public static final String SEARCH_CLIENTDOB_PARAM = "clientDateOfBirth=";
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    void givenApplicationWithoutFilteringAndNullAutoGranted_whenGetApplications_thenReturnApplication() throws Exception {
+        // given
+        List<ApplicationEntity> expectedApplicationsWithNullAutoGrant =
+                persistedApplicationFactory.createAndPersistMultiple(1, builder ->
+                builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS));
+
+        expectedApplicationsWithNullAutoGrant.getFirst().setIsAutoGranted(null);
+
+        // when
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
+        ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+        // then
+        assertNull(actual.getApplications().getFirst().getAutoGrant());
+    }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
@@ -709,7 +726,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         applicationSummary.setCategoryOfLaw(applicationEntity.getCategoryOfLaw());
         applicationSummary.setMatterType(applicationEntity.getMatterType());
         applicationSummary.setAssignedTo(applicationEntity.getCaseworker() != null ? applicationEntity.getCaseworker().getId() : null);
-        applicationSummary.autoGrant(applicationEntity.isAutoGranted());
+        applicationSummary.autoGrant(applicationEntity.getIsAutoGranted());
         applicationSummary.setLaaReference(applicationEntity.getLaaReference());
         applicationSummary.setApplicationType(ApplicationType.INITIAL);
         applicationSummary.setClientFirstName(applicationEntity.getIndividuals().stream().findFirst().get().getFirstName());
