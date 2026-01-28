@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
@@ -11,6 +12,7 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
+import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 
@@ -40,6 +42,9 @@ public class AccessAppTests {
 
   @MockitoBean
   private MeritsDecisionRepository meritsDecisionRepository;
+
+  @MockitoBean
+  protected LinkedApplicationRepository linkedApplicationRepository;
 
   @Test
   void contextLoads() {
