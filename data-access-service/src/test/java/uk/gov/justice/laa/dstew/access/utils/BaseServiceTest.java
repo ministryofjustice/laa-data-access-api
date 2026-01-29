@@ -28,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationMake
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationSummaryFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateRequestFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ProceedingDtoFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.RequestApplicationContentFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.decision.DecisionEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.domainEvent.DomainEventFactory;
@@ -35,6 +36,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactor
 import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionDetailsFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionsEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.MakeDecisionProceedingFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingsEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.refusal.RefusalDetailsFactory;
 
@@ -101,6 +103,9 @@ public class BaseServiceTest {
     protected ProceedingDtoFactory proceedingDtoFactory;
 
     @Autowired
+    protected RequestApplicationContentFactory requestApplicationContentFactory;
+
+    @Autowired
     protected ApplicationMakeDecisionRequestFactory applicationMakeDecisionRequestFactory;
 
     @Autowired
@@ -120,6 +125,9 @@ public class BaseServiceTest {
 
     @Autowired
     protected RefusalDetailsFactory refusalDetailsFactory;
+
+    @Autowired
+    protected ProceedingFactory proceedingFactory;
 
     @AfterEach
     void tearDown() {

@@ -28,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
@@ -52,6 +53,7 @@ public class ApplicationService {
   private final DecisionRepository decisionRepository;
   private final ProceedingRepository proceedingRepository;
   private final MeritsDecisionRepository meritsDecisionRepository;
+  private final ProceedingsService proceedingsService;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -70,17 +72,19 @@ public class ApplicationService {
                             final DomainEventService domainEventService,
                             final ApplicationContentParserService applicationContentParserService,
                             final ProceedingRepository proceedingRepository,
-                            final MeritsDecisionRepository meritsDecisionRepository) {
+                            final MeritsDecisionRepository meritsDecisionRepository,
+                            final ProceedingsService proceedingsService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
     this.applicationContentParser = applicationContentParserService;
+    this.proceedingRepository = proceedingRepository;
+    this.proceedingsService = proceedingsService;
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
     this.caseworkerRepository = caseworkerRepository;
     this.domainEventService = domainEventService;
     this.decisionRepository = decisionRepository;
-    this.proceedingRepository = proceedingRepository;
     this.meritsDecisionRepository = meritsDecisionRepository;
   }
 
@@ -105,14 +109,16 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public UUID createApplication(final ApplicationCreateRequest req) {
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
-    setValuesFromApplicationContent(req, entity);
+    RequestApplicationContent requestApplicationContent =
+        objectMapper.convertValue(req.getApplicationContent(), RequestApplicationContent.class);
+    setValuesFromApplicationContent(entity, requestApplicationContent);
     entity.setSchemaVersion(applicationVersion);
 
     final ApplicationEntity saved = applicationRepository.save(entity);
 
-
+    
+    proceedingsService.saveProceedings(requestApplicationContent.getApplicationContent(), saved.getId());
     domainEventService.saveCreateApplicationDomainEvent(saved, null);
-
     createAndSendHistoricRecord(saved, null);
 
     return saved.getId();
@@ -121,18 +127,16 @@ public class ApplicationService {
   /**
    * Sets key fields in the application entity based on parsed application content.
    *
-   * @param req    application create request
    * @param entity application entity to update
+   * @param requestAppContent application content from the request
    */
-  private void setValuesFromApplicationContent(ApplicationCreateRequest req, ApplicationEntity entity) {
-    if (!req.getApplicationContent().containsKey("applicationContent")) {
-      throw new ResourceNotFoundException("No application content found");
-    }
-    Map<String, Object> applicationContent =
-        objectMapper.convertValue(req.getApplicationContent().get("applicationContent"), Map.class);
-    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(applicationContent);
+  private void setValuesFromApplicationContent(ApplicationEntity entity,
+                                               RequestApplicationContent requestAppContent) {
+
+
+    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(requestAppContent);
     entity.setApplyApplicationId(parsedContentDetails.applyApplicationId());
-    entity.setUseDelegatedFunctions(parsedContentDetails.useDelegatedFunctions());
+    entity.setUseDelegatedFunctions(parsedContentDetails.usedDelegatedFunctions());
     entity.setCategoryOfLaw(parsedContentDetails.categoryOfLaw());
     entity.setMatterType(parsedContentDetails.matterType());
     entity.setSubmittedAt(parsedContentDetails.submittedAt());
@@ -299,6 +303,8 @@ public class ApplicationService {
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     checkIfCaseworkerExists(request.getUserId());
+
+    applicationValidations.checkApplicationMakeDecisionRequest(request);
 
     application.setStatus(request.getApplicationStatus());
     application.setModifiedAt(Instant.now());
