@@ -107,7 +107,7 @@ public class ApplicationEntity implements AuditableEntity {
   private MatterType matterType;
 
   @Column(name = "is_auto_granted")
-  private boolean isAutoGranted;
+  private Boolean isAutoGranted;
 
   // getters and setters
   public Map<String, Object> getApplicationContent() {

@@ -5,13 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
@@ -31,16 +32,25 @@ public class ApplicationSummaryMapperTest {
   @InjectMocks
   private ApplicationSummaryMapper applicationMapper = new ApplicationSummaryMapperImpl();
 
+    private static List<Arguments> parametersForMappingApplicationSummaryEntityTest() {
+        return List.of(
+                Arguments.of("95bb88f1-99ca-4ecf-b867-659b55a8cf93", true),
+                Arguments.of("95bb88f1-99ca-4ecf-b867-659b55a8cf93", false),
+                Arguments.of("95bb88f1-99ca-4ecf-b867-659b55a8cf93", null),
+                Arguments.of(null, true),
+                Arguments.of(null, false),
+                Arguments.of(null, null)
+        );
+    }
     @ParameterizedTest
-    @NullSource
-    @ValueSource(strings = "95bb88f1-99ca-4ecf-b867-659b55a8cf93")
-    void givenApplicationSummaryEntity_whenToApplicationSummary_thenMapsFieldsCorrectly(UUID caseworkerId) {
+    @MethodSource("parametersForMappingApplicationSummaryEntityTest")
+    void givenApplicationSummaryEntity_whenToApplicationSummary_thenMapsFieldsCorrectly(
+            UUID caseworkerId, Boolean autoGranted) {
         // Test data setup
         UUID id = UUID.randomUUID();
         Instant createdAt = Instant.now();
         Instant modifiedAt = Instant.now();
         Instant submittedAt = Instant.now();
-        boolean autoGranted = true;
         CategoryOfLaw categoryOfLaw = CategoryOfLaw.FAMILY;
         MatterType matterType = MatterType.SCA;
         boolean usedDelegatedFunctions = true;
@@ -69,7 +79,7 @@ public class ApplicationSummaryMapperTest {
         entity.setCreatedAt(createdAt);
         entity.setModifiedAt(modifiedAt);
         entity.setSubmittedAt(submittedAt);
-        entity.setAutoGranted(autoGranted);
+        entity.setIsAutoGranted(autoGranted);
         entity.setCategoryOfLaw(categoryOfLaw);
         entity.setMatterType(matterType);
         entity.setUsedDelegatedFunctions(usedDelegatedFunctions);

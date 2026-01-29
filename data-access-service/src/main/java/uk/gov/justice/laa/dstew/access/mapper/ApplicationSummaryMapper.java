@@ -32,7 +32,7 @@ public interface ApplicationSummaryMapper {
     app.setSubmittedAt(applicationSummaryEntity.getSubmittedAt() != null 
                           ? applicationSummaryEntity.getSubmittedAt().atOffset(ZoneOffset.UTC) 
                           : null);
-    app.setAutoGrant(applicationSummaryEntity.isAutoGranted());
+    app.setAutoGrant(applicationSummaryEntity.getIsAutoGranted());
     app.setCategoryOfLaw(applicationSummaryEntity.getCategoryOfLaw());
     app.setMatterType(applicationSummaryEntity.getMatterType());
     app.setUsedDelegatedFunctions(applicationSummaryEntity.isUsedDelegatedFunctions());

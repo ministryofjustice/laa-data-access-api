@@ -28,8 +28,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertCreated;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
@@ -261,7 +260,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         assertEquals(expected.getLaaReference(), actual.getLaaReference());
         assertEquals(expected.getStatus(), actual.getStatus());
         assertEquals(applicationVersion, actual.getSchemaVersion());
-
+        assertNull(actual.getIsAutoGranted());
         assertNotNull(actual.getSubmittedAt());
     }
 }
