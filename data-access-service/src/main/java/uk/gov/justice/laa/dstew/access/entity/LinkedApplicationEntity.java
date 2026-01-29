@@ -14,6 +14,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.UpdateTimestamp;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
@@ -42,5 +43,6 @@ public class LinkedApplicationEntity {
   private UUID associatedApplicationId;
 
   @Column(name = "linked_at", nullable = false)
+  @UpdateTimestamp
   private Instant linkedAt = Instant.now();
 }
