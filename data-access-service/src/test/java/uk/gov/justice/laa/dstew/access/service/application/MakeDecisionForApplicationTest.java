@@ -92,21 +92,18 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
         ProceedingEntity grantedProceedingEntity = proceedingsEntityFactory
                 .createDefault(builder ->
-                        builder.id(grantedProceedingId)
+                        builder.id(grantedProceedingId).applicationId(applicationId)
                 );
 
         ProceedingEntity refusedProceedingEntity = proceedingsEntityFactory
                 .createDefault(builder ->
-                        builder.id(refusedProceedingId)
+                        builder.id(refusedProceedingId).applicationId(applicationId)
                 );
 
         // when
         when(caseworkerRepository.findById(caseworker.getId()))
                 .thenReturn(Optional.of(caseworker));
-        when(proceedingRepository.findById(grantedProceedingId))
-                .thenReturn(Optional.of(grantedProceedingEntity));
-        when(proceedingRepository.findById(refusedProceedingId))
-                .thenReturn(Optional.of(refusedProceedingEntity));
+        when(proceedingRepository.findAllById(any())).thenReturn(List.of(grantedProceedingEntity, refusedProceedingEntity));
         when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
         when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
                 .thenReturn(Optional.empty());
@@ -167,12 +164,11 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
         ProceedingEntity proceedingEntity = proceedingsEntityFactory
                 .createDefault(builder ->
-                        builder.id(proceedingId)
+                        builder.id(proceedingId).applicationId(applicationId)
                 );
 
         // when
-        when(proceedingRepository.findById(proceedingId))
-                .thenReturn(Optional.of(proceedingEntity));
+        when(proceedingRepository.findAllById(any())).thenReturn(List.of(proceedingEntity));
         when(caseworkerRepository.findById(caseworker.getId()))
                 .thenReturn(Optional.of(caseworker));
         when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
@@ -249,19 +245,16 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
         ProceedingEntity existingProceedingEntity = proceedingsEntityFactory
                 .createDefault(builder ->
-                        builder.id(proceedingId)
+                        builder.id(proceedingId).applicationId(applicationId)
                 );
 
         ProceedingEntity newProceedingEntity = proceedingsEntityFactory
                 .createDefault(builder ->
-                        builder.id(newProceedingId)
+                        builder.id(newProceedingId).applicationId(applicationId)
                 );
 
         // when
-        when(proceedingRepository.findById(proceedingId))
-                .thenReturn(Optional.of(existingProceedingEntity));
-        when(proceedingRepository.findById(newProceedingId))
-                .thenReturn(Optional.of(newProceedingEntity));
+        when(proceedingRepository.findAllById(any())).thenReturn(List.of(newProceedingEntity));
         when(caseworkerRepository.findById(caseworker.getId()))
                 .thenReturn(Optional.of(caseworker));
         when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
@@ -317,21 +310,18 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
         ProceedingEntity currentProceedingEntity = proceedingsEntityFactory
                 .createDefault(builder ->
-                        builder.id(currentProceedingId)
+                        builder.id(currentProceedingId).applicationId(applicationId)
                 );
 
         ProceedingEntity newProceedingEntity = proceedingsEntityFactory
                 .createDefault(builder ->
-                        builder.id(newProceedingId)
+                        builder.id(newProceedingId).applicationId(applicationId)
                 );
 
         setSecurityContext(TestConstants.Roles.WRITER);
 
         // when
-        when(proceedingRepository.findById(currentProceedingId))
-                .thenReturn(Optional.of(currentProceedingEntity));
-        when(proceedingRepository.findById(newProceedingId))
-                .thenReturn(Optional.of(newProceedingEntity));
+        when(proceedingRepository.findAllById(any())).thenReturn(List.of(currentProceedingEntity, newProceedingEntity));
         when(caseworkerRepository.findById(caseworker.getId()))
                 .thenReturn(Optional.of(caseworker));
         when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
