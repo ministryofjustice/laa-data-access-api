@@ -450,6 +450,105 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                 .hasMessage("No proceeding found with id: " + proceedingId);
     }
 
+    @Test
+    void givenProceedingExistsButLinkedToDifferentApplication_whenMakeDecision_thenThrowResourceNotFoundException() {
+        UUID applicationId = UUID.randomUUID();
+        UUID differentApplicationId = UUID.randomUUID();
+        UUID proceedingId = UUID.randomUUID();
+
+        // given
+        CaseworkerEntity caseworker = caseworkerFactory.createDefault();
+
+        MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
+            requestBuilder
+                .userId(caseworker.getId())
+                .proceedings(List.of(
+                    createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "reason", "justification")
+                ))
+        );
+
+        ApplicationEntity expectedApplicationEntity = applicationEntityFactory
+            .createDefault(builder ->
+                builder
+                    .id(applicationId)
+                    .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+                    .caseworker(caseworker)
+            );
+
+        setSecurityContext(TestConstants.Roles.WRITER);
+
+        ProceedingEntity proceedingEntity = proceedingsEntityFactory
+            .createDefault(builder -> builder.id(proceedingId).applicationId(differentApplicationId));
+
+        // when
+        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedApplicationEntity));
+        when(caseworkerRepository.findById(caseworker.getId()))
+            .thenReturn(Optional.of(caseworker));
+        when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
+
+        Throwable thrown = catchThrowable(
+            () -> serviceUnderTest.makeDecision(applicationId, makeDecisionRequest)
+        );
+
+        // then
+        assertThat(thrown)
+            .isInstanceOf(ResourceNotFoundException.class)
+            .hasMessage("Not linked to application: " + proceedingId);
+    }
+
+    @Test
+    void givenCombinationOfNonExistentAndWrongApplicationProceedings_whenMakeDecision_thenThrowResourceNotFoundExceptionWithAllIds() {
+        UUID applicationId = UUID.randomUUID();
+        UUID differentApplicationId = UUID.randomUUID();
+        UUID nonExistentProceedingId = UUID.randomUUID();
+        UUID wrongApplicationProceedingId = UUID.randomUUID();
+
+        // given
+        CaseworkerEntity caseworker = caseworkerFactory.createDefault();
+
+        MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
+            requestBuilder
+                .userId(caseworker.getId())
+                .proceedings(List.of(
+                    createMakeDecisionProceedingDetails(nonExistentProceedingId, MeritsDecisionStatus.GRANTED, "reason1",
+                        "justification1"),
+                    createMakeDecisionProceedingDetails(wrongApplicationProceedingId, MeritsDecisionStatus.REFUSED, "reason2",
+                        "justification2")
+                ))
+        );
+
+        ApplicationEntity expectedApplicationEntity = applicationEntityFactory
+            .createDefault(builder ->
+                builder
+                    .id(applicationId)
+                    .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+                    .caseworker(caseworker)
+            );
+
+        setSecurityContext(TestConstants.Roles.WRITER);
+
+        ProceedingEntity wrongApplicationProceeding = proceedingsEntityFactory
+            .createDefault(builder -> builder.id(wrongApplicationProceedingId).applicationId(differentApplicationId));
+
+        // when
+        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedApplicationEntity));
+        when(caseworkerRepository.findById(caseworker.getId()))
+            .thenReturn(Optional.of(caseworker));
+        when(proceedingRepository.findAllById(any())).thenReturn(List.of(wrongApplicationProceeding));
+
+        Throwable thrown = catchThrowable(
+            () -> serviceUnderTest.makeDecision(applicationId, makeDecisionRequest)
+        );
+
+        // then
+        assertThat(thrown)
+            .isInstanceOf(ResourceNotFoundException.class)
+            .hasMessageContaining("No proceeding found with id:")
+            .hasMessageContaining(nonExistentProceedingId.toString())
+            .hasMessageContaining("Not linked to application:")
+            .hasMessageContaining(wrongApplicationProceedingId.toString());
+    }
+
     private DecisionEntity createDecisionEntity(UUID applicationId, UUID proceedingId, MeritsDecisionStatus decision, String reason, String justification) {
         return decisionEntityFactory.createDefault(
                 builder -> builder
