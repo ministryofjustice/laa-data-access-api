@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactory;
 
@@ -28,11 +29,14 @@ public class ApplicationCreateRequestFactory extends BaseFactory<ApplicationCrea
 
     @Override
     public ApplicationCreateRequest createDefault() {
-        return ApplicationCreateRequest.builder()
+
+      RequestApplicationContent requestApplicationContent = requestApplicationContentFactory.createDefault();
+
+      return ApplicationCreateRequest.builder()
                 .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
                 .laaReference("REF7327")
                 .individuals(List.of(individualFactory.createDefault()))
-                .applicationContent(MapperUtil.getObjectMapper().convertValue(requestApplicationContentFactory.createDefault(), Map.class))
+                .applicationContent(MapperUtil.getObjectMapper().convertValue(requestApplicationContent, Map.class))
                 .build();
     }
 }

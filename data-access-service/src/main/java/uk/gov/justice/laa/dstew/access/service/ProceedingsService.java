@@ -13,11 +13,11 @@ import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
  */
 @Component
 public class ProceedingsService {
-  private final ProceedingMapper proceedingsMapper;
+  private final ProceedingMapper proceedingMapper;
   private final ProceedingRepository proceedingRepository;
 
-  public ProceedingsService(ProceedingMapper proceedingsMapper, ProceedingRepository proceedingRepository) {
-    this.proceedingsMapper = proceedingsMapper;
+  public ProceedingsService(ProceedingMapper proceedingMapper, ProceedingRepository proceedingRepository) {
+    this.proceedingMapper = proceedingMapper;
     this.proceedingRepository = proceedingRepository;
   }
 
@@ -29,7 +29,7 @@ public class ProceedingsService {
    */
   public void saveProceedings(ApplicationContent applicationContent, UUID id) {
     List<ProceedingEntity> proceedingEntities = applicationContent.getProceedings().stream()
-        .map(proceeding -> proceedingsMapper.toProceedingEntity(proceeding, id)).toList();
+        .map(proceeding -> proceedingMapper.toProceedingEntity(proceeding, id)).toList();
     proceedingRepository.saveAll(proceedingEntities);
   }
 
