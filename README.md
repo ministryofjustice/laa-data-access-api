@@ -23,6 +23,10 @@ project.ext.gitPackageKey = PAT_CREATED_ABOVE
 
 Go back to Github to authorize MOJ for SSO
 
+### Pre-commit hooks
+
+See `docs/pre-commit-hooks.md` for information on setting up and using pre-commit hooks in this project.
+
 ### Project structure
 Includes the following subprojects:
 
