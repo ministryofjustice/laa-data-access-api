@@ -34,8 +34,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.never;
@@ -55,7 +54,7 @@ public class CreateApplicationTest extends BaseServiceTest {
         // given
         UUID expectedId = UUID.randomUUID();
         ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder ->
-                builder.id(expectedId)
+                builder.id(expectedId).isAutoGranted(null)
         );
 
         ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault();
@@ -260,6 +259,7 @@ public class CreateApplicationTest extends BaseServiceTest {
 
         assertThat(actualApplicationEntity.getStatus()).isEqualTo(applicationCreateRequest.getStatus());
         assertThat(actualApplicationEntity.getLaaReference()).isEqualTo(applicationCreateRequest.getLaaReference());
+        assertNull(actualApplicationEntity.getIsAutoGranted());
         ApplicationContentDetails applicationContentDetails =
                 parseApplicationContentDetails(applicationCreateRequest.getApplicationContent());
         assertThat(actualApplicationEntity.getApplyApplicationId()).isEqualTo(applicationContentDetails.getId());
