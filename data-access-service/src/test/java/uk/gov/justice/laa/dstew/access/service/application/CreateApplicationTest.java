@@ -28,6 +28,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
+import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -55,8 +57,9 @@ public class CreateApplicationTest extends BaseServiceTest {
         builder.id(expectedId).isAutoGranted(null)
     );
 
-        ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault();
-
+    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault();
+    RequestApplicationContent requestApplicationContent = MapperUtil.getObjectMapper()
+        .convertValue(applicationCreateRequest.getApplicationContent(), RequestApplicationContent.class);
     when(applicationRepository.save(any())).thenReturn(withExpectedId);
 
         DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
@@ -78,7 +81,29 @@ public class CreateApplicationTest extends BaseServiceTest {
     assertEquals(expectedId, actualId);
 
     verifyThatApplicationSaved(applicationCreateRequest, 1);
+    verifyThatProceedingsSaved(requestApplicationContent, expectedId);
     verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
+  }
+
+  private void verifyThatProceedingsSaved(RequestApplicationContent applicationCreateRequest, UUID expectedId) {
+    ArgumentCaptor<List<ProceedingEntity>> captor = ArgumentCaptor.forClass((Class) List.class);
+    verify(proceedingRepository).saveAll(captor.capture());
+    List<ProceedingEntity> actualProceedingEntities = captor.getValue();
+
+    RequestApplicationContent applicationContentDetails =
+        objectMapper.convertValue(applicationCreateRequest, RequestApplicationContent.class);
+
+    List<Proceeding> expectedProceedings = applicationContentDetails.getApplicationContent().getProceedings();
+
+    assertEquals(expectedProceedings.size(), actualProceedingEntities.size());
+    for (int index = 0; index < expectedProceedings.size(); index++) {
+      Proceeding expectedProceeding = expectedProceedings.get(index);
+      ProceedingEntity actualProceedingEntity = actualProceedingEntities.get(index);
+
+      assertThat(actualProceedingEntity.getApplicationId()).isEqualTo(expectedId);
+      assertThat(actualProceedingEntity.isLead()).isEqualTo(expectedProceeding.getLeadProceeding());
+      assertThat(actualProceedingEntity.getProceedingContent()).isEqualTo(objectMapper.convertValue(expectedProceeding, Map.class));
+    }
   }
 
 
@@ -103,6 +128,9 @@ public class CreateApplicationTest extends BaseServiceTest {
 
     assertAll(() -> assertEquals(expectedUseDelegatedFunctions, actualApplicationEntity.isUseDelegatedFunctions()),
         () -> assertEquals(Instant.parse("2026-01-15T10:20:30Z"), actualApplicationEntity.getSubmittedAt()));
+    verifyThatProceedingsSaved(
+        objectMapper.convertValue(application.getApplicationContent(), RequestApplicationContent.class),
+        expectedId);
   }
 
   @Test
