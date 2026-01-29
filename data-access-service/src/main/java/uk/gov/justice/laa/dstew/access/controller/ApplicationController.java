@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.Paging;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
@@ -72,6 +73,7 @@ public class ApplicationController implements ApplicationApi {
           LocalDate clientDateOfBirth,
           UUID userId,
           Boolean isAutoGranted,
+          MatterType matterType,
           Integer page,
           Integer pageSize) {
     page = (page == null || page < 1) ? 1 : page;
@@ -85,6 +87,7 @@ public class ApplicationController implements ApplicationApi {
                     clientDateOfBirth,
                     userId,
                     isAutoGranted,
+                    matterType,
                     page - 1, pageSize);
 
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();

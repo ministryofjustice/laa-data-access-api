@@ -57,6 +57,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                 null,
                 null,
                 null,
+                null,
                 0,
                 10
         ).stream().toList();
@@ -94,6 +95,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                 null,
                 caseworkerId,
                 null,
+                null,
                 0,
                 10
         ).stream().toList();
@@ -123,6 +125,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                 null,
                 UUID.randomUUID(),
                 null,
+                null,
                 0,
                 10
         ));
@@ -151,6 +154,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                         null,
                         null,
                         null,
+                        null,
                         null
                 ))
                 .withMessageContaining("Access Denied");
@@ -164,6 +168,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         // then
         assertThatExceptionOfType(AuthorizationDeniedException.class)
                 .isThrownBy(() -> serviceUnderTest.getAllApplications(
+                        null,
                         null,
                         null,
                         null,
@@ -201,6 +206,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         assertThat(expected.getId()).isEqualTo(actual.getApplicationId());
         assertThat(expected.getLaaReference()).isEqualTo(actual.getLaaReference());
         assertThat(expected.getStatus()).isEqualTo(actual.getStatus());
+        assertThat(expected.getMatterType()).isEqualTo(actual.getMatterType());
         assertThat(expected.getModifiedAt().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(actual.getLastUpdated().toInstant().truncatedTo(ChronoUnit.SECONDS));
         if (expected.getCaseworker() != null) {
             assertThat(expected.getCaseworker().getId()).isEqualTo(actual.getAssignedTo());
