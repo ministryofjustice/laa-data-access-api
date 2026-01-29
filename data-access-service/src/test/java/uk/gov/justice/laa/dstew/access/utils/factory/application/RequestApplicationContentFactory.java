@@ -12,13 +12,13 @@ import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 @Profile("unit-test")
 @Component
 public class RequestApplicationContentFactory
-    extends BaseFactory<RequestApplicationContent, RequestApplicationContent.Builder> {
+    extends BaseFactory<RequestApplicationContent, RequestApplicationContent.RequestApplicationContentBuilder> {
 
   ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
 
 
   public RequestApplicationContentFactory() {
-    super(RequestApplicationContent::toBuilder, RequestApplicationContent.Builder::build);
+    super(RequestApplicationContent::toBuilder, RequestApplicationContent.RequestApplicationContentBuilder::build);
   }
 
   @Override

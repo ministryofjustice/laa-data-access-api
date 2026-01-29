@@ -9,10 +9,10 @@ import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingRequestFactoryImpl;
 
 @Component
-public class ApplicationContentFactory implements Factory<ApplicationContent, ApplicationContent.Builder> {
+public class ApplicationContentFactory implements Factory<ApplicationContent, ApplicationContent.ApplicationContentBuilder> {
 
 
-  private ProceedingRequestFactoryImpl proceedingRequestFactory = new ProceedingRequestFactoryImpl();
+  private final ProceedingRequestFactoryImpl proceedingRequestFactory = new ProceedingRequestFactoryImpl();
 
 
   @Override
@@ -27,14 +27,14 @@ public class ApplicationContentFactory implements Factory<ApplicationContent, Ap
         .build();
 
     // Force additional properties via the generated API so getAdditionalProperties() is non-null
-    content.putAdditionalProperty("test", "additionalApplicationProperty");
+    content.putAdditionalApplicationContent("test", "additionalApplicationProperty");
 
     return content;
   }
 
   @Override
-  public ApplicationContent create(Consumer<ApplicationContent.Builder> customiser) {
-    ApplicationContent.Builder builder = ApplicationContent.builder();
+  public ApplicationContent create(Consumer<ApplicationContent.ApplicationContentBuilder> customiser) {
+    ApplicationContent.ApplicationContentBuilder builder = ApplicationContent.builder();
     customiser.accept(builder);
     return builder.build();
   }

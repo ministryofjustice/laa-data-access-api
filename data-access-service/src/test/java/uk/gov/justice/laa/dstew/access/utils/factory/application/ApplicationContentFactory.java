@@ -11,12 +11,12 @@ import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingFactor
 @Profile("unit-test")
 @Component
 public class ApplicationContentFactory
-    extends BaseFactory<ApplicationContent, ApplicationContent.Builder> {
+    extends BaseFactory<ApplicationContent, ApplicationContent.ApplicationContentBuilder> {
 
   ProceedingFactory proceedingFactory = new ProceedingFactory();
 
   public ApplicationContentFactory() {
-    super(ApplicationContent::toBuilder, ApplicationContent.Builder::build);
+    super(ApplicationContent::toBuilder, ApplicationContent.ApplicationContentBuilder::build);
   }
 
   @Override
@@ -31,7 +31,7 @@ public class ApplicationContentFactory
         .build();
 
     // Force additional properties via the generated API so getAdditionalProperties() is non-null
-    content.putAdditionalProperty("applicationId", applicationId.toString());
+    content.putAdditionalApplicationContent("applicationId", applicationId.toString());
 
     return content;
   }

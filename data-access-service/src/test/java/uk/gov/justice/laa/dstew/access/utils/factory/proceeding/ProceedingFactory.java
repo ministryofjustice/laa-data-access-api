@@ -13,11 +13,11 @@ import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 @Profile("unit-test")
 @Component
 public class ProceedingFactory
-    extends BaseFactory<Proceeding, Proceeding.Builder> {
+    extends BaseFactory<Proceeding, Proceeding.ProceedingBuilder> {
 
 
   public ProceedingFactory() {
-    super(Proceeding::toBuilder, Proceeding.Builder::build);
+    super(Proceeding::toBuilder, Proceeding.ProceedingBuilder::build);
   }
 
   @Override

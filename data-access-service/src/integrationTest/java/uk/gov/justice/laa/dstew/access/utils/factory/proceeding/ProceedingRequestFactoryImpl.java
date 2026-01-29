@@ -5,7 +5,7 @@ import java.util.function.Consumer;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
-public class ProceedingRequestFactoryImpl implements Factory<Proceeding, Proceeding.Builder> {
+public class ProceedingRequestFactoryImpl implements Factory<Proceeding, Proceeding.ProceedingBuilder> {
 
   @Override
   public Proceeding create() {
@@ -22,9 +22,9 @@ public class ProceedingRequestFactoryImpl implements Factory<Proceeding, Proceed
 
   }
 
-  public Proceeding create(Consumer<Proceeding.Builder> customiser) {
+  public Proceeding create(Consumer<Proceeding.ProceedingBuilder> customiser) {
     Proceeding proceeding = create();
-    Proceeding.Builder builder = proceeding.toBuilder();
+    Proceeding.ProceedingBuilder builder = proceeding.toBuilder();
     customiser.accept(builder);
     return builder.build();
   }
