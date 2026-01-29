@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
@@ -318,13 +320,15 @@ public class ApplicationService {
 
     Set<MeritsDecisionEntity> merits = new LinkedHashSet<>(decision.getMeritsDecisions());
 
-    request.getProceedings().forEach(proceeding -> {
+    List<UUID> proceedingIds = request.getProceedings().stream()
+        .map(MakeDecisionProceeding::getProceedingId)
+        .toList();
+    List<ProceedingEntity> proceedingEntities = checkIfAllProceedingsExistForApplication(applicationId, proceedingIds);
+    Map<UUID, ProceedingEntity> proceedingEntityMap = proceedingEntities.stream()
+        .collect(Collectors.toMap(ProceedingEntity::getId, proceeding -> proceeding));
 
-      ProceedingEntity proceedingEntity = proceedingRepository.findById(proceeding.getProceedingId())
-              .orElseThrow(
-                      () -> new ResourceNotFoundException(
-                              String.format("No proceeding found with id: %s", proceeding.getProceedingId()))
-              );
+    request.getProceedings().forEach(proceeding -> {
+      ProceedingEntity proceedingEntity = proceedingEntityMap.get(proceeding.getProceedingId());
 
       MeritsDecisionEntity meritDecisionEntity = decision.getMeritsDecisions().stream()
               .filter(m -> m.getProceeding().getId().equals(proceeding.getProceedingId()))
@@ -355,5 +359,48 @@ public class ApplicationService {
               request
       );
     }
+  }
+
+  /**
+   * Checks that all provided proceeding IDs exist and are linked to the specified application.
+   * <p>
+   * Throws a {@link ResourceNotFoundException} if any proceeding does not exist or is not linked to the given application.
+   * </p>
+   *
+   * @param applicationId the UUID of the application to check proceedings against
+   * @param proceedingIds the list of proceeding UUIDs to validate
+   * @return a list of {@link ProceedingEntity} objects corresponding to the provided IDs
+   * @throws ResourceNotFoundException if any proceeding is missing or not linked to the application
+   */
+  private List<ProceedingEntity> checkIfAllProceedingsExistForApplication(final UUID applicationId,
+                                                                          final List<UUID> proceedingIds) {
+    List<UUID> idsToFetch = proceedingIds.stream().distinct().toList();
+    List<ProceedingEntity> proceedings = proceedingRepository.findAllById(idsToFetch);
+
+    List<UUID> fetchedIds = proceedings.stream()
+        .map(ProceedingEntity::getId)
+        .toList();
+
+    List<UUID> nonExistentIds = idsToFetch.stream()
+        .filter(id -> !fetchedIds.contains(id))
+        .toList();
+
+    List<UUID> wrongApplicationIds = proceedings.stream()
+        .filter(p -> !p.getApplicationId().equals(applicationId))
+        .map(ProceedingEntity::getId)
+        .toList();
+
+    if (!nonExistentIds.isEmpty() || !wrongApplicationIds.isEmpty()) {
+      List<String> errors = new ArrayList<>();
+      if (!nonExistentIds.isEmpty()) {
+        errors.add("No proceeding found with id: " + String.join(", ", nonExistentIds.stream().map(UUID::toString).toList()));
+      }
+      if (!wrongApplicationIds.isEmpty()) {
+        errors.add(
+            "Not linked to application: " + String.join(", ", wrongApplicationIds.stream().map(UUID::toString).toList()));
+      }
+      throw new ResourceNotFoundException(String.join("; ", errors));
+    }
+    return proceedings;
   }
 }
