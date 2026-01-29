@@ -12,6 +12,7 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
 
 /**
  * Defines the filtering of Application Summaries.
@@ -31,12 +32,23 @@ public class ApplicationSummarySpecification {
           String lastName,
           LocalDate clientDateOfBirth,
           UUID userId,
+          MatterType matterType,
           Boolean isAutoGranted) {
     return isStatus(status)
             .and(likeLaaReference(reference))
             .and(IndividualFilterSpecification.filterIndividual(firstName, lastName, clientDateOfBirth))
             .and(isCaseworkerId(userId))
+            .and(isMatterType(matterType))
             .and(isAutoGranted(isAutoGranted));
+  }
+
+  private static Specification<ApplicationSummaryEntity> isMatterType(MatterType matterType) {
+    if (matterType != null) {
+      return (root, query, builder)
+              -> builder.equal(root.get("matterType"), matterType);
+    }
+
+    return Specification.unrestricted();
   }
 
   private static Specification<ApplicationSummaryEntity> isStatus(ApplicationStatus status) {

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
@@ -61,6 +62,7 @@ public class ApplicationSummaryService {
           LocalDate clientDateOfBirth,
           UUID userId,
           Boolean isAutoGranted,
+          MatterType matterType,
           Integer page,
           Integer pageSize) {
     Pageable pageDetails = PageRequest.of(page, pageSize);
@@ -77,6 +79,7 @@ public class ApplicationSummaryService {
                                     clientLastName,
                                     clientDateOfBirth,
                                     userId,
+                                    matterType,
                                     isAutoGranted),
                     pageDetails)
             .map(mapper::toApplicationSummary);

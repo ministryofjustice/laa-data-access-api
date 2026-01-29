@@ -10,10 +10,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
+import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 
@@ -48,6 +45,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     public static final String SEARCH_CASEWORKERID_PARAM = "userId=";
     public static final String SEARCH_ISAUTOGRANTED_PARAM = "isAutoGranted=";
     public static final String SEARCH_CLIENTDOB_PARAM = "clientDateOfBirth=";
+    public static final String SEARCH_MATTERTYPE_PARAM = "matterType=";
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
@@ -617,6 +615,42 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.READER)
     public void givenApplicationFilteredByAutoGrant_whenGetApplicationsAndInvalidFormat_thenReturnBadRequest() throws Exception {
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_ISAUTOGRANTED_PARAM + "something");
+        assertBadRequest(result);
+    }
+
+    private Stream<Arguments> getApplicationSummaryQueryMatterTypes() {
+        return Stream.of(Arguments.of(MatterType.SCA));
+    }
+
+    @ParameterizedTest
+    @MethodSource("getApplicationSummaryQueryMatterTypes")
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    public void givenApplicationFilteredByMatterType_whenGetApplications_thenReturnExpectedApplicationsCorrectly(MatterType matterType) throws Exception {
+        // given
+        List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(4, builder ->
+                builder.matterType(matterType));
+
+        List<ApplicationSummary> expectedApplicationsSummary = expectedApplications.stream()
+                .map(this::createApplicationSummary)
+                .toList();
+
+        // when
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_MATTERTYPE_PARAM + matterType);
+        ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+        // then
+        assertContentHeaders(result);
+        assertSecurityHeaders(result);
+        assertNoCacheHeaders(result);
+        assertOK(result);
+        assertPaging(actual, 4, 10, 1, 4);
+        assertThat(actual.getApplications().size()).isEqualTo(4);
+        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    public void givenApplicationFilteredByMatterType_whenGetApplicationsAndInvalidFormat_thenReturnBadRequest() throws Exception {
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_MATTERTYPE_PARAM + "something");
         assertBadRequest(result);
     }
 
