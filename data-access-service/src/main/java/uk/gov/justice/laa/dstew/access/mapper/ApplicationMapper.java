@@ -83,16 +83,11 @@ public interface ApplicationMapper {
     }
 
     Application application = new Application();
-    application.setId(entity.getId());
+    application.setApplicationId(entity.getId());
     application.setStatus(entity.getStatus());
-    application.setSchemaVersion(entity.getSchemaVersion());
-    application.setApplicationContent(entity.getApplicationContent());
     application.setLaaReference(entity.getLaaReference());
     application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
-    application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
-    application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
-
-    application.setIndividuals(getIndividuals(entity.getIndividuals()));
+    application.setLastUpdated(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
 
     return application;
   }
