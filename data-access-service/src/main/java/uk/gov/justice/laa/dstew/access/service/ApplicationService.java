@@ -53,6 +53,7 @@ public class ApplicationService {
   private final DecisionRepository decisionRepository;
   private final ProceedingRepository proceedingRepository;
   private final MeritsDecisionRepository meritsDecisionRepository;
+  private final LinkedApplicationService linkedApplicationService;
   private final ProceedingsService proceedingsService;
 
   /**
@@ -73,6 +74,7 @@ public class ApplicationService {
                             final ApplicationContentParserService applicationContentParserService,
                             final ProceedingRepository proceedingRepository,
                             final MeritsDecisionRepository meritsDecisionRepository,
+                            final LinkedApplicationService linkedApplicationService) {
                             final ProceedingsService proceedingsService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
@@ -86,6 +88,7 @@ public class ApplicationService {
     this.domainEventService = domainEventService;
     this.decisionRepository = decisionRepository;
     this.meritsDecisionRepository = meritsDecisionRepository;
+    this.linkedApplicationService = linkedApplicationService;
   }
 
   /**
@@ -115,6 +118,14 @@ public class ApplicationService {
     entity.setSchemaVersion(applicationVersion);
 
     final ApplicationEntity saved = applicationRepository.save(entity);
+
+    Map<String, Object> applicationContent =
+        objectMapper.convertValue(
+            req.getApplicationContent().get("applicationContent"),
+            Map.class
+        );
+
+    linkedApplicationService.processLinkedApplications(applicationContent);
 
     
     proceedingsService.saveProceedings(requestApplicationContent.getApplicationContent(), saved.getId());
