@@ -18,6 +18,9 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
+import software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity;
+import software.amazon.awssdk.services.dynamodb.model.ReturnItemCollectionMetrics;
+import software.amazon.awssdk.services.dynamodb.model.ReturnValue;
 import uk.gov.justice.laa.dstew.access.spike.dynamo.DomainEventDynamoDB;
 
 /**
@@ -27,7 +30,7 @@ import uk.gov.justice.laa.dstew.access.spike.dynamo.DomainEventDynamoDB;
 public class DynamoDbService {
 
   public static final String APPLICATION = "APPLICATION";
-  public static final String CASEWORKER = "APPLICATION";
+  public static final String CASEWORKER = "CASEWORKER";
   private final String tableName;
   private final DynamoDbTable<DomainEventDynamoDB> eventTable;
   private final DynamoDbClient dynamoDbClient;
@@ -61,16 +64,25 @@ public class DynamoDbService {
           .type(eventRecord.eventType().toString())
           .description(eventRecord.description())
           .createdAt(timestamp.toString())
-          .caseworkerId(eventRecord.caseworkerId())
+          .applicationId(eventId)  // Set applicationId for gs1pk fallback when caseworkerId is null
+          .caseworkerId(CASEWORKER + eventRecord.caseworkerId())
           .build();
 
       // Use putItem variant that returns a PutItemEnhancedResponse so callers can inspect metadata
       PutItemEnhancedRequest<DomainEventDynamoDB> putReq = PutItemEnhancedRequest.builder(DomainEventDynamoDB.class)
           .item(domainEventDynamoDB)
+          .returnValues(ReturnValue.ALL_OLD)
+          .returnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
+          .returnItemCollectionMetrics(ReturnItemCollectionMetrics.SIZE)
           .build();
 
-      PutItemEnhancedResponse<DomainEventDynamoDB> putResponse = eventTable.putItemWithResponse(putReq);
-      return CompletableFuture.completedFuture(Event.fromDynamoEntity(putResponse.attributes()));
+      PutItemEnhancedResponse<DomainEventDynamoDB> domainEventDynamoDBPutItemEnhancedResponse =
+          eventTable.putItemWithResponse(putReq);
+
+      domainEventDynamoDBPutItemEnhancedResponse.attributes(); // Access attributes if needed
+      // The Enhanced Client automatically populates computed fields (gs1pk, gs1sk) when the item is persisted
+      // For a successful put, we can use the original item since the computed fields will be applied by DynamoDB
+      return CompletableFuture.completedFuture(Event.fromDynamoEntity(domainEventDynamoDB));
     } catch (Exception e) {
       return CompletableFuture.failedFuture(e);
     }
