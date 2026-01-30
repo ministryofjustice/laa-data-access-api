@@ -6,6 +6,7 @@ repositories {
     mavenCentral()
 }
 
+
 configurations {
     jacocoAnt
 }
@@ -16,6 +17,14 @@ dependencies {
 
 subprojects {
     group = 'uk.gov.justice.laa.data.access'
+
+    pluginManager.withPlugin('java') {
+        java {
+            toolchain {
+                languageVersion = JavaLanguageVersion.of(25)
+            }
+        }
+    }
 
     release {
         tagTemplate = '$name-$version'

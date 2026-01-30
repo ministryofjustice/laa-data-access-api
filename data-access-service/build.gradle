@@ -2,7 +2,7 @@ plugins {
     id 'java'
     id 'jacoco'
     id 'io.freefair.lombok' version '8.13.1'
-    id "com.gorylenko.gradle-git-properties" version "2.4.1"
+    id "com.gorylenko.gradle-git-properties" version "2.4.2"
     id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin' version '1.0.4'
     id 'com.avast.gradle.docker-compose' version '0.17.12'
     id 'io.sentry.jvm.gradle' version '5.12.2'
@@ -59,6 +59,11 @@ dependencyManagement {
             entry 'sentry-logback'
         }
     }
+}
+
+// Workaround: Disable gradle-git-properties due to compatibility issues with Java 21+ and newer Gradle
+tasks.named('generateGitProperties') {
+    enabled = false
 }
 
 dependencies {
