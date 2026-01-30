@@ -35,18 +35,8 @@ import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertCreated;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertProblemRecord;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -106,11 +96,10 @@ public class CreateApplicationTest extends BaseIntegrationTest {
       builder.applicationContent(new HashMap<>());
     });
 
-    Map<String, String> invalidFields = new HashMap<>();
-    invalidFields.put("applicationContent", "size must be between 1 and 2147483647");
 
-    ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
-    expectedProblemDetail.setProperty("invalidFields", invalidFields);
+    ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Generic Validation Error");
+    expectedProblemDetail.setProperty("errors", List.of("Application content is null"));
+
     // when
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
     ProblemDetail validationException = deserialise(result, ProblemDetail.class);
@@ -129,7 +118,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     });
 
     Map<String, String> invalidFields = new HashMap<>();
-    invalidFields.put("applicationContent", "size must be between 1 and 2147483647");
+    invalidFields.put("applicationContent", "must not be null");
 
     ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
     expectedProblemDetail.setProperty("invalidFields", invalidFields);
@@ -203,6 +192,22 @@ public class CreateApplicationTest extends BaseIntegrationTest {
                             builder.laaReference(null);
                         }), problemDetail,
                         Map.of("invalidFields", Map.of("laaReference", mustNotBeNull))),
+                Arguments.of(applicationCreateRequestFactory.create(builder -> {
+                  builder.applicationContent(null);
+                    }), problemDetail,
+                Map.of("invalidFields", Map.of("applicationContent", mustNotBeNull))),
+            Arguments.of(applicationCreateRequestFactory.create(builder -> {
+                  builder.applicationContent(new HashMap<>());
+                }), ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request")
+                    .detail("Generic Validation Error")
+                    .build(),
+                Map.of("errors", List.of("Application content is null"))),
+            Arguments.of(applicationCreateRequestFactory.create(builder -> {
+                  builder.applicationContent(Map.of("applicationContent", Map.of("proceedings", List.of())));
+                }), ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request")
+                    .detail("Generic Validation Error")
+                    .build(),
+                Map.of("errors", List.of("No proceedings found in application content"))),
                 Arguments.of(applicationCreateRequestFactory.create(builder -> {
                             builder.individuals(null);
                         }), problemDetail,

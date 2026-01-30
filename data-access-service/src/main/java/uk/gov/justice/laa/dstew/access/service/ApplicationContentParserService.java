@@ -22,7 +22,6 @@ public class ApplicationContentParserService {
   private static final CategoryOfLawTypeConvertor categoryOfLawTypeDeserializer = new CategoryOfLawTypeConvertor();
 
 
-
   /**
    * Normalises application content details from the create request.
    *
@@ -44,7 +43,13 @@ public class ApplicationContentParserService {
    */
   private static ParsedAppContentDetails processingApplicationContent(
       ApplicationContent applicationContent) {
-
+    if (applicationContent == null) {
+      throw new ValidationException(List.of("Application content is null"));
+    }
+    if (applicationContent.getProceedings() == null
+        || applicationContent.getProceedings().isEmpty()) {
+      throw new ValidationException(List.of("No proceedings found in application content"));
+    }
     List<Proceeding> proceedingList = applicationContent.getProceedings().stream()
         .filter(Objects::nonNull).toList();
     Proceeding leadProceeding = proceedingList

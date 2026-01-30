@@ -180,17 +180,15 @@ public class CreateApplicationTest extends BaseServiceTest {
 
 
   private Stream<Arguments> invalidApplicationRequests() {
-    ApplicationContent applicationContent = applicationContentFactory.createDefault(appContentBuilder ->
-        appContentBuilder.proceedings(List.of(proceedingFactory.createDefault(proceedingBuilder ->
-            proceedingBuilder.leadProceeding(false)))));
-    RequestApplicationContent requestApplicationContent = requestApplicationContentFactory.createDefault(
-        detailsBuilder -> detailsBuilder.applicationContent(
-            applicationContent));
     ValidationException validationException = new ValidationException(List.of(
         "No lead proceeding found in application content"
     ));
     ApplicationCreateRequest createRequest = applicationCreateRequestFactory.createDefault(builder -> builder
-        .applicationContent(objectMapper.convertValue(requestApplicationContent, Map.class)));
+        .applicationContent(objectMapper.convertValue(requestApplicationContentFactory.createDefault(
+            detailsBuilder -> detailsBuilder.applicationContent(
+                applicationContentFactory.createDefault(appContentBuilder ->
+                    appContentBuilder.proceedings(List.of(proceedingFactory.createDefault(proceedingBuilder ->
+                        proceedingBuilder.leadProceeding(false))))))), Map.class)));
     return Stream.of(
         Arguments.of(
             createRequest, validationException
