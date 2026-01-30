@@ -10,6 +10,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSortFields;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -64,12 +66,15 @@ public class ApplicationSummaryService {
           UUID userId,
           Boolean isAutoGranted,
           MatterType matterType,
+          ApplicationSortBy sortBy,
           Integer page,
           Integer pageSize) {
 
+
+    ApplicationSortFields sortField = (sortBy == null)
+            ? ApplicationSortFields.SUBMITTED_DATE : ApplicationSortFields.valueOf(sortBy.name());
     Sort.Direction direction = Sort.Direction.ASC;
-    String sortByField = "submittedAt";
-    Sort dataReturnedSortOrder = Sort.by(direction, sortByField);
+    Sort dataReturnedSortOrder = Sort.by(direction, sortField.getValue());
     Pageable pageDetails = PageRequest.of(page, pageSize, dataReturnedSortOrder);
 
     if (userId != null && caseworkerRepository.countById(userId) == 0L) {

@@ -2,21 +2,26 @@ package uk.gov.justice.laa.dstew.access.service.applicationSummary;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
@@ -33,13 +38,29 @@ public class GetApplicationsTest extends BaseServiceTest {
     @Autowired
     private ApplicationSummaryService serviceUnderTest;
 
+    private Stream<Arguments> sortParameters() {
+      return Stream.of(
+        Arguments.of(ApplicationSortBy.LAST_UPDATED_DATE, "SomeField"),
+        Arguments.of(ApplicationSortBy.SUBMITTED_DATE, "submittedAt")
+      );
+    }
+
     @ParameterizedTest
-    @ValueSource(ints = {0, 10})
-    public void givenPageZeroAndNoFilters_whenGetApplications_thenReturnApplications(int count) {
+    @MethodSource("sortParameters")
+    public void givenPageZeroAndNoFiltersAndDataSorted_whenGetApplications_thenReturnSortedApplications(
+            ApplicationSortBy sortBy,
+            String sortField
+    ) {
         // given
-        List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(count);
+        List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(4);
+        int dayCount = 0;
+        for (ApplicationSummaryEntity applicationSummaryEntity : expectedApplications) {
+            applicationSummaryEntity.setSubmittedAt(Instant.now().plus(dayCount++, ChronoUnit.DAYS));
+        }
+
+        Sort sortOrder = Sort.by(Sort.Direction.ASC, sortField);
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
-        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "submitted_At"));
+        Pageable pageable = PageRequest.of(0, 10, sortOrder);
 
         setSecurityContext(TestConstants.Roles.READER);
 
@@ -47,6 +68,39 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         // when
         List<ApplicationSummary> actualApplications = serviceUnderTest.getAllApplications(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                0,
+                4
+        ).stream().toList();
+
+        // then
+        verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+        assertApplicationSummaryListsEqual(actualApplications, expectedApplications);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 10})
+    public void givenPageZeroAndNoFilters_whenGetApplications_thenReturnApplications(int count) {
+        // given
+        List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(count);
+        Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "submittedAt"));
+
+        setSecurityContext(TestConstants.Roles.READER);
+
+        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+
+        // when
+        List<ApplicationSummary> actualApplications = serviceUnderTest.getAllApplications(
+                null,
                 null,
                 null,
                 null,
@@ -77,7 +131,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         if (count > 0) { expectedApplications.getFirst().setCaseworker(null); }
 
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
-        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "submitted_At"));
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "submittedAt"));
 
         setSecurityContext(TestConstants.Roles.READER);
 
@@ -91,6 +145,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                 null,
                 null,
                 caseworkerId,
+                null,
                 null,
                 null,
                 0,
@@ -123,6 +178,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                 UUID.randomUUID(),
                 null,
                 null,
+                null,
                 0,
                 10
         ));
@@ -152,6 +208,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                         null,
                         null,
                         null,
+                        null,
                         null
                 ))
                 .withMessageContaining("Access Denied");
@@ -165,6 +222,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         // then
         assertThatExceptionOfType(AuthorizationDeniedException.class)
                 .isThrownBy(() -> serviceUnderTest.getAllApplications(
+                        null,
                         null,
                         null,
                         null,

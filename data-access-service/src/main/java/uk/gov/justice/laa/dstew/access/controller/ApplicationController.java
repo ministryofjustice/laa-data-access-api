@@ -90,6 +90,7 @@ public class ApplicationController implements ApplicationApi {
                     userId,
                     isAutoGranted,
                     matterType,
+                    sortBy,
                     page - 1, pageSize);
 
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
