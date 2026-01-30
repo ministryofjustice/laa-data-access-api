@@ -103,7 +103,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         // when
         when(caseworkerRepository.findById(caseworker.getId()))
                 .thenReturn(Optional.of(caseworker));
-        when(proceedingRepository.findAllById(any())).thenReturn(List.of(grantedProceedingEntity, refusedProceedingEntity));
+        when(proceedingRepository.findAllById(List.of(grantedProceedingEntity.getId(), refusedProceedingEntity.getId())))
+            .thenReturn(List.of(grantedProceedingEntity, refusedProceedingEntity));
         when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
         when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
                 .thenReturn(Optional.empty());
@@ -168,7 +169,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                 );
 
         // when
-        when(proceedingRepository.findAllById(any())).thenReturn(List.of(proceedingEntity));
+        when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
         when(caseworkerRepository.findById(caseworker.getId()))
                 .thenReturn(Optional.of(caseworker));
         when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
@@ -254,7 +255,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                 );
 
         // when
-        when(proceedingRepository.findAllById(any())).thenReturn(List.of(newProceedingEntity));
+        when(proceedingRepository.findAllById(List.of(newProceedingId))).thenReturn(List.of(newProceedingEntity));
         when(caseworkerRepository.findById(caseworker.getId()))
                 .thenReturn(Optional.of(caseworker));
         when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
@@ -321,7 +322,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.WRITER);
 
         // when
-        when(proceedingRepository.findAllById(any())).thenReturn(List.of(currentProceedingEntity, newProceedingEntity));
+        when(proceedingRepository.findAllById(List.of(newProceedingId, currentProceedingId))).thenReturn(List.of(newProceedingEntity, currentProceedingEntity));
         when(caseworkerRepository.findById(caseworker.getId()))
                 .thenReturn(Optional.of(caseworker));
         when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
