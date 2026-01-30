@@ -13,5 +13,5 @@ public record ParsedAppContentDetails(
     CategoryOfLaw categoryOfLaw,
     MatterType matterType,
     Instant submittedAt,
-    boolean useDelegatedFunctions) {
+    boolean usedDelegatedFunctions) {
 }

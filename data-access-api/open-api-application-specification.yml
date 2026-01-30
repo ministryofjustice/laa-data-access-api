@@ -49,6 +49,11 @@ paths:
           schema:
             type: boolean
         - in: query
+          name: matterType
+          description: The matter type of the application
+          schema:
+            $ref: "#/components/schemas/matterType"
+        - in: query
           name: page
           description: Page number of data to be returned (defaults to 1 when 0 or less)
           schema:
@@ -383,8 +388,7 @@ components:
           $ref: "#/components/schemas/applicationStatus"
         applicationContent:
           type: object
-          additionalProperties: true
-          minProperties: 1
+          minLength: 1
         laaReference:
           type: string
           minLength: 1
