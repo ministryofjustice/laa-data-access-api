@@ -341,15 +341,15 @@ components:
     Application:
       type: object
       required:
-        - id
+        - applicationId
         - status
         - applicationContent
         - laaReference
         - schemaVersion
         - createdAt
-        - updatedAt
+        - lastUpdated
       properties:
-        id:
+        applicationId:
           type: string
           format: uuid
         status:
@@ -364,7 +364,7 @@ components:
         createdAt:
           type: string
           format: date-time
-        updatedAt:
+        lastUpdated:
           type: string
           format: date-time
         individuals:

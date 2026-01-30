@@ -49,11 +49,11 @@ class ApplicationMapperTest {
         Application actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
 
         assertThat(actualApplication).isNotNull();
-        assertThat(actualApplication.getId()).isEqualTo(id);
+        assertThat(actualApplication.getApplicationId()).isEqualTo(id);
         assertThat(actualApplication.getLaaReference()).isEqualTo(laaReference);
         assertThat(actualApplication.getStatus()).isEqualTo(status);
         assertThat(actualApplication.getCreatedAt()).isEqualTo(OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC));
-        assertThat(actualApplication.getUpdatedAt()).isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
+        assertThat(actualApplication.getLastUpdated()).isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
         assertThat(actualApplication.getApplicationContent())
                 .isNotNull()
                 .usingRecursiveComparison()
