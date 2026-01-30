@@ -4,8 +4,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
@@ -39,33 +41,39 @@ public class DynamoDbService {
   }
 
   /**
-   * Stores an Event in DynamoDB and returns the saved event.
+   * Asynchronously stores an Event in DynamoDB and returns a CompletableFuture with the saved event.
    */
-  public Event saveDomainEvent(Event eventRecord, String s3url) {
+  @Async
+  public CompletableFuture<Event> saveDomainEvent(Event eventRecord, String s3url) {
     if (eventRecord == null) {
-      throw new IllegalArgumentException("eventRecord must not be null");
+      return CompletableFuture.failedFuture(
+          new IllegalArgumentException("eventRecord must not be null"));
     }
 
-    String eventId = eventRecord.eventId() != null ? eventRecord.eventId() : UUID.randomUUID().toString();
-    Instant timestamp = eventRecord.timestamp() != null ? eventRecord.timestamp() : Instant.now();
+    try {
+      String eventId = eventRecord.eventId() != null ? eventRecord.eventId() : UUID.randomUUID().toString();
+      Instant timestamp = eventRecord.timestamp() != null ? eventRecord.timestamp() : Instant.now();
 
-    DomainEventDynamoDB domainEventDynamoDB = DomainEventDynamoDB.builder()
-        .pk(DynamoKeyBuilder.pk(APPLICATION, eventId))
-        .sk(DynamoKeyBuilder.sk(eventRecord.eventType(), timestamp))
-        .s3location(s3url)
-        .type(eventRecord.eventType().toString())
-        .description(eventRecord.description())
-        .createdAt(timestamp.toString())
-        .caseworkerId(eventRecord.caseworkerId())
-        .build();
+      DomainEventDynamoDB domainEventDynamoDB = DomainEventDynamoDB.builder()
+          .pk(DynamoKeyBuilder.pk(APPLICATION, eventId))
+          .sk(DynamoKeyBuilder.sk(eventRecord.eventType(), timestamp))
+          .s3location(s3url)
+          .type(eventRecord.eventType().toString())
+          .description(eventRecord.description())
+          .createdAt(timestamp.toString())
+          .caseworkerId(eventRecord.caseworkerId())
+          .build();
 
-    // Use putItem variant that returns a PutItemEnhancedResponse so callers can inspect metadata
-    PutItemEnhancedRequest<DomainEventDynamoDB> putReq = PutItemEnhancedRequest.builder(DomainEventDynamoDB.class)
-        .item(domainEventDynamoDB)
-        .build();
+      // Use putItem variant that returns a PutItemEnhancedResponse so callers can inspect metadata
+      PutItemEnhancedRequest<DomainEventDynamoDB> putReq = PutItemEnhancedRequest.builder(DomainEventDynamoDB.class)
+          .item(domainEventDynamoDB)
+          .build();
 
-    PutItemEnhancedResponse<DomainEventDynamoDB> putResponse = eventTable.putItemWithResponse(putReq);
-    return Event.fromDynamoEntity(putResponse.attributes());
+      PutItemEnhancedResponse<DomainEventDynamoDB> putResponse = eventTable.putItemWithResponse(putReq);
+      return CompletableFuture.completedFuture(Event.fromDynamoEntity(putResponse.attributes()));
+    } catch (Exception e) {
+      return CompletableFuture.failedFuture(e);
+    }
   }
 
   public long countEvents() {

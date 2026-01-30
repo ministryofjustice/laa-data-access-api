@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.spike;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,9 +31,17 @@ public class TestDynamoEventController {
   }
 
   @PostMapping(value = "/events", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-  public Event saveEvent(@RequestBody Event event) {
+  public void saveEvent(@RequestBody Event event) {
     S3UploadResult s3UploadResult = s3UploadService.upload(event, "laa-data-stewardship-access-bucket", "test-key");
-    return dynamoDbService.saveDomainEvent(event, s3UploadResult.getS3Url());
+    CompletableFuture<Event> eventCompletableFuture = dynamoDbService.saveDomainEvent(event, s3UploadResult.getS3Url());
+    eventCompletableFuture.whenComplete((event1, throwable) -> {
+        if (throwable != null) {
+            System.err.println("Failed to save event: " + throwable.getMessage());
+        } else {
+            System.out.println("Event saved successfully: " + event1);
+
+        }
+    });
   }
 
   @GetMapping(value = "bucket/download", produces = MediaType.APPLICATION_JSON_VALUE)
