@@ -174,7 +174,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
-    public void givenCombinationOfNonExistentAndWrongApplicationProceedings_whenMakeDecision_thenReturnNotFoundWithAllIds()
+    public void givenProceedingsNotFoundAndNotLinkedToApplication_whenMakeDecision_thenReturnNotFoundWithAllIds()
         throws Exception {
         // given
         ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
@@ -183,20 +183,20 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
             )));
         });
 
-        ApplicationEntity differentApplication = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity unrelatedApplicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
             builder.applicationContent(new HashMap<>(Map.of(
                 "test", "other"
             )));
         });
 
-        ProceedingEntity wrongApplicationProceeding = persistedProceedingFactory.createAndPersist(
+        ProceedingEntity proceedingNotLinkedToApplication = persistedProceedingFactory.createAndPersist(
             builder -> {
                 builder
-                    .applicationId(differentApplication.getId());
+                    .applicationId(unrelatedApplicationEntity.getId());
             }
         );
 
-        UUID nonExistentProceedingId = UUID.randomUUID();
+        UUID proceedingIdNotFound = UUID.randomUUID();
 
         MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
             builder
@@ -207,9 +207,9 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                     .eventDescription("refusal event")
                     .build())
                 .proceedings(List.of(
-                    createMakeDecisionProceeding(nonExistentProceedingId, MeritsDecisionStatus.REFUSED, "justification1",
+                    createMakeDecisionProceeding(proceedingIdNotFound, MeritsDecisionStatus.REFUSED, "justification1",
                         "reason1"),
-                    createMakeDecisionProceeding(wrongApplicationProceeding.getId(), MeritsDecisionStatus.GRANTED,
+                    createMakeDecisionProceeding(proceedingNotLinkedToApplication.getId(), MeritsDecisionStatus.GRANTED,
                         "justification2", "reason2")
                 ));
         });
@@ -226,9 +226,9 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
         assertThat(problemDetail.getDetail())
             .contains("No proceeding found with id:")
-            .contains(nonExistentProceedingId.toString())
+            .contains(proceedingIdNotFound.toString())
             .contains("Not linked to application:")
-            .contains(wrongApplicationProceeding.getId().toString());
+            .contains(proceedingNotLinkedToApplication.getId().toString());
     }
 
     @Test

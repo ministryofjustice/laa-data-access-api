@@ -363,9 +363,7 @@ public class ApplicationService {
 
   /**
    * Checks that all provided proceeding IDs exist and are linked to the specified application.
-   * <p>
    * Throws a {@link ResourceNotFoundException} if any proceeding does not exist or is not linked to the given application.
-   * </p>
    *
    * @param applicationId the UUID of the application to check proceedings against
    * @param proceedingIds the list of proceeding UUIDs to validate
@@ -377,27 +375,27 @@ public class ApplicationService {
     List<UUID> idsToFetch = proceedingIds.stream().distinct().toList();
     List<ProceedingEntity> proceedings = proceedingRepository.findAllById(idsToFetch);
 
-    List<UUID> fetchedIds = proceedings.stream()
+    List<UUID> foundProceedingIds = proceedings.stream()
         .map(ProceedingEntity::getId)
         .toList();
 
-    List<UUID> nonExistentIds = idsToFetch.stream()
-        .filter(id -> !fetchedIds.contains(id))
-        .toList();
+    String proceedingIdsNotFound = idsToFetch.stream()
+        .filter(id -> !foundProceedingIds.contains(id))
+        .map(UUID::toString)
+        .collect(Collectors.joining(","));
 
-    List<UUID> wrongApplicationIds = proceedings.stream()
+    String proceedingIdsNotLinkedToApplication = proceedings.stream()
         .filter(p -> !p.getApplicationId().equals(applicationId))
-        .map(ProceedingEntity::getId)
-        .toList();
+        .map(p -> p.getId().toString())
+        .collect(Collectors.joining(","));
 
-    if (!nonExistentIds.isEmpty() || !wrongApplicationIds.isEmpty()) {
+    if (!proceedingIdsNotFound.isEmpty() || !proceedingIdsNotLinkedToApplication.isEmpty()) {
       List<String> errors = new ArrayList<>();
-      if (!nonExistentIds.isEmpty()) {
-        errors.add("No proceeding found with id: " + String.join(", ", nonExistentIds.stream().map(UUID::toString).toList()));
+      if (!proceedingIdsNotFound.isEmpty()) {
+        errors.add("No proceeding found with id: " + proceedingIdsNotFound);
       }
-      if (!wrongApplicationIds.isEmpty()) {
-        errors.add(
-            "Not linked to application: " + String.join(", ", wrongApplicationIds.stream().map(UUID::toString).toList()));
+      if (!proceedingIdsNotLinkedToApplication.isEmpty()) {
+        errors.add("Not linked to application: " + proceedingIdsNotLinkedToApplication);
       }
       throw new ResourceNotFoundException(String.join("; ", errors));
     }

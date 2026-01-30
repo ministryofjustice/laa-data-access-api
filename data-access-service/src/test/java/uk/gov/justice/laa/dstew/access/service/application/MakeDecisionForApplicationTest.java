@@ -451,9 +451,9 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     }
 
     @Test
-    void givenProceedingExistsButLinkedToDifferentApplication_whenMakeDecision_thenThrowResourceNotFoundException() {
+    void givenProceedingNotLinkedToApplication_whenMakeDecision_thenThrowResourceNotFoundException() {
         UUID applicationId = UUID.randomUUID();
-        UUID differentApplicationId = UUID.randomUUID();
+        UUID unrelatedApplicationId = UUID.randomUUID();
         UUID proceedingId = UUID.randomUUID();
 
         // given
@@ -478,7 +478,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.WRITER);
 
         ProceedingEntity proceedingEntity = proceedingsEntityFactory
-            .createDefault(builder -> builder.id(proceedingId).applicationId(differentApplicationId));
+            .createDefault(builder -> builder.id(proceedingId).applicationId(unrelatedApplicationId));
 
         // when
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedApplicationEntity));
@@ -497,11 +497,11 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     }
 
     @Test
-    void givenCombinationOfNonExistentAndWrongApplicationProceedings_whenMakeDecision_thenThrowResourceNotFoundExceptionWithAllIds() {
+    void givenProceedingsNotFoundAndNotLinkedToApplication_whenMakeDecision_thenThrowResourceNotFoundExceptionWithAllIds() {
         UUID applicationId = UUID.randomUUID();
-        UUID differentApplicationId = UUID.randomUUID();
+        UUID unrelatedApplicationId = UUID.randomUUID();
         UUID nonExistentProceedingId = UUID.randomUUID();
-        UUID wrongApplicationProceedingId = UUID.randomUUID();
+        UUID unrelatedApplicationProceedingId = UUID.randomUUID();
 
         // given
         CaseworkerEntity caseworker = caseworkerFactory.createDefault();
@@ -512,7 +512,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                 .proceedings(List.of(
                     createMakeDecisionProceedingDetails(nonExistentProceedingId, MeritsDecisionStatus.GRANTED, "reason1",
                         "justification1"),
-                    createMakeDecisionProceedingDetails(wrongApplicationProceedingId, MeritsDecisionStatus.REFUSED, "reason2",
+                    createMakeDecisionProceedingDetails(unrelatedApplicationProceedingId, MeritsDecisionStatus.REFUSED, "reason2",
                         "justification2")
                 ))
         );
@@ -527,14 +527,14 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
         setSecurityContext(TestConstants.Roles.WRITER);
 
-        ProceedingEntity wrongApplicationProceeding = proceedingsEntityFactory
-            .createDefault(builder -> builder.id(wrongApplicationProceedingId).applicationId(differentApplicationId));
+        ProceedingEntity unrelatedApplicationProceeding = proceedingsEntityFactory
+            .createDefault(builder -> builder.id(unrelatedApplicationProceedingId).applicationId(unrelatedApplicationId));
 
         // when
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedApplicationEntity));
         when(caseworkerRepository.findById(caseworker.getId()))
             .thenReturn(Optional.of(caseworker));
-        when(proceedingRepository.findAllById(any())).thenReturn(List.of(wrongApplicationProceeding));
+        when(proceedingRepository.findAllById(List.of(nonExistentProceedingId, unrelatedApplicationProceedingId))).thenReturn(List.of(unrelatedApplicationProceeding));
 
         Throwable thrown = catchThrowable(
             () -> serviceUnderTest.makeDecision(applicationId, makeDecisionRequest)
@@ -546,7 +546,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             .hasMessageContaining("No proceeding found with id:")
             .hasMessageContaining(nonExistentProceedingId.toString())
             .hasMessageContaining("Not linked to application:")
-            .hasMessageContaining(wrongApplicationProceedingId.toString());
+            .hasMessageContaining(unrelatedApplicationProceedingId.toString());
     }
 
     private DecisionEntity createDecisionEntity(UUID applicationId, UUID proceedingId, MeritsDecisionStatus decision, String reason, String justification) {
