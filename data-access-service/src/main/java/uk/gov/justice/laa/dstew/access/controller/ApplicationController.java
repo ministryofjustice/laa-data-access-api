@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
@@ -74,6 +75,7 @@ public class ApplicationController implements ApplicationApi {
           UUID userId,
           Boolean isAutoGranted,
           MatterType matterType,
+          ApplicationSortBy sortBy,
           Integer page,
           Integer pageSize) {
     page = (page == null || page < 1) ? 1 : page;

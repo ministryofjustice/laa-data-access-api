@@ -4,10 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
@@ -42,7 +39,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         // given
         List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(count);
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
-        Pageable pageable = PageRequest.of(0, 10);
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "submitted_At"));
 
         setSecurityContext(TestConstants.Roles.READER);
 
@@ -80,7 +77,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         if (count > 0) { expectedApplications.getFirst().setCaseworker(null); }
 
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
-        Pageable pageable = PageRequest.of(0, 10);
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "submitted_At"));
 
         setSecurityContext(TestConstants.Roles.READER);
 

@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
@@ -65,7 +66,11 @@ public class ApplicationSummaryService {
           MatterType matterType,
           Integer page,
           Integer pageSize) {
-    Pageable pageDetails = PageRequest.of(page, pageSize);
+
+    Sort.Direction direction = Sort.Direction.ASC;
+    String sortByField = "submittedAt";
+    Sort dataReturnedSortOrder = Sort.by(direction, sortByField);
+    Pageable pageDetails = PageRequest.of(page, pageSize, dataReturnedSortOrder);
 
     if (userId != null && caseworkerRepository.countById(userId) == 0L) {
       throw new ValidationException(List.of("Caseworker not found"));

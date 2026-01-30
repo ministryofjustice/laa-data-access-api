@@ -54,6 +54,11 @@ paths:
           schema:
             $ref: "#/components/schemas/matterType"
         - in: query
+          name: sortBy
+          description: The field name to sort by if sorting required
+          schema:
+            $ref: "#/components/schemas/applicationSortBy"
+        - in: query
           name: page
           description: Page number of data to be returned (defaults to 1 when 0 or less)
           schema:
@@ -312,6 +317,12 @@ components:
       type: string
       enum:
         - CLIENT
+
+    applicationSortBy:
+      type: string
+      enum:
+        - LAST_UPDATED_DATE
+        - SUBMITTED_DATE
 
     Individual:
       type: object
