@@ -343,10 +343,7 @@ components:
       required:
         - applicationId
         - status
-        - applicationContent
         - laaReference
-        - schemaVersion
-        - createdAt
         - lastUpdated
       properties:
         applicationId:
@@ -354,24 +351,11 @@ components:
           format: uuid
         status:
           $ref: "#/components/schemas/applicationStatus"
-        schemaVersion:
-          type: integer
-        applicationContent:
-          type: object
-          additionalProperties: true
         laaReference:
             type: string
-        createdAt:
-          type: string
-          format: date-time
         lastUpdated:
           type: string
           format: date-time
-        individuals:
-          type: array
-          items:
-            $ref: "#/components/schemas/Individual"
-          minItems: 1
         caseworkerId:
           type: string
           format: uuid

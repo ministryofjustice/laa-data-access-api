@@ -52,38 +52,9 @@ class ApplicationMapperTest {
         assertThat(actualApplication.getApplicationId()).isEqualTo(id);
         assertThat(actualApplication.getLaaReference()).isEqualTo(laaReference);
         assertThat(actualApplication.getStatus()).isEqualTo(status);
-        assertThat(actualApplication.getCreatedAt()).isEqualTo(OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC));
         assertThat(actualApplication.getLastUpdated()).isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
-        assertThat(actualApplication.getApplicationContent())
-                .isNotNull()
-                .usingRecursiveComparison()
-                .isEqualTo(applicationContent);
     }
 
-    @Test
-    void givenApplicationEntityWithIndividuals_whenToApplication_thenMapsSetCorrectly() {
-        UUID id1 = UUID.randomUUID();
-        UUID id2 = UUID.randomUUID();
-        Set<IndividualEntity> expectedIndividuals = Set.of(
-                IndividualEntity.builder().id(id1).build(),
-                IndividualEntity.builder().id(id2).build()
-        );
-        Instant createdAt = Instant.now();
-        Instant modifiedAt = Instant.now();
-
-        ApplicationEntity expectedApplicationEntity = ApplicationEntity.builder()
-                .individuals(expectedIndividuals)
-                .createdAt(createdAt)
-                .modifiedAt(modifiedAt)
-                .build();
-
-        Application actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
-
-        assertThat(actualApplication.getIndividuals())
-                .isNotNull()
-                .hasSize(expectedIndividuals.size())
-                .allSatisfy(individual -> assertThat(individual).isInstanceOf(Individual.class));
-    }
 
     @Test
     void givenNullApplicationEntity_whenToApplication_thenReturnsNull() {
