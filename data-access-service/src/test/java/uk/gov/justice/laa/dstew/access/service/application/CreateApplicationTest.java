@@ -1,6 +1,23 @@
 package uk.gov.justice.laa.dstew.access.service.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.IndividualAssert.assertIndividualCollectionsEqual;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,36 +28,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
+import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContentDetails;
-import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.Proceeding;
+import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-import uk.gov.justice.laa.dstew.access.utils.records.AppContentJsonObject;
-import uk.gov.justice.laa.dstew.access.utils.records.ProceedingJsonObject;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
-import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.IndividualAssert.assertIndividualCollectionsEqual;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CreateApplicationTest extends BaseServiceTest {
@@ -51,15 +51,16 @@ public class CreateApplicationTest extends BaseServiceTest {
     @Test
     public void givenNewApplication_whenCreateApplication_thenReturnNewId() throws JsonProcessingException {
 
-        // given
-        UUID expectedId = UUID.randomUUID();
-        ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder ->
-                builder.id(expectedId).isAutoGranted(null)
-        );
+    // given
+    UUID expectedId = UUID.randomUUID();
+    ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder ->
+        builder.id(expectedId).isAutoGranted(null)
+    );
 
-        ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault();
-
-        when(applicationRepository.save(any())).thenReturn(withExpectedId);
+    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault();
+    RequestApplicationContent requestApplicationContent = MapperUtil.getObjectMapper()
+        .convertValue(applicationCreateRequest.getApplicationContent(), RequestApplicationContent.class);
+    when(applicationRepository.save(any())).thenReturn(withExpectedId);
 
         DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
                 .applicationId(expectedId)
@@ -71,66 +72,92 @@ public class CreateApplicationTest extends BaseServiceTest {
                         .build()))
                 .build();
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.WRITER);
 
-        // when
-        UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
+    // when
+    UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
 
-        // then
-        assertEquals(expectedId, actualId);
+    // then
+    assertEquals(expectedId, actualId);
 
-        verifyThatApplicationSaved(applicationCreateRequest, 1);
-        verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
+    verifyThatApplicationSaved(applicationCreateRequest, 1);
+    verifyThatProceedingsSaved(requestApplicationContent, expectedId);
+    verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
+  }
+
+  private void verifyThatProceedingsSaved(RequestApplicationContent applicationCreateRequest, UUID expectedId) {
+    ArgumentCaptor<List<ProceedingEntity>> captor = ArgumentCaptor.forClass((Class) List.class);
+    verify(proceedingRepository).saveAll(captor.capture());
+    List<ProceedingEntity> actualProceedingEntities = captor.getValue();
+
+    RequestApplicationContent applicationContentDetails =
+        objectMapper.convertValue(applicationCreateRequest, RequestApplicationContent.class);
+
+    List<Proceeding> expectedProceedings = applicationContentDetails.getApplicationContent().getProceedings();
+
+    assertEquals(expectedProceedings.size(), actualProceedingEntities.size());
+    for (int index = 0; index < expectedProceedings.size(); index++) {
+      Proceeding expectedProceeding = expectedProceedings.get(index);
+      ProceedingEntity actualProceedingEntity = actualProceedingEntities.get(index);
+
+      assertThat(actualProceedingEntity.getApplicationId()).isEqualTo(expectedId);
+      assertThat(actualProceedingEntity.isLead()).isEqualTo(expectedProceeding.getLeadProceeding());
+      assertThat(actualProceedingEntity.getProceedingContent()).isEqualTo(objectMapper.convertValue(expectedProceeding, Map.class));
     }
+  }
 
-    @ParameterizedTest
-    @MethodSource("provideProceedingsForMapping")
-    void mapToApplicationEntity_SuccessfullyMapFromApplicationContentFields(ApplicationCreateRequest application,
-                                                                            boolean expectedUseDelegatedFunctions) {
-        // Given
-        setSecurityContext(TestConstants.Roles.WRITER);
 
-        UUID expectedId = UUID.randomUUID();
-        ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder -> builder.id(expectedId));
-        when(applicationRepository.save(any())).thenReturn(withExpectedId);
+  @ParameterizedTest
+  @MethodSource("provideProceedingsForMapping")
+  void mapToApplicationEntity_SuccessfullyMapFromApplicationContentFields(ApplicationCreateRequest application,
+                                                                          boolean expectedUseDelegatedFunctions) {
+    // Given
+    setSecurityContext(TestConstants.Roles.WRITER);
 
-        // When
-        UUID entity = serviceUnderTest.createApplication(application);
-        ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
-        verify(applicationRepository, times(1)).save(captor.capture());
-        ApplicationEntity actualApplicationEntity = captor.getValue();
-        // Then
-        assertEquals(expectedId, entity);
+    UUID expectedId = UUID.randomUUID();
+    ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder -> builder.id(expectedId));
+    when(applicationRepository.save(any())).thenReturn(withExpectedId);
 
-        assertAll(() -> assertEquals(expectedUseDelegatedFunctions, actualApplicationEntity.isUseDelegatedFunctions()),
-                () -> assertEquals(      Instant.parse("2026-01-15T10:20:30Z"), actualApplicationEntity.getSubmittedAt()));
-    }
+    // When
+    UUID entity = serviceUnderTest.createApplication(application);
+    ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
+    verify(applicationRepository, times(1)).save(captor.capture());
+    ApplicationEntity actualApplicationEntity = captor.getValue();
+    // Then
+    assertEquals(expectedId, entity);
 
-    @Test
-    public void givenNewApplicationAndNotRoleReader_whenCreateApplication_thenThrowUnauthorizedException() {
-        // given
-        setSecurityContext(TestConstants.Roles.NO_ROLE);
+    assertAll(() -> assertEquals(expectedUseDelegatedFunctions, actualApplicationEntity.isUseDelegatedFunctions()),
+        () -> assertEquals(Instant.parse("2026-01-15T10:20:30Z"), actualApplicationEntity.getSubmittedAt()));
+    verifyThatProceedingsSaved(
+        objectMapper.convertValue(application.getApplicationContent(), RequestApplicationContent.class),
+        expectedId);
+  }
 
-        // when
-        // then
-        assertThatExceptionOfType(AuthorizationDeniedException.class)
-                .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
-                .withMessageContaining("Access Denied");
+  @Test
+  public void givenNewApplicationAndNotRoleReader_whenCreateApplication_thenThrowUnauthorizedException() {
+    // given
+    setSecurityContext(TestConstants.Roles.NO_ROLE);
 
-        verify(applicationRepository, times(0)).findById(any(UUID.class));
-        verify(domainEventRepository, never()).save(any());
-    }
+    // when
+    // then
+    assertThatExceptionOfType(AuthorizationDeniedException.class)
+        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
+        .withMessageContaining("Access Denied");
 
-    @Test
-    public void givenNewApplicationAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
+    verify(applicationRepository, times(0)).findById(any(UUID.class));
+    verify(domainEventRepository, never()).save(any());
+  }
 
-        assertThatExceptionOfType(AuthorizationDeniedException.class)
-                .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
-                .withMessageContaining("Access Denied");
+  @Test
+  public void givenNewApplicationAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
 
-        verify(applicationRepository, times(0)).findById(any(UUID.class));
-        verify(domainEventRepository, never()).save(any());
-    }
+    assertThatExceptionOfType(AuthorizationDeniedException.class)
+        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
+        .withMessageContaining("Access Denied");
+
+    verify(applicationRepository, times(0)).findById(any(UUID.class));
+    verify(domainEventRepository, never()).save(any());
+  }
 
     @ParameterizedTest
     @MethodSource("invalidApplicationRequests")
@@ -151,132 +178,87 @@ public class CreateApplicationTest extends BaseServiceTest {
         verify(domainEventRepository, never()).save(any());
     }
 
-    private Stream<Arguments> invalidApplicationRequests() {
-        return Stream.concat(
-                invalidApplicationSpecificCases(),
-                invalidApplicationContentProvider()
-        );
-    }
 
-    private Stream<Arguments> invalidApplicationSpecificCases() {
-        return Stream.of(
-                Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder
-                                .applicationContent(
-                                        applicationContentFactory.createDefaultAsMapWithApplicationContent(detailsBuilder -> detailsBuilder.proceedings(null)))),
-                        new ValidationException(List.of(
-                                "No proceedings found in application content"
-                        ))
-                ),
-                Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder
-                                .applicationContent(
-                                        applicationContentFactory.createDefaultAsMapWithApplicationContent(detailsBuilder ->
-                                                detailsBuilder.proceedings(List.of(
-                                                        proceedingDtoFactory.createDefault(proceedingDetailsBuilder ->
-                                                                proceedingDetailsBuilder.leadProceeding(false))
-                                                ))))),
-                        new ValidationException(List.of(
-                                "No lead proceeding found in application content"
-                        )))
-        );
-    }
+  private Stream<Arguments> invalidApplicationRequests() {
+    ValidationException validationException = new ValidationException(List.of(
+        "No lead proceeding found in application content"
+    ));
+    ApplicationCreateRequest createRequest = applicationCreateRequestFactory.createDefault(builder -> builder
+        .applicationContent(objectMapper.convertValue(requestApplicationContentFactory.createDefault(
+            detailsBuilder -> detailsBuilder.applicationContent(
+                applicationContentFactory.createDefault(appContentBuilder ->
+                    appContentBuilder.proceedings(List.of(proceedingFactory.createDefault(proceedingBuilder ->
+                        proceedingBuilder.leadProceeding(false))))))), Map.class)));
+    return Stream.of(
+        Arguments.of(
+            createRequest, validationException
+        ));
+  }
+
+  private Map<String, Object> getAppContentParent(List<Proceeding> proceedings,
+                                                        String appContentId) {
 
 
+    ApplicationContent applicationContent = applicationContentFactory.createDefault(appContentBuilder ->
+        appContentBuilder.submittedAt("2026-01-15T10:20:30Z").proceedings(proceedings).id(UUID.fromString(appContentId)));
 
-    private Stream<Arguments> invalidApplicationContentProvider() {
-        return Stream.of(
-                Arguments.of(applicationCreateRequestFactory
-                                .createDefault(builder ->
-                                        builder.applicationContent(
-                                                getAppContentMap(List.of(), UUID.randomUUID().toString()))),
-                        new ValidationException(List.of("No proceedings found in application content")),
+    RequestApplicationContent requestApplicationContent =
+        requestApplicationContentFactory.createDefault(builder -> builder.applicationContent(applicationContent));
+    requestApplicationContent.putAdditionalProperty("testPropertyInTest", "testValue");
+    return objectMapper.convertValue(requestApplicationContent, Map.class);
 
-                        Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                                        builder.applicationContent(
-                                                getAppContentMap(null, UUID.randomUUID().toString()))),
-                                new ValidationException(List.of("No proceedings found in application content")),
-                                Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                                                builder.applicationContent(
-                                                        getAppContentMap(
-                                                                List.of(getProceedingJsonObject(null, false)),
-                                                                UUID.randomUUID().toString()))),
-                                        new ValidationException(List.of("No proceedings found in application content")),
-                                        Arguments.of(applicationCreateRequestFactory.createDefault(builder ->
-                                                        builder.applicationContent(
-                                                                getAppContentMap(
-                                                                        List.of(getProceedingJsonObject(true, false)),
-                                                                        UUID.randomUUID().toString()))),
-                                                new ValidationException(List.of("No lead proceeding found in application content"))))
-                        )
-                ));
-    }
+  }
 
-    private Map<String, Object> getAppContentMap(List<ProceedingJsonObject> proceedings,
-                                                 String appContentId) {
-        String submittedAt = "2026-01-15T10:20:30Z";
-        AppContentJsonObject applicationContent =
-                AppContentJsonObject.builder().proceedings(proceedings).id(appContentId)
-                        .submittedAt(submittedAt).build();
-        Map<String, Object> appContentMap;
+  private Proceeding getProceeding(Boolean useDelegatedFunctions, boolean leadProceeding) {
 
-        try {
-            appContentMap = objectMapper.readValue(objectMapper.writeValueAsString(applicationContent), Map.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-        return Map.of("applicationContent", appContentMap);
-    }
+    return proceedingFactory.createDefault(
+        builder -> builder.leadProceeding(leadProceeding).usedDelegatedFunctions(useDelegatedFunctions));
+  }
+
+  private Stream<Arguments> provideProceedingsForMapping() {
+    //App Content Map, expected usedDelegatedFunctions
+    return Stream.of(
+        Arguments.of(applicationCreateRequestFactory.createDefault(
+            builder -> builder.applicationContent(getAppContentParent(List.of(getProceeding(true, true)),
+                UUID.randomUUID().toString()))), true),
+        Arguments.of(applicationCreateRequestFactory.createDefault(
+                builder -> builder.applicationContent(getAppContentParent(List.of(getProceeding(false, true)),
+                    UUID.randomUUID().toString()))), false,
+            true), Arguments.of(
+            applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
+                getAppContentParent(List.of(getProceeding(false, true), getProceeding(true, false)),
+                    UUID.randomUUID().toString()))), true,
+            true), Arguments.of(
+            applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
+                getAppContentParent(List.of(getProceeding(false, true), getProceeding(false, false)),
+                    UUID.randomUUID().toString()))), false,
+            true));
+  }
 
 
-    private static ProceedingJsonObject getProceedingJsonObject(Boolean useDelegatedFunctions, boolean leadProceeding) {
-        return ProceedingJsonObject.builder().id("f6e2c4e1-5d32-4c3e-9f0a-1e2b3c4d5e6f").leadProceeding(leadProceeding)
-                .categoryOfLaw(CategoryOfLaw.FAMILY.name()).matterType(MatterType.SCA.name())
-                .usedDelegatedFunctions(useDelegatedFunctions).build();
-    }
+  private void verifyThatApplicationSaved(ApplicationCreateRequest applicationCreateRequest, int timesCalled) {
+    ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
+    verify(applicationRepository, times(timesCalled)).save(captor.capture());
+    ApplicationEntity actualApplicationEntity = captor.getValue();
 
-    private Stream<Arguments> provideProceedingsForMapping() {
-        //App Content Map, expected usedDelegatedFunctions
-        return Stream.of(Arguments.of(applicationCreateRequestFactory.createDefault(
-                        builder -> builder.applicationContent(getAppContentMap(List.of(getProceedingJsonObject(true, true)),
-                                UUID.randomUUID().toString()))), true),
-                Arguments.of(applicationCreateRequestFactory.createDefault(
-                                builder -> builder.applicationContent(getAppContentMap(List.of(getProceedingJsonObject(false, true)),
-                                        UUID.randomUUID().toString()))), false,
-                        true), Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
-                                getAppContentMap(List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(true, false)),
-                                        UUID.randomUUID().toString()))), true,
-                        true), Arguments.of(applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
-                                getAppContentMap(List.of(getProceedingJsonObject(false, true), getProceedingJsonObject(false, false)),
-                                        UUID.randomUUID().toString()))), false,
-                        true));
-    }
+    assertThat(actualApplicationEntity.getStatus()).isEqualTo(applicationCreateRequest.getStatus());
+    assertThat(actualApplicationEntity.getLaaReference()).isEqualTo(applicationCreateRequest.getLaaReference());
+    RequestApplicationContent applicationContentDetails =
+        objectMapper.convertValue(applicationCreateRequest.getApplicationContent(), RequestApplicationContent.class);
+    assertThat(actualApplicationEntity.getApplyApplicationId()).isEqualTo(
+        applicationContentDetails.getApplicationContent().getId());
+    assertThat(actualApplicationEntity.isUseDelegatedFunctions()).isEqualTo(
+        applicationContentDetails.getApplicationContent().getProceedings().get(0)
+            .getUsedDelegatedFunctions());
+    assertThat(actualApplicationEntity.getApplicationContent())
+        .usingRecursiveComparison()
+        .ignoringCollectionOrder()
+        .isEqualTo(objectMapper.convertValue(applicationContentDetails, Map.class));
 
+    assertIndividualCollectionsEqual(applicationCreateRequest.getIndividuals(),
+        actualApplicationEntity.getIndividuals());
+  }
 
-
-    private void verifyThatApplicationSaved(ApplicationCreateRequest applicationCreateRequest, int timesCalled) {
-        ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
-        verify(applicationRepository, times(timesCalled)).save(captor.capture());
-        ApplicationEntity actualApplicationEntity = captor.getValue();
-
-        assertThat(actualApplicationEntity.getStatus()).isEqualTo(applicationCreateRequest.getStatus());
-        assertThat(actualApplicationEntity.getLaaReference()).isEqualTo(applicationCreateRequest.getLaaReference());
-        assertNull(actualApplicationEntity.getIsAutoGranted());
-        ApplicationContentDetails applicationContentDetails =
-                parseApplicationContentDetails(applicationCreateRequest.getApplicationContent());
-        assertThat(actualApplicationEntity.getApplyApplicationId()).isEqualTo(applicationContentDetails.getId());
-        assertThat(actualApplicationEntity.isUseDelegatedFunctions()).isEqualTo(
-                applicationContentDetails.getProceedings().get(0)
-                        .usedDelegatedFunctions());
-        assertThat(actualApplicationEntity.getApplicationContent())
-                .usingRecursiveComparison()
-                .ignoringCollectionOrder()
-                .isEqualTo(applicationCreateRequest.getApplicationContent());
-
-        assertIndividualCollectionsEqual(applicationCreateRequest.getIndividuals(), actualApplicationEntity.getIndividuals());
-    }
-
-    private ApplicationContentDetails parseApplicationContentDetails(Map<String, Object> applicationContentMap) {
-        return objectMapper.convertValue(applicationContentMap.get("applicationContent"), ApplicationContentDetails.class);
-    }
 
     private void verifyThatCreateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled)
             throws JsonProcessingException {

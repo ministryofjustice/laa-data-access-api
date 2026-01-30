@@ -372,8 +372,7 @@ components:
           $ref: "#/components/schemas/applicationStatus"
         applicationContent:
           type: object
-          additionalProperties: true
-          minProperties: 1
+          minLength: 1
         laaReference:
           type: string
           minLength: 1
