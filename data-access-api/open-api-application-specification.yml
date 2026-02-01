@@ -59,6 +59,11 @@ paths:
           schema:
             $ref: "#/components/schemas/applicationSortBy"
         - in: query
+          name: orderBy
+          description: The order to sort by if sorting required
+          schema:
+            $ref: "#/components/schemas/applicationOrderBy"
+        - in: query
           name: page
           description: Page number of data to be returned (defaults to 1 when 0 or less)
           schema:
@@ -323,6 +328,12 @@ components:
       enum:
         - LAST_UPDATED_DATE
         - SUBMITTED_DATE
+
+    applicationOrderBy:
+      type: string
+      enum:
+        - ASC
+        - DESC
 
     Individual:
       type: object

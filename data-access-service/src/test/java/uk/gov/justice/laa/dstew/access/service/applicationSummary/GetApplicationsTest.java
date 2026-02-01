@@ -10,7 +10,9 @@ import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSortFields;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
@@ -38,10 +40,12 @@ public class GetApplicationsTest extends BaseServiceTest {
     @Autowired
     private ApplicationSummaryService serviceUnderTest;
 
-    private Stream<Arguments> sortParameters() {
+    private static Stream<Arguments> sortParameters() {
       return Stream.of(
-        Arguments.of(ApplicationSortBy.LAST_UPDATED_DATE, "SomeField"),
-        Arguments.of(ApplicationSortBy.SUBMITTED_DATE, "submittedAt")
+        Arguments.of(ApplicationSortBy.LAST_UPDATED_DATE, ApplicationOrderBy.ASC),
+        Arguments.of(ApplicationSortBy.SUBMITTED_DATE, ApplicationOrderBy.ASC),
+        Arguments.of(ApplicationSortBy.LAST_UPDATED_DATE, ApplicationOrderBy.DESC),
+        Arguments.of(ApplicationSortBy.SUBMITTED_DATE, ApplicationOrderBy.DESC)
       );
     }
 
@@ -49,18 +53,26 @@ public class GetApplicationsTest extends BaseServiceTest {
     @MethodSource("sortParameters")
     public void givenPageZeroAndNoFiltersAndDataSorted_whenGetApplications_thenReturnSortedApplications(
             ApplicationSortBy sortBy,
-            String sortField
+            ApplicationOrderBy orderBy
     ) {
         // given
-        List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(4);
-        int dayCount = 0;
+        List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(5);
+        int lastSubmittedDayCount = 0;
+        int lastModifiedDayCount = 10;
+        Instant referenceDate = Instant.now();
+
         for (ApplicationSummaryEntity applicationSummaryEntity : expectedApplications) {
-            applicationSummaryEntity.setSubmittedAt(Instant.now().plus(dayCount++, ChronoUnit.DAYS));
+            applicationSummaryEntity.setSubmittedAt(referenceDate.plus(lastSubmittedDayCount++, ChronoUnit.DAYS));
+            applicationSummaryEntity.setModifiedAt(referenceDate.plus(lastModifiedDayCount--, ChronoUnit.DAYS));
         }
 
-        Sort sortOrder = Sort.by(Sort.Direction.ASC, sortField);
+        Sort sortOrder = Sort.by(
+                Sort.Direction.fromString(orderBy.getValue()),
+                String.valueOf(ApplicationSortFields.valueOf(sortBy.getValue()))
+        );
+
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
-        Pageable pageable = PageRequest.of(0, 10, sortOrder);
+        Pageable pageable = PageRequest.of(0, 4, sortOrder);
 
         setSecurityContext(TestConstants.Roles.READER);
 
@@ -76,7 +88,8 @@ public class GetApplicationsTest extends BaseServiceTest {
                 null,
                 null,
                 null,
-                null,
+                sortBy,
+                orderBy,
                 0,
                 4
         ).stream().toList();
@@ -100,6 +113,7 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         // when
         List<ApplicationSummary> actualApplications = serviceUnderTest.getAllApplications(
+                null,
                 null,
                 null,
                 null,
@@ -148,6 +162,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                 null,
                 null,
                 null,
+                null,
                 0,
                 10
         ).stream().toList();
@@ -176,6 +191,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                 null,
                 null,
                 UUID.randomUUID(),
+                null,
                 null,
                 null,
                 null,
@@ -209,6 +225,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                         null,
                         null,
                         null,
+                        null,
                         null
                 ))
                 .withMessageContaining("Access Denied");
@@ -222,6 +239,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         // then
         assertThatExceptionOfType(AuthorizationDeniedException.class)
                 .isThrownBy(() -> serviceUnderTest.getAllApplications(
+                        null,
                         null,
                         null,
                         null,

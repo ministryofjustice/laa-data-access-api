@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
@@ -76,6 +77,7 @@ public class ApplicationController implements ApplicationApi {
           Boolean isAutoGranted,
           MatterType matterType,
           ApplicationSortBy sortBy,
+          ApplicationOrderBy orderBy,
           Integer page,
           Integer pageSize) {
     page = (page == null || page < 1) ? 1 : page;
@@ -91,7 +93,8 @@ public class ApplicationController implements ApplicationApi {
                     isAutoGranted,
                     matterType,
                     sortBy,
-                    page - 1, pageSize);
+                    orderBy,
+              page - 1, pageSize);
 
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
     List<ApplicationSummary> applications = applicationsReturned.stream().toList();
