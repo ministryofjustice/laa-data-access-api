@@ -6,6 +6,17 @@ repositories {
     mavenCentral()
 }
 
+// Add this near the top of your build.gradle, before subprojects block
+def requiredJavaVersion = 25
+def currentJavaVersion = JavaVersion.current().majorVersion.toInteger()
+
+if (currentJavaVersion != requiredJavaVersion) {
+    throw new GradleException(
+            "This project requires Java ${requiredJavaVersion}. " +
+                    "Current Java version is ${currentJavaVersion}. " +
+                    "Please update your JAVA_HOME or use the correct JDK."
+    )
+}
 
 configurations {
     jacocoAnt
