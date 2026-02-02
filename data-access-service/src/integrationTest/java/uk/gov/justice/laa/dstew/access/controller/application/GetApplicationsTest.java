@@ -56,7 +56,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     public static final String SEARCH_ORDERBY_ASC_PARAM = "ASC";
     public static final String SEARCH_ORDERBY_DESC_PARAM = "DESC";
 
-    private static Stream<Arguments> something() {
+    private static Stream<Arguments> searchFieldAndOrderParameters() {
         return Stream.of(
                 Arguments.of("", ""),
                 Arguments.of("", SEARCH_ORDERBY_ASC_PARAM),
@@ -72,7 +72,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @WithMockUser(authorities = TestConstants.Roles.READER)
-    @MethodSource("something")
+    @MethodSource("searchFieldAndOrderParameters")
     void givenApplicationWithoutFilteringAndOrderedBy_whenGetApplications_thenReturnApplication(
             String sortByParameter,
             String orderByParameter
