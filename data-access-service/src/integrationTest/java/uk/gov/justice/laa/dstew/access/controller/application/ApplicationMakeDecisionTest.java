@@ -174,6 +174,65 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    public void givenProceedingsNotFoundAndNotLinkedToApplication_whenMakeDecision_thenReturnNotFoundWithAllIds()
+        throws Exception {
+        // given
+        ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+            builder.applicationContent(new HashMap<>(Map.of(
+                "test", "content"
+            )));
+        });
+
+        ApplicationEntity unrelatedApplicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+            builder.applicationContent(new HashMap<>(Map.of(
+                "test", "other"
+            )));
+        });
+
+        ProceedingEntity proceedingNotLinkedToApplication = persistedProceedingFactory.createAndPersist(
+            builder -> {
+                builder
+                    .applicationId(unrelatedApplicationEntity.getId());
+            }
+        );
+
+        UUID proceedingIdNotFound = UUID.randomUUID();
+
+        MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
+            builder
+                .userId(CaseworkerJohnDoe.getId())
+                .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
+                .overallDecision(DecisionStatus.REFUSED)
+                .eventHistory(EventHistory.builder()
+                    .eventDescription("refusal event")
+                    .build())
+                .proceedings(List.of(
+                    createMakeDecisionProceeding(proceedingIdNotFound, MeritsDecisionStatus.REFUSED, "justification1",
+                        "reason1"),
+                    createMakeDecisionProceeding(proceedingNotLinkedToApplication.getId(), MeritsDecisionStatus.GRANTED,
+                        "justification2", "reason2")
+                ));
+        });
+
+        // when
+        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+
+        // then
+        assertSecurityHeaders(result);
+        assertNoCacheHeaders(result);
+        assertNotFound(result);
+        assertEquals("application/problem+json", result.getResponse().getContentType());
+
+        ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+        assertThat(problemDetail.getDetail())
+            .contains("No proceeding found with id:")
+            .contains(proceedingIdNotFound.toString())
+            .contains("Not linked to application:")
+            .contains(proceedingNotLinkedToApplication.getId().toString());
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenNoApplication_whenAssignDecisionApplication_thenReturnNotFoundAndMessage()
             throws Exception {
         // given
