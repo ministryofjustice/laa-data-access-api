@@ -58,4 +58,7 @@ public class DomainEventEntity {
 
   @Column(name = "created_by")
   private String createdBy;
+
+  @Column(name = "is_published", nullable = false, columnDefinition = "boolean default false")
+  private boolean isPublished = false;
 }

@@ -7,9 +7,11 @@ import static org.testcontainers.containers.localstack.LocalStackContainer.Servi
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.slf4j.Logger;
@@ -23,32 +25,41 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.checksums.RequestChecksumCalculation;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption;
+import software.amazon.awssdk.core.pagination.sync.SdkIterable;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbIndex;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
+import software.amazon.awssdk.enhanced.dynamodb.Key;
+import software.amazon.awssdk.enhanced.dynamodb.MappedTableResource;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.BatchGetItemEnhancedRequest;
+import software.amazon.awssdk.enhanced.dynamodb.model.BatchGetResultPageIterable;
 import software.amazon.awssdk.enhanced.dynamodb.model.Page;
+import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
+import software.amazon.awssdk.enhanced.dynamodb.model.ReadBatch;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
-import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.BatchGetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DeleteTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
-import software.amazon.awssdk.services.dynamodb.model.GlobalSecondaryIndex;
-import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
-import software.amazon.awssdk.services.dynamodb.model.KeyType;
-import software.amazon.awssdk.services.dynamodb.model.Projection;
-import software.amazon.awssdk.services.dynamodb.model.ProjectionType;
-import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
-import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import software.amazon.awssdk.services.dynamodb.model.TableStatus;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.ListBucketsResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.spike.Event;
+import uk.gov.justice.laa.dstew.access.spike.LocalStackResourceInitializer;
 import uk.gov.justice.laa.dstew.access.spike.dynamo.DomainEventDynamoDB;
 
 @Testcontainers
@@ -56,7 +67,7 @@ import uk.gov.justice.laa.dstew.access.spike.dynamo.DomainEventDynamoDB;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class LocalStackIntegrationTest {
   private static final Logger log = LoggerFactory.getLogger(LocalStackIntegrationTest.class);
-  private static final DockerImageName LOCALSTACK_IMAGE = DockerImageName.parse("localstack/localstack:2.2.0");
+  private static final DockerImageName LOCALSTACK_IMAGE = DockerImageName.parse("localstack/localstack:3.2.0");
   private static final Region AWS_REGION = Region.EU_WEST_2;
 
   @Container
@@ -97,6 +108,12 @@ public class LocalStackIntegrationTest {
     log.info("LocalStack container started and clients configured.");
   }
 
+  @BeforeEach
+  void initializeResources() {
+    createTableWithGsi();
+    createBucket();
+  }
+
   @DynamicPropertySource
   static void overrideProperties(DynamicPropertyRegistry registry) {
     registry.add("cloud.aws.region.static", () -> AWS_REGION.toString());
@@ -112,41 +129,26 @@ public class LocalStackIntegrationTest {
   }
 
   private void createTableWithGsi() {
-        String tableName = "events";
+    String tableName = "events";
     if (dynamoDbClient.listTables().tableNames().contains(tableName)) {
       dynamoDbClient.deleteTable(DeleteTableRequest.builder().tableName(tableName).build());
-        }
-        CreateTableRequest request = CreateTableRequest.builder()
-                .tableName(tableName)
-                .attributeDefinitions(
-                        AttributeDefinition.builder().attributeName("pk").attributeType(ScalarAttributeType.S).build(),
-                        AttributeDefinition.builder().attributeName("sk").attributeType(ScalarAttributeType.S).build(),
-                        AttributeDefinition.builder().attributeName("gsiPk").attributeType(ScalarAttributeType.S).build()
-                )
-                .keySchema(
-                        KeySchemaElement.builder().attributeName("pk").keyType(KeyType.HASH).build(),
-                        KeySchemaElement.builder().attributeName("sk").keyType(KeyType.RANGE).build()
-                )
-                .globalSecondaryIndexes(GlobalSecondaryIndex.builder()
-                        .indexName("caseworkerId-index")
-                        .keySchema(KeySchemaElement.builder().attributeName("gsiPk").keyType(KeyType.HASH).build())
-                        .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
-                        .provisionedThroughput(ProvisionedThroughput.builder().readCapacityUnits(1L).writeCapacityUnits(1L).build())
-                        .build())
-                .provisionedThroughput(ProvisionedThroughput.builder().readCapacityUnits(1L).writeCapacityUnits(1L).build())
-                .build();
-
-        try {
-          dynamoDbClient.createTable(request);
-        } catch (software.amazon.awssdk.services.dynamodb.model.ResourceInUseException e) {
-            // Table already exists - make creation idempotent so tests can run against existing LocalStack
-            // (for example when Testcontainers can't create containers and we fallback to an existing compose-managed LocalStack).
-            // Continue to waiting for the table to be ACTIVE below.
-        }
-
-        // wait until ACTIVE
-        waitForTableActive(tableName);
     }
+
+    CreateTableRequest request = LocalStackResourceInitializer
+        .getCreateTableRequest(LocalStackResourceInitializer.getGlobalSecondaryIndex1(),
+            LocalStackResourceInitializer.getGlobalSecondaryIndex2(), tableName);
+
+    try {
+      dynamoDbClient.createTable(request);
+    } catch (software.amazon.awssdk.services.dynamodb.model.ResourceInUseException e) {
+      // Table already exists - make creation idempotent so tests can run against existing LocalStack
+      // (for example when Testcontainers can't create containers and we fallback to an existing compose-managed LocalStack).
+      // Continue to waiting for the table to be ACTIVE below.
+    }
+
+    // wait until ACTIVE
+    waitForTableActive(tableName);
+  }
 
   private void waitForTableActive(String tableName) {
     for (int i = 0; i < 30; i++) {
@@ -234,28 +236,44 @@ public class LocalStackIntegrationTest {
     UUID eventId = UUID.randomUUID();
     Instant now = Instant.now();
     DomainEventDynamoDB e = DomainEventDynamoDB.builder()
-        .pk("EVENT#" + eventId)
-        .sk(now.toString())
-        .type("TEST")
+        .applicationId(eventId.toString())
+        .type(DomainEventType.APPLICATION_CREATED.getValue())
         .description("desc")
         .caseworkerId("cw-123")
+        .createdAt(now.toString())
         .build();
 
     table.putItem(e);
 
     // Query the GSI
-    DynamoDbIndex<DomainEventDynamoDB> gsi = table.index("caseworkerId-index");
-    QueryConditional cond = QueryConditional.keyEqualTo(k -> k.partitionValue("CASEWORKER#cw-123"));
-    // collect items across pages returned by the enhanced client
-    List<DomainEventDynamoDB> results = new ArrayList<>();
-    for (Page<DomainEventDynamoDB> page : gsi.query(r -> r.queryConditional(cond))) {
-      results.addAll(page.items());
-    }
+    QueryRequest queryRequest = QueryRequest.builder()
+        .tableName("events")
+        .indexName("gs-index-1")
+        .keyConditionExpression("gs1pk = :gs1pkVal")
+        .expressionAttributeValues(Map.of(
+            ":gs1pkVal", AttributeValue.fromS("CASEWORKER#" + "cw-123")
+        )).build();
 
-    assertThat(results).hasSize(1);
-    DomainEventDynamoDB saved =
-        results.stream().findFirst().orElseThrow(() -> new AssertionError("Expected at least one item in GSI query"));
-    assertThat(saved.getPk()).isEqualTo(e.getPk());
+    QueryResponse query = dynamoDbClient.query(queryRequest);
+    List<Key> keys = query.items().stream().map(x ->
+        Key.builder().partitionValue(x.get("pk").s())
+            .sortValue(x.get("sk").s()).build()
+    ).toList();
+    ReadBatch.Builder<DomainEventDynamoDB> readBatch = ReadBatch.builder(DomainEventDynamoDB.class)
+        .mappedTableResource(table);
+
+    keys.forEach(readBatch::addGetItem); // keys is List<Key>
+
+    BatchGetItemEnhancedRequest request = BatchGetItemEnhancedRequest.builder()
+        .readBatches(readBatch.build())
+        .build();
+
+    BatchGetResultPageIterable pages = enhancedClient.batchGetItem(request);
+    List<DomainEventDynamoDB> list = pages.resultsForTable(table).stream().toList();
+    assertThat(list).isNotEmpty();
+    DomainEventDynamoDB retrieved = list.get(0);
+    assertThat(retrieved.getApplicationId()).isEqualTo(eventId.toString());
+    assertThat(retrieved.getCaseworkerId()).isEqualTo("cw-123");
 
     // S3 smoke test - put and get
     String bucket = "test-bucket";

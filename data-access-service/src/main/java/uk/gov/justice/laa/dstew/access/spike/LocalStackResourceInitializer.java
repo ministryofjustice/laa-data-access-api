@@ -47,19 +47,19 @@ public class LocalStackResourceInitializer {
     @EventListener(ApplicationReadyEvent.class)
     public void initializeResources() {
         log.info("Local profile active. Initializing AWS resources for LocalStack...");
-        ensureS3BucketExists();
+        ensureS3BucketExists(bucketName, s3Client);
         ensureDynamoDbTableExists();
         log.info("LocalStack resource initialization complete.");
     }
 
-    private void ensureS3BucketExists() {
+    public static void ensureS3BucketExists(String bucketName1, S3Client s3Client1) {
         try {
-            s3Client.headBucket(HeadBucketRequest.builder().bucket(bucketName).build());
-            log.info("S3 bucket '{}' already exists.", bucketName);
+            s3Client1.headBucket(HeadBucketRequest.builder().bucket(bucketName1).build());
+            log.info("S3 bucket '{}' already exists.", bucketName1);
         } catch (NoSuchBucketException e) {
-            log.info("S3 bucket '{}' not found. Creating...", bucketName);
-            s3Client.createBucket(CreateBucketRequest.builder().bucket(bucketName).build());
-            log.info("S3 bucket '{}' created.", bucketName);
+            log.info("S3 bucket '{}' not found. Creating...", bucketName1);
+            s3Client1.createBucket(CreateBucketRequest.builder().bucket(bucketName1).build());
+            log.info("S3 bucket '{}' created.", bucketName1);
         }
     }
 
@@ -69,36 +69,60 @@ public class LocalStackResourceInitializer {
             log.info("DynamoDB table '{}' already exists.", tableName);
         } catch (ResourceNotFoundException e) {
             log.info("DynamoDB table '{}' not found. Creating...", tableName);
-          GlobalSecondaryIndex globalSecondaryIndex = getGlobalSecondaryIndex1();
-          CreateTableRequest request = CreateTableRequest.builder()
-                    .tableName(tableName)
-                    .keySchema(
-                            KeySchemaElement.builder().attributeName("pk").keyType(KeyType.HASH).build(),
-                            KeySchemaElement.builder().attributeName("sk").keyType(KeyType.RANGE).build()
-                    )
-                    .attributeDefinitions(
-                            AttributeDefinition.builder().attributeName("pk").attributeType(ScalarAttributeType.S).build(),
-                            AttributeDefinition.builder().attributeName("sk").attributeType(ScalarAttributeType.S).build(),
-                            AttributeDefinition.builder().attributeName("gs1pk").attributeType(ScalarAttributeType.S).build(),
-                            AttributeDefinition.builder().attributeName("gs1sk").attributeType(ScalarAttributeType.S).build()
-                    )
-                    .provisionedThroughput(ProvisionedThroughput.builder().readCapacityUnits(5L).writeCapacityUnits(5L).build())
-                .globalSecondaryIndexes(
-                    globalSecondaryIndex
-                )
-                    .build();
-            dynamoDbClient.createTable(request);
+          GlobalSecondaryIndex globalSecondaryIndex1 = getGlobalSecondaryIndex1();
+          GlobalSecondaryIndex globalSecondaryIndex2 = getGlobalSecondaryIndex2();
+          CreateTableRequest request =
+              getCreateTableRequest(globalSecondaryIndex1, globalSecondaryIndex2, tableName);
+          dynamoDbClient.createTable(request);
             log.info("DynamoDB table '{}' created.", tableName);
         }
     }
 
-  private static GlobalSecondaryIndex getGlobalSecondaryIndex1() {
+  public static CreateTableRequest getCreateTableRequest(GlobalSecondaryIndex globalSecondaryIndex1,
+                                                         GlobalSecondaryIndex globalSecondaryIndex2, String tableName1) {
+    CreateTableRequest request = CreateTableRequest.builder()
+              .tableName(tableName1)
+              .keySchema(
+                      KeySchemaElement.builder().attributeName("pk").keyType(KeyType.HASH).build(),
+                      KeySchemaElement.builder().attributeName("sk").keyType(KeyType.RANGE).build()
+              )
+              .attributeDefinitions(
+                      AttributeDefinition.builder().attributeName("pk").attributeType(ScalarAttributeType.S).build(),
+                      AttributeDefinition.builder().attributeName("sk").attributeType(ScalarAttributeType.S).build(),
+                      AttributeDefinition.builder().attributeName("gs1pk").attributeType(ScalarAttributeType.S).build(),
+                      AttributeDefinition.builder().attributeName("gs1sk").attributeType(ScalarAttributeType.S).build(),
+                      AttributeDefinition.builder().attributeName("gs2pk").attributeType(ScalarAttributeType.S).build(),
+                      AttributeDefinition.builder().attributeName("gs2sk").attributeType(ScalarAttributeType.S).build()
+              )
+              .provisionedThroughput(ProvisionedThroughput.builder().readCapacityUnits(5L).writeCapacityUnits(5L).build())
+          .globalSecondaryIndexes(
+              globalSecondaryIndex1,
+              globalSecondaryIndex2
+          )
+              .build();
+    return request;
+  }
+
+  public static GlobalSecondaryIndex getGlobalSecondaryIndex1() {
     GlobalSecondaryIndex globalSecondaryIndex = GlobalSecondaryIndex.builder()
         .indexName("gs-index-1")
         .provisionedThroughput(ProvisionedThroughput.builder().readCapacityUnits(5L).writeCapacityUnits(5L).build())
         .keySchema(
             KeySchemaElement.builder().attributeName("gs1pk").keyType(KeyType.HASH).build(),
             KeySchemaElement.builder().attributeName("gs1sk").keyType(KeyType.RANGE).build())
+        .projection(projection -> projection.nonKeyAttributes("type", "createdAt", "s3location")
+            .projectionType("INCLUDE"))
+        .build();
+    return globalSecondaryIndex;
+  }
+
+  public static GlobalSecondaryIndex getGlobalSecondaryIndex2() {
+    GlobalSecondaryIndex globalSecondaryIndex = GlobalSecondaryIndex.builder()
+        .indexName("gs-index-2")
+        .provisionedThroughput(ProvisionedThroughput.builder().readCapacityUnits(5L).writeCapacityUnits(5L).build())
+        .keySchema(
+            KeySchemaElement.builder().attributeName("gs2pk").keyType(KeyType.HASH).build(),
+            KeySchemaElement.builder().attributeName("gs2sk").keyType(KeyType.RANGE).build())
         .projection(projection -> projection.nonKeyAttributes("type", "createdAt", "s3location")
             .projectionType("INCLUDE"))
         .build();

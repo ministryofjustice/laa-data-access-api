@@ -13,7 +13,7 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   localstack:
-    image: localstack/localstack:2.2
+    image: localstack/localstack:3.6.0
     ports:
       - "4566:4566" # LocalStack edge service (all services)
       - "4510-4559:4510-4559" # additional ports used by some services (optional)
@@ -22,9 +22,10 @@ services:
       - PERSISTENCE=1
       - DEFAULT_REGION=eu-west-2
       - DOCKER_HOST=unix:///var/run/docker.sock
+      - LOCALSTACK_VOLUME_DIR=/var/lib/localstack
     volumes:
       - localstack_state:/var/lib/localstack
-      - localstack_data:/tmp/localstack/data
+      - localstack_data:/var/lib/localstack/data
       - /var/run/docker.sock:/var/run/docker.sock
       - ./scripts:/etc/localstack/init/ready.d:ro
     healthcheck:

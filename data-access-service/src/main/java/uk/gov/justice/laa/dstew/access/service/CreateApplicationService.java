@@ -11,11 +11,11 @@ import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.spike.DynamoDbService;
 import uk.gov.justice.laa.dstew.access.spike.Event;
-import uk.gov.justice.laa.dstew.access.spike.EventType;
 import uk.gov.justice.laa.dstew.access.spike.S3UploadResult;
 import uk.gov.justice.laa.dstew.access.spike.S3UploadService;
 
@@ -67,7 +67,7 @@ public class CreateApplicationService {
   /**
    * Sets key fields in the application entity based on parsed application content.
    *
-   * @param entity application entity to update
+   * @param entity            application entity to update
    * @param requestAppContent application content from the request
    */
   private void setValuesFromApplicationContent(ApplicationEntity entity,
@@ -94,8 +94,8 @@ public class CreateApplicationService {
     // Implement audit/history publishing if required
     S3UploadResult s3UploadResult = s3UploadService.upload(entity, "laa-data-stewardship-access-bucket", "application-" + id);
     Event event = Event.builder()
-        .eventType(EventType.CREATE_APPLICATION)
-        .eventId(entity.getApplyApplicationId().toString())
+        .eventType(DomainEventType.APPLICATION_CREATED)
+        .applicationId(entity.getApplyApplicationId().toString())
         .caseworkerId(entity.getLaaReference())
         .build();
     CompletableFuture<Event> eventCompletableFuture = dynamoDbService.saveDomainEvent(event, s3UploadResult.getS3Url());
