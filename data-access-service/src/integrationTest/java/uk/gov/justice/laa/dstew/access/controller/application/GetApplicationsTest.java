@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -50,12 +51,22 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     public static final String SEARCH_MATTERTYPE_PARAM = "matterType=";
     public static final String SEARCH_SORTBY_PARAM = "sortBy=";
     public static final String SEARCH_ORDERBY_PARAM = "orderBy=";
+    public static final String SEARCH_SORTBY_SUBMITTED_PARAM = "SUBMITTED_DATE";
+    public static final String SEARCH_SORTBY_LAST_UPDATED_PARAM = "LAST_UPDATED_DATE";
+    public static final String SEARCH_ORDERBY_ASC_PARAM = "ASC";
+    public static final String SEARCH_ORDERBY_DESC_PARAM = "DESC";
 
     private static Stream<Arguments> something() {
         return Stream.of(
-                Arguments.of(""),
-                Arguments.of("?" + SEARCH_ORDERBY_PARAM + "ASC"),
-                Arguments.of("?" + SEARCH_ORDERBY_PARAM + "DESC")
+                Arguments.of("", ""),
+                Arguments.of("", SEARCH_ORDERBY_ASC_PARAM),
+                Arguments.of("", SEARCH_ORDERBY_DESC_PARAM),
+                Arguments.of(SEARCH_SORTBY_SUBMITTED_PARAM, ""),
+                Arguments.of(SEARCH_SORTBY_SUBMITTED_PARAM, SEARCH_ORDERBY_ASC_PARAM),
+                Arguments.of(SEARCH_SORTBY_SUBMITTED_PARAM, SEARCH_ORDERBY_DESC_PARAM),
+                Arguments.of(SEARCH_SORTBY_LAST_UPDATED_PARAM, ""),
+                Arguments.of(SEARCH_SORTBY_LAST_UPDATED_PARAM, SEARCH_ORDERBY_ASC_PARAM),
+                Arguments.of(SEARCH_SORTBY_LAST_UPDATED_PARAM, SEARCH_ORDERBY_DESC_PARAM)
         );
     }
 
@@ -63,19 +74,40 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.READER)
     @MethodSource("something")
     void givenApplicationWithoutFilteringAndOrderedBy_whenGetApplications_thenReturnApplication(
-            String parameterQuery
+            String sortByParameter,
+            String orderByParameter
     ) throws Exception {
 
-        boolean sortDescending = parameterQuery.endsWith("DESC");
+        boolean orderByDescending = orderByParameter.endsWith("DESC");
+        String sortByField = sortByParameter;
+        if (sortByField.isEmpty()) {
+            sortByField = SEARCH_SORTBY_SUBMITTED_PARAM;
+        }
 
         List<ApplicationEntity> expectedApplications =
-                sortApplications(sortDescending, createRangeOfSortableApplications());
+                sortApplications(orderByDescending, sortByField, createRangeOfSortableApplications());
 
         persistedApplicationFactory.persistMultiple(expectedApplications);
 
         getAndConfirmSortedApplications(
-                TestConstants.URIs.GET_APPLICATIONS + parameterQuery,
+                createUriForSorting(TestConstants.URIs.GET_APPLICATIONS, sortByParameter, orderByParameter),
                 expectedApplications);
+    }
+
+    private String createUriForSorting(String uri, String sortBy, String orderBy) {
+
+        String orderByQuery = SEARCH_ORDERBY_PARAM + orderBy;
+        String sortByQuery = SEARCH_SORTBY_PARAM + sortBy;
+
+        if (!sortBy.isEmpty()) {
+            uri += "?" + sortByQuery;
+        }
+
+        if (!orderBy.isEmpty()) {
+            uri += (sortBy.isEmpty()) ? "?" + orderByQuery : "&" + orderByQuery;
+        }
+
+        return uri;
     }
 
     private List<ApplicationEntity> createRangeOfSortableApplications() {
@@ -94,13 +126,21 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
 private List<ApplicationEntity> sortApplications(boolean orderDescending,
+                                                 String fieldToSortBy,
                                                  List<ApplicationEntity> applications) {
     return applications.stream()
       .sorted((a1, a2) -> {
             if (orderDescending) {
-                return a2.getSubmittedAt().compareTo(a1.getSubmittedAt());
+                if (Objects.equals(fieldToSortBy, SEARCH_SORTBY_SUBMITTED_PARAM)) {
+                    return a2.getSubmittedAt().compareTo(a1.getSubmittedAt());
+                }
+                return a2.getModifiedAt().compareTo(a1.getModifiedAt());
             }
-          return a1.getSubmittedAt().compareTo(a2.getSubmittedAt());
+
+            if (Objects.equals(fieldToSortBy, SEARCH_SORTBY_SUBMITTED_PARAM)) {
+              return a1.getSubmittedAt().compareTo(a2.getSubmittedAt());
+            }
+            return a1.getModifiedAt().compareTo(a2.getModifiedAt());
         }
       )
       .toList();
