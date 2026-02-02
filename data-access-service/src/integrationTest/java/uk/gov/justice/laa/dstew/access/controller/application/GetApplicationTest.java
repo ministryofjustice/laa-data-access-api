@@ -38,7 +38,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
         Application expectedApplication = createApplication(application);
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getApplicationId());
         Application actualApplication = deserialise(result, Application.class);
 
         // then
@@ -98,29 +98,12 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
     private Application createApplication(ApplicationEntity applicationEntity) {
         Application application = new Application();
-        application.setId(applicationEntity.getId());
-        application.setApplicationContent(applicationEntity.getApplicationContent());
+        application.setApplicationId(applicationEntity.getId());
         application.setStatus(applicationEntity.getStatus());
-        application.setSchemaVersion(applicationEntity.getSchemaVersion());
         if (applicationEntity.getCaseworker() != null) {
             application.setCaseworkerId(applicationEntity.getCaseworker().getId());
         }
-        if (applicationEntity.getIndividuals() != null) {
-            List<Individual> individuals = applicationEntity.getIndividuals().stream()
-                    .map(individualEntity -> {
-                        Individual individual = new Individual();
-                        individual.setFirstName(individualEntity.getFirstName());
-                        individual.setLastName(individualEntity.getLastName());
-                        individual.setDateOfBirth(individualEntity.getDateOfBirth());
-                        individual.setDetails(individualEntity.getIndividualContent());
-                        individual.setType(individualEntity.getType());
-                        return individual;
-                    })
-                    .collect(Collectors.toList());
-            application.setIndividuals(individuals);
-        }
-        application.setCreatedAt(OffsetDateTime.ofInstant(applicationEntity.getCreatedAt(), ZoneOffset.UTC));
-        application.setUpdatedAt(OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt(), ZoneOffset.UTC));
+        application.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt(), ZoneOffset.UTC));
         return application;
     }
 }

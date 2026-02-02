@@ -38,99 +38,70 @@ class ApplicationMapperTest {
         Instant updatedAt = Instant.now();
         Set<IndividualEntity> individuals = Set.of();
 
-    ApplicationEntity expectedApplicationEntity = ApplicationEntity.builder()
-        .id(id)
-        .status(status)
-        .laaReference(laaReference)
-        .schemaVersion(schemaVersion)
-        .applicationContent(applicationContent)
-        .createdAt(createdAt)
-        .modifiedAt(updatedAt)
-        .individuals(individuals)
-        .build();
+        ApplicationEntity expectedApplicationEntity = ApplicationEntity.builder()
+                .id(id)
+                .status(status)
+                .laaReference(laaReference)
+                .schemaVersion(schemaVersion)
+                .applicationContent(applicationContent)
+                .createdAt(createdAt)
+                .modifiedAt(updatedAt)
+                .individuals(individuals)
+                .build();
 
-    Application actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
+        Application actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
 
-    assertThat(actualApplication).isNotNull();
-    assertThat(actualApplication.getId()).isEqualTo(id);
-    assertThat(actualApplication.getLaaReference()).isEqualTo(laaReference);
-    assertThat(actualApplication.getStatus()).isEqualTo(status);
-    assertThat(actualApplication.getCreatedAt()).isEqualTo(OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC));
-    assertThat(actualApplication.getUpdatedAt()).isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
-    assertThat(actualApplication.getApplicationContent())
-        .isNotNull()
-        .usingRecursiveComparison()
-        .isEqualTo(applicationContent);
-  }
+        assertThat(actualApplication).isNotNull();
+        assertThat(actualApplication.getApplicationId()).isEqualTo(id);
+        assertThat(actualApplication.getLaaReference()).isEqualTo(laaReference);
+        assertThat(actualApplication.getStatus()).isEqualTo(status);
+        assertThat(actualApplication.getLastUpdated()).isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
+    }
 
-  @Test
-  void givenApplicationEntityWithIndividuals_whenToApplication_thenMapsSetCorrectly() {
-    UUID id1 = UUID.randomUUID();
-    UUID id2 = UUID.randomUUID();
-    Set<IndividualEntity> expectedIndividuals = Set.of(
-        IndividualEntity.builder().id(id1).build(),
-        IndividualEntity.builder().id(id2).build()
-    );
-    Instant createdAt = Instant.now();
-    Instant modifiedAt = Instant.now();
 
-    ApplicationEntity expectedApplicationEntity = ApplicationEntity.builder()
-        .individuals(expectedIndividuals)
-        .createdAt(createdAt)
-        .modifiedAt(modifiedAt)
-        .build();
+    @Test
+    void givenNullApplicationEntity_whenToApplication_thenReturnsNull() {
+        ApplicationEntity entity = null;
+        assertThat(applicationMapper.toApplication(entity)).isNull();
+    }
 
-    Application actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
+    @Test
+    void givenApplicationWithNullCaseworker_whenToApplication_thenMapsFieldsCorrectlyWithNullCaseworker() {
+        Instant createdAt = Instant.now();
+        Instant modifiedAt = Instant.now();
+        Set<IndividualEntity> individuals = Set.of();
+        CaseworkerEntity caseworker = null;
 
-    assertThat(actualApplication.getIndividuals())
-        .isNotNull()
-        .hasSize(expectedIndividuals.size())
-        .allSatisfy(individual -> assertThat(individual).isInstanceOf(Individual.class));
-  }
+        ApplicationEntity expectedApplicationEntity = ApplicationEntity.builder()
+                .createdAt(createdAt)
+                .modifiedAt(modifiedAt)
+                .caseworker(caseworker)
+                .individuals(individuals)
+                .build();
 
-  @Test
-  void givenNullApplicationEntity_whenToApplication_thenReturnsNull() {
-    ApplicationEntity entity = null;
-    assertThat(applicationMapper.toApplication(entity)).isNull();
-  }
+        Application actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
+        assertThat(actualApplication.getCaseworkerId()).isNull();
+    }
 
-  @Test
-  void givenApplicationWithNullCaseworker_whenToApplication_thenMapsFieldsCorrectlyWithNullCaseworker() {
-    Instant createdAt = Instant.now();
-    Instant modifiedAt = Instant.now();
-    Set<IndividualEntity> individuals = Set.of();
-    CaseworkerEntity caseworker = null;
+    @Test
+    void givenApplicationWithCaseworker_whenToApplication_thenMapsFieldsCorrectlyWithCaseworker() {
+        UUID caseworkerId = UUID.randomUUID();
+        Instant createdAt = Instant.now();
+        Instant modifiedAt = Instant.now();
+        Set<IndividualEntity> individuals = Set.of();
 
-    ApplicationEntity expectedApplicationEntity = ApplicationEntity.builder()
-        .createdAt(createdAt)
-        .modifiedAt(modifiedAt)
-        .caseworker(caseworker)
-        .individuals(individuals)
-        .build();
+        CaseworkerEntity caseworker = CaseworkerEntity.builder().id(caseworkerId).build();
 
-    Application actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
-    assertThat(actualApplication.getCaseworkerId()).isNull();
-  }
+        ApplicationEntity expectedApplicationEntity = ApplicationEntity.builder()
+                .createdAt(createdAt)
+                .modifiedAt(modifiedAt)
+                .caseworker(caseworker)
+                .individuals(individuals)
+                .build();
 
-  @Test
-  void givenApplicationWithCaseworker_whenToApplication_thenMapsFieldsCorrectlyWithCaseworker() {
-    UUID caseworkerId = UUID.randomUUID();
-    Instant createdAt = Instant.now();
-    Instant modifiedAt = Instant.now();
-    Set<IndividualEntity> individuals = Set.of();
-
-    CaseworkerEntity caseworker = CaseworkerEntity.builder().id(caseworkerId).build();
-
-    ApplicationEntity expectedApplicationEntity = ApplicationEntity.builder()
-        .createdAt(createdAt)
-        .modifiedAt(modifiedAt)
-        .caseworker(caseworker)
-        .individuals(individuals)
-        .build();
-
-    Application actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
-    assertThat(actualApplication.getCaseworkerId()).isEqualTo(caseworkerId);
-  }
+        Application actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
+        assertThat(actualApplication.getCaseworkerId()).isEqualTo(caseworkerId);
+    }
 
     @Test
     void givenApplicationCreateRequest_whenToApplicationEntity_thenMapsFieldsCorrectly() {

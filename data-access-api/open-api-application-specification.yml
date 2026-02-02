@@ -341,37 +341,21 @@ components:
     Application:
       type: object
       required:
-        - id
+        - applicationId
         - status
-        - applicationContent
         - laaReference
-        - schemaVersion
-        - createdAt
-        - updatedAt
+        - lastUpdated
       properties:
-        id:
+        applicationId:
           type: string
           format: uuid
         status:
           $ref: "#/components/schemas/applicationStatus"
-        schemaVersion:
-          type: integer
-        applicationContent:
-          type: object
-          additionalProperties: true
         laaReference:
             type: string
-        createdAt:
+        lastUpdated:
           type: string
           format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        individuals:
-          type: array
-          items:
-            $ref: "#/components/schemas/Individual"
-          minItems: 1
         caseworkerId:
           type: string
           format: uuid
