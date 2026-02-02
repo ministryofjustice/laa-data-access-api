@@ -84,14 +84,14 @@ public class GetApplicationsTest extends BaseIntegrationTest {
             sortByField = SEARCH_SORTBY_SUBMITTED_PARAM;
         }
 
-        List<ApplicationEntity> expectedApplications =
-                sortApplications(orderByDescending, sortByField, createRangeOfSortableApplications());
-
+        List<ApplicationEntity> expectedApplications = createRangeOfSortableApplications();
         persistedApplicationFactory.persistMultiple(expectedApplications);
+        List<ApplicationEntity> expectedSortedApplications =
+                sortApplications(orderByDescending, sortByField, expectedApplications);
 
         getAndConfirmSortedApplications(
                 createUriForSorting(TestConstants.URIs.GET_APPLICATIONS, sortByParameter, orderByParameter),
-                expectedApplications);
+                expectedSortedApplications);
     }
 
     private String createUriForSorting(String uri, String sortBy, String orderBy) {
@@ -111,21 +111,21 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     private List<ApplicationEntity> createRangeOfSortableApplications() {
-        List<ApplicationEntity> expectedApplications = persistedApplicationFactory
+        List<ApplicationEntity> applications = persistedApplicationFactory
                 .createMultiple(3, builder ->
                         builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS));
 
-        int lastSubmittedDayCount = 0;
+        int submittedDayCount = 0;
         Instant referenceDate = Instant.now();
 
-        for (ApplicationEntity applicationEntity : expectedApplications) {
-            applicationEntity.setSubmittedAt(referenceDate.plus(lastSubmittedDayCount++, ChronoUnit.DAYS));
+        for (ApplicationEntity applicationEntity : applications) {
+            applicationEntity.setSubmittedAt(referenceDate.plus(submittedDayCount++, ChronoUnit.DAYS));
         }
 
-        return expectedApplications;
+        return applications;
     }
 
-private List<ApplicationEntity> sortApplications(boolean orderDescending,
+    private List<ApplicationEntity> sortApplications(boolean orderDescending,
                                                  String fieldToSortBy,
                                                  List<ApplicationEntity> applications) {
     return applications.stream()
