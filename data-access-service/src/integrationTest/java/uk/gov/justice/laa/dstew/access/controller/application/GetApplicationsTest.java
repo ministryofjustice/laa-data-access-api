@@ -14,8 +14,10 @@ import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -46,6 +48,76 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     public static final String SEARCH_ISAUTOGRANTED_PARAM = "isAutoGranted=";
     public static final String SEARCH_CLIENTDOB_PARAM = "clientDateOfBirth=";
     public static final String SEARCH_MATTERTYPE_PARAM = "matterType=";
+    public static final String SEARCH_SORTBY_PARAM = "sortBy=";
+    public static final String SEARCH_ORDERBY_PARAM = "orderBy=";
+
+    private List<ApplicationEntity> createRangeOfSortableApplications() {
+        List<ApplicationEntity> expectedApplications = persistedApplicationFactory
+                .createMultiple(3, builder ->
+                        builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS));
+
+        int lastSubmittedDayCount = 0;
+        Instant referenceDate = Instant.now();
+
+        for (ApplicationEntity applicationEntity : expectedApplications) {
+            applicationEntity.setSubmittedAt(referenceDate.plus(lastSubmittedDayCount++, ChronoUnit.DAYS));
+            // TODO : want to add a sortable modifiedAt field
+        }
+        return expectedApplications;
+    }
+
+    @ParameterizedTest
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @ValueSource(booleans = {true, false})
+    void givenApplicationWithoutFilteringAndOrderedBySubmittedDateAsc_whenGetApplications_thenReturnApplication(
+            boolean orderParameterPassed
+    ) throws Exception {
+
+        List<ApplicationEntity> expectedApplications = createRangeOfSortableApplications();
+        // given
+        persistedApplicationFactory.persistMultiple(expectedApplications);
+
+        // when
+        String uri = TestConstants.URIs.GET_APPLICATIONS;
+
+        if (orderParameterPassed) {
+            uri += "?" + SEARCH_ORDERBY_PARAM + "ASC";
+        }
+
+        MvcResult result = getUri(uri);
+        ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+        // then
+
+        assertOK(result);
+        List<ApplicationSummary> actualApplications = actual.getApplications();
+        assertThat(actualApplications.size()).isEqualTo(3);
+        assertEquals(actualApplications.getFirst().getApplicationId(), expectedApplications.getFirst().getId());
+        assertEquals(actualApplications.getLast().getApplicationId(), expectedApplications.getLast().getId());
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    void givenApplicationWithoutFilteringAndOrderedBySubmittedDateDesc_whenGetApplications_thenReturnApplication() throws Exception {
+
+        List<ApplicationEntity> expectedApplications = createRangeOfSortableApplications();
+        // given
+        persistedApplicationFactory.persistMultiple(expectedApplications);
+
+        // when
+        String uri = TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_ORDERBY_PARAM + "DESC";
+
+        MvcResult result = getUri(uri);
+        ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+        // then
+
+        assertOK(result);
+        List<ApplicationSummary> actualApplications = actual.getApplications();
+        assertThat(actualApplications.size()).isEqualTo(3);
+        assertEquals(actualApplications.getFirst().getApplicationId(), expectedApplications.getLast().getId());
+        assertEquals(actualApplications.getLast().getApplicationId(), expectedApplications.getFirst().getId());
+    }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)

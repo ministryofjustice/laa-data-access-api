@@ -71,13 +71,7 @@ public class ApplicationSummaryService {
           ApplicationOrderBy orderBy,
           Integer page,
           Integer pageSize) {
-    ApplicationSortFields sortField = (sortBy == null)
-            ? ApplicationSortFields.SUBMITTED_DATE : ApplicationSortFields.valueOf(sortBy.getValue());
-    Sort.Direction direction = (orderBy == null)
-            ? Sort.Direction.ASC : Sort.Direction.fromString(orderBy.getValue());
-
-    Sort dataReturnedSortOrder = Sort.by(direction, sortField.getValue());
-    Pageable pageDetails = PageRequest.of(page, pageSize, dataReturnedSortOrder);
+    Pageable pageDetails = PageRequest.of(page, pageSize, createSort(sortBy, orderBy));
 
     if (userId != null && caseworkerRepository.countById(userId) == 0L) {
       throw new ValidationException(List.of("Caseworker not found"));
@@ -95,5 +89,15 @@ public class ApplicationSummaryService {
                                     isAutoGranted),
                     pageDetails)
             .map(mapper::toApplicationSummary);
+  }
+
+  private Sort createSort(ApplicationSortBy sortBy,
+                          ApplicationOrderBy orderBy) {
+    ApplicationSortFields sortField = (sortBy == null)
+            ? ApplicationSortFields.SUBMITTED_DATE : ApplicationSortFields.valueOf(sortBy.getValue());
+    Sort.Direction direction = (orderBy == null)
+            ? Sort.Direction.ASC : Sort.Direction.fromString(orderBy.getValue());
+
+    return Sort.by(direction, sortField.getValue());
   }
 }
