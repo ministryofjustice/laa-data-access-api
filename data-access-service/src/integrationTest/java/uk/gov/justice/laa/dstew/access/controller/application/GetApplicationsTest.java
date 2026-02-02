@@ -51,6 +51,33 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     public static final String SEARCH_SORTBY_PARAM = "sortBy=";
     public static final String SEARCH_ORDERBY_PARAM = "orderBy=";
 
+    private static Stream<Arguments> something() {
+        return Stream.of(
+                Arguments.of(""),
+                Arguments.of("?" + SEARCH_ORDERBY_PARAM + "ASC"),
+                Arguments.of("?" + SEARCH_ORDERBY_PARAM + "DESC")
+        );
+    }
+
+    @ParameterizedTest
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @MethodSource("something")
+    void givenApplicationWithoutFilteringAndOrderedBy_whenGetApplications_thenReturnApplication(
+            String parameterQuery
+    ) throws Exception {
+
+        boolean sortDescending = parameterQuery.endsWith("DESC");
+
+        List<ApplicationEntity> expectedApplications =
+                sortApplications(sortDescending, createRangeOfSortableApplications());
+
+        persistedApplicationFactory.persistMultiple(expectedApplications);
+
+        getAndConfirmSortedApplications(
+                TestConstants.URIs.GET_APPLICATIONS + parameterQuery,
+                expectedApplications);
+    }
+
     private List<ApplicationEntity> createRangeOfSortableApplications() {
         List<ApplicationEntity> expectedApplications = persistedApplicationFactory
                 .createMultiple(3, builder ->
@@ -61,62 +88,34 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
         for (ApplicationEntity applicationEntity : expectedApplications) {
             applicationEntity.setSubmittedAt(referenceDate.plus(lastSubmittedDayCount++, ChronoUnit.DAYS));
-            // TODO : want to add a sortable modifiedAt field
         }
+
         return expectedApplications;
     }
 
-    @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.READER)
-    @ValueSource(booleans = {true, false})
-    void givenApplicationWithoutFilteringAndOrderedBySubmittedDateAsc_whenGetApplications_thenReturnApplication(
-            boolean orderParameterPassed
-    ) throws Exception {
-
-        List<ApplicationEntity> expectedApplications = createRangeOfSortableApplications();
-        // given
-        persistedApplicationFactory.persistMultiple(expectedApplications);
-
-        // when
-        String uri = TestConstants.URIs.GET_APPLICATIONS;
-
-        if (orderParameterPassed) {
-            uri += "?" + SEARCH_ORDERBY_PARAM + "ASC";
+private List<ApplicationEntity> sortApplications(boolean orderDescending,
+                                                 List<ApplicationEntity> applications) {
+    return applications.stream()
+      .sorted((a1, a2) -> {
+            if (orderDescending) {
+                return a2.getSubmittedAt().compareTo(a1.getSubmittedAt());
+            }
+          return a1.getSubmittedAt().compareTo(a2.getSubmittedAt());
         }
-
-        MvcResult result = getUri(uri);
-        ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
-
-        // then
-
-        assertOK(result);
-        List<ApplicationSummary> actualApplications = actual.getApplications();
-        assertThat(actualApplications.size()).isEqualTo(3);
-        assertEquals(actualApplications.getFirst().getApplicationId(), expectedApplications.getFirst().getId());
-        assertEquals(actualApplications.getLast().getApplicationId(), expectedApplications.getLast().getId());
+      )
+      .toList();
     }
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
-    void givenApplicationWithoutFilteringAndOrderedBySubmittedDateDesc_whenGetApplications_thenReturnApplication() throws Exception {
-
-        List<ApplicationEntity> expectedApplications = createRangeOfSortableApplications();
-        // given
-        persistedApplicationFactory.persistMultiple(expectedApplications);
-
-        // when
-        String uri = TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_ORDERBY_PARAM + "DESC";
+    private void getAndConfirmSortedApplications(String uri,
+                                        List<ApplicationEntity> expectedApplications) throws Exception {
 
         MvcResult result = getUri(uri);
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
-
-        // then
-
         assertOK(result);
         List<ApplicationSummary> actualApplications = actual.getApplications();
-        assertThat(actualApplications.size()).isEqualTo(3);
-        assertEquals(actualApplications.getFirst().getApplicationId(), expectedApplications.getLast().getId());
-        assertEquals(actualApplications.getLast().getApplicationId(), expectedApplications.getFirst().getId());
+        assertThat(actualApplications.size()).isEqualTo(expectedApplications.size());
+        assertEquals(actualApplications.getFirst().getApplicationId(), expectedApplications.getFirst().getId());
+        assertEquals(actualApplications.getLast().getApplicationId(), expectedApplications.getLast().getId());
     }
 
     @Test
