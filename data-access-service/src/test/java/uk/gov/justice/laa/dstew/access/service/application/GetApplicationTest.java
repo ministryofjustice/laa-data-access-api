@@ -90,11 +90,6 @@ public class GetApplicationTest extends BaseServiceTest {
     public void assertApplicationEqual(ApplicationEntity expectedApplication, Application actualApplication) {
         assertThat(actualApplication.getStatus()).isEqualTo(expectedApplication.getStatus());
         assertThat(actualApplication.getLaaReference()).isEqualTo(expectedApplication.getLaaReference());
-        assertThat(actualApplication.getApplicationContent())
-                .usingRecursiveComparison()
-                .ignoringCollectionOrder()
-                .isEqualTo(expectedApplication.getApplicationContent());
 
-        assertIndividualCollectionsEqual(actualApplication.getIndividuals(), expectedApplication.getIndividuals());
     }
 }

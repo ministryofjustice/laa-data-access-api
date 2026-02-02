@@ -1,8 +1,10 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -42,14 +44,16 @@ public interface ApplicationMapper {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setStatus(req.getStatus());
     entity.setLaaReference(req.getLaaReference());
+    ObjectMapper mapper = MapperUtil.getObjectMapper();
     var individuals = req.getIndividuals()
         .stream()
         .map(individualMapper::toIndividualEntity)
         .collect(Collectors.toSet());
-    entity.setApplicationContent(req.getApplicationContent());
+    entity.setApplicationContent(mapper.convertValue(req.getApplicationContent(), Map.class));
     entity.setIndividuals(individuals);
     return entity;
   }
+
 
   /**
    * Updates an existing {@link ApplicationEntity} using values from an {@link ApplicationUpdateRequest}.
@@ -79,25 +83,20 @@ public interface ApplicationMapper {
     }
 
     Application application = new Application();
-    application.setId(entity.getId());
+    application.setApplicationId(entity.getId());
     application.setStatus(entity.getStatus());
-    application.setSchemaVersion(entity.getSchemaVersion());
-    application.setApplicationContent(entity.getApplicationContent());
     application.setLaaReference(entity.getLaaReference());
     application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
-    application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
-    application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
-
-    application.setIndividuals(getIndividuals(entity.getIndividuals()));
+    application.setLastUpdated(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
 
     return application;
   }
 
   private static List<Individual> getIndividuals(Set<IndividualEntity> individuals) {
     return individuals
-          .stream()
-          .map(individualMapper::toIndividual)
-          .filter(Objects::nonNull)
-          .toList();
+        .stream()
+        .map(individualMapper::toIndividual)
+        .filter(Objects::nonNull)
+        .toList();
   }
 }

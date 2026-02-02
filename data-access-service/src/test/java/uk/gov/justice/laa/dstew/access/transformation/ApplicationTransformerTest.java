@@ -24,19 +24,19 @@ public class ApplicationTransformerTest {
   @Test
   void givenApplicationAndRoleProceedingsReader_whenTransform_thenOnlyCorrectFieldsArePresent() {
     Application request = Application.builder()
-        .id(UUID.randomUUID())
+        .applicationId(UUID.randomUUID())
         .build();
 
     when(mockEntra.hasAppRole("ProceedingReader")).thenReturn(true);
 
     Application response = classUnderTest.transform(request);
-    assertThat(response.getId()).isEqualTo(request.getId());
+    assertThat(response.getApplicationId()).isEqualTo(request.getApplicationId());
   }
 
   @Test
   void givenApplicationAndNoRole_whenTransform_thenNoFieldsAreTransformed() {
     Application request = Application.builder()
-        .id(UUID.randomUUID())
+        .applicationId(UUID.randomUUID())
         .build();
 
     when(mockEntra.hasAppRole("ProceedingReader")).thenReturn(false);

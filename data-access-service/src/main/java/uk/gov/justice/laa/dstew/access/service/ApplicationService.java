@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -26,8 +27,10 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
@@ -52,6 +55,7 @@ public class ApplicationService {
   private final DecisionRepository decisionRepository;
   private final ProceedingRepository proceedingRepository;
   private final MeritsDecisionRepository meritsDecisionRepository;
+  private final ProceedingsService proceedingsService;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -70,17 +74,19 @@ public class ApplicationService {
                             final DomainEventService domainEventService,
                             final ApplicationContentParserService applicationContentParserService,
                             final ProceedingRepository proceedingRepository,
-                            final MeritsDecisionRepository meritsDecisionRepository) {
+                            final MeritsDecisionRepository meritsDecisionRepository,
+                            final ProceedingsService proceedingsService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
     this.applicationContentParser = applicationContentParserService;
+    this.proceedingRepository = proceedingRepository;
+    this.proceedingsService = proceedingsService;
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
     this.caseworkerRepository = caseworkerRepository;
     this.domainEventService = domainEventService;
     this.decisionRepository = decisionRepository;
-    this.proceedingRepository = proceedingRepository;
     this.meritsDecisionRepository = meritsDecisionRepository;
   }
 
@@ -105,14 +111,16 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public UUID createApplication(final ApplicationCreateRequest req) {
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
-    setValuesFromApplicationContent(req, entity);
+    RequestApplicationContent requestApplicationContent =
+        objectMapper.convertValue(req.getApplicationContent(), RequestApplicationContent.class);
+    setValuesFromApplicationContent(entity, requestApplicationContent);
     entity.setSchemaVersion(applicationVersion);
 
     final ApplicationEntity saved = applicationRepository.save(entity);
 
-
+    
+    proceedingsService.saveProceedings(requestApplicationContent.getApplicationContent(), saved.getId());
     domainEventService.saveCreateApplicationDomainEvent(saved, null);
-
     createAndSendHistoricRecord(saved, null);
 
     return saved.getId();
@@ -121,18 +129,16 @@ public class ApplicationService {
   /**
    * Sets key fields in the application entity based on parsed application content.
    *
-   * @param req    application create request
    * @param entity application entity to update
+   * @param requestAppContent application content from the request
    */
-  private void setValuesFromApplicationContent(ApplicationCreateRequest req, ApplicationEntity entity) {
-    if (!req.getApplicationContent().containsKey("applicationContent")) {
-      throw new ResourceNotFoundException("No application content found");
-    }
-    Map<String, Object> applicationContent =
-        objectMapper.convertValue(req.getApplicationContent().get("applicationContent"), Map.class);
-    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(applicationContent);
+  private void setValuesFromApplicationContent(ApplicationEntity entity,
+                                               RequestApplicationContent requestAppContent) {
+
+
+    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(requestAppContent);
     entity.setApplyApplicationId(parsedContentDetails.applyApplicationId());
-    entity.setUseDelegatedFunctions(parsedContentDetails.useDelegatedFunctions());
+    entity.setUseDelegatedFunctions(parsedContentDetails.usedDelegatedFunctions());
     entity.setCategoryOfLaw(parsedContentDetails.categoryOfLaw());
     entity.setMatterType(parsedContentDetails.matterType());
     entity.setSubmittedAt(parsedContentDetails.submittedAt());
@@ -300,6 +306,8 @@ public class ApplicationService {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     checkIfCaseworkerExists(request.getUserId());
 
+    applicationValidations.checkApplicationMakeDecisionRequest(request);
+
     application.setStatus(request.getApplicationStatus());
     application.setModifiedAt(Instant.now());
     applicationRepository.save(application);
@@ -312,13 +320,15 @@ public class ApplicationService {
 
     Set<MeritsDecisionEntity> merits = new LinkedHashSet<>(decision.getMeritsDecisions());
 
-    request.getProceedings().forEach(proceeding -> {
+    List<UUID> proceedingIds = request.getProceedings().stream()
+        .map(MakeDecisionProceeding::getProceedingId)
+        .toList();
+    List<ProceedingEntity> proceedingEntities = checkIfAllProceedingsExistForApplication(applicationId, proceedingIds);
+    Map<UUID, ProceedingEntity> proceedingEntityMap = proceedingEntities.stream()
+        .collect(Collectors.toMap(ProceedingEntity::getId, proceeding -> proceeding));
 
-      ProceedingEntity proceedingEntity = proceedingRepository.findById(proceeding.getProceedingId())
-              .orElseThrow(
-                      () -> new ResourceNotFoundException(
-                              String.format("No proceeding found with id: %s", proceeding.getProceedingId()))
-              );
+    request.getProceedings().forEach(proceeding -> {
+      ProceedingEntity proceedingEntity = proceedingEntityMap.get(proceeding.getProceedingId());
 
       MeritsDecisionEntity meritDecisionEntity = decision.getMeritsDecisions().stream()
               .filter(m -> m.getProceeding().getId().equals(proceeding.getProceedingId()))
@@ -349,5 +359,46 @@ public class ApplicationService {
               request
       );
     }
+  }
+
+  /**
+   * Checks that all provided proceeding IDs exist and are linked to the specified application.
+   * Throws a {@link ResourceNotFoundException} if any proceeding does not exist or is not linked to the given application.
+   *
+   * @param applicationId the UUID of the application to check proceedings against
+   * @param proceedingIds the list of proceeding UUIDs to validate
+   * @return a list of {@link ProceedingEntity} objects corresponding to the provided IDs
+   * @throws ResourceNotFoundException if any proceeding is missing or not linked to the application
+   */
+  private List<ProceedingEntity> checkIfAllProceedingsExistForApplication(final UUID applicationId,
+                                                                          final List<UUID> proceedingIds) {
+    List<UUID> idsToFetch = proceedingIds.stream().distinct().toList();
+    List<ProceedingEntity> proceedings = proceedingRepository.findAllById(idsToFetch);
+
+    List<UUID> foundProceedingIds = proceedings.stream()
+        .map(ProceedingEntity::getId)
+        .toList();
+
+    String proceedingIdsNotFound = idsToFetch.stream()
+        .filter(id -> !foundProceedingIds.contains(id))
+        .map(UUID::toString)
+        .collect(Collectors.joining(","));
+
+    String proceedingIdsNotLinkedToApplication = proceedings.stream()
+        .filter(p -> !p.getApplicationId().equals(applicationId))
+        .map(p -> p.getId().toString())
+        .collect(Collectors.joining(","));
+
+    if (!proceedingIdsNotFound.isEmpty() || !proceedingIdsNotLinkedToApplication.isEmpty()) {
+      List<String> errors = new ArrayList<>();
+      if (!proceedingIdsNotFound.isEmpty()) {
+        errors.add("No proceeding found with id: " + proceedingIdsNotFound);
+      }
+      if (!proceedingIdsNotLinkedToApplication.isEmpty()) {
+        errors.add("Not linked to application: " + proceedingIdsNotLinkedToApplication);
+      }
+      throw new ResourceNotFoundException(String.join("; ", errors));
+    }
+    return proceedings;
   }
 }
