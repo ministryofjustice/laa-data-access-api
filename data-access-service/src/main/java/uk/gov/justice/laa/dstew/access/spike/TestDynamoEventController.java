@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import uk.gov.justice.laa.dstew.access.config.DomainEventScheduler;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.spike.dynamo.DomainEventDynamoDB;
 
 /**
@@ -23,16 +25,18 @@ public class TestDynamoEventController {
 
   private final DynamoDbService dynamoDbService;
   private final S3UploadService s3UploadService;
+  private final DomainEventScheduler domainEventScheduler;
 
-
-  public TestDynamoEventController(DynamoDbService dynamoDbService, S3UploadService s3UploadService) {
+  public TestDynamoEventController(DynamoDbService dynamoDbService, S3UploadService s3UploadService,
+                                   DomainEventScheduler domainEventScheduler) {
     this.dynamoDbService = dynamoDbService;
     this.s3UploadService = s3UploadService;
+    this.domainEventScheduler = domainEventScheduler;
   }
 
   @PostMapping(value = "/events", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
   public void saveEvent(@RequestBody Event event) {
-    S3UploadResult s3UploadResult = s3UploadService.upload(event, "laa-data-stewardship-access-bucket", "test-key");
+    S3UploadResult s3UploadResult = s3UploadService.upload(event, "laa-data-stewardship-access-bucket", event.applicationId());
     CompletableFuture<Event> eventCompletableFuture = dynamoDbService.saveDomainEvent(event, s3UploadResult.getS3Url());
     eventCompletableFuture.whenComplete((event1, throwable) -> {
         if (throwable != null) {
@@ -56,20 +60,28 @@ public class TestDynamoEventController {
   }
 
   @GetMapping(value = "dynamo/events/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-  public List<DomainEventDynamoDB> getEvents(@PathVariable String id,
-                                             @RequestParam (required = false) List<EventType> eventTypes, @RequestParam (required = false) String caseworkerId) {
+  public List<Event> getEvents(@PathVariable String id,
+                               @RequestParam (required = false) List<DomainEventType> eventTypes, @RequestParam (required = false) String caseworkerId) {
     if(caseworkerId != null) {
-      return dynamoDbService.getDomainEventDynamoDBForCasework(id, caseworkerId, eventTypes
+      return dynamoDbService.getDomainEventDynamoDBForCasework(id, caseworkerId, eventTypes != null ? eventTypes
           .stream()
-              .findFirst().orElse(null)
+              .findFirst().orElse(null) : null
           );
     }
 
     if (eventTypes != null) {
-      return dynamoDbService.getAllApplicationsByIdAndEventType(id, eventTypes);
+      return dynamoDbService.getAllApplicationsByIdAndEventType(id, eventTypes).stream().map(Event::fromDynamoEntity).toList();
     }
-    return dynamoDbService.getAllApplicationsById(id);
+    return dynamoDbService.getAllApplicationsById(id).stream().map(Event::fromDynamoEntity).toList();
 
+  }
+
+  @GetMapping(value = "publish", produces = MediaType.APPLICATION_JSON_VALUE)
+  public int publishEvents() {
+    // This is just a trigger endpoint for local testing
+
+    domainEventScheduler.processDomainEvents();
+    return 0;
   }
 
 }

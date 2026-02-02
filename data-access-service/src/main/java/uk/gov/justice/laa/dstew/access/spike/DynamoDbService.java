@@ -21,6 +21,7 @@ import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity;
 import software.amazon.awssdk.services.dynamodb.model.ReturnItemCollectionMetrics;
 import software.amazon.awssdk.services.dynamodb.model.ReturnValue;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.spike.dynamo.DomainEventDynamoDB;
 
 /**
@@ -54,18 +55,16 @@ public class DynamoDbService {
     }
 
     try {
-      String eventId = eventRecord.eventId() != null ? eventRecord.eventId() : UUID.randomUUID().toString();
+      String eventId = eventRecord.applicationId() != null ? eventRecord.applicationId() : UUID.randomUUID().toString();
       Instant timestamp = eventRecord.timestamp() != null ? eventRecord.timestamp() : Instant.now();
 
       DomainEventDynamoDB domainEventDynamoDB = DomainEventDynamoDB.builder()
-          .pk(DynamoKeyBuilder.pk(APPLICATION, eventId))
-          .sk(DynamoKeyBuilder.sk(eventRecord.eventType(), timestamp))
-          .s3location(s3url)
+          .applicationId(eventId)
           .type(eventRecord.eventType().toString())
+          .s3location(s3url)
           .description(eventRecord.description())
           .createdAt(timestamp.toString())
-          .applicationId(eventId)  // Set applicationId for gs1pk fallback when caseworkerId is null
-          .caseworkerId(CASEWORKER + eventRecord.caseworkerId())
+          .caseworkerId(eventRecord.caseworkerId())
           .build();
 
       // Use putItem variant that returns a PutItemEnhancedResponse so callers can inspect metadata
@@ -78,9 +77,8 @@ public class DynamoDbService {
 
       PutItemEnhancedResponse<DomainEventDynamoDB> domainEventDynamoDBPutItemEnhancedResponse =
           eventTable.putItemWithResponse(putReq);
-
-      domainEventDynamoDBPutItemEnhancedResponse.attributes(); // Access attributes if needed
-      // The Enhanced Client automatically populates computed fields (gs1pk, gs1sk) when the item is persisted
+      DomainEventDynamoDB attributes = domainEventDynamoDBPutItemEnhancedResponse.attributes();// Access attributes if needed
+// The Enhanced Client automatically populates computed fields (gs1pk, gs1sk) when the item is persisted
       // For a successful put, we can use the original item since the computed fields will be applied by DynamoDB
       return CompletableFuture.completedFuture(Event.fromDynamoEntity(domainEventDynamoDB));
     } catch (Exception e) {
@@ -111,14 +109,31 @@ public class DynamoDbService {
     ).toList();
   }
 
-  public List<DomainEventDynamoDB> getAllApplicationsByIdAndEventType(String id, List<EventType> eventType) {
+  public List<DomainEventDynamoDB> getAllApplicationsByIdUntilTime(String id, Instant untilTime) {
+    QueryRequest queryRequest = QueryRequest.builder()
+        .tableName(tableName)
+        .indexName("gs-index-1")
+        .keyConditionExpression("gs1pk = :gs1pkVal AND begins_with(gs1sk, :gs1skVal)")
+        .expressionAttributeValues(Map.of(
+            ":gs2pkVal", AttributeValue.fromS(DynamoKeyBuilder.pk(APPLICATION, id)),
+            ":gs2skVal", AttributeValue.fromS(untilTime.toString())
+        )).build();
+    QueryResponse response = dynamoDbClient.query(queryRequest);
+
+    return response.items().stream().map(item -> TableSchema.fromBean(DomainEventDynamoDB.class)
+        .mapToItem(item)
+    ).toList();
+  }
+
+  public List<DomainEventDynamoDB> getAllApplicationsByIdAndEventType(String id,
+  List<DomainEventType> eventType) {
     return eventType.stream()
         .map(et -> getDomainEventDynamoDBList(id, et))
         .flatMap(List::stream)
         .toList();
   }
 
-  private @NonNull List<DomainEventDynamoDB> getDomainEventDynamoDBList(String id, EventType eventType) {
+  private @NonNull List<DomainEventDynamoDB> getDomainEventDynamoDBList(String id, DomainEventType eventType) {
     QueryRequest queryRequest = QueryRequest.builder()
         .tableName(eventTable.tableName())
         .keyConditionExpression("pk = :uid AND begins_with(sk, :etype)")
@@ -134,7 +149,7 @@ public class DynamoDbService {
     ).toList();
   }
 
-  public List<DomainEventDynamoDB> getDomainEventDynamoDBForCasework(String id, String caseworkerId, EventType eventType) {
+  public List<Event> getDomainEventDynamoDBForCasework(String id, String caseworkerId, DomainEventType eventType) {
     String pk = DynamoKeyBuilder.pk(APPLICATION, id);
 
     QueryRequest queryRequest = QueryRequest.builder()
@@ -147,10 +162,10 @@ public class DynamoDbService {
         )).build();
 
     QueryResponse response = dynamoDbClient.query(queryRequest);
+    // If index table is not full copy then will need look up for main table to get full details
 
-    return response.items().stream().map(item -> TableSchema.fromBean(DomainEventDynamoDB.class)
-        .mapToItem(item)
-    ).toList();
+    return response.items().stream().map(Event::fromAttributeValueMap).filter(e -> e.eventType().equals(eventType))
+        .toList();
   }
   
 }

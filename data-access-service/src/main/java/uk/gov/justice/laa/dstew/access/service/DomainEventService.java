@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
@@ -231,5 +232,10 @@ public class DomainEventService {
             DomainEventType.APPLICATION_MAKE_DECISION_REFUSED,
             domainEventDetails
     );
+  }
+
+  @Transactional
+  public int updateEventsPublishedStatus(List<UUID> eventIds) {
+    return domainEventRepository.setIsPublishedTrueForEventId(eventIds);
   }
 }

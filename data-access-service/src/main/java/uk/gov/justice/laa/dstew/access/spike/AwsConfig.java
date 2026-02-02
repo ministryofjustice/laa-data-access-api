@@ -68,7 +68,9 @@ public class AwsConfig {
   public S3Client s3Client() {
     S3ClientBuilder builder = S3Client.builder()
         .forcePathStyle(true)
-        .serviceConfiguration(S3Configuration.builder().checksumValidationEnabled(false).build())
+        .serviceConfiguration(S3Configuration.builder()
+//            .checksumValidationEnabled(false)
+            .build())
         .region(Region.of(awsRegion));
     // If an explicit endpoint is provided (localstack, etc.) configure it
     if (awsEndpoint != null && !awsEndpoint.isBlank()) {
