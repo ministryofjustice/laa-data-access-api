@@ -95,8 +95,15 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "submitted_at")
   private Instant submittedAt;
 
+  @Column(name = "is_lead")
+  private Boolean isLead;
+
+  @OneToOne()
+  @JoinColumn(name = "id", referencedColumnName = "application_id")
+  private DecisionEntity decision;
+
   @Column(name = "used_delegated_functions")
-  private boolean useDelegatedFunctions;
+  private Boolean usedDelegatedFunctions;
 
   @Column(name = "category_of_law")
   @Enumerated(EnumType.STRING)
