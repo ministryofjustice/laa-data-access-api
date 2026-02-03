@@ -17,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 
@@ -86,8 +87,20 @@ public interface ApplicationMapper {
     application.setApplicationId(entity.getId());
     application.setStatus(entity.getStatus());
     application.setLaaReference(entity.getLaaReference());
-    application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
+    application.assignedTo(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
     application.setLastUpdated(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
+    application.setSubmittedAt(
+        entity.getSubmittedAt() != null
+            ? OffsetDateTime.ofInstant(entity.getSubmittedAt(), ZoneOffset.UTC)
+            : null
+    );
+    application.setIsLead(entity.getIsLead());
+    application.setUseDelegatedFunctions(entity.getUsedDelegatedFunctions());
+    application.setAutoGrant(entity.getIsAutoGranted());
+    if (entity.getDecision() != null) {
+      application.setOverallDecision(entity.getDecision().getOverallDecision());
+    }
+    application.setApplicationType(ApplicationType.INITIAL);
 
     return application;
   }

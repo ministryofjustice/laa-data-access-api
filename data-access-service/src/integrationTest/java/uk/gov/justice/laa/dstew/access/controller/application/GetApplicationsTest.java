@@ -756,7 +756,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         applicationSummary.setStatus(applicationEntity.getStatus());
         applicationSummary.setSubmittedAt(applicationEntity.getSubmittedAt().atOffset(ZoneOffset.UTC));
         applicationSummary.setLastUpdated(applicationEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-        applicationSummary.setUsedDelegatedFunctions(applicationEntity.isUseDelegatedFunctions());
+        applicationSummary.setUsedDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
         applicationSummary.setCategoryOfLaw(applicationEntity.getCategoryOfLaw());
         applicationSummary.setMatterType(applicationEntity.getMatterType());
         applicationSummary.setAssignedTo(applicationEntity.getCaseworker() != null ? applicationEntity.getCaseworker().getId() : null);

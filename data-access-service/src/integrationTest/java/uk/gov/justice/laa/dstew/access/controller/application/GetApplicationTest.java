@@ -101,9 +101,16 @@ public class GetApplicationTest extends BaseIntegrationTest {
         application.setApplicationId(applicationEntity.getId());
         application.setStatus(applicationEntity.getStatus());
         if (applicationEntity.getCaseworker() != null) {
-            application.setCaseworkerId(applicationEntity.getCaseworker().getId());
+            application.setAssignedTo(applicationEntity.getCaseworker().getId());
         }
         application.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt(), ZoneOffset.UTC));
+        application.setSubmittedAt(
+            applicationEntity.getSubmittedAt() != null
+                ? OffsetDateTime.ofInstant(applicationEntity.getSubmittedAt(), ZoneOffset.UTC)
+                : null
+        );
+        application.setUseDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
+        application.setAutoGrant(applicationEntity.getIsAutoGranted());
         return application;
     }
 }

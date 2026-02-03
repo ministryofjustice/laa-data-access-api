@@ -307,6 +307,7 @@ components:
       type: string
       enum:
         - INITIAL
+      default: INITIAL
 
     individualType:
       type: string
@@ -356,9 +357,22 @@ components:
         lastUpdated:
           type: string
           format: date-time
-        caseworkerId:
+        assignedTo:
           type: string
           format: uuid
+        submittedAt:
+          type: string
+          format: date-time
+        isLead:
+          type: boolean
+        useDelegatedFunctions:
+          type: boolean
+        autoGrant:
+          type: boolean
+        overallDecision:
+          $ref: "#/components/schemas/decisionStatus"
+        applicationType:
+          $ref: "#/components/schemas/applicationType"
 
     ApplicationCreateRequest:
       type: object
