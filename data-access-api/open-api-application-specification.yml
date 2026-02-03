@@ -611,6 +611,7 @@ components:
         - overallDecision
         - proceedings
         - eventHistory
+        - autoGranted
       properties:
         userId:
           type: string
@@ -626,3 +627,5 @@ components:
             $ref: "#/components/schemas/makeDecisionProceeding"
         eventHistory:
           $ref: "#/components/schemas/EventHistory"
+        autoGranted:
+          type: boolean
