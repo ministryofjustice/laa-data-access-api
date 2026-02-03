@@ -6,9 +6,13 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSortFields;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -63,9 +67,11 @@ public class ApplicationSummaryService {
           UUID userId,
           Boolean isAutoGranted,
           MatterType matterType,
+          ApplicationSortBy sortBy,
+          ApplicationOrderBy orderBy,
           Integer page,
           Integer pageSize) {
-    Pageable pageDetails = PageRequest.of(page, pageSize);
+    Pageable pageDetails = PageRequest.of(page, pageSize, createSortAndOrderBy(sortBy, orderBy));
 
     if (userId != null && caseworkerRepository.countById(userId) == 0L) {
       throw new ValidationException(List.of("Caseworker not found"));
@@ -83,5 +89,15 @@ public class ApplicationSummaryService {
                                     isAutoGranted),
                     pageDetails)
             .map(mapper::toApplicationSummary);
+  }
+
+  private Sort createSortAndOrderBy(ApplicationSortBy sortBy,
+                          ApplicationOrderBy orderBy) {
+    ApplicationSortFields sortField = (sortBy == null)
+            ? ApplicationSortFields.SUBMITTED_DATE : ApplicationSortFields.valueOf(sortBy.getValue());
+    Sort.Direction direction = (orderBy == null)
+            ? Sort.Direction.ASC : Sort.Direction.fromString(orderBy.getValue());
+
+    return Sort.by(direction, sortField.getValue());
   }
 }
