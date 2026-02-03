@@ -76,7 +76,7 @@ public class ApplicationService {
                             final ApplicationContentParserService applicationContentParserService,
                             final ProceedingRepository proceedingRepository,
                             final MeritsDecisionRepository meritsDecisionRepository,
-                            final LinkedApplicationService linkedApplicationService) {
+                            final LinkedApplicationService linkedApplicationService,
                             final ProceedingsService proceedingsService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
@@ -121,13 +121,9 @@ public class ApplicationService {
 
     final ApplicationEntity saved = applicationRepository.save(entity);
 
-    Map<String, Object> applicationContent =
-        objectMapper.convertValue(
-            req.getApplicationContent().get("applicationContent"),
-            Map.class
-        );
+    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(requestApplicationContent);
 
-    linkedApplicationService.processLinkedApplications(applicationContent);
+    linkedApplicationService.processLinkedApplications(parsedContentDetails);
 
     
     proceedingsService.saveProceedings(requestApplicationContent.getApplicationContent(), saved.getId());

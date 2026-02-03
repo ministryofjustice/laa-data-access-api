@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.model;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
 
@@ -13,5 +15,6 @@ public record ParsedAppContentDetails(
     CategoryOfLaw categoryOfLaw,
     MatterType matterType,
     Instant submittedAt,
-    boolean usedDelegatedFunctions) {
+    boolean usedDelegatedFunctions,
+    List<Map<String, Object>> allLinkedApplications) {
 }

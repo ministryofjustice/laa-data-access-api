@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -36,5 +37,18 @@ public class ApplicationContentFactory
     return content;
   }
 
+  public ApplicationContent createWithLinkedApplications(UUID leadID, UUID associatedID) {
+    ApplicationContent content = createDefault();
+    content.putAdditionalApplicationContent("linkedApplications", generateLinkedApplications(leadID, associatedID));
+    return content;
+  }
 
+  private List<Map<String, String>> generateLinkedApplications(UUID leadID, UUID associatedID) {
+    return List.of(
+          Map.of(
+              "leadApplicationId", leadID.toString(),
+              "associatedApplicationId", associatedID.toString()
+          )
+      );
+  }
 }

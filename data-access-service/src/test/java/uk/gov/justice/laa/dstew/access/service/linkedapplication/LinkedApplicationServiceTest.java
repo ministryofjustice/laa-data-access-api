@@ -13,13 +13,32 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import uk.gov.justice.laa.dstew.access.entity.LinkedApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
+import uk.gov.justice.laa.dstew.access.model.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.service.LinkedApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 
 class LinkedApplicationServiceTest extends BaseServiceTest {
 
   @Autowired
   private LinkedApplicationService serviceUnderTest;
+
+  private ParsedAppContentDetails makeAppContentDetails(UUID leadId, UUID associatedId) {
+    ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
+    ApplicationContent appContent = applicationContentFactory.createWithLinkedApplications(leadId, associatedId);
+    return ParsedAppContentDetails
+        .builder()
+        .applyApplicationId(UUID.randomUUID())
+        .categoryOfLaw(CategoryOfLaw.FAMILY)
+        .matterType(MatterType.SCA)
+        .usedDelegatedFunctions(false)
+        .allLinkedApplications(
+            (List<Map<String, Object>>) appContent.getAdditionalApplicationContent().get("allLinkedApplications"))
+        .build();
+  }
 
   @Test
   void givenValidLinkedApplications_whenNotExisting_thenPersistLinks() {
@@ -27,15 +46,7 @@ class LinkedApplicationServiceTest extends BaseServiceTest {
     UUID leadId = UUID.randomUUID();
     UUID associatedId = UUID.randomUUID();
 
-    Map<String, Object> applicationContent = Map.of(
-        "allLinkedApplications",
-        List.of(
-            Map.of(
-                "leadApplicationId", leadId.toString(),
-                "associatedApplicationId", associatedId.toString()
-            )
-        )
-    );
+    ParsedAppContentDetails applicationContent = makeAppContentDetails(leadId, associatedId);
 
     when(applicationRepository.existsById(leadId)).thenReturn(true);
     when(applicationRepository.existsById(associatedId)).thenReturn(true);
@@ -61,15 +72,7 @@ class LinkedApplicationServiceTest extends BaseServiceTest {
     UUID leadId = UUID.randomUUID();
     UUID associatedId = UUID.randomUUID();
 
-    Map<String, Object> applicationContent = Map.of(
-        "allLinkedApplications",
-        List.of(
-            Map.of(
-                "leadApplicationId", leadId.toString(),
-                "associatedApplicationId", associatedId.toString()
-            )
-        )
-    );
+    ParsedAppContentDetails applicationContent = makeAppContentDetails(leadId, associatedId);
 
     when(applicationRepository.existsById(leadId)).thenReturn(true);
     when(applicationRepository.existsById(associatedId)).thenReturn(true);
@@ -88,16 +91,9 @@ class LinkedApplicationServiceTest extends BaseServiceTest {
   void givenMissingLeadApplication_whenProcessing_thenThrowResourceNotFound() {
     // given
     UUID leadId = UUID.randomUUID();
+    UUID associatedId = UUID.randomUUID();
 
-    Map<String, Object> applicationContent = Map.of(
-        "allLinkedApplications",
-        List.of(
-            Map.of(
-                "leadApplicationId", leadId.toString(),
-                "associatedApplicationId", UUID.randomUUID().toString()
-            )
-        )
-    );
+    ParsedAppContentDetails applicationContent = makeAppContentDetails(leadId, associatedId);
 
     when(applicationRepository.existsById(leadId)).thenReturn(false);
 
@@ -117,15 +113,7 @@ class LinkedApplicationServiceTest extends BaseServiceTest {
     UUID leadId = UUID.randomUUID();
     UUID associatedId = UUID.randomUUID();
 
-    Map<String, Object> applicationContent = Map.of(
-        "allLinkedApplications",
-        List.of(
-            Map.of(
-                "leadApplicationId", leadId.toString(),
-                "associatedApplicationId", associatedId.toString()
-            )
-        )
-    );
+    ParsedAppContentDetails applicationContent = makeAppContentDetails(leadId, associatedId);
 
     when(applicationRepository.existsById(leadId)).thenReturn(true);
     when(applicationRepository.existsById(associatedId)).thenReturn(false);

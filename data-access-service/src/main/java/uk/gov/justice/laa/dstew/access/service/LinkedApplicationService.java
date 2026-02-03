@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.LinkedApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.model.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 
@@ -25,9 +26,9 @@ public class LinkedApplicationService {
    * Processes linked applications from applicationContent.
    */
   @Transactional
-  public void processLinkedApplications(Map<String, Object> applicationContent) {
+  public void processLinkedApplications(ParsedAppContentDetails applicationDetails) {
 
-    Object raw = applicationContent.get("allLinkedApplications");
+    Object raw = applicationDetails.allLinkedApplications();
 
     if (!(raw instanceof List<?> rawList) || rawList.isEmpty()) {
       return;
