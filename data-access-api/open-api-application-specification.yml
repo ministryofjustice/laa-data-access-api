@@ -55,12 +55,12 @@ paths:
             $ref: "#/components/schemas/matterType"
         - in: query
           name: sortBy
-          description: The field name to sort by if sorting required
+          description: The field name to sort by if sorting required (defaults to SUBMITTED_DATE)
           schema:
             $ref: "#/components/schemas/applicationSortBy"
         - in: query
           name: orderBy
-          description: The order to sort by if sorting required
+          description: The order to sort by if sorting required (defaults to ASC)
           schema:
             $ref: "#/components/schemas/applicationOrderBy"
         - in: query

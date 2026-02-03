@@ -71,7 +71,7 @@ public class ApplicationSummaryService {
           ApplicationOrderBy orderBy,
           Integer page,
           Integer pageSize) {
-    Pageable pageDetails = PageRequest.of(page, pageSize, createSort(sortBy, orderBy));
+    Pageable pageDetails = PageRequest.of(page, pageSize, createSortAndOrderBy(sortBy, orderBy));
 
     if (userId != null && caseworkerRepository.countById(userId) == 0L) {
       throw new ValidationException(List.of("Caseworker not found"));
@@ -91,7 +91,7 @@ public class ApplicationSummaryService {
             .map(mapper::toApplicationSummary);
   }
 
-  private Sort createSort(ApplicationSortBy sortBy,
+  private Sort createSortAndOrderBy(ApplicationSortBy sortBy,
                           ApplicationOrderBy orderBy) {
     ApplicationSortFields sortField = (sortBy == null)
             ? ApplicationSortFields.SUBMITTED_DATE : ApplicationSortFields.valueOf(sortBy.getValue());
