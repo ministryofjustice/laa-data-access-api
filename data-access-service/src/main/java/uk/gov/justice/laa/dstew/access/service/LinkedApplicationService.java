@@ -27,20 +27,14 @@ public class LinkedApplicationService {
    */
   @Transactional
   public void processLinkedApplications(ParsedAppContentDetails applicationDetails) {
+    List<Map<String, Object>> links = applicationDetails.allLinkedApplications();
 
-    Object raw = applicationDetails.allLinkedApplications();
-
-    if (!(raw instanceof List<?> rawList) || rawList.isEmpty()) {
+    if (links == null || links.isEmpty()) {
       return;
     }
 
-    List<Map<String, Object>> links = rawList.stream()
-        .filter(Map.class::isInstance)
-        .map(e -> (Map<String, Object>) e)
-        .toList();
-
     UUID leadApplicationId = extractUuid(
-        links.get(0),
+        links.getFirst(),
         "leadApplicationId"
     );
 
@@ -87,12 +81,14 @@ public class LinkedApplicationService {
   private UUID extractUuid(Map<String, Object> map, String key) {
     Object value = map.get(key);
 
-    if (!(value instanceof String uuid)) {
-      throw new IllegalArgumentException(
-          "Invalid or missing " + key
-      );
+    if (value instanceof UUID uuid) {
+      return uuid;
     }
 
-    return UUID.fromString(uuid);
+    if (value instanceof String str) {
+      return UUID.fromString(str);
+    }
+
+    throw new IllegalArgumentException("Invalid or missing " + key);
   }
 }
