@@ -39,7 +39,7 @@ public class ApplicationContentFactory
 
   public ApplicationContent createWithLinkedApplications(UUID leadID, UUID associatedID) {
     ApplicationContent content = createDefault();
-    content.putAdditionalApplicationContent("linkedApplications", generateLinkedApplications(leadID, associatedID));
+    content.putAdditionalApplicationContent("allLinkedApplications", generateLinkedApplications(leadID, associatedID));
     return content;
   }
 
