@@ -1,5 +1,10 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import java.util.UUID;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,15 +16,17 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
-import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetails;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.RefusalDetails;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-
-import java.util.UUID;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
