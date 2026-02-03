@@ -104,6 +104,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
             application.setAssignedTo(applicationEntity.getCaseworker().getId());
         }
         application.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt(), ZoneOffset.UTC));
+        application.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt(), ZoneOffset.UTC));
         application.setSubmittedAt(
             applicationEntity.getSubmittedAt() != null
                 ? OffsetDateTime.ofInstant(applicationEntity.getSubmittedAt(), ZoneOffset.UTC)

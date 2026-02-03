@@ -87,6 +87,7 @@ public interface ApplicationMapper {
     application.setApplicationId(entity.getId());
     application.setStatus(entity.getStatus());
     application.setLaaReference(entity.getLaaReference());
+    application.setLastUpdated(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
     application.assignedTo(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
     application.setLastUpdated(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
     application.setSubmittedAt(
