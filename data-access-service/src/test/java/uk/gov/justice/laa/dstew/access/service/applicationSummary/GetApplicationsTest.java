@@ -4,10 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
@@ -16,11 +13,9 @@ import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
-
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
@@ -42,7 +37,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         // given
         List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(count);
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
-        Pageable pageable = PageRequest.of(0, 10);
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "submittedAt"));
 
         setSecurityContext(TestConstants.Roles.READER);
 
@@ -50,6 +45,8 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         // when
         List<ApplicationSummary> actualApplications = serviceUnderTest.getAllApplications(
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -80,7 +77,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         if (count > 0) { expectedApplications.getFirst().setCaseworker(null); }
 
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
-        Pageable pageable = PageRequest.of(0, 10);
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "submittedAt"));
 
         setSecurityContext(TestConstants.Roles.READER);
 
@@ -94,6 +91,8 @@ public class GetApplicationsTest extends BaseServiceTest {
                 null,
                 null,
                 caseworkerId,
+                null,
+                null,
                 null,
                 null,
                 0,
@@ -126,6 +125,8 @@ public class GetApplicationsTest extends BaseServiceTest {
                 UUID.randomUUID(),
                 null,
                 null,
+                null,
+                null,
                 0,
                 10
         ));
@@ -155,6 +156,8 @@ public class GetApplicationsTest extends BaseServiceTest {
                         null,
                         null,
                         null,
+                        null,
+                        null,
                         null
                 ))
                 .withMessageContaining("Access Denied");
@@ -168,6 +171,8 @@ public class GetApplicationsTest extends BaseServiceTest {
         // then
         assertThatExceptionOfType(AuthorizationDeniedException.class)
                 .isThrownBy(() -> serviceUnderTest.getAllApplications(
+                        null,
+                        null,
                         null,
                         null,
                         null,

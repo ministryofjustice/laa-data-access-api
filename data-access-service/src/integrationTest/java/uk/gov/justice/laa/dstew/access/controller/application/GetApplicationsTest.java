@@ -14,9 +14,12 @@ import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -46,6 +49,114 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     public static final String SEARCH_ISAUTOGRANTED_PARAM = "isAutoGranted=";
     public static final String SEARCH_CLIENTDOB_PARAM = "clientDateOfBirth=";
     public static final String SEARCH_MATTERTYPE_PARAM = "matterType=";
+    public static final String SEARCH_SORTBY_PARAM = "sortBy=";
+    public static final String SEARCH_ORDERBY_PARAM = "orderBy=";
+    public static final String SEARCH_SORTBY_SUBMITTED_PARAM = "SUBMITTED_DATE";
+    public static final String SEARCH_SORTBY_LAST_UPDATED_PARAM = "LAST_UPDATED_DATE";
+    public static final String SEARCH_ORDERBY_ASC_PARAM = "ASC";
+    public static final String SEARCH_ORDERBY_DESC_PARAM = "DESC";
+
+    private static Stream<Arguments> searchFieldAndOrderParameters() {
+        return Stream.of(
+                Arguments.of("", ""),
+                Arguments.of("", SEARCH_ORDERBY_ASC_PARAM),
+                Arguments.of("", SEARCH_ORDERBY_DESC_PARAM),
+                Arguments.of(SEARCH_SORTBY_SUBMITTED_PARAM, ""),
+                Arguments.of(SEARCH_SORTBY_SUBMITTED_PARAM, SEARCH_ORDERBY_ASC_PARAM),
+                Arguments.of(SEARCH_SORTBY_SUBMITTED_PARAM, SEARCH_ORDERBY_DESC_PARAM),
+                Arguments.of(SEARCH_SORTBY_LAST_UPDATED_PARAM, ""),
+                Arguments.of(SEARCH_SORTBY_LAST_UPDATED_PARAM, SEARCH_ORDERBY_ASC_PARAM),
+                Arguments.of(SEARCH_SORTBY_LAST_UPDATED_PARAM, SEARCH_ORDERBY_DESC_PARAM)
+        );
+    }
+
+    @ParameterizedTest
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @MethodSource("searchFieldAndOrderParameters")
+    void givenApplicationWithoutFilteringAndOrderedBy_whenGetApplications_thenReturnApplication(
+            String sortByParameter,
+            String orderByParameter
+    ) throws Exception {
+
+        boolean orderByDescending = orderByParameter.endsWith("DESC");
+        String sortByField = sortByParameter;
+        if (sortByField.isEmpty()) {
+            sortByField = SEARCH_SORTBY_SUBMITTED_PARAM;
+        }
+
+        List<ApplicationEntity> expectedApplications = createRangeOfSortableApplications();
+        persistedApplicationFactory.persistMultiple(expectedApplications);
+        List<ApplicationEntity> expectedSortedApplications =
+                sortApplications(orderByDescending, sortByField, expectedApplications);
+
+        getAndConfirmSortedApplications(
+                createUriForSorting(TestConstants.URIs.GET_APPLICATIONS, sortByParameter, orderByParameter),
+                expectedSortedApplications);
+    }
+
+    private String createUriForSorting(String uri, String sortBy, String orderBy) {
+
+        String orderByQuery = SEARCH_ORDERBY_PARAM + orderBy;
+        String sortByQuery = SEARCH_SORTBY_PARAM + sortBy;
+
+        if (!sortBy.isEmpty()) {
+            uri += "?" + sortByQuery;
+        }
+
+        if (!orderBy.isEmpty()) {
+            uri += (sortBy.isEmpty()) ? "?" + orderByQuery : "&" + orderByQuery;
+        }
+
+        return uri;
+    }
+
+    private List<ApplicationEntity> createRangeOfSortableApplications() {
+        List<ApplicationEntity> applications = persistedApplicationFactory
+                .createMultiple(3, builder ->
+                        builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS));
+
+        int submittedDayCount = 0;
+        Instant referenceDate = Instant.now();
+
+        for (ApplicationEntity applicationEntity : applications) {
+            applicationEntity.setSubmittedAt(referenceDate.plus(submittedDayCount++, ChronoUnit.DAYS));
+        }
+
+        return applications;
+    }
+
+    private List<ApplicationEntity> sortApplications(boolean orderDescending,
+                                                 String fieldToSortBy,
+                                                 List<ApplicationEntity> applications) {
+    return applications.stream()
+      .sorted((a1, a2) -> {
+            if (orderDescending) {
+                if (Objects.equals(fieldToSortBy, SEARCH_SORTBY_SUBMITTED_PARAM)) {
+                    return a2.getSubmittedAt().compareTo(a1.getSubmittedAt());
+                }
+                return a2.getModifiedAt().compareTo(a1.getModifiedAt());
+            }
+
+            if (Objects.equals(fieldToSortBy, SEARCH_SORTBY_SUBMITTED_PARAM)) {
+              return a1.getSubmittedAt().compareTo(a2.getSubmittedAt());
+            }
+            return a1.getModifiedAt().compareTo(a2.getModifiedAt());
+        }
+      )
+      .toList();
+    }
+
+    private void getAndConfirmSortedApplications(String uri,
+                                        List<ApplicationEntity> expectedApplications) throws Exception {
+
+        MvcResult result = getUri(uri);
+        ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+        assertOK(result);
+        List<ApplicationSummary> actualApplications = actual.getApplications();
+        assertThat(actualApplications.size()).isEqualTo(expectedApplications.size());
+        assertEquals(actualApplications.getFirst().getApplicationId(), expectedApplications.getFirst().getId());
+        assertEquals(actualApplications.getLast().getApplicationId(), expectedApplications.getLast().getId());
+    }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
