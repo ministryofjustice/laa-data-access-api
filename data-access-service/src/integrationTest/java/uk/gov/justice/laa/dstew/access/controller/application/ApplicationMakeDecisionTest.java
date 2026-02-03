@@ -260,7 +260,8 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                         "reason1"),
                     createMakeDecisionProceeding(proceedingNotLinkedToApplication.getId(), MeritsDecisionStatus.GRANTED,
                         "justification2", "reason2")
-                ));
+                ))
+                .autoGranted(true);
         });
 
         // when
