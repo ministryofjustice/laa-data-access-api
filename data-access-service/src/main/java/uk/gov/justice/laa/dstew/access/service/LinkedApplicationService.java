@@ -46,7 +46,7 @@ public class LinkedApplicationService {
 
     if (!applicationRepository.existsById(leadApplicationId)) {
       throw new ResourceNotFoundException(
-          "No application found with id: " + leadApplicationId
+          "Linking failed > Lead application not found, ID: " + leadApplicationId
       );
     }
 
@@ -62,7 +62,7 @@ public class LinkedApplicationService {
 
       if (!applicationRepository.existsById(associatedApplicationId)) {
         throw new ResourceNotFoundException(
-            "No application found with id: " + associatedApplicationId
+            "Linking failed > Associate application not found, ID: " + associatedApplicationId
         );
       }
 
