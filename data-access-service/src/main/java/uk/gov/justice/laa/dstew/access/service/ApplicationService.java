@@ -138,7 +138,7 @@ public class ApplicationService {
 
     var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(requestAppContent);
     entity.setApplyApplicationId(parsedContentDetails.applyApplicationId());
-    entity.setUseDelegatedFunctions(parsedContentDetails.usedDelegatedFunctions());
+    entity.setUsedDelegatedFunctions(parsedContentDetails.usedDelegatedFunctions());
     entity.setCategoryOfLaw(parsedContentDetails.categoryOfLaw());
     entity.setMatterType(parsedContentDetails.matterType());
     entity.setSubmittedAt(parsedContentDetails.submittedAt());

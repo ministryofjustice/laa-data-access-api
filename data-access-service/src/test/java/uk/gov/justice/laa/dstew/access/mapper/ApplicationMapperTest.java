@@ -80,7 +80,7 @@ class ApplicationMapperTest {
                 .build();
 
         Application actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
-        assertThat(actualApplication.getCaseworkerId()).isNull();
+        assertThat(actualApplication.getAssignedTo()).isNull();
     }
 
     @Test
@@ -100,7 +100,7 @@ class ApplicationMapperTest {
                 .build();
 
         Application actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
-        assertThat(actualApplication.getCaseworkerId()).isEqualTo(caseworkerId);
+        assertThat(actualApplication.getAssignedTo()).isEqualTo(caseworkerId);
     }
 
     @Test
