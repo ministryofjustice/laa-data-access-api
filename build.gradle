@@ -6,7 +6,6 @@ repositories {
     mavenCentral()
 }
 
-// Add this near the top of your build.gradle, before subprojects block
 def requiredJavaVersion = 25
 def currentJavaVersion = JavaVersion.current().majorVersion.toInteger()
 
