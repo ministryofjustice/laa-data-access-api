@@ -1,7 +1,13 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import java.util.UUID;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -10,15 +16,17 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
-import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetails;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.RefusalDetails;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-
-import java.util.UUID;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -29,6 +37,46 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 
 @ActiveProfiles("test")
 public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    public void givenMakeDecisionRequest_whenAssignDecision_thenUpdateApplicationEntity() throws Exception {
+        // given
+        ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+            builder.applicationContent(new HashMap<>(Map.of(
+                    "test", "content"
+            )));
+            builder.isAutoGranted(false);
+            builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
+        });
+
+        ProceedingEntity grantedProceedingEntity = persistedProceedingFactory.createAndPersist(
+                builder -> { builder
+                        .applicationId(applicationEntity.getId()); }
+        );
+
+        MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
+            builder
+                    .userId(CaseworkerJohnDoe.getId())
+                    .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS)
+                    .eventHistory(EventHistory.builder()
+                            .eventDescription("refusal event")
+                            .build())
+                    .overallDecision(DecisionStatus.REFUSED)
+                    .proceedings(List.of(
+                            createMakeDecisionProceeding(grantedProceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1")
+                    ))
+                    .autoGranted(true);
+        });
+
+        // when
+        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+
+        //then
+        ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+        assertEquals(ApplicationStatus.APPLICATION_IN_PROGRESS, actualApplication.getStatus());
+        assertEquals(true, actualApplication.getIsAutoGranted());
+    }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
@@ -62,7 +110,8 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                     .proceedings(List.of(
                             createMakeDecisionProceeding(grantedProceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1"),
                             createMakeDecisionProceeding(refusedProceedingEntity.getId(), MeritsDecisionStatus.REFUSED, "justification 2", "reason 2")
-                    ));
+                    ))
+                    .autoGranted(true);
         });
 
         // when
@@ -75,7 +124,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
         assertEquals(ApplicationStatus.APPLICATION_SUBMITTED, actualApplication.getStatus());
-
         assertThat(decisionRepository.countByApplicationId(applicationEntity.getId()))
                 .isEqualTo(1);
 
@@ -141,7 +189,8 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                     .proceedings(List.of(
                             createMakeDecisionProceeding(proceedingEntityTwo.getId(), MeritsDecisionStatus.REFUSED, "justification new", "reason new"),
                             createMakeDecisionProceeding(proceedingEntityOne.getId(), MeritsDecisionStatus.GRANTED, "justification update", "reason update")
-                    ));
+                    ))
+                    .autoGranted(true);
         });
 
         // when
@@ -211,7 +260,8 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                         "reason1"),
                     createMakeDecisionProceeding(proceedingNotLinkedToApplication.getId(), MeritsDecisionStatus.GRANTED,
                         "justification2", "reason2")
-                ));
+                ))
+                .autoGranted(true);
         });
 
         // when
@@ -249,7 +299,8 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                                     MeritsDecisionStatus.REFUSED,
                                     "justification",
                                     "reason")
-                    ));
+                    ))
+                    .autoGranted(true);
         });
 
         // when
@@ -289,7 +340,8 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                                     MeritsDecisionStatus.REFUSED,
                                     "justification",
                                     "reason")
-                    ));
+                    ))
+                    .autoGranted(true);
         });
 
         // when
@@ -356,6 +408,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                 .proceedings(decisionEntity.getMeritsDecisions().stream()
                         .map(ApplicationMakeDecisionTest::mapToProceedingDetails)
                         .toList())
+                .autoGranted(applicationEntity.getIsAutoGranted())
                 .build();
     }
 

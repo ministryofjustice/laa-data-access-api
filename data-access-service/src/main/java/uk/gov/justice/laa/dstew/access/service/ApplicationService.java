@@ -317,6 +317,7 @@ public class ApplicationService {
 
     application.setStatus(request.getApplicationStatus());
     application.setModifiedAt(Instant.now());
+    application.setIsAutoGranted(request.getAutoGranted());
     applicationRepository.save(application);
 
     DecisionEntity decision = decisionRepository.findByApplicationId(applicationId)
