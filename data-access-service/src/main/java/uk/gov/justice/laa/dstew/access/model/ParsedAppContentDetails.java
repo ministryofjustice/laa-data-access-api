@@ -13,5 +13,6 @@ public record ParsedAppContentDetails(
     CategoryOfLaw categoryOfLaw,
     MatterType matterType,
     Instant submittedAt,
+    String officeCode,
     boolean usedDelegatedFunctions) {
 }

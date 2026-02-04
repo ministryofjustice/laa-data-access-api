@@ -62,6 +62,9 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "laa_reference")
   private String laaReference;
 
+  @Column(name = "office_code")
+  private String officeCode;
+
   @Type(JsonType.class)
   @Column(columnDefinition = "json")
   private Map<String, Object> applicationContent;
