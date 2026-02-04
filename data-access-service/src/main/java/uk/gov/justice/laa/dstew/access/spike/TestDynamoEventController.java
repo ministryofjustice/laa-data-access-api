@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import uk.gov.justice.laa.dstew.access.config.DomainEventScheduler;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.spike.dynamo.DomainEventDynamoDB;
 
@@ -25,13 +24,13 @@ public class TestDynamoEventController {
 
   private final DynamoDbService dynamoDbService;
   private final S3UploadService s3UploadService;
-  private final DomainEventScheduler domainEventScheduler;
+  private final EventHistoryPublisher eventHistoryPublisher;
 
   public TestDynamoEventController(DynamoDbService dynamoDbService, S3UploadService s3UploadService,
-                                   DomainEventScheduler domainEventScheduler) {
+                                   EventHistoryPublisher eventHistoryPublisher) {
     this.dynamoDbService = dynamoDbService;
     this.s3UploadService = s3UploadService;
-    this.domainEventScheduler = domainEventScheduler;
+    this.eventHistoryPublisher = eventHistoryPublisher;
   }
 
   @PostMapping(value = "/events", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -76,12 +75,14 @@ public class TestDynamoEventController {
 
   }
 
-  @GetMapping(value = "publish", produces = MediaType.APPLICATION_JSON_VALUE)
-  public int publishEvents() {
-    // This is just a trigger endpoint for local testing
-
-    domainEventScheduler.processDomainEvents();
-    return 0;
+  /**
+   * Publishes a specified number of events to DynamoDB.
+   * @param publishAmount the number of events to publish
+   */
+  @GetMapping(value = "publish/{publishAmount}", produces = MediaType.APPLICATION_JSON_VALUE)
+  public void publishEvents(@PathVariable (required = false) Integer publishAmount ) {
+    int amountToPublish = publishAmount == null ? 10 : publishAmount;
+    eventHistoryPublisher.processDomainEvents(amountToPublish);
   }
 
 }
