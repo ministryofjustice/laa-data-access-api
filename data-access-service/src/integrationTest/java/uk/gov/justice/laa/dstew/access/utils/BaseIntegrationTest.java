@@ -20,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.LinkedApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
@@ -32,6 +33,7 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
+import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
@@ -65,6 +67,9 @@ public abstract class BaseIntegrationTest {
 
     @Autowired
     protected DecisionRepository decisionRepository;
+
+    @Autowired
+    protected LinkedApplicationRepository linkedApplicationRepository;
 
     @Autowired
     protected ApplicationAsserts applicationAsserts;
@@ -102,6 +107,8 @@ public abstract class BaseIntegrationTest {
     @Autowired
     protected Factory<Individual, Individual.Builder> individualFactory;
 
+    @Autowired
+    protected Factory<LinkedApplicationEntity, LinkedApplicationEntity.LinkedApplicationEntityBuilder> linkedApplicationFactory;
 
     @Autowired
     protected PersistedFactory<
@@ -150,6 +157,15 @@ public abstract class BaseIntegrationTest {
             DecisionEntity,
             DecisionEntity.DecisionEntityBuilder,
             UUID> persistedDecisionFactory;
+
+    @Autowired
+    protected PersistedFactory<
+        LinkedApplicationRepository,
+        Factory<LinkedApplicationEntity, LinkedApplicationEntity.LinkedApplicationEntityBuilder>,
+        LinkedApplicationEntity,
+        LinkedApplicationEntity.LinkedApplicationEntityBuilder,
+        UUID
+        > persistedLinkedApplicationFactory;
 
     // for use in tests and factories where applicable (i.e. default in ApplicationFactoryImpl)
     public static CaseworkerEntity CaseworkerJohnDoe;

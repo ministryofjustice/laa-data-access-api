@@ -8,6 +8,7 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.LinkedApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
@@ -20,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
@@ -27,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationMakeDecisionFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateFactoryImpl;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.LinkedApplicationEntityFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerAssignFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerUnassignFactoryImpl;
@@ -101,6 +104,20 @@ public class TestConfiguration {
     }
 
     @Bean
+    public PersistedFactory<
+        LinkedApplicationRepository,
+        Factory<LinkedApplicationEntity, LinkedApplicationEntity.LinkedApplicationEntityBuilder>,
+        LinkedApplicationEntity,
+        LinkedApplicationEntity.LinkedApplicationEntityBuilder,
+        UUID>
+    persistedLinkedApplicationFactory(
+        LinkedApplicationRepository repository,
+        Factory<LinkedApplicationEntity, LinkedApplicationEntity.LinkedApplicationEntityBuilder> factory
+    ) {
+        return new PersistedFactory<>(repository, factory);
+    }
+
+    @Bean
     public Factory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> applicationCreateRequestFactory() {
         return new ApplicationCreateFactoryImpl();
     }
@@ -158,5 +175,10 @@ public class TestConfiguration {
     @Bean
     public Factory<DecisionEntity, DecisionEntity.DecisionEntityBuilder> decisionFactoryFactory() {
         return new DecisionFactoryImpl();
+    }
+
+    @Bean
+    public Factory<LinkedApplicationEntity, LinkedApplicationEntity.LinkedApplicationEntityBuilder> linkedApplicationEntityFactory() {
+        return new LinkedApplicationEntityFactoryImpl();
     }
 }
