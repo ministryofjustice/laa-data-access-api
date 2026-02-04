@@ -43,7 +43,7 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                         "test", "content"
                 )))
                 .caseworker(BaseIntegrationTest.CaseworkerJohnDoe)
-                .useDelegatedFunctions(false)
+                .usedDelegatedFunctions(false)
                 .isAutoGranted(true)
                 .categoryOfLaw(CategoryOfLaw.FAMILY)
                 .matterType(MatterType.SCA)

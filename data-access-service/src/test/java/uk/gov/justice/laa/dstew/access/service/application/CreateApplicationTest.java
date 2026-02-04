@@ -126,7 +126,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     // Then
     assertEquals(expectedId, entity);
 
-    assertAll(() -> assertEquals(expectedUseDelegatedFunctions, actualApplicationEntity.isUseDelegatedFunctions()),
+    assertAll(() -> assertEquals(expectedUseDelegatedFunctions, actualApplicationEntity.getUsedDelegatedFunctions()),
         () -> assertEquals(Instant.parse("2026-01-15T10:20:30Z"), actualApplicationEntity.getSubmittedAt()));
     verifyThatProceedingsSaved(
         objectMapper.convertValue(application.getApplicationContent(), RequestApplicationContent.class),
@@ -247,7 +247,7 @@ public class CreateApplicationTest extends BaseServiceTest {
         objectMapper.convertValue(applicationCreateRequest.getApplicationContent(), RequestApplicationContent.class);
     assertThat(actualApplicationEntity.getApplyApplicationId()).isEqualTo(
         applicationContentDetails.getApplicationContent().getId());
-    assertThat(actualApplicationEntity.isUseDelegatedFunctions()).isEqualTo(
+    assertThat(actualApplicationEntity.getUsedDelegatedFunctions()).isEqualTo(
         applicationContentDetails.getApplicationContent().getProceedings().get(0)
             .getUsedDelegatedFunctions());
     assertThat(actualApplicationEntity.getApplicationContent())
