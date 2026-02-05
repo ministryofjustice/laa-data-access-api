@@ -119,8 +119,8 @@ public class ResponseEntityExceptionHandlerAdvice extends ResponseEntityExceptio
   private static @NonNull String getMessage(Object[] args, Class<?> requiredType) {
 
     Class<?> classToCheck = requiredType != null ? requiredType : Object.class;
-    return String.format("Invalid data type for field '%s'. Expected: %s.",
-        args[0], !classToCheck.isEnum() ? classToCheck.getSimpleName() : List.of(classToCheck.getEnumConstants()));
+    return "Invalid data type for field '%s'. Expected: %s.".formatted(
+                args[0], !classToCheck.isEnum() ? classToCheck.getSimpleName() : List.of(classToCheck.getEnumConstants()));
   }
 
   private static String getMessageWhenInvalidEnum(IllegalArgumentException illegalArgumentException) {

@@ -1,5 +1,12 @@
 plugins {
     id 'net.researchgate.release' version '3.1.0'
+    id("java")
+    id("org.openrewrite.rewrite") version("7.25.0")
+}
+
+rewrite {
+    activeRecipe("org.openrewrite.java.migrate.UpgradeToJava25")
+    setExportDatatables(true)
 }
 
 repositories {
@@ -22,7 +29,9 @@ configurations {
 }
 
 dependencies {
-    jacocoAnt "org.jacoco:org.jacoco.ant:0.8.12"
+    rewrite(platform("org.openrewrite.recipe:rewrite-recipe-bom:latest.release"))
+    rewrite("org.openrewrite.recipe:rewrite-migrate-java")
+    jacocoAnt "org.jacoco:org.jacoco.ant:0.8.14"
 }
 
 subprojects {

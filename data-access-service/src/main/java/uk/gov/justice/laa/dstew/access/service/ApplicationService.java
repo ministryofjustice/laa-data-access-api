@@ -195,7 +195,7 @@ public class ApplicationService {
   private ApplicationEntity checkIfApplicationExists(final UUID id) {
     return applicationRepository.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException(
-            String.format("No application found with id: %s", id)
+                "No application found with id: %s".formatted(id)
         ));
   }
 
@@ -208,7 +208,7 @@ public class ApplicationService {
   private CaseworkerEntity checkIfCaseworkerExists(final UUID caseworkerId) {
     return caseworkerRepository.findById(caseworkerId)
             .orElseThrow(() -> new ResourceNotFoundException(
-                    String.format("No caseworker found with id: %s", caseworkerId)));
+                "No caseworker found with id: %s".formatted(caseworkerId)));
   }
 
   /**

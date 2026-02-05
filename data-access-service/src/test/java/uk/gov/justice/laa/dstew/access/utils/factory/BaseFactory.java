@@ -31,7 +31,7 @@ public abstract class BaseFactory<TEntity, TBuilder> {
 
     public TEntity createRandom() {
         throw new UnsupportedOperationException("createRandom not implemented");
-    };
+    }
 
     public TEntity createDefault(Consumer<TBuilder> customiser) {
         return create(this::createDefault, customiser);
