@@ -84,17 +84,12 @@ public class CreateApplicationTest extends BaseIntegrationTest {
       assertCreated(result);
 
       UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
-      assertNotNull(createdApplicationId);
       ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
           .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
       assertApplicationEqual(applicationCreateRequest, createdApplication);
       assertNotNull(createdApplicationId);
 
       domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED);
-      domainEventAsserts.assertDomainEventForApplication(
-          createdApplication,
-          DomainEventType.APPLICATION_CREATED
-      );
     }
 
   @ParameterizedTest

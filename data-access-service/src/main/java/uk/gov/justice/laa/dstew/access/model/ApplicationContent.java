@@ -52,7 +52,7 @@ public class ApplicationContent implements Serializable {
 
   @Nullable
   @Valid
-  @Schema(name = "office", requiredMode = Schema.RequiredMode.REQUIRED)
+  @Schema(name = "office", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   private ApplicationOffice office;
 
   /**
