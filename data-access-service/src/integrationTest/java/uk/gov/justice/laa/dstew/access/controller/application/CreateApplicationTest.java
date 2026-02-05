@@ -69,8 +69,8 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         content.setOffice(office);
 
         RequestApplicationContent requestApplicationContent = RequestApplicationContent.builder()
-                .applicationContent(content)
-                .build();
+            .applicationContent(content)
+            .build();
 
         ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
         applicationCreateRequest.setApplicationContent(requestApplicationContent);
@@ -78,23 +78,24 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         // when
         MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
 
-    // then
-    assertSecurityHeaders(result);
-    assertCreated(result);
+        // then
+        assertSecurityHeaders(result);
+        assertCreated(result);
 
-    UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(
-        result.getResponse().getHeader("Location")
-    );
-    assertNotNull(createdApplicationId);
-    ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
-        .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
-    assertApplicationEqual(applicationCreateRequest, createdApplication);
+        UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(
+            result.getResponse().getHeader("Location")
+        );
 
-    domainEventAsserts.assertDomainEventForApplication(
-        createdApplication,
-        DomainEventType.APPLICATION_CREATED
-    );
-  }
+        assertNotNull(createdApplicationId);
+        ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
+            .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
+        assertApplicationEqual(applicationCreateRequest, createdApplication);
+
+        domainEventAsserts.assertDomainEventForApplication(
+            createdApplication,
+            DomainEventType.APPLICATION_CREATED
+        );
+    }
 
   @ParameterizedTest
   @MethodSource("applicationCreateRequestInvalidDataCases")
