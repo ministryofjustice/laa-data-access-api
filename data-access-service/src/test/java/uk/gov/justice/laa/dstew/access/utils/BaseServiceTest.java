@@ -28,7 +28,6 @@ import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEnti
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationMakeDecisionRequestFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationSummaryFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateRequestFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.ProceedingDtoFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.RequestApplicationContentFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.decision.DecisionEntityFactory;
@@ -102,9 +101,6 @@ public class BaseServiceTest {
 
     @Autowired
     protected ApplicationContentFactory applicationContentFactory;
-
-    @Autowired
-    protected ProceedingDtoFactory proceedingDtoFactory;
 
     @Autowired
     protected RequestApplicationContentFactory requestApplicationContentFactory;
