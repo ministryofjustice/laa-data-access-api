@@ -50,6 +50,10 @@ public class ApplicationContent implements Serializable {
 
   private @Nullable String applicationRef;
 
+  @Nullable
+  @Valid
+  @Schema(name = "office", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+  private ApplicationOffice office;
 
   /**
    * A container for additional, undeclared properties.

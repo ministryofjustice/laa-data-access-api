@@ -54,6 +54,9 @@ public class ApplicationSummaryEntity {
   @Column(name = "laa_reference")
   private String laaReference;
 
+  @Column(name = "office_code")
+  private String officeCode;
+
   @Column(name = "created_at")
   private Instant createdAt;
 

@@ -152,6 +152,7 @@ public class ApplicationService {
     entity.setCategoryOfLaw(parsedContentDetails.categoryOfLaw());
     entity.setMatterType(parsedContentDetails.matterType());
     entity.setSubmittedAt(parsedContentDetails.submittedAt());
+    entity.setOfficeCode(parsedContentDetails.officeCode());
   }
 
 
