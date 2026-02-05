@@ -34,32 +34,27 @@ import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
-import static org.junit.jupiter.api.Assertions.*;
-
 
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CreateApplicationTest extends BaseIntegrationTest {
   private static final int applicationVersion = 1;
 
-  @Test
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
-  public void givenCreateNewApplication_whenCreateApplication_thenReturnCreatedWithLocationHeader() throws Exception {
-    private Stream<Arguments> createApplicationTestParameters() {
-        return Stream.of(
-                Arguments.of(new ApplicationOffice()),
-                Arguments.of(ApplicationOffice.builder().code("XX456F").build())
-        );
-    }
+  private Stream<Arguments> createApplicationTestParameters() {
+      return Stream.of(
+              Arguments.of(new ApplicationOffice()),
+              Arguments.of(ApplicationOffice.builder().code("XX456F").build())
+      );
+  }
 
-    @ParameterizedTest
-    @MethodSource("createApplicationTestParameters")
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
-    public void givenCreateNewApplication_whenCreateApplication_thenReturnCreatedWithLocationHeader(
-            ApplicationOffice office
-    ) throws Exception {
-        verifyCreateNewApplication(office);
-    }
+  @ParameterizedTest
+  @MethodSource("createApplicationTestParameters")
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenCreateNewApplication_whenCreateApplication_thenReturnCreatedWithLocationHeader(
+          ApplicationOffice office
+  ) throws Exception {
+      verifyCreateNewApplication(office);
+  }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
@@ -68,7 +63,6 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     }
 
     // given
-    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
     private void verifyCreateNewApplication(ApplicationOffice office) throws Exception {
         // given
         ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
@@ -82,33 +76,25 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
         applicationCreateRequest.setApplicationContent(requestApplicationContent);
 
-    // when
-    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
+      // when
+      MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
 
-        // then
-        assertSecurityHeaders(result);
-        assertCreated(result);
+      // then
+      assertSecurityHeaders(result);
+      assertCreated(result);
 
-    UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
-    assertNotNull(createdApplicationId);
-    ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
-        .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
-    assertApplicationEqual(applicationCreateRequest, createdApplication);
-        UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(
-            result.getResponse().getHeader("Location")
-        );
+      UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+      assertNotNull(createdApplicationId);
+      ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
+          .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
+      assertApplicationEqual(applicationCreateRequest, createdApplication);
+      assertNotNull(createdApplicationId);
 
-        assertNotNull(createdApplicationId);
-        ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
-            .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
-        assertApplicationEqual(applicationCreateRequest, createdApplication);
-
-    domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED);
-  }
-        domainEventAsserts.assertDomainEventForApplication(
-            createdApplication,
-            DomainEventType.APPLICATION_CREATED
-        );
+      domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED);
+      domainEventAsserts.assertDomainEventForApplication(
+          createdApplication,
+          DomainEventType.APPLICATION_CREATED
+      );
     }
 
   @ParameterizedTest

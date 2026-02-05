@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.model;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import java.io.Serializable;
 import java.util.HashMap;
@@ -24,7 +25,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @Builder(toBuilder = true)
 @ExcludeFromGeneratedCodeCoverage
 public class ApplicationOffice implements Serializable {
-  @NotNull
+  @Nullable
   @Schema(name = "code", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   private String code;
 

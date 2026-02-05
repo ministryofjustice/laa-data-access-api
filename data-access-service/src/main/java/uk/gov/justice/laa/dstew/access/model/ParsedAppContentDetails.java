@@ -16,7 +16,6 @@ public record ParsedAppContentDetails(
     MatterType matterType,
     Instant submittedAt,
     String officeCode,
-    boolean usedDelegatedFunctions) {
     boolean usedDelegatedFunctions,
     List<Map<String, Object>> allLinkedApplications) {
 }
