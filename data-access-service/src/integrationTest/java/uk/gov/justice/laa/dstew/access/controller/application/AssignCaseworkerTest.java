@@ -72,8 +72,8 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
                     .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()).reversed())
                     .eventHistory(EventHistory.builder()
-                            .eventDescription("Assigning caseworker")
-                            .build());
+                        .eventDescription("Assigning caseworker")
+                        .build());
         });
 
         // when
@@ -122,7 +122,10 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
         CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
             ;
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
-                    .applicationIds(invalidApplicationIds);
+                .applicationIds(invalidApplicationIds)
+                .eventHistory(EventHistory.builder()
+                    .eventDescription("Assigning caseworker")
+                    .build());
         });
 
         // when
@@ -173,7 +176,10 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
         CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
             ;
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
-                    .applicationIds(allApplicationIds);
+                    .applicationIds(allApplicationIds)
+                    .eventHistory(EventHistory.builder()
+                        .eventDescription("Assigning caseworker")
+                        .build());
         });
 
         // when
@@ -211,7 +217,10 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
         CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId());
-            builder.applicationIds(invalidApplicationIdList);
+            builder.applicationIds(invalidApplicationIdList)
+            .eventHistory(EventHistory.builder()
+                .eventDescription("Assigning caseworker")
+                .build());
         });
 
         // when
@@ -236,7 +245,10 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
         CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
             builder.caseworkerId(null);
-            builder.applicationIds(List.of(expectedApplication.getId()));
+            builder.applicationIds(List.of(expectedApplication.getId()))
+            .eventHistory(EventHistory.builder()
+                .eventDescription("Assigning caseworker")
+                .build());
         });
 
         // when
@@ -255,7 +267,10 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.READER)
     public void givenReaderRole_whenAssignCaseworker_thenReturnForbidden() throws Exception {
         // given
-        CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create();
+        CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create()
+            .eventHistory(EventHistory.builder()
+                .eventDescription("Assigning caseworker")
+                .build());
 
         // when
         MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
@@ -269,7 +284,10 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
     public void givenUnknownRole_whenAssignCaseworker_thenReturnForbidden() throws Exception {
         // given
-        CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create();
+        CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create()
+            .eventHistory(EventHistory.builder()
+                .eventDescription("Assigning caseworker")
+                .build());
 
         // when
         MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
@@ -282,7 +300,10 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     @Test
     public void givenNoUser_whenAssignCaseworker_thenReturnUnauthorised() throws Exception {
         // given
-        CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create();
+        CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create()
+            .eventHistory(EventHistory.builder()
+                .eventDescription("Assigning caseworker")
+                .build());
 
         // when
         MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
