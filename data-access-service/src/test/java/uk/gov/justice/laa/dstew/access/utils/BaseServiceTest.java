@@ -18,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
+import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
@@ -27,7 +28,6 @@ import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEnti
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationMakeDecisionRequestFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationSummaryFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateRequestFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.ProceedingDtoFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.RequestApplicationContentFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.decision.DecisionEntityFactory;
@@ -72,6 +72,9 @@ public class BaseServiceTest {
     @MockitoBean
     protected MeritsDecisionRepository meritsDecisionRepository;
 
+    @MockitoBean
+    protected LinkedApplicationRepository linkedApplicationRepository;
+
     @Autowired
     protected ObjectMapper objectMapper;
 
@@ -98,9 +101,6 @@ public class BaseServiceTest {
 
     @Autowired
     protected ApplicationContentFactory applicationContentFactory;
-
-    @Autowired
-    protected ProceedingDtoFactory proceedingDtoFactory;
 
     @Autowired
     protected RequestApplicationContentFactory requestApplicationContentFactory;

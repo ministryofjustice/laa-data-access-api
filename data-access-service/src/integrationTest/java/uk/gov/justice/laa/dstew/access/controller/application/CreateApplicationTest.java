@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertCreated;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertProblemRecord;
@@ -35,11 +36,15 @@ import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 import static org.junit.jupiter.api.Assertions.*;
 
+
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CreateApplicationTest extends BaseIntegrationTest {
-    private static final int applicationVersion = 1;
+  private static final int applicationVersion = 1;
 
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenCreateNewApplication_whenCreateApplication_thenReturnCreatedWithLocationHeader() throws Exception {
     private Stream<Arguments> createApplicationTestParameters() {
         return Stream.of(
                 Arguments.of(new ApplicationOffice()),
@@ -62,6 +67,8 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         verifyCreateNewApplication(null);
     }
 
+    // given
+    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
     private void verifyCreateNewApplication(ApplicationOffice office) throws Exception {
         // given
         ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
@@ -75,13 +82,18 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
         applicationCreateRequest.setApplicationContent(requestApplicationContent);
 
-        // when
-        MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
+    // when
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
 
         // then
         assertSecurityHeaders(result);
         assertCreated(result);
 
+    UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    assertNotNull(createdApplicationId);
+    ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
+        .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
+    assertApplicationEqual(applicationCreateRequest, createdApplication);
         UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(
             result.getResponse().getHeader("Location")
         );
@@ -91,6 +103,8 @@ public class CreateApplicationTest extends BaseIntegrationTest {
             .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
         assertApplicationEqual(applicationCreateRequest, createdApplication);
 
+    domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED);
+  }
         domainEventAsserts.assertDomainEventForApplication(
             createdApplication,
             DomainEventType.APPLICATION_CREATED
@@ -100,10 +114,10 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @ParameterizedTest
   @MethodSource("applicationCreateRequestInvalidDataCases")
   @WithMockUser(authorities = TestConstants.Roles.WRITER)
-  public void givenInvalidApplicationRequestData_whenCreateApplication_thenReturnBadRequest(
-      ApplicationCreateRequest request,
-      ProblemDetail expectedDetail,
-      Map<String, Object> problemDetailProperties) throws Exception {
+  public void givenInvalidApplicationRequestData_whenCreateApplication_thenReturnBadRequest(ApplicationCreateRequest request,
+                                                                                            ProblemDetail expectedDetail,
+                                                                                            Map<String, Object> problemDetailProperties)
+      throws Exception {
     // when
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
     ProblemDetail detail = deserialise(result, ProblemDetail.class);
@@ -124,7 +138,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
 
     ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Generic Validation Error");
-    expectedProblemDetail.setProperty("errors", List.of("Application content is null"));
+    expectedProblemDetail.setProperty("errors", List.of("applicationContent: must not be null"));
 
     // when
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
@@ -169,8 +183,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     // then
     assertSecurityHeaders(result);
     assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request",
-        "Invalid data type for field 'unknown'. Expected: ApplicationCreateRequest.", result, detail,
-        null);
+        "Invalid data type for field 'unknown'. Expected: ApplicationCreateRequest.", result, detail, null);
     assertEquals(0, applicationRepository.count());
   }
 
@@ -188,125 +201,94 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     assertForbidden(result);
   }
 
-    @Test
-    public void givenCorrectRequestBodyAndNoAuthentication_whenCreateApplication_thenReturnUnauthorised() throws Exception {
-        // given
-        ApplicationCreateRequest request = applicationCreateRequestFactory.create();
+  @Test
+  public void givenCorrectRequestBodyAndNoAuthentication_whenCreateApplication_thenReturnUnauthorised() throws Exception {
+    // given
+    ApplicationCreateRequest request = applicationCreateRequestFactory.create();
 
-        // when
-        MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+    // when
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
 
-        // then
-        assertSecurityHeaders(result);
-        assertUnauthorised(result);
-    }
+    // then
+    assertSecurityHeaders(result);
+    assertUnauthorised(result);
+  }
 
-    private Stream<Arguments> applicationCreateRequestInvalidDataCases() {
-        ProblemDetail problemDetail =
-                ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request").detail("Request validation failed")
-                        .build();
-        problemDetail.setType(null);
-        String minimumSizErrorMessage = "size must be between 1 and " + Integer.MAX_VALUE;
-        String mustNotBeNull = "must not be null";
+  private Stream<Arguments> applicationCreateRequestInvalidDataCases() {
+    ProblemDetail problemDetail =
+        ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request").detail("Request validation failed")
+            .build();
+    problemDetail.setType(null);
+    String minimumSizErrorMessage = "size must be between 1 and " + Integer.MAX_VALUE;
+    String mustNotBeNull = "must not be null";
 
-        return Stream.of(
-                Arguments.of(applicationCreateRequestFactory.create(builder -> {
-                            builder.status(null);
-                        }), problemDetail,
-                        Map.of("invalidFields", Map.of("status", mustNotBeNull))),
-                Arguments.of(applicationCreateRequestFactory.create(builder -> {
-                            builder.laaReference(null);
-                        }), problemDetail,
-                        Map.of("invalidFields", Map.of("laaReference", mustNotBeNull))),
-                Arguments.of(applicationCreateRequestFactory.create(builder -> {
-                  builder.applicationContent(null);
-                    }), problemDetail,
-                Map.of("invalidFields", Map.of("applicationContent", mustNotBeNull))),
-            Arguments.of(applicationCreateRequestFactory.create(builder -> {
-                  builder.applicationContent(new HashMap<>());
-                }), ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request")
-                    .detail("Generic Validation Error")
-                    .build(),
-                Map.of("errors", List.of("Application content is null"))),
-            Arguments.of(applicationCreateRequestFactory.create(builder -> {
-                  builder.applicationContent(Map.of("applicationContent", Map.of("proceedings", List.of())));
-                }), ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request")
-                    .detail("Generic Validation Error")
-                    .build(),
-                Map.of("errors", List.of("No proceedings found in application content"))),
-                Arguments.of(applicationCreateRequestFactory.create(builder -> {
-                            builder.individuals(null);
-                        }), problemDetail,
-                        Map.of("invalidFields", Map.of("individuals", "size must be between 1 and 2147483647"))),
-                Arguments.of(applicationCreateRequestFactory.create(builder -> {
-                            builder.individuals(List.of());
-                        }), problemDetail,
-                        Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))),
-                Arguments.of(
-                        applicationCreateRequestFactory.create(builder -> builder.individuals(
-                                List.of(individualFactory.create(individualBuilder -> individualBuilder.firstName(""))))),
-                        problemDetail,
-                        Map.of("invalidFields", Map.of("individuals[0].firstName", minimumSizErrorMessage))),
-                Arguments.of(
-                        applicationCreateRequestFactory.create(builder -> builder.individuals(
-                                List.of(individualFactory.create(individualBuilder -> individualBuilder.lastName(""))))),
-                        problemDetail,
-                        Map.of("invalidFields", Map.of("individuals[0].lastName", minimumSizErrorMessage))),
-                Arguments.of(applicationCreateRequestFactory.create(builder -> builder.individuals(
-                                List.of(individualFactory.create(individualBuilder -> individualBuilder.dateOfBirth(null))))),
-                        problemDetail,
-                        Map.of("invalidFields", Map.of("individuals[0].dateOfBirth", mustNotBeNull))),
-                Arguments.of(applicationCreateRequestFactory.create(builder -> builder.individuals(
-                                List.of(individualFactory.create(individualBuilder -> individualBuilder.details(null))))),
-                        problemDetail,
-                        Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
-                Arguments.of(applicationCreateRequestFactory.create(builder -> builder.individuals(
-                                List.of(individualFactory.create(individualBuilder -> individualBuilder.details(new HashMap<>()))))),
-                        problemDetail,
-                        Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
-                Arguments.of(applicationCreateRequestFactory.create(builder -> builder.individuals(List.of(individualFactory.create(
-                                individualBuilder -> individualBuilder.dateOfBirth(null)
-                                        .firstName("")
-                                        .lastName("")
-                                        .type(null)
-                                        .details(new HashMap<>()))))),
-                        problemDetail,
-                        Map.of("invalidFields",
-                                Map.of("individuals[0].details", minimumSizErrorMessage,
-                                        "individuals[0].lastName", minimumSizErrorMessage,
-                                        "individuals[0].firstName", minimumSizErrorMessage,
-                                        "individuals[0].type", mustNotBeNull,
-                                        "individuals[0].dateOfBirth", mustNotBeNull))),
-                Arguments.of(applicationCreateRequestFactory.create(builder -> builder.individuals(List.of(individualFactory.create(
-                                individualBuilder ->
-                                        individualBuilder
-                                                .dateOfBirth(null)
-                                                .firstName(null)
-                                                .lastName(null)
-                                                .details(null))))),
-                        problemDetail,
-                        Map.of("invalidFields",
-                                Map.of("individuals[0].details", minimumSizErrorMessage,
-                                        "individuals[0].lastName", mustNotBeNull,
-                                        "individuals[0].firstName", mustNotBeNull,
-                                        "individuals[0].dateOfBirth", mustNotBeNull))));
-    }
+    return Stream.of(Arguments.of(applicationCreateRequestFactory.create(builder -> {
+          builder.status(null);
+        }), problemDetail, Map.of("invalidFields", Map.of("status", mustNotBeNull))),
+        Arguments.of(applicationCreateRequestFactory.create(builder -> {
+          builder.laaReference(null);
+        }), problemDetail, Map.of("invalidFields", Map.of("laaReference", mustNotBeNull))),
+        Arguments.of(applicationCreateRequestFactory.create(builder -> {
+          builder.applicationContent(null);
+        }), problemDetail, Map.of("invalidFields", Map.of("applicationContent", mustNotBeNull))),
+        Arguments.of(applicationCreateRequestFactory.create(builder -> {
+          builder.applicationContent(new HashMap<>());
+        }), ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request").detail("Generic Validation Error")
+            .build(), Map.of("errors", List.of("applicationContent: must not be null"))),
+        Arguments.of(applicationCreateRequestFactory.create(builder -> {
+          builder.applicationContent(Map.of("applicationContent", Map.of("proceedings", List.of())));
+        }), ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request").detail("Generic Validation Error")
+            .build(), Map.of("errors", List.of("applicationContent.id: must not be null",
+            "applicationContent.proceedings: size must be between 1 and 2147483647",
+            "applicationContent.submittedAt: must not be null"))),
+        Arguments.of(applicationCreateRequestFactory.create(builder -> {
+          builder.individuals(null);
+        }), problemDetail, Map.of("invalidFields", Map.of("individuals", "size must be between 1 and 2147483647"))),
+        Arguments.of(applicationCreateRequestFactory.create(builder -> {
+          builder.individuals(List.of());
+        }), problemDetail, Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))), Arguments.of(
+            applicationCreateRequestFactory.create(builder -> builder.individuals(
+                List.of(individualFactory.create(individualBuilder -> individualBuilder.firstName(""))))), problemDetail,
+            Map.of("invalidFields", Map.of("individuals[0].firstName", minimumSizErrorMessage))), Arguments.of(
+            applicationCreateRequestFactory.create(builder -> builder.individuals(
+                List.of(individualFactory.create(individualBuilder -> individualBuilder.lastName(""))))), problemDetail,
+            Map.of("invalidFields", Map.of("individuals[0].lastName", minimumSizErrorMessage))), Arguments.of(
+            applicationCreateRequestFactory.create(builder -> builder.individuals(
+                List.of(individualFactory.create(individualBuilder -> individualBuilder.dateOfBirth(null))))), problemDetail,
+            Map.of("invalidFields", Map.of("individuals[0].dateOfBirth", mustNotBeNull))), Arguments.of(
+            applicationCreateRequestFactory.create(builder -> builder.individuals(
+                List.of(individualFactory.create(individualBuilder -> individualBuilder.details(null))))), problemDetail,
+            Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))), Arguments.of(
+            applicationCreateRequestFactory.create(builder -> builder.individuals(
+                List.of(individualFactory.create(individualBuilder -> individualBuilder.details(new HashMap<>()))))),
+            problemDetail, Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))), Arguments.of(
+            applicationCreateRequestFactory.create(builder -> builder.individuals(List.of(individualFactory.create(
+                individualBuilder -> individualBuilder.dateOfBirth(null).firstName("").lastName("").type(null)
+                    .details(new HashMap<>()))))), problemDetail, Map.of("invalidFields",
+                Map.of("individuals[0].details", minimumSizErrorMessage, "individuals[0].lastName", minimumSizErrorMessage,
+                    "individuals[0].firstName", minimumSizErrorMessage, "individuals[0].type", mustNotBeNull,
+                    "individuals[0].dateOfBirth", mustNotBeNull))), Arguments.of(applicationCreateRequestFactory.create(
+                builder -> builder.individuals(List.of(individualFactory.create(
+                    individualBuilder -> individualBuilder.dateOfBirth(null).firstName(null).lastName(null).details(null))))),
+            problemDetail, Map.of("invalidFields",
+                Map.of("individuals[0].details", minimumSizErrorMessage, "individuals[0].lastName", mustNotBeNull,
+                    "individuals[0].firstName", mustNotBeNull, "individuals[0].dateOfBirth", mustNotBeNull))));
+  }
 
 
+  private void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual)
+      throws JsonProcessingException {
+    assertNotNull(actual.getId());
 
-    private void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual)
-            throws JsonProcessingException {
-        assertNotNull(actual.getId());
+    JsonNode expectedContentNode = objectMapper.readTree(objectMapper.writeValueAsString(expected.getApplicationContent()));
+    JsonNode actualContentNode = objectMapper.readTree(objectMapper.writeValueAsString(actual.getApplicationContent()));
 
-        JsonNode expectedContentNode = objectMapper.readTree(objectMapper.writeValueAsString(expected.getApplicationContent()));
-        JsonNode actualContentNode = objectMapper.readTree(objectMapper.writeValueAsString(actual.getApplicationContent()));
+    assertEquals(expectedContentNode, actualContentNode);
 
-        assertEquals(expectedContentNode, actualContentNode);
-
-        assertEquals(expected.getLaaReference(), actual.getLaaReference());
-        assertEquals(expected.getStatus(), actual.getStatus());
-        assertEquals(applicationVersion, actual.getSchemaVersion());
-        assertNull(actual.getIsAutoGranted());
-        assertNotNull(actual.getSubmittedAt());
-    }
+    assertEquals(expected.getLaaReference(), actual.getLaaReference());
+    assertEquals(expected.getStatus(), actual.getStatus());
+    assertEquals(applicationVersion, actual.getSchemaVersion());
+    assertNull(actual.getIsAutoGranted());
+    assertNotNull(actual.getSubmittedAt());
+  }
 }
