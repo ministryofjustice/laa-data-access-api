@@ -62,9 +62,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         verifyCreateNewApplication(null);
     }
 
-    // given
     private void verifyCreateNewApplication(ApplicationOffice office) throws Exception {
-        // given
         ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
         ApplicationContent content = applicationContentFactory.create();
         content.setOffice(office);
@@ -76,10 +74,8 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
         applicationCreateRequest.setApplicationContent(requestApplicationContent);
 
-      // when
       MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
 
-      // then
       assertSecurityHeaders(result);
       assertCreated(result);
 
