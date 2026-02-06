@@ -324,11 +324,9 @@ public class ApplicationService {
     application.setIsAutoGranted(request.getAutoGranted());
     applicationRepository.save(application);
 
-    DecisionEntity decision = decisionRepository.findByApplicationId(applicationId)
-        .orElse(DecisionEntity.builder()
-            .applicationId(applicationId)
-            .meritsDecisions(Set.of())
-            .build());
+    DecisionEntity decision = application.getDecision() != null
+            ? application.getDecision()
+            : DecisionEntity.builder().meritsDecisions(Set.of()).build();
 
     Set<MeritsDecisionEntity> merits = new LinkedHashSet<>(decision.getMeritsDecisions());
 
@@ -370,6 +368,11 @@ public class ApplicationService {
           applicationId,
           request
       );
+    }
+
+    if (application.getDecision() == null) {
+      application.setDecision(decision);
+      applicationRepository.save(application);
     }
   }
 

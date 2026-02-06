@@ -45,9 +45,6 @@ public class DecisionEntity implements AuditableEntity {
   @Column(columnDefinition = "UUID")
   private UUID id;
 
-  @Column(name = "application_id")
-  private UUID applicationId;
-
   @Column(name = "created_at")
   @CreationTimestamp
   private Instant createdAt;
