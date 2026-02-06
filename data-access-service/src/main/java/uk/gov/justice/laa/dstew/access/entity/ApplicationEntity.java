@@ -101,7 +101,6 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "is_lead")
   private Boolean isLead;
 
-  //@OneToOne(mappedBy = "application")
   @OneToOne()
   @JoinColumn(name = "decision_id", referencedColumnName = "id")
   private DecisionEntity decision;

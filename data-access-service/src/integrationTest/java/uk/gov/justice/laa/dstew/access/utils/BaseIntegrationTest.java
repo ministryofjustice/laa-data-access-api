@@ -52,7 +52,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @SpringBootTest(classes = AccessApp.class, properties = {"feature.disable-security=false"})
 @ContextConfiguration(initializers = PostgresContainerInitializer.class)
 @ExtendWith(SpringExtension.class)
-@Transactional()
+@Transactional
 public abstract class BaseIntegrationTest {
 
     @PersistenceContext
