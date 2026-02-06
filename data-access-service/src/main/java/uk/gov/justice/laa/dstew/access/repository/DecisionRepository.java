@@ -11,5 +11,5 @@ import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
  */
 @Repository
 public interface DecisionRepository extends JpaRepository<DecisionEntity, UUID> {
-    int countById(UUID id);
+  int countById(UUID id);
 }

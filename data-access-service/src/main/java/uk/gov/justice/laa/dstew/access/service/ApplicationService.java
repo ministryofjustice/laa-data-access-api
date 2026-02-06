@@ -371,8 +371,8 @@ public class ApplicationService {
     }
 
     if (application.getDecision() == null) {
-        application.setDecision(decision);
-        applicationRepository.save(application);
+      application.setDecision(decision);
+      applicationRepository.save(application);
     }
   }
 

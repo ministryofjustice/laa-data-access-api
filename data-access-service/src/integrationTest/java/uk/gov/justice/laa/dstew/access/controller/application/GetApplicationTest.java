@@ -9,15 +9,12 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -122,6 +119,9 @@ public class GetApplicationTest extends BaseIntegrationTest {
         );
         application.setUseDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
         application.setAutoGrant(applicationEntity.getIsAutoGranted());
+        if (applicationEntity.getDecision() != null) {
+            application.setOverallDecision(applicationEntity.getDecision().getOverallDecision());
+        }
         return application;
     }
 }
