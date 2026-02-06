@@ -57,7 +57,7 @@ public class DomainEventAsserts {
 
         List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
 
-        DomainEventEntity event = domainEvents.get(0);
+        DomainEventEntity event = domainEvents.getFirst();
 
         assertThat(event.getApplicationId()).isEqualTo(application.getId());
         assertThat(event.getType()).isEqualTo(expectedType);

@@ -42,7 +42,17 @@ Includes the following subprojects:
 
 ## Build and run application
 ### Developing application within Intellij
-Java version 21 is recommended
+Java version 25 is recommended
+
+To update to Java 25:
+
+1. Download JDK 25 from https://www.oracle.com/uk/java/technologies/downloads/
+
+2. Configure IntelliJ IDEA:
+    - Go to **File** > **Project Structure** > **SDK**
+    - Select **Add JDK from disk** and choose your Java 25 installation
+    - Go to **IntelliJ IDEA** > **Settings** > **Build, Execution, Deployment** > **Build Tools** > **Gradle**
+    - Set **Gradle JVM** to Java 25
 
 Set the security environment variable `FEATURE_DISABLESECURITY=true`
 
@@ -137,3 +147,4 @@ sensible defaults for the following plugins:
 
 The plugin is provided by [laa-spring-boot-common](https://github.com/ministryofjustice/laa-spring-boot-common), where you can find
 more information regarding (required) setup and usage.
+
