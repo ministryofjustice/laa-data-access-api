@@ -54,7 +54,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     UUID applicationId = UUID.randomUUID();
     UUID grantedProceedingId = UUID.randomUUID();
     UUID refusedProceedingId = UUID.randomUUID();
-    
+
     MeritsDecisionStatus grantedDecision = MeritsDecisionStatus.GRANTED;
     String grantedReason = "refusal 1";
     String grantedJustification = "justification 1";
@@ -124,20 +124,16 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     when(proceedingRepository.findAllById(List.of(grantedProceedingEntity.getId(), refusedProceedingEntity.getId())))
             .thenReturn(List.of(grantedProceedingEntity, refusedProceedingEntity));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
-    when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
-                .thenReturn(Optional.empty());
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
     // then
     verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
-    verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
-    verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
+    verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
     verifyThatDomainEventSaved(domainEventRepository, objectMapper, expectedDomainEvent, 1);
     verifyDecisionSavedCorrectly(makeDecisionRequest,
                     expectedApplicationEntity,
-        null,
         2);
   }
 
@@ -158,9 +154,9 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                     .build()
             )
             .proceedings(List.of(
-                createMakeDecisionProceedingDetails(proceedingId, 
-                                                    MeritsDecisionStatus.GRANTED, 
-                                                    "refusal update", 
+                createMakeDecisionProceedingDetails(proceedingId,
+                                                    MeritsDecisionStatus.GRANTED,
+                                                    "refusal update",
                                                     "justification update")
             ))
     );
@@ -175,12 +171,13 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         );
 
     final DecisionEntity currentSavedDecisionEntity = createDecisionEntity(
-        applicationId,
         proceedingId,
         MeritsDecisionStatus.REFUSED,
         "initial reason",
         "initial justification"
     );
+
+    expectedApplicationEntity.setDecision(currentSavedDecisionEntity);
 
     setSecurityContext(TestConstants.Roles.WRITER);
 
@@ -194,22 +191,19 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     when(caseworkerRepository.findById(caseworker.getId()))
                 .thenReturn(Optional.of(caseworker));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
-    when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
-                .thenReturn(Optional.of(currentSavedDecisionEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
     // then
     verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
-    verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
     verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
 
-    verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity, 1);
+    verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, 1);
   }
 
   @Test
-  void givenApplicationAndExistingDecisionAndNewProceeding_whenAssignDecision_thenDecisionUpdated() 
+  void givenApplicationAndExistingDecisionAndNewProceeding_whenAssignDecision_thenDecisionUpdated()
       throws JsonProcessingException {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
@@ -228,9 +222,9 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                     .build()
             )
             .proceedings(List.of(
-                createMakeDecisionProceedingDetails(newProceedingId, 
-                                                    MeritsDecisionStatus.GRANTED, 
-                                                    "new refusal", 
+                createMakeDecisionProceedingDetails(newProceedingId,
+                                                    MeritsDecisionStatus.GRANTED,
+                                                    "new refusal",
                                                     "new justification")
             ))
     );
@@ -245,12 +239,13 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         );
 
     final DecisionEntity currentSavedDecisionEntity = createDecisionEntity(
-        applicationId,
         proceedingId,
         MeritsDecisionStatus.REFUSED,
         "initial reason",
         "initial justification"
     );
+
+    expectedApplicationEntity.setDecision(currentSavedDecisionEntity);
 
     final DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
         .applicationId(applicationId)
@@ -284,18 +279,15 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     when(caseworkerRepository.findById(caseworker.getId()))
                 .thenReturn(Optional.of(caseworker));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
-    when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
-                .thenReturn(Optional.of(currentSavedDecisionEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
     // then
     verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
-    verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
     verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
     verifyThatDomainEventSaved(domainEventRepository, objectMapper, expectedDomainEvent, 1);
-    verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity, 2);
+    verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, 2);
   }
 
   @Test
@@ -312,13 +304,13 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             .userId(caseworker.getId())
             .eventHistory(EventHistory.builder().build())
             .proceedings(List.of(
-                createMakeDecisionProceedingDetails(newProceedingId, 
-                                                    MeritsDecisionStatus.REFUSED, 
-                                                    "refusal new", 
+                createMakeDecisionProceedingDetails(newProceedingId,
+                                                    MeritsDecisionStatus.REFUSED,
+                                                    "refusal new",
                                                     "justification new"),
-                createMakeDecisionProceedingDetails(currentProceedingId, 
-                                                    MeritsDecisionStatus.GRANTED, 
-                                                    "refusal update", 
+                createMakeDecisionProceedingDetails(currentProceedingId,
+                                                    MeritsDecisionStatus.GRANTED,
+                                                    "refusal update",
                                                     "justification update")
             ))
     );
@@ -333,7 +325,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         );
 
     final DecisionEntity currentSavedDecisionEntity = createDecisionEntity(
-        applicationId,
         currentProceedingId,
         MeritsDecisionStatus.REFUSED,
         "current reason",
@@ -351,24 +342,21 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                 );
 
     setSecurityContext(TestConstants.Roles.WRITER);
-   
+
     // when
     when(proceedingRepository.findAllById(List.of(newProceedingId, currentProceedingId)))
                 .thenReturn(List.of(newProceedingEntity, currentProceedingEntity));
     when(caseworkerRepository.findById(caseworker.getId()))
                 .thenReturn(Optional.of(caseworker));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
-    when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
-                .thenReturn(Optional.of(currentSavedDecisionEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
     // then
     verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
-    verify(decisionRepository, times(1)).findByApplicationId(expectedApplicationEntity.getId());
-    verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
+    verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, currentSavedDecisionEntity, 2);
+    verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, 2);
   }
 
   @Test
@@ -470,8 +458,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
     when(caseworkerRepository.findById(caseworker.getId()))
         .thenReturn(Optional.of(caseworker));
-    when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
-        .thenReturn(Optional.empty());
 
     Throwable thrown = catchThrowable(
         () -> serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest)
@@ -543,10 +529,10 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             requestBuilder
                 .userId(caseworker.getId())
                 .proceedings(List.of(
-                    createMakeDecisionProceedingDetails(nonExistentProceedingId, 
+                    createMakeDecisionProceedingDetails(nonExistentProceedingId,
                         MeritsDecisionStatus.GRANTED, "reason1",
                         "justification1"),
-                    createMakeDecisionProceedingDetails(unrelatedApplicationProceedingId, 
+                    createMakeDecisionProceedingDetails(unrelatedApplicationProceedingId,
                         MeritsDecisionStatus.REFUSED, "reason2",
                         "justification2")
                 ))
@@ -585,13 +571,12 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             .hasMessageContaining(unrelatedApplicationProceedingId.toString());
   }
 
-  private DecisionEntity createDecisionEntity(UUID applicationId, UUID proceedingId, 
-                                                MeritsDecisionStatus decision, String reason, 
+  private DecisionEntity createDecisionEntity(UUID proceedingId,
+                                                MeritsDecisionStatus decision, String reason,
                                                 String justification) {
     return decisionEntityFactory.createDefault(
         builder -> builder
             .id(UUID.randomUUID())
-            .applicationId(applicationId)
             .createdAt(Instant.now())
             .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
             .meritsDecisions(
@@ -617,7 +602,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     );
   }
 
-  private MakeDecisionProceeding createMakeDecisionProceedingDetails(UUID proceedingId, 
+  private MakeDecisionProceeding createMakeDecisionProceedingDetails(UUID proceedingId,
         MeritsDecisionStatus decision, String reason, String justification) {
     return makeDecisionProceedingFactory.createDefault(proceedingsBuilder ->
         proceedingsBuilder
@@ -641,7 +626,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   private void verifyDecisionSavedCorrectly(
       MakeDecisionRequest expectedMakeDecisionRequest,
       ApplicationEntity expectedApplicationEntity,
-      DecisionEntity currentSavedDecisionEntity,
       int expectedNumberOfMeritsDecisions) {
 
     ArgumentCaptor<DecisionEntity> decisionCaptor = ArgumentCaptor.forClass(DecisionEntity.class);
@@ -687,7 +671,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
       DecisionEntity decisionEntity,
       ApplicationEntity applicationEntity,
       EventHistory eventHistory) {
-    if (decisionEntity == null) { 
+    if (decisionEntity == null) {
       return null;
     }
     return MakeDecisionRequest.builder()
@@ -703,7 +687,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
   // MeritsDecisionEntity -> ProceedingDetails
   private static MakeDecisionProceeding mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
-    if (meritsDecisionEntity == null) { 
+    if (meritsDecisionEntity == null) {
       return null;
     }
     return MakeDecisionProceeding.builder()

@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,8 +52,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @SpringBootTest(classes = AccessApp.class, properties = {"feature.disable-security=false"})
 @ContextConfiguration(initializers = PostgresContainerInitializer.class)
 @ExtendWith(SpringExtension.class)
-@Transactional
+@Transactional()
 public abstract class BaseIntegrationTest {
+
+    @PersistenceContext
+    protected EntityManager entityManager;
 
     @Autowired protected MockMvc mockMvc;
     @Autowired protected ObjectMapper objectMapper;

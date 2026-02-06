@@ -6,7 +6,9 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -34,8 +36,16 @@ public class GetApplicationTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.READER)
     public void givenExistingApplication_whenGetApplication_thenReturnOKWithCorrectData() throws Exception {
         // given
-        ApplicationEntity application = persistedApplicationFactory.createAndPersist();
+        DecisionEntity decision = persistedDecisionFactory.createAndPersist(builder -> {
+            builder.overallDecision(DecisionStatus.REFUSED);
+        });
+        ApplicationEntity application = persistedApplicationFactory.createAndPersist(builder -> {
+            builder.decision(decision);
+        });
+
         Application expectedApplication = createApplication(application);
+
+        entityManager.clear();
 
         // when
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getApplicationId());
