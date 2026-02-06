@@ -93,6 +93,13 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
     implementation 'org.javers:javers-core:7.8.0'
 
+    //aws sdk
+    // Source: https://mvnrepository.com/artifact/software.amazon.awssdk/bom
+    implementation(platform("software.amazon.awssdk:bom:2.41.7"))
+    implementation("software.amazon.awssdk:s3")
+    implementation("software.amazon.awssdk:dynamodb")
+    implementation("software.amazon.awssdk:dynamodb-enhanced")
+
     runtimeOnly 'org.postgresql:postgresql'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
@@ -100,9 +107,14 @@ dependencies {
     testImplementation 'net.datafaker:datafaker:2.5.2'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
-    testImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.1"
-    testImplementation 'org.testcontainers:postgresql:1.21.3'
+
+    testImplementation platform('org.testcontainers:testcontainers-bom:1.19.7')
+    testImplementation 'org.testcontainers:testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:localstack'
     testImplementation 'org.springframework.boot:spring-boot-testcontainers:3.5.7'
+
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 

@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.spike;
+package uk.gov.justice.laa.dstew.access.config;
 
 import java.net.URI;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +35,11 @@ public class AwsConfig {
   private String awsSecretKey;
 
 
+  /**
+   * Create and configure a DynamoDbClient bean for interacting with DynamoDB.
+   *
+   * @return a configured DynamoDbClient instance.
+   */
   @Bean
   public DynamoDbClient dynamoDbClient() {
     DynamoDbClientBuilder builder = DynamoDbClient.builder()
@@ -57,6 +62,11 @@ public class AwsConfig {
     return builder.build();
   }
 
+  /**
+   * Create a DynamoDbEnhancedClient bean that wraps the DynamoDbClient for higher-level operations.
+   *
+   * @return a configured DynamoDbEnhancedClient instance.
+   */
   @Bean
   public DynamoDbEnhancedClient dynamoDbEnhancedClient() {
     return DynamoDbEnhancedClient.builder()
@@ -64,6 +74,11 @@ public class AwsConfig {
         .build();
   }
 
+  /**
+   * Create and configure an S3Client bean for interacting with S3.
+   *
+   * @return a configured S3Client instance.
+   */
   @Bean
   public S3Client s3Client() {
     S3ClientBuilder builder = S3Client.builder()
@@ -73,7 +88,8 @@ public class AwsConfig {
         .region(Region.of(awsRegion));
     // If an explicit endpoint is provided (localstack, etc.) configure it
     if (awsEndpoint != null && !awsEndpoint.isBlank()) {
-      builder = builder.endpointOverride(URI.create(awsEndpoint));}
+      builder = builder.endpointOverride(URI.create(awsEndpoint));
+    }
     // If explicit credentials are provided (local/dev), use them. Otherwise rely on the default provider
     // which in Kubernetes will pick up IRSA or other environment/metadata credentials.
     if (awsAccessKey != null && !awsAccessKey.isBlank() && awsSecretKey != null && !awsSecretKey.isBlank()) {
