@@ -8,7 +8,6 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertProblemRecord;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.HashMap;
@@ -29,40 +28,65 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
+import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CreateApplicationTest extends BaseIntegrationTest {
   private static final int applicationVersion = 1;
 
-  @Test
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
-  public void givenCreateNewApplication_whenCreateApplication_thenReturnCreatedWithLocationHeader() throws Exception {
-
-    // given
-    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
-
-    // when
-    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
-
-    // then
-    assertSecurityHeaders(result);
-    assertCreated(result);
-
-    UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
-    assertNotNull(createdApplicationId);
-    ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
-        .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
-    assertApplicationEqual(applicationCreateRequest, createdApplication);
-
-    domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED);
+  private Stream<Arguments> createApplicationTestParameters() {
+      return Stream.of(
+              Arguments.of(new ApplicationOffice()),
+              Arguments.of(ApplicationOffice.builder().code("XX456F").build())
+      );
   }
+
+  @ParameterizedTest
+  @MethodSource("createApplicationTestParameters")
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenCreateNewApplication_whenCreateApplication_thenReturnCreatedWithLocationHeader(
+          ApplicationOffice office
+  ) throws Exception {
+      verifyCreateNewApplication(office);
+  }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    public void givenCreateNewApplication_whenCreateApplicationAndNoOffice_thenReturnCreatedWithLocationHeader() throws Exception {
+        verifyCreateNewApplication(null);
+    }
+
+    private void verifyCreateNewApplication(ApplicationOffice office) throws Exception {
+        ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
+        ApplicationContent content = applicationContentFactory.create();
+        content.setOffice(office);
+
+        RequestApplicationContent requestApplicationContent = RequestApplicationContent.builder()
+            .applicationContent(content)
+            .build();
+
+        ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
+        applicationCreateRequest.setApplicationContent(requestApplicationContent);
+
+      MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
+
+      assertSecurityHeaders(result);
+      assertCreated(result);
+
+      UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+      ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
+          .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
+      assertApplicationEqual(applicationCreateRequest, createdApplication);
+      assertNotNull(createdApplicationId);
+
+      domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED);
+    }
 
   @ParameterizedTest
   @MethodSource("applicationCreateRequestInvalidDataCases")

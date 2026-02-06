@@ -498,6 +498,8 @@ components:
           format: date
         laaReference:
           type: string
+        officeCode:
+          type: string
         applicationType:
           $ref: "#/components/schemas/applicationType"
 
