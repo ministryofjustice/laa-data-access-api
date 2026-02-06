@@ -286,7 +286,35 @@ paths:
         '403': { description: Forbidden }
         '404': { description: Not found }
         '500': { description: Internal server error }
-
+  /api/v0/individuals:
+    get:
+      tags:
+        - individuals
+      summary: Get a list of individuals matching search criteria
+      operationId: getIndividuals
+      parameters:
+        - name: page
+          in: query
+          description: Page number of data to be returned
+          schema:
+              type: integer
+        - name: pageSize
+          in: query
+          description: Number of applications in a page
+          schema:
+              type: integer
+              default: 10
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndividualsResponse"
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '500': { description: Internal server error }
 components:
   schemas:
     applicationStatus:
@@ -572,6 +600,16 @@ components:
           type: integer
         totalRecords:
           type: integer
+
+    IndividualsResponse:
+      type: object
+      properties:
+        paging:
+          $ref: "#/components/schemas/Paging"
+        individuals:
+          type: array
+          items:
+            $ref: "#/components/schemas/Individual"
 
     decisionStatus:
       type: string

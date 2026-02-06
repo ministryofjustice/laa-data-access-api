@@ -12,7 +12,10 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
+import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
 import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
+import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 
@@ -42,6 +45,9 @@ public class AccessAppTests {
 
   @MockitoBean
   private MeritsDecisionRepository meritsDecisionRepository;
+
+  @MockitoBean
+  private IndividualRepository individualRepository;
 
   @MockitoBean
   protected LinkedApplicationRepository linkedApplicationRepository;

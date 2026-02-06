@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
+import java.util.Map;
 import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Individual;
@@ -52,7 +53,7 @@ public interface IndividualMapper {
                             .firstName(individual.getFirstName())
                             .lastName(individual.getLastName())
                             .dateOfBirth(individual.getDateOfBirth())
-                            .individualContent(individual.getDetails())
+                            .individualContent((Map<String, Object>) individual.getDetails())
                             .type(individual.getType())
                             .build();
   }
