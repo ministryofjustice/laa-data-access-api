@@ -3,10 +3,12 @@ package uk.gov.justice.laa.dstew.access.utils.factory.individual;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.function.Consumer;
+import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
+@Component
 public class IndividualFactoryImpl implements Factory<Individual, Individual.Builder> {
   @Override
   public Individual create() {

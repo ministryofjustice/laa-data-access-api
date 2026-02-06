@@ -18,6 +18,8 @@ paths:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1history-search"
   /api/v0/applications/{id}/decision:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1decision"
+  /api/v0/individuals:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1individuals"
 
 components:
   schemas:
@@ -43,3 +45,7 @@ components:
       $ref: "./open-api-application-specification.yml#/components/schemas/Paging"
     MakeDecisionRequest:
       $ref: "./open-api-application-specification.yml#/components/schemas/MakeDecisionRequest"
+    Individual:
+      $ref: "./open-api-application-specification.yml#/components/schemas/Individual"
+    IndividualsResponse:
+      $ref: "./open-api-application-specification.yml#/components/schemas/IndividualsResponse"
