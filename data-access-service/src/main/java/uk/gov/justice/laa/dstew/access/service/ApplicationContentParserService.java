@@ -63,6 +63,8 @@ public class ApplicationContentParserService {
             .filter(proceeding -> null != proceeding.getUsedDelegatedFunctions())
             .anyMatch(Proceeding::getUsedDelegatedFunctions);
 
+    String officeCode = (applicationContent.getOffice() == null) ? null : applicationContent.getOffice().getCode();
+
     return ParsedAppContentDetails
         .builder()
         .applyApplicationId(applicationContent.getId())
@@ -70,6 +72,7 @@ public class ApplicationContentParserService {
         .matterType(matterTypeDeserializer.lenientEnumConversion(leadProceeding.getMatterType()))
         .submittedAt(Instant.parse(applicationContent.getSubmittedAt()))
         .usedDelegatedFunctions(usedDelegatedFunction)
+        .officeCode(officeCode)
         .build();
   }
 

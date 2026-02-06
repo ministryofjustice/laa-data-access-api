@@ -470,6 +470,8 @@ components:
           format: date
         laaReference:
           type: string
+        officeCode:
+          type: string
         applicationType:
           $ref: "#/components/schemas/applicationType"
 
@@ -628,6 +630,7 @@ components:
         - overallDecision
         - proceedings
         - eventHistory
+        - autoGranted
       properties:
         userId:
           type: string
@@ -643,3 +646,5 @@ components:
             $ref: "#/components/schemas/makeDecisionProceeding"
         eventHistory:
           $ref: "#/components/schemas/EventHistory"
+        autoGranted:
+          type: boolean

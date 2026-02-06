@@ -61,6 +61,7 @@ public class ApplicationSummaryMapperTest {
         String clientLastName = "Doe";
         LocalDate clientDateOfBirth = LocalDate.of(1980, 5, 2);
         IndividualType clientType = IndividualType.CLIENT;
+        String officeCode = "office-code";
 
         // Builders use the data
         IndividualEntity individual = IndividualEntity.builder()
@@ -84,6 +85,7 @@ public class ApplicationSummaryMapperTest {
         entity.setMatterType(matterType);
         entity.setUsedDelegatedFunctions(usedDelegatedFunctions);
         entity.setLaaReference(laaReference);
+        entity.setOfficeCode(officeCode);
         entity.setStatus(status);
         entity.setCaseworker(caseworker);
         entity.setIndividuals(Set.of(individual));
@@ -108,6 +110,7 @@ public class ApplicationSummaryMapperTest {
         assertThat(result.getClientLastName()).isEqualTo(clientLastName);
         assertThat(result.getClientDateOfBirth()).isEqualTo(clientDateOfBirth);
         assertThat(result.getApplicationType()).isEqualTo(applicationType);
+        assertThat(result.getOfficeCode()).isEqualTo(officeCode);
     }
 
     @Test

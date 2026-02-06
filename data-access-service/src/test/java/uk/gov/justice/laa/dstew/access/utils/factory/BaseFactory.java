@@ -1,12 +1,12 @@
 package uk.gov.justice.laa.dstew.access.utils.factory;
 
+import java.time.Instant;
 import net.datafaker.Faker;
 import org.springframework.context.annotation.Profile;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -58,10 +58,11 @@ public abstract class BaseFactory<TEntity, TBuilder> {
     }
 
     public LocalDate getRandomDate() {
-        Date from = Date.from(LocalDate.of(1950, 1, 1).atStartOfDay(ZoneId.systemDefault()).toInstant());
-        Date to = Date.from(LocalDate.of(LocalDate.now().getYear(), 12, 31).atStartOfDay(ZoneId.systemDefault()).toInstant());
-        Date randomDate = faker.date().between(from, to);
-        return randomDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        LocalDate from = LocalDate.from(LocalDate.of(1950, 1, 1).atStartOfDay(ZoneId.systemDefault()));
+      LocalDate to =
+          LocalDate.from(LocalDate.of(LocalDate.now().getYear(), 12, 31).atStartOfDay(ZoneId.systemDefault()).toInstant());
+      Instant randomDate = faker.timeAndDate().between(Instant.from(from), Instant.from(to));
+        return randomDate.atZone(ZoneId.systemDefault()).toLocalDate();
     }
 
     private TEntity create(Supplier<TEntity> creator, Consumer<TBuilder> customiser) {
