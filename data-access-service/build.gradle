@@ -9,7 +9,7 @@ plugins {
 }
 
 def versions = [
-        sentry: '8.28.0'
+        sentry : '8.28.0'
 ]
 
 dockerCompose {
@@ -119,7 +119,6 @@ dependencies {
 
     // Security fix for SNYK-JAVA-ORGAPACHECOMMONS-10734078 (CVE-2025-48924)
     implementation 'org.apache.commons:commons-lang3:3.18.0'
-
 
     // Sentry
     implementation platform("io.sentry:sentry-bom:$versions.sentry")

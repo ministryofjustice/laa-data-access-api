@@ -10,11 +10,6 @@ This guide explains how to run LocalStack with Docker Compose for local developm
 
 ## Quick start (one command)
 
-```bash
-# Install awslocal, start LocalStack + Postgres, create S3 bucket and DynamoDB table
-make install-awslocal
-make init-local-resources
-```
 
 ## Install `awslocal` (recommended)
 
@@ -26,9 +21,6 @@ python3 -m pip install --user pipx
 python3 -m pipx ensurepath
 # Open a new shell or source your profile if ensurepath asks you to
 pipx install awscli-local
-
-# Alternatively via Makefile helper
-make install-awslocal
 
 # Verify installation
 export PATH="$HOME/.local/bin:$PATH"
@@ -44,7 +36,7 @@ docker-compose up -d postgres localstack
 
 ## Create S3 bucket and DynamoDB table
 
-When the application is started with the `local` Spring profile, it will automatically create the required `app-history-payloads` S3 bucket and `EventIndexTable` DynamoDB table in LocalStack on startup.
+When the application is started with the `localstack` Spring profile, it will automatically create the required `app-history-payloads` S3 bucket and `EventIndexTable` DynamoDB table in LocalStack on startup.
 
 This removes the need for any manual setup. The application code ensures that the necessary infrastructure is available before it's needed.
 
@@ -81,7 +73,7 @@ Then run the application:
 
 ```bash
 export FEATURE_DISABLESECURITY=true
-./gradlew :data-access-service:bootRun
+./gradlew :data-access-service:bootRun --args='--spring.profiles.active=local,localstack'
 ```
 
 The app is pre-configured in `application.yml` to connect to LocalStack at `http://localhost:4566` with dummy credentials (`test`/`test`).
@@ -168,8 +160,8 @@ docker-compose down -v
 ## Troubleshooting
 
 ### "ResourceNotFoundException: Cannot do operations on a non-existent table"
-- This error should not occur if the `local` profile is active, as the application creates the table on startup.
-- Ensure the `local` Spring profile is enabled when running the application.
+- This error should not occur if the `localstack` profile is active, as the application creates the table on startup.
+- Ensure the `localstack` Spring profile is enabled when running the application.
 - Ensure LocalStack is running before you start the application: `docker ps | grep localstack`
 - Verify the table was created after the app started: `awslocal dynamodb list-tables`
 - Check the application logs for any errors during the resource creation process.
@@ -187,3 +179,31 @@ docker-compose down -v
 ### AWS CLI prompts for credentials
 - Use `awslocal` instead (no credentials needed)
 - Or export dummy credentials: `export AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test`
+
+## Connect to LocalStack DynamoDB using NoSQL Workbench
+
+You can use [NoSQL Workbench for DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/workbench.html) to visually explore and edit your DynamoDB tables running in LocalStack.
+
+### Steps
+
+1. **Download and install NoSQL Workbench**
+   - [Download for macOS, Windows, or Linux](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/workbench.settingup.html)
+
+2. **Start LocalStack**
+   - Ensure LocalStack is running locally (see above).
+
+3. **Open NoSQL Workbench and add a new DynamoDB connection:**
+   - Go to the **'Operation builder'** tab.
+   - Click **'Add connection'**.
+   - Set **Connection type** to **DynamoDB local**.
+   - Fill in the connection details:
+     - **Name:** LocalStack or any name you prefer
+     - **Hostname:** `localhost`
+     - **Port:** `4566`
+   - Click **'Connect'**.
+
+4. **Browse and edit tables**
+   - You should now see your LocalStack DynamoDB tables (e.g., `EventIndexTable`).
+   - You can browse, query, and edit data directly from NoSQL Workbench.
+
+**Note:** If you do not see your tables, ensure the application has started and created them, and that you are connecting to the correct port and region.

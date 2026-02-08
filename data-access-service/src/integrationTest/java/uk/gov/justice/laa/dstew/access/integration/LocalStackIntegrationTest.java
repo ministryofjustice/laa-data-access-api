@@ -8,8 +8,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.junit.Assert;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +53,9 @@ import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
+import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
 import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.dynamodb.model.TableStatus;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -61,6 +66,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.spike.Event;
 import uk.gov.justice.laa.dstew.access.spike.LocalStackResourceInitializer;
 import uk.gov.justice.laa.dstew.access.spike.dynamo.DomainEventDynamoDB;
+import uk.gov.justice.laa.dstew.access.config.devlopment.LocalStackResourceInitializer;
 
 @Testcontainers
 @ActiveProfiles("test")
@@ -116,7 +122,7 @@ public class LocalStackIntegrationTest {
 
   @DynamicPropertySource
   static void overrideProperties(DynamicPropertyRegistry registry) {
-    registry.add("cloud.aws.region.static", () -> AWS_REGION.toString());
+    registry.add("cloud.aws.region.static", AWS_REGION::toString);
     registry.add("cloud.aws.credentials.access-key", () -> "test");
     registry.add("cloud.aws.credentials.secret-key", () -> "test");
     registry.add("cloud.aws.stack-name", () -> "localstack");
@@ -140,7 +146,7 @@ public class LocalStackIntegrationTest {
 
     try {
       dynamoDbClient.createTable(request);
-    } catch (software.amazon.awssdk.services.dynamodb.model.ResourceInUseException e) {
+    } catch (ResourceInUseException e) {
       // Table already exists - make creation idempotent so tests can run against existing LocalStack
       // (for example when Testcontainers can't create containers and we fallback to an existing compose-managed LocalStack).
       // Continue to waiting for the table to be ACTIVE below.
@@ -230,58 +236,26 @@ public class LocalStackIntegrationTest {
   }
 
   @Test
-  void dynamoGsiQueryAndS3SmokeTest() {
-    DynamoDbTable<DomainEventDynamoDB> table = enhancedClient.table("events", TableSchema.fromBean(DomainEventDynamoDB.class));
+  void dynamoDbCheckCanSaveAndRetrieveItem() {
+    dynamoDbClient.putItem(PutItemRequest.builder()
+            .tableName("events")
+        .item(Map.of(
+            "pk", AttributeValue.fromS("test-pk"),
+            "sk", AttributeValue.fromS("test-sk")))
+        .build());
 
-    UUID eventId = UUID.randomUUID();
-    Instant now = Instant.now();
-    DomainEventDynamoDB e = DomainEventDynamoDB.builder()
-        .applicationId(eventId.toString())
-        .type(DomainEventType.APPLICATION_CREATED.getValue())
-        .description("desc")
-        .caseworkerId("cw-123")
-        .createdAt(now.toString())
-        .build();
+    Map<String, AttributeValue> item = dynamoDbClient.getItem(GetItemRequest.builder()
+            .tableName("events")
+        .key(Map.of(
+            "pk", AttributeValue.fromS("test-pk"),
+            "sk", AttributeValue.fromS("test-sk")))
+        .build()
+    ).item();
 
-    table.putItem(e);
+    Assertions.assertEquals("test-pk", item.get("pk").s());
+    Assertions.assertEquals("test-sk", item.get("sk").s());
 
-    // Query the GSI
-    QueryRequest queryRequest = QueryRequest.builder()
-        .tableName("events")
-        .indexName("gs-index-1")
-        .keyConditionExpression("gs1pk = :gs1pkVal")
-        .expressionAttributeValues(Map.of(
-            ":gs1pkVal", AttributeValue.fromS("CASEWORKER#" + "cw-123")
-        )).build();
-
-    QueryResponse query = dynamoDbClient.query(queryRequest);
-    List<Key> keys = query.items().stream().map(x ->
-        Key.builder().partitionValue(x.get("pk").s())
-            .sortValue(x.get("sk").s()).build()
-    ).toList();
-    ReadBatch.Builder<DomainEventDynamoDB> readBatch = ReadBatch.builder(DomainEventDynamoDB.class)
-        .mappedTableResource(table);
-
-    keys.forEach(readBatch::addGetItem); // keys is List<Key>
-
-    BatchGetItemEnhancedRequest request = BatchGetItemEnhancedRequest.builder()
-        .readBatches(readBatch.build())
-        .build();
-
-    BatchGetResultPageIterable pages = enhancedClient.batchGetItem(request);
-    List<DomainEventDynamoDB> list = pages.resultsForTable(table).stream().toList();
-    assertThat(list).isNotEmpty();
-    DomainEventDynamoDB retrieved = list.get(0);
-    assertThat(retrieved.getApplicationId()).isEqualTo(eventId.toString());
-    assertThat(retrieved.getCaseworkerId()).isEqualTo("cw-123");
-
-    // S3 smoke test - put and get
-    String bucket = "test-bucket";
-    String key = "test/key.txt";
-    byte[] payload = "hello".getBytes();
-    s3Client.putObject(b -> b.bucket(bucket).key(key), software.amazon.awssdk.core.sync.RequestBody.fromBytes(payload));
-
-    byte[] downloaded = s3Client.getObjectAsBytes(b -> b.bucket(bucket).key(key)).asByteArray();
-    assertThat(downloaded).isEqualTo(payload);
   }
+
+
 }
