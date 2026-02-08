@@ -28,13 +28,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * Service for uploading files to S3.
  */
 @Service
-public class S3UploadService {
+public class S3Service {
 
-  private static final Logger logger = LoggerFactory.getLogger(S3UploadService.class);
+  private static final Logger logger = LoggerFactory.getLogger(S3Service.class);
   private final S3Client s3Client;
   private final ObjectMapper objectMapper;
 
-    public S3UploadService(S3Client s3Client, ObjectMapper objectMapper) {
+    public S3Service(S3Client s3Client, ObjectMapper objectMapper) {
         this.s3Client = s3Client;
         this.objectMapper = objectMapper;
     }

@@ -26,6 +26,8 @@ import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetai
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
+import uk.gov.justice.laa.dstew.access.spike.DynamoDbService;
+import uk.gov.justice.laa.dstew.access.spike.Event;
 
 /**
  * Service class for managing domain events.
@@ -39,6 +41,7 @@ public class DomainEventService {
   private final DomainEventRepository domainEventRepository;
   private final ObjectMapper objectMapper;
   private final DomainEventMapper mapper;
+  private final DynamoDbService dynamoDbService;
 
   /**
    * Shared internal logic for persisting domain events.
@@ -200,9 +203,28 @@ public class DomainEventService {
     var filterEventType = DomainEventSpecification.filterEventTypes(eventType);
     Specification<DomainEventEntity> filter = DomainEventSpecification.filterApplicationId(applicationId)
         .and(filterEventType);
-
     Comparator<ApplicationDomainEvent> comparer = Comparator.comparing(ApplicationDomainEvent::getCreatedAt);
     return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
+  }
+  /**
+   * Provides a list of events associated with an application in createdAt ascending order.
+   */
+  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+  public List<ApplicationDomainEvent> getEventsDynamo(UUID applicationId,
+                                                @Valid List<DomainEventType> eventType) {
+
+    if(eventType == null || eventType.isEmpty()) {
+      return dynamoDbService.getAllApplicationsById(String.valueOf(applicationId)).stream()
+          .map(Event::fromDynamoEntity)
+          .map(Event::fromEvent)
+          .sorted(Comparator.comparing(ApplicationDomainEvent::getCreatedAt))
+          .toList();
+    }
+    return dynamoDbService.getAllApplicationsByIdAndEventType(String.valueOf(applicationId), eventType).stream()
+        .map(Event::fromDynamoEntity)
+        .map(Event::fromEvent)
+        .sorted(Comparator.comparing(ApplicationDomainEvent::getCreatedAt))
+        .toList();
   }
 
   /**

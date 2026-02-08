@@ -20,19 +20,22 @@ import uk.gov.justice.laa.dstew.access.service.DomainEventService;
 public class EventHistoryPublisher {
 
   private final DomainEventService domainEventService;
-  private final S3UploadService s3UploadService;
+  private final S3Service s3Service;
   private final DynamoDbService dynamoDbService;
   private final DomainEventRepository domainEventRepository;
 
   /**
    * Processes all unpublished domain events by uploading them to S3 and saving them to DynamoDB.
+   * Uses parallel processing for improved performance.
    *
    * @param eventsToProcess the maximum number of events to process
    */
   public void processDomainEvents(int eventsToProcess) {
     log.info("Processing up to {} domain events", eventsToProcess);
+    long startTime = System.currentTimeMillis();
 
     List<CompletableFuture<UUID>> saveTasks = getUnpublishedEvents(eventsToProcess).stream()
+        .parallel() // Parallelize S3 uploads and save task creation
         .map(this::createSaveTask)
         .flatMap(Optional::stream)
         .toList();
@@ -42,16 +45,25 @@ public class EventHistoryPublisher {
       return;
     }
 
+    long uploadTime = System.currentTimeMillis() - startTime;
+    log.info("S3 uploads completed for {} events in {} ms ({} uploads/second)",
+        saveTasks.size(),
+        uploadTime,
+        String.format("%.2f", saveTasks.size() / (uploadTime / 1000.0)));
+
+    long dynamoStartTime = System.currentTimeMillis();
     CompletableFuture.allOf(saveTasks.toArray(new CompletableFuture[0]))
-        .whenCompleteAsync((unused, throwable) -> handlePublicationResult(saveTasks, throwable));
+        .whenCompleteAsync((unused, throwable) -> handlePublicationResult(saveTasks, throwable, startTime, dynamoStartTime, uploadTime));
   }
 
-  private void handlePublicationResult(List<CompletableFuture<UUID>> saveTasks, Throwable throwable) {
+  private void handlePublicationResult(List<CompletableFuture<UUID>> saveTasks, Throwable throwable,
+                                       long startTime, long dynamoStartTime, long uploadTime) {
     if (throwable != null) {
       log.error("One or more domain events failed during publication", throwable);
     }
 
     List<UUID> publishedEventIds = saveTasks.stream()
+        .parallel() // Parallelize awaiting completions
         .map(this::awaitCompletion)
         .flatMap(Optional::stream)
         .toList();
@@ -61,8 +73,29 @@ public class EventHistoryPublisher {
       return;
     }
 
+    long dynamoTime = System.currentTimeMillis() - dynamoStartTime;
+    log.info("DynamoDB saves completed for {} events in {} ms ({} saves/second)",
+        publishedEventIds.size(),
+        dynamoTime,
+        String.format("%.2f", publishedEventIds.size() / (dynamoTime / 1000.0)));
+
+    long dbUpdateStart = System.currentTimeMillis();
     int updated = domainEventService.updateEventsPublishedStatus(publishedEventIds);
-    log.info("Updated {} events as published", updated);
+    long dbUpdateTime = System.currentTimeMillis() - dbUpdateStart;
+    long totalTime = System.currentTimeMillis() - startTime;
+
+    log.info("========== Event Publication Summary ==========");
+    log.info("Events processed: {}", updated);
+    log.info("S3 upload time: {} ms ({} uploads/second)",
+        uploadTime,
+        String.format("%.2f", saveTasks.size() / (uploadTime / 1000.0)));
+    log.info("DynamoDB save time: {} ms ({} saves/second)",
+        dynamoTime,
+        String.format("%.2f", publishedEventIds.size() / (dynamoTime / 1000.0)));
+    log.info("Database update time: {} ms", dbUpdateTime);
+    log.info("Total execution time: {} ms ({} events/second)",
+        totalTime,
+        String.format("%.2f", updated / (totalTime / 1000.0)));
   }
 
   private Optional<CompletableFuture<UUID>> createSaveTask(Event event) {
@@ -112,7 +145,7 @@ public class EventHistoryPublisher {
    */
   private @Nullable String uploadedS3Url(Event event) {
     S3UploadResult s3UploadResult =
-        s3UploadService.upload(event, "laa-data-stewardship-access-bucket", event.applicationId());
+        s3Service.upload(event.requestPayload(), "laa-data-stewardship-access-bucket", event.applicationId() + "/" + event.domainEventId());
     if (!s3UploadResult.isSuccess()) {
       log.error("S3 Upload failed for event id '{}'", event.domainEventId());
       return null;
@@ -148,7 +181,8 @@ public class EventHistoryPublisher {
         .applicationId(String.valueOf(domainEventEntity.getApplicationId()))
         .caseworkerId(String.valueOf(domainEventEntity.getCaseworkerId()))
         .timestamp(domainEventEntity.getCreatedAt())
-        .description(domainEventEntity.getData().substring(0, 10))
+        .description(domainEventEntity.getType().name() + " event for application " + domainEventEntity.getApplicationId())
+        .requestPayload(domainEventEntity.getData())
         .domainEventId(domainEventEntity.getId())
         .build();
 

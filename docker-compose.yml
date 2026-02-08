@@ -20,9 +20,9 @@ services:
     environment:
       - SERVICES=s3,dynamodb
       - PERSISTENCE=1
-      - DEFAULT_REGION=eu-west-2
       - DOCKER_HOST=unix:///var/run/docker.sock
       - LOCALSTACK_VOLUME_DIR=/var/lib/localstack
+      - DYNAMODB_SHARE_DB=1
     volumes:
       - localstack_state:/var/lib/localstack
       - localstack_data:/var/lib/localstack/data

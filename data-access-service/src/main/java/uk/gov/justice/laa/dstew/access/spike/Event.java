@@ -1,15 +1,18 @@
 package uk.gov.justice.laa.dstew.access.spike;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.Map;
+import java.time.ZoneOffset;
 import lombok.Builder;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.spike.dynamo.DomainEventDynamoDB;
 
 @Builder
 public record Event(DomainEventType eventType, String applicationId, Instant timestamp, String description, String caseworkerId,
-                    java.util.UUID domainEventId) {
+                    java.util.UUID domainEventId, String requestPayload) {
 
   public static Event fromDynamoEntity(DomainEventDynamoDB entity) {
     if (entity == null) {
@@ -20,7 +23,8 @@ public record Event(DomainEventType eventType, String applicationId, Instant tim
         .applicationId(extractEventIdFromPk(entity.getPk()))
         .timestamp(Instant.parse(entity.getCreatedAt()))
         .caseworkerId(entity.getCaseworkerId())
-        .description(entity.getDescription())
+        .description(entity.getType())
+        .requestPayload(entity.getDescription())
         .build();
   }
 
@@ -37,6 +41,16 @@ public record Event(DomainEventType eventType, String applicationId, Instant tim
         .build();
   }
 
+  public static ApplicationDomainEvent fromEvent(Event event) {
+    ApplicationDomainEvent domainEvent = new ApplicationDomainEvent();
+    domainEvent.setApplicationId(java.util.UUID.fromString(event.applicationId()));
+    domainEvent.setDomainEventType(event.eventType());
+    domainEvent.setCreatedAt(OffsetDateTime.ofInstant(event.timestamp(), ZoneOffset.UTC));
+    domainEvent.setCreatedBy(event.caseworkerId());
+    domainEvent.setEventDescription(event.description());
+    return domainEvent;
+
+  }
   private static String extractEventIdFromPk(String pk) {
     return pk != null && pk.contains("#") ? pk.split("#", 2)[1] : pk;
   }

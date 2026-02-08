@@ -23,19 +23,19 @@ import uk.gov.justice.laa.dstew.access.spike.dynamo.DomainEventDynamoDB;
 public class TestDynamoEventController {
 
   private final DynamoDbService dynamoDbService;
-  private final S3UploadService s3UploadService;
+  private final S3Service s3Service;
   private final EventHistoryPublisher eventHistoryPublisher;
 
-  public TestDynamoEventController(DynamoDbService dynamoDbService, S3UploadService s3UploadService,
+  public TestDynamoEventController(DynamoDbService dynamoDbService, S3Service s3Service,
                                    EventHistoryPublisher eventHistoryPublisher) {
     this.dynamoDbService = dynamoDbService;
-    this.s3UploadService = s3UploadService;
+    this.s3Service = s3Service;
     this.eventHistoryPublisher = eventHistoryPublisher;
   }
 
   @PostMapping(value = "/events", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
   public void saveEvent(@RequestBody Event event) {
-    S3UploadResult s3UploadResult = s3UploadService.upload(event, "laa-data-stewardship-access-bucket", event.applicationId());
+    S3UploadResult s3UploadResult = s3Service.upload(event, "laa-data-stewardship-access-bucket", event.applicationId());
     CompletableFuture<Event> eventCompletableFuture = dynamoDbService.saveDomainEvent(event, s3UploadResult.getS3Url());
     eventCompletableFuture.whenComplete((event1, throwable) -> {
         if (throwable != null) {
@@ -48,8 +48,8 @@ public class TestDynamoEventController {
   }
 
   @GetMapping(value = "bucket/download", produces = MediaType.APPLICATION_JSON_VALUE)
-  public S3DownloadResult downloadEventFromS3(@RequestParam String bucket, @RequestParam String key) {
-    return s3UploadService.download(bucket, key);
+  public String downloadEventFromS3(@RequestParam String bucket, @RequestParam String key) {
+    return s3Service.downloadObjectAsString(bucket, key);
   }
 
   @GetMapping(value = "dynamo/events", produces = MediaType.APPLICATION_JSON_VALUE)

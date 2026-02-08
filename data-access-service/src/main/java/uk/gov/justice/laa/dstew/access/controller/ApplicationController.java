@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,6 +38,7 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 /**
  * Controller for handling /api/v0/applications requests.
  */
+@Slf4j
 @RequiredArgsConstructor
 @RestController
 @ExcludeFromGeneratedCodeCoverage
@@ -141,9 +143,12 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(UUID applicationId,
       @Valid List<DomainEventType> eventType) {
-    var events = domainService.getEvents(applicationId, eventType);
+//    var events = domainService.getEvents(applicationId, eventType);
+    var eventsDynamo = domainService.getEventsDynamo(applicationId, eventType);
+//    log.info("Events from RDS: {}", events.size());
+    log.info("Events from DynamoDB: {}", eventsDynamo.size());
     return ResponseEntity.ok(ApplicationHistoryResponse.builder()
-                                                 .events(events)
+                                                 .events(eventsDynamo)
                                                  .build());
   }
 
