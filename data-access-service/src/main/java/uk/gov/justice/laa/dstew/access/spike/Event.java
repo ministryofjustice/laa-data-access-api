@@ -6,6 +6,7 @@ import java.util.Map;
 import java.time.ZoneOffset;
 import lombok.Builder;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.spike.dynamo.DomainEventDynamoDB;
@@ -50,6 +51,18 @@ public record Event(DomainEventType eventType, String applicationId, Instant tim
     domainEvent.setEventDescription(event.description());
     return domainEvent;
 
+  }
+
+  public static Event convertToEvent(DomainEventEntity domainEventEntity) {
+    return Event.builder()
+        .eventType(domainEventEntity.getType())
+        .applicationId(String.valueOf(domainEventEntity.getApplicationId()))
+        .caseworkerId(domainEventEntity.getCaseworkerId() != null ? String.valueOf(domainEventEntity.getCaseworkerId()) : null)
+        .timestamp(domainEventEntity.getCreatedAt())
+        .description(domainEventEntity.getType().name() + " event for application " + domainEventEntity.getApplicationId())
+        .requestPayload(domainEventEntity.getData())
+        .domainEventId(domainEventEntity.getId())
+        .build();
   }
   private static String extractEventIdFromPk(String pk) {
     return pk != null && pk.contains("#") ? pk.split("#", 2)[1] : pk;

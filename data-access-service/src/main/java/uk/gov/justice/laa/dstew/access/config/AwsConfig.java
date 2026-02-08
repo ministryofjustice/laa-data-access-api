@@ -98,4 +98,5 @@ public class AwsConfig {
     builder.credentialsProvider(getCredentialsProvider());
     return builder.build();
   }
+
 }

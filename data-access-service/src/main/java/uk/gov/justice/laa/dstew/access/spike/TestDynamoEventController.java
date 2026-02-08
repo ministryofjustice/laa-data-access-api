@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.spike.dynamo.DomainEventDynamoDB;
+import uk.gov.justice.laa.dstew.access.spike.dynamo.EventHistoryOutboxPattern;
 
 /**
  * Test-only controller to verify DynamoDB writes end-to-end.
@@ -24,13 +25,13 @@ public class TestDynamoEventController {
 
   private final DynamoDbService dynamoDbService;
   private final S3Service s3Service;
-  private final EventHistoryPublisher eventHistoryPublisher;
+  private final EventHistoryOutboxPattern eventHistoryOutboxPattern;
 
   public TestDynamoEventController(DynamoDbService dynamoDbService, S3Service s3Service,
-                                   EventHistoryPublisher eventHistoryPublisher) {
+                                   EventHistoryOutboxPattern eventHistoryOutboxPattern) {
     this.dynamoDbService = dynamoDbService;
     this.s3Service = s3Service;
-    this.eventHistoryPublisher = eventHistoryPublisher;
+    this.eventHistoryOutboxPattern = eventHistoryOutboxPattern;
   }
 
   @PostMapping(value = "/events", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -82,7 +83,7 @@ public class TestDynamoEventController {
   @GetMapping(value = "publish/{publishAmount}", produces = MediaType.APPLICATION_JSON_VALUE)
   public void publishEvents(@PathVariable (required = false) Integer publishAmount ) {
     int amountToPublish = publishAmount == null ? 10 : publishAmount;
-    eventHistoryPublisher.processDomainEvents(amountToPublish);
+    eventHistoryOutboxPattern.processDomainEvents(amountToPublish);
   }
 
 }

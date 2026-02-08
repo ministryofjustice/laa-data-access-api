@@ -2,21 +2,16 @@ package uk.gov.justice.laa.dstew.access.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.validation.Valid;
 import java.time.Instant;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
-import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
-import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
@@ -25,9 +20,8 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
-import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
-import uk.gov.justice.laa.dstew.access.spike.DynamoDbService;
 import uk.gov.justice.laa.dstew.access.spike.Event;
+import uk.gov.justice.laa.dstew.access.spike.EventHistoryPublisher;
 
 /**
  * Service class for managing domain events.
@@ -40,8 +34,7 @@ public class DomainEventService {
 
   private final DomainEventRepository domainEventRepository;
   private final ObjectMapper objectMapper;
-  private final DomainEventMapper mapper;
-  private final DynamoDbService dynamoDbService;
+  private final EventHistoryPublisher eventHistoryPublisher;
 
   /**
    * Shared internal logic for persisting domain events.
@@ -63,7 +56,8 @@ public class DomainEventService {
             .data(getEventDetailsAsJson(data, eventType))
             .build();
 
-    domainEventRepository.save(entity);
+//    domainEventRepository.save(entity);
+    eventHistoryPublisher.processDomainEventAsync(Event.convertToEvent(entity));
   }
 
   /**
@@ -85,16 +79,17 @@ public class DomainEventService {
             .build();
 
     DomainEventEntity domainEventEntity =
-          DomainEventEntity.builder()
-              .applicationId(applicationEntity.getId())
-              .caseworkerId(null)
-              .type(DomainEventType.APPLICATION_CREATED)
-              .createdAt(Instant.now())
-              .createdBy(createdBy)
-              .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.APPLICATION_CREATED))
-              .build();
+        DomainEventEntity.builder()
+            .applicationId(applicationEntity.getId())
+            .caseworkerId(null)
+            .type(DomainEventType.APPLICATION_CREATED)
+            .createdAt(Instant.now())
+            .createdBy(createdBy)
+            .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.APPLICATION_CREATED))
+            .build();
 
-    domainEventRepository.save(domainEventEntity);
+    //    domainEventRepository.save(entity);
+    eventHistoryPublisher.processDomainEventAsync(Event.convertToEvent(domainEventEntity));
   }
 
   /**
@@ -136,12 +131,12 @@ public class DomainEventService {
 
     AssignApplicationDomainEventDetails domainEventDetails =
         AssignApplicationDomainEventDetails.builder()
-          .applicationId(applicationId)
-          .caseWorkerId(caseworkerId)
-          .createdAt(Instant.now())
-          .createdBy(defaultCreatedByName)
-          .eventDescription(eventDescription)
-          .build();
+            .applicationId(applicationId)
+            .caseWorkerId(caseworkerId)
+            .createdAt(Instant.now())
+            .createdBy(defaultCreatedByName)
+            .eventDescription(eventDescription)
+            .build();
 
     saveDomainEvent(
         applicationId,
@@ -193,39 +188,6 @@ public class DomainEventService {
     );
   }
 
-  /**
-   * Provides a list of events associated with an application in createdAt ascending order.
-   */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<ApplicationDomainEvent> getEvents(UUID applicationId,
-                                                @Valid List<DomainEventType> eventType) {
-
-    var filterEventType = DomainEventSpecification.filterEventTypes(eventType);
-    Specification<DomainEventEntity> filter = DomainEventSpecification.filterApplicationId(applicationId)
-        .and(filterEventType);
-    Comparator<ApplicationDomainEvent> comparer = Comparator.comparing(ApplicationDomainEvent::getCreatedAt);
-    return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
-  }
-  /**
-   * Provides a list of events associated with an application in createdAt ascending order.
-   */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<ApplicationDomainEvent> getEventsDynamo(UUID applicationId,
-                                                @Valid List<DomainEventType> eventType) {
-
-    if(eventType == null || eventType.isEmpty()) {
-      return dynamoDbService.getAllApplicationsById(String.valueOf(applicationId)).stream()
-          .map(Event::fromDynamoEntity)
-          .map(Event::fromEvent)
-          .sorted(Comparator.comparing(ApplicationDomainEvent::getCreatedAt))
-          .toList();
-    }
-    return dynamoDbService.getAllApplicationsByIdAndEventType(String.valueOf(applicationId), eventType).stream()
-        .map(Event::fromDynamoEntity)
-        .map(Event::fromEvent)
-        .sorted(Comparator.comparing(ApplicationDomainEvent::getCreatedAt))
-        .toList();
-  }
 
   /**
    * Posts a MAKE_DECISION_REFUSED domain event.
@@ -233,26 +195,26 @@ public class DomainEventService {
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void saveMakeDecisionRefusedDomainEvent(
-          UUID applicationId,
-          MakeDecisionRequest request) {
+      UUID applicationId,
+      MakeDecisionRequest request) {
 
     String eventDescription = request.getEventHistory().getEventDescription();
     UUID caseworkerId = request.getUserId();
 
     MakeDecisionRefusedDomainEventDetails domainEventDetails =
-            MakeDecisionRefusedDomainEventDetails.builder()
-                    .applicationId(applicationId)
-                    .caseworkerId(caseworkerId)
-                    .createdAt(Instant.now())
-                    .request(getEventDetailsAsJson(request, DomainEventType.APPLICATION_MAKE_DECISION_REFUSED))
-                    .eventDescription(eventDescription)
-                    .build();
+        MakeDecisionRefusedDomainEventDetails.builder()
+            .applicationId(applicationId)
+            .caseworkerId(caseworkerId)
+            .createdAt(Instant.now())
+            .request(getEventDetailsAsJson(request, DomainEventType.APPLICATION_MAKE_DECISION_REFUSED))
+            .eventDescription(eventDescription)
+            .build();
 
     saveDomainEvent(
-            applicationId,
-            caseworkerId,
-            DomainEventType.APPLICATION_MAKE_DECISION_REFUSED,
-            domainEventDetails
+        applicationId,
+        caseworkerId,
+        DomainEventType.APPLICATION_MAKE_DECISION_REFUSED,
+        domainEventDetails
     );
   }
 
