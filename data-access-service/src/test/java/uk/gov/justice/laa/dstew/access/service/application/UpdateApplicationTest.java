@@ -1,22 +1,30 @@
 package uk.gov.justice.laa.dstew.access.service.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.Event;
+import uk.gov.justice.laa.dstew.access.model.S3UploadResult;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
+import uk.gov.justice.laa.dstew.access.service.DynamoDbService;
+import uk.gov.justice.laa.dstew.access.service.EventHistoryPublisher;
+import uk.gov.justice.laa.dstew.access.service.S3Service;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -32,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -40,15 +49,18 @@ import static org.mockito.Mockito.verify;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class UpdateApplicationTest extends BaseServiceTest {
 
+
     @Autowired
     private ApplicationService serviceUnderTest;
+
+    @MockitoBean
+    private EventHistoryPublisher eventHistoryPublisher;
 
     @Test
     void givenNoApplication_whenUpdateApplication_thenThrowResourceNotFoundException() {
         // given
         UUID applicationId = UUID.randomUUID();
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
-
         setSecurityContext(TestConstants.Roles.WRITER);
 
         // when / then
@@ -73,7 +85,9 @@ public class UpdateApplicationTest extends BaseServiceTest {
 
         ApplicationUpdateRequest updateRequest = applicationUpdateRequestFactory.createDefault();
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
-
+        when(s3Service.upload(any() , any(String.class), any(String.class)))
+            .thenReturn(new S3UploadResult("bucket", "key", "etag", true, "s3://bucket/key"));
+        when(dynamoDbService.saveDomainEvent(any(Event.class), any(String.class))).thenReturn(null);
         setSecurityContext(TestConstants.Roles.WRITER);
 
         DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
@@ -92,6 +106,8 @@ public class UpdateApplicationTest extends BaseServiceTest {
 
         // then
         verify(applicationRepository, times(1)).findById(applicationId);
+        verify(dynamoDbService, times(1)).saveDomainEvent(any(Event.class), any(String.class));
+        verify(s3Service, times(1)).upload(any() , any(String.class), any(String.class));
         verifyThatApplicationUpdated(updateRequest, 1);
         verifyThatUpdateDomainEventSaved(expectedDomainEvent, 1);
         assertThat(expectedEntity.getModifiedAt()).isNotNull();

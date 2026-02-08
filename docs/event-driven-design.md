@@ -306,7 +306,7 @@ A utility class for building DynamoDB partition key (`pk`) and sort key (`sk`) v
 **Usage example:**
 
 ```java
-import uk.gov.justice.laa.dstew.access.spike.DynamoKeyBuilder;
+import uk.gov.justice.laa.dstew.access.utilities.DynamoKeyBuilder;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 
 // Build a Key for DynamoDB Enhanced Client

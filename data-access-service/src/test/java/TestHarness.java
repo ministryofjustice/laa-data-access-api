@@ -38,7 +38,7 @@ public class TestHarness {
     List<String> ids = new ArrayList<>();
 //      ids = getIds();
 
-    int numberIdsToGenerate = 10000;
+    int numberIdsToGenerate = 1;
     for (int i = 0; i < numberIdsToGenerate; i++) {
 
       String newId = "LAA-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();

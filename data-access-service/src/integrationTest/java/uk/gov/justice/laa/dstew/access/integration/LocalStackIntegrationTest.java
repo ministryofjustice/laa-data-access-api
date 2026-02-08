@@ -22,7 +22,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
@@ -98,10 +97,6 @@ public class LocalStackIntegrationTest {
     registry.add("cloud.aws.endpoint-override", () -> localstack.getEndpointOverride(DYNAMODB).toString());
   }
 
-  @AfterAll
-  void tearDown() {
-    // No need to stop LocalStack container, Testcontainers will handle it
-  }
 
   private void createTableWithGsi() {
     String tableName = "events";
@@ -206,14 +201,14 @@ public class LocalStackIntegrationTest {
   @Test
   void dynamoDbCheckCanSaveAndRetrieveItem() {
     dynamoDbClient.putItem(PutItemRequest.builder()
-            .tableName("events")
+        .tableName("events")
         .item(Map.of(
             "pk", AttributeValue.fromS("test-pk"),
             "sk", AttributeValue.fromS("test-sk")))
         .build());
 
     Map<String, AttributeValue> item = dynamoDbClient.getItem(GetItemRequest.builder()
-            .tableName("events")
+        .tableName("events")
         .key(Map.of(
             "pk", AttributeValue.fromS("test-pk"),
             "sk", AttributeValue.fromS("test-sk")))

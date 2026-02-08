@@ -28,7 +28,7 @@ import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
  * ensuring that necessary resources are available without manual setup.
  */
 @Component
-@Profile("local") // Only run this component when the 'local' profile is active
+@Profile("localstack") // Only run this component when the 'localstack' profile is active
 public class LocalStackResourceInitializer {
 
   private static final Logger log = LoggerFactory.getLogger(LocalStackResourceInitializer.class);
@@ -103,7 +103,7 @@ public class LocalStackResourceInitializer {
    * @return a CreateTableRequest configured with the necessary key schema.
    */
   public static CreateTableRequest getCreateTableRequest(String tableName) {
-    CreateTableRequest request = CreateTableRequest.builder()
+    return CreateTableRequest.builder()
         .tableName(tableName)
         .keySchema(
             KeySchemaElement.builder().attributeName("pk").keyType(KeyType.HASH).build(),
@@ -123,32 +123,29 @@ public class LocalStackResourceInitializer {
             getGlobalSecondaryIndex2()
         )
         .build();
-    return request;
   }
 
   private static GlobalSecondaryIndex getGlobalSecondaryIndex1() {
-    GlobalSecondaryIndex globalSecondaryIndex = GlobalSecondaryIndex.builder()
+    return GlobalSecondaryIndex.builder()
         .indexName("gs-index-1")
         .provisionedThroughput(ProvisionedThroughput.builder().readCapacityUnits(5L).writeCapacityUnits(5L).build())
         .keySchema(
             KeySchemaElement.builder().attributeName("gs1pk").keyType(KeyType.HASH).build(),
             KeySchemaElement.builder().attributeName("gs1sk").keyType(KeyType.RANGE).build())
-        .projection(projection -> projection.nonKeyAttributes("type", "createdAt", "s3location")
+        .projection(projection -> projection.nonKeyAttributes("pk", "sk", "s3location")
             .projectionType("INCLUDE"))
         .build();
-    return globalSecondaryIndex;
   }
 
   private static GlobalSecondaryIndex getGlobalSecondaryIndex2() {
-    GlobalSecondaryIndex globalSecondaryIndex = GlobalSecondaryIndex.builder()
+    return GlobalSecondaryIndex.builder()
         .indexName("gs-index-2")
         .provisionedThroughput(ProvisionedThroughput.builder().readCapacityUnits(5L).writeCapacityUnits(5L).build())
         .keySchema(
             KeySchemaElement.builder().attributeName("gs2pk").keyType(KeyType.HASH).build(),
             KeySchemaElement.builder().attributeName("gs2sk").keyType(KeyType.RANGE).build())
-        .projection(projection -> projection.nonKeyAttributes("type", "createdAt", "s3location")
+        .projection(projection -> projection.nonKeyAttributes("pk", "sk", "s3location", "createdAt")
             .projectionType("INCLUDE"))
         .build();
-    return globalSecondaryIndex;
   }
 }

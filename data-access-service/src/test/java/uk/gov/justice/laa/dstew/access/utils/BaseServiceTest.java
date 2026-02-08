@@ -23,6 +23,8 @@ import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
 import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
+import uk.gov.justice.laa.dstew.access.service.DynamoDbService;
+import uk.gov.justice.laa.dstew.access.service.S3Service;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateRequestFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEntityFactory;
@@ -51,6 +53,12 @@ import java.util.stream.Stream;
 @ExtendWith(MockitoExtension.class)
 @ActiveProfiles("unit-test")
 public class BaseServiceTest {
+
+  @MockitoBean
+  protected S3Service s3Service;
+
+  @MockitoBean
+  protected DynamoDbService dynamoDbService;
 
     @MockitoBean
     protected ApplicationRepository applicationRepository;

@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
@@ -50,16 +51,19 @@ public class AwsConfig {
       builder = builder.endpointOverride(URI.create(awsEndpoint));
     }
 
+    builder.credentialsProvider(getCredentialsProvider());
+
+    return builder.build();
+  }
+
+  private AwsCredentialsProvider getCredentialsProvider() {
     // If explicit credentials are provided (local/dev), use them. Otherwise rely on the default provider
     // which in Kubernetes will pick up IRSA or other environment/metadata credentials.
     if (awsAccessKey != null && !awsAccessKey.isBlank() && awsSecretKey != null && !awsSecretKey.isBlank()) {
-      builder = builder.credentialsProvider(StaticCredentialsProvider.create(
-          AwsBasicCredentials.create(awsAccessKey, awsSecretKey)));
-    } else {
-      builder = builder.credentialsProvider(DefaultCredentialsProvider.builder().build());
+      return StaticCredentialsProvider.create(
+          AwsBasicCredentials.create(awsAccessKey, awsSecretKey));
     }
-
-    return builder.build();
+    return DefaultCredentialsProvider.builder().build();
   }
 
   /**
@@ -90,14 +94,9 @@ public class AwsConfig {
     if (awsEndpoint != null && !awsEndpoint.isBlank()) {
       builder = builder.endpointOverride(URI.create(awsEndpoint));
     }
-    // If explicit credentials are provided (local/dev), use them. Otherwise rely on the default provider
-    // which in Kubernetes will pick up IRSA or other environment/metadata credentials.
-    if (awsAccessKey != null && !awsAccessKey.isBlank() && awsSecretKey != null && !awsSecretKey.isBlank()) {
-      builder = builder.credentialsProvider(StaticCredentialsProvider.create(
-          AwsBasicCredentials.create(awsAccessKey, awsSecretKey)));
-    } else {
-      builder = builder.credentialsProvider(DefaultCredentialsProvider.builder().build());
-    }
+
+    builder.credentialsProvider(getCredentialsProvider());
     return builder.build();
   }
+
 }

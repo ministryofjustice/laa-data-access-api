@@ -1,2 +1,0 @@
-ALTER TABLE domain_events
-ADD COLUMN is_published BOOLEAN NOT NULL DEFAULT FALSE;
