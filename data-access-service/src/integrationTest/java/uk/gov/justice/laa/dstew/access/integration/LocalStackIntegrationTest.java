@@ -1,15 +1,9 @@
 package uk.gov.justice.laa.dstew.access.integration;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.DYNAMODB;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import org.junit.Assert;
-import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -27,32 +21,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.core.checksums.RequestChecksumCalculation;
-import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
-import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption;
-import software.amazon.awssdk.core.pagination.sync.SdkIterable;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
-import software.amazon.awssdk.enhanced.dynamodb.DynamoDbIndex;
-import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
-import software.amazon.awssdk.enhanced.dynamodb.Key;
-import software.amazon.awssdk.enhanced.dynamodb.MappedTableResource;
-import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
-import software.amazon.awssdk.enhanced.dynamodb.model.BatchGetItemEnhancedRequest;
-import software.amazon.awssdk.enhanced.dynamodb.model.BatchGetResultPageIterable;
-import software.amazon.awssdk.enhanced.dynamodb.model.Page;
-import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
-import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
-import software.amazon.awssdk.enhanced.dynamodb.model.ReadBatch;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.BatchGetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DeleteTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
-import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
-import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
@@ -62,10 +38,6 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.ListBucketsResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
-import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.spike.Event;
-import uk.gov.justice.laa.dstew.access.spike.LocalStackResourceInitializer;
-import uk.gov.justice.laa.dstew.access.spike.dynamo.DomainEventDynamoDB;
 import uk.gov.justice.laa.dstew.access.config.devlopment.LocalStackResourceInitializer;
 
 @Testcontainers
@@ -141,8 +113,7 @@ public class LocalStackIntegrationTest {
     }
 
     CreateTableRequest request = LocalStackResourceInitializer
-        .getCreateTableRequest(LocalStackResourceInitializer.getGlobalSecondaryIndex1(),
-            LocalStackResourceInitializer.getGlobalSecondaryIndex2(), tableName);
+        .getCreateTableRequest(tableName);
 
     try {
       dynamoDbClient.createTable(request);
@@ -238,14 +209,14 @@ public class LocalStackIntegrationTest {
   @Test
   void dynamoDbCheckCanSaveAndRetrieveItem() {
     dynamoDbClient.putItem(PutItemRequest.builder()
-            .tableName("events")
+        .tableName("events")
         .item(Map.of(
             "pk", AttributeValue.fromS("test-pk"),
             "sk", AttributeValue.fromS("test-sk")))
         .build());
 
     Map<String, AttributeValue> item = dynamoDbClient.getItem(GetItemRequest.builder()
-            .tableName("events")
+        .tableName("events")
         .key(Map.of(
             "pk", AttributeValue.fromS("test-pk"),
             "sk", AttributeValue.fromS("test-sk")))

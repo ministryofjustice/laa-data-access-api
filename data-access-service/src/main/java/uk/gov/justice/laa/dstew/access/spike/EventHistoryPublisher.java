@@ -25,6 +25,50 @@ public class EventHistoryPublisher {
   private final DomainEventRepository domainEventRepository;
 
   /**
+   * Processes a single domain event asynchronously: uploads to S3, saves to DynamoDB, and updates published status.
+   *
+   * @param event the event to process
+   * @return a CompletableFuture containing the event's UUID if successful, or empty if failed
+   */
+  public CompletableFuture<Optional<UUID>> processDomainEventAsync(Event event) {
+    return processEventAsync(event)
+        .thenApply(uuid -> {
+          if (uuid != null) {
+            int updated = domainEventService.updateEventsPublishedStatus(List.of(uuid));
+            if (updated == 1) {
+              log.info("Event {} published and status updated", uuid);
+              return Optional.of(uuid);
+            } else {
+              log.warn("Event {} published but status update failed", uuid);
+            }
+          }
+          return Optional.empty();
+        });
+  }
+
+  /**
+   * Core async processing for a single event: upload to S3 and save to DynamoDB.
+   * Returns the event UUID if successful, null otherwise.
+   */
+  private CompletableFuture<UUID> processEventAsync(Event event) {
+    return CompletableFuture.supplyAsync(() -> uploadedS3Url(event))
+        .thenCompose(s3Url -> {
+          if (s3Url == null) {
+            return CompletableFuture.completedFuture(null);
+          }
+          return dynamoDbService.saveDomainEvent(event, s3Url)
+              .thenApply(__ -> event.domainEventId())
+              .whenComplete((__, throwable) -> {
+                if (throwable == null) {
+                  log.info("Domain event with id '{}' saved successfully", event.applicationId());
+                } else {
+                  log.error("Failed to process event with ID {}", event.domainEventId(), throwable);
+                }
+              });
+        });
+  }
+
+  /**
    * Processes all unpublished domain events by uploading them to S3 and saving them to DynamoDB.
    * Uses parallel processing for improved performance.
    *
@@ -34,10 +78,10 @@ public class EventHistoryPublisher {
     log.info("Processing up to {} domain events", eventsToProcess);
     long startTime = System.currentTimeMillis();
 
-    List<CompletableFuture<UUID>> saveTasks = getUnpublishedEvents(eventsToProcess).stream()
-        .parallel() // Parallelize S3 uploads and save task creation
-        .map(this::createSaveTask)
-        .flatMap(Optional::stream)
+    List<Event> events = getUnpublishedEvents(eventsToProcess);
+    List<CompletableFuture<UUID>> saveTasks = events.stream()
+        .parallel()
+        .map(this::processEventAsync)
         .toList();
 
     if (saveTasks.isEmpty()) {
@@ -98,11 +142,6 @@ public class EventHistoryPublisher {
         String.format("%.2f", updated / (totalTime / 1000.0)));
   }
 
-  private Optional<CompletableFuture<UUID>> createSaveTask(Event event) {
-    return Optional.ofNullable(uploadedS3Url(event))
-        .map(s3Url -> getSaveTask(event, s3Url));
-  }
-
   /**
    * Awaits the completion of a CompletableFuture and handles exceptions.
    *
@@ -116,25 +155,6 @@ public class EventHistoryPublisher {
       log.error("Failed to persist domain event", ex);
       return Optional.empty();
     }
-  }
-
-  /**
-   * Creates a task to save the event to DynamoDB.
-   *
-   * @param event the event to save
-   * @param s3Url the S3 URL of the uploaded event data
-   * @return a CompletableFuture representing the save task
-   */
-  private @NonNull CompletableFuture<UUID> getSaveTask(Event event, String s3Url) {
-    return dynamoDbService.saveDomainEvent(event, s3Url)
-        .thenApply(__ -> event.domainEventId())
-        .whenComplete((__, throwable) -> {
-          if (throwable == null) {
-            log.info("Domain event with id '{}' saved successfully", event.applicationId());
-          } else {
-            log.error("Failed to process event with ID {}", event.domainEventId(), throwable);
-          }
-        });
   }
 
   /**
