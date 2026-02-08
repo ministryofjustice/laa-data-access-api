@@ -61,7 +61,7 @@ public record Event(DomainEventType eventType, String applicationId, Instant tim
         .timestamp(domainEventEntity.getCreatedAt())
         .description(domainEventEntity.getType().name() + " event for application " + domainEventEntity.getApplicationId())
         .requestPayload(domainEventEntity.getData())
-        .domainEventId(domainEventEntity.getId())
+        .domainEventId(domainEventEntity.getId() != null ? domainEventEntity.getId() : java.util.UUID.randomUUID())
         .build();
   }
   private static String extractEventIdFromPk(String pk) {

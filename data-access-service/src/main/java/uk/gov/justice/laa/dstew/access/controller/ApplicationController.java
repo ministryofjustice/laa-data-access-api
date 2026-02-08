@@ -48,7 +48,7 @@ public class ApplicationController implements ApplicationApi {
   private final EventHistoryService eventHistoryService;
 
   public ApplicationController(ApplicationService service, ApplicationSummaryService summaryService,
-                               @Qualifier("eventHistoryServiceRdsImpl")
+                               @Qualifier("eventHistoryServiceAwsImpl")
                                EventHistoryService eventHistoryService) {
     this.service = service;
     this.summaryService = summaryService;

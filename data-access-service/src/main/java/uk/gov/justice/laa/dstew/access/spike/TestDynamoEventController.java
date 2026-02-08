@@ -39,17 +39,20 @@ public class TestDynamoEventController {
     S3UploadResult s3UploadResult = s3Service.upload(event, "laa-data-stewardship-access-bucket", event.applicationId());
     CompletableFuture<Event> eventCompletableFuture = dynamoDbService.saveDomainEvent(event, s3UploadResult.getS3Url());
     eventCompletableFuture.whenComplete((event1, throwable) -> {
-        if (throwable != null) {
-            System.err.println("Failed to save event: " + throwable.getMessage());
-        } else {
-            System.out.println("Event saved successfully: " + event1);
+      if (throwable != null) {
+        System.err.println("Failed to save event: " + throwable.getMessage());
+      } else {
+        System.out.println("Event saved successfully: " + event1);
 
-        }
+      }
     });
   }
 
   @GetMapping(value = "bucket/download", produces = MediaType.APPLICATION_JSON_VALUE)
   public String downloadEventFromS3(@RequestParam String bucket, @RequestParam String key) {
+    if (bucket == null) {
+      bucket = "laa-data-stewardship-access-bucket";
+    }
     return s3Service.downloadObjectAsString(bucket, key);
   }
 
@@ -61,12 +64,13 @@ public class TestDynamoEventController {
 
   @GetMapping(value = "dynamo/events/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
   public List<Event> getEvents(@PathVariable String id,
-                               @RequestParam (required = false) List<DomainEventType> eventTypes, @RequestParam (required = false) String caseworkerId) {
-    if(caseworkerId != null) {
+                               @RequestParam(required = false) List<DomainEventType> eventTypes,
+                               @RequestParam(required = false) String caseworkerId) {
+    if (caseworkerId != null) {
       return dynamoDbService.getDomainEventDynamoDBForCasework(id, caseworkerId, eventTypes != null ? eventTypes
           .stream()
-              .findFirst().orElse(null) : null
-          );
+          .findFirst().orElse(null) : null
+      );
     }
 
     if (eventTypes != null) {
@@ -78,10 +82,11 @@ public class TestDynamoEventController {
 
   /**
    * Publishes a specified number of events to DynamoDB.
+   *
    * @param publishAmount the number of events to publish
    */
   @GetMapping(value = "publish/{publishAmount}", produces = MediaType.APPLICATION_JSON_VALUE)
-  public void publishEvents(@PathVariable (required = false) Integer publishAmount ) {
+  public void publishEvents(@PathVariable(required = false) Integer publishAmount) {
     int amountToPublish = publishAmount == null ? 10 : publishAmount;
     eventHistoryOutboxPattern.processDomainEvents(amountToPublish);
   }
