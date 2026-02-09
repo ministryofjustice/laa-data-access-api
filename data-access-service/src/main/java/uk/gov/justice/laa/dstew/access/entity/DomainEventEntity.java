@@ -58,5 +58,4 @@ public class DomainEventEntity {
 
   @Column(name = "created_by")
   private String createdBy;
-
 }

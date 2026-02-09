@@ -4,25 +4,23 @@ import jakarta.validation.Valid;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.service.EventHistoryService;
 import uk.gov.justice.laa.dstew.access.service.DynamoDbService;
 import uk.gov.justice.laa.dstew.access.model.Event;
 
-@RequiredArgsConstructor
-@Service
 public class EventHistoryServiceAwsImpl implements EventHistoryService {
   private final DynamoDbService dynamoDbService;
+
+  public EventHistoryServiceAwsImpl(DynamoDbService dynamoDbService) {
+    this.dynamoDbService = dynamoDbService;
+  }
 
   /**
    * Provides a list of events associated with an application in createdAt ascending order.
    */
   @Override
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public List<ApplicationDomainEvent> getEvents(UUID applicationId,
                                                 @Valid List<DomainEventType> eventType) {
 

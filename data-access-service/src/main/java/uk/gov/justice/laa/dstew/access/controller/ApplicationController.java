@@ -6,7 +6,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -48,7 +47,6 @@ public class ApplicationController implements ApplicationApi {
   private final EventHistoryService eventHistoryService;
 
   public ApplicationController(ApplicationService service, ApplicationSummaryService summaryService,
-                               @Qualifier("eventHistoryServiceAwsImpl")
                                EventHistoryService eventHistoryService) {
     this.service = service;
     this.summaryService = summaryService;

@@ -196,7 +196,6 @@ public class DomainEventService {
     );
   }
 
-
   /**
    * Posts a MAKE_DECISION_REFUSED domain event.
    *

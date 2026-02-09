@@ -4,10 +4,7 @@ import jakarta.validation.Valid;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
@@ -16,18 +13,20 @@ import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.service.EventHistoryService;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
-@Service
-@RequiredArgsConstructor
 public class EventHistoryServiceRdsImpl implements EventHistoryService {
 
   private final DomainEventRepository domainEventRepository;
   private final DomainEventMapper mapper;
 
+  public EventHistoryServiceRdsImpl(DomainEventRepository domainEventRepository, DomainEventMapper mapper) {
+    this.domainEventRepository = domainEventRepository;
+    this.mapper = mapper;
+  }
+
   /**
    * Provides a list of events associated with an application in createdAt ascending order.
    */
   @Override
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public List<ApplicationDomainEvent> getEvents(UUID applicationId,
                                                 @Valid List<DomainEventType> eventType) {
 
