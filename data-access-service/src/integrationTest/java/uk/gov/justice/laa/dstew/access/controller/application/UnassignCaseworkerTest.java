@@ -149,7 +149,6 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
         });
 
         CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {
-            ;
             builder.eventHistory(EventHistory.builder()
                     .eventDescription("Unassigned Caseworker")
                     .build());
