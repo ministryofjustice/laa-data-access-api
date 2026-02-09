@@ -12,6 +12,32 @@ def versions = [
         sentry : '8.28.0'
 ]
 
+sourceSets {
+    testUtilities {
+        java {
+            srcDir 'src/testUtilities/java'
+        }
+        resources {
+            srcDir 'src/testUtilities/resources'
+        }
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+    test {
+        compileClasspath += sourceSets.testUtilities.output
+        runtimeClasspath += sourceSets.testUtilities.output
+    }
+    integrationTest {
+        compileClasspath += sourceSets.testUtilities.output
+        runtimeClasspath += sourceSets.testUtilities.output
+    }
+}
+
+configurations {
+    testUtilitiesImplementation.extendsFrom testImplementation
+    testUtilitiesRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
 dockerCompose {
     useComposeFiles = ['../docker-compose.yml']
     // workaround https://github.com/avast/gradle-docker-compose-plugin/issues/435
