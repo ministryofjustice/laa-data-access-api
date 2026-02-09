@@ -39,64 +39,57 @@ import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.ListBucketsResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import uk.gov.justice.laa.dstew.access.config.devlopment.LocalStackResourceInitializer;
+import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
+import uk.gov.justice.laa.dstew.access.utils.LocalstackContainerInitializer;
 
 @Testcontainers
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class LocalStackIntegrationTest {
+public class LocalStackIntegrationTest extends BaseIntegrationTest {
   private static final Logger log = LoggerFactory.getLogger(LocalStackIntegrationTest.class);
-  private static final DockerImageName LOCALSTACK_IMAGE = DockerImageName.parse("localstack/localstack:3.2.0");
-  private static final Region AWS_REGION = Region.EU_WEST_2;
+//  private static final DockerImageName LOCALSTACK_IMAGE = DockerImageName.parse("localstack/localstack:3.2.0");
+//  private static final Region AWS_REGION = Region.EU_WEST_2;
+//
+//  @Container
+//  private static final LocalStackContainer localstack = new LocalStackContainer(LOCALSTACK_IMAGE)
+//      .withServices(S3, DYNAMODB)
+//      .withEnv("DEFAULT_REGION", AWS_REGION.toString());
 
-  @Container
-  private static final LocalStackContainer localstack = new LocalStackContainer(LOCALSTACK_IMAGE)
-      .withServices(S3, DYNAMODB)
-      .withEnv("DEFAULT_REGION", AWS_REGION.toString());
+//  private static S3Client s3Client;
+//  private static DynamoDbClient dynamoDbClient;
 
-  private static S3Client s3Client;
-  private static DynamoDbClient dynamoDbClient;
-
-  @BeforeAll
-  static void setUp() {
-    log.info("Starting LocalStack container...");
-    s3Client = S3Client.builder()
-        .endpointOverride(localstack.getEndpointOverride(S3))
-        .region(Region.of(localstack.getRegion()))
-        .credentialsProvider(StaticCredentialsProvider.create(
-            AwsBasicCredentials.create(
-                localstack.getAccessKey(),
-                localstack.getSecretKey()
-            )
-        )).build();
-    dynamoDbClient = DynamoDbClient.builder()
-        .endpointOverride(localstack.getEndpointOverride(DYNAMODB))
-        .region(Region.of(localstack.getRegion()))
-        .credentialsProvider(StaticCredentialsProvider.create(
-            AwsBasicCredentials.create(
-                localstack.getAccessKey(),
-                localstack.getSecretKey()
-            )
-        ))
-        .build();
-
-    log.info("LocalStack container started and clients configured.");
-  }
+//  @BeforeAll
+//  static void setUp() {
+//    log.info("Starting LocalStack container...");
+//    LocalStackContainer localstack = LocalstackContainerInitializer.getLocalstack();
+//    s3Client = S3Client.builder()
+//        .endpointOverride(localstack.getEndpointOverride(S3))
+//        .region(Region.of(localstack.getRegion()))
+//        .credentialsProvider(StaticCredentialsProvider.create(
+//            AwsBasicCredentials.create(
+//                localstack.getAccessKey(),
+//                localstack.getSecretKey()
+//            )
+//        )).build();
+//    dynamoDbClient = DynamoDbClient.builder()
+//        .endpointOverride(localstack.getEndpointOverride(DYNAMODB))
+//        .region(Region.of(localstack.getRegion()))
+//        .credentialsProvider(StaticCredentialsProvider.create(
+//            AwsBasicCredentials.create(
+//                localstack.getAccessKey(),
+//                localstack.getSecretKey()
+//            )
+//        ))
+//        .build();
+//
+//    log.info("LocalStack container started and clients configured.");
+//  }
 
   @BeforeEach
   void initializeResources() {
     createTableWithGsi();
     createBucket();
   }
-
-  @DynamicPropertySource
-  static void overrideProperties(DynamicPropertyRegistry registry) {
-    registry.add("cloud.aws.region.static", AWS_REGION::toString);
-    registry.add("cloud.aws.credentials.access-key", () -> "test");
-    registry.add("cloud.aws.credentials.secret-key", () -> "test");
-    registry.add("cloud.aws.stack-name", () -> "localstack");
-    registry.add("cloud.aws.endpoint-override", () -> localstack.getEndpointOverride(DYNAMODB).toString());
-  }
-
 
   private void createTableWithGsi() {
     String tableName = "events";

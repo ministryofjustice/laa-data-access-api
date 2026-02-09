@@ -56,6 +56,7 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
+import uk.gov.justice.laa.dstew.access.utils.LocalstackContainerInitializer;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
@@ -65,38 +66,6 @@ import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCont
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CreateApplicationTest extends BaseIntegrationTest {
   private static final int applicationVersion = 1;
-  private static final DockerImageName LOCALSTACK_IMAGE = DockerImageName.parse("localstack/localstack:3.2.0");
-  private static final Region AWS_REGION = Region.EU_WEST_2;
-  @Container
-  private static final LocalStackContainer localstack = new LocalStackContainer(LOCALSTACK_IMAGE)
-      .withServices(S3, DYNAMODB)
-      .withEnv("DEFAULT_REGION", AWS_REGION.toString());
-
-  private static S3Client s3Client;
-  private static DynamoDbClient dynamoDbClient;
-  @BeforeAll
-  static void setUp() {
-    s3Client = S3Client.builder()
-        .endpointOverride(localstack.getEndpointOverride(S3))
-        .region(Region.of(localstack.getRegion()))
-        .credentialsProvider(StaticCredentialsProvider.create(
-            AwsBasicCredentials.create(
-                localstack.getAccessKey(),
-                localstack.getSecretKey()
-            )
-        )).build();
-    dynamoDbClient = DynamoDbClient.builder()
-        .endpointOverride(localstack.getEndpointOverride(DYNAMODB))
-        .region(Region.of(localstack.getRegion()))
-        .credentialsProvider(StaticCredentialsProvider.create(
-            AwsBasicCredentials.create(
-                localstack.getAccessKey(),
-                localstack.getSecretKey()
-            )
-        ))
-        .build();
-
-  }
   private Stream<Arguments> createApplicationTestParameters() {
       return Stream.of(
               Arguments.of(new ApplicationOffice()),
@@ -108,15 +77,6 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   void initializeResources() {
     createTableWithGsi();
     createBucket();
-  }
-
-  @DynamicPropertySource
-  static void overrideProperties(DynamicPropertyRegistry registry) {
-    registry.add("cloud.aws.region.static", AWS_REGION::toString);
-    registry.add("cloud.aws.credentials.access-key", () -> "test");
-    registry.add("cloud.aws.credentials.secret-key", () -> "test");
-    registry.add("cloud.aws.stack-name", () -> "localstack");
-    registry.add("cloud.aws.endpoint-override", () -> localstack.getEndpointOverride(DYNAMODB).toString());
   }
 
 

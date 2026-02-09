@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -32,6 +33,8 @@ public class DomainEventService {
   private final DomainEventRepository domainEventRepository;
   private final ObjectMapper objectMapper;
   private final EventHistoryPublisher eventHistoryPublisher;
+  @Value("${aws.event.history.enabled:false}")
+  private boolean awsEventHistoryEnabled;
 
   /**
    * Shared internal logic for persisting domain events.
@@ -53,8 +56,11 @@ public class DomainEventService {
             .data(getEventDetailsAsJson(data, eventType))
             .build();
 
-    domainEventRepository.save(entity);
-    eventHistoryPublisher.processEventAsync(Event.convertToEvent(entity));
+    if(awsEventHistoryEnabled) {
+      eventHistoryPublisher.processEventAsync(Event.convertToEvent(entity));
+    } else {
+      domainEventRepository.save(entity);
+    }
   }
 
   /**
@@ -86,8 +92,12 @@ public class DomainEventService {
             .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.APPLICATION_CREATED))
             .build();
 
+    if(awsEventHistoryEnabled) {
+      eventHistoryPublisher.processEventAsync(Event.convertToEvent(domainEventEntity));
+    } else {
         domainEventRepository.save(domainEventEntity);
-    eventHistoryPublisher.processEventAsync(Event.convertToEvent(domainEventEntity));
+    }
+
   }
 
   /**

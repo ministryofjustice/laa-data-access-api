@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
+import java.util.logging.Logger;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +16,12 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.testcontainers.containers.localstack.LocalStackContainer;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.s3.S3Client;
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts.ApplicationAsserts;
 import uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts.DomainEventAsserts;
@@ -48,16 +56,50 @@ import java.util.UUID;
 import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.testcontainers.containers.localstack.LocalStackContainer.Service.DYNAMODB;
+import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
 
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 @SpringBootTest(classes = AccessApp.class, properties = {"feature.disable-security=false"})
-@ContextConfiguration(initializers = PostgresContainerInitializer.class)
+@ContextConfiguration(initializers = {PostgresContainerInitializer.class, LocalstackContainerInitializer.class})
 @ExtendWith(SpringExtension.class)
 @Transactional
 public abstract class BaseIntegrationTest {
+  protected static S3Client s3Client;
+  protected static DynamoDbClient dynamoDbClient;
 
-    @PersistenceContext
+  static Logger log = Logger.getLogger(BaseIntegrationTest.class.getName());
+
+  @BeforeAll
+  static void setUp() {
+    log.info("Starting LocalStack container...");
+    LocalStackContainer localstack = LocalstackContainerInitializer.getLocalstack();
+    s3Client = S3Client.builder()
+        .endpointOverride(localstack.getEndpointOverride(S3))
+        .region(Region.of(localstack.getRegion()))
+        .credentialsProvider(StaticCredentialsProvider.create(
+            AwsBasicCredentials.create(
+                localstack.getAccessKey(),
+                localstack.getSecretKey()
+            )
+        )).build();
+    dynamoDbClient = DynamoDbClient.builder()
+        .endpointOverride(localstack.getEndpointOverride(DYNAMODB))
+        .region(Region.of(localstack.getRegion()))
+        .credentialsProvider(StaticCredentialsProvider.create(
+            AwsBasicCredentials.create(
+                localstack.getAccessKey(),
+                localstack.getSecretKey()
+            )
+        ))
+        .build();
+
+    log.info("LocalStack container started and clients configured.");
+  }
+
+  @Autowired
+  @PersistenceContext
     protected EntityManager entityManager;
 
     @Autowired protected MockMvc mockMvc;
