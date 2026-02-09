@@ -248,7 +248,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     assertThat(actualApplicationEntity.getApplyApplicationId()).isEqualTo(
         applicationContentDetails.getApplicationContent().getId());
     assertThat(actualApplicationEntity.getUsedDelegatedFunctions()).isEqualTo(
-        applicationContentDetails.getApplicationContent().getProceedings().get(0)
+        applicationContentDetails.getApplicationContent().getProceedings().getFirst()
             .getUsedDelegatedFunctions());
     assertThat(actualApplicationEntity.getApplicationContent())
         .usingRecursiveComparison()
