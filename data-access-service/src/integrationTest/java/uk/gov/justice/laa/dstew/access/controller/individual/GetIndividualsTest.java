@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.individual;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -51,7 +52,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
 
   @Test
   @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
-  public void givenUnknownRole_whenGetIndividuals_thenReturnForbidden() throws Exception {
+  public void givenUnknownRole_whenGetIndividuals_thenReturnForbiddenResponse() throws Exception {
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
 
@@ -61,7 +62,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  public void givenNoUser_whenGetIndividuals_thenReturnUnauthorised() throws Exception {
+  public void givenNoUser_whenGetIndividuals_thenReturnUnauthorisedResponse() throws Exception {
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
 
@@ -72,11 +73,14 @@ public class GetIndividualsTest extends BaseIntegrationTest {
 
   @Test
   @WithMockUser(authorities = TestConstants.Roles.READER)
-  public void givenPageSizeGreaterThan100_whenGetIndividuals_thenCapAt100() throws Exception {
+  public void givenMoreThan100Individuals_whenGetIndividuals_thenPageSizeIsCappedAt100() throws Exception {
     // given - create more than 100 individuals
-    for (int i = 0; i < 105; i++) {
-      persistedIndividualFactory.createAndPersist();
-    }
+    int numberOfIndividualsToPersist = 150;
+    List<IndividualEntity> persistedIndividuals = persistedIndividualFactory.createAndPersistMultiple(
+        numberOfIndividualsToPersist,
+        builder -> {
+        });
+
 
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=1&pageSize=150");
@@ -90,7 +94,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
 
   @Test
   @WithMockUser(authorities = TestConstants.Roles.READER)
-  public void givenNegativePage_whenGetIndividuals_thenDefaultToPage1() throws Exception {
+  public void givenNegativePageNumber_whenGetIndividuals_thenPageSizeDefaultsTo1() throws Exception {
     // given
     persistedIndividualFactory.createAndPersist();
 
@@ -105,7 +109,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
 
   @Test
   @WithMockUser(authorities = TestConstants.Roles.READER)
-  public void givenPageSizeLessThan1_whenGetIndividuals_thenDefaultTo10() throws Exception {
+  public void givenNegativePageNumber_whenGetIndividuals_thenPageSizeDefaultsTo10() throws Exception {
     // given
     persistedIndividualFactory.createAndPersist();
 
@@ -120,7 +124,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
 
   @Test
   @WithMockUser(authorities = TestConstants.Roles.READER)
-  public void givenEmptyDatabase_whenGetIndividuals_thenReturnEmptyList() throws Exception {
+  public void givenNoIndividualsInDatabase_whenGetIndividuals_thenReturnEmptyList() throws Exception {
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=1&pageSize=10");
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
@@ -134,7 +138,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
 
   @Test
   @WithMockUser(authorities = TestConstants.Roles.READER)
-  public void givenPageBeyondAvailableData_whenGetIndividuals_thenReturnEmptyList() throws Exception {
+  public void givenPageNumberBeyondData_whenGetIndividuals_thenReturnEmptyList() throws Exception {
     // given
     persistedIndividualFactory.createAndPersist();
 

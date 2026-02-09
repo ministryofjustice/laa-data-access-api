@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.service;
+package uk.gov.justice.laa.dstew.access.service.individual;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,10 +15,12 @@ import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
 import java.util.Collections;
 import java.util.List;
+import uk.gov.justice.laa.dstew.access.service.IndividualsService;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-public class IndividualsServiceTest {
+public class GetIndividualsTest {
 
     @Mock
     private IndividualRepository individualRepository;
@@ -32,6 +34,16 @@ public class IndividualsServiceTest {
         MockitoAnnotations.openMocks(this);
     }
 
+    private void verifyThatIndividualRepositoryCalledWith(Pageable expectedPageable, int timesCalled) {
+        // Mockito verify for repository call
+        verify(individualRepository, times(timesCalled)).findAll(expectedPageable);
+    }
+
+    private void verifyThatIndividualMapperCalledWith(IndividualEntity expectedEntity, int timesCalled) {
+        // Mockito verify for mapper call
+        verify(individualMapper, times(timesCalled)).toIndividual(expectedEntity);
+    }
+
     @Test
     void whenNoIndividuals_thenEmptyResponse() {
         Pageable pageable = PageRequest.of(0, 10);
@@ -42,6 +54,7 @@ public class IndividualsServiceTest {
 
         assertThat(result.getContent()).isEmpty();
         assertThat(result.getTotalElements()).isEqualTo(0);
+        verifyThatIndividualRepositoryCalledWith(pageable, 1);
     }
 
     @Test
@@ -62,6 +75,9 @@ public class IndividualsServiceTest {
         assertThat(result.getNumber()).isEqualTo(0);
         assertThat(result.getSize()).isEqualTo(2);
         assertThat(result.getTotalElements()).isEqualTo(3);
+        verifyThatIndividualRepositoryCalledWith(pageable, 1);
+        verifyThatIndividualMapperCalledWith(entity1, 1);
+        verifyThatIndividualMapperCalledWith(entity2, 1);
     }
 
     @Test
@@ -79,5 +95,7 @@ public class IndividualsServiceTest {
         assertThat(result.getNumber()).isEqualTo(1);
         assertThat(result.getSize()).isEqualTo(2);
         assertThat(result.getTotalElements()).isEqualTo(3);
+        verifyThatIndividualRepositoryCalledWith(pageable, 1);
+        verifyThatIndividualMapperCalledWith(entity, 1);
     }
 }
