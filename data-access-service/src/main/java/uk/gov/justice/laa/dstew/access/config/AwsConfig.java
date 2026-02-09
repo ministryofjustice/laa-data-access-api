@@ -4,6 +4,7 @@ import java.net.URI;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -97,6 +98,21 @@ public class AwsConfig {
 
     builder.credentialsProvider(getCredentialsProvider());
     return builder.build();
+  }
+
+  /**
+   * Executor for application domain event processing and other async tasks.
+   * In production, this is a bounded thread pool. In tests, you can override this bean with SyncTaskExecutor.
+   */
+  @Bean(name = "applicationTaskExecutor")
+  public ThreadPoolTaskExecutor applicationTaskExecutor() {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(4);
+    executor.setMaxPoolSize(8);
+    executor.setQueueCapacity(100);
+    executor.setThreadNamePrefix("app-events-");
+    executor.initialize();
+    return executor;
   }
 
 }
