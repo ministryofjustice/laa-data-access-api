@@ -33,6 +33,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.application.RequestApplicat
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.decision.DecisionEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.domainEvent.DomainEventFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionDetailsFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionsEntityFactory;
@@ -132,6 +133,9 @@ public class BaseServiceTest {
 
     @Autowired
     protected ProceedingFactory proceedingFactory;
+
+    @Autowired
+    protected IndividualEntityFactory individualEntityFactory;
 
     @AfterEach
     void tearDown() {

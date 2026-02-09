@@ -1,48 +1,28 @@
 package uk.gov.justice.laa.dstew.access.service.individual;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.mapper.IndividualMapper;
 import uk.gov.justice.laa.dstew.access.model.Individual;
-import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
+import uk.gov.justice.laa.dstew.access.service.IndividualsService;
+import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
+
 import java.util.Collections;
 import java.util.List;
-import uk.gov.justice.laa.dstew.access.service.IndividualsService;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
-public class GetIndividualsTest {
+public class GetIndividualsTest extends BaseServiceTest {
 
-    @Mock
-    private IndividualRepository individualRepository;
-    @Mock
-    private IndividualMapper individualMapper;
-    @InjectMocks
+    @Autowired
     private IndividualsService individualsService;
-
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-    }
-
-    private void verifyThatIndividualRepositoryCalledWith(Pageable expectedPageable, int timesCalled) {
-        // Mockito verify for repository call
-        verify(individualRepository, times(timesCalled)).findAll(expectedPageable);
-    }
-
-    private void verifyThatIndividualMapperCalledWith(IndividualEntity expectedEntity, int timesCalled) {
-        // Mockito verify for mapper call
-        verify(individualMapper, times(timesCalled)).toIndividual(expectedEntity);
-    }
 
     @Test
     void whenNoIndividuals_thenEmptyResponse() {
@@ -54,20 +34,16 @@ public class GetIndividualsTest {
 
         assertThat(result.getContent()).isEmpty();
         assertThat(result.getTotalElements()).isEqualTo(0);
-        verifyThatIndividualRepositoryCalledWith(pageable, 1);
+        verify(individualRepository, times(1)).findAll(pageable);
     }
 
     @Test
     void whenIndividualsExist_thenReturnPagedResponse() {
-        IndividualEntity entity1 = new IndividualEntity();
-        IndividualEntity entity2 = new IndividualEntity();
-        Individual individual1 = new Individual();
-        Individual individual2 = new Individual();
+        IndividualEntity entity1 = individualEntityFactory.createDefault();
+        IndividualEntity entity2 = individualEntityFactory.createDefault();
         Pageable pageable = PageRequest.of(0, 2);
         Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity1, entity2), pageable, 3);
         when(individualRepository.findAll(pageable)).thenReturn(entityPage);
-        when(individualMapper.toIndividual(entity1)).thenReturn(individual1);
-        when(individualMapper.toIndividual(entity2)).thenReturn(individual2);
 
         Page<Individual> result = individualsService.getIndividuals(0, 2);
 
@@ -75,19 +51,15 @@ public class GetIndividualsTest {
         assertThat(result.getNumber()).isEqualTo(0);
         assertThat(result.getSize()).isEqualTo(2);
         assertThat(result.getTotalElements()).isEqualTo(3);
-        verifyThatIndividualRepositoryCalledWith(pageable, 1);
-        verifyThatIndividualMapperCalledWith(entity1, 1);
-        verifyThatIndividualMapperCalledWith(entity2, 1);
+        verify(individualRepository, times(1)).findAll(pageable);
     }
 
     @Test
     void whenRequestSecondPage_thenReturnRemainingIndividuals() {
-        IndividualEntity entity = new IndividualEntity();
-        Individual individual = new Individual();
+        IndividualEntity entity = individualEntityFactory.createDefault();
         Pageable pageable = PageRequest.of(1, 2);
         Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity), pageable, 3);
         when(individualRepository.findAll(pageable)).thenReturn(entityPage);
-        when(individualMapper.toIndividual(entity)).thenReturn(individual);
 
         Page<Individual> result = individualsService.getIndividuals(1, 2);
 
@@ -95,7 +67,6 @@ public class GetIndividualsTest {
         assertThat(result.getNumber()).isEqualTo(1);
         assertThat(result.getSize()).isEqualTo(2);
         assertThat(result.getTotalElements()).isEqualTo(3);
-        verifyThatIndividualRepositoryCalledWith(pageable, 1);
-        verifyThatIndividualMapperCalledWith(entity, 1);
+        verify(individualRepository, times(1)).findAll(pageable);
     }
 }
