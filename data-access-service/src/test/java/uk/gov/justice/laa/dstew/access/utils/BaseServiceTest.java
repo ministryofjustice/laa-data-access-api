@@ -21,7 +21,6 @@ import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateRequestFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEntityFactory;
@@ -59,9 +58,6 @@ public class BaseServiceTest {
 
     @MockitoBean
     protected CaseworkerRepository caseworkerRepository;
-
-    @MockitoBean
-    protected ApplicationSummaryRepository applicationSummaryRepository;
 
     @MockitoBean
     protected ProceedingRepository proceedingRepository;

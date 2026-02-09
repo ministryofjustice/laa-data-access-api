@@ -5,7 +5,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
@@ -41,7 +40,8 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         setSecurityContext(TestConstants.Roles.READER);
 
-        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+        when(applicationRepository.findApplicationSummaries(any(), any(), any(), any(), any(), any(), any(), any(),
+            any(Pageable.class))).thenReturn(pageResult);
 
         // when
         List<ApplicationSummary> actualApplications = serviceUnderTest.getAllApplications(
@@ -60,7 +60,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         ).stream().toList();
 
         // then
-        verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+        verify(applicationRepository, times(1)).findApplicationSummaries(any(), any(), any(), any(), any(), any(), any(), any(), eq(pageable));
         assertApplicationSummaryListsEqual(actualApplications, expectedApplications);
     }
 
@@ -81,7 +81,8 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         setSecurityContext(TestConstants.Roles.READER);
 
-        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+        when(applicationRepository.findApplicationSummaries(any(), any(), any(), any(), any(), any(), any(), any(),
+            any(Pageable.class))).thenReturn(pageResult);
 
         // when
         List<ApplicationSummary> actualApplications = serviceUnderTest.getAllApplications(
@@ -100,7 +101,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         ).stream().toList();
 
         // then
-        verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+        verify(applicationRepository, times(1)).findApplicationSummaries(any(), any(), any(), any(), any(), any(), any(), any(), eq(pageable));
         assertApplicationSummaryListsEqual(actualApplications, expectedApplications);
     }
 
@@ -135,7 +136,8 @@ public class GetApplicationsTest extends BaseServiceTest {
                 .usingRecursiveComparison()
                 .isEqualTo(validationException);
 
-        verify(applicationSummaryRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+        verify(applicationRepository, never()).findApplicationSummaries(any(), any(), any(), any(), any(), any(), any(), any(),
+            any(Pageable.class));
     }
 
     @Test
@@ -161,7 +163,8 @@ public class GetApplicationsTest extends BaseServiceTest {
                         null
                 ))
                 .withMessageContaining("Access Denied");
-        verify(applicationSummaryRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+        verify(applicationRepository, never()).findApplicationSummaries(any(), any(), any(), any(), any(), any(), any(), any(),
+            any(Pageable.class));
     }
 
     @Test
@@ -185,7 +188,8 @@ public class GetApplicationsTest extends BaseServiceTest {
                         null
                 ))
                 .withMessageContaining("Access Denied");
-        verify(applicationSummaryRepository, never()).findAll();
+        verify(applicationRepository, never()).findApplicationSummaries(any(), any(), any(), any(), any(), any(), any(), any(),
+            any(Pageable.class));
     }
 
     private void assertApplicationSummaryListsEqual(List<ApplicationSummary> actualList, List<ApplicationSummaryEntity> expectedList) {
