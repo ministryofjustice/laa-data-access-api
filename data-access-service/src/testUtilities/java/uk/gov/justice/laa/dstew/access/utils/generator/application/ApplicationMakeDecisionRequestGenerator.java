@@ -18,7 +18,7 @@ public class ApplicationMakeDecisionRequestGenerator extends BaseGenerator<MakeD
     @Override
     public MakeDecisionRequest createDefault() {
         return MakeDecisionRequest.builder()
-                .applicationStatus(ApplicationStatus.SUBMITTED)
+                .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
                 .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                 .userId(UUID.randomUUID())
                 .proceedings(List.of(makeDecisionProceedingGenerator.createDefault()))

@@ -17,7 +17,7 @@ public class ApplicationCreateRequestGenerator extends BaseGenerator<Application
     @Override
     public ApplicationCreateRequest createDefault() {
         return ApplicationCreateRequest.builder()
-                .status(ApplicationStatus.IN_PROGRESS)
+                .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
                 .laaReference("REF7327")
                 .individuals(List.of(individualGenerator.createDefault()))
                 .applicationContent(java.util.Map.of("applicationContent", applicationContentGenerator.createDefault()))

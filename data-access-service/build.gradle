@@ -33,6 +33,11 @@ sourceSets {
     }
 }
 
+configurations {
+    testUtilitiesImplementation.extendsFrom testImplementation
+    testUtilitiesRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
 dockerCompose {
     useComposeFiles = ['../docker-compose.yml']
     // workaround https://github.com/avast/gradle-docker-compose-plugin/issues/435

@@ -19,7 +19,7 @@ public class ApplicationSummaryGenerator extends BaseGenerator<ApplicationSummar
         return ApplicationSummaryEntity.builder()
                 .id(UUID.randomUUID())
                 .laaReference("REF7327")
-                .status(ApplicationStatus.IN_PROGRESS)
+                .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
                 .createdAt(Instant.now())
                 .modifiedAt(Instant.now())
                 .caseworker(caseworkerGenerator.createDefault())
