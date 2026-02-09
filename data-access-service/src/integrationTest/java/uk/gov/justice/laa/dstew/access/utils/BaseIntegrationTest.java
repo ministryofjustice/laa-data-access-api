@@ -40,6 +40,7 @@ import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
+import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
 
 import java.net.URI;
 import java.util.UUID;
@@ -60,6 +61,9 @@ public abstract class BaseIntegrationTest {
 
     @Autowired protected MockMvc mockMvc;
     @Autowired protected ObjectMapper objectMapper;
+
+    @Autowired
+    protected PersistedDataGenerator persistedDataGenerator;
 
     @Autowired
     protected ApplicationRepository applicationRepository;
@@ -185,6 +189,8 @@ public abstract class BaseIntegrationTest {
         CaseworkerJaneDoe = persistedCaseworkerFactory.createAndPersist(builder ->
                 builder.username("JaneDoe").build());
         Caseworkers = List.of(CaseworkerJohnDoe, CaseworkerJaneDoe);
+
+        entityManager.clear(); // ensure we clear the L1 cache before every test run
     }
 
     public MvcResult getUri(String uri) throws Exception {
