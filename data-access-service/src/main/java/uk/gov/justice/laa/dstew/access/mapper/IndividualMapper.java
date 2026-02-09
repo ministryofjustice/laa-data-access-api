@@ -53,7 +53,7 @@ public interface IndividualMapper {
                             .firstName(individual.getFirstName())
                             .lastName(individual.getLastName())
                             .dateOfBirth(individual.getDateOfBirth())
-                            .individualContent((Map<String, Object>) individual.getDetails())
+                            .individualContent(individual.getDetails())
                             .type(individual.getType())
                             .build();
   }
