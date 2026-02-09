@@ -11,6 +11,7 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate.ddl-auto: none  # Use Flyway for DB schema.
+    show-sql: true
 
   sql.init.mode: never # Use Flyway for DB schema.
 
