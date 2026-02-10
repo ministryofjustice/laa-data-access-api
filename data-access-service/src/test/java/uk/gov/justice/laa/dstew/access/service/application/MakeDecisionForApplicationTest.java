@@ -112,8 +112,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     when(proceedingRepository.findAllById(List.of(refusedProceedingEntity.getId())))
             .thenReturn(List.of(refusedProceedingEntity));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
-    when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
-            .thenReturn(Optional.empty());
 
     Throwable thrown = catchThrowable(() ->
             serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest));
