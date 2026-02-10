@@ -5,7 +5,7 @@ This guide explains how to run LocalStack with Docker Compose for local developm
 ## Prerequisites
 
 - Docker and Docker Compose installed.
-- Java 21 (for running the Spring Boot app).
+- Java 25 (for running the Spring Boot app).
 - AWS CLI v2 installed (for testing). Optionally `awslocal` (LocalStack CLI helper) can be used — it avoids needing configured AWS credentials and automatically targets LocalStack.
 
 ## Quick start (one command)

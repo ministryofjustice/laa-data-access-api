@@ -94,20 +94,6 @@ Then execute
 
 The application includes a DynamoDB-based event service for storing application history events. For local development, we use LocalStack to emulate AWS services.
 
-#### Quick start
-
-```bash
-# Install awslocal CLI helper (one-time)
-make install-awslocal
-
-# Start LocalStack + Postgres and create S3 bucket + DynamoDB table
-make init-local-resources
-```
-
-
-
-
-
 #### Verify saved events
 
 ```bash
