@@ -2,6 +2,8 @@ package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
+import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -18,7 +20,7 @@ public class ApplicationContentGenerator extends BaseGenerator<ApplicationConten
         UUID applicationId = UUID.randomUUID();
         return ApplicationContent.builder()
                 .id(applicationId)
-                .submittedAt(Instant.now().toString())
+                .submittedAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds().toString())
                 .proceedings(List.of(proceedingDtoGenerator.createDefault()))
                 .build();
     }
