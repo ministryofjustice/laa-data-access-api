@@ -20,7 +20,7 @@ public class ApplicationContentGenerator extends BaseGenerator<ApplicationConten
         UUID applicationId = UUID.randomUUID();
         return ApplicationContent.builder()
                 .id(applicationId)
-                .submittedAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds().toString())
+                .submittedAt("2024-01-01T12:00:00Z")
                 .proceedings(List.of(proceedingDtoGenerator.createDefault()))
                 .build();
     }
