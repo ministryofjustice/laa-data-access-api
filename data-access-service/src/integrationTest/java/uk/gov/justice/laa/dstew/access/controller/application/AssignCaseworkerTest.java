@@ -120,7 +120,6 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
         // generate random UUIDs so simulate records that do not exist..
         CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
-            ;
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
                     .applicationIds(invalidApplicationIds);
         });
@@ -159,7 +158,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
                 });
 
         List<UUID> invalidApplicationIds = IntStream.range(0, 5)
-                .mapToObj(i -> UUID.randomUUID())
+                .mapToObj(_ -> UUID.randomUUID())
                 .toList();
 
         List<UUID> allApplicationIds = Stream.of(
@@ -171,7 +170,6 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
         // generate random UUIDs so simulate records that do not exist..
         CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
-            ;
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
                     .applicationIds(allApplicationIds);
         });

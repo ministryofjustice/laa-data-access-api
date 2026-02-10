@@ -1,9 +1,21 @@
 plugins {
     id 'net.researchgate.release' version '3.1.0'
+    id("java")
 }
 
 repositories {
     mavenCentral()
+}
+
+def requiredJavaVersion = 25
+def currentJavaVersion = JavaVersion.current().majorVersion.toInteger()
+
+if (currentJavaVersion != requiredJavaVersion) {
+    throw new GradleException(
+            "This project requires Java ${requiredJavaVersion}. " +
+                    "Current Java version is ${currentJavaVersion}. " +
+                    "Please update your JAVA_HOME or use the correct JDK."
+    )
 }
 
 configurations {
@@ -11,11 +23,19 @@ configurations {
 }
 
 dependencies {
-    jacocoAnt "org.jacoco:org.jacoco.ant:0.8.12"
+    jacocoAnt "org.jacoco:org.jacoco.ant:0.8.14"
 }
 
 subprojects {
     group = 'uk.gov.justice.laa.data.access'
+
+    pluginManager.withPlugin('java') {
+        java {
+            toolchain {
+                languageVersion = JavaLanguageVersion.of(25)
+            }
+        }
+    }
 
     release {
         tagTemplate = '$name-$version'
