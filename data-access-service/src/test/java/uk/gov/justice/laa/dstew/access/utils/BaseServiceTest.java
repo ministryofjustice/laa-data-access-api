@@ -15,13 +15,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
-import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
+import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
 import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
-import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
+import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateRequestFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEntityFactory;
@@ -32,6 +33,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.application.RequestApplicat
 import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.decision.DecisionEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.domainEvent.DomainEventFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualEntityFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionDetailsFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionsEntityFactory;
@@ -74,6 +76,9 @@ public class BaseServiceTest {
 
     @MockitoBean
     protected LinkedApplicationRepository linkedApplicationRepository;
+
+    @MockitoBean
+    protected IndividualRepository individualRepository;
 
     @Autowired
     protected ObjectMapper objectMapper;
@@ -128,6 +133,9 @@ public class BaseServiceTest {
 
     @Autowired
     protected ProceedingFactory proceedingFactory;
+
+    @Autowired
+    protected IndividualEntityFactory individualEntityFactory;
 
     @AfterEach
     void tearDown() {

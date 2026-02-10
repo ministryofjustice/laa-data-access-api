@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.individual;
 
+import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
@@ -8,6 +9,7 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.function.Consumer;
 
+@Component
 public class IndividualEntityFactoryImpl implements Factory<IndividualEntity, IndividualEntity.IndividualEntityBuilder> {
     @Override
     public IndividualEntity create() {
