@@ -65,12 +65,14 @@ public class ApplicationValidations {
       RefusalDetails refusal = proceeding.getMeritsDecision().getRefusal();
       if (refusal.getReason() == null || refusal.getReason().isEmpty()) {
         throw new ValidationException(
-                List.of("The Make Decision request must contain a refusal reason"));
+                List.of("The Make Decision request must contain a refusal reason for proceeding id: "
+                        + proceeding.getProceedingId()));
       }
 
       if (refusal.getJustification() == null || refusal.getJustification().isEmpty()) {
         throw new ValidationException(
-                List.of("The Make Decision request must contain a refusal justification"));
+                List.of("The Make Decision request must contain a refusal justification for proceeding id: "
+                        + proceeding.getProceedingId()));
       }
     });
   }
