@@ -25,13 +25,13 @@ public class ApplicationContentParserService {
   /**
    * Normalises application content details from the create request.
    *
-   * @param requestAppContent the application create request
+   * @param applicationContent the application create request
    * @return the extracted application content details
    */
   public ParsedAppContentDetails normaliseApplicationContentDetails(
-      RequestApplicationContent requestAppContent) {
+      ApplicationContent applicationContent) {
 
-    return processingApplicationContent(requestAppContent.getApplicationContent());
+    return processingApplicationContent(applicationContent);
 
   }
 

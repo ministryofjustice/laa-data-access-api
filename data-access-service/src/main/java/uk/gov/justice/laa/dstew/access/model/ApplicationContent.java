@@ -50,7 +50,10 @@ public class ApplicationContent implements Serializable {
   @Schema(name = "submittedAt", requiredMode = Schema.RequiredMode.REQUIRED)
   private String submittedAt;
 
-  private @Nullable String applicationRef;
+
+  private @Nullable String status;
+
+  private @Nullable String laaReference;
 
   @Nullable
   @Valid

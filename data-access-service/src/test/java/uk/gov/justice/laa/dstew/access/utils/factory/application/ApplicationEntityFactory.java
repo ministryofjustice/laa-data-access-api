@@ -20,7 +20,7 @@ public class ApplicationEntityFactory extends BaseFactory<ApplicationEntity, App
   private IndividualEntityFactory individualEntityFactory;
 
   @Autowired
-  private RequestApplicationContentFactory requestApplicationContentFactory;
+  private ApplicationContentFactory requestApplicationContentFactory;
 
   public ApplicationEntityFactory() {
     super(ApplicationEntity::toBuilder, ApplicationEntity.ApplicationEntityBuilder::build);

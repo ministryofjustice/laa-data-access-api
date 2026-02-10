@@ -436,8 +436,7 @@ components:
         status:
           $ref: "#/components/schemas/applicationStatus"
         applicationContent:
-          type: object
-          minLength: 1
+          $ref: "#/components/schemas/ApplicationContent"
         laaReference:
           type: string
           minLength: 1
@@ -563,7 +562,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationDomainEvent"
-    
+
+    ApplicationContent:
+      type: object
+      description: The content of the application
+      additionalProperties: true
+      minProperties: 1
+
     ApplicationDomainEvent:
       type: object
       required:
