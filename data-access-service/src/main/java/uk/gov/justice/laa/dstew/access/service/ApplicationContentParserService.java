@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.convertors.CategoryOfLawTypeConvertor;
@@ -72,6 +73,11 @@ public class ApplicationContentParserService {
         .matterType(matterTypeDeserializer.lenientEnumConversion(leadProceeding.getMatterType()))
         .submittedAt(Instant.parse(applicationContent.getSubmittedAt()))
         .usedDelegatedFunctions(usedDelegatedFunction)
+        .allLinkedApplications(
+            (List<Map<String, Object>>) applicationContent
+                .getAdditionalApplicationContent()
+                .get("allLinkedApplications")
+        )
         .officeCode(officeCode)
         .build();
   }
