@@ -4,6 +4,7 @@ import java.net.URI;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -42,7 +43,8 @@ public class AwsConfig {
    *
    * @return a configured DynamoDbClient instance.
    */
-  @Bean
+  @Profile("!test") // In tests, we can use a different configuration or mock
+  @Bean()
   public DynamoDbClient dynamoDbClient() {
     DynamoDbClientBuilder builder = DynamoDbClient.builder()
         .region(Region.of(awsRegion));
@@ -72,7 +74,7 @@ public class AwsConfig {
    *
    * @return a configured DynamoDbEnhancedClient instance.
    */
-  @Bean
+  @Bean("!test") // In tests, we can use a different configuration or mock
   public DynamoDbEnhancedClient dynamoDbEnhancedClient() {
     return DynamoDbEnhancedClient.builder()
         .dynamoDbClient(dynamoDbClient())

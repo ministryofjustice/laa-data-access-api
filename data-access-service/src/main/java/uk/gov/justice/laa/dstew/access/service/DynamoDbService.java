@@ -1,21 +1,28 @@
 package uk.gov.justice.laa.dstew.access.service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
+import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.BatchGetItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedResponse;
+import software.amazon.awssdk.enhanced.dynamodb.model.ReadBatch;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.BatchGetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity;
@@ -29,15 +36,23 @@ import uk.gov.justice.laa.dstew.access.utilities.DynamoKeyBuilder;
 /**
  * Service class for interacting with DynamoDB.
  */
+@Slf4j
 @Service
 public class DynamoDbService {
 
   public static final String APPLICATION = "APPLICATION";
   private final String tableName;
-  private final DynamoDbTable<DomainEventDynamoDB> eventTable;
   private final DynamoDbClient dynamoDbClient;
+  private DynamoDbTable<DomainEventDynamoDB> eventTable;
   private final DynamoDbEnhancedClient dynamoDbEnhancedClient;
 
+  /**
+   * Constructor for DynamoDbService.
+   *
+   * @param dynamoDbClient         the DynamoDbClient to use for low-level operations
+   * @param dynamoDbEnhancedClient the DynamoDbEnhancedClient to use for high-level operations
+   * @param tableName              the name of the DynamoDB table, injected from configuration
+   */
   public DynamoDbService(DynamoDbClient dynamoDbClient,
                          DynamoDbEnhancedClient dynamoDbEnhancedClient,
                          @Value("${aws.dynamodb.table-name:EventIndexTable}") String tableName) {
@@ -80,19 +95,18 @@ public class DynamoDbService {
 
       PutItemEnhancedResponse<DomainEventDynamoDB> domainEventDynamoDBPutItemEnhancedResponse =
           eventTable.putItemWithResponse(putReq);
-      DomainEventDynamoDB attributes = domainEventDynamoDBPutItemEnhancedResponse.attributes();// Access attributes if needed
-// The Enhanced Client automatically populates computed fields (gs1pk, gs1sk) when the item is persisted
-      // For a successful put, we can use the original item since the computed fields will be applied by DynamoDB
+      log.info("Consumed Capacity {}", domainEventDynamoDBPutItemEnhancedResponse.consumedCapacity());
       return CompletableFuture.completedFuture(Event.fromDynamoEntity(domainEventDynamoDB));
     } catch (Exception e) {
       return CompletableFuture.failedFuture(e);
     }
   }
 
-  public List<DomainEventDynamoDB> getAllEvents() {
-    return eventTable.scan().items().stream().toList();
-  }
-
+  /**
+   * Retrieves all DomainEventDynamoDB items for a given application ID.
+   * @param id the application ID to query for
+   * @return a list of DomainEventDynamoDB items associated with the specified application ID
+   */
   public List<DomainEventDynamoDB> getAllApplicationsById(String id) {
     QueryRequest queryRequest = QueryRequest.builder()
         .tableName(eventTable.tableName())
@@ -108,6 +122,12 @@ public class DynamoDbService {
     ).toList();
   }
 
+  /**
+   * Retrieves all DomainEventDynamoDB items for a given application ID that were created before a specified time.
+   * @param id the application ID to query for
+   * @param untilTime the cutoff time; only items created before this time will be returned
+   * @return a list of DomainEventDynamoDB items associated with the specified application ID and created before the cutoff time
+   */
   public List<DomainEventDynamoDB> getAllApplicationsByIdUntilTime(String id, Instant untilTime) {
     QueryRequest queryRequest = QueryRequest.builder()
         .tableName(tableName)
@@ -124,6 +144,12 @@ public class DynamoDbService {
     ).toList();
   }
 
+  /**
+   * Retrieves all DomainEventDynamoDB items for a given application ID and a list of event types.
+   * @param id the application ID to query for
+   * @param eventType the list of event types to filter by; only items with these event types will be returned
+   * @return a list of DomainEventDynamoDB items associated with the specified application ID and event types
+   */
   public List<DomainEventDynamoDB> getAllApplicationsByIdAndEventType(String id,
                                                                       List<DomainEventType> eventType) {
     return eventType.stream()
@@ -148,6 +174,15 @@ public class DynamoDbService {
     ).toList();
   }
 
+  /**
+   * Retrieves a list of Event objects for a given application ID, caseworker ID, and event type.
+   * This method queries a DynamoDB Global Secondary Index (GSI) to find events associated with the specified caseworker and application.
+   *
+   * @param id           the application ID to query for
+   * @param caseworkerId the caseworker ID to query for
+   * @param eventType    the event type to filter by; only events of this type will be returned
+   * @return a list of Event objects that match the specified criteria
+   */
   public List<Event> getDomainEventDynamoDBForCasework(String id, String caseworkerId, DomainEventType eventType) {
     String pk = DynamoKeyBuilder.pk(APPLICATION, id);
 
@@ -163,8 +198,57 @@ public class DynamoDbService {
     QueryResponse response = dynamoDbClient.query(queryRequest);
     // If index table is not full copy then will need look up for main table to get full details
 
-    return response.items().stream().map(Event::fromAttributeValueMap).filter(e -> e.eventType().equals(eventType))
+    List<Key> indexedEvents = response.items().stream()
+        .map(this::convertToIndexedEvent)
+        .filter(e -> e.eventType().equals(eventType))
+        .map(indexedEvent -> Key
+            .builder()
+            .partitionValue(indexedEvent.pk)
+            .sortValue(indexedEvent.sk)
+            .build())
         .toList();
+
+    if (indexedEvents.isEmpty()) {
+      return List.of();
+    }
+
+    final int BATCH_SIZE = 100;
+    List<Event> allEvents = new ArrayList<>();
+    List<List<Key>> batches = getBatches(indexedEvents, BATCH_SIZE);
+    for (List<Key> batch : batches) {
+      ReadBatch.Builder<DomainEventDynamoDB> readBatchBuilder = ReadBatch.builder(DomainEventDynamoDB.class)
+          .mappedTableResource(eventTable);
+      batch.forEach(readBatchBuilder::addGetItem);
+      BatchGetItemEnhancedRequest batchGetItemEnhancedRequest = BatchGetItemEnhancedRequest.builder()
+          .addReadBatch(readBatchBuilder.build())
+          .build();
+      var batchResult = dynamoDbEnhancedClient.batchGetItem(batchGetItemEnhancedRequest);
+      allEvents.addAll(
+          batchResult.resultsForTable(eventTable).stream()
+              .map(Event::fromDynamoEntity)
+              .toList()
+      );
+    }
+    return allEvents;
   }
+
+  private static @NonNull List<List<Key>> getBatches(List<Key> indexedEvents, int BATCH_SIZE) {
+    AtomicInteger index = new AtomicInteger();
+    List<List<Key>> batches = indexedEvents.stream()
+        .collect(java.util.stream.Collectors.groupingBy(it -> index.getAndIncrement() / BATCH_SIZE))
+        .values().stream().toList();
+    return batches;
+  }
+
+  private IndexedEvent convertToIndexedEvent(Map<String, AttributeValue> item) {
+    String pk = item.get("pk").s();
+    String sk = item.get("sk").s();
+    DomainEventType eventType = DomainEventType.valueOf(item.get("type").s());
+    return new IndexedEvent(pk, sk, eventType);
+  }
+
+  record IndexedEvent(String pk, String sk, DomainEventType eventType) {
+  }
+
 
 }

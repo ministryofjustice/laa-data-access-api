@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -66,37 +67,42 @@ import static org.testcontainers.containers.localstack.LocalStackContainer.Servi
 @ExtendWith(SpringExtension.class)
 @Transactional
 public abstract class BaseIntegrationTest {
-  protected static S3Client s3Client;
-  protected static DynamoDbClient dynamoDbClient;
-
+  @Autowired
+  protected S3Client s3Client;
+  @Autowired
+  protected DynamoDbClient dynamoDbClient;
+  @Autowired
+  protected DynamoDbEnhancedClient dynamoDbEnhancedClient;
   static Logger log = Logger.getLogger(BaseIntegrationTest.class.getName());
 
-  @BeforeAll
-  static void setUp() {
-    log.info("Starting LocalStack container...");
-    LocalStackContainer localstack = LocalstackContainerInitializer.getLocalstack();
-    s3Client = S3Client.builder()
-        .endpointOverride(localstack.getEndpointOverride(S3))
-        .region(Region.of(localstack.getRegion()))
-        .credentialsProvider(StaticCredentialsProvider.create(
-            AwsBasicCredentials.create(
-                localstack.getAccessKey(),
-                localstack.getSecretKey()
-            )
-        )).build();
-    dynamoDbClient = DynamoDbClient.builder()
-        .endpointOverride(localstack.getEndpointOverride(DYNAMODB))
-        .region(Region.of(localstack.getRegion()))
-        .credentialsProvider(StaticCredentialsProvider.create(
-            AwsBasicCredentials.create(
-                localstack.getAccessKey(),
-                localstack.getSecretKey()
-            )
-        ))
-        .build();
-
-    log.info("LocalStack container started and clients configured.");
-  }
+//  @BeforeAll
+//  static void setUp() {
+//    log.info("Starting LocalStack container...");
+//    LocalStackContainer localstack = LocalstackContainerInitializer.getLocalstack();
+//    s3Client = S3Client.builder()
+//        .endpointOverride(localstack.getEndpointOverride(S3))
+//        .region(Region.of(localstack.getRegion()))
+//        .credentialsProvider(StaticCredentialsProvider.create(
+//            AwsBasicCredentials.create(
+//                localstack.getAccessKey(),
+//                localstack.getSecretKey()
+//            )
+//        )).build();
+//    dynamoDbClient = DynamoDbClient.builder()
+//        .endpointOverride(localstack.getEndpointOverride(DYNAMODB))
+//        .region(Region.of(localstack.getRegion()))
+//        .credentialsProvider(StaticCredentialsProvider.create(
+//            AwsBasicCredentials.create(
+//                localstack.getAccessKey(),
+//                localstack.getSecretKey()
+//            )
+//        ))
+//        .build();
+//    dynamoDbEnhancedClient = DynamoDbEnhancedClient.builder()
+//        .dynamoDbClient(dynamoDbClient)
+//        .build();
+//    log.info("LocalStack container started and clients configured.");
+//  }
 
   @Autowired
   @PersistenceContext
