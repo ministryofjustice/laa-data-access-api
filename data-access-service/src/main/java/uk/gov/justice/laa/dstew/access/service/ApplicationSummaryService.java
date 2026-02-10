@@ -16,9 +16,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSortFields;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
+import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
-import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
@@ -26,22 +25,22 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
  */
 @Service
 public class ApplicationSummaryService {
-  private final ApplicationSummaryRepository applicationSummaryRepository;
+  private final ApplicationRepository applicationRepository;
   private final CaseworkerRepository caseworkerRepository;
   private final ApplicationSummaryMapper mapper;
 
   /**
    * Constructs a new {@link ApplicationSummaryService} with the required repository and mapper.
    *
-   * @param applicationSummaryRepository the repository used to access application summary data
+   * @param applicationRepository    the repository used to access application summary data
    * @param applicationSummaryMapper the mapper used to convert entities into API-facing models
    */
   public ApplicationSummaryService(
-      final ApplicationSummaryRepository applicationSummaryRepository,
+      final ApplicationRepository applicationRepository,
       final ApplicationSummaryMapper applicationSummaryMapper,
       final CaseworkerRepository caseworkerRepository
   ) {
-    this.applicationSummaryRepository = applicationSummaryRepository;
+    this.applicationRepository = applicationRepository;
     this.mapper = applicationSummaryMapper;
     this.caseworkerRepository = caseworkerRepository;
   }
@@ -77,18 +76,19 @@ public class ApplicationSummaryService {
       throw new ValidationException(List.of("Caseworker not found"));
     }
 
-    return applicationSummaryRepository
-            .findAll(ApplicationSummarySpecification
-                            .filterBy(applicationStatus,
-                                    laaReference,
-                                    clientFirstName,
-                                    clientLastName,
-                                    clientDateOfBirth,
-                                    userId,
-                                    matterType,
-                                    isAutoGranted),
-                    pageDetails)
-            .map(mapper::toApplicationSummary);
+    return applicationRepository
+        .findApplicationSummaries(
+            applicationStatus,
+            laaReference,
+            clientFirstName,
+            clientLastName,
+            clientDateOfBirth,
+            userId,
+            matterType,
+            isAutoGranted,
+            pageDetails
+        )
+        .map(mapper::toApplicationSummary);
   }
 
   private Sort createSortAndOrderBy(ApplicationSortBy sortBy,
