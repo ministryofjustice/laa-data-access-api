@@ -109,7 +109,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
 
   @Test
   @WithMockUser(authorities = TestConstants.Roles.READER)
-  public void givenNegativePageNumber_whenGetIndividuals_thenPageSizeDefaultsTo10() throws Exception {
+  public void givenNegativePageSizeNumber_whenGetIndividuals_thenPageSizeDefaultsTo10() throws Exception {
     // given
     persistedIndividualFactory.createAndPersist();
 

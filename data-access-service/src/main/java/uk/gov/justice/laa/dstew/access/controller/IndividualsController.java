@@ -20,7 +20,7 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 @ExcludeFromGeneratedCodeCoverage
 public class IndividualsController implements IndividualsApi {
 
-  private final IndividualsService service;
+  private final IndividualsService individualsService;
 
   /**
    * Retrieves a paginated list of individuals.
@@ -34,6 +34,6 @@ public class IndividualsController implements IndividualsApi {
   @LogMethodResponse
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public ResponseEntity<IndividualsResponse> getIndividuals(Integer page, Integer pageSize) {
-    return ResponseEntity.ok(service.getIndividualsResponse(page, pageSize));
+    return ResponseEntity.ok(individualsService.getIndividualsResponse(page, pageSize));
   }
 }

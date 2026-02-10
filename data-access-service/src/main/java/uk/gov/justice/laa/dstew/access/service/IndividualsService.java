@@ -4,6 +4,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.mapper.IndividualMapper;
@@ -35,9 +36,10 @@ public class IndividualsService {
    * @param pageSize the number of items per page, defaults to 10 if null
    * @return a {@link Page} of {@link Individual} objects
    */
+  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public Page<Individual> getIndividuals(Integer page, Integer pageSize) {
-    int pageNumber = page != null ? page : 0;
-    int size = pageSize != null ? pageSize : 10;
+    int pageNumber = (page == null || page < 0) ? 0 : page;
+    int size = (pageSize == null || pageSize < 1) ? 10 : Math.min(pageSize, 100);
 
     Pageable pageable = PageRequest.of(pageNumber, size);
     Page<IndividualEntity> resultPage = individualRepository.findAll(pageable);
@@ -52,6 +54,7 @@ public class IndividualsService {
    * @param pageSize the number of items per page, may be null for default
    * @return IndividualsResponse with paging info and individuals
    */
+  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public IndividualsResponse getIndividualsResponse(Integer page, Integer pageSize) {
     int resolvedPage = (page == null || page < 1) ? 1 : page;
     int resolvedPageSize = (pageSize == null || pageSize < 1) ? 10 : Math.min(pageSize, 100);
