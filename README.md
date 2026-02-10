@@ -42,7 +42,7 @@ Includes the following subprojects:
 
 ## Build and run application
 ### Developing application within Intellij
-Java version 25 is recommended
+Java version 25 is required
 
 To update to Java 25:
 
