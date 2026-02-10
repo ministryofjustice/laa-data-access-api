@@ -375,10 +375,8 @@ components:
       properties:
         firstName:
           type: string
-          minLength: 1
         lastName:
           type: string
-          minLength: 1
         dateOfBirth:
           type: string
           format: date
