@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
+import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
 import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
@@ -52,6 +55,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @ExtendWith(SpringExtension.class)
 @Transactional
 public abstract class BaseIntegrationTest {
+
+    @PersistenceContext
+    protected EntityManager entityManager;
 
     @Autowired protected MockMvc mockMvc;
     @Autowired protected ObjectMapper objectMapper;
@@ -166,6 +172,15 @@ public abstract class BaseIntegrationTest {
         LinkedApplicationEntity.LinkedApplicationEntityBuilder,
         UUID
         > persistedLinkedApplicationFactory;
+
+  @Autowired
+  protected PersistedFactory<
+      IndividualRepository,
+      Factory<IndividualEntity, IndividualEntity.IndividualEntityBuilder>,
+      IndividualEntity,
+      IndividualEntity.IndividualEntityBuilder,
+      UUID> persistedIndividualFactory;
+
 
     // for use in tests and factories where applicable (i.e. default in ApplicationFactoryImpl)
     public static CaseworkerEntity CaseworkerJohnDoe;
