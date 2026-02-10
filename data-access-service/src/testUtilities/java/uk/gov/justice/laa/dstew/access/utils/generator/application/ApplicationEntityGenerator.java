@@ -27,7 +27,7 @@ public class ApplicationEntityGenerator extends BaseGenerator<ApplicationEntity,
                 .applyApplicationId(UUID.randomUUID())
                 .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
                 .modifiedAt(Instant.now())
-                .submittedAt(Instant.now())
+                .submittedAt(Instant.parse("2024-01-01T12:00:00Z"))
                 .laaReference("REF7327")
                 .individuals(new HashSet<>(java.util.List.of(individualEntityGenerator.createDefault())))
                 .applicationContent(new HashMap<>(java.util.Map.of("applicationContent", applicationContentGenerator.createDefault())))
