@@ -1,7 +1,8 @@
 package uk.gov.justice.laa.dstew.access.controller.individual;
 
-import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
@@ -10,41 +11,61 @@ import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
 @ActiveProfiles("test")
 public class GetIndividualsTest extends BaseIntegrationTest {
+
+  @ParameterizedTest
+  @MethodSource("pagingParameters")
+  @WithMockUser(authorities = TestConstants.Roles.READER)
+  void givenPagingParameters_whenGetIndividuals_thenCorrectPagingInResponse(Integer page, Integer pageSize, int expectedPage, int expectedPageSize, int totalEntities, int expectedReturned, int expectedTotalRecords) throws Exception {
+    // given
+    persistedIndividualFactory.createAndPersistMultiple(totalEntities, builder -> {});
+    // when
+    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page="+ page + "&pageSize=" + pageSize);
+    IndividualsResponse response = deserialise(result, IndividualsResponse.class);
+    // then
+    assertOK(result);
+    assertThat(response.getPaging().getPage()).isEqualTo(expectedPage);
+    assertThat(response.getPaging().getPageSize()).isEqualTo(expectedPageSize);
+    assertThat(response.getPaging().getItemsReturned()).isEqualTo(expectedReturned);
+    assertThat(response.getPaging().getTotalRecords()).isEqualTo(expectedTotalRecords);
+  }
+
+  static Stream<org.junit.jupiter.params.provider.Arguments> pagingParameters() {
+    return Stream.of(
+        // page, pageSize, expectedPage, expectedPageSize, totalEntities, expectedReturned, expectedTotalRecords
+        org.junit.jupiter.params.provider.Arguments.of(1, 10, 1, 10, 15, 10, 15), // first page, 10 of 15
+        org.junit.jupiter.params.provider.Arguments.of(2, 10, 2, 10, 15, 5, 15), // second page, 5 of 15
+        org.junit.jupiter.params.provider.Arguments.of(-1, 10, 1, 10, 5, 5, 5), // negative page, default to 1
+        org.junit.jupiter.params.provider.Arguments.of(1, 0, 1, 10, 5, 5, 5), // zero pageSize, default to 10
+        org.junit.jupiter.params.provider.Arguments.of(1, 101, 1, 100, 150, 100, 150), // pageSize > 100 capped
+        org.junit.jupiter.params.provider.Arguments.of(100, 10, 100, 10, 15, 0, 15) // page beyond data, empty
+    );
+  }
 
   @Test
   @WithMockUser(authorities = TestConstants.Roles.READER)
   public void givenExistingIndividual_whenGetIndividuals_thenReturnOKWithCorrectData() throws Exception {
     // given
     IndividualEntity persisted = persistedIndividualFactory.createAndPersist();
-
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
-
     // then
     assertContentHeaders(result);
     assertSecurityHeaders(result);
     assertNoCacheHeaders(result);
     assertOK(result);
-
     assertThat(response.getIndividuals()).isNotEmpty();
     assertThat(response.getPaging().getTotalRecords()).isEqualTo(1);
     assertThat(response.getPaging().getItemsReturned()).isEqualTo(1);
     assertThat(response.getPaging().getPage()).isEqualTo(1);
     assertThat(response.getPaging().getPageSize()).isEqualTo(10);
-
-    // Verify the individual in the response matches the persisted entity
     assertThat(response.getIndividuals()).hasSize(1);
     assertThat(response.getIndividuals().get(0).getFirstName()).isEqualTo(persisted.getFirstName());
     assertThat(response.getIndividuals().get(0).getLastName()).isEqualTo(persisted.getLastName());
@@ -55,7 +76,6 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   public void givenUnknownRole_whenGetIndividuals_thenReturnForbiddenResponse() throws Exception {
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
-
     // then
     assertSecurityHeaders(result);
     assertForbidden(result);
@@ -65,7 +85,6 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   public void givenNoUser_whenGetIndividuals_thenReturnUnauthorisedResponse() throws Exception {
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
-
     // then
     assertSecurityHeaders(result);
     assertUnauthorised(result);
@@ -73,84 +92,17 @@ public class GetIndividualsTest extends BaseIntegrationTest {
 
   @Test
   @WithMockUser(authorities = TestConstants.Roles.READER)
-  public void givenMoreThan100Individuals_whenGetIndividuals_thenPageSizeIsCappedAt100() throws Exception {
-    // given - create more than 100 individuals
-    int numberOfIndividualsToPersist = 150;
-    List<IndividualEntity> persistedIndividuals = persistedIndividualFactory.createAndPersistMultiple(
-        numberOfIndividualsToPersist,
-        builder -> {
-        });
-
-
-    // when
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=1&pageSize=150");
-    IndividualsResponse response = deserialise(result, IndividualsResponse.class);
-
-    // then
-    assertOK(result);
-    assertThat(response.getPaging().getPageSize()).isEqualTo(100); // Capped at maximum
-    assertThat(response.getPaging().getItemsReturned()).isEqualTo(100);
-  }
-
-  @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
-  public void givenNegativePageNumber_whenGetIndividuals_thenPageSizeDefaultsTo1() throws Exception {
+  void givenNullPageAndPageSize_whenGetIndividuals_thenDefaultsAreApplied() throws Exception {
     // given
-    persistedIndividualFactory.createAndPersist();
-
+    persistedIndividualFactory.createAndPersistMultiple(5, builder -> {});
     // when
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=-1&pageSize=10");
+    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
-
     // then
     assertOK(result);
-    assertThat(response.getPaging().getPage()).isEqualTo(1); // Defaults to 1
-  }
-
-  @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
-  public void givenNegativePageSizeNumber_whenGetIndividuals_thenPageSizeDefaultsTo10() throws Exception {
-    // given
-    persistedIndividualFactory.createAndPersist();
-
-    // when
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=1&pageSize=0");
-    IndividualsResponse response = deserialise(result, IndividualsResponse.class);
-
-    // then
-    assertOK(result);
-    assertThat(response.getPaging().getPageSize()).isEqualTo(10); // Defaults to 10
-  }
-
-  @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
-  public void givenNoIndividualsInDatabase_whenGetIndividuals_thenReturnEmptyList() throws Exception {
-    // when
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=1&pageSize=10");
-    IndividualsResponse response = deserialise(result, IndividualsResponse.class);
-
-    // then
-    assertOK(result);
-    assertThat(response.getIndividuals()).isEmpty();
-    assertThat(response.getPaging().getTotalRecords()).isEqualTo(0);
-    assertThat(response.getPaging().getItemsReturned()).isEqualTo(0);
-  }
-
-  @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
-  public void givenPageNumberBeyondData_whenGetIndividuals_thenReturnEmptyList() throws Exception {
-    // given
-    persistedIndividualFactory.createAndPersist();
-
-    // when - request page 100 when only 1 record exists
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=100&pageSize=10");
-    IndividualsResponse response = deserialise(result, IndividualsResponse.class);
-
-    // then
-    assertOK(result);
-    assertThat(response.getIndividuals()).isEmpty();
-    assertThat(response.getPaging().getTotalRecords()).isEqualTo(1);
-    assertThat(response.getPaging().getItemsReturned()).isEqualTo(0);
-    assertThat(response.getPaging().getPage()).isEqualTo(100);
+    assertThat(response.getPaging().getPage()).isEqualTo(1);
+    assertThat(response.getPaging().getPageSize()).isEqualTo(10);
+    assertThat(response.getPaging().getItemsReturned()).isEqualTo(5);
+    assertThat(response.getPaging().getTotalRecords()).isEqualTo(5);
   }
 }
