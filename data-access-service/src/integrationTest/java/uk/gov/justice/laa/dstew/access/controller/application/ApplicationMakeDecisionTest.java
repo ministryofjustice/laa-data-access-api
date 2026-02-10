@@ -1,13 +1,14 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
-import java.util.UUID;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Stream;
+
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -27,16 +28,65 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.RefusalDetails;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoContent;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
 @ActiveProfiles("test")
 public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
+
+    private static Stream<Arguments> missingRefusalDetails() {
+        return Stream.of(
+                Arguments.of("", ""),
+                Arguments.of("", "justification 1"),
+                Arguments.of("refusal 1", "")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("missingRefusalDetails")
+    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    public void givenMakeDecisionRequest_whenAssignDecision_thenReturnBadRequest(
+            String reason,
+            String justification
+    ) throws Exception {
+
+        ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+            builder.applicationContent(new HashMap<>(Map.of(
+                    "test", "content"
+            )));
+            builder.isAutoGranted(false);
+            builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS);
+        });
+
+        ProceedingEntity grantedProceedingEntity = persistedProceedingFactory.createAndPersist(
+                builder -> { builder
+                        .applicationId(applicationEntity.getId()); }
+        );
+
+        MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
+            builder
+                    .userId(CaseworkerJohnDoe.getId())
+                    .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS)
+                    .eventHistory(EventHistory.builder()
+                            .eventDescription("refusal event")
+                            .build())
+                    .overallDecision(DecisionStatus.REFUSED)
+                    .proceedings(List.of(
+                            createMakeDecisionProceeding(grantedProceedingEntity.getId(), MeritsDecisionStatus.GRANTED, justification, reason)
+                    ))
+                    .autoGranted(true);
+        });
+
+        // when
+        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+
+        // then
+        assertSecurityHeaders(result);
+        assertEquals(400, result.getResponse().getStatus());
+    }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.WRITER)

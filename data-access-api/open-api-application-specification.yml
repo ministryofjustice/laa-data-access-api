@@ -590,9 +590,6 @@ components:
 
     RefusalDetails:
       type: object
-      required:
-        - reason
-        - justification
       properties:
         reason:
           type: string

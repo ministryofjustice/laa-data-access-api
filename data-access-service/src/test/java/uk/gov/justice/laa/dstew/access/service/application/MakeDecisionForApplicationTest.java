@@ -18,7 +18,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -40,6 +45,7 @@ import uk.gov.justice.laa.dstew.access.model.RefusalDetails;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
  * Unit tests for the make decision behaviour in the application service.
@@ -48,6 +54,75 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
   @Autowired
   private ApplicationService serviceUnderTest;
+
+  private static Stream<Arguments> missingRefusalDetails() {
+    return Stream.of(
+        Arguments.of("", ""),
+        Arguments.of("", "justification 1"),
+        Arguments.of("refusal 1", "")
+      );
+  }
+
+  @ParameterizedTest
+  @MethodSource("missingRefusalDetails")
+  void givenMakeDecisionRequestWithOneProceedingAndInvalidRefusal_whenAssignDecision_thenDecisionSaved(
+          String refusedReason, String refusedJustification
+  ) throws JsonProcessingException {
+
+    UUID applicationId = UUID.randomUUID();
+    UUID refusedProceedingId = UUID.randomUUID();
+
+    MeritsDecisionStatus refusedDecision = MeritsDecisionStatus.GRANTED;
+
+    // given
+    CaseworkerEntity caseworker = caseworkerFactory.createDefault();
+
+    MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
+            requestBuilder
+                    .userId(caseworker.getId())
+                    .overallDecision(DecisionStatus.REFUSED)
+                    .eventHistory(
+                            EventHistory.builder()
+                                    .eventDescription("event")
+                                    .build()
+                    )
+                    .proceedings(List.of(
+                            createMakeDecisionProceedingDetails(refusedProceedingId, refusedDecision, refusedReason, refusedJustification)
+                    ))
+    );
+
+    final ApplicationEntity expectedApplicationEntity = applicationEntityFactory
+            .createDefault(builder ->
+                    builder
+                            .id(applicationId)
+                            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+                            .caseworker(caseworker)
+            );
+
+    setSecurityContext(TestConstants.Roles.WRITER);
+
+    ProceedingEntity refusedProceedingEntity = proceedingsEntityFactory
+            .createDefault(builder ->
+                    builder.id(refusedProceedingId).applicationId(applicationId)
+            );
+
+    // when
+    when(caseworkerRepository.findById(caseworker.getId()))
+            .thenReturn(Optional.of(caseworker));
+    when(proceedingRepository.findAllById(List.of(refusedProceedingEntity.getId())))
+            .thenReturn(List.of(refusedProceedingEntity));
+    when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
+    when(decisionRepository.findByApplicationId(expectedApplicationEntity.getId()))
+            .thenReturn(Optional.empty());
+
+    Throwable thrown = catchThrowable(() ->
+            serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest));
+
+    // then
+    assertThat(thrown)
+            .isInstanceOf(ValidationException.class)
+            .hasMessage("One or more validation rules were violated");
+  }
 
   @Test
   void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved() throws JsonProcessingException {
