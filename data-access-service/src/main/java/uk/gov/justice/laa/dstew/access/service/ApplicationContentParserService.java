@@ -61,6 +61,7 @@ public class ApplicationContentParserService {
       List<Boolean> usedDelegatedFunctionValues = proceedingList
           .stream()
           .map(Proceeding::getUsedDelegatedFunctions)
+          .filter(Objects::nonNull)
           .toList();
       if (!usedDelegatedFunctionValues.isEmpty()) {
         usedDelegatedFunction = usedDelegatedFunctionValues.stream()
