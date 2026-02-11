@@ -20,7 +20,7 @@ public class ApplicationEntityFactory extends BaseFactory<ApplicationEntity, App
   private IndividualEntityFactory individualEntityFactory;
 
   @Autowired
-  private ApplicationContentFactory requestApplicationContentFactory;
+  private ApplicationContentFactory applicationContentFactory;
 
   public ApplicationEntityFactory() {
     super(ApplicationEntity::toBuilder, ApplicationEntity.ApplicationEntityBuilder::build);
@@ -40,7 +40,7 @@ public class ApplicationEntityFactory extends BaseFactory<ApplicationEntity, App
         .individuals(Set.of(
             individualEntityFactory.createDefault()
         ))
-        .applicationContent(requestApplicationContentFactory.createDefaultAsMapOfApplicationContent())
+        .applicationContent(applicationContentFactory.createDefaultAsMapOfApplicationContent())
         .usedDelegatedFunctions(false)
         .isAutoGranted(true)
         .build();

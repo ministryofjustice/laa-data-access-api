@@ -29,13 +29,13 @@ public class ApplicationCreateRequestFactory extends BaseFactory<ApplicationCrea
   @Override
   public ApplicationCreateRequest createDefault() {
 
-    ApplicationContent requestApplicationContent = applicationContentFactory.createDefault();
+    ApplicationContent applicationContent = applicationContentFactory.createDefault();
 
     return ApplicationCreateRequest.builder()
         .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
         .laaReference("REF7327")
         .individuals(List.of(individualFactory.createDefault()))
-        .applicationContent(MapperUtil.getObjectMapper().convertValue(requestApplicationContent, Map.class))
+        .applicationContent(MapperUtil.getObjectMapper().convertValue(applicationContent, Map.class))
         .build();
   }
 }

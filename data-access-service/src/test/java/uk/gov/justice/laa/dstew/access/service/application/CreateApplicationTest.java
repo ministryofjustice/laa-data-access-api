@@ -36,7 +36,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
-//import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -58,7 +57,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     );
 
     ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault();
-    ApplicationContent requestApplicationContent = MapperUtil.getObjectMapper()
+    ApplicationContent applicationContent = MapperUtil.getObjectMapper()
         .convertValue(applicationCreateRequest.getApplicationContent(), ApplicationContent.class);
     when(applicationRepository.save(any())).thenReturn(withExpectedId);
 
@@ -81,7 +80,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     assertEquals(expectedId, actualId);
 
     verifyThatApplicationSaved(applicationCreateRequest, 1);
-    verifyThatProceedingsSaved(requestApplicationContent, expectedId);
+    verifyThatProceedingsSaved(applicationContent, expectedId);
     verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
   }
 
@@ -202,8 +201,6 @@ public class CreateApplicationTest extends BaseServiceTest {
     ApplicationContent applicationContent = applicationContentFactory.createDefault(appContentBuilder ->
         appContentBuilder.submittedAt("2026-01-15T10:20:30Z").proceedings(proceedings).id(UUID.fromString(appContentId)));
 
-//    RequestApplicationContent requestApplicationContent =
-//        requestApplicationContentFactory.createDefault(builder -> builder.applicationContent(applicationContent));
     applicationContent.putAdditionalApplicationContent("testPropertyInTest", "testValue");
     return objectMapper.convertValue(applicationContent, Map.class);
 
