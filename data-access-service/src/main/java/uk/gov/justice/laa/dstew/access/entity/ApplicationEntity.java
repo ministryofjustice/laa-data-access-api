@@ -17,6 +17,8 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+
+import java.beans.Transient;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Set;
@@ -98,9 +100,6 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "submitted_at")
   private Instant submittedAt;
 
-  @Column(name = "is_lead")
-  private Boolean isLead;
-
   @OneToOne()
   @JoinColumn(name = "decision_id", referencedColumnName = "id")
   private DecisionEntity decision;
@@ -127,6 +126,10 @@ public class ApplicationEntity implements AuditableEntity {
   )
   private ApplicationEntity leadApplication;
 
+  @Transient
+  public boolean isLead() {
+    return leadApplication == null;
+  }
 
   // getters and setters
   public Map<String, Object> getApplicationContent() {
