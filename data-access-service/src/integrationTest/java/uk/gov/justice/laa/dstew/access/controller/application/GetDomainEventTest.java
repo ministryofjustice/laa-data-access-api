@@ -8,6 +8,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
+import uk.gov.justice.laa.dstew.access.utils.DateTimeHelper;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 
 import java.time.Instant;
@@ -145,7 +146,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
         return persistedDomainEventFactory.createAndPersist(builder ->
                 {
                     builder.applicationId(appId);
-                    builder.createdAt(Instant.now());
+                    builder.createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds());
                     builder.data(eventDesc);
                     builder.type(eventType);
                 }
