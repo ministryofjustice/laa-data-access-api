@@ -141,7 +141,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     }
 
     private DomainEventEntity setupDomainEvent(UUID appId, DomainEventType eventType) {
-        String eventDesc = "{ \"eventDescription\" : \"" + eventType.getValue() + "\"}";
+        String eventDesc = "{\"eventDescription\": \"" + eventType.getValue() + "\"}";
         return persistedDomainEventFactory.createAndPersist(builder ->
                 {
                     builder.applicationId(appId);

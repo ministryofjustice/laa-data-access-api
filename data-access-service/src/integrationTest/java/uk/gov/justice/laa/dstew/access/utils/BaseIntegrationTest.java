@@ -195,33 +195,40 @@ public abstract class BaseIntegrationTest {
         CaseworkerJaneDoe = persistedCaseworkerFactory.createAndPersist(builder ->
                 builder.username("JaneDoe").build());
         Caseworkers = List.of(CaseworkerJohnDoe, CaseworkerJaneDoe);
+
+        clearCache();
     }
 
     public MvcResult getUri(String uri) throws Exception {
+        clearCache();
         return mockMvc
             .perform(get(uri))
             .andReturn();
     }
 
     public MvcResult getUri(String uri, Object... args) throws Exception {
+        clearCache();
         return mockMvc
                 .perform(get(uri, args))
                 .andReturn();
     }
 
     public MvcResult getUri(URI uri) throws Exception {
+        clearCache();
         return mockMvc
                 .perform(get(uri))
                 .andReturn();
     }
 
     public MvcResult postUriWithoutModel(String uri, Object... args) throws Exception {
+        clearCache();
         return mockMvc
                 .perform(post(uri, args))
                 .andReturn();
     }
 
     public <TRequestModel> MvcResult postUri(String uri, TRequestModel requestModel) throws Exception {
+        clearCache();
         return mockMvc
                 .perform(post(uri)
                         .content(objectMapper.writeValueAsString(requestModel))
@@ -230,6 +237,7 @@ public abstract class BaseIntegrationTest {
     }
 
     public <TRequestModel> MvcResult postUri(String uri, TRequestModel requestModel, Object... args) throws Exception {
+        clearCache();
         return mockMvc
                 .perform(post(uri, args)
                         .content(objectMapper.writeValueAsString(requestModel))
@@ -238,6 +246,7 @@ public abstract class BaseIntegrationTest {
     }
 
     public <TRequestModel> MvcResult patchUri(String uri, TRequestModel requestModel, Object... args) throws Exception {
+        clearCache();
         return mockMvc
                 .perform(patch(uri, args)
                         .content(objectMapper.writeValueAsString(requestModel))
@@ -247,5 +256,9 @@ public abstract class BaseIntegrationTest {
 
     public <TResponseModel> TResponseModel deserialise(MvcResult result, Class<TResponseModel> clazz) throws Exception {
         return objectMapper.readValue(result.getResponse().getContentAsString(), clazz);
+    }
+
+    public void clearCache() {
+        entityManager.clear();
     }
 }
