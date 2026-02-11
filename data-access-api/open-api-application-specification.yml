@@ -436,7 +436,10 @@ components:
         status:
           $ref: "#/components/schemas/applicationStatus"
         applicationContent:
-          $ref: "#/components/schemas/ApplicationContent"
+          type: object
+          description: Application data to create
+          additionalProperties: true
+          minProperties: 1
         laaReference:
           type: string
           minLength: 1

@@ -7,9 +7,10 @@ import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.convertors.CategoryOfLawTypeConvertor;
 import uk.gov.justice.laa.dstew.access.convertors.MatterTypeConvertor;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
-import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
@@ -46,34 +47,53 @@ public class ApplicationContentParserService {
     if (applicationContent == null) {
       throw new ValidationException(List.of("Application content is null"));
     }
-    if (applicationContent.getProceedings() == null
-        || applicationContent.getProceedings().isEmpty()) {
-      throw new ValidationException(List.of("No proceedings found in application content"));
+    Proceeding leadProceeding = null;
+    Boolean usedDelegatedFunction = null;
+    if (applicationContent.getProceedings() != null
+        && !applicationContent.getProceedings().isEmpty()) {
+      List<Proceeding> proceedingList = applicationContent.getProceedings().stream()
+          .filter(Objects::nonNull).toList();
+      leadProceeding = proceedingList
+          .stream()
+          .filter(proceeding -> proceeding.getLeadProceeding().equals(Boolean.TRUE))
+          .findFirst()
+          .orElseThrow(() -> new ValidationException(List.of("No lead proceeding found in application content")));
+      List<Boolean> usedDelegatedFunctionValues = proceedingList
+          .stream()
+          .map(Proceeding::getUsedDelegatedFunctions)
+          .toList();
+      if (!usedDelegatedFunctionValues.isEmpty()) {
+        usedDelegatedFunction = usedDelegatedFunctionValues.stream()
+            .anyMatch(Boolean::booleanValue);
+      }
     }
-    List<Proceeding> proceedingList = applicationContent.getProceedings().stream()
-        .filter(Objects::nonNull).toList();
-    Proceeding leadProceeding = proceedingList
-        .stream()
-        .filter(proceeding -> proceeding.getLeadProceeding().equals(Boolean.TRUE))
-        .findFirst()
-        .orElseThrow(() -> new ValidationException(List.of("No lead proceeding found in application content")));
-    boolean usedDelegatedFunction =
-        proceedingList
-            .stream()
-            .filter(proceeding -> null != proceeding.getUsedDelegatedFunctions())
-            .anyMatch(Proceeding::getUsedDelegatedFunctions);
+
 
     String officeCode = (applicationContent.getOffice() == null) ? null : applicationContent.getOffice().getCode();
 
     return ParsedAppContentDetails
         .builder()
         .applyApplicationId(applicationContent.getId())
-        .categoryOfLaw(categoryOfLawTypeDeserializer.lenientEnumConversion(leadProceeding.getCategoryOfLaw()))
-        .matterType(matterTypeDeserializer.lenientEnumConversion(leadProceeding.getMatterType()))
+        .categoryOfLaw(getCategoryOfLaw(leadProceeding))
+        .matterType(getMatterType(leadProceeding))
         .submittedAt(Instant.parse(applicationContent.getSubmittedAt()))
         .usedDelegatedFunctions(usedDelegatedFunction)
         .officeCode(officeCode)
         .build();
+  }
+
+  private static MatterType getMatterType(Proceeding leadProceeding) {
+    if (Objects.isNull(leadProceeding)) {
+      return null;
+    }
+    return matterTypeDeserializer.lenientEnumConversion(leadProceeding.getMatterType());
+  }
+
+  private static CategoryOfLaw getCategoryOfLaw(Proceeding leadProceeding) {
+    if (Objects.isNull(leadProceeding)) {
+      return null;
+    }
+    return categoryOfLawTypeDeserializer.lenientEnumConversion(leadProceeding.getCategoryOfLaw());
   }
 
 

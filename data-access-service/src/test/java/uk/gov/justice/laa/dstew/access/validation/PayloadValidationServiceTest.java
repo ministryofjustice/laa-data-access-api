@@ -16,8 +16,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
-import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.RequestApplicationContentFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;
@@ -30,13 +28,11 @@ import static org.mockito.Mockito.when;
 class PayloadValidationServiceTest {
 
   private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
-  private final RequestApplicationContentFactory requestApplicationContentFactory = new RequestApplicationContentFactory();
   PayloadValidationService serviceUnderTest =
       new PayloadValidationService(MapperUtil.getObjectMapper(), validator);
 
   public static Stream<Arguments> payloadsForValidation() {
     return Stream.of(
-        Arguments.of(RequestApplicationContent.class),
         Arguments.of(ApplicationContent.class),
         Arguments.of(Proceeding.class)
     );
@@ -113,21 +109,6 @@ class PayloadValidationServiceTest {
 
   }
 
-  @Test
-  public void validateRequestApplicationContentPayloadFromPojo() {
-
-    RequestApplicationContent requestApplicationContent = requestApplicationContentFactory.createDefault(builder ->
-        builder.applicationContent(new ApplicationContent()));
-    ValidationException validationException =
-        Assertions.assertThrows(ValidationException.class,
-            () -> serviceUnderTest.convertAndValidate(requestApplicationContent, RequestApplicationContent.class));
-
-    assertThat(validationException.errors())
-        .contains("applicationContent.submittedAt: must not be null",
-            "applicationContent.proceedings: size must be between 1 and 2147483647",
-            "applicationContent.id: must not be null");
-
-  }
 
   @ParameterizedTest
   @MethodSource("payloadsForValidation")
