@@ -57,7 +57,6 @@ public class ApplicationService {
   private final DecisionRepository decisionRepository;
   private final ProceedingRepository proceedingRepository;
   private final MeritsDecisionRepository meritsDecisionRepository;
-  private final LinkedApplicationService linkedApplicationService;
   private final ProceedingsService proceedingsService;
   private final PayloadValidationService payloadValidationService;
 
@@ -79,7 +78,6 @@ public class ApplicationService {
                             final ApplicationContentParserService applicationContentParserService,
                             final ProceedingRepository proceedingRepository,
                             final MeritsDecisionRepository meritsDecisionRepository,
-                            final LinkedApplicationService linkedApplicationService,
                             final ProceedingsService proceedingsService, PayloadValidationService payloadValidationService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
@@ -94,7 +92,6 @@ public class ApplicationService {
     this.domainEventService = domainEventService;
     this.decisionRepository = decisionRepository;
     this.meritsDecisionRepository = meritsDecisionRepository;
-    this.linkedApplicationService = linkedApplicationService;
   }
 
   /**
@@ -131,12 +128,8 @@ public class ApplicationService {
 
     final ApplicationEntity saved = applicationRepository.save(entity);
 
-    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(applicationContent);
-
-    linkedApplicationService.processLinkedApplications(parsedContentDetails);
-
-    proceedingsService.saveProceedings(applicationContent, saved.getId());
-    domainEventService.saveCreateApplicationDomainEvent(saved, req, null);
+    proceedingsService.saveProceedings(requestApplicationContent.getApplicationContent(), saved.getId());
+    domainEventService.saveCreateApplicationDomainEvent(saved, null);
     createAndSendHistoricRecord(saved, null);
 
     return saved.getId();
