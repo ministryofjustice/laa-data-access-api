@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.repository;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
@@ -12,8 +13,8 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
     public void givenSaveOfExpectedApplication_whenGetCalled_expectedAndActualAreEqual() {
 
         // given
-        ApplicationEntity expected = applicationFactory.create();
-        applicationRepository.save(expected);
+        ApplicationEntity expected = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+        clearCache();
 
         // when
         ApplicationEntity actual = applicationRepository.findById(expected.getId()).orElse(null);
