@@ -128,9 +128,8 @@ public class ApplicationService {
 
     linkedApplicationService.processLinkedApplications(parsedContentDetails);
 
-
     proceedingsService.saveProceedings(requestApplicationContent.getApplicationContent(), saved.getId());
-    domainEventService.saveCreateApplicationDomainEvent(saved, null);
+    domainEventService.saveCreateApplicationDomainEvent(saved, req, null);
     createAndSendHistoricRecord(saved, null);
 
     return saved.getId();
