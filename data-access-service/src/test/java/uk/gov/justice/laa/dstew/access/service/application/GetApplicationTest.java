@@ -9,6 +9,8 @@ import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -29,7 +31,7 @@ public class GetApplicationTest extends BaseServiceTest {
     @Test
     public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {
         // given
-        ApplicationEntity expectedApplication = applicationEntityFactory.createDefault();
+        ApplicationEntity expectedApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class);
 
         when(applicationRepository.findById(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
 
@@ -90,6 +92,5 @@ public class GetApplicationTest extends BaseServiceTest {
     public void assertApplicationEqual(ApplicationEntity expectedApplication, Application actualApplication) {
         assertThat(actualApplication.getStatus()).isEqualTo(expectedApplication.getStatus());
         assertThat(actualApplication.getLaaReference()).isEqualTo(expectedApplication.getLaaReference());
-
     }
 }
