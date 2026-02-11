@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
@@ -30,7 +31,6 @@ import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
@@ -117,19 +117,19 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public UUID createApplication(final ApplicationCreateRequest req) {
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
-    RequestApplicationContent requestApplicationContent =
-        payloadValidationService.convertAndValidate(req.getApplicationContent(), RequestApplicationContent.class);
-    setValuesFromApplicationContent(entity, requestApplicationContent);
+    ApplicationContent applicationContent =
+        payloadValidationService.convertAndValidate(req.getApplicationContent(), ApplicationContent.class);
+    setValuesFromApplicationContent(entity, applicationContent);
     entity.setSchemaVersion(applicationVersion);
 
     final ApplicationEntity saved = applicationRepository.save(entity);
 
-    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(requestApplicationContent);
+    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(applicationContent);
 
     linkedApplicationService.processLinkedApplications(parsedContentDetails);
 
 
-    proceedingsService.saveProceedings(requestApplicationContent.getApplicationContent(), saved.getId());
+    proceedingsService.saveProceedings(applicationContent, saved.getId());
     domainEventService.saveCreateApplicationDomainEvent(saved, null);
     createAndSendHistoricRecord(saved, null);
 
@@ -143,7 +143,7 @@ public class ApplicationService {
    * @param requestAppContent application content from the request
    */
   private void setValuesFromApplicationContent(ApplicationEntity entity,
-                                               RequestApplicationContent requestAppContent) {
+                                               ApplicationContent requestAppContent) {
 
 
     var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(requestAppContent);
