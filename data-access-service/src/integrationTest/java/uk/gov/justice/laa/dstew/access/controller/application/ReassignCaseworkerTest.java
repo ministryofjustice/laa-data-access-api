@@ -23,13 +23,17 @@ public class ReassignCaseworkerTest extends BaseIntegrationTest {
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
-    public void givenValiReassignRequest_whenAssignCaseworker_thenReturnOK_andAssignCaseworker() throws Exception {
+    public void givenValidReassignRequest_whenAssignCaseworker_thenReturnOK_andAssignCaseworker() throws Exception {
         // given
-        List<ApplicationEntity> expectedReassignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+        List<ApplicationEntity> toReassignedApplications = persistedApplicationFactory.createAndPersistMultiple(
                 4,
                 builder -> {
                     builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
                 });
+
+        List<ApplicationEntity> expectedReassignedApplications = toReassignedApplications.stream()
+                .peek(application -> application.setCaseworker(BaseIntegrationTest.CaseworkerJaneDoe))
+                .toList();
 
         List<ApplicationEntity> expectedAlreadyAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
                 5,
@@ -46,7 +50,7 @@ public class ReassignCaseworkerTest extends BaseIntegrationTest {
         CaseworkerAssignRequest caseworkerReassignRequest = caseworkerAssignRequestFactory.create(builder -> {
 
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJaneDoe.getId())
-                    .applicationIds(expectedReassignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()))
+                    .applicationIds(toReassignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()))
                     .eventHistory(EventHistory.builder()
                             .eventDescription("Assigning caseworker")
                             .build());
@@ -64,7 +68,7 @@ public class ReassignCaseworkerTest extends BaseIntegrationTest {
         applicationAsserts.assertApplicationsMatchInRepository(expectedAlreadyAssignedApplications);
         applicationAsserts.assertApplicationsMatchInRepository(expectedUnassignedApplications);
         domainEventAsserts.assertDomainEventsCreatedForApplications(
-                expectedReassignedApplications,
+                toReassignedApplications,
                 BaseIntegrationTest.CaseworkerJaneDoe.getId(),
                 DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
                 caseworkerReassignRequest.getEventHistory()

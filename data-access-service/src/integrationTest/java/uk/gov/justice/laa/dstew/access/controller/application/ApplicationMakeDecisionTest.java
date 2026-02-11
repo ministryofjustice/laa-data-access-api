@@ -185,7 +185,8 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
         assertEquals(ApplicationStatus.APPLICATION_SUBMITTED, actualApplication.getStatus());
-        assertThat(decisionRepository.countById(applicationEntity.getDecision().getId())).isEqualTo(1);
+        ApplicationEntity updatedApplicationEntity = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+        assertThat(decisionRepository.countById(updatedApplicationEntity.getDecision().getId())).isEqualTo(1);
 
         domainEventAsserts.assertDomainEventsCreatedForApplications(
                 List.of(applicationEntity),
@@ -196,8 +197,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         verifyDecisionSavedCorrectly(
                 applicationEntity.getId(),
-                makeDecisionRequest,
-                applicationEntity
+                makeDecisionRequest
         );
     }
 
@@ -210,6 +210,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
             builder.applicationContent(new HashMap<>(Map.of(
                     "test", "content"
             )));
+            builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
         });
 
         ProceedingEntity proceedingEntityOne = persistedProceedingFactory.createAndPersist(
@@ -276,8 +277,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         verifyDecisionSavedCorrectly(
                 applicationEntity.getId(),
-                assignDecisionRequest,
-                applicationEntity
+                assignDecisionRequest
         );
     }
 
@@ -433,12 +433,14 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                 .build();
     }
 
-    private void verifyDecisionSavedCorrectly(UUID applicationId, MakeDecisionRequest expectedMakeDecisionRequest, ApplicationEntity expectedApplicationEntity) {
-        DecisionEntity savedDecision = expectedApplicationEntity.getDecision();
+    private void verifyDecisionSavedCorrectly(UUID applicationId, MakeDecisionRequest expectedMakeDecisionRequest) {
+        ApplicationEntity updatedApplicationEntity = applicationRepository.findById(applicationId).orElseThrow();
+
+        DecisionEntity savedDecision = updatedApplicationEntity.getDecision();
 
         MakeDecisionRequest actual = mapToMakeDecisionRequest(
                 savedDecision,
-                expectedApplicationEntity,
+                updatedApplicationEntity,
                 expectedMakeDecisionRequest.getEventHistory()
                 );
 

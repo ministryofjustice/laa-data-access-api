@@ -50,11 +50,15 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
             AssignCaseworkerCase assignCaseworkerCase
     ) throws Exception {
         // given
-        List<ApplicationEntity> expectedAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+        List<ApplicationEntity> toAssignApplications = persistedApplicationFactory.createAndPersistMultiple(
                 assignCaseworkerCase.numberOfApplicationsToAssign,
                 builder -> {
                     builder.caseworker(null);
                 });
+
+        List<ApplicationEntity> expectedAssignedApplications = toAssignApplications.stream()
+                .peek(application -> application.setCaseworker(BaseIntegrationTest.CaseworkerJohnDoe))
+                .toList();
 
         List<ApplicationEntity> expectedAlreadyAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
                 assignCaseworkerCase.numberOfApplicationsAlreadyAssigned,
@@ -221,7 +225,10 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
         ApplicationEntity actualApplication = applicationRepository.findById(expectedApplication.getId()).orElseThrow();
         assertNull(actualApplication.getCaseworker());
-        assertEquals(expectedApplication, actualApplication);
+        assertEquals(
+                applicationAsserts.createApplicationIgnoreLastUpdated(expectedApplication),
+                applicationAsserts.createApplicationIgnoreLastUpdated(actualApplication)
+        );
     }
 
     @Test
@@ -246,7 +253,10 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
         ApplicationEntity actualApplication = applicationRepository.findById(expectedApplication.getId()).orElseThrow();
         assertNull(actualApplication.getCaseworker());
-        assertEquals(expectedApplication, actualApplication);
+        assertEquals(
+                applicationAsserts.createApplicationIgnoreLastUpdated(expectedApplication),
+                applicationAsserts.createApplicationIgnoreLastUpdated(actualApplication)
+        );
     }
 
     @Test

@@ -40,9 +40,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
             builder.decision(decision);
         });
 
-        Application expectedApplication = createApplication(application);
-
-        entityManager.clear();
+        Application expectedApplication = applicationAsserts.createApplication(application);
 
         // when
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getApplicationId());
@@ -101,27 +99,5 @@ public class GetApplicationTest extends BaseIntegrationTest {
         // then
         assertSecurityHeaders(result);
         assertUnauthorised(result);
-    }
-
-    private Application createApplication(ApplicationEntity applicationEntity) {
-        Application application = new Application();
-        application.setApplicationId(applicationEntity.getId());
-        application.setStatus(applicationEntity.getStatus());
-        if (applicationEntity.getCaseworker() != null) {
-            application.setAssignedTo(applicationEntity.getCaseworker().getId());
-        }
-        application.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt(), ZoneOffset.UTC));
-        application.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt(), ZoneOffset.UTC));
-        application.setSubmittedAt(
-            applicationEntity.getSubmittedAt() != null
-                ? OffsetDateTime.ofInstant(applicationEntity.getSubmittedAt(), ZoneOffset.UTC)
-                : null
-        );
-        application.setUseDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
-        application.setAutoGrant(applicationEntity.getIsAutoGranted());
-        if (applicationEntity.getDecision() != null) {
-            application.setOverallDecision(applicationEntity.getDecision().getOverallDecision());
-        }
-        return application;
     }
 }
