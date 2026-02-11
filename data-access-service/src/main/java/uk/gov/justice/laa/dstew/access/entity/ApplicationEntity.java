@@ -17,7 +17,6 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-
 import java.beans.Transient;
 import java.time.Instant;
 import java.util.Map;

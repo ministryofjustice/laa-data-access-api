@@ -877,6 +877,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         applicationSummary.setClientFirstName(applicationEntity.getIndividuals().stream().findFirst().get().getFirstName());
         applicationSummary.setClientLastName(applicationEntity.getIndividuals().stream().findFirst().get().getLastName());
         applicationSummary.setClientDateOfBirth(applicationEntity.getIndividuals().stream().findFirst().get().getDateOfBirth());
+        applicationSummary.setIsLead(applicationEntity.isLead());
         return applicationSummary;
     }
 }

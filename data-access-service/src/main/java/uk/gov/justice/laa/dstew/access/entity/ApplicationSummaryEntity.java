@@ -80,6 +80,19 @@ public class ApplicationSummaryEntity {
   @Column(name = "is_auto_granted")
   private Boolean isAutoGranted;
 
+  @OneToOne
+  @JoinTable(
+      name = "linked_applications",
+      joinColumns = @JoinColumn(name = "associated_application_id"),
+      inverseJoinColumns = @JoinColumn(name = "lead_application_id")
+  )
+  private ApplicationEntity leadApplication;
+
+  @Transient
+  public boolean isLead() {
+    return leadApplication == null;
+  }
+
   @Transient
   private ApplicationType type = ApplicationType.INITIAL;
 
