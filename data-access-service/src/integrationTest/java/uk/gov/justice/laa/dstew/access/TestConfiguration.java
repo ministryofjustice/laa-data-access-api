@@ -118,6 +118,18 @@ public class TestConfiguration {
     }
 
     @Bean
+    public PersistedFactory<
+            uk.gov.justice.laa.dstew.access.repository.IndividualRepository,
+            Factory<uk.gov.justice.laa.dstew.access.entity.IndividualEntity, uk.gov.justice.laa.dstew.access.entity.IndividualEntity.IndividualEntityBuilder>,
+            uk.gov.justice.laa.dstew.access.entity.IndividualEntity,
+            uk.gov.justice.laa.dstew.access.entity.IndividualEntity.IndividualEntityBuilder,
+            UUID> persistedIndividualFactory(
+            uk.gov.justice.laa.dstew.access.repository.IndividualRepository repository,
+            Factory<uk.gov.justice.laa.dstew.access.entity.IndividualEntity, uk.gov.justice.laa.dstew.access.entity.IndividualEntity.IndividualEntityBuilder> individualEntityFactory) {
+        return new PersistedFactory<>(repository, individualEntityFactory);
+    }
+
+    @Bean
     public Factory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> applicationCreateRequestFactory() {
         return new ApplicationCreateFactoryImpl();
     }

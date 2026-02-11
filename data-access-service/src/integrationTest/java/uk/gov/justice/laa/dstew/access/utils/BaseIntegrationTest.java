@@ -35,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
+import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
 import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
@@ -176,6 +177,15 @@ public abstract class BaseIntegrationTest {
         UUID
         > persistedLinkedApplicationFactory;
 
+  @Autowired
+  protected PersistedFactory<
+      IndividualRepository,
+      Factory<IndividualEntity, IndividualEntity.IndividualEntityBuilder>,
+      IndividualEntity,
+      IndividualEntity.IndividualEntityBuilder,
+      UUID> persistedIndividualFactory;
+
+
     // for use in tests and factories where applicable (i.e. default in ApplicationFactoryImpl)
     public static CaseworkerEntity CaseworkerJohnDoe;
     public static CaseworkerEntity CaseworkerJaneDoe;
@@ -190,34 +200,39 @@ public abstract class BaseIntegrationTest {
                 builder.username("JaneDoe").build());
         Caseworkers = List.of(CaseworkerJohnDoe, CaseworkerJaneDoe);
 
-        entityManager.clear(); // ensure we clear the L1 cache before every test run
+        clearCache();
     }
 
     public MvcResult getUri(String uri) throws Exception {
+        clearCache();
         return mockMvc
             .perform(get(uri))
             .andReturn();
     }
 
     public MvcResult getUri(String uri, Object... args) throws Exception {
+        clearCache();
         return mockMvc
                 .perform(get(uri, args))
                 .andReturn();
     }
 
     public MvcResult getUri(URI uri) throws Exception {
+        clearCache();
         return mockMvc
                 .perform(get(uri))
                 .andReturn();
     }
 
     public MvcResult postUriWithoutModel(String uri, Object... args) throws Exception {
+        clearCache();
         return mockMvc
                 .perform(post(uri, args))
                 .andReturn();
     }
 
     public <TRequestModel> MvcResult postUri(String uri, TRequestModel requestModel) throws Exception {
+        clearCache();
         return mockMvc
                 .perform(post(uri)
                         .content(objectMapper.writeValueAsString(requestModel))
@@ -226,6 +241,7 @@ public abstract class BaseIntegrationTest {
     }
 
     public <TRequestModel> MvcResult postUri(String uri, TRequestModel requestModel, Object... args) throws Exception {
+        clearCache();
         return mockMvc
                 .perform(post(uri, args)
                         .content(objectMapper.writeValueAsString(requestModel))
@@ -234,6 +250,7 @@ public abstract class BaseIntegrationTest {
     }
 
     public <TRequestModel> MvcResult patchUri(String uri, TRequestModel requestModel, Object... args) throws Exception {
+        clearCache();
         return mockMvc
                 .perform(patch(uri, args)
                         .content(objectMapper.writeValueAsString(requestModel))
@@ -243,5 +260,9 @@ public abstract class BaseIntegrationTest {
 
     public <TResponseModel> TResponseModel deserialise(MvcResult result, Class<TResponseModel> clazz) throws Exception {
         return objectMapper.readValue(result.getResponse().getContentAsString(), clazz);
+    }
+
+    public void clearCache() {
+        entityManager.clear();
     }
 }

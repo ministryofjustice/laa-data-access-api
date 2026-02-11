@@ -31,9 +31,13 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenValidUnassignRequest_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
         // given
-        ApplicationEntity expectedUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity toUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
             builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
         });
+
+        ApplicationEntity expectedUnassignedApplication = toUnassignedApplication.toBuilder()
+                .caseworker(null)
+                .build();
 
         CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {
             builder.eventHistory(EventHistory.builder()
@@ -51,7 +55,10 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
 
         ApplicationEntity actual = applicationRepository.findById(expectedUnassignedApplication.getId()).orElseThrow();
         assertNull(actual.getCaseworker());
-        assertEquals(expectedUnassignedApplication, actual);
+        assertEquals(
+                applicationAsserts.createApplicationIgnoreLastUpdated(expectedUnassignedApplication),
+                applicationAsserts.createApplicationIgnoreLastUpdated(actual)
+        );
 
         domainEventAsserts.assertDomainEventsCreatedForApplications(
                 List.of(expectedUnassignedApplication),
@@ -65,9 +72,13 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenValidUnassignRequestWithBlankEventDescription_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
         // given
-        ApplicationEntity expectedUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity toUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
             builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
         });
+
+        ApplicationEntity expectedUnassignedApplication = toUnassignedApplication.toBuilder()
+                .caseworker(null)
+                .build();
 
         CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {
             builder.eventHistory(EventHistory.builder()
@@ -85,7 +96,10 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
 
         ApplicationEntity actual = applicationRepository.findById(expectedUnassignedApplication.getId()).orElseThrow();
         assertNull(actual.getCaseworker());
-        assertEquals(expectedUnassignedApplication, actual);
+        assertEquals(
+                applicationAsserts.createApplicationIgnoreLastUpdated(expectedUnassignedApplication),
+                applicationAsserts.createApplicationIgnoreLastUpdated(actual)
+        );
 
         domainEventAsserts.assertDomainEventsCreatedForApplications(
                 List.of(expectedUnassignedApplication),
