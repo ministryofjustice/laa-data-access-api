@@ -18,7 +18,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -28,18 +34,11 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRefusedDomainEventDetails;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetails;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.RefusalDetails;
+import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
  * Unit tests for the make decision behaviour in the application service.
@@ -48,6 +47,81 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
   @Autowired
   private ApplicationService serviceUnderTest;
+
+  private static Stream<Arguments> missingRefusalDetails() {
+    return Stream.of(
+        Arguments.of("",
+                        "",
+                        "The Make Decision request must contain a refusal reason for proceeding with id: "),
+        Arguments.of("",
+                        "justification 1",
+                        "The Make Decision request must contain a refusal reason for proceeding with id: "),
+        Arguments.of("refusal 1",
+                        "",
+                        "The Make Decision request must contain a refusal justification for proceeding with id: ")
+      );
+  }
+
+  @ParameterizedTest
+  @MethodSource("missingRefusalDetails")
+  void givenMakeDecisionRequestWithOneProceedingAndInvalidRefusal_whenAssignDecision_thenDecisionSaved(
+          String refusedReason, String refusedJustification, String errorMessage
+  ) throws JsonProcessingException {
+
+    UUID applicationId = UUID.randomUUID();
+    UUID refusedProceedingId = UUID.randomUUID();
+
+    MeritsDecisionStatus refusedDecision = MeritsDecisionStatus.GRANTED;
+
+    // given
+    CaseworkerEntity caseworker = caseworkerFactory.createDefault();
+
+    MakeDecisionRequest makeDecisionRequest = applicationMakeDecisionRequestFactory.createDefault(requestBuilder ->
+            requestBuilder
+                    .userId(caseworker.getId())
+                    .overallDecision(DecisionStatus.REFUSED)
+                    .eventHistory(
+                            EventHistory.builder()
+                                    .eventDescription("event")
+                                    .build()
+                    )
+                    .proceedings(List.of(
+                            createMakeDecisionProceedingDetails(refusedProceedingId, refusedDecision, refusedReason, refusedJustification)
+                    ))
+    );
+
+    final ApplicationEntity expectedApplicationEntity = applicationEntityFactory
+            .createDefault(builder ->
+                    builder
+                            .id(applicationId)
+                            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+                            .caseworker(caseworker)
+            );
+
+    setSecurityContext(TestConstants.Roles.WRITER);
+
+    ProceedingEntity refusedProceedingEntity = proceedingsEntityFactory
+            .createDefault(builder ->
+                    builder.id(refusedProceedingId).applicationId(applicationId)
+            );
+
+    // when
+    when(caseworkerRepository.findById(caseworker.getId()))
+            .thenReturn(Optional.of(caseworker));
+    when(proceedingRepository.findAllById(List.of(refusedProceedingEntity.getId())))
+            .thenReturn(List.of(refusedProceedingEntity));
+    when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
+
+    ValidationException validationException =
+            Assertions.assertThrows(ValidationException.class,
+                    () -> serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest));
+
+    assertThat(validationException.getMessage()).contains("One or more validation rules were violated");
+
+    assertThat(validationException.errors())
+            .isInstanceOf(List.class)
+            .contains(errorMessage + refusedProceedingId);
+  }
 
   @Test
   void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved() throws JsonProcessingException {
