@@ -29,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.model.RefusalDetails;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,9 +40,12 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
     private static Stream<Arguments> missingRefusalDetails() {
         return Stream.of(
-                Arguments.of("", ""),
-                Arguments.of("", "justification 1"),
-                Arguments.of("refusal 1", "")
+                Arguments.of("", "",
+                        "The Make Decision request must contain a refusal reason for proceeding with id: "),
+                Arguments.of("", "justification 1",
+                        "The Make Decision request must contain a refusal reason for proceeding with id: "),
+                Arguments.of("refusal 1", "",
+                        "The Make Decision request must contain a refusal justification for proceeding with id: ")
         );
     }
 
@@ -50,7 +54,8 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenMakeDecisionRequest_whenAssignDecision_thenReturnBadRequest(
             String reason,
-            String justification
+            String justification,
+            String errorMessage
     ) throws Exception {
 
         ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
@@ -86,6 +91,12 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         // then
         assertSecurityHeaders(result);
         assertEquals(400, result.getResponse().getStatus());
+        ValidationException validationException = (ValidationException) result.getResolvedException();
+        Assertions.assertThat(validationException.getMessage()).contains("One or more validation rules were violated");
+
+        Assertions.assertThat(validationException.errors())
+                .isInstanceOf(List.class)
+                .contains(errorMessage + grantedProceedingEntity.getId());
     }
 
     @Test

@@ -20,6 +20,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -33,15 +34,7 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRefusedDomainEventDetails;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetails;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.RefusalDetails;
+import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -57,16 +50,22 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
   private static Stream<Arguments> missingRefusalDetails() {
     return Stream.of(
-        Arguments.of("", ""),
-        Arguments.of("", "justification 1"),
-        Arguments.of("refusal 1", "")
+        Arguments.of("",
+                        "",
+                        "The Make Decision request must contain a refusal reason for proceeding with id: "),
+        Arguments.of("",
+                        "justification 1",
+                        "The Make Decision request must contain a refusal reason for proceeding with id: "),
+        Arguments.of("refusal 1",
+                        "",
+                        "The Make Decision request must contain a refusal justification for proceeding with id: ")
       );
   }
 
   @ParameterizedTest
   @MethodSource("missingRefusalDetails")
   void givenMakeDecisionRequestWithOneProceedingAndInvalidRefusal_whenAssignDecision_thenDecisionSaved(
-          String refusedReason, String refusedJustification
+          String refusedReason, String refusedJustification, String errorMessage
   ) throws JsonProcessingException {
 
     UUID applicationId = UUID.randomUUID();
@@ -113,13 +112,15 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             .thenReturn(List.of(refusedProceedingEntity));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
-    Throwable thrown = catchThrowable(() ->
-            serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest));
+    ValidationException validationException =
+            Assertions.assertThrows(ValidationException.class,
+                    () -> serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest));
 
-    // then
-    assertThat(thrown)
-            .isInstanceOf(ValidationException.class)
-            .hasMessage("One or more validation rules were violated");
+    assertThat(validationException.getMessage()).contains("One or more validation rules were violated");
+
+    assertThat(validationException.errors())
+            .isInstanceOf(List.class)
+            .contains(errorMessage + refusedProceedingId);
   }
 
   @Test
