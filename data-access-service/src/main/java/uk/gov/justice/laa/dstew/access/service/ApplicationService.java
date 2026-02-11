@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -117,9 +118,15 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public UUID createApplication(final ApplicationCreateRequest req) {
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
-    ApplicationContent applicationContent =
-        payloadValidationService.convertAndValidate(req.getApplicationContent(), ApplicationContent.class);
-    setValuesFromApplicationContent(entity, applicationContent);
+    RequestApplicationContent requestApplicationContent =
+        payloadValidationService.convertAndValidate(req.getApplicationContent(), RequestApplicationContent.class);
+    setValuesFromApplicationContent(entity, requestApplicationContent);
+
+    final Optional<ApplicationEntity> leadApplication = getLeadApplication(requestApplicationContent);
+    leadApplication.ifPresent(leadApp -> {
+      entity.setLeadApplication(leadApp);
+    });
+
     entity.setSchemaVersion(applicationVersion);
 
     final ApplicationEntity saved = applicationRepository.save(entity);
@@ -414,5 +421,28 @@ public class ApplicationService {
       throw new ResourceNotFoundException(String.join("; ", errors));
     }
     return proceedings;
+  }
+
+  private static UUID getLeadApplicationId(RequestApplicationContent requestContent) {
+    final var linkedApplications = requestContent.getApplicationContent().getAllLinkedApplications();
+    return (linkedApplications != null && linkedApplications.size() != 0)
+        ? linkedApplications.getFirst().getLeadApplicationId() 
+        : null;
+  }
+
+  private Optional<ApplicationEntity> getLeadApplication(RequestApplicationContent requestContent) {
+    final UUID leadApplicationId = getLeadApplicationId(requestContent);
+    if (leadApplicationId == null)  {
+      return Optional.empty();
+    }
+
+    var leadApplication = applicationRepository.findByApplyApplicationId(leadApplicationId);
+    if (leadApplication == null) {
+      throw new ResourceNotFoundException(
+          "Linking failed > Lead application not found, ID: " + leadApplicationId
+      );
+    }
+
+    return Optional.of(leadApplication);
   }
 }

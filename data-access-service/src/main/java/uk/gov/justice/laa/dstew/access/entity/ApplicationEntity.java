@@ -119,6 +119,15 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "is_auto_granted")
   private Boolean isAutoGranted;
 
+  @OneToOne
+  @JoinTable(
+      name = "linked_applications",
+      joinColumns = @JoinColumn(name = "associated_application_id"),
+      inverseJoinColumns = @JoinColumn(name = "lead_application_id")
+  )
+  private ApplicationEntity leadApplication;
+
+
   // getters and setters
   public Map<String, Object> getApplicationContent() {
     return applicationContent;
