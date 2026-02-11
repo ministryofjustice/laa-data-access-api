@@ -117,14 +117,14 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public UUID createApplication(final ApplicationCreateRequest req) {
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
-    RequestApplicationContent requestApplicationContent =
-        payloadValidationService.convertAndValidate(req.getApplicationContent(), RequestApplicationContent.class);
-    setValuesFromApplicationContent(entity, requestApplicationContent);
+    ApplicationContent applicationContent =
+        payloadValidationService.convertAndValidate(req.getApplicationContent(), ApplicationContent.class);
+    setValuesFromApplicationContent(entity, applicationContent);
     entity.setSchemaVersion(applicationVersion);
 
     final ApplicationEntity saved = applicationRepository.save(entity);
 
-    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(requestApplicationContent);
+    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(applicationContent);
 
     linkedApplicationService.processLinkedApplications(parsedContentDetails);
 
@@ -142,7 +142,7 @@ public class ApplicationService {
    * @param requestAppContent application content from the request
    */
   private void setValuesFromApplicationContent(ApplicationEntity entity,
-                                               RequestApplicationContent requestAppContent) {
+                                               ApplicationContent requestAppContent) {
 
 
     var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(requestAppContent);

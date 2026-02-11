@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingFactory;
@@ -50,5 +51,9 @@ public class ApplicationContentFactory
               "associatedApplicationId", associatedID.toString()
           )
       );
+  }
+
+  public Map<String, Object> createDefaultAsMapOfApplicationContent() {
+    return MapperUtil.getObjectMapper().convertValue(this.createDefault(), Map.class);
   }
 }
