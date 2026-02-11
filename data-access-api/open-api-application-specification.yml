@@ -566,12 +566,6 @@ components:
           items:
             $ref: "#/components/schemas/ApplicationDomainEvent"
 
-    ApplicationContent:
-      type: object
-      description: The content of the application
-      additionalProperties: true
-      minProperties: 1
-
     ApplicationDomainEvent:
       type: object
       required:
