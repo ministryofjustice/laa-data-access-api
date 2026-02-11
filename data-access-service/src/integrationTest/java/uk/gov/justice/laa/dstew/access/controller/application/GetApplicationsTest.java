@@ -163,10 +163,10 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     void givenApplicationWithoutFilteringAndNullAutoGranted_whenGetApplications_thenReturnApplication() throws Exception {
         // given
         List<ApplicationEntity> expectedApplicationsWithNullAutoGrant =
-                persistedApplicationFactory.createAndPersistMultiple(1, builder ->
-                builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS));
-
-        expectedApplicationsWithNullAutoGrant.getFirst().setIsAutoGranted(null);
+                persistedApplicationFactory.createAndPersistMultiple(1, builder -> {
+                    builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS);
+                    builder.isAutoGranted(null);
+                });
 
         // when
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
