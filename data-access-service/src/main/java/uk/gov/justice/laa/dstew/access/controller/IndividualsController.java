@@ -1,8 +1,5 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +7,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.api.IndividualsApi;
 import uk.gov.justice.laa.dstew.access.model.Individual;
@@ -32,7 +28,6 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 public class IndividualsController implements IndividualsApi {
 
   private final IndividualsService individualsService;
-  private final HttpServletRequest request;
 
   /**
    * Retrieves a paginated list of individuals.
@@ -51,8 +46,6 @@ public class IndividualsController implements IndividualsApi {
       UUID applicationId,
       IndividualType type
   ) {
-    validateIndividualTypeParameter(type);
-
     int validatedPage = (page == null || page < 1) ? 1 : page;
     int validatedPageSize = (pageSize == null || pageSize < 1) ? 10 : Math.min(pageSize, 100);
 
@@ -76,17 +69,5 @@ public class IndividualsController implements IndividualsApi {
     response.setPaging(paging);
 
     return ResponseEntity.ok(response);
-  }
-
-  /**
-   * Validates the individualType query parameter.
-   * Spring silently converts invalid enum values to null for optional parameters,
-   * so we check the raw parameter to detect invalid values.
-   */
-  private void validateIndividualTypeParameter(IndividualType type) {
-    String rawTypeParam = request.getParameter("individualType");
-    if (rawTypeParam != null && type == null) {
-      throw new ResponseStatusException(BAD_REQUEST, "Invalid individualType value: " + rawTypeParam);
-    }
   }
 }

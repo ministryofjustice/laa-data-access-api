@@ -36,12 +36,16 @@ class IndividualsServiceTest extends BaseServiceTest {
     @SuppressWarnings("unchecked")
     void noFilters_whenGetIndividuals_thenRepositoryFindAllWithPageable() {
         setSecurityContext(TestConstants.Roles.READER);
-        when(individualRepository.findAll(any(Pageable.class))).thenReturn(Page.empty());
+        IndividualEntity entity = individualEntityFactory.createDefault();
+        Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
+        when(individualRepository.findAll(any(Pageable.class))).thenReturn(entityPage);
 
-        individualsService.getIndividuals(0, 10, null, null);
+        Page<Individual> result = individualsService.getIndividuals(0, 10, null, null);
 
         verify(individualRepository, times(1)).findAll(any(Pageable.class));
         verify(individualRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+        assertThat(result).hasSize(1);
+        assertThat(result.getContent().getFirst().getFirstName()).isEqualTo(entity.getFirstName());
     }
 
     @Test
@@ -49,12 +53,16 @@ class IndividualsServiceTest extends BaseServiceTest {
     void applicationIdProvided_whenGetIndividuals_thenRepositoryFindAllWithSpecificationAndPageable() {
         setSecurityContext(TestConstants.Roles.READER);
         UUID appId = UUID.randomUUID();
-        when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(Page.empty());
+        IndividualEntity entity = individualEntityFactory.createDefault();
+        Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
+        when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
 
-        individualsService.getIndividuals(0, 10, appId, null);
+        Page<Individual> result = individualsService.getIndividuals(0, 10, appId, null);
 
         verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
         verify(individualRepository, never()).findAll(any(Pageable.class));
+        assertThat(result).hasSize(1);
+        assertThat(result.getContent().getFirst().getFirstName()).isEqualTo(entity.getFirstName());
     }
 
     @Test
@@ -62,12 +70,16 @@ class IndividualsServiceTest extends BaseServiceTest {
     void individualTypeProvided_whenGetIndividuals_thenRepositoryFindAllWithSpecificationAndPageable() {
         setSecurityContext(TestConstants.Roles.READER);
         IndividualType type = IndividualType.CLIENT;
-        when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(Page.empty());
+        IndividualEntity entity = individualEntityFactory.createDefault();
+        Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
+        when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
 
-        individualsService.getIndividuals(0, 10, null, type);
+        Page<Individual> result = individualsService.getIndividuals(0, 10, null, type);
 
         verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
         verify(individualRepository, never()).findAll(any(Pageable.class));
+        assertThat(result).hasSize(1);
+        assertThat(result.getContent().getFirst().getFirstName()).isEqualTo(entity.getFirstName());
     }
 
     @Test
@@ -76,12 +88,16 @@ class IndividualsServiceTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.READER);
         UUID appId = UUID.randomUUID();
         IndividualType type = IndividualType.CLIENT;
-        when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(Page.empty());
+        IndividualEntity entity = individualEntityFactory.createDefault();
+        Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
+        when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
 
-        individualsService.getIndividuals(0, 10, appId, type);
+        Page<Individual> result = individualsService.getIndividuals(0, 10, appId, type);
 
         verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
         verify(individualRepository, never()).findAll(any(Pageable.class));
+        assertThat(result).hasSize(1);
+        assertThat(result.getContent().getFirst().getFirstName()).isEqualTo(entity.getFirstName());
     }
 
     @Test
