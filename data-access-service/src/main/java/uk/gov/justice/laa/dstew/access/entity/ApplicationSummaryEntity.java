@@ -81,7 +81,7 @@ public class ApplicationSummaryEntity {
   @Column(name = "is_auto_granted")
   private Boolean isAutoGranted;
 
-  @OneToMany(cascade = CascadeType.ALL)
+  @OneToMany
   @JoinTable(
       name = "linked_applications",
       joinColumns = @JoinColumn(name = "lead_application_id"),
