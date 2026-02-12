@@ -11,6 +11,8 @@ import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -33,14 +35,15 @@ public class GetApplicationTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.READER)
     public void givenExistingApplication_whenGetApplication_thenReturnOKWithCorrectData() throws Exception {
         // given
-        DecisionEntity decision = persistedDecisionFactory.createAndPersist(builder -> {
+        DecisionEntity decision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
             builder.overallDecision(DecisionStatus.REFUSED);
         });
-        ApplicationEntity application = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.decision(decision);
+            builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
         });
 
-        Application expectedApplication = applicationAsserts.createApplication(application);
+        Application expectedApplication = createApplication(application);
 
         // when
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getApplicationId());
@@ -58,7 +61,6 @@ public class GetApplicationTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.READER)
     public void givenApplicationNotExist_whenGetApplication_thenReturnNotFound() throws Exception {
         // given
-        persistedApplicationFactory.createAndPersist();
         UUID notExistApplicationId = UUID.randomUUID();
 
         // when
@@ -78,7 +80,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
     public void givenUnknownRole_whenGetApplication_thenReturnForbidden() throws Exception {
         // given
-        ApplicationEntity expectedApplication = persistedApplicationFactory.createAndPersist();
+        ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
         // when
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
@@ -91,7 +93,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
     @Test
     public void givenNoUser_whenGetApplication_thenReturnUnauthorised() throws Exception {
         // given
-        ApplicationEntity expectedApplication = persistedApplicationFactory.createAndPersist();
+        ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
         // when
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
@@ -99,5 +101,28 @@ public class GetApplicationTest extends BaseIntegrationTest {
         // then
         assertSecurityHeaders(result);
         assertUnauthorised(result);
+    }
+
+    private Application createApplication(ApplicationEntity applicationEntity) {
+        Application application = new Application();
+        application.setApplicationId(applicationEntity.getId());
+        application.setStatus(applicationEntity.getStatus());
+        application.setLaaReference(applicationEntity.getLaaReference());
+        if (applicationEntity.getCaseworker() != null) {
+            application.setAssignedTo(applicationEntity.getCaseworker().getId());
+        }
+        application.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt(), ZoneOffset.UTC));
+        application.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt(), ZoneOffset.UTC));
+        application.setSubmittedAt(
+            applicationEntity.getSubmittedAt() != null
+                ? OffsetDateTime.ofInstant(applicationEntity.getSubmittedAt(), ZoneOffset.UTC)
+                : null
+        );
+        application.setUseDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
+        application.setAutoGrant(applicationEntity.getIsAutoGranted());
+        if (applicationEntity.getDecision() != null) {
+            application.setOverallDecision(applicationEntity.getDecision().getOverallDecision());
+        }
+        return application;
     }
 }
