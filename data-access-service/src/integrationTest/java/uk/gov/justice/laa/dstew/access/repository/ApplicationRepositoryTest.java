@@ -15,6 +15,8 @@ import java.util.Set;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
+import java.util.List;
+
 public class ApplicationRepositoryTest extends BaseIntegrationTest {
   @Test
   public void givenSaveOfExpectedApplication_whenGetCalled_expectedAndActualAreEqual() {
@@ -39,6 +41,26 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
 
     // then
     assertApplicationEqual(expected, actual);
+  }
+
+  @Test
+  public void givenSaveOfLinkedApplication_whenGetCalledOnLead_expectApplicationToHaveLinkedApplications() {
+        // given
+    final ApplicationEntity lead = applicationFactory.create();
+    applicationRepository.save(lead);
+
+    final ApplicationEntity associated = applicationFactory.create(builder -> {
+        ApplicationEntity loadedLeadApplication = applicationRepository.findById(lead.getId()).orElseThrow();
+        builder.linkedApplications(List.of(loadedLeadApplication));
+    });
+    applicationRepository.save(associated);
+    // when
+    final ApplicationEntity newlySavedLeadApplication = applicationRepository.findById(lead.getId()).orElseThrow();
+
+    // then
+    assertThat(newlySavedLeadApplication.getLinkedApplications()).isNotNull();
+    assertThat(newlySavedLeadApplication.getLinkedApplications().size()).isEqualTo(1);
+    assertApplicationEqual(associated, newlySavedLeadApplication.getLinkedApplications().getFirst());
   }
 
   private void assertApplicationEqual(ApplicationEntity expected, ApplicationEntity actual) {

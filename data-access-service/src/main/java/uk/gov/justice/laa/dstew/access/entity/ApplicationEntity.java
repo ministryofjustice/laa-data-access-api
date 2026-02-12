@@ -119,7 +119,7 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "is_auto_granted")
   private Boolean isAutoGranted;
 
-  @OneToMany
+  @OneToMany(cascade = CascadeType.PERSIST)
   @JoinTable(
       name = "linked_applications",
       joinColumns = @JoinColumn(name = "associated_application_id"),
