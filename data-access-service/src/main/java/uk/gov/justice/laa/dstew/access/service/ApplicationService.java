@@ -318,7 +318,6 @@ public class ApplicationService {
 
     applicationValidations.checkApplicationMakeDecisionRequest(request);
 
-    application.setStatus(request.getApplicationStatus());
     application.setModifiedAt(Instant.now());
     application.setIsAutoGranted(request.getAutoGranted());
     applicationRepository.save(application);
@@ -350,8 +349,8 @@ public class ApplicationService {
 
       meritDecisionEntity.setModifiedAt(Instant.now());
       meritDecisionEntity.setDecision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()));
-      meritDecisionEntity.setReason(proceeding.getMeritsDecision().getRefusal().getReason());
-      meritDecisionEntity.setJustification(proceeding.getMeritsDecision().getRefusal().getJustification());
+      meritDecisionEntity.setReason(proceeding.getMeritsDecision().getReason());
+      meritDecisionEntity.setJustification(proceeding.getMeritsDecision().getJustification());
       meritsDecisionRepository.save(meritDecisionEntity);
       merits.add(meritDecisionEntity);
 
