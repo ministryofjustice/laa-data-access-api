@@ -9,6 +9,6 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
  * Repository for managing application entities.
  */
 @Repository
-public interface ApplicationRepository extends JpaRepository<ApplicationEntity, UUID> {
+public interface ApplicationRepository extends JpaRepository<ApplicationEntity, UUID>, ApplicationRepositoryCustom {
 }
 

@@ -4,72 +4,42 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import org.mapstruct.Mapper;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
-import uk.gov.justice.laa.dstew.access.model.IndividualType;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResult;
+import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 
 /**
- * Mapper between ApplicationSummaryEntity and DTOs.
- * Handles JSONB content for applicationContent.
+ * Mapper between ApplicationSummaryResult and ApplicationSummary.
  */
 @Mapper(componentModel = "spring")
 public interface ApplicationSummaryMapper {
 
-  /**
-   * Maps the given application summary entity to an application summary.
-   *
-   * @param applicationSummaryEntity the application summary entity
-   * @return the application summary
-   */
-  default ApplicationSummary toApplicationSummary(ApplicationSummaryEntity applicationSummaryEntity) {
-
-    if (applicationSummaryEntity == null) {
+  default ApplicationSummary toApplicationSummary(ApplicationSummaryResult result) {
+    if (result == null) {
       return null;
     }
     ApplicationSummary app = new ApplicationSummary();
-    app.setApplicationId(applicationSummaryEntity.getId());
-    app.setSubmittedAt(applicationSummaryEntity.getSubmittedAt() != null 
-                          ? applicationSummaryEntity.getSubmittedAt().atOffset(ZoneOffset.UTC) 
-                          : null);
-    app.setAutoGrant(applicationSummaryEntity.getIsAutoGranted());
-    app.setCategoryOfLaw(applicationSummaryEntity.getCategoryOfLaw());
-    app.setMatterType(applicationSummaryEntity.getMatterType());
-    app.setUsedDelegatedFunctions(applicationSummaryEntity.isUsedDelegatedFunctions());
-    app.setLaaReference(applicationSummaryEntity.getLaaReference());
-    app.setOfficeCode(applicationSummaryEntity.getOfficeCode());
-    app.setStatus(applicationSummaryEntity.getStatus());
-    app.setAssignedTo(applicationSummaryEntity.getCaseworker() != null 
-                        ? 
-                        applicationSummaryEntity.getCaseworker().getId() : 
-                        null);
-    var individual = getLeadIndividual(applicationSummaryEntity);
-    if (individual != null) {
-      app.setClientFirstName(individual.getFirstName());
-      app.setClientLastName(individual.getLastName());
-      app.setClientDateOfBirth(individual.getDateOfBirth());
-    }
-    app.setApplicationType(applicationSummaryEntity.getType());
-    app.setLastUpdated(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+    app.setApplicationId(result.id());
+    app.setLaaReference(result.laaReference());
+    app.setStatus(result.status());
+    app.setSubmittedAt(result.submittedAt() != null
+        ? result.submittedAt().atOffset(ZoneOffset.UTC)
+        : null);
+    app.setAutoGrant(result.isAutoGranted());
+    app.setCategoryOfLaw(result.categoryOfLaw());
+    app.setMatterType(result.matterType());
+    app.setUsedDelegatedFunctions(result.usedDelegatedFunctions());
+    app.setOfficeCode(result.officeCode());
+    app.setAssignedTo(result.caseworkerId());
+    app.setClientFirstName(result.clientFirstName());
+    app.setClientLastName(result.clientLastName());
+    app.setClientDateOfBirth(result.clientDateOfBirth());
+    app.setLastUpdated(result.modifiedAt().atOffset(ZoneOffset.UTC));
+    app.setApplicationType(ApplicationType.INITIAL);
     return app;
   }
 
   default OffsetDateTime map(Instant value) {
     return value != null ? value.atOffset(ZoneOffset.UTC) : null;
-  }
-
-  private static IndividualEntity getLeadIndividual(ApplicationSummaryEntity entity) {
-    var individuals = entity.getIndividuals();
-    if (individuals == null || individuals.isEmpty()) {
-      return null;
-    }
-    return individuals.stream()
-    .filter(ApplicationSummaryMapper::isClient)
-    .findFirst()
-    .orElse(null);
-  }
-
-  private static boolean isClient(IndividualEntity individual) {
-    return individual.getType() == IndividualType.CLIENT;
   }
 }

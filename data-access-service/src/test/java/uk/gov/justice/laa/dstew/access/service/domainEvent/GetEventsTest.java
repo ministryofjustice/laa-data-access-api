@@ -80,7 +80,7 @@ public class GetEventsTest extends BaseServiceTest {
                         null
                 ))
                 .withMessageContaining("Access Denied");
-        verify(applicationSummaryRepository, never()).findAll();
+        verify(domainEventRepository, never()).findAll();
     }
 
     private void assertDomainEventsEqual(List<DomainEventEntity> expected, List<ApplicationDomainEvent> actual) {

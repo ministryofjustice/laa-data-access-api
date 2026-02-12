@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -15,7 +16,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
@@ -63,9 +63,6 @@ public class BaseServiceTest {
     protected CaseworkerRepository caseworkerRepository;
 
     @MockitoBean
-    protected ApplicationSummaryRepository applicationSummaryRepository;
-
-    @MockitoBean
     protected ProceedingRepository proceedingRepository;
 
     @MockitoBean
@@ -80,6 +77,9 @@ public class BaseServiceTest {
     @MockitoBean
     protected IndividualRepository individualRepository;
 
+    @MockitoBean
+    protected EntityManager entityManager;
+
     @Autowired
     protected ObjectMapper objectMapper;
 
@@ -93,7 +93,7 @@ public class BaseServiceTest {
     protected ApplicationUpdateRequestFactory applicationUpdateRequestFactory;
 
     @Autowired
-    protected ApplicationSummaryFactory applicationSummaryEntityFactory;
+    protected ApplicationSummaryFactory applicationSummaryFactory;
 
     @Autowired
     protected IndividualFactory individualFactory;
