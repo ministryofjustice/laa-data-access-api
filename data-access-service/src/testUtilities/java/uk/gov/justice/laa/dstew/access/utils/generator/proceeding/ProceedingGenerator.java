@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.utils.generator.application;
+package uk.gov.justice.laa.dstew.access.utils.generator.proceeding;
 
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;

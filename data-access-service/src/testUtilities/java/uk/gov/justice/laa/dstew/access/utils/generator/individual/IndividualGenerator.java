@@ -28,7 +28,7 @@ public class IndividualGenerator extends BaseGenerator<Individual, Individual.Bu
         return Individual.builder()
                 .firstName(faker.name().firstName())
                 .lastName(faker.name().lastName())
-                .dateOfBirth(java.time.LocalDate.now().minusDays(faker.number().numberBetween(1, 10000)))
+                .dateOfBirth(getRandomDate())
                 .details(new HashMap<>(Map.of("test", "content")))
                 .type(IndividualType.CLIENT)
                 .build();

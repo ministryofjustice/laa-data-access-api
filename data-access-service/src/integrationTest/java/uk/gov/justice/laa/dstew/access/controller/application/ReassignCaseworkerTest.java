@@ -10,6 +10,9 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerAssignRequestGenerator;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,30 +28,23 @@ public class ReassignCaseworkerTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenValidReassignRequest_whenAssignCaseworker_thenReturnOK_andAssignCaseworker() throws Exception {
         // given
-        List<ApplicationEntity> toReassignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+        List<ApplicationEntity> toReassignedApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,
                 4,
-                builder -> {
-                    builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
-                });
+                builder -> builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe));
 
         List<ApplicationEntity> expectedReassignedApplications = toReassignedApplications.stream()
                 .peek(application -> application.setCaseworker(BaseIntegrationTest.CaseworkerJaneDoe))
                 .toList();
 
-        List<ApplicationEntity> expectedAlreadyAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+        List<ApplicationEntity> expectedAlreadyAssignedApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,
                 5,
-                builder -> {
-                    builder.caseworker(BaseIntegrationTest.CaseworkerJaneDoe);
-                });
+                builder -> builder.caseworker(BaseIntegrationTest.CaseworkerJaneDoe));
 
-        List<ApplicationEntity> expectedUnassignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+        List<ApplicationEntity> expectedUnassignedApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,
                 8,
-                builder -> {
-                    builder.caseworker(null);
-                });
+                builder -> builder.caseworker(null));
 
-        CaseworkerAssignRequest caseworkerReassignRequest = caseworkerAssignRequestFactory.create(builder -> {
-
+        CaseworkerAssignRequest caseworkerReassignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJaneDoe.getId())
                     .applicationIds(toReassignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()))
                     .eventHistory(EventHistory.builder()

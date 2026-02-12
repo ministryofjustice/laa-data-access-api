@@ -2,9 +2,8 @@ package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
-import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
+import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
