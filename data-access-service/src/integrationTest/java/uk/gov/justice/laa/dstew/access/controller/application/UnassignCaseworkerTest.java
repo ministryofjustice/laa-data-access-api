@@ -11,6 +11,9 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerUnassignRequestGenerator;
 
 import java.util.List;
 import java.util.UUID;
@@ -31,7 +34,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenValidUnassignRequest_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
         // given
-        ApplicationEntity toUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity toUnassignedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
         });
 
@@ -39,7 +42,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
                 .caseworker(null)
                 .build();
 
-        CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {
+        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class, builder -> {
             builder.eventHistory(EventHistory.builder()
                     .eventDescription("Unassigned Caseworker")
                     .build());
@@ -72,7 +75,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenValidUnassignRequestWithBlankEventDescription_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
         // given
-        ApplicationEntity toUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity toUnassignedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
         });
 
@@ -80,7 +83,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
                 .caseworker(null)
                 .build();
 
-        CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {
+        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class, builder -> {
             builder.eventHistory(EventHistory.builder()
                     .eventDescription("")
                     .build());
@@ -113,11 +116,11 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenValidUnassignRequestWithNullEventDescription_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
         // given
-        ApplicationEntity expectedUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity expectedUnassignedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
         });
 
-        CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {
+        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class, builder -> {
             builder.eventHistory(EventHistory.builder()
                     .eventDescription(null)
                     .build());
@@ -143,7 +146,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenApplicationNotExist_whenUnassignCaseworker_thenReturnNotFound() throws Exception {
         // given
-        CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create();
+        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class);
 
         // when
         MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, UUID.randomUUID());
@@ -158,11 +161,11 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenCaseworkerNotExist_whenUnassignCaseworker_thenReturnOK() throws Exception {
         // given
-        ApplicationEntity expectedUnassignedApplication = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity expectedUnassignedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.caseworker(null);
         });
 
-        CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create(builder -> {
+        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class, builder -> {
             builder.eventHistory(EventHistory.builder()
                     .eventDescription("Unassigned Caseworker")
                     .build());
@@ -185,7 +188,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.READER)
     public void givenReaderRole_whenUnassignCaseworker_thenReturnForbidden() throws Exception {
         // given
-        CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create();
+        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class);
 
         // when
         MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, UUID.randomUUID().toString());
@@ -199,7 +202,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
     public void givenUnknownRole_whenUnassignCaseworker_thenReturnForbidden() throws Exception {
         // given
-        CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create();
+        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class);
 
         // when
         MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, UUID.randomUUID().toString());
@@ -212,7 +215,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     @Test
     public void givenNoUser_whenUnassignCaseworker_thenReturnUnauthorised() throws Exception {
         // given
-        CaseworkerUnassignRequest caseworkerUnassignRequest = caseworkerUnassignRequestFactory.create();
+        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class);
 
         // when
         MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, UUID.randomUUID().toString());
