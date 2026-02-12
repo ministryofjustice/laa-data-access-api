@@ -16,9 +16,8 @@ import java.util.Set;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 public class ApplicationRepositoryTest extends BaseIntegrationTest {
-
-    @Test
-    public void givenSaveOfExpectedApplication_whenGetCalled_expectedAndActualAreEqual() {
+  @Test
+  public void givenSaveOfExpectedApplication_whenGetCalled_expectedAndActualAreEqual() {
 
         // given
         ApplicationEntity expected = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder ->
@@ -35,19 +34,19 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
         applicationRepository.saveAndFlush(expected);
         clearCache();
 
-        // when
-        ApplicationEntity actual = applicationRepository.findById(expected.getId()).orElse(null);
+    // when
+    ApplicationEntity actual = applicationRepository.findById(expected.getId()).orElse(null);
 
-        // then
-        assertApplicationEqual(expected, actual);
-    }
+    // then
+    assertApplicationEqual(expected, actual);
+  }
 
-    private void assertApplicationEqual(ApplicationEntity expected, ApplicationEntity actual) {
-        assertThat(expected)
-                .usingRecursiveComparison()
-                .ignoringFields("createdAt", "modifiedAt")
-                .isEqualTo(actual);
-        assertThat(expected.getCreatedAt()).isNotNull();
-        assertThat(expected.getModifiedAt()).isNotNull();
-    }
+  private void assertApplicationEqual(ApplicationEntity expected, ApplicationEntity actual) {
+    assertThat(expected)
+        .usingRecursiveComparison()
+        .ignoringFields("createdAt", "modifiedAt")
+        .isEqualTo(actual);
+    assertThat(expected.getCreatedAt()).isNotNull();
+    assertThat(expected.getModifiedAt()).isNotNull();
+  }
 }

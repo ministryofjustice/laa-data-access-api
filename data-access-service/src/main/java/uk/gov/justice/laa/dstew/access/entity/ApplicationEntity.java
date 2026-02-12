@@ -15,10 +15,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.beans.Transient;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -117,17 +119,18 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "is_auto_granted")
   private Boolean isAutoGranted;
 
-  @OneToOne
+  @OneToMany
   @JoinTable(
       name = "linked_applications",
       joinColumns = @JoinColumn(name = "associated_application_id"),
       inverseJoinColumns = @JoinColumn(name = "lead_application_id")
   )
-  private ApplicationEntity leadApplication;
+  private List<ApplicationEntity> linkedApplications;
+
 
   @Transient
   public boolean isLead() {
-    return leadApplication == null;
+    return linkedApplications != null && !linkedApplications.isEmpty();
   }
 
   // getters and setters

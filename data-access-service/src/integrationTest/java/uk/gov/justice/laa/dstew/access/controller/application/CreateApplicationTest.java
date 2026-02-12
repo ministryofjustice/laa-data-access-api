@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -65,11 +66,12 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @Test
   @WithMockUser(authorities = TestConstants.Roles.WRITER)
   public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_thenReturnCreatedWithLocationHeader() throws Exception {
-    final ApplicationEntity leadApplication = persistedApplicationFactory.createAndPersist();
-    final LinkedApplication linkedApplication = LinkedApplication.builder().leadApplicationId(leadApplication.getApplyApplicationId())
+    final ApplicationEntity leadApplicationToLink = persistedApplicationFactory.createAndPersist();
+    final LinkedApplication linkedApplication = LinkedApplication.builder().leadApplicationId(leadApplicationToLink.getApplyApplicationId())
                                                             .associatedApplicationId(UUID.randomUUID())
                                                             .build();
     final var createdEntity = verifyCreateNewApplication(null, linkedApplication);
+    final ApplicationEntity leadApplication = applicationRepository.findById(leadApplicationToLink.getId()).orElseThrow();
     assertLinkedApplicationCorrectlyApplied(leadApplication, createdEntity);
   }
 
@@ -286,6 +288,6 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   private void assertLinkedApplicationCorrectlyApplied(ApplicationEntity leadApplication, ApplicationEntity linkedApplication) {
-    assertEquals(leadApplication.getId(), linkedApplication.getLeadApplication().getId());
+    assertTrue(leadApplication.getLinkedApplications().stream().anyMatch(linkedApp -> linkedApp.getId().equals(linkedApplication.getId())));
   }
 }

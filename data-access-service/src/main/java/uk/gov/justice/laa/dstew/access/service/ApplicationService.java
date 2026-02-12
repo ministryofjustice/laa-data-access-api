@@ -119,14 +119,15 @@ public class ApplicationService {
         payloadValidationService.convertAndValidate(req.getApplicationContent(), RequestApplicationContent.class);
     setValuesFromApplicationContent(entity, requestApplicationContent);
 
-    final Optional<ApplicationEntity> leadApplication = getLeadApplication(requestApplicationContent);
-    leadApplication.ifPresent(leadApp -> {
-      entity.setLeadApplication(leadApp);
-    });
-
     entity.setSchemaVersion(applicationVersion);
 
     final ApplicationEntity saved = applicationRepository.save(entity);
+
+    final Optional<ApplicationEntity> leadApplication = getLeadApplication(requestApplicationContent);
+    leadApplication.ifPresent(leadApp -> {
+      leadApp.getLinkedApplications().add(saved);
+      applicationRepository.save(leadApp);
+    });
 
     proceedingsService.saveProceedings(requestApplicationContent.getApplicationContent(), saved.getId());
     domainEventService.saveCreateApplicationDomainEvent(saved, null);
