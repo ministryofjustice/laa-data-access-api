@@ -115,22 +115,21 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public UUID createApplication(final ApplicationCreateRequest req) {
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
-    RequestApplicationContent requestApplicationContent =
-        payloadValidationService.convertAndValidate(req.getApplicationContent(), RequestApplicationContent.class);
-    setValuesFromApplicationContent(entity, requestApplicationContent);
-
+    ApplicationContent applicationContent =
+        payloadValidationService.convertAndValidate(req.getApplicationContent(), ApplicationContent.class);
+    setValuesFromApplicationContent(entity, applicationContent);
     entity.setSchemaVersion(applicationVersion);
 
     final ApplicationEntity saved = applicationRepository.save(entity);
 
-    final Optional<ApplicationEntity> leadApplication = getLeadApplication(requestApplicationContent);
+    final Optional<ApplicationEntity> leadApplication = getLeadApplication(applicationContent);
     leadApplication.ifPresent(leadApp -> {
       leadApp.getLinkedApplications().add(saved);
       applicationRepository.save(leadApp);
     });
 
-    proceedingsService.saveProceedings(requestApplicationContent.getApplicationContent(), saved.getId());
-    domainEventService.saveCreateApplicationDomainEvent(saved, null);
+    proceedingsService.saveProceedings(applicationContent, saved.getId());
+    domainEventService.saveCreateApplicationDomainEvent(saved, req, null);
     createAndSendHistoricRecord(saved, null);
 
     return saved.getId();
@@ -417,14 +416,14 @@ public class ApplicationService {
     return proceedings;
   }
 
-  private static UUID getLeadApplicationId(RequestApplicationContent requestContent) {
-    final var linkedApplications = requestContent.getApplicationContent().getAllLinkedApplications();
+  private static UUID getLeadApplicationId(ApplicationContent requestContent) {
+    final var linkedApplications = requestContent.getAllLinkedApplications();
     return (linkedApplications != null && linkedApplications.size() != 0)
         ? linkedApplications.getFirst().getLeadApplicationId() 
         : null;
   }
 
-  private Optional<ApplicationEntity> getLeadApplication(RequestApplicationContent requestContent) {
+  private Optional<ApplicationEntity> getLeadApplication(ApplicationContent requestContent) {
     final UUID leadApplicationId = getLeadApplicationId(requestContent);
     if (leadApplicationId == null)  {
       return Optional.empty();
