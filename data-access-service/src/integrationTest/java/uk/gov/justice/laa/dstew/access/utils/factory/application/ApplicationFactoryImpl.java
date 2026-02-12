@@ -8,7 +8,7 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
-import uk.gov.justice.laa.dstew.access.utils.DateTimeHelper;
+import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
 import java.time.InstantSource;
