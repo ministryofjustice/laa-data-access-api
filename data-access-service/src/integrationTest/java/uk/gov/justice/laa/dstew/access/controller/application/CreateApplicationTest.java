@@ -67,12 +67,10 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         ApplicationContent content = applicationContentFactory.create();
         content.setOffice(office);
 
-        RequestApplicationContent requestApplicationContent = RequestApplicationContent.builder()
-            .applicationContent(content)
-            .build();
+
 
         ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
-        applicationCreateRequest.setApplicationContent(requestApplicationContent);
+        applicationCreateRequest.setApplicationContent(objectMapper.convertValue(content, Map.class));
 
       MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
 
@@ -114,8 +112,8 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     });
 
 
-    ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Generic Validation Error");
-    expectedProblemDetail.setProperty("errors", List.of("applicationContent: must not be null"));
+    ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
+    expectedProblemDetail.setProperty("invalidFields", Map.of("applicationContent","size must be between 1 and 2147483647"));
 
     // when
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
@@ -135,7 +133,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     });
 
     Map<String, String> invalidFields = new HashMap<>();
-    invalidFields.put("applicationContent", "must not be null");
+    invalidFields.put("applicationContent", "size must be between 1 and 2147483647");
 
     ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
     expectedProblemDetail.setProperty("invalidFields", invalidFields);
@@ -199,7 +197,9 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     String minimumSizErrorMessage = "size must be between 1 and " + Integer.MAX_VALUE;
     String mustNotBeNull = "must not be null";
 
-    return Stream.of(Arguments.of(applicationCreateRequestFactory.create(builder -> {
+
+    return Stream.of(
+        Arguments.of(applicationCreateRequestFactory.create(builder -> {
           builder.status(null);
         }), problemDetail, Map.of("invalidFields", Map.of("status", mustNotBeNull))),
         Arguments.of(applicationCreateRequestFactory.create(builder -> {
@@ -207,17 +207,15 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         }), problemDetail, Map.of("invalidFields", Map.of("laaReference", mustNotBeNull))),
         Arguments.of(applicationCreateRequestFactory.create(builder -> {
           builder.applicationContent(null);
-        }), problemDetail, Map.of("invalidFields", Map.of("applicationContent", mustNotBeNull))),
+        }), problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
         Arguments.of(applicationCreateRequestFactory.create(builder -> {
           builder.applicationContent(new HashMap<>());
-        }), ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request").detail("Generic Validation Error")
-            .build(), Map.of("errors", List.of("applicationContent: must not be null"))),
+        }), problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
         Arguments.of(applicationCreateRequestFactory.create(builder -> {
           builder.applicationContent(Map.of("applicationContent", Map.of("proceedings", List.of())));
         }), ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request").detail("Generic Validation Error")
-            .build(), Map.of("errors", List.of("applicationContent.id: must not be null",
-            "applicationContent.proceedings: size must be between 1 and 2147483647",
-            "applicationContent.submittedAt: must not be null"))),
+            .build(), Map.of("errors", List.of("id: must not be null",
+            "submittedAt: must not be null"))),
         Arguments.of(applicationCreateRequestFactory.create(builder -> {
           builder.individuals(null);
         }), problemDetail, Map.of("invalidFields", Map.of("individuals", "size must be between 1 and 2147483647"))),
@@ -226,10 +224,12 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         }), problemDetail, Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))), Arguments.of(
             applicationCreateRequestFactory.create(builder -> builder.individuals(
                 List.of(individualFactory.create(individualBuilder -> individualBuilder.dateOfBirth(null))))), problemDetail,
-            Map.of("invalidFields", Map.of("individuals[0].dateOfBirth", mustNotBeNull))), Arguments.of(
+            Map.of("invalidFields", Map.of("individuals[0].dateOfBirth", mustNotBeNull))),
+        Arguments.of(
             applicationCreateRequestFactory.create(builder -> builder.individuals(
                 List.of(individualFactory.create(individualBuilder -> individualBuilder.details(null))))), problemDetail,
-            Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))), Arguments.of(
+            Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
+        Arguments.of(
             applicationCreateRequestFactory.create(builder -> builder.individuals(
                 List.of(individualFactory.create(individualBuilder -> individualBuilder.details(new HashMap<>()))))),
             problemDetail, Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),

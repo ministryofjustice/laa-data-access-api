@@ -35,7 +35,7 @@ public interface ApplicationSummaryMapper {
     app.setAutoGrant(applicationSummaryEntity.getIsAutoGranted());
     app.setCategoryOfLaw(applicationSummaryEntity.getCategoryOfLaw());
     app.setMatterType(applicationSummaryEntity.getMatterType());
-    app.setUsedDelegatedFunctions(applicationSummaryEntity.isUsedDelegatedFunctions());
+    app.setUsedDelegatedFunctions(applicationSummaryEntity.getUsedDelegatedFunctions());
     app.setLaaReference(applicationSummaryEntity.getLaaReference());
     app.setOfficeCode(applicationSummaryEntity.getOfficeCode());
     app.setStatus(applicationSummaryEntity.getStatus());
