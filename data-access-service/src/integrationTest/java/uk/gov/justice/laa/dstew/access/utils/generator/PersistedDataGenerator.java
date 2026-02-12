@@ -14,6 +14,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGe
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualGenerator;
 
 import java.util.HashMap;
 import java.util.List;
@@ -41,6 +42,7 @@ public class PersistedDataGenerator extends DataGenerator {
         registerRepository(DecisionEntityGenerator.class, DecisionRepository.class);
         registerRepository(ProceedingsEntityGenerator.class, ProceedingRepository.class);
         registerRepository(MeritsDecisionsEntityGenerator.class, MeritsDecisionRepository.class);
+        registerRepository(IndividualGenerator.class, IndividualRepository.class);
     }
 
     public <TGenerator, TRepository extends JpaRepository<?, ?>>
