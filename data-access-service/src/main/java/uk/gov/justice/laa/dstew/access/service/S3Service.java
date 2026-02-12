@@ -78,7 +78,7 @@ public class S3Service {
    * Read the full ResponseInputStream<GetObjectResponse> into a UTF-8 string.
    * This method closes the stream.
    */
-  private String readResponseToString(ResponseInputStream<GetObjectResponse> resp) {
+  public String readResponseToString(ResponseInputStream<GetObjectResponse> resp) {
     if (resp == null) {
       return null;
     }
@@ -223,6 +223,21 @@ public class S3Service {
 
     // Fallback to toString()
     return payload.toString().getBytes(StandardCharsets.UTF_8);
+  }
+
+  public String downloadEventsAsStrings(String s3Url) {
+    s3Url = Objects.requireNonNull(s3Url, "s3Url must not be null");
+    if (!s3Url.startsWith("s3://")) {
+      throw new IllegalArgumentException("s3Url must start with s3://");
+    }
+    String path = s3Url.substring("s3://".length());
+    int slashIndex = path.indexOf('/');
+    if (slashIndex <= 0 || slashIndex == path.length() - 1) {
+      throw new IllegalArgumentException("s3Url must be in the format s3://bucket/key");
+    }
+    String bucket = path.substring(0, slashIndex);
+    String key = path.substring(slashIndex + 1);
+    return downloadObjectAsString(bucket, key);
   }
 
   /**
