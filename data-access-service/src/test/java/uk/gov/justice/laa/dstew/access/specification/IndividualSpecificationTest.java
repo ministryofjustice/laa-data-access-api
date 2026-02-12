@@ -48,12 +48,12 @@ class IndividualSpecificationTest {
   }
 
   @Test
-  void givenNullApplicationId_whenFilterApplicationId_thenReturnsNull() {
+  void givenNullApplicationId_whenFilterApplicationId_thenReturnsUnrestricted() {
     // when
     Specification<IndividualEntity> result = IndividualSpecification.filterApplicationId(null);
 
     // then
-    assertThat(result).isNull();
+    assertThat(result).isEqualTo(Specification.unrestricted());
   }
 
   @Test
@@ -82,11 +82,11 @@ class IndividualSpecificationTest {
   }
 
   @Test
-  void givenNullIndividualType_whenFilterIndividualType_thenReturnsNull() {
+  void givenNullIndividualType_whenFilterIndividualType_thenReturnsUnrestricted() {
     // when
     Specification<IndividualEntity> result = IndividualSpecification.filterIndividualType(null);
 
     // then
-    assertThat(result).isNull();
+    assertThat(result).isEqualTo(Specification.unrestricted());
   }
 }

@@ -15,7 +15,7 @@ public class IndividualSpecification {
    */
   public static Specification<IndividualEntity> filterApplicationId(UUID applicationId) {
     if (applicationId == null) {
-      return null;
+      return Specification.unrestricted();
     }
     // Join to applications and filter by applicationId
     return (root, query, builder) ->
@@ -30,7 +30,7 @@ public class IndividualSpecification {
    */
   public static Specification<IndividualEntity> filterIndividualType(IndividualType individualType) {
     if (individualType == null) {
-      return null;
+      return Specification.unrestricted();
     }
     return (root, query, builder)
         -> builder.equal(root.get("type"), individualType);

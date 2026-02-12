@@ -44,29 +44,15 @@ public class IndividualsService {
     Specification<IndividualEntity> specification = buildSpecification(applicationId, individualType);
     Pageable pageable = PageRequest.of(page, pageSize);
 
-    Page<IndividualEntity> entities = specification != null
-        ? individualRepository.findAll(specification, pageable)
-        : individualRepository.findAll(pageable);
-
-    return entities.map(individualMapper::toIndividual);
+    return individualRepository.findAll(specification, pageable)
+        .map(individualMapper::toIndividual);
   }
 
   /**
    * Builds a Specification for filtering individuals by applicationId and individualType.
-   * Returns null if no filters are provided.
    */
   private Specification<IndividualEntity> buildSpecification(UUID applicationId, IndividualType individualType) {
-    Specification<IndividualEntity> specification = null;
-
-    if (applicationId != null) {
-      specification = IndividualSpecification.filterApplicationId(applicationId);
-    }
-    if (individualType != null) {
-      specification = specification == null
-          ? IndividualSpecification.filterIndividualType(individualType)
-          : specification.and(IndividualSpecification.filterIndividualType(individualType));
-    }
-
-    return specification;
+    return IndividualSpecification.filterApplicationId(applicationId)
+        .and(IndividualSpecification.filterIndividualType(individualType));
   }
 }
