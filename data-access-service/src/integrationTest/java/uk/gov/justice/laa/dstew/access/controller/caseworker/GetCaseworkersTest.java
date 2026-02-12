@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.caseworker;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;

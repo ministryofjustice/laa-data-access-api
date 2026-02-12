@@ -36,7 +36,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
-import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -58,8 +57,8 @@ public class CreateApplicationTest extends BaseServiceTest {
     );
 
     ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault();
-    RequestApplicationContent requestApplicationContent = MapperUtil.getObjectMapper()
-        .convertValue(applicationCreateRequest.getApplicationContent(), RequestApplicationContent.class);
+    ApplicationContent applicationContent = MapperUtil.getObjectMapper()
+        .convertValue(applicationCreateRequest.getApplicationContent(), ApplicationContent.class);
     when(applicationRepository.save(any())).thenReturn(withExpectedId);
 
         DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
@@ -67,8 +66,9 @@ public class CreateApplicationTest extends BaseServiceTest {
                 .type(DomainEventType.APPLICATION_CREATED)
                 .data(objectMapper.writeValueAsString(CreateApplicationDomainEventDetails.builder()
                         .applicationId(expectedId)
+                        .laaReference(withExpectedId.getLaaReference())
                         .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS.toString())
-                        .applicationContent(withExpectedId.getApplicationContent().toString())
+                        .request(objectMapper.writeValueAsString(applicationCreateRequest))
                         .build()))
                 .build();
 
@@ -81,19 +81,19 @@ public class CreateApplicationTest extends BaseServiceTest {
     assertEquals(expectedId, actualId);
 
     verifyThatApplicationSaved(applicationCreateRequest, 1);
-    verifyThatProceedingsSaved(requestApplicationContent, expectedId);
+    verifyThatProceedingsSaved(applicationContent, expectedId);
     verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
   }
 
-  private void verifyThatProceedingsSaved(RequestApplicationContent applicationCreateRequest, UUID expectedId) {
+  private void verifyThatProceedingsSaved(ApplicationContent applicationCreateRequest, UUID expectedId) {
     ArgumentCaptor<List<ProceedingEntity>> captor = ArgumentCaptor.forClass((Class) List.class);
     verify(proceedingRepository).saveAll(captor.capture());
     List<ProceedingEntity> actualProceedingEntities = captor.getValue();
 
-    RequestApplicationContent applicationContentDetails =
-        objectMapper.convertValue(applicationCreateRequest, RequestApplicationContent.class);
+    ApplicationContent applicationContentDetails =
+        objectMapper.convertValue(applicationCreateRequest, ApplicationContent.class);
 
-    List<Proceeding> expectedProceedings = applicationContentDetails.getApplicationContent().getProceedings();
+    List<Proceeding> expectedProceedings = applicationContentDetails.getProceedings();
 
     assertEquals(expectedProceedings.size(), actualProceedingEntities.size());
     for (int index = 0; index < expectedProceedings.size(); index++) {
@@ -129,7 +129,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     assertAll(() -> assertEquals(expectedUseDelegatedFunctions, actualApplicationEntity.getUsedDelegatedFunctions()),
         () -> assertEquals(Instant.parse("2026-01-15T10:20:30Z"), actualApplicationEntity.getSubmittedAt()));
     verifyThatProceedingsSaved(
-        objectMapper.convertValue(application.getApplicationContent(), RequestApplicationContent.class),
+        objectMapper.convertValue(application.getApplicationContent(), ApplicationContent.class),
         expectedId);
   }
 
@@ -183,12 +183,12 @@ public class CreateApplicationTest extends BaseServiceTest {
     ValidationException validationException = new ValidationException(List.of(
         "No lead proceeding found in application content"
     ));
+
+    ApplicationContent applicationContent = applicationContentFactory.createDefault(appContentBuilder ->
+        appContentBuilder.proceedings(List.of(proceedingFactory.createDefault(proceedingBuilder ->
+            proceedingBuilder.leadProceeding(false)))));
     ApplicationCreateRequest createRequest = applicationCreateRequestFactory.createDefault(builder -> builder
-        .applicationContent(objectMapper.convertValue(requestApplicationContentFactory.createDefault(
-            detailsBuilder -> detailsBuilder.applicationContent(
-                applicationContentFactory.createDefault(appContentBuilder ->
-                    appContentBuilder.proceedings(List.of(proceedingFactory.createDefault(proceedingBuilder ->
-                        proceedingBuilder.leadProceeding(false))))))), Map.class)));
+        .applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
     return Stream.of(
         Arguments.of(
             createRequest, validationException
@@ -202,10 +202,8 @@ public class CreateApplicationTest extends BaseServiceTest {
     ApplicationContent applicationContent = applicationContentFactory.createDefault(appContentBuilder ->
         appContentBuilder.submittedAt("2026-01-15T10:20:30Z").proceedings(proceedings).id(UUID.fromString(appContentId)));
 
-    RequestApplicationContent requestApplicationContent =
-        requestApplicationContentFactory.createDefault(builder -> builder.applicationContent(applicationContent));
-    requestApplicationContent.putAdditionalProperty("testPropertyInTest", "testValue");
-    return objectMapper.convertValue(requestApplicationContent, Map.class);
+    applicationContent.putAdditionalApplicationContent("testPropertyInTest", "testValue");
+    return objectMapper.convertValue(applicationContent, Map.class);
 
   }
 
@@ -243,12 +241,12 @@ public class CreateApplicationTest extends BaseServiceTest {
 
     assertThat(actualApplicationEntity.getStatus()).isEqualTo(applicationCreateRequest.getStatus());
     assertThat(actualApplicationEntity.getLaaReference()).isEqualTo(applicationCreateRequest.getLaaReference());
-    RequestApplicationContent applicationContentDetails =
-        objectMapper.convertValue(applicationCreateRequest.getApplicationContent(), RequestApplicationContent.class);
+    ApplicationContent applicationContentDetails =
+        objectMapper.convertValue(applicationCreateRequest.getApplicationContent(), ApplicationContent.class);
     assertThat(actualApplicationEntity.getApplyApplicationId()).isEqualTo(
-        applicationContentDetails.getApplicationContent().getId());
+        applicationContentDetails.getId());
     assertThat(actualApplicationEntity.getUsedDelegatedFunctions()).isEqualTo(
-        applicationContentDetails.getApplicationContent().getProceedings().getFirst()
+        applicationContentDetails.getProceedings().getFirst()
             .getUsedDelegatedFunctions());
     assertThat(actualApplicationEntity.getApplicationContent())
         .usingRecursiveComparison()

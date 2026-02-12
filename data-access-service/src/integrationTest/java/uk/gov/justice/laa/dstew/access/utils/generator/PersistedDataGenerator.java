@@ -91,14 +91,12 @@ public class PersistedDataGenerator extends DataGenerator {
     private <TEntity, TGenerator> TEntity persist(Class<TGenerator> generatorType, TEntity entity) {
         JpaRepository<TEntity, ?> repository = getRepository(generatorType);
         repository.saveAndFlush(entity);
-        entityManager.clear();
         return entity;
     }
 
     private <TEntity, TGenerator> List<TEntity> persist(Class<TGenerator> generatorType, List<TEntity> entities) {
         JpaRepository<TEntity, ?> repository = getRepository(generatorType);
         repository.saveAllAndFlush(entities);
-        entityManager.clear();
         return entities;
     }
 }

@@ -9,8 +9,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
 
-import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
@@ -141,11 +141,11 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     }
 
     private DomainEventEntity setupDomainEvent(UUID appId, DomainEventType eventType) {
-        String eventDesc = "{ \"eventDescription\" : \"" + eventType.getValue() + "\"}";
+        String eventDesc = "{\"eventDescription\": \"" + eventType.getValue() + "\"}";
         return persistedDomainEventFactory.createAndPersist(builder ->
                 {
                     builder.applicationId(appId);
-                    builder.createdAt(Instant.now());
+                    builder.createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds());
                     builder.data(eventDesc);
                     builder.type(eventType);
                 }

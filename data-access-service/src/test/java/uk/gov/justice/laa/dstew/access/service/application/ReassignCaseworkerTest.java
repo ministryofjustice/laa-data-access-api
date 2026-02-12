@@ -12,6 +12,9 @@ import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
 import java.util.List;
 import java.util.Optional;
@@ -35,17 +38,17 @@ public class ReassignCaseworkerTest extends BaseServiceTest {
         // given
         UUID applicationId = UUID.randomUUID();
 
-        CaseworkerEntity existingCaseworker = caseworkerFactory.createDefault(builder ->
+        CaseworkerEntity existingCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder ->
                 builder.id(UUID.randomUUID())
                         .username("John Doe")
         );
 
-        CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault(builder ->
+        CaseworkerEntity expectedCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder ->
                 builder.id(UUID.randomUUID())
                         .username("Jane Doe")
         );
 
-        ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+        ApplicationEntity existingApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
                 builder.id(applicationId).caseworker(existingCaseworker)
         );
 

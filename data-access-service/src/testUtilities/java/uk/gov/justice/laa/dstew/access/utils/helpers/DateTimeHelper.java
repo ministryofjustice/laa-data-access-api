@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.utils;
+package uk.gov.justice.laa.dstew.access.utils.helpers;
 
 import java.time.Instant;
 import java.time.InstantSource;

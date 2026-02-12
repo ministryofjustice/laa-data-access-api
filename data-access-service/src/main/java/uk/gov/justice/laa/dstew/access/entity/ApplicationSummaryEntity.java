@@ -67,7 +67,7 @@ public class ApplicationSummaryEntity {
   private Instant submittedAt;
 
   @Column(name = "used_delegated_functions")
-  private boolean usedDelegatedFunctions;
+  private Boolean usedDelegatedFunctions;
 
   @Column(name = "category_of_law")
   @Enumerated(EnumType.STRING)

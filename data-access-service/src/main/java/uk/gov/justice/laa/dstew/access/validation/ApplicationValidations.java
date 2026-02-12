@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.RefusalDetails;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 /**
@@ -59,5 +60,20 @@ public class ApplicationValidations {
               List.of("The Make Decision request must contain at least one proceeding")
       );
     }
+
+    dto.getProceedings().forEach(proceeding -> {
+      RefusalDetails refusal = proceeding.getMeritsDecision().getRefusal();
+      if (refusal.getReason() == null || refusal.getReason().isEmpty()) {
+        throw new ValidationException(
+                List.of("The Make Decision request must contain a refusal reason for proceeding with id: "
+                        + proceeding.getProceedingId()));
+      }
+
+      if (refusal.getJustification() == null || refusal.getJustification().isEmpty()) {
+        throw new ValidationException(
+                List.of("The Make Decision request must contain a refusal justification for proceeding with id: "
+                        + proceeding.getProceedingId()));
+      }
+    });
   }
 }

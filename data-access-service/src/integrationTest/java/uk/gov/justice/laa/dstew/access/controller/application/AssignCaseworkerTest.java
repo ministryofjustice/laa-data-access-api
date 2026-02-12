@@ -16,6 +16,9 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerAssignRequestGenerator;
 
 import java.util.UUID;
 import java.util.Arrays;
@@ -50,25 +53,23 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
             AssignCaseworkerCase assignCaseworkerCase
     ) throws Exception {
         // given
-        List<ApplicationEntity> expectedAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+        List<ApplicationEntity> toAssignApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,
                 assignCaseworkerCase.numberOfApplicationsToAssign,
-                builder -> {
-                    builder.caseworker(null);
-                });
+                builder -> builder.caseworker(null));
 
-        List<ApplicationEntity> expectedAlreadyAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+        List<ApplicationEntity> expectedAssignedApplications = toAssignApplications.stream()
+                .peek(application -> application.setCaseworker(BaseIntegrationTest.CaseworkerJohnDoe))
+                .toList();
+
+        List<ApplicationEntity> expectedAlreadyAssignedApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,
                 assignCaseworkerCase.numberOfApplicationsAlreadyAssigned,
-                builder -> {
-                    builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
-                });
+                builder -> builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe));
 
-        List<ApplicationEntity> expectedUnassignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+        List<ApplicationEntity> expectedUnassignedApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,
                 assignCaseworkerCase.numberOfApplicationsNotAssigned,
-                builder -> {
-                    builder.caseworker(null);
-                });
+                builder -> builder.caseworker(null));
 
-        CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
+        CaseworkerAssignRequest caseworkerAssignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
                     .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()).reversed())
                     .eventHistory(EventHistory.builder()
@@ -102,24 +103,20 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
             AssignCaseworkerCase assignCaseworkerCase
     ) throws Exception {
         // given
-        List<ApplicationEntity> expectedAlreadyAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+        List<ApplicationEntity> expectedAlreadyAssignedApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,
                 assignCaseworkerCase.numberOfApplicationsAlreadyAssigned,
-                builder -> {
-                    builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
-                });
+                builder -> builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe));
 
-        List<ApplicationEntity> expectedUnassignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+        List<ApplicationEntity> expectedUnassignedApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,
                 assignCaseworkerCase.numberOfApplicationsNotAssigned,
-                builder -> {
-                    builder.caseworker(null);
-                });
+                builder -> builder.caseworker(null));
 
         List<UUID> invalidApplicationIds = IntStream.range(0, assignCaseworkerCase.numberOfApplicationsToAssign)
                 .mapToObj(i -> UUID.randomUUID())
                 .toList();
 
         // generate random UUIDs so simulate records that do not exist..
-        CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
+        CaseworkerAssignRequest caseworkerAssignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
                     .applicationIds(invalidApplicationIds);
         });
@@ -151,11 +148,9 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenInvalidAssignRequestBecauseSomeApplicationsDoNotExist_whenAssignCaseworker_thenReturnNotFound_andAssignAvailableApplications_andGiveMissingIds() throws Exception {
         // given
-        List<ApplicationEntity> expectedAssignedApplications = persistedApplicationFactory.createAndPersistMultiple(
+        List<ApplicationEntity> expectedAssignedApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,
                 4,
-                builder -> {
-                    builder.caseworker(null);
-                });
+                builder -> builder.caseworker(null));
 
         List<UUID> invalidApplicationIds = IntStream.range(0, 5)
                 .mapToObj(_ -> UUID.randomUUID())
@@ -169,7 +164,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
                 .collect(Collectors.toList());
 
         // generate random UUIDs so simulate records that do not exist..
-        CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
+        CaseworkerAssignRequest caseworkerAssignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
                     .applicationIds(allApplicationIds);
         });
@@ -203,11 +198,9 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
             List<UUID> invalidApplicationIdList
     ) throws Exception {
         // given
-        ApplicationEntity expectedApplication = persistedApplicationFactory.createAndPersist(builder -> {
-            builder.caseworker(null);
-        });
+        ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> builder.caseworker(null));
 
-        CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
+        CaseworkerAssignRequest caseworkerAssignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId());
             builder.applicationIds(invalidApplicationIdList);
         });
@@ -221,20 +214,21 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
         ApplicationEntity actualApplication = applicationRepository.findById(expectedApplication.getId()).orElseThrow();
         assertNull(actualApplication.getCaseworker());
-        assertEquals(expectedApplication, actualApplication);
+        assertEquals(
+                applicationAsserts.createApplicationIgnoreLastUpdated(expectedApplication),
+                applicationAsserts.createApplicationIgnoreLastUpdated(actualApplication)
+        );
     }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenInvalidAssignmentRequestBecauseCaseworkerDoesNotExist_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
         // given
-        ApplicationEntity expectedApplication = persistedApplicationFactory.createAndPersist(builder -> {
-            builder.caseworker(null);
-        });
+        ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> builder.caseworker(null));
 
-        CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create(builder -> {
-            builder.caseworkerId(null);
-            builder.applicationIds(List.of(expectedApplication.getId()));
+        CaseworkerAssignRequest caseworkerAssignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
+            builder.caseworkerId(null)
+                    .applicationIds(List.of(expectedApplication.getId()));
         });
 
         // when
@@ -246,14 +240,17 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
         ApplicationEntity actualApplication = applicationRepository.findById(expectedApplication.getId()).orElseThrow();
         assertNull(actualApplication.getCaseworker());
-        assertEquals(expectedApplication, actualApplication);
+        assertEquals(
+                applicationAsserts.createApplicationIgnoreLastUpdated(expectedApplication),
+                applicationAsserts.createApplicationIgnoreLastUpdated(actualApplication)
+        );
     }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
     public void givenReaderRole_whenAssignCaseworker_thenReturnForbidden() throws Exception {
         // given
-        CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create();
+        CaseworkerAssignRequest caseworkerAssignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class);
 
         // when
         MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
@@ -267,7 +264,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
     public void givenUnknownRole_whenAssignCaseworker_thenReturnForbidden() throws Exception {
         // given
-        CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create();
+        CaseworkerAssignRequest caseworkerAssignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class);
 
         // when
         MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
@@ -280,7 +277,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     @Test
     public void givenNoUser_whenAssignCaseworker_thenReturnUnauthorised() throws Exception {
         // given
-        CaseworkerAssignRequest caseworkerAssignRequest = caseworkerAssignRequestFactory.create();
+        CaseworkerAssignRequest caseworkerAssignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class);
 
         // when
         MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
