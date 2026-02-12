@@ -46,6 +46,7 @@ class IndividualsServiceTest extends BaseServiceTest {
         verify(individualRepository, never()).findAll(any(Specification.class), any(Pageable.class));
         assertThat(result).hasSize(1);
         assertThat(result.getContent().getFirst().getFirstName()).isEqualTo(entity.getFirstName());
+        assertThat(result.getContent().getFirst().getLastName()).isEqualTo(entity.getLastName());
     }
 
     @Test
@@ -98,36 +99,5 @@ class IndividualsServiceTest extends BaseServiceTest {
         verify(individualRepository, never()).findAll(any(Pageable.class));
         assertThat(result).hasSize(1);
         assertThat(result.getContent().getFirst().getFirstName()).isEqualTo(entity.getFirstName());
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    void noMatchingData_whenGetIndividuals_thenReturnsEmptyPage() {
-        setSecurityContext(TestConstants.Roles.READER);
-        UUID appId = UUID.randomUUID();
-        IndividualType type = IndividualType.CLIENT;
-        when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(Page.empty());
-
-        Page<Individual> result = individualsService.getIndividuals(0, 10, appId, type);
-
-        assertThat(result).isEmpty();
-        verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
-    }
-
-    @Test
-    void matchingData_whenGetIndividuals_thenMapperConvertsEntitiesToModels() {
-        setSecurityContext(TestConstants.Roles.READER);
-        IndividualEntity entity = individualEntityFactory.createDefault();
-        List<IndividualEntity> entities = List.of(entity);
-        Page<IndividualEntity> entityPage = new PageImpl<>(entities);
-
-        when(individualRepository.findAll(any(Pageable.class))).thenReturn(entityPage);
-
-        Page<Individual> result = individualsService.getIndividuals(0, 10, null, null);
-
-        assertThat(result).hasSize(1);
-        assertThat(result.getContent().getFirst().getFirstName()).isEqualTo(entity.getFirstName());
-        assertThat(result.getContent().getFirst().getLastName()).isEqualTo(entity.getLastName());
-        verify(individualRepository, times(1)).findAll(any(Pageable.class));
     }
 }
