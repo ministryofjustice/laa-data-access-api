@@ -81,12 +81,8 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     content.setOffice(office);
     content.setAllLinkedApplications(linkedApplication == null ? null : List.of(linkedApplication));
 
-    RequestApplicationContent requestApplicationContent = RequestApplicationContent.builder()
-      .applicationContent(content)
-      .build();
-
     ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
-    applicationCreateRequest.setApplicationContent(requestApplicationContent);
+    applicationCreateRequest.setApplicationContent(objectMapper.convertValue(content, Map.class));
 
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
 

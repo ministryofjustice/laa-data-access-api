@@ -21,20 +21,20 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
   @Test
   public void givenSaveOfExpectedApplication_whenGetCalled_expectedAndActualAreEqual() {
 
-        // given
-        ApplicationEntity expected = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder ->
-                builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe));
-        ProceedingEntity proceeding = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class, builder -> {
-                builder.applicationId(expected.getId());
-        });
-        DecisionEntity expectedDecision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
-            builder.meritsDecisions(Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class, mBuilder -> {
+    // given
+    ApplicationEntity expected = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder ->
+        builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe).linkedApplications(Set.of()));
+    ProceedingEntity proceeding = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class, builder -> {
+        builder.applicationId(expected.getId());
+    });
+    DecisionEntity expectedDecision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
+        builder.meritsDecisions(Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class, mBuilder -> {
                 mBuilder.proceeding(proceeding);
-            })));
-        });
-        expected.setDecision(expectedDecision);
-        applicationRepository.saveAndFlush(expected);
-        clearCache();
+        })));
+    });
+    expected.setDecision(expectedDecision);
+    applicationRepository.saveAndFlush(expected);
+    clearCache();
 
     // when
     ApplicationEntity actual = applicationRepository.findById(expected.getId()).orElse(null);
@@ -45,22 +45,21 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
 
   @Test
   public void givenSaveOfLinkedApplication_whenGetCalledOnLead_expectApplicationToHaveLinkedApplications() {
-        // given
-    final ApplicationEntity lead = applicationFactory.create();
-    applicationRepository.save(lead);
+    // given
+    final ApplicationEntity leadApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+    final ApplicationEntity associatedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+    clearCache();
+    leadApplication.setLinkedApplications(Set.of(associatedApplication));
+    applicationRepository.save(leadApplication);
+    clearCache();
 
-    final ApplicationEntity associated = applicationFactory.create(builder -> {
-        ApplicationEntity loadedLeadApplication = applicationRepository.findById(lead.getId()).orElseThrow();
-        builder.linkedApplications(List.of(loadedLeadApplication));
-    });
-    applicationRepository.save(associated);
-    // when
-    final ApplicationEntity newlySavedLeadApplication = applicationRepository.findById(lead.getId()).orElseThrow();
-
+    //when
+    final ApplicationEntity actual = applicationRepository.findById(leadApplication.getId()).orElseThrow();
+    final ApplicationEntity actualAssociatedApplication = applicationRepository.findById(associatedApplication.getId()).orElseThrow();
     // then
-    assertThat(newlySavedLeadApplication.getLinkedApplications()).isNotNull();
-    assertThat(newlySavedLeadApplication.getLinkedApplications().size()).isEqualTo(1);
-    assertApplicationEqual(associated, newlySavedLeadApplication.getLinkedApplications().getFirst());
+    assertThat(actual.getLinkedApplications()).isNotNull();
+    assertThat(actual.getLinkedApplications().size()).isEqualTo(1);
+    assertApplicationEqual(actualAssociatedApplication, actual.getLinkedApplications().stream().findFirst().orElseThrow());
   }
 
   private void assertApplicationEqual(ApplicationEntity expected, ApplicationEntity actual) {

@@ -119,14 +119,13 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "is_auto_granted")
   private Boolean isAutoGranted;
 
-  @OneToMany(cascade = CascadeType.PERSIST)
+  @OneToMany(cascade = CascadeType.ALL)
   @JoinTable(
       name = "linked_applications",
-      joinColumns = @JoinColumn(name = "associated_application_id"),
-      inverseJoinColumns = @JoinColumn(name = "lead_application_id")
+      joinColumns = @JoinColumn(name = "lead_application_id"),
+      inverseJoinColumns = @JoinColumn(name = "associated_application_id")
   )
-  private List<ApplicationEntity> linkedApplications;
-
+  private Set<ApplicationEntity> linkedApplications;
 
   @Transient
   public boolean isLead() {
