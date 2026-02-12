@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
@@ -69,15 +70,16 @@ public class DomainEventService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void saveCreateApplicationDomainEvent(
       ApplicationEntity applicationEntity,
+      ApplicationCreateRequest request,
       String createdBy) {
 
     CreateApplicationDomainEventDetails domainEventDetails =
         CreateApplicationDomainEventDetails.builder()
             .applicationId(applicationEntity.getId())
             .createdDate(applicationEntity.getCreatedAt())
-            .createdBy(applicationEntity.getCreatedBy())
+            .laaReference(applicationEntity.getLaaReference())
             .applicationStatus(String.valueOf(applicationEntity.getStatus()))
-            .applicationContent(applicationEntity.getApplicationContent().toString())
+            .request(getEventDetailsAsJson(request, DomainEventType.APPLICATION_CREATED))
             .build();
 
     DomainEventEntity domainEventEntity =

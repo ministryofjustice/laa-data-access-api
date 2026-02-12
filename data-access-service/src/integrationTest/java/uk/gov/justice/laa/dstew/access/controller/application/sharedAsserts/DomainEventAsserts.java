@@ -73,20 +73,11 @@ public class DomainEventAsserts {
         assertThat(json.get("applicationStatus").asText())
                 .isEqualTo(application.getStatus().name());
 
-        assertThat(json.get("applicationContent").asText())
+        assertThat(json.get("request").asText())
                 .contains("{"); // stored as stringified JSON
 
-        if (expectedType == DomainEventType.APPLICATION_CREATED) {
-
-            assertThat(json.has("createdDate")).isTrue();
-            assertThat(json.get("createdDate").asText())
-                    .isEqualTo(application.getCreatedAt().toString());
-
-        } else if (expectedType == DomainEventType.APPLICATION_UPDATED) {
-
-            assertThat(json.has("updatedDate")).isTrue();
-            assertThat(json.get("updatedDate").asText())
-                    .isEqualTo(application.getModifiedAt().toString());
-        }
+        assertThat(json.has("createdDate")).isTrue();
+        assertThat(json.get("createdDate").asText())
+                .isEqualTo(application.getCreatedAt().toString());
     }
 }
