@@ -5,7 +5,7 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,7 +29,7 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.Paging;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
-import uk.gov.justice.laa.dstew.access.service.DomainEventService;
+import uk.gov.justice.laa.dstew.access.service.EventHistoryService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 
@@ -37,14 +37,21 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 /**
  * Controller for handling /api/v0/applications requests.
  */
-@RequiredArgsConstructor
+@Slf4j
 @RestController
 @ExcludeFromGeneratedCodeCoverage
 public class ApplicationController implements ApplicationApi {
 
   private final ApplicationService service;
   private final ApplicationSummaryService summaryService;
-  private final DomainEventService domainService;
+  private final EventHistoryService eventHistoryService;
+
+  public ApplicationController(ApplicationService service, ApplicationSummaryService summaryService,
+                               EventHistoryService eventHistoryService) {
+    this.service = service;
+    this.summaryService = summaryService;
+    this.eventHistoryService = eventHistoryService;
+  }
 
   @LogMethodArguments
   @LogMethodResponse
@@ -68,33 +75,33 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<ApplicationSummaryResponse> getApplications(
-          ApplicationStatus status,
-          String laaReference,
-          String clientFirstName,
-          String clientLastName,
-          LocalDate clientDateOfBirth,
-          UUID userId,
-          Boolean isAutoGranted,
-          MatterType matterType,
-          ApplicationSortBy sortBy,
-          ApplicationOrderBy orderBy,
-          Integer page,
-          Integer pageSize) {
+      ApplicationStatus status,
+      String laaReference,
+      String clientFirstName,
+      String clientLastName,
+      LocalDate clientDateOfBirth,
+      UUID userId,
+      Boolean isAutoGranted,
+      MatterType matterType,
+      ApplicationSortBy sortBy,
+      ApplicationOrderBy orderBy,
+      Integer page,
+      Integer pageSize) {
     page = (page == null || page < 1) ? 1 : page;
 
     Page<ApplicationSummary> applicationsReturned =
-            summaryService.getAllApplications(
-                    status,
-                    laaReference,
-                    clientFirstName,
-                    clientLastName,
-                    clientDateOfBirth,
-                    userId,
-                    isAutoGranted,
-                    matterType,
-                    sortBy,
-                    orderBy,
-              page - 1, pageSize);
+        summaryService.getAllApplications(
+            status,
+            laaReference,
+            clientFirstName,
+            clientLastName,
+            clientDateOfBirth,
+            userId,
+            isAutoGranted,
+            matterType,
+            sortBy,
+            orderBy,
+            page - 1, pageSize);
 
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
     List<ApplicationSummary> applications = applicationsReturned.stream().toList();
@@ -121,8 +128,8 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   public ResponseEntity<Void> assignCaseworker(@Valid CaseworkerAssignRequest request) {
     service.assignCaseworker(request.getCaseworkerId(),
-                              request.getApplicationIds(),
-                              request.getEventHistory());
+        request.getApplicationIds(),
+        request.getEventHistory());
     return ResponseEntity.ok().build();
   }
 
@@ -140,11 +147,11 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(UUID applicationId,
-      @Valid List<DomainEventType> eventType) {
-    var events = domainService.getEvents(applicationId, eventType);
+                                                                          @Valid List<DomainEventType> eventType) {
+    var events = eventHistoryService.getEvents(applicationId, eventType);
     return ResponseEntity.ok(ApplicationHistoryResponse.builder()
-                                                 .events(events)
-                                                 .build());
+        .events(events)
+        .build());
   }
 
   @Override
