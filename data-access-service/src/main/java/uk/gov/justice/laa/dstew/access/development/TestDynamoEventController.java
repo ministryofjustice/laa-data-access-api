@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.spike;
+package uk.gov.justice.laa.dstew.access.development;
 
 import java.util.List;
 import java.util.Map;
@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDB;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.Event;
 import uk.gov.justice.laa.dstew.access.model.S3UploadResult;
