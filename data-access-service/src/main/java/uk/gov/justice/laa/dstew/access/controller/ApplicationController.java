@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
@@ -27,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.Paging;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.service.DomainEventService;
@@ -49,7 +51,9 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   @LogMethodResponse
   @Override
-  public ResponseEntity<Void> createApplication(@Valid ApplicationCreateRequest applicationCreateReq) {
+  public ResponseEntity<Void> createApplication(
+          @NotNull ServiceName serviceName,
+          @Valid ApplicationCreateRequest applicationCreateReq) {
     UUID id = service.createApplication(applicationCreateReq);
 
     URI uri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
@@ -68,6 +72,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<ApplicationSummaryResponse> getApplications(
+          ServiceName serviceName,
           ApplicationStatus status,
           String laaReference,
           String clientFirstName,

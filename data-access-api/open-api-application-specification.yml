@@ -11,6 +11,11 @@ paths:
       summary: Get applications
       operationId: getApplications
       parameters:
+        - in: header
+          name: X-ServiceName
+          required: true
+          schema:
+            $ref: "#/components/schemas/serviceName"
         - in: query
           name: status
           description: The current overall status of the applications' decision.
@@ -92,6 +97,12 @@ paths:
         - application
       summary: Create an application
       operationId: createApplication
+      parameters:
+        - in: header
+          name: X-ServiceName
+          required: true
+          schema:
+            $ref: "#/components/schemas/serviceName"
       requestBody:
         description: Create an application (all fields inside `applicationContent`)
         required: true
@@ -317,6 +328,12 @@ paths:
         '500': { description: Internal server error }
 components:
   schemas:
+    serviceName:
+      type: string
+      enum:
+        - CIVIL_APPLY
+        - CIVIL_DECIDE
+      description: Service name
     applicationStatus:
       type: string
       enum:
