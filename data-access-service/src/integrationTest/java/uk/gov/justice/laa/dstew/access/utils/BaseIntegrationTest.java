@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -39,11 +40,13 @@ import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
 import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
+import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
 import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
 
 import java.net.URI;
+import java.util.Map;
 import java.util.UUID;
 import java.util.List;
 
@@ -203,24 +206,29 @@ public abstract class BaseIntegrationTest {
         clearCache();
     }
 
+    private HttpHeaders DefaultHttpHeaders() {
+        HttpHeadersBuilder builder = new HttpHeadersBuilder();
+        return builder.withServiceName("CIVIL_APPLY").build();
+    }
+
     public MvcResult getUri(String uri) throws Exception {
         clearCache();
         return mockMvc
-            .perform(get(uri))
-            .andReturn();
+                .perform(get(uri).headers(DefaultHttpHeaders()))
+                .andReturn();
     }
 
     public MvcResult getUri(String uri, Object... args) throws Exception {
         clearCache();
         return mockMvc
-                .perform(get(uri, args))
+                .perform(get(uri, args).headers(DefaultHttpHeaders()))
                 .andReturn();
     }
 
     public MvcResult getUri(URI uri) throws Exception {
         clearCache();
         return mockMvc
-                .perform(get(uri))
+                .perform(get(uri).headers(DefaultHttpHeaders()))
                 .andReturn();
     }
 
