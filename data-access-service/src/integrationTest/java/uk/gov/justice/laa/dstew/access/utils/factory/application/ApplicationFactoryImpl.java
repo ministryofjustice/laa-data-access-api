@@ -46,7 +46,7 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                 .usedDelegatedFunctions(false)
                 .isAutoGranted(true)
                 .categoryOfLaw(CategoryOfLaw.FAMILY)
-                .matterType(MatterType.SCA)
+                .matterType(MatterType.SPECIAL_CHILDREN_ACT)
                 .build();
     }
 
