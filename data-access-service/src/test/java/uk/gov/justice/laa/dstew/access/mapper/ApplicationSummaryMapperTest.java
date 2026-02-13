@@ -52,7 +52,7 @@ public class ApplicationSummaryMapperTest {
         Instant modifiedAt = Instant.now();
         Instant submittedAt = Instant.now();
         CategoryOfLaw categoryOfLaw = CategoryOfLaw.FAMILY;
-        MatterType matterType = MatterType.SCA;
+        MatterType matterType = MatterType.SPECIAL_CHILDREN_ACT;
         boolean usedDelegatedFunctions = true;
         String laaReference = "ref1";
         ApplicationStatus status = ApplicationStatus.APPLICATION_IN_PROGRESS;

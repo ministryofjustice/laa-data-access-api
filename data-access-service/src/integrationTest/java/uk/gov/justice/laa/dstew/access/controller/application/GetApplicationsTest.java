@@ -730,7 +730,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     private Stream<Arguments> getApplicationSummaryQueryMatterTypes() {
-        return Stream.of(Arguments.of(MatterType.SCA));
+        return Stream.of(Arguments.of(MatterType.SPECIAL_CHILDREN_ACT));
     }
 
     @ParameterizedTest

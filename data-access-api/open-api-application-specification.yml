@@ -340,7 +340,7 @@ components:
     matterType:
       type: string
       enum:
-        - SCA
+        - SPECIAL_CHILDREN_ACT
     applicationType:
       type: string
       enum:
