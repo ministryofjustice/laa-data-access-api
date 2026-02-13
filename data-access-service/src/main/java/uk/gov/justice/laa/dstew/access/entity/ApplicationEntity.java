@@ -18,9 +18,9 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-import java.beans.Transient;
+import jakarta.persistence.Transient;
 import java.time.Instant;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -139,6 +139,16 @@ public class ApplicationEntity implements AuditableEntity {
 
   public void setApplicationContent(Map<String, Object> applicationContent) {
     this.applicationContent = applicationContent;
+  }
+
+  /**
+  * adds an application to the set of linked applications.
+  */
+  public void addLinkedApplication(ApplicationEntity toAdd) {
+    if (linkedApplications == null) {
+      linkedApplications = new HashSet<>();
+    }
+    linkedApplications.add(toAdd);
   }
 
   @Override
