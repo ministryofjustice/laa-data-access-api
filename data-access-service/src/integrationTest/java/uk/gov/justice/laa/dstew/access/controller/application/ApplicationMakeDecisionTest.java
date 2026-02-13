@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -28,7 +27,10 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.RefusalDetails;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMakeDecisionRequestGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -58,7 +60,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
             String errorMessage
     ) throws Exception {
 
-        ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.applicationContent(new HashMap<>(Map.of(
                     "test", "content"
             )));
@@ -66,12 +68,10 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
             builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS);
         });
 
-        ProceedingEntity grantedProceedingEntity = persistedProceedingFactory.createAndPersist(
-                builder -> { builder
-                        .applicationId(applicationEntity.getId()); }
-        );
+        ProceedingEntity grantedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+                builder -> builder.applicationId(applicationEntity.getId()));
 
-        MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
+        MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .userId(CaseworkerJohnDoe.getId())
                     .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS)
@@ -103,7 +103,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenMakeDecisionRequest_whenAssignDecision_thenUpdateApplicationEntity() throws Exception {
         // given
-        ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.applicationContent(new HashMap<>(Map.of(
                     "test", "content"
             )));
@@ -111,12 +111,10 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
             builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
         });
 
-        ProceedingEntity grantedProceedingEntity = persistedProceedingFactory.createAndPersist(
-                builder -> { builder
-                        .applicationId(applicationEntity.getId()); }
-        );
+        ProceedingEntity grantedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+                builder -> builder.applicationId(applicationEntity.getId()));
 
-        MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
+        MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .userId(CaseworkerJohnDoe.getId())
                     .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS)
@@ -144,23 +142,19 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     public void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenReturnNoContent_andDecisionSaved()
             throws Exception {
         // given
-        ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.applicationContent(new HashMap<>(Map.of(
                     "test", "content"
             )));
         });
 
-        ProceedingEntity refusedProceedingEntity = persistedProceedingFactory.createAndPersist(
-                builder -> {builder
-                        .applicationId(applicationEntity.getId());}
-        );
+        ProceedingEntity refusedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+                builder -> builder.applicationId(applicationEntity.getId()));
 
-        ProceedingEntity grantedProceedingEntity = persistedProceedingFactory.createAndPersist(
-                builder -> {builder
-                        .applicationId(applicationEntity.getId());}
-        );
+        ProceedingEntity grantedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+                builder -> builder.applicationId(applicationEntity.getId()));
 
-        MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
+        MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .userId(CaseworkerJohnDoe.getId())
                     .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
@@ -206,17 +200,15 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     public void givenMakeDecisionRequestWithExistingContentAndNewContent_whenAssignDecision_thenReturnNoContent_andDecisionUpdated()
             throws Exception {
         // given
-        ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.applicationContent(new HashMap<>(Map.of(
                     "test", "content"
             )));
             builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
         });
 
-        ProceedingEntity proceedingEntityOne = persistedProceedingFactory.createAndPersist(
-                builder -> {builder
-                        .applicationId(applicationEntity.getId());}
-        );
+        ProceedingEntity proceedingEntityOne = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+                builder -> builder.applicationId(applicationEntity.getId()));
 
         MeritsDecisionEntity meritsDecisionEntityOne = persistedMeritsDecisionFactory.createAndPersist(
                 builder -> { builder
@@ -225,10 +217,8 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                 }
         );
 
-        ProceedingEntity proceedingEntityTwo = persistedProceedingFactory.createAndPersist(
-                builder -> {builder
-                        .applicationId(applicationEntity.getId());}
-        );
+        ProceedingEntity proceedingEntityTwo = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+                builder -> builder.applicationId(applicationEntity.getId()));
 
         DecisionEntity decision = persistedDecisionFactory.createAndPersist(
                 builder -> { builder
@@ -240,7 +230,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         applicationEntity.setDecision(decision);
         applicationRepository.save(applicationEntity);
 
-        MakeDecisionRequest assignDecisionRequest = makeDecisionRequestFactory.create(builder -> {
+        MakeDecisionRequest assignDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .userId(CaseworkerJohnDoe.getId())
                     .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
@@ -286,28 +276,24 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     public void givenProceedingsNotFoundAndNotLinkedToApplication_whenMakeDecision_thenReturnNotFoundWithAllIds()
         throws Exception {
         // given
-        ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.applicationContent(new HashMap<>(Map.of(
                 "test", "content"
             )));
         });
 
-        ApplicationEntity unrelatedApplicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity unrelatedApplicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.applicationContent(new HashMap<>(Map.of(
                 "test", "other"
             )));
         });
 
-        ProceedingEntity proceedingNotLinkedToApplication = persistedProceedingFactory.createAndPersist(
-            builder -> {
-                builder
-                    .applicationId(unrelatedApplicationEntity.getId());
-            }
-        );
+        ProceedingEntity proceedingNotLinkedToApplication = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+            builder -> builder.applicationId(unrelatedApplicationEntity.getId()));
 
         UUID proceedingIdNotFound = UUID.randomUUID();
 
-        MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
+        MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                 .userId(CaseworkerJohnDoe.getId())
                 .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
@@ -347,7 +333,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
             throws Exception {
         // given
         UUID applicationId = UUID.randomUUID();
-        MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
+        MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .userId(CaseworkerJohnDoe.getId())
                     .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
@@ -382,13 +368,13 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         // given
         UUID caseworkerId = UUID.randomUUID();
 
-        ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.applicationContent(new HashMap<>(Map.of(
                     "test", "content"
             )));
         });
 
-        MakeDecisionRequest makeDecisionRequest = makeDecisionRequestFactory.create(builder -> {
+        MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .userId(caseworkerId)
                     .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
@@ -465,7 +451,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         return MakeDecisionRequest.builder()
                 .applicationStatus(applicationEntity.getStatus())
                 .overallDecision(decisionEntity.getOverallDecision())
-                .userId(applicationEntity.getCaseworker().getId())
+                .userId(CaseworkerJohnDoe.getId())
                 .eventHistory(eventHistory)
                 .proceedings(decisionEntity.getMeritsDecisions().stream()
                         .map(ApplicationMakeDecisionTest::mapToProceedingDetails)

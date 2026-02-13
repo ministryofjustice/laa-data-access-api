@@ -46,7 +46,6 @@ import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
 import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
 
 import java.net.URI;
-import java.util.Map;
 import java.util.UUID;
 import java.util.List;
 
@@ -220,50 +219,62 @@ public abstract class BaseIntegrationTest {
 
     public MvcResult getUri(String uri, Object... args) throws Exception {
         clearCache();
-        return mockMvc
+        MvcResult result = mockMvc
                 .perform(get(uri, args).headers(DefaultHttpHeaders()))
                 .andReturn();
+        clearCache();
+        return result;
     }
 
     public MvcResult getUri(URI uri) throws Exception {
         clearCache();
-        return mockMvc
+        MvcResult result = mockMvc
                 .perform(get(uri).headers(DefaultHttpHeaders()))
                 .andReturn();
+        clearCache();
+        return result;
     }
 
     public MvcResult postUriWithoutModel(String uri, Object... args) throws Exception {
         clearCache();
-        return mockMvc
+        MvcResult result = mockMvc
                 .perform(post(uri, args))
                 .andReturn();
+        clearCache();
+        return result;
     }
 
     public <TRequestModel> MvcResult postUri(String uri, TRequestModel requestModel) throws Exception {
         clearCache();
-        return mockMvc
+        MvcResult result = mockMvc
                 .perform(post(uri)
                         .content(objectMapper.writeValueAsString(requestModel))
                         .contentType(TestConstants.MediaTypes.APPLICATION_JSON))
                 .andReturn();
+        clearCache();
+        return result;
     }
 
     public <TRequestModel> MvcResult postUri(String uri, TRequestModel requestModel, Object... args) throws Exception {
         clearCache();
-        return mockMvc
+        MvcResult result = mockMvc
                 .perform(post(uri, args)
                         .content(objectMapper.writeValueAsString(requestModel))
                         .contentType(TestConstants.MediaTypes.APPLICATION_JSON))
                 .andReturn();
+        clearCache();
+        return result;
     }
 
     public <TRequestModel> MvcResult patchUri(String uri, TRequestModel requestModel, Object... args) throws Exception {
         clearCache();
-        return mockMvc
+        MvcResult result = mockMvc
                 .perform(patch(uri, args)
                         .content(objectMapper.writeValueAsString(requestModel))
                         .contentType(TestConstants.MediaTypes.APPLICATION_JSON))
                 .andReturn();
+        clearCache();
+        return result;
     }
 
     public <TResponseModel> TResponseModel deserialise(MvcResult result, Class<TResponseModel> clazz) throws Exception {
@@ -271,6 +282,7 @@ public abstract class BaseIntegrationTest {
     }
 
     public void clearCache() {
+        entityManager.flush();
         entityManager.clear();
     }
 }
