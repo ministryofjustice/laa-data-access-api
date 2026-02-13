@@ -36,7 +36,6 @@ import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
-import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
@@ -77,9 +76,6 @@ public abstract class BaseIntegrationTest {
 
     @Autowired
     protected DecisionRepository decisionRepository;
-
-    @Autowired
-    protected LinkedApplicationRepository linkedApplicationRepository;
 
     @Autowired
     protected ApplicationAsserts applicationAsserts;
@@ -167,15 +163,6 @@ public abstract class BaseIntegrationTest {
             DecisionEntity,
             DecisionEntity.DecisionEntityBuilder,
             UUID> persistedDecisionFactory;
-
-    @Autowired
-    protected PersistedFactory<
-        LinkedApplicationRepository,
-        Factory<LinkedApplicationEntity, LinkedApplicationEntity.LinkedApplicationEntityBuilder>,
-        LinkedApplicationEntity,
-        LinkedApplicationEntity.LinkedApplicationEntityBuilder,
-        UUID
-        > persistedLinkedApplicationFactory;
 
   @Autowired
   protected PersistedFactory<

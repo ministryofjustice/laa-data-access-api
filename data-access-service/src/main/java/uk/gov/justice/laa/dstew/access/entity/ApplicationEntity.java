@@ -15,9 +15,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -98,9 +101,6 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "submitted_at")
   private Instant submittedAt;
 
-  @Column(name = "is_lead")
-  private Boolean isLead;
-
   @OneToOne()
   @JoinColumn(name = "decision_id", referencedColumnName = "id")
   private DecisionEntity decision;
@@ -119,6 +119,19 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "is_auto_granted")
   private Boolean isAutoGranted;
 
+  @OneToMany
+  @JoinTable(
+      name = "linked_applications",
+      joinColumns = @JoinColumn(name = "lead_application_id"),
+      inverseJoinColumns = @JoinColumn(name = "associated_application_id")
+  )
+  private Set<ApplicationEntity> linkedApplications;
+
+  @Transient
+  public boolean isLead() {
+    return linkedApplications != null && !linkedApplications.isEmpty();
+  }
+
   // getters and setters
   public Map<String, Object> getApplicationContent() {
     return applicationContent;
@@ -126,6 +139,16 @@ public class ApplicationEntity implements AuditableEntity {
 
   public void setApplicationContent(Map<String, Object> applicationContent) {
     this.applicationContent = applicationContent;
+  }
+
+  /**
+  * adds an application to the set of linked applications.
+  */
+  public void addLinkedApplication(ApplicationEntity toAdd) {
+    if (linkedApplications == null) {
+      linkedApplications = new HashSet<>();
+    }
+    linkedApplications.add(toAdd);
   }
 
   @Override
