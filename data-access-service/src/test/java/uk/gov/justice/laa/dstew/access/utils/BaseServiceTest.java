@@ -79,55 +79,7 @@ public class BaseServiceTest {
     protected ObjectMapper objectMapper;
 
     @Autowired
-    protected ApplicationEntityFactory applicationEntityFactory;
-
-    @Autowired
-    protected ApplicationCreateRequestFactory applicationCreateRequestFactory;
-
-    @Autowired
-    protected ApplicationUpdateRequestFactory applicationUpdateRequestFactory;
-
-    @Autowired
     protected ApplicationSummaryFactory applicationSummaryEntityFactory;
-
-    @Autowired
-    protected IndividualFactory individualFactory;
-
-    @Autowired
-    protected CaseworkerFactory caseworkerFactory;
-
-    @Autowired
-    protected DomainEventFactory domainEventFactory;
-
-    @Autowired
-    protected ApplicationContentFactory applicationContentFactory;
-
-    @Autowired
-    protected ApplicationMakeDecisionRequestFactory applicationMakeDecisionRequestFactory;
-
-    @Autowired
-    protected DecisionEntityFactory decisionEntityFactory;
-
-    @Autowired
-    protected MakeDecisionProceedingFactory makeDecisionProceedingFactory;
-
-    @Autowired
-    protected MeritsDecisionDetailsFactory meritsDecisionDetailsFactory;
-
-    @Autowired
-    protected MeritsDecisionsEntityFactory meritsDecisionsEntityFactory;
-
-    @Autowired
-    protected ProceedingsEntityFactory proceedingsEntityFactory;
-
-    @Autowired
-    protected RefusalDetailsFactory refusalDetailsFactory;
-
-    @Autowired
-    protected ProceedingFactory proceedingFactory;
-
-    @Autowired
-    protected IndividualEntityFactory individualEntityFactory;
 
     @AfterEach
     void tearDown() {

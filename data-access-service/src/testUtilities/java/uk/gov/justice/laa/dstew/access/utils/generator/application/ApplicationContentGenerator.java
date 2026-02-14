@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class ApplicationContentGenerator extends BaseGenerator<ApplicationContent, ApplicationContent.ApplicationContentBuilder> {
-    private final ProceedingGenerator proceedingDtoGenerator = new ProceedingGenerator();
+    private final ProceedingGenerator proceedingGenerator = new ProceedingGenerator();
 
     public ApplicationContentGenerator() {
         super(ApplicationContent::toBuilder, ApplicationContent.ApplicationContentBuilder::build);
@@ -20,7 +20,7 @@ public class ApplicationContentGenerator extends BaseGenerator<ApplicationConten
         return ApplicationContent.builder()
                 .id(applicationId)
                 .submittedAt("2024-01-01T12:00:00Z")
-                .proceedings(List.of(proceedingDtoGenerator.createDefault()))
+                .proceedings(List.of(proceedingGenerator.createDefault()))
                 .build();
     }
 }
