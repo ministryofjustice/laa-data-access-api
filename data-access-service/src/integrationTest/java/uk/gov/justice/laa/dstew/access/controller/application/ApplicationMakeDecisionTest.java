@@ -30,6 +30,8 @@ import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMakeDecisionRequestGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -210,7 +212,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         ProceedingEntity proceedingEntityOne = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
                 builder -> builder.applicationId(applicationEntity.getId()));
 
-        MeritsDecisionEntity meritsDecisionEntityOne = persistedMeritsDecisionFactory.createAndPersist(
+        MeritsDecisionEntity meritsDecisionEntityOne = persistedDataGenerator.createAndPersist(MeritsDecisionsEntityGenerator.class,
                 builder -> { builder
                         .proceeding(proceedingEntityOne)
                         .decision(MeritsDecisionStatus.REFUSED);
@@ -220,7 +222,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         ProceedingEntity proceedingEntityTwo = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
                 builder -> builder.applicationId(applicationEntity.getId()));
 
-        DecisionEntity decision = persistedDecisionFactory.createAndPersist(
+        DecisionEntity decision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class,
                 builder -> { builder
                         .meritsDecisions(Set.of(meritsDecisionEntityOne))
                         .overallDecision(DecisionStatus.REFUSED);

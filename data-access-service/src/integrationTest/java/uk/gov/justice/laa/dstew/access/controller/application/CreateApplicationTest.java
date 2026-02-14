@@ -29,12 +29,20 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationOffice;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCreateRequestGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualGenerator;
 
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -66,7 +74,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @Test
   @WithMockUser(authorities = TestConstants.Roles.WRITER)
   public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_thenReturnCreatedWithLocationHeader() throws Exception {
-    final ApplicationEntity leadApplicationToLink = persistedApplicationFactory.createAndPersist();
+    final ApplicationEntity leadApplicationToLink = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
     final LinkedApplication linkedApplication = LinkedApplication.builder().leadApplicationId(leadApplicationToLink.getApplyApplicationId())
                                                             .associatedApplicationId(UUID.randomUUID())
                                                             .build();
@@ -76,13 +84,13 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   private ApplicationEntity verifyCreateNewApplication(ApplicationOffice office, LinkedApplication linkedApplication) throws Exception {
-    ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
-    ApplicationContent content = applicationContentFactory.create();
+    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class);
     content.setOffice(office);
     content.setAllLinkedApplications(linkedApplication == null ? null : List.of(linkedApplication));
 
-    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
-    applicationCreateRequest.setApplicationContent(objectMapper.convertValue(content, Map.class));
+    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> {
+      builder.applicationContent(objectMapper.convertValue(content, Map.class));
+    });
 
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
 
@@ -120,10 +128,9 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @Test
   @WithMockUser(authorities = TestConstants.Roles.WRITER)
   public void givenInvalidApplicationContent_EmptyMap_whenCreateApplication_thenReturnBadRequest() throws Exception {
-    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder -> {
-      builder.applicationContent(new HashMap<>());
-    });
-
+    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(new HashMap<>())
+    );
 
     ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
     expectedProblemDetail.setProperty("invalidFields", Map.of("applicationContent","size must be between 1 and 2147483647"));
@@ -141,9 +148,9 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @Test
   @WithMockUser(authorities = TestConstants.Roles.WRITER)
   public void givenInvalidApplicationContent_whenCreateApplication_thenReturnBadRequest() throws Exception {
-    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder -> {
-      builder.applicationContent(null);
-    });
+    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(null)
+    );
 
     Map<String, String> invalidFields = new HashMap<>();
     invalidFields.put("applicationContent", "size must be between 1 and 2147483647");
@@ -179,7 +186,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @WithMockUser(authorities = TestConstants.Roles.READER)
   public void givenCorrectRequestBodyAndReaderRole_whenCreateApplication_thenReturnForbidden() throws Exception {
     // given
-    ApplicationCreateRequest request = applicationCreateRequestFactory.create();
+    ApplicationCreateRequest request = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
 
     // when
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -192,7 +199,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @Test
   public void givenCorrectRequestBodyAndNoAuthentication_whenCreateApplication_thenReturnUnauthorised() throws Exception {
     // given
-    ApplicationCreateRequest request = applicationCreateRequestFactory.create();
+    ApplicationCreateRequest request = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
 
     // when
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -212,51 +219,58 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
 
     return Stream.of(
-        Arguments.of(applicationCreateRequestFactory.create(builder -> {
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> {
           builder.status(null);
         }), problemDetail, Map.of("invalidFields", Map.of("status", mustNotBeNull))),
-        Arguments.of(applicationCreateRequestFactory.create(builder -> {
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> {
           builder.laaReference(null);
         }), problemDetail, Map.of("invalidFields", Map.of("laaReference", mustNotBeNull))),
-        Arguments.of(applicationCreateRequestFactory.create(builder -> {
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> {
           builder.applicationContent(null);
         }), problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
-        Arguments.of(applicationCreateRequestFactory.create(builder -> {
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> {
           builder.applicationContent(new HashMap<>());
         }), problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
-        Arguments.of(applicationCreateRequestFactory.create(builder -> {
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> {
           builder.applicationContent(Map.of("applicationContent", Map.of("proceedings", List.of())));
         }), ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request").detail("Generic Validation Error")
             .build(), Map.of("errors", List.of("id: must not be null",
             "submittedAt: must not be null"))),
-        Arguments.of(applicationCreateRequestFactory.create(builder -> {
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> {
           builder.individuals(null);
         }), problemDetail, Map.of("invalidFields", Map.of("individuals", "size must be between 1 and 2147483647"))),
-        Arguments.of(applicationCreateRequestFactory.create(builder -> {
-          builder.individuals(List.of());
-        }), problemDetail, Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))), Arguments.of(
-            applicationCreateRequestFactory.create(builder -> builder.individuals(
-                List.of(individualFactory.create(individualBuilder -> individualBuilder.dateOfBirth(null))))), problemDetail,
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> {
+          builder.individuals(List.of(DataGenerator.createDefault(
+            IndividualGenerator.class,
+            individualBuilder -> individualBuilder.dateOfBirth(null))));
+        }), problemDetail,
             Map.of("invalidFields", Map.of("individuals[0].dateOfBirth", mustNotBeNull))),
-        Arguments.of(
-            applicationCreateRequestFactory.create(builder -> builder.individuals(
-                List.of(individualFactory.create(individualBuilder -> individualBuilder.details(null))))), problemDetail,
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> {
+          builder.individuals(List.of(DataGenerator.createDefault(
+            IndividualGenerator.class,
+            individualBuilder -> individualBuilder.details(null))));
+        }), problemDetail,
             Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
-        Arguments.of(
-            applicationCreateRequestFactory.create(builder -> builder.individuals(
-                List.of(individualFactory.create(individualBuilder -> individualBuilder.details(new HashMap<>()))))),
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> {
+          builder.individuals(List.of(DataGenerator.createDefault(
+            IndividualGenerator.class,
+            individualBuilder -> individualBuilder.details(new HashMap<>()))));
+        }),
             problemDetail, Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
-        Arguments.of(
-            applicationCreateRequestFactory.create(builder -> builder.individuals(List.of(individualFactory.create(
-                individualBuilder -> individualBuilder.dateOfBirth(null).firstName("").lastName("").type(null)
-                    .details(new HashMap<>()))))), problemDetail, Map.of("invalidFields",
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> {
+          builder.individuals(List.of(DataGenerator.createDefault(
+            IndividualGenerator.class,
+            individualBuilder -> individualBuilder.dateOfBirth(null).firstName("").lastName("").type(null).details(new HashMap<>()))));
+        }), problemDetail, Map.of("invalidFields",
                 Map.of(
                     "individuals[0].details", minimumSizErrorMessage,
                     "individuals[0].type", mustNotBeNull,
                     "individuals[0].dateOfBirth", mustNotBeNull))),
-        Arguments.of(applicationCreateRequestFactory.create(
-                builder -> builder.individuals(List.of(individualFactory.create(
-                    individualBuilder -> individualBuilder.dateOfBirth(null).firstName(null).lastName(null).details(null))))),
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> {
+          builder.individuals(List.of(DataGenerator.createDefault(
+            IndividualGenerator.class,
+            individualBuilder -> individualBuilder.dateOfBirth(null).firstName(null).lastName(null).details(null))));
+        }),
             problemDetail, Map.of("invalidFields",
                 Map.of("individuals[0].details", minimumSizErrorMessage,
                     "individuals[0].lastName", mustNotBeNull,

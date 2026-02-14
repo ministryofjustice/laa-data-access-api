@@ -41,6 +41,7 @@ import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedFactory;
 import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
 import java.net.URI;
 import java.util.UUID;
@@ -84,37 +85,10 @@ public abstract class BaseIntegrationTest {
     protected DomainEventAsserts domainEventAsserts;
 
     @Autowired
-    protected Factory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder> applicationFactory;
-
-    @Autowired
-    protected Factory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> applicationCreateRequestFactory;
-
-    @Autowired
-    protected Factory<ApplicationUpdateRequest, ApplicationUpdateRequest.Builder> applicationUpdateRequestFactory;
-
-    @Autowired
-    protected Factory<CaseworkerAssignRequest, CaseworkerAssignRequest.Builder> caseworkerAssignRequestFactory;
-
-    @Autowired
-    protected Factory<CaseworkerUnassignRequest, CaseworkerUnassignRequest.Builder> caseworkerUnassignRequestFactory;
-
-    @Autowired
     protected Factory<IndividualEntity, IndividualEntity.IndividualEntityBuilder> individualEntityFactory;
 
     @Autowired
-    protected Factory<CaseworkerEntity, CaseworkerEntity.CaseworkerEntityBuilder> caseworkerFactory;
-
-    @Autowired
     protected Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder> domainEventFactory;
-
-    @Autowired
-    protected Factory<MakeDecisionRequest, MakeDecisionRequest.Builder> makeDecisionRequestFactory;
-
-    @Autowired
-    protected Factory<Individual, Individual.Builder> individualFactory;
-
-    @Autowired
-    protected Factory<LinkedApplicationEntity, LinkedApplicationEntity.LinkedApplicationEntityBuilder> linkedApplicationFactory;
 
     @Autowired
     protected PersistedFactory<
@@ -124,46 +98,6 @@ public abstract class BaseIntegrationTest {
             ApplicationEntity.ApplicationEntityBuilder,
             UUID> persistedApplicationFactory;
 
-    @Autowired
-    protected PersistedFactory<
-            CaseworkerRepository,
-            Factory<CaseworkerEntity, CaseworkerEntity.CaseworkerEntityBuilder>,
-            CaseworkerEntity,
-            CaseworkerEntity.CaseworkerEntityBuilder,
-            UUID> persistedCaseworkerFactory;
-
-    @Autowired
-    protected PersistedFactory<
-              DomainEventRepository,
-              Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder>,
-              DomainEventEntity,
-              DomainEventEntity.DomainEventEntityBuilder,
-              UUID> persistedDomainEventFactory;
-
-    @Autowired
-    protected PersistedFactory<
-            ProceedingRepository,
-            Factory<ProceedingEntity, ProceedingEntity.ProceedingEntityBuilder>,
-            ProceedingEntity,
-            ProceedingEntity.ProceedingEntityBuilder,
-            UUID> persistedProceedingFactory;
-
-    @Autowired
-    protected PersistedFactory<
-            MeritsDecisionRepository,
-            Factory<MeritsDecisionEntity, MeritsDecisionEntity.MeritsDecisionEntityBuilder>,
-            MeritsDecisionEntity,
-            MeritsDecisionEntity.MeritsDecisionEntityBuilder,
-            UUID> persistedMeritsDecisionFactory;
-
-    @Autowired
-    protected PersistedFactory<
-            DecisionRepository,
-            Factory<DecisionEntity, DecisionEntity.DecisionEntityBuilder>,
-            DecisionEntity,
-            DecisionEntity.DecisionEntityBuilder,
-            UUID> persistedDecisionFactory;
-
   @Autowired
   protected PersistedFactory<
       IndividualRepository,
@@ -171,7 +105,6 @@ public abstract class BaseIntegrationTest {
       IndividualEntity,
       IndividualEntity.IndividualEntityBuilder,
       UUID> persistedIndividualFactory;
-
 
     // for use in tests and factories where applicable (i.e. default in ApplicationFactoryImpl)
     public static CaseworkerEntity CaseworkerJohnDoe;
@@ -181,10 +114,10 @@ public abstract class BaseIntegrationTest {
     @BeforeEach
     void setupCaseworkers() {
         caseworkerRepository.deleteAll();
-        CaseworkerJohnDoe = persistedCaseworkerFactory.createAndPersist(builder ->
-                builder.username("JohnDoe").build());
-        CaseworkerJaneDoe = persistedCaseworkerFactory.createAndPersist(builder ->
-                builder.username("JaneDoe").build());
+        CaseworkerJohnDoe = persistedDataGenerator.createAndPersist(CaseworkerGenerator.class,
+                builder -> builder.username("JohnDoe").build());
+        CaseworkerJaneDoe = persistedDataGenerator.createAndPersist(CaseworkerGenerator.class,
+                builder -> builder.username("JaneDoe").build());
         Caseworkers = List.of(CaseworkerJohnDoe, CaseworkerJaneDoe);
 
         clearCache();
@@ -192,9 +125,11 @@ public abstract class BaseIntegrationTest {
 
     public MvcResult getUri(String uri) throws Exception {
         clearCache();
-        return mockMvc
+        MvcResult result = mockMvc
             .perform(get(uri))
             .andReturn();
+        clearCache();
+        return result;
     }
 
     public MvcResult getUri(String uri, Object... args) throws Exception {

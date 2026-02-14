@@ -14,6 +14,9 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationUpdateRequestGenerator;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -38,7 +41,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenUpdateRequestWithNewContentAndStatus_whenUpdateApplication_thenReturnOK_andUpdateApplication() throws Exception {
         // given
-        ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.applicationContent(new HashMap<>(Map.of(
                     "test", "content"
             )));
@@ -48,7 +51,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
                 "test", "changed"
         ));
 
-        ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create(builder -> {
+        ApplicationUpdateRequest applicationUpdateRequest = DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class, builder -> {
             builder.applicationContent(expectedContent).status(ApplicationStatus.APPLICATION_SUBMITTED);
         });
 
@@ -75,7 +78,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
             ApplicationUpdateRequest applicationUpdateRequest
     ) throws Exception {
         // given
-        ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.applicationContent(new HashMap<>(Map.of(
                     "test", "content"
             )));
@@ -94,13 +97,13 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenUpdateRequestWithWrongId_whenUpdateApplication_thenReturnNotFound() throws Exception {
         // given
-        ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.applicationContent(new HashMap<>(Map.of(
                     "test", "content"
             )));
         });
 
-        ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create();
+        ApplicationUpdateRequest applicationUpdateRequest = DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
 
         // when
         MvcResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, UUID.randomUUID());
@@ -116,13 +119,13 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
     public void givenUpdateRequestWithInvalidId_whenUpdateApplication_thenReturnNotFound(String uuid) throws Exception {
         // given
-        persistedApplicationFactory.createAndPersist(builder -> {
+        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.applicationContent(new HashMap<>(Map.of(
                     "test", "content"
             )));
         });
 
-        ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create();
+        ApplicationUpdateRequest applicationUpdateRequest = DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
 
         // when
         MvcResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, uuid);
@@ -137,7 +140,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.READER)
     public void givenReaderRole_whenUpdateApplication_thenReturnForbidden() throws Exception {
         // given
-        ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create();
+        ApplicationUpdateRequest applicationUpdateRequest = DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
 
         // when
         MvcResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, UUID.randomUUID().toString());
@@ -151,7 +154,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
     public void givenUnknownRole_whenUpdateApplication_thenReturnForbidden() throws Exception {
         // given
-        ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create();
+        ApplicationUpdateRequest applicationUpdateRequest = DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
 
         // when
         MvcResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, UUID.randomUUID().toString());
@@ -164,7 +167,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
     @Test
     public void givenNoUser_whenUpdateApplication_thenReturnUnauthorised() throws Exception {
         // given
-        ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create();
+        ApplicationUpdateRequest applicationUpdateRequest = DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
 
         // when
         MvcResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, UUID.randomUUID().toString());
@@ -176,7 +179,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
 
     private Stream<Arguments> invalidApplicationUpdateRequestCases() {
         return Stream.of(
-                Arguments.of(applicationUpdateRequestFactory.create(builder ->
+                Arguments.of(DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class, builder ->
                         builder.applicationContent(null))),
                 null
         );

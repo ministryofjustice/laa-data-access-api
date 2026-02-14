@@ -36,11 +36,7 @@ public class ApplicationEntityGenerator extends BaseGenerator<ApplicationEntity,
                 .submittedAt(Instant.parse("2024-01-01T12:00:00Z"))
                 .laaReference("REF7327")
                 .individuals(new HashSet<>(java.util.List.of(individualEntityGenerator.createDefault())))
-                .applicationContent(
-                        new HashMap<>(
-                                java.util.Map.of(
-                                        "applicationContent",
-                                        mapper.convertValue(applicationContentGenerator.createDefault(), Map.class))))
+                .applicationContent(mapper.convertValue(applicationContentGenerator.createDefault(), Map.class))
                 .usedDelegatedFunctions(false)
                 .isAutoGranted(true)
                 .categoryOfLaw(CategoryOfLaw.FAMILY)

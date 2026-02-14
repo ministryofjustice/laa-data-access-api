@@ -19,6 +19,9 @@ import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationUpdateRequestGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 import java.util.UUID;
@@ -63,7 +66,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
     void givenApplication_whenUpdateApplication_thenUpdateAndSave() throws JsonProcessingException {
         // given
         UUID applicationId = UUID.randomUUID();
-        ApplicationEntity expectedEntity = applicationEntityFactory.createDefault(builder ->
+        ApplicationEntity expectedEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
                 builder.id(applicationId)
                         .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
         );
@@ -71,7 +74,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
                 .applicationContent(new HashMap<>(Map.of("test", "changed")))
                 .build();
 
-        ApplicationUpdateRequest updateRequest = applicationUpdateRequestFactory.createDefault();
+        ApplicationUpdateRequest updateRequest = DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
 
         setSecurityContext(TestConstants.Roles.WRITER);
@@ -105,7 +108,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
             ValidationException validationException
     ) {
         // given
-        ApplicationEntity expectedEntity = applicationEntityFactory.createDefault(builder ->
+        ApplicationEntity expectedEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
                 builder.id(applicationId)
                         .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
         );
@@ -160,7 +163,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
     public final Stream<Arguments> invalidApplicationUpdateRequests() {
         return Stream.of(
                 Arguments.of(UUID.randomUUID(),
-                        applicationUpdateRequestFactory.createDefault(builder -> builder
+                        DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class, builder -> builder
                                 .applicationContent(new HashMap<>())),
                         new ValidationException(List.of(
                                 "Application content cannot be empty"
