@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertCreated;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertProblemRecord;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
@@ -28,6 +29,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
@@ -35,6 +37,8 @@ import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMakeDecisionRequestGenerator;
 
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -73,6 +77,83 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     final var createdEntity = verifyCreateNewApplication(null, linkedApplication);
     final ApplicationEntity leadApplication = applicationRepository.findById(leadApplicationToLink.getId()).orElseThrow();
     assertLinkedApplicationCorrectlyApplied(leadApplication, createdEntity);
+  }
+
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_raiseIfLeadNotFound() throws Exception {
+    // given
+    UUID notFoundLeadId = UUID.randomUUID();
+
+    LinkedApplication linkedApplication = LinkedApplication.builder()
+        .leadApplicationId(notFoundLeadId)
+        .associatedApplicationId(UUID.randomUUID())
+        .build();
+
+    ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
+    ApplicationContent content = applicationContentFactory.create();
+    content.setAllLinkedApplications(List.of(linkedApplication));
+
+    ApplicationCreateRequest request = applicationCreateRequestFactory.create();
+    request.setApplicationContent(objectMapper.convertValue(content, Map.class));
+
+    // when
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+
+    // then
+    assertSecurityHeaders(result);
+    assertNotFound(result);
+    assertEquals("application/problem+json", result.getResponse().getContentType());
+    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+    assertEquals("Linking failed > Lead application not found, ID: " + notFoundLeadId, problemDetail.getDetail());
+  }
+
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenProceedingNotLinkedToApplication_whenMakeDecision_thenReturnNotFoundAndMessage()
+      throws Exception {
+
+    // given
+    ApplicationEntity application = persistedApplicationFactory.createAndPersist();
+
+    ApplicationEntity otherApplication = persistedApplicationFactory.createAndPersist();
+
+    // create proceeding linked to otherApplication
+    ProceedingEntity proceeding = persistedProceedingFactory.createAndPersist(builder ->
+        builder.applicationId(otherApplication.getId())
+    );
+
+    MakeDecisionRequest makeDecisionRequest =
+        DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
+          builder
+              .userId(CaseworkerJohnDoe.getId())
+              .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
+              .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+              .eventHistory(EventHistory.builder().build())
+              .proceedings(List.of(
+                  createMakeDecisionProceeding(
+                      proceeding.getId(),
+                      MeritsDecisionStatus.REFUSED,
+                      "justification",
+                      "reason"
+                  )
+              ))
+              .autoGranted(true);
+        });
+
+
+    // when
+    MvcResult result = patchUri(
+        TestConstants.URIs.ASSIGN_DECISION,
+        makeDecisionRequest,
+        application.getId()
+    );
+
+    // then
+    assertNotFound(result);
+    assertEquals("application/problem+json", result.getResponse().getContentType());
+    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+    assertEquals("Not linked to application: " + proceeding.getId(), problemDetail.getDetail());
   }
 
   private ApplicationEntity verifyCreateNewApplication(ApplicationOffice office, LinkedApplication linkedApplication) throws Exception {
@@ -285,5 +366,22 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
   private void assertLinkedApplicationCorrectlyApplied(ApplicationEntity leadApplication, ApplicationEntity linkedApplication) {
     assertTrue(leadApplication.getLinkedApplications().stream().anyMatch(linkedApp -> linkedApp.getId().equals(linkedApplication.getId())));
+  }
+
+  private MakeDecisionProceeding createMakeDecisionProceeding(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
+    return MakeDecisionProceeding.builder()
+        .proceedingId(proceedingId)
+        .meritsDecision(
+            MeritsDecisionDetails.builder()
+                .decision(meritsDecisionStatus)
+                .refusal(
+                    RefusalDetails.builder()
+                        .justification(justification)
+                        .reason(reason)
+                        .build()
+                )
+                .build()
+        )
+        .build();
   }
 }
