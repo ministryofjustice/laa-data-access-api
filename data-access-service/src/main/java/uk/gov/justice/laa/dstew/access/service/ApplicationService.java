@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -28,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
@@ -56,7 +58,6 @@ public class ApplicationService {
   private final DecisionRepository decisionRepository;
   private final ProceedingRepository proceedingRepository;
   private final MeritsDecisionRepository meritsDecisionRepository;
-  private final LinkedApplicationService linkedApplicationService;
   private final ProceedingsService proceedingsService;
   private final PayloadValidationService payloadValidationService;
 
@@ -78,7 +79,6 @@ public class ApplicationService {
                             final ApplicationContentParserService applicationContentParserService,
                             final ProceedingRepository proceedingRepository,
                             final MeritsDecisionRepository meritsDecisionRepository,
-                            final LinkedApplicationService linkedApplicationService,
                             final ProceedingsService proceedingsService, PayloadValidationService payloadValidationService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
@@ -93,7 +93,6 @@ public class ApplicationService {
     this.domainEventService = domainEventService;
     this.decisionRepository = decisionRepository;
     this.meritsDecisionRepository = meritsDecisionRepository;
-    this.linkedApplicationService = linkedApplicationService;
   }
 
   /**
@@ -115,6 +114,7 @@ public class ApplicationService {
    * @return UUID of the created application
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @Transactional
   public UUID createApplication(final ApplicationCreateRequest req) {
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
     ApplicationContent applicationContent =
@@ -124,10 +124,7 @@ public class ApplicationService {
 
     final ApplicationEntity saved = applicationRepository.save(entity);
 
-    var parsedContentDetails = applicationContentParser.normaliseApplicationContentDetails(applicationContent);
-
-    linkedApplicationService.processLinkedApplications(parsedContentDetails);
-
+    linkToLeadApplicationIfApplicable(applicationContent, saved);
     proceedingsService.saveProceedings(applicationContent, saved.getId());
     domainEventService.saveCreateApplicationDomainEvent(saved, req, null);
     createAndSendHistoricRecord(saved, null);
@@ -413,5 +410,35 @@ public class ApplicationService {
       throw new ResourceNotFoundException(String.join("; ", errors));
     }
     return proceedings;
+  }
+
+  private static UUID getLeadApplicationId(List<LinkedApplication> linkedApplications) {
+    return (linkedApplications != null && linkedApplications.size() != 0)
+        ? linkedApplications.getFirst().getLeadApplicationId() 
+        : null;
+  }
+
+  private Optional<ApplicationEntity> getLeadApplication(ApplicationContent requestContent) {
+    final UUID leadApplicationId = getLeadApplicationId(requestContent.getAllLinkedApplications());
+    if (leadApplicationId == null)  {
+      return Optional.empty();
+    }
+
+    var leadApplication = applicationRepository.findByApplyApplicationId(leadApplicationId);
+    if (leadApplication == null) {
+      throw new ResourceNotFoundException(
+          "Linking failed > Lead application not found, ID: " + leadApplicationId
+      );
+    }
+
+    return Optional.of(leadApplication);
+  }
+
+  private void linkToLeadApplicationIfApplicable(ApplicationContent appContent, ApplicationEntity entityToAdd) {
+    final Optional<ApplicationEntity> leadApplication = getLeadApplication(appContent);
+    leadApplication.ifPresent(leadApp -> {
+      leadApp.addLinkedApplication(entityToAdd);
+      applicationRepository.save(leadApp);
+    });
   }
 }

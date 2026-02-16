@@ -51,6 +51,7 @@ public interface ApplicationSummaryMapper {
     }
     app.setApplicationType(applicationSummaryEntity.getType());
     app.setLastUpdated(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+    app.setIsLead(applicationSummaryEntity.isLead());
     return app;
   }
 

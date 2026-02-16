@@ -502,6 +502,8 @@ components:
           type: string
         applicationType:
           $ref: "#/components/schemas/applicationType"
+        isLead:
+          type: boolean
 
     ApplicationSummaryResponse:
       type: object

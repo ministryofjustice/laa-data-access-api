@@ -95,7 +95,7 @@ public interface ApplicationMapper {
             ? OffsetDateTime.ofInstant(entity.getSubmittedAt(), ZoneOffset.UTC)
             : null
     );
-    application.setIsLead(entity.getIsLead());
+    application.setIsLead(entity.isLead());
     application.setUseDelegatedFunctions(entity.getUsedDelegatedFunctions());
     application.setAutoGrant(entity.getIsAutoGranted());
     if (entity.getDecision() != null) {

@@ -58,6 +58,10 @@ public class ApplicationContent implements Serializable {
   @Schema(name = "office", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   private ApplicationOffice office;
 
+  @Nullable
+  @Schema(name = "allLinkedApplications", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+  private List<LinkedApplication> allLinkedApplications;
+
   /**
    * A container for additional, undeclared properties.
    * This is a holder for any undeclared properties as specified with
