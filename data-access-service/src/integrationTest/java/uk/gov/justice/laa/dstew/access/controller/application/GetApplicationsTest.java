@@ -759,7 +759,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     private Stream<Arguments> getApplicationSummaryQueryMatterTypes() {
-        return Stream.of(Arguments.of(MatterType.SCA));
+        return Stream.of(Arguments.of(MatterType.SPECIAL_CHILDREN_ACT));
     }
 
     @ParameterizedTest
@@ -906,6 +906,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         applicationSummary.setClientFirstName(applicationEntity.getIndividuals().stream().findFirst().get().getFirstName());
         applicationSummary.setClientLastName(applicationEntity.getIndividuals().stream().findFirst().get().getLastName());
         applicationSummary.setClientDateOfBirth(applicationEntity.getIndividuals().stream().findFirst().get().getDateOfBirth());
+        applicationSummary.setIsLead(applicationEntity.isLead());
         return applicationSummary;
     }
 }

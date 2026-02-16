@@ -399,7 +399,7 @@ components:
     matterType:
       type: string
       enum:
-        - SCA
+        - SPECIAL_CHILDREN_ACT
     applicationType:
       type: string
       enum:
@@ -561,6 +561,8 @@ components:
           type: string
         applicationType:
           $ref: "#/components/schemas/applicationType"
+        isLead:
+          type: boolean
 
     ApplicationSummaryResponse:
       type: object

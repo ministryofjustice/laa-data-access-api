@@ -21,7 +21,6 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
-import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
@@ -101,20 +100,6 @@ public class TestConfiguration {
             DecisionEntity.DecisionEntityBuilder,
             UUID> persistedDecisionFactory(DecisionRepository repository, Factory<DecisionEntity, DecisionEntity.DecisionEntityBuilder> decisionFactory) {
         return new PersistedFactory<>(repository, decisionFactory);
-    }
-
-    @Bean
-    public PersistedFactory<
-        LinkedApplicationRepository,
-        Factory<LinkedApplicationEntity, LinkedApplicationEntity.LinkedApplicationEntityBuilder>,
-        LinkedApplicationEntity,
-        LinkedApplicationEntity.LinkedApplicationEntityBuilder,
-        UUID>
-    persistedLinkedApplicationFactory(
-        LinkedApplicationRepository repository,
-        Factory<LinkedApplicationEntity, LinkedApplicationEntity.LinkedApplicationEntityBuilder> factory
-    ) {
-        return new PersistedFactory<>(repository, factory);
     }
 
     @Bean

@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -55,38 +56,50 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   public void givenCreateNewApplication_whenCreateApplication_thenReturnCreatedWithLocationHeader(
           ApplicationOffice office
   ) throws Exception {
-      verifyCreateNewApplication(office);
+      verifyCreateNewApplication(office, null);
   }
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
-    public void givenCreateNewApplication_whenCreateApplicationAndNoOffice_thenReturnCreatedWithLocationHeader() throws Exception {
-        verifyCreateNewApplication(null);
-    }
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenCreateNewApplication_whenCreateApplicationAndNoOffice_thenReturnCreatedWithLocationHeader() throws Exception {
+    verifyCreateNewApplication(null, null);
+  }
 
-    private void verifyCreateNewApplication(ApplicationOffice office) throws Exception {
-        ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
-        ApplicationContent content = applicationContentFactory.create();
-        content.setOffice(office);
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_thenReturnCreatedWithLocationHeader() throws Exception {
+    final ApplicationEntity leadApplicationToLink = persistedApplicationFactory.createAndPersist();
+    final LinkedApplication linkedApplication = LinkedApplication.builder().leadApplicationId(leadApplicationToLink.getApplyApplicationId())
+                                                            .associatedApplicationId(UUID.randomUUID())
+                                                            .build();
+    final var createdEntity = verifyCreateNewApplication(null, linkedApplication);
+    final ApplicationEntity leadApplication = applicationRepository.findById(leadApplicationToLink.getId()).orElseThrow();
+    assertLinkedApplicationCorrectlyApplied(leadApplication, createdEntity);
+  }
 
+  private ApplicationEntity verifyCreateNewApplication(ApplicationOffice office, LinkedApplication linkedApplication) throws Exception {
+    ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
+    ApplicationContent content = applicationContentFactory.create();
+    content.setOffice(office);
+    content.setAllLinkedApplications(linkedApplication == null ? null : List.of(linkedApplication));
 
+    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
+    applicationCreateRequest.setApplicationContent(objectMapper.convertValue(content, Map.class));
 
-        ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
-        applicationCreateRequest.setApplicationContent(objectMapper.convertValue(content, Map.class));
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
 
-      MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
+    assertSecurityHeaders(result);
+    assertCreated(result);
 
-      assertSecurityHeaders(result);
-      assertCreated(result);
+    UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
+      .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
+    assertApplicationEqual(applicationCreateRequest, createdApplication);
+    assertNotNull(createdApplicationId);
 
-      UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
-      ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
-          .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
-      assertApplicationEqual(applicationCreateRequest, createdApplication);
-      assertNotNull(createdApplicationId);
-
-      domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED);
-    }
+    domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED);
+    return createdApplication;
+  }
 
     @ParameterizedTest
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
@@ -295,5 +308,9 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     assertEquals(applicationVersion, actual.getSchemaVersion());
     assertNull(actual.getIsAutoGranted());
     assertNotNull(actual.getSubmittedAt());
+  }
+
+  private void assertLinkedApplicationCorrectlyApplied(ApplicationEntity leadApplication, ApplicationEntity linkedApplication) {
+    assertTrue(leadApplication.getLinkedApplications().stream().anyMatch(linkedApp -> linkedApp.getId().equals(linkedApplication.getId())));
   }
 }

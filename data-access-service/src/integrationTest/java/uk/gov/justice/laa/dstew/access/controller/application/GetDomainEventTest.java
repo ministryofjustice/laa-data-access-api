@@ -13,6 +13,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
 import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
 
@@ -61,7 +63,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
     public void givenApplicationWithDomainEvents_whenApplicationHistorySearch_theReturnDomainEvents() throws Exception {
-        var appId = persistedApplicationFactory.createAndPersist().getId();
+        var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
         // given
         var domainEvents = setUpDomainEvents(appId);
         var expectedDomainEvents = domainEvents.stream().map(GetDomainEventTest::toEvent).toList();
@@ -83,7 +85,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
     public void givenApplicationWithDomainEvents_whenApplicationHistorySearchFilterSingleDomainEvent_thenOnlyFilteredDomainEventTypes() throws Exception {
-        var appId = persistedApplicationFactory.createAndPersist().getId();
+        var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
         // given
         var domainEvents = setUpDomainEvents(appId);
         var expectedAssignDomainEvents = domainEvents.stream()
@@ -110,7 +112,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
     public void givenApplicationWithDomainEvents_whenApplicationHistorySearchFilterMultipleDomainEvent_thenOnlyFilteredDomainEventTypes() throws Exception {
-        var appId = persistedApplicationFactory.createAndPersist().getId();
+        var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
         // given
         var domainEvents = setUpDomainEvents(appId);
         var expectedAssignDomainEvents = domainEvents.stream()
@@ -172,13 +174,12 @@ public class GetDomainEventTest extends BaseIntegrationTest {
 
     private DomainEventEntity setupDomainEvent(UUID appId, DomainEventType eventType) {
         String eventDesc = "{\"eventDescription\": \"" + eventType.getValue() + "\"}";
-        return persistedDomainEventFactory.createAndPersist(builder ->
-                {
-                    builder.applicationId(appId);
-                    builder.createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds());
-                    builder.data(eventDesc);
-                    builder.type(eventType);
-                }
+        return persistedDataGenerator.createAndPersist(DomainEventGenerator.class, builder ->
+                builder.applicationId(appId)
+                       .caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
+                       .createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds())
+                       .data(eventDesc)
+                       .type(eventType)
         );
     }
 

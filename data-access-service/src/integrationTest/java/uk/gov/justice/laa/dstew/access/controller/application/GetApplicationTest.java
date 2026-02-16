@@ -161,6 +161,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
         if (applicationEntity.getDecision() != null) {
             application.setOverallDecision(applicationEntity.getDecision().getOverallDecision());
         }
+        application.isLead(applicationEntity.isLead());
         return application;
     }
 }

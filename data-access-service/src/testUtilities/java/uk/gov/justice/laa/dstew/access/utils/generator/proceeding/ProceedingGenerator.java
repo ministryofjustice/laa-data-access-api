@@ -14,7 +14,7 @@ public class ProceedingGenerator extends BaseGenerator<Proceeding, Proceeding.Pr
         return Proceeding.builder()
                 .id(UUID.randomUUID())
                 .categoryOfLaw("Family")
-                .matterType("SCA")
+                .matterType("SPECIAL_CHILDREN_ACT")
                 .leadProceeding(true)
                 .usedDelegatedFunctions(true)
                 .build();
