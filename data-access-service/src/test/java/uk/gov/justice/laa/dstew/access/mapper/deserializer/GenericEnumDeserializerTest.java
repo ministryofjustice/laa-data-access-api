@@ -67,8 +67,8 @@ class GenericEnumDeserializerTest {
 
   private static Stream<Arguments> provideMatterTypeEnumValues() {
     return Stream.of(
-        Arguments.of("SCA", MatterType.SCA),
-        Arguments.of("sca", MatterType.SCA),
+        Arguments.of("SPECIAL_CHILDREN_ACT", MatterType.SPECIAL_CHILDREN_ACT),
+        Arguments.of("special_children_act", MatterType.SPECIAL_CHILDREN_ACT),
         Arguments.of("", null),
         Arguments.of(null, null),
         Arguments.of("INVALID", null)
