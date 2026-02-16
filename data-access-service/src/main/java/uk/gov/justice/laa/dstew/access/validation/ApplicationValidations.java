@@ -64,6 +64,11 @@ public class ApplicationValidations {
 
     dto.getProceedings().forEach(proceeding -> {
       MeritsDecisionDetails mdd = proceeding.getMeritsDecision();
+      if (mdd.getReason() == null || mdd.getReason().isEmpty()) {
+        throw new ValidationException(
+            List.of("The Make Decision request must contain a refusal reason for proceeding with id: "
+                + proceeding.getProceedingId()));
+      }
       if (mdd.getJustification() == null || mdd.getJustification().isEmpty()) {
         throw new ValidationException(
                 List.of("The Make Decision request must contain a refusal justification for proceeding with id: "
