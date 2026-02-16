@@ -750,6 +750,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     }
     return MeritsDecisionDetails.builder()
         .decision(entity.getDecision())
+        .justification(entity.getJustification())
+        .reason(entity.getReason())
         .build();
   }
 }

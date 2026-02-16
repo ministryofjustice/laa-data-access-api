@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;

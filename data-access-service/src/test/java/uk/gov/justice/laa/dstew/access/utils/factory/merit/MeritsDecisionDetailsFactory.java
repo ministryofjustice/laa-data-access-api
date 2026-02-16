@@ -18,6 +18,8 @@ public class MeritsDecisionDetailsFactory extends BaseFactory<MeritsDecisionDeta
     public MeritsDecisionDetails createDefault() {
         return MeritsDecisionDetails.builder()
                 .decision(MeritsDecisionStatus.REFUSED)
+                .justification("justification default")
+                .reason("reason default")
                 .build();
     }
 }

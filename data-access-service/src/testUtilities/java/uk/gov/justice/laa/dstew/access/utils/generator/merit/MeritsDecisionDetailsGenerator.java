@@ -14,6 +14,8 @@ public class MeritsDecisionDetailsGenerator extends BaseGenerator<MeritsDecision
     public MeritsDecisionDetails createDefault() {
         return MeritsDecisionDetails.builder()
                 .decision(MeritsDecisionStatus.REFUSED)
+                .justification("justification default")
+                .reason("reason default")
                 .build();
     }
 }
