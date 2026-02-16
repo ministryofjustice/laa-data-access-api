@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -11,6 +12,7 @@ import uk.gov.justice.laa.dstew.access.api.IndividualsApi;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.Paging;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.IndividualsService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
@@ -37,7 +39,7 @@ public class IndividualsController implements IndividualsApi {
   @LogMethodArguments
   @LogMethodResponse
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public ResponseEntity<IndividualsResponse> getIndividuals(Integer page, Integer pageSize) {
+  public ResponseEntity<IndividualsResponse> getIndividuals(ServiceName serviceName, Integer page, Integer pageSize) {
     page = (page == null || page < 1) ? 1 : page;
     pageSize = (pageSize == null || pageSize < 1) ? 10 : Math.min(pageSize, 100);
     Page<Individual> individualsReturned = individualsService.getIndividuals(page - 1, pageSize);

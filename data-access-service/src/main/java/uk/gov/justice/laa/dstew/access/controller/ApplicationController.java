@@ -63,7 +63,10 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodResponse
   @LogMethodArguments
-  public ResponseEntity<Void> updateApplication(UUID id, @Valid ApplicationUpdateRequest applicationUpdateReq) {
+  public ResponseEntity<Void> updateApplication(
+          @NotNull ServiceName serviceName,
+          UUID id,
+          @Valid ApplicationUpdateRequest applicationUpdateReq) {
     service.updateApplication(id, applicationUpdateReq);
     return ResponseEntity.noContent().build();
   }
@@ -117,14 +120,14 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodResponse
   @LogMethodArguments
-  public ResponseEntity<Application> getApplicationById(UUID id) {
+  public ResponseEntity<Application> getApplicationById(ServiceName serviceName, UUID id) {
     return ResponseEntity.ok(service.getApplication(id));
   }
 
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> assignCaseworker(@Valid CaseworkerAssignRequest request) {
+  public ResponseEntity<Void> assignCaseworker(@NotNull ServiceName serviceName, @Valid CaseworkerAssignRequest request) {
     service.assignCaseworker(request.getCaseworkerId(),
                               request.getApplicationIds(),
                               request.getEventHistory());
@@ -134,7 +137,10 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> unassignCaseworker(UUID id, @Valid CaseworkerUnassignRequest request) {
+  public ResponseEntity<Void> unassignCaseworker(
+          @NotNull ServiceName serviceName,
+          UUID id,
+          @Valid CaseworkerUnassignRequest request) {
 
     service.unassignCaseworker(id, request.getEventHistory());
 
@@ -144,8 +150,10 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(UUID applicationId,
-      @Valid List<DomainEventType> eventType) {
+  public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(
+          @NotNull ServiceName serviceName,
+          UUID applicationId,
+          @Valid List<DomainEventType> eventType) {
     var events = domainService.getEvents(applicationId, eventType);
     return ResponseEntity.ok(ApplicationHistoryResponse.builder()
                                                  .events(events)
@@ -155,7 +163,9 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> makeDecision(UUID applicationId, @Valid MakeDecisionRequest request) {
+  public ResponseEntity<Void> makeDecision(@NotNull ServiceName serviceName,
+                                           UUID applicationId,
+                                           @Valid MakeDecisionRequest request) {
 
     service.makeDecision(applicationId, request);
 

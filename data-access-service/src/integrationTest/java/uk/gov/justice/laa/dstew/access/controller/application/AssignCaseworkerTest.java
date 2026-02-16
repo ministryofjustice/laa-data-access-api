@@ -6,6 +6,8 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -45,6 +47,48 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class AssignCaseworkerTest extends BaseIntegrationTest {
+
+    @ParameterizedTest
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
+    void givenValidAssignRequestAndInvalidHeader_whenAssignCaseworker_thenReturnBadRequest(
+            String serviceName
+    ) throws Exception {
+        verifyServiceNameHeader(serviceName);
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    void givenValidAssignRequestAndNoHeader_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
+        verifyServiceNameHeader(null);
+    }
+
+    private void verifyServiceNameHeader(String serviceName) throws Exception {
+        AssignCaseworkerCase assignCaseworkerCase = new AssignCaseworkerCase(
+                3,
+                3,
+                2);
+
+        List<ApplicationEntity> toAssignApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,
+                assignCaseworkerCase.numberOfApplicationsToAssign,
+                builder -> builder.caseworker(null));
+
+        List<ApplicationEntity> expectedAssignedApplications = toAssignApplications.stream()
+                .peek(application -> application.setCaseworker(BaseIntegrationTest.CaseworkerJohnDoe))
+                .toList();
+
+        CaseworkerAssignRequest caseworkerAssignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
+            builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
+                    .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()).reversed())
+                    .eventHistory(EventHistory.builder()
+                            .eventDescription("Assigning caseworker")
+                            .build());
+        });
+
+        MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest, ServiceNameHeader(serviceName));
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+    }
 
     @ParameterizedTest
     @MethodSource("validAssignCaseworkerRequestCases")

@@ -1,6 +1,9 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
@@ -29,6 +32,43 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 
 @ActiveProfiles("test")
 public class UnassignCaseworkerTest extends BaseIntegrationTest {
+
+    @ParameterizedTest
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
+    void givenValidUnassignRequestAndInvalidHeader_whenUnassignCaseworker_thenReturnBadRequest(
+            String serviceName
+    ) throws Exception {
+        verifyServiceNameHeader(serviceName);
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    void givenValidUnassignRequestAndNoHeader_whenUnassignCaseworker_thenReturnBadRequest() throws Exception {
+        verifyServiceNameHeader(null);
+    }
+
+    private void verifyServiceNameHeader(String serviceName) throws Exception {
+        ApplicationEntity toUnassignedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
+            builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
+        });
+
+        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class, builder -> {
+            builder.eventHistory(EventHistory.builder()
+                    .eventDescription("Unassigned Caseworker")
+                    .build());
+        });
+        ApplicationEntity expectedUnassignedApplication = toUnassignedApplication.toBuilder()
+                .caseworker(null)
+                .build();
+
+        MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER,
+                                    caseworkerUnassignRequest,
+                                    ServiceNameHeader(serviceName),
+                                    expectedUnassignedApplication.getId());
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+    }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
