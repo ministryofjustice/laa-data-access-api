@@ -28,23 +28,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEn
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
 import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
 
-import java.time.ZoneOffset;
-import java.util.List;
-import java.util.UUID;
-
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
-import uk.gov.justice.laa.dstew.access.utils.factory.PersistedDynamoDbFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.domainEvent.DomainEventDynamoDBFactory;
-import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventDynamoDBGenerator;
-
 @TestPropertySource(properties = "event.history.service.type=rds")
 public class GetDomainEventTest extends BaseIntegrationTest {
 
@@ -65,14 +48,14 @@ public class GetDomainEventTest extends BaseIntegrationTest {
         verifyBadServiceNameHeader(null);
     }
 
-    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
+  private void verifyBadServiceNameHeader(String serviceName) throws Exception {
 
-        MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH,
-                                    ServiceNameHeader(serviceName),
-                                    UUID.randomUUID());
+    MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH,
+        ServiceNameHeader(serviceName),
+        UUID.randomUUID());
 
-        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
-    }
+    applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+  }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
