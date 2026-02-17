@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -38,6 +40,44 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
 @ActiveProfiles("test")
 public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
+
+    @ParameterizedTest
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
+    void givenMakeDecisionRequestAndInvalidHeader_whenAssignDecision_thenReturnBadRequest(
+            String serviceName
+    ) throws Exception {
+        verifyBadServiceNameHeader(serviceName);
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    void givenMakeDecisionRequestAndNoHeader_whenAssignDecision_thenReturnBadRequest() throws Exception {
+        verifyBadServiceNameHeader(null);
+    }
+
+    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
+
+        MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
+            builder
+                    .userId(UUID.randomUUID())
+                    .eventHistory(EventHistory.builder()
+                            .eventDescription("refusal event")
+                            .build())
+                    .overallDecision(DecisionStatus.REFUSED)
+                    .proceedings(List.of(
+                            createMakeDecisionProceeding(UUID.randomUUID(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1")
+                    ))
+                    .autoGranted(true);
+        });
+
+        // when
+        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION,
+                                    makeDecisionRequest,
+                                    ServiceNameHeader(serviceName),
+                                    UUID.randomUUID());
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+    }
 
     private static Stream<Arguments> missingRefusalDetails() {
         return Stream.of(

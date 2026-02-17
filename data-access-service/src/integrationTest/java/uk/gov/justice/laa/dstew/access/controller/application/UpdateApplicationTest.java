@@ -6,6 +6,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
@@ -14,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -33,6 +36,35 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class UpdateApplicationTest extends BaseIntegrationTest {
+
+    @ParameterizedTest
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
+    void givenValidApplicationDataAndIncorrectHeader_whenUpdateApplication_thenReturnBadRequest(
+            String serviceName
+    ) throws Exception {
+        verifyBadServiceNameHeader(serviceName);
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    void givenValidApplicationDataAndIncorrectHeader_whenUpdateApplication_thenReturnBadRequest() throws Exception {
+        verifyBadServiceNameHeader(null);
+    }
+
+    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
+
+        ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create(builder -> {
+            builder.applicationContent(
+                    new HashMap<>(Map.of("test", "changed"))).status(ApplicationStatus.APPLICATION_SUBMITTED);
+        });
+
+        MvcResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION,
+                                    applicationUpdateRequest,
+                                    ServiceNameHeader(serviceName),
+                                    UUID.randomUUID());
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+    }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.WRITER)

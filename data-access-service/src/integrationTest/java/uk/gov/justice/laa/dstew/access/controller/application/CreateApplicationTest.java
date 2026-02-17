@@ -22,6 +22,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -33,6 +34,7 @@ import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 
@@ -98,6 +100,30 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED);
     return createdApplication;
   }
+
+    @ParameterizedTest
+    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
+    public void givenCreateNewApplication_whenCreateApplicationAndInvalidServiceNameHeader_thenReturnBadRequest(
+            String serviceName
+    ) throws Exception {
+      verifyBadServiceNameHeader(serviceName);
+    }
+
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenCreateNewApplication_whenCreateApplicationAndNoServiceNameHeader_thenReturnBadRequest() throws Exception {
+    verifyBadServiceNameHeader(null);
+  }
+
+  private void verifyBadServiceNameHeader(String serviceName) throws Exception {
+      ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
+
+      MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION,
+              applicationCreateRequest,
+              ServiceNameHeader(serviceName));
+      applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+    }
 
   @ParameterizedTest
   @MethodSource("applicationCreateRequestInvalidDataCases")
