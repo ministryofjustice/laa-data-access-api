@@ -18,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEn
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerAssignRequestGenerator;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,23 +35,20 @@ public class ReassignCaseworkerTest extends BaseIntegrationTest {
     void givenValidReassignRequestAndInvalidHeader_whenAssignCaseworker_thenReturnBadRequest(
             String serviceName
     ) throws Exception {
-        verifyServiceNameHeader(serviceName);
+        verifyBadServiceNameHeader(serviceName);
     }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
     void givenValidReassignRequestAndNoHeader_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
-        verifyServiceNameHeader(null);
+        verifyBadServiceNameHeader(null);
     }
 
-    private void verifyServiceNameHeader(String serviceName) throws Exception {
-        List<ApplicationEntity> toReassignedApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,
-                4,
-                builder -> builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe));
+    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
 
         CaseworkerAssignRequest caseworkerReassignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJaneDoe.getId())
-                    .applicationIds(toReassignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()))
+                    .applicationIds(List.of(UUID.randomUUID()))
                     .eventHistory(EventHistory.builder()
                             .eventDescription("Assigning caseworker")
                             .build());
@@ -60,7 +58,7 @@ public class ReassignCaseworkerTest extends BaseIntegrationTest {
                                     caseworkerReassignRequest,
                                     ServiceNameHeader(serviceName));
 
-        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
     }
 
     @Test

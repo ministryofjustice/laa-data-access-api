@@ -43,21 +43,16 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
     void givenValidApplicationDataAndIncorrectHeader_whenUpdateApplication_thenReturnBadRequest(
             String serviceName
     ) throws Exception {
-        verifyServiceNameHeader(serviceName);
+        verifyBadServiceNameHeader(serviceName);
     }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
     void givenValidApplicationDataAndIncorrectHeader_whenUpdateApplication_thenReturnBadRequest() throws Exception {
-        verifyServiceNameHeader(null);
+        verifyBadServiceNameHeader(null);
     }
-    private void verifyServiceNameHeader(String serviceName) throws Exception {
 
-        ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
-            builder.applicationContent(new HashMap<>(Map.of(
-                    "test", "content"
-            )));
-        });
+    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
 
         ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create(builder -> {
             builder.applicationContent(
@@ -67,9 +62,8 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
         MvcResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION,
                                     applicationUpdateRequest,
                                     ServiceNameHeader(serviceName),
-                                    applicationEntity.getId());
-        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
-
+                                    UUID.randomUUID());
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
     }
 
     @Test

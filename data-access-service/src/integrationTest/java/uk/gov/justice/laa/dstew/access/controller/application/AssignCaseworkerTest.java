@@ -59,12 +59,6 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
-    void givenValidAssignRequestAndBlankHeader_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
-        verifyBadServiceNameHeader("");
-    }
-
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
     void givenValidAssignRequestAndNoHeader_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }

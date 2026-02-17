@@ -43,12 +43,9 @@ public class GetCaseworkersTest extends BaseIntegrationTest {
     }
 
     private void verifyServiceNameHeader(String serviceName) throws Exception {
-        HttpHeadersBuilder headersBuilder = new HttpHeadersBuilder();
-        HttpHeaders httpHeaders = (serviceName == null) ? null : headersBuilder.withServiceName(serviceName).build();
+        MvcResult result = getUri(TestConstants.URIs.GET_CASEWORKERS, ServiceNameHeader(serviceName));
 
-        MvcResult result = getUri(TestConstants.URIs.GET_CASEWORKERS, httpHeaders);
-
-        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
     }
 
     @Test

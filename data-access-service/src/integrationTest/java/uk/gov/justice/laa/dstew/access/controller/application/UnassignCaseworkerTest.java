@@ -39,16 +39,16 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     void givenValidUnassignRequestAndInvalidHeader_whenUnassignCaseworker_thenReturnBadRequest(
             String serviceName
     ) throws Exception {
-        verifyServiceNameHeader(serviceName);
+        verifyBadServiceNameHeader(serviceName);
     }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
     void givenValidUnassignRequestAndNoHeader_whenUnassignCaseworker_thenReturnBadRequest() throws Exception {
-        verifyServiceNameHeader(null);
+        verifyBadServiceNameHeader(null);
     }
 
-    private void verifyServiceNameHeader(String serviceName) throws Exception {
+    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
         ApplicationEntity toUnassignedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
         });
@@ -67,7 +67,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
                                     ServiceNameHeader(serviceName),
                                     expectedUnassignedApplication.getId());
 
-        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
     }
 
     @Test

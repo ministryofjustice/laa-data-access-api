@@ -38,11 +38,10 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   private void verifyServiceNameHeader(String serviceName) throws Exception {
-    int page = 1, pageSize = 10,  totalEntities = 10;
+    int page = 1, pageSize = 10;
 
-    persistedIndividualFactory.createAndPersistMultiple(totalEntities, builder -> {});
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page="+ page + "&pageSize=" + pageSize, ServiceNameHeader(serviceName));
-    assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+    applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
   }
 
   @ParameterizedTest

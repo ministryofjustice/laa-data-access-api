@@ -42,31 +42,20 @@ public class GetApplicationTest extends BaseIntegrationTest {
     void givenApplicationDataAndIncorrectHeader_whenGetApplications_thenReturnBadRequest(
             String serviceName
     ) throws Exception {
-        verifyServiceNameHeader(serviceName);
+        verifyBadServiceNameHeader(serviceName);
     }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
     void givenApplicationDataAndNoHeader_whenGetApplication_thenReturnBadRequest() throws Exception {
-        verifyServiceNameHeader(null);
+        verifyBadServiceNameHeader(null);
     }
 
-    private void verifyServiceNameHeader(String serviceName) throws Exception {
+    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
 
-        DecisionEntity decision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
-            builder.overallDecision(DecisionStatus.REFUSED);
-        });
-        ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
-            builder.decision(decision);
-            builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
-        });
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, ServiceNameHeader(serviceName), UUID.randomUUID());
 
-        Application expectedApplication = createApplication(application);
-
-        // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, ServiceNameHeader(serviceName), expectedApplication.getApplicationId());
-
-        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
     }
 
     @Test

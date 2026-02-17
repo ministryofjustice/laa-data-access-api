@@ -44,17 +44,11 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @WithMockUser(authorities = TestConstants.Roles.READER)
-    @ValueSource(strings = {"invalid-header", "CIVIL-APPLY", "civil_apply"})
+    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenMakeDecisionRequestAndInvalidHeader_whenAssignDecision_thenReturnBadRequest(
             String serviceName
     ) throws Exception {
         verifyBadServiceNameHeader(serviceName);
-    }
-
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
-    void givenMakeDecisionRequestAndEmptyHeader_whenAssignDecision_thenReturnBadRequest() throws Exception {
-        verifyBadServiceNameHeader("");
     }
 
     @Test

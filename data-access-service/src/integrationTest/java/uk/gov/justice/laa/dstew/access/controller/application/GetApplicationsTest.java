@@ -103,23 +103,23 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     void givenValidApplicationsDataAndIncorrectHeader_whenGetApplications_thenReturnBadRequest(
             String serviceName
     ) throws Exception {
-        verifyServiceNameHeader(serviceName);
+        verifyBadServiceNameHeader(serviceName);
     }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
     void givenValidApplicationsDataAndNoHeader_whenGetApplications_thenReturnBadRequest() throws Exception {
-        verifyServiceNameHeader(null);
+        verifyBadServiceNameHeader(null);
     }
 
-    private void verifyServiceNameHeader(String serviceName) throws Exception {
+    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
         MvcResult result = getUri(
                 createUriForSorting(TestConstants.URIs.GET_APPLICATIONS,
                         SEARCH_SORTBY_SUBMITTED_PARAM,
                         SEARCH_ORDERBY_ASC_PARAM),
                 ServiceNameHeader(serviceName));
 
-        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
 
     }
 

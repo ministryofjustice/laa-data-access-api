@@ -42,22 +42,22 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     void givenApplicationWithDomainEventsAndNoHeader_whenApplicationHistorySearch_thenReturnBadRequest(
             String serviceName
     ) throws Exception {
-        verifyServiceNameHeader(serviceName);
+        verifyBadServiceNameHeader(serviceName);
     }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
     void givenApplicationWithDomainEventsAndInvalidHeader_whenApplicationHistorySearch_thenReturnBadRequest() throws Exception {
-        verifyServiceNameHeader(null);
+        verifyBadServiceNameHeader(null);
     }
 
-    private void verifyServiceNameHeader(String serviceName) throws Exception {
+    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
 
         MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH,
                                     ServiceNameHeader(serviceName),
-                                    persistedApplicationFactory.createAndPersist().getId());
+                                    UUID.randomUUID());
 
-        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
     }
 
     @Test

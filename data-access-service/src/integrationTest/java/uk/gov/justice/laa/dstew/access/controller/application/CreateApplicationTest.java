@@ -107,23 +107,22 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     public void givenCreateNewApplication_whenCreateApplicationAndInvalidServiceNameHeader_thenReturnBadRequest(
             String serviceName
     ) throws Exception {
-      verifyServiceNameHeader(serviceName);
+      verifyBadServiceNameHeader(serviceName);
     }
 
   @Test
   @WithMockUser(authorities = TestConstants.Roles.WRITER)
   public void givenCreateNewApplication_whenCreateApplicationAndNoServiceNameHeader_thenReturnBadRequest() throws Exception {
-    verifyServiceNameHeader(null);
+    verifyBadServiceNameHeader(null);
   }
 
-  private void verifyServiceNameHeader(String serviceName) throws Exception {
+  private void verifyBadServiceNameHeader(String serviceName) throws Exception {
       ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
 
       MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION,
               applicationCreateRequest,
               ServiceNameHeader(serviceName));
-
-      assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+      applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
     }
 
   @ParameterizedTest
