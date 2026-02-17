@@ -61,7 +61,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .userId(UUID.randomUUID())
-                    .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS)
                     .eventHistory(EventHistory.builder()
                             .eventDescription("refusal event")
                             .build())
