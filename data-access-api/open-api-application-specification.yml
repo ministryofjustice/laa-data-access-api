@@ -628,27 +628,19 @@ components:
         - GRANTED
         - REFUSED
 
-    RefusalDetails:
-      type: object
-      required:
-        - reason
-        - justification
-      properties:
-        reason:
-          type: string
-        justification:
-          type: string
-
     MeritsDecisionDetails:
       type: object
       required:
         - decision
-        - refusal
+        - reason
+        - justification
       properties:
         decision:
           $ref: "#/components/schemas/meritsDecisionStatus"
-        refusal:
-          $ref: "#/components/schemas/RefusalDetails"
+        reason:
+          type: string
+        justification:
+          type: string
 
     makeDecisionProceeding:
       type: object
@@ -666,7 +658,6 @@ components:
       type: object
       required:
         - userId
-        - applicationStatus
         - overallDecision
         - proceedings
         - eventHistory
@@ -675,8 +666,6 @@ components:
         userId:
           type: string
           format: uuid
-        applicationStatus:
-          $ref: "#/components/schemas/applicationStatus"
         overallDecision:
           $ref: "#/components/schemas/decisionStatus"
         proceedings:
