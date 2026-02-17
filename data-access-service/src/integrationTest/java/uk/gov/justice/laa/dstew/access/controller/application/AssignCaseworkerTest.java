@@ -54,37 +54,33 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     void givenValidAssignRequestAndInvalidHeader_whenAssignCaseworker_thenReturnBadRequest(
             String serviceName
     ) throws Exception {
-        verifyServiceNameHeader(serviceName);
+        verifyBadServiceNameHeader(serviceName);
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    void givenValidAssignRequestAndBlankHeader_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
+        verifyBadServiceNameHeader("");
     }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
     void givenValidAssignRequestAndNoHeader_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
-        verifyServiceNameHeader(null);
+        verifyBadServiceNameHeader(null);
     }
 
-    private void verifyServiceNameHeader(String serviceName) throws Exception {
-        AssignCaseworkerCase assignCaseworkerCase = new AssignCaseworkerCase(3,3,2);
-
-        List<ApplicationEntity> toAssignApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,
-                assignCaseworkerCase.numberOfApplicationsToAssign,
-                builder -> builder.caseworker(null));
-
-        List<ApplicationEntity> expectedAssignedApplications = toAssignApplications.stream()
-                .peek(application -> application.setCaseworker(BaseIntegrationTest.CaseworkerJohnDoe))
-                .toList();
+    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
 
         CaseworkerAssignRequest caseworkerAssignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
-                    .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()).reversed())
+                    .applicationIds(List.of(UUID.randomUUID()))
                     .eventHistory(EventHistory.builder()
                             .eventDescription("Assigning caseworker")
                             .build());
         });
 
         MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest, ServiceNameHeader(serviceName));
-
-        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
     }
 
     @ParameterizedTest
