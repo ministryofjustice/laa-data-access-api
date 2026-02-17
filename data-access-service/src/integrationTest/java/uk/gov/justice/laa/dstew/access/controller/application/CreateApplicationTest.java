@@ -127,7 +127,6 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
           builder
               .userId(CaseworkerJohnDoe.getId())
-              .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
               .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
               .eventHistory(EventHistory.builder().build())
               .proceedings(List.of(
@@ -374,12 +373,8 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         .meritsDecision(
             MeritsDecisionDetails.builder()
                 .decision(meritsDecisionStatus)
-                .refusal(
-                    RefusalDetails.builder()
-                        .justification(justification)
-                        .reason(reason)
-                        .build()
-                )
+                .justification(justification)
+                .reason(reason)
                 .build()
         )
         .build();
