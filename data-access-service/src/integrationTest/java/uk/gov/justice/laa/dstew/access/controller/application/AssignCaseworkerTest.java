@@ -64,10 +64,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     }
 
     private void verifyServiceNameHeader(String serviceName) throws Exception {
-        AssignCaseworkerCase assignCaseworkerCase = new AssignCaseworkerCase(
-                3,
-                3,
-                2);
+        AssignCaseworkerCase assignCaseworkerCase = new AssignCaseworkerCase(3,3,2);
 
         List<ApplicationEntity> toAssignApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,
                 assignCaseworkerCase.numberOfApplicationsToAssign,
