@@ -2,18 +2,31 @@ package uk.gov.justice.laa.dstew.access.model;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.util.Map;
 import java.time.ZoneOffset;
+import java.util.Map;
 import lombok.Builder;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDB;
+import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDb;
 
+/**
+ * Represents a domain event in the application.
+ * This record encapsulates the details of an event, including its type,
+ * associated application ID, timestamp, description, caseworker ID, domain event ID, and request payload.
+ * It provides static methods to convert between different representations of domain events,
+ * such as from DynamoDB entities and attribute maps.
+ */
 @Builder
 public record Event(DomainEventType eventType, String applicationId, Instant timestamp, String description, String caseworkerId,
                     java.util.UUID domainEventId, String requestPayload) {
 
-  public static Event fromDynamoEntity(DomainEventDynamoDB entity) {
+  /**
+   * Converts a DomainEventDynamoDB entity to an Event record.
+   *
+   * @param entity the DomainEventDynamoDB entity to convert
+   * @return an Event record containing the data from the DomainEventDynamoDB entity
+   */
+  public static Event fromDynamoEntity(DomainEventDynamoDb entity) {
     if (entity == null) {
       return null;
     }
@@ -27,6 +40,12 @@ public record Event(DomainEventType eventType, String applicationId, Instant tim
         .build();
   }
 
+  /**
+   * Converts a map of DynamoDB attribute values to an Event record.
+   *
+   * @param map the map of DynamoDB attribute values to convert
+   * @return an Event record containing the data from the map of DynamoDB attribute values
+   */
   public static Event fromAttributeValueMap(Map<String, AttributeValue> map) {
     if (map == null || map.isEmpty()) {
       return null;
@@ -40,6 +59,12 @@ public record Event(DomainEventType eventType, String applicationId, Instant tim
         .build();
   }
 
+  /**
+   * Converts an Event record to an ApplicationDomainEvent entity.
+   *
+   * @param event the Event record to convert
+   * @return an ApplicationDomainEvent entity containing the data from the Event record
+   */
   public static ApplicationDomainEvent fromEvent(Event event) {
     ApplicationDomainEvent domainEvent = new ApplicationDomainEvent();
     domainEvent.setApplicationId(java.util.UUID.fromString(event.applicationId()));
@@ -51,6 +76,12 @@ public record Event(DomainEventType eventType, String applicationId, Instant tim
 
   }
 
+  /**
+   * Converts a DomainEventEntity to an Event record.
+   *
+   * @param domainEventEntity the DomainEventEntity to convert
+   * @return an Event record containing the data from the DomainEventEntity
+   */
   public static Event convertToEvent(DomainEventEntity domainEventEntity) {
     return Event.builder()
         .eventType(domainEventEntity.getType())
@@ -62,6 +93,7 @@ public record Event(DomainEventType eventType, String applicationId, Instant tim
         .domainEventId(domainEventEntity.getId() != null ? domainEventEntity.getId() : java.util.UUID.randomUUID())
         .build();
   }
+
   private static String extractEventIdFromPk(String pk) {
     return pk != null && pk.contains("#") ? pk.split("#", 2)[1] : pk;
   }

@@ -7,6 +7,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 
+/**
+ * Service interface for retrieving the history of domain events associated with an application.
+ * Provides a method to fetch events based on application ID and event types, ensuring proper authorization.
+ */
 public interface EventHistoryService {
 
   /**

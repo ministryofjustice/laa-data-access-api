@@ -2,22 +2,22 @@ package uk.gov.justice.laa.dstew.access.utils.generator.domainEvent;
 
 import java.time.Instant;
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDB;
+import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDb;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
 /**
  * Generator for creating DomainEventDynamoDB instances with default values for testing purposes.
  */
-public class DomainEventDynamoDBGenerator
-    extends BaseGenerator<DomainEventDynamoDB, DomainEventDynamoDB.DomainEventDynamoDBBuilder> {
-  public DomainEventDynamoDBGenerator() {
-    super(DomainEventDynamoDB::toBuilder, DomainEventDynamoDB.DomainEventDynamoDBBuilder::build);
+public class DomainEventDynamoDbGenerator
+    extends BaseGenerator<DomainEventDynamoDb, DomainEventDynamoDb.DomainEventDynamoDbBuilder> {
+  public DomainEventDynamoDbGenerator() {
+    super(DomainEventDynamoDb::toBuilder, DomainEventDynamoDb.DomainEventDynamoDbBuilder::build);
   }
 
   @Override
-  public DomainEventDynamoDB createDefault() {
-    return DomainEventDynamoDB.builder()
+  public DomainEventDynamoDb createDefault() {
+    return DomainEventDynamoDb.builder()
         .applicationId(UUID.randomUUID().toString())
         .type(DomainEventType.APPLICATION_CREATED.name())
         .s3location("s3://test-bucket/test-file.json")

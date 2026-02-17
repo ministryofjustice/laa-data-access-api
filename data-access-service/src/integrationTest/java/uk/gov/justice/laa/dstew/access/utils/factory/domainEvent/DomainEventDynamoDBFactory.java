@@ -1,20 +1,20 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.domainEvent;
 
-import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDB;
+import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDb;
 import uk.gov.justice.laa.dstew.access.utils.factory.DynamoDbFactory;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventDynamoDBGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventDynamoDbGenerator;
 
 import java.util.function.Consumer;
 
-public class DomainEventDynamoDBFactory implements DynamoDbFactory<DomainEventDynamoDB, DomainEventDynamoDB.DomainEventDynamoDBBuilder> {
+public class DomainEventDynamoDBFactory implements DynamoDbFactory<DomainEventDynamoDb, DomainEventDynamoDb.DomainEventDynamoDbBuilder> {
     @Override
-    public DomainEventDynamoDB create() {
-        return DataGenerator.createDefault(DomainEventDynamoDBGenerator.class);
+    public DomainEventDynamoDb create() {
+        return DataGenerator.createDefault(DomainEventDynamoDbGenerator.class);
     }
 
     @Override
-    public DomainEventDynamoDB create(Consumer<DomainEventDynamoDB.DomainEventDynamoDBBuilder> customiser) {
-        return DataGenerator.createDefault(DomainEventDynamoDBGenerator.class, customiser);
+    public DomainEventDynamoDb create(Consumer<DomainEventDynamoDb.DomainEventDynamoDbBuilder> customiser) {
+        return DataGenerator.createDefault(DomainEventDynamoDbGenerator.class, customiser);
     }
 }

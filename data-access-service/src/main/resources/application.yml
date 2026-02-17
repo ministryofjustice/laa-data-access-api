@@ -76,11 +76,11 @@ aws:
   access-key: ${AWS_ACCESS_KEY:test}
   secret-key: ${AWS_SECRET_KEY:test}
   dynamodb:
-    table-name: ${AWS_DYNAMODB_TABLE_NAME:EventIndexTable}
+    table-name: domain-events
   s3:
-    bucket-name: ${AWS_S3_BUCKET_NAME:laa-data-stewardship-access-bucket}
+    bucket-name: s3-bucket-output
   event:
     history:
-      enabled: true
+      enabled: false
 
 # End of file
