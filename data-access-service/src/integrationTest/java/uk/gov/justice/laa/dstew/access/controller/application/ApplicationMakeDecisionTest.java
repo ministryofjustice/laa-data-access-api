@@ -44,41 +44,37 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @WithMockUser(authorities = TestConstants.Roles.READER)
-    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
+    @ValueSource(strings = {"invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenMakeDecisionRequestAndInvalidHeader_whenAssignDecision_thenReturnBadRequest(
             String serviceName
     ) throws Exception {
-        verifyServiceNameHeader(serviceName);
+        verifyBadServiceNameHeader(serviceName);
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    void givenMakeDecisionRequestAndEmptyHeader_whenAssignDecision_thenReturnBadRequest() throws Exception {
+        verifyBadServiceNameHeader("");
     }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
     void givenMakeDecisionRequestAndNoHeader_whenAssignDecision_thenReturnBadRequest() throws Exception {
-        verifyServiceNameHeader(null);
+        verifyBadServiceNameHeader(null);
     }
 
-    private void verifyServiceNameHeader(String serviceName) throws Exception {
-        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
-            builder.applicationContent(new HashMap<>(Map.of(
-                    "test", "content"
-            )));
-            builder.isAutoGranted(false);
-            builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
-        });
-
-        ProceedingEntity grantedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-                builder -> builder.applicationId(applicationEntity.getId()));
+    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
-                    .userId(CaseworkerJohnDoe.getId())
+                    .userId(UUID.randomUUID())
                     .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS)
                     .eventHistory(EventHistory.builder()
                             .eventDescription("refusal event")
                             .build())
                     .overallDecision(DecisionStatus.REFUSED)
                     .proceedings(List.of(
-                            createMakeDecisionProceeding(grantedProceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1")
+                            createMakeDecisionProceeding(UUID.randomUUID(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1")
                     ))
                     .autoGranted(true);
         });
@@ -87,8 +83,8 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION,
                                     makeDecisionRequest,
                                     ServiceNameHeader(serviceName),
-                                    applicationEntity.getId());
-        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+                                    UUID.randomUUID());
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
     }
 
     private static Stream<Arguments> missingRefusalDetails() {
