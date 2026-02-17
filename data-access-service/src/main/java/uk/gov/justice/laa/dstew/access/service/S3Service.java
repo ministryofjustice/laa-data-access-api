@@ -22,7 +22,6 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
-import uk.gov.justice.laa.dstew.access.model.S3DownloadResult;
 import uk.gov.justice.laa.dstew.access.model.S3UploadResult;
 
 
@@ -42,7 +41,7 @@ public class S3Service {
   }
 
   /**
-   * Format an S3 URI for the given bucket and key: s3://bucket/key
+   * Format an S3 URI for the given bucket and key: s3://bucket/key.
    */
   private String formatS3Uri(String bucketName, String key) {
     return String.format("s3://%s/%s", bucketName, key);
@@ -67,15 +66,14 @@ public class S3Service {
       logger.error("S3 getObject failed for s3://{}/{}: {}", bucketName, key,
           e.awsErrorDetails() == null ? e.getMessage() : e.awsErrorDetails().errorMessage(), e);
       return null;
-    }
-    catch (IOException e) {
+    } catch (IOException e) {
       logger.error("Failed to read S3 object stream for s3://{}/{}: {}", bucketName, key, e.getMessage(), e);
       return null;
     }
   }
 
   /**
-   * Read the full ResponseInputStream<GetObjectResponse> into a UTF-8 string.
+   * Read the full ResponseInputStream GetObjectResponse  into a UTF-8 string.
    * This method closes the stream.
    */
   public String readResponseToString(ResponseInputStream<GetObjectResponse> resp) {
@@ -119,15 +117,39 @@ public class S3Service {
       PutObjectResponse response = s3Client.putObject(request, RequestBody.fromBytes(payload));
 
       boolean success = response.sdkHttpResponse() != null && response.sdkHttpResponse().isSuccessful();
-      String eTag = response.eTag();
+      String etag = response.eTag();
       String url = String.format("s3://%s/%s", bucketName, key);
 
-      logger.debug("Uploaded object to {} (eTag={}, success={})", url, eTag, success);
+      logger.debug("Uploaded object to {} (eTag={}, success={})", url, etag, success);
 
-      return new S3UploadResult(bucketName, key, eTag, success, url);
+      return new S3UploadResult(bucketName, key, etag, success, url);
     } catch (S3Exception e) {
       logger.error("S3 upload failed for s3://{}/{}: {}", bucketName, key,
           e.awsErrorDetails() == null ? e.getMessage() : e.awsErrorDetails().errorMessage(), e);
+      return new S3UploadResult(bucketName, key, null, false, String.format("s3://%s/%s", bucketName, key));
+    }
+  }
+
+  /**
+   * Uploads a generic Object payload to S3. Supported payload types:
+   * - byte[]
+   * - String (UTF-8)
+   * - InputStream (will be fully read into memory)
+   * - File / Path
+   * - Serializable objects (Java serialization)
+   * - fallback to payload.toString() as UTF-8
+   * Be careful with very large streams/objects as this method buffers into memory.
+   */
+  public S3UploadResult upload(Object payload, String bucketName, String key) {
+    Objects.requireNonNull(payload, "payload must not be null");
+    Objects.requireNonNull(bucketName, "bucketName must not be null");
+    Objects.requireNonNull(key, "key must not be null");
+
+    try {
+      byte[] bytes = toBytes(payload);
+      return upload(bytes, bucketName, key);
+    } catch (Exception e) {
+      logger.error("Failed to convert payload to bytes for upload to s3://{}/{}: {}", bucketName, key, e.getMessage(), e);
       return new S3UploadResult(bucketName, key, null, false, String.format("s3://%s/%s", bucketName, key));
     }
   }
@@ -153,30 +175,6 @@ public class S3Service {
     }
   }
 
-  /**
-   * Uploads a generic Object payload to S3. Supported payload types:
-   * - byte[]
-   * - String (UTF-8)
-   * - InputStream (will be fully read into memory)
-   * - File / Path
-   * - Serializable objects (Java serialization)
-   * - fallback to payload.toString() as UTF-8
-   * <p>
-   * Be careful with very large streams/objects as this method buffers into memory.
-   */
-  public S3UploadResult upload(Object payload, String bucketName, String key) {
-    Objects.requireNonNull(payload, "payload must not be null");
-    Objects.requireNonNull(bucketName, "bucketName must not be null");
-    Objects.requireNonNull(key, "key must not be null");
-
-    try {
-      byte[] bytes = toBytes(payload);
-      return upload(bytes, bucketName, key);
-    } catch (Exception e) {
-      logger.error("Failed to convert payload to bytes for upload to s3://{}/{}: {}", bucketName, key, e.getMessage(), e);
-      return new S3UploadResult(bucketName, key, null, false, String.format("s3://%s/%s", bucketName, key));
-    }
-  }
 
   private byte[] toBytes(Object payload) throws IOException {
     if (payload == null) {
@@ -218,13 +216,19 @@ public class S3Service {
           return baos.toByteArray();
         }
       }
-      // last-resort fallback: toString()
     }
 
     // Fallback to toString()
     return payload.toString().getBytes(StandardCharsets.UTF_8);
   }
 
+  /**
+   * Convenience method to download S3 object content as a string using an s3://bucket/key URL.
+   *
+   * @param s3Url S3 URL in the format s3://bucket/key
+   * @return object content as a UTF-8 string, or null if the object cannot be read
+   * @throws IllegalArgumentException if the s3Url is null or not in the correct format
+   */
   public String downloadEventsAsStrings(String s3Url) {
     s3Url = Objects.requireNonNull(s3Url, "s3Url must not be null");
     if (!s3Url.startsWith("s3://")) {
@@ -238,55 +242,5 @@ public class S3Service {
     String bucket = path.substring(0, slashIndex);
     String key = path.substring(slashIndex + 1);
     return downloadObjectAsString(bucket, key);
-  }
-
-  /**
-   * Downloads an object from S3 and returns details about the downloaded file.
-   *
-   * @param bucket the S3 bucket name
-   * @param key    the object key
-   * @return S3DownloadResult with content, metadata and success flag
-   */
-  public S3DownloadResult download(String bucket, String key) {
-    Objects.requireNonNull(bucket, "bucket must not be null");
-    Objects.requireNonNull(key, "key must not be null");
-
-    ResponseInputStream<GetObjectResponse> resp = null;
-    try {
-      GetObjectRequest request = GetObjectRequest.builder()
-          .bucket(bucket)
-          .key(key)
-          .build();
-
-      resp = s3Client.getObject(request);
-      GetObjectResponse response = resp.response();
-
-      byte[] content = toBytes(resp, response.contentLength() != null ? response.contentLength() : -1);
-
-      String eTag = response.eTag();
-      String contentType = response.contentType();
-      Long contentLength = response.contentLength();
-      String s3Url = formatS3Uri(bucket, key);
-
-      logger.debug("Downloaded object from {} (eTag={}, contentType={}, contentLength={})",
-          s3Url, eTag, contentType, contentLength);
-
-      return new S3DownloadResult(bucket, key, eTag, true, s3Url, contentType, contentLength, content);
-    } catch (S3Exception e) {
-      logger.error("S3 download failed for s3://{}/{}: {}", bucket, key,
-          e.awsErrorDetails() == null ? e.getMessage() : e.awsErrorDetails().errorMessage(), e);
-      return S3DownloadResult.failure(bucket, key);
-    } catch (IOException e) {
-      logger.error("Failed to read S3 object stream for s3://{}/{}: {}", bucket, key, e.getMessage(), e);
-      return S3DownloadResult.failure(bucket, key);
-    } finally {
-      if (resp != null) {
-        try {
-          resp.close();
-        } catch (IOException ioe) {
-          logger.warn("Failed to close S3 response stream for s3://{}/{}: {}", bucket, key, ioe.getMessage());
-        }
-      }
-    }
   }
 }

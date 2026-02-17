@@ -13,6 +13,9 @@ import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.service.EventHistoryService;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
+/**
+ * RDS implementation of the EventHistoryService. Retrieves domain events from a relational database using JPA.
+ */
 public class EventHistoryServiceRdsImpl implements EventHistoryService {
 
   private final DomainEventRepository domainEventRepository;

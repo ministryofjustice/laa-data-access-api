@@ -2,10 +2,8 @@ package uk.gov.justice.laa.dstew.access.integration;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
-import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDB;
+import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDb;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.LocalStackTestUtility;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedDynamoDbFactory;
@@ -15,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class DynamoDbFactoryIntegrationTest extends BaseIntegrationTest {
 
-    private static final TableSchema<DomainEventDynamoDB> TABLE_SCHEMA = TableSchema.fromBean(DomainEventDynamoDB.class);
+    private static final TableSchema<DomainEventDynamoDb> TABLE_SCHEMA = TableSchema.fromBean(DomainEventDynamoDb.class);
   private LocalStackTestUtility localStackTestUtility;
 
   @BeforeEach
@@ -28,12 +26,12 @@ public class DynamoDbFactoryIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void testCreateAndPersistDomainEvent() {
-        PersistedDynamoDbFactory<DomainEventDynamoDBFactory, DomainEventDynamoDB, DomainEventDynamoDB.DomainEventDynamoDBBuilder> persistedFactory =
-                new PersistedDynamoDbFactory<>(dynamoDbEnhancedClient, new DomainEventDynamoDBFactory(), DomainEventDynamoDB.class, "events");
+        PersistedDynamoDbFactory<DomainEventDynamoDBFactory, DomainEventDynamoDb, DomainEventDynamoDb.DomainEventDynamoDbBuilder> persistedFactory =
+                new PersistedDynamoDbFactory<>(dynamoDbEnhancedClient, new DomainEventDynamoDBFactory(), DomainEventDynamoDb.class, "events");
 
-        DomainEventDynamoDB event = persistedFactory.createAndPersist(builder -> builder.description("Custom description"));
+        DomainEventDynamoDb event = persistedFactory.createAndPersist(builder -> builder.description("Custom description"));
 
-        DomainEventDynamoDB retrievedEvent = dynamoDbEnhancedClient.table("events", TABLE_SCHEMA)
+        DomainEventDynamoDb retrievedEvent = dynamoDbEnhancedClient.table("events", TABLE_SCHEMA)
                 .getItem(r -> r.key(k -> k.partitionValue(event.getPk()).sortValue(event.getSk())));
 
         assertThat(retrievedEvent).isNotNull();

@@ -1,5 +1,15 @@
 package uk.gov.justice.laa.dstew.access.service.domainEvent;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
@@ -12,8 +22,12 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.service.EventHistoryService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
+
 
 @TestPropertySource(properties = "event.history.service.type=rds")
+
 public class GetEventsTest extends BaseServiceTest {
 
   @Autowired
@@ -23,13 +37,8 @@ public class GetEventsTest extends BaseServiceTest {
   void givenExpectedDomainEvents_whenGetEvents_thenReturnDomainEventsInCreatedAtOrder() {
     // given
     setSecurityContext(TestConstants.Roles.READER);
-    List<DomainEventEntity> generatedDomainEvents = domainEventFactory.createMultipleDefault(20);
-    @Test
-    void givenExpectedDomainEvents_whenGetEvents_thenReturnDomainEventsInCreatedAtOrder() {
-        // given
-        setSecurityContext(TestConstants.Roles.READER);
-        List<DomainEventEntity> generatedDomainEvents = DataGenerator.createMultipleDefault(
-                DomainEventGenerator.class,20);
+    List<DomainEventEntity> generatedDomainEvents = DataGenerator.createMultipleDefault(
+        DomainEventGenerator.class, 20);
 
     List<DomainEventEntity> expectedDomainEvents = generatedDomainEvents.stream()
         .sorted((de1, de2) -> de2.getCreatedAt().compareTo(de1.getCreatedAt()))

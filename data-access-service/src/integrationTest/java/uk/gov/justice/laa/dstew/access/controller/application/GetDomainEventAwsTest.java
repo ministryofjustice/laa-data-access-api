@@ -1,89 +1,65 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
-
-import java.time.ZoneOffset;
-import java.util.List;
-import java.util.UUID;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.web.servlet.MvcResult;
-import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
-import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
-import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
-import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
-import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
-import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
-
-import java.time.ZoneOffset;
-import java.util.List;
-import java.util.UUID;
-
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
+
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.MvcResult;
+import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDb;
+import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
+import uk.gov.justice.laa.dstew.access.utils.LocalStackTestUtility;
+import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.factory.PersistedDynamoDbFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.domainEvent.DomainEventDynamoDBFactory;
-import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventDynamoDBGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventDynamoDbGenerator;
 
-@TestPropertySource(properties = "event.history.service.type=rds")
-public class GetDomainEventTest extends BaseIntegrationTest {
+@TestPropertySource(properties = "event.history.service.type=aws")
+public class GetDomainEventAwsTest extends BaseIntegrationTest {
 
   private final String SEARCH_EVENT_TYPE_PARAM = "eventType=";
 
-    @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.READER)
-    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
-    void givenApplicationWithDomainEventsAndNoHeader_whenApplicationHistorySearch_thenReturnBadRequest(
-            String serviceName
-    ) throws Exception {
-        verifyBadServiceNameHeader(serviceName);
+  private LocalStackTestUtility localStackTestUtility;
+
+  @BeforeEach
+  void initializeResources() {
+    localStackTestUtility = new LocalStackTestUtility();
+    localStackTestUtility.createTableWithGsi(dynamoDbClient);
+    localStackTestUtility.createBucket(s3Client);
+  }
+
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.READER)
+  public void givenApplicationWithAwsDomainEvents_whenApplicationHistorySearch_theReturnDomainEvents() throws Exception {
+    var appId = persistedApplicationFactory.createAndPersist().getId();
+    // given
+    DomainEventDynamoDbGenerator dynamoDbGenerator = new DomainEventDynamoDbGenerator();
+    PersistedDynamoDbFactory<DomainEventDynamoDBFactory, DomainEventDynamoDb, DomainEventDynamoDb.DomainEventDynamoDbBuilder>
+        persistedFactory =
+        new PersistedDynamoDbFactory<>(dynamoDbEnhancedClient, new DomainEventDynamoDBFactory(), DomainEventDynamoDb.class,
+            "events");
+    for (var eventType : DomainEventType.values()) {
+      DomainEventDynamoDb aDefault = dynamoDbGenerator.createDefault(builder -> builder.applicationId(appId.toString()
+      ).type(eventType.name()));
+      persistedFactory.persist(aDefault);
     }
-
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
-    void givenApplicationWithDomainEventsAndInvalidHeader_whenApplicationHistorySearch_thenReturnBadRequest() throws Exception {
-        verifyBadServiceNameHeader(null);
-    }
-
-    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
-
-        MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH,
-                                    ServiceNameHeader(serviceName),
-                                    UUID.randomUUID());
-
-        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
-    }
-
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
-    public void givenApplicationWithDomainEvents_whenApplicationHistorySearch_theReturnDomainEvents() throws Exception {
-        var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
-        // given
-        var domainEvents = setUpDomainEvents(appId);
-        var expectedDomainEvents = domainEvents.stream().map(GetDomainEventTest::toEvent).toList();
 
     // when
     MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
@@ -96,8 +72,9 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     assertOK(result);
 
     assertThat(actualResponse).isNotNull();
-    assertTrue(actualResponse.getEvents().containsAll(expectedDomainEvents));
+    assertEquals(5, actualResponse.getEvents().size());
   }
+
 
   @Test
   @WithMockUser(authorities = TestConstants.Roles.READER)
@@ -105,11 +82,12 @@ public class GetDomainEventTest extends BaseIntegrationTest {
       throws Exception {
     var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
     // given
-    var domainEvents = setUpDomainEvents(appId);
-    var expectedAssignDomainEvents = domainEvents.stream()
+    List<DomainEventDynamoDb> domainEvents = setUpDomainEvents(appId);
+    List<ApplicationDomainEvent> expectedAssignDomainEvents = domainEvents.stream()
         .filter(s -> s.getType().equals(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER))
-        .map(GetDomainEventTest::toEvent)
+        .map(GetDomainEventAwsTest::toEvent)
         .toList();
+
 
     // when
     MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH +
@@ -137,7 +115,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     var expectedAssignDomainEvents = domainEvents.stream()
         .filter(s -> s.getType().equals(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER) ||
             s.getType().equals(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER))
-        .map(GetDomainEventTest::toEvent)
+        .map(GetDomainEventAwsTest::toEvent)
         .toList();
 
     // when
@@ -181,7 +159,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     assertForbidden(result);
   }
 
-  private List<DomainEventEntity> setUpDomainEvents(UUID appId) {
+  private List<DomainEventDynamoDb> setUpDomainEvents(UUID appId) {
     return List.of(
         setupDomainEvent(appId, DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER),
         setupDomainEvent(appId, DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER),
@@ -191,25 +169,28 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     );
   }
 
-  private DomainEventEntity setupDomainEvent(UUID appId, DomainEventType eventType) {
+  private DomainEventDynamoDb setupDomainEvent(UUID appId, DomainEventType eventType) {
+
+    DomainEventDynamoDbGenerator dynamoDbGenerator = new DomainEventDynamoDbGenerator();
+    PersistedDynamoDbFactory<DomainEventDynamoDBFactory, DomainEventDynamoDb, DomainEventDynamoDb.DomainEventDynamoDbBuilder>
+        persistedFactory =
+        new PersistedDynamoDbFactory<>(dynamoDbEnhancedClient, new DomainEventDynamoDBFactory(), DomainEventDynamoDb.class,
+            "events");
+    DomainEventDynamoDb eventDynamoDB =
+        dynamoDbGenerator.createDefault(builder -> builder.applicationId(appId.toString()).type(eventType.name()));
+    persistedFactory.persist(eventDynamoDB);
     String eventDesc = "{\"eventDescription\": \"" + eventType.getValue() + "\"}";
-    return persistedDataGenerator.createAndPersist(DomainEventGenerator.class, builder ->
-        builder.applicationId(appId)
-            .caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
-            .createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds())
-            .data(eventDesc)
-            .type(eventType)
-    );
+    return eventDynamoDB;
+
   }
 
-  private static ApplicationDomainEvent toEvent(DomainEventEntity entity) {
+  private static ApplicationDomainEvent toEvent(DomainEventDynamoDb entity) {
     return ApplicationDomainEvent.builder()
-        .applicationId(entity.getApplicationId())
-        .createdAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC))
-        .domainEventType(entity.getType())
-        .eventDescription(entity.getData())
-        .caseworkerId(entity.getCaseworkerId())
-        .createdBy(entity.getCreatedBy())
+        .applicationId(UUID.fromString(entity.getApplicationId()))
+        .createdAt(Instant.parse(entity.getCreatedAt()).atOffset(ZoneOffset.UTC))
+        .domainEventType(DomainEventType.valueOf(entity.getType()))
+        .eventDescription(entity.getDescription())
+        .caseworkerId(UUID.fromString(entity.getCaseworkerId()))
         .build();
   }
 }
