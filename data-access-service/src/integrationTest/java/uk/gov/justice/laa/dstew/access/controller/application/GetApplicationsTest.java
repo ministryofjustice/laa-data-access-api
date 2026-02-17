@@ -13,6 +13,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -156,6 +158,57 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     assertThat(actualApplications.size()).isEqualTo(expectedApplications.size());
     assertEquals(actualApplications.getFirst().getApplicationId(), expectedApplications.getFirst().getId());
     assertEquals(actualApplications.getLast().getApplicationId(), expectedApplications.getLast().getId());
+  }
+
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.READER)
+  void givenApplicationWithLinkedApplications_whenGetApplicationsForLeadApplication_thenReturnLinkedApplicationDetails() throws Exception {
+    //given
+    final ApplicationEntity linkedApplication1 = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
+      builder.laaReference("laa-001");
+    }
+    );
+    final ApplicationEntity linkedApplication2 = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
+      builder.laaReference("laa-002");
+    }
+    );
+    final ApplicationEntity leadApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder ->
+    {
+        builder.linkedApplications(Set.of(linkedApplication1, linkedApplication2));
+    });
+
+    // when
+    MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
+    ApplicationSummaryResponse response = deserialise(result, ApplicationSummaryResponse.class);
+    List<ApplicationSummary> actual = response.getApplications();
+
+    var leadApplicationSummary = findSingleFromApplicationSummaryList(actual, leadApplication.getId());
+    var linkedApplicationSummary1 = findSingleFromApplicationSummaryList(actual, linkedApplication1.getId());
+    var linkedApplicationSummary2 = findSingleFromApplicationSummaryList(actual, linkedApplication2.getId());
+
+    assertGivenApplicationHasLinkedApplications(leadApplicationSummary, Set.of(linkedApplication1, linkedApplication2));
+    assertGivenApplicationHasLinkedApplications(linkedApplicationSummary1, Set.of(leadApplication, linkedApplication2));
+    assertGivenApplicationHasLinkedApplications(linkedApplicationSummary2, Set.of(linkedApplication1, leadApplication));
+  }
+
+  private static ApplicationSummary findSingleFromApplicationSummaryList(List<ApplicationSummary> applications, UUID id) {
+    var filtered = applications.stream().filter(app -> app.getApplicationId().equals(id)).toList();
+    assertEquals(1, filtered.size());
+    return filtered.getFirst();
+  }
+
+  private static void assertGivenApplicationHasLinkedApplications(ApplicationSummary summary, Set<ApplicationEntity> shouldBeLinked) {
+    List<LinkedApplicationSummary> expected = shouldBeLinked.stream().map(GetApplicationsTest::convertEntityToSummary).toList();
+    List<LinkedApplicationSummary> actual = summary.getLinkedApplications();
+    assertArrayEquals(expected.toArray(), actual.toArray());
+  }
+
+  private static LinkedApplicationSummary convertEntityToSummary(ApplicationEntity entity) {
+    return LinkedApplicationSummary.builder()
+                                   .applicationId(entity.getId())
+                                   .laaReference(entity.getLaaReference())
+                                   .isLead(entity.isLead())
+                                   .build();
   }
 
   @Test
