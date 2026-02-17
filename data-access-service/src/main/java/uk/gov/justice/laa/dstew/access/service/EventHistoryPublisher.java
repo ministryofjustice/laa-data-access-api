@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.List;
@@ -16,11 +15,15 @@ import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.Event;
-import uk.gov.justice.laa.dstew.access.model.S3DownloadResult;
 import uk.gov.justice.laa.dstew.access.model.S3UploadResult;
 
+/**
+ * Service responsible for processing domain events: uploading event data to S3 and saving event metadata to DynamoDB.
+ * Also provides functionality to retrieve event history for a given application ID.
+ */
 @Slf4j
 @Component
 public class EventHistoryPublisher {
@@ -32,6 +35,14 @@ public class EventHistoryPublisher {
   @Value("${aws.s3.bucket-name:laa-data-stewardship-access-bucket}")
   private String s3BucketName;
 
+  /**
+   * Constructor for EventHistoryPublisher, injecting necessary services and configurations.
+   *
+   * @param s3Service       the service responsible for S3 interactions
+   * @param dynamoDbService the service responsible for DynamoDB interactions
+   * @param executor        the executor for asynchronous processing
+   * @param s3Client        the AWS S3 client for direct S3 operations
+   */
   public EventHistoryPublisher(S3Service s3Service, DynamoDbService dynamoDbService,
                                @Qualifier("applicationTaskExecutor") Executor executor, S3Client s3Client) {
     this.s3Service = s3Service;
@@ -52,8 +63,8 @@ public class EventHistoryPublisher {
             return CompletableFuture.completedFuture(null);
           }
           return dynamoDbService.saveDomainEvent(event, s3Url)
-              .thenApply(__ -> event.domainEventId())
-              .whenComplete((__, throwable) -> {
+              .thenApply(e -> event.domainEventId())
+              .whenComplete((uuid, throwable) -> {
                 if (throwable == null) {
                   log.info("Domain event with id '{}' saved successfully", event.applicationId());
                 } else {
@@ -86,6 +97,12 @@ public class EventHistoryPublisher {
     return s3Url;
   }
 
+  /**
+   * Retrieves the event history for a given application ID by listing S3 objects and downloading their content.
+   *
+   * @param applicationId the application ID to retrieve events for
+   * @return a map of S3 object keys to their corresponding event data and S3 URLs
+   */
   public Map<String, Map<String, Object>> getEventHistoryForApplication(String applicationId) {
     List<String> s3ObjectKeys = getS3ObjectKeysForEvent(Event.builder().applicationId(applicationId).build());
     Map<String, Map<String, Object>> eventHistory = new HashMap<>();
@@ -95,7 +112,7 @@ public class EventHistoryPublisher {
         String eventData = s3Service.downloadEventsAsStrings(s3Url);
 
         ObjectMapper objectMapper = MapperUtil.getObjectMapper();
-        Map map = objectMapper.readValue(eventData, Map.class);
+        Map<String, Object> map = objectMapper.readValue(eventData, Map.class);
         eventHistory.put(s3ObjectKey, Map.of("s3Url", s3Url, "eventData", map));
       } catch (Exception e) {
         log.error("Failed to download event data from S3 for key '{}'", s3ObjectKey, e);
@@ -112,7 +129,7 @@ public class EventHistoryPublisher {
         .build();
     ListObjectsV2Response listObjectsV2Response = s3Client.listObjectsV2(request);
     return listObjectsV2Response.contents().stream()
-        .map(s3Object -> s3Object.key())
+        .map(S3Object::key)
         .toList();
   }
 

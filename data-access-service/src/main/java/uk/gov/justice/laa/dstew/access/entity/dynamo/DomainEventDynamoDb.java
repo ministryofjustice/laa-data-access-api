@@ -11,12 +11,16 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecon
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondarySortKey;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortKey;
 
+/**
+ * DynamoDB entity representing a domain event in the application.
+ * This class is annotated for use with the AWS SDK's DynamoDB Enhanced Client.
+ */
 @Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @DynamoDbBean
 @Data
-public class DomainEventDynamoDB {
+public class DomainEventDynamoDb {
 
   private String type;
   private String description;
@@ -28,7 +32,7 @@ public class DomainEventDynamoDB {
   @DynamoDbSecondaryPartitionKey(indexNames = "gs-index-1")
   @DynamoDbAttribute("gs1pk")
   public String getGs1pk() {
-    return  (caseworkerId != null ? "CASEWORKER#" + caseworkerId : null);
+    return (caseworkerId != null ? "CASEWORKER#" + caseworkerId : null);
   }
 
   public void setGs1pk(String gs1pk) {
@@ -85,9 +89,6 @@ public class DomainEventDynamoDB {
   public void setSk(String sk) {
     // No-op: value is computed from type and createdAt
   }
-
-
-
 
 
 }

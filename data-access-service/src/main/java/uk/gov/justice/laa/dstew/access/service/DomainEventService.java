@@ -21,6 +21,8 @@ import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.Event;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRefusedDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
@@ -68,11 +70,11 @@ public class DomainEventService {
             .serviceName(serviceNameContext.getServiceName())
             .build();
 
-    if(awsEventHistoryEnabled) {
+    if (awsEventHistoryEnabled) {
       eventHistoryPublisher.processEventAsync(Event.convertToEvent(entity));
-    } else {
-      domainEventRepository.save(entity);
     }
+    domainEventRepository.save(entity);
+
   }
 
   /**
@@ -104,11 +106,11 @@ public class DomainEventService {
             .serviceName(serviceNameContext.getServiceName())
             .build();
 
-    if(awsEventHistoryEnabled) {
+    if (awsEventHistoryEnabled) {
       eventHistoryPublisher.processEventAsync(Event.convertToEvent(domainEventEntity));
-    } else {
-        domainEventRepository.save(domainEventEntity);
     }
+    domainEventRepository.save(domainEventEntity);
+
 
   }
 

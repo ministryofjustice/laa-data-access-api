@@ -6,10 +6,13 @@ import java.util.List;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.service.EventHistoryService;
-import uk.gov.justice.laa.dstew.access.service.DynamoDbService;
 import uk.gov.justice.laa.dstew.access.model.Event;
+import uk.gov.justice.laa.dstew.access.service.DynamoDbService;
+import uk.gov.justice.laa.dstew.access.service.EventHistoryService;
 
+/**
+ * AWS-specific implementation of the EventHistoryService interface, responsible for retrieving domain events from DynamoDB.
+ */
 public class EventHistoryServiceAwsImpl implements EventHistoryService {
   private final DynamoDbService dynamoDbService;
 
@@ -24,7 +27,7 @@ public class EventHistoryServiceAwsImpl implements EventHistoryService {
   public List<ApplicationDomainEvent> getEvents(UUID applicationId,
                                                 @Valid List<DomainEventType> eventType) {
 
-    if(eventType == null || eventType.isEmpty()) {
+    if (eventType == null || eventType.isEmpty()) {
       return dynamoDbService.getAllApplicationsById(String.valueOf(applicationId)).stream()
           .map(Event::fromDynamoEntity)
           .map(Event::fromEvent)

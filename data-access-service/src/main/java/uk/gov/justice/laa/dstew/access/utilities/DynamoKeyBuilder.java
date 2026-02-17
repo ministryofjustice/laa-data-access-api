@@ -4,7 +4,9 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 
-
+/**
+ * Utility class for building DynamoDB keys.
+ */
 public final class DynamoKeyBuilder {
 
   private static final String DELIMITER = "#";

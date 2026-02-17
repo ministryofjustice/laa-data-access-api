@@ -1,19 +1,28 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
+
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
-import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDB;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
-import uk.gov.justice.laa.dstew.access.utils.DateTimeHelper;
-import uk.gov.justice.laa.dstew.access.utils.LocalStackTestUtility;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
@@ -36,6 +45,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.PersistedDynamoDbFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.domainEvent.DomainEventDynamoDBFactory;
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventDynamoDBGenerator;
 
+@TestPropertySource(properties = "event.history.service.type=rds")
 public class GetDomainEventTest extends BaseIntegrationTest {
 
   private final String SEARCH_EVENT_TYPE_PARAM = "eventType=";
@@ -176,16 +186,16 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     );
   }
 
-    private DomainEventEntity setupDomainEvent(UUID appId, DomainEventType eventType) {
-        String eventDesc = "{\"eventDescription\": \"" + eventType.getValue() + "\"}";
-        return persistedDataGenerator.createAndPersist(DomainEventGenerator.class, builder ->
-                builder.applicationId(appId)
-                       .caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
-                       .createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds())
-                       .data(eventDesc)
-                       .type(eventType)
-        );
-    }
+  private DomainEventEntity setupDomainEvent(UUID appId, DomainEventType eventType) {
+    String eventDesc = "{\"eventDescription\": \"" + eventType.getValue() + "\"}";
+    return persistedDataGenerator.createAndPersist(DomainEventGenerator.class, builder ->
+        builder.applicationId(appId)
+            .caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
+            .createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds())
+            .data(eventDesc)
+            .type(eventType)
+    );
+  }
 
   private static ApplicationDomainEvent toEvent(DomainEventEntity entity) {
     return ApplicationDomainEvent.builder()
