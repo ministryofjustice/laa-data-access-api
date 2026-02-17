@@ -43,7 +43,6 @@ import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
  * Controller for handling /api/v0/applications requests.
  */
 @Slf4j
-@RequiredArgsConstructor
 @RestController
 @ExcludeFromGeneratedCodeCoverage
 public class ApplicationController implements ApplicationApi {
@@ -159,7 +158,7 @@ public class ApplicationController implements ApplicationApi {
           @NotNull ServiceName serviceName,
           UUID applicationId,
           @Valid List<DomainEventType> eventType) {
-    var events = domainService.getEvents(applicationId, eventType);
+    var events = eventHistoryService.getEvents(applicationId, eventType);
     return ResponseEntity.ok(ApplicationHistoryResponse.builder()
         .events(events)
         .build());
