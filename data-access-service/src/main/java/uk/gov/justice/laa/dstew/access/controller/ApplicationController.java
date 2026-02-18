@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
-import static uk.gov.justice.laa.dstew.access.utils.PaginationConstants.validatePage;
-import static uk.gov.justice.laa.dstew.access.utils.PaginationConstants.validatePageSize;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -91,8 +89,6 @@ public class ApplicationController implements ApplicationApi {
           ApplicationOrderBy orderBy,
           Integer page,
           Integer pageSize) {
-    page = validatePage(page);
-    pageSize = validatePageSize(pageSize);
 
     Page<ApplicationSummary> applicationsReturned =
             summaryService.getAllApplications(
@@ -106,14 +102,15 @@ public class ApplicationController implements ApplicationApi {
                     matterType,
                     sortBy,
                     orderBy,
-              page - 1, pageSize);
+                    page,
+                    pageSize);
 
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
     List<ApplicationSummary> applications = applicationsReturned.stream().toList();
     Paging paging = new Paging();
     response.setApplications(applications);
-    paging.setPage(page);
-    paging.pageSize(pageSize);
+    paging.setPage(applicationsReturned.getNumber() + 1); // Convert zero-based to one-based
+    paging.pageSize(applicationsReturned.getSize());
     paging.totalRecords((int) applicationsReturned.getTotalElements());
     paging.itemsReturned(applications.size());
     response.setPaging(paging);

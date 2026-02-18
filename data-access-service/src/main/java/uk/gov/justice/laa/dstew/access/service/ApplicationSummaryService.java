@@ -1,5 +1,8 @@
 package uk.gov.justice.laa.dstew.access.service;
 
+import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.validatePage;
+import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.validatePageSize;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -53,7 +56,7 @@ public class ApplicationSummaryService {
    * @param laaReference used to filter results on application reference
    * @param clientFirstName used to filter results on linked individuals first name
    * @param clientLastName used to filter results on  linked individuals last name
-   * @param page the page number to retrieve (zero-based index)
+   * @param page the page number to retrieve (one-based index)
    * @param pageSize the maximum number of results to return per page
    * @return a list of {@link ApplicationSummary} instances matching the filter criteria
    */
@@ -71,7 +74,13 @@ public class ApplicationSummaryService {
           ApplicationOrderBy orderBy,
           Integer page,
           Integer pageSize) {
-    Pageable pageDetails = PageRequest.of(page, pageSize, createSortAndOrderBy(sortBy, orderBy));
+
+    // Validate pagination parameters
+    int validatedPage = validatePage(page);
+    int validatedPageSize = validatePageSize(pageSize);
+
+    // Convert to zero-based index for Spring Data
+    Pageable pageDetails = PageRequest.of(validatedPage - 1, validatedPageSize, createSortAndOrderBy(sortBy, orderBy));
 
     if (userId != null && caseworkerRepository.countById(userId) == 0L) {
       throw new ValidationException(List.of("Caseworker not found"));

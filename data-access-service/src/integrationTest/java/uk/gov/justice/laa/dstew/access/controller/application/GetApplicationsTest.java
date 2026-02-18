@@ -312,11 +312,11 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     static Stream<Arguments> invalidPagingParameters() {
         return Stream.of(
                 // page, pageSize
-                Arguments.of(0, null),    // zero page
-                Arguments.of(-1, null),   // negative page
-                Arguments.of(null, 0),    // zero pageSize
-                Arguments.of(null, -74),  // negative pageSize
-                Arguments.of(null, 200)   // pageSize greater than 100
+                Arguments.of(0, 10),    // zero page
+                Arguments.of(-1, 10),   // negative page
+                Arguments.of(1, 0),    // zero pageSize
+                Arguments.of(1, -74),  // negative pageSize
+                Arguments.of(1, 200)   // pageSize greater than 100
         );
     }
 

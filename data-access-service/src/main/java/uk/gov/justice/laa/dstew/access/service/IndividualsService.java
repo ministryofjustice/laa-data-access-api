@@ -1,5 +1,8 @@
 package uk.gov.justice.laa.dstew.access.service;
 
+import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.validatePage;
+import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.validatePageSize;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -29,13 +32,18 @@ public class IndividualsService {
   /**
    * Retrieves a paginated list of individuals.
    *
-   * @param page the page number (zero-based)
+   * @param page the page number (one-based)
    * @param pageSize the number of items per page
    * @return a {@link Page} of {@link Individual} objects
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public Page<Individual> getIndividuals(Integer page, Integer pageSize) {
-    Pageable pageable = PageRequest.of(page, pageSize);
+    // Validate pagination parameters
+    int validatedPage = validatePage(page);
+    int validatedPageSize = validatePageSize(pageSize);
+
+    // Convert to zero-based index for Spring Data
+    Pageable pageable = PageRequest.of(validatedPage - 1, validatedPageSize);
     Page<IndividualEntity> resultPage = individualRepository.findAll(pageable);
 
     return resultPage.map(individualMapper::toIndividual);

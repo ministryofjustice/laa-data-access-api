@@ -1,36 +1,17 @@
 package uk.gov.justice.laa.dstew.access.utils;
 
 /**
- * Constants for pagination validation across all controllers.
+ * Helper class for pagination validation across all controllers.
  */
-public final class PaginationConstants {
+public final class PaginationHelper {
 
-  /**
-   * Default page number when not specified or invalid.
-   */
-  public static final int DEFAULT_PAGE = 1;
+  private static final int DEFAULT_PAGE = 1;
+  private static final int DEFAULT_PAGE_SIZE = 20;
+  private static final int MAX_PAGE_SIZE = 100;
+  private static final int MIN_PAGE = 1;
+  private static final int MIN_PAGE_SIZE = 1;
 
-  /**
-   * Default page size when not specified.
-   */
-  public static final int DEFAULT_PAGE_SIZE = 20;
-
-  /**
-   * Maximum allowed page size.
-   */
-  public static final int MAX_PAGE_SIZE = 100;
-
-  /**
-   * Minimum valid page number.
-   */
-  public static final int MIN_PAGE = 1;
-
-  /**
-   * Minimum valid page size.
-   */
-  public static final int MIN_PAGE_SIZE = 1;
-
-  private PaginationConstants() {
+  private PaginationHelper() {
     // Utility class, prevent instantiation
   }
 

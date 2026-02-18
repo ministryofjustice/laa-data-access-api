@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
-import static uk.gov.justice.laa.dstew.access.utils.PaginationConstants.validatePage;
-import static uk.gov.justice.laa.dstew.access.utils.PaginationConstants.validatePageSize;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -42,15 +40,13 @@ public class IndividualsController implements IndividualsApi {
   @LogMethodResponse
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public ResponseEntity<IndividualsResponse> getIndividuals(ServiceName serviceName, Integer page, Integer pageSize) {
-    page = validatePage(page);
-    pageSize = validatePageSize(pageSize);
-    Page<Individual> individualsReturned = individualsService.getIndividuals(page - 1, pageSize);
+    Page<Individual> individualsReturned = individualsService.getIndividuals(page, pageSize);
     IndividualsResponse response = new IndividualsResponse();
     List<Individual> individuals = individualsReturned.stream().toList();
     Paging paging = new Paging();
     response.setIndividuals(individuals);
-    paging.setPage(page);
-    paging.pageSize(pageSize);
+    paging.setPage(individualsReturned.getNumber() + 1); // Convert zero-based to one-based
+    paging.pageSize(individualsReturned.getSize());
     paging.totalRecords((int) individualsReturned.getTotalElements());
     paging.itemsReturned(individuals.size());
     response.setPaging(paging);

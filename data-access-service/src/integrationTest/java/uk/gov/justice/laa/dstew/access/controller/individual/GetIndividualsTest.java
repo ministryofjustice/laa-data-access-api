@@ -17,6 +17,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.params.provider.Arguments.of;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
 @ActiveProfiles("test")
@@ -64,9 +65,9 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   static Stream<org.junit.jupiter.params.provider.Arguments> pagingParameters() {
     return Stream.of(
         // page, pageSize, expectedPage, expectedPageSize, totalEntities, expectedReturned, expectedTotalRecords
-        org.junit.jupiter.params.provider.Arguments.of(1, 10, 1, 10, 15, 10, 15), // first page, 10 of 15
-        org.junit.jupiter.params.provider.Arguments.of(2, 10, 2, 10, 15, 5, 15), // second page, 5 of 15
-        org.junit.jupiter.params.provider.Arguments.of(100, 10, 100, 10, 15, 0, 15) // page beyond data, empty
+        of(1, 10, 1, 10, 15, 10, 15), // first page, 10 of 15
+        of(2, 10, 2, 10, 15, 5, 15), // second page, 5 of 15
+        of(100, 10, 100, 10, 15, 0, 15) // page beyond data, empty
     );
   }
 
@@ -83,11 +84,11 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   static Stream<org.junit.jupiter.params.provider.Arguments> invalidPagingParameters() {
     return Stream.of(
         // page, pageSize
-        org.junit.jupiter.params.provider.Arguments.of(0, 10),    // zero page
-        org.junit.jupiter.params.provider.Arguments.of(-1, 10),   // negative page
-        org.junit.jupiter.params.provider.Arguments.of(1, 0),     // zero pageSize
-        org.junit.jupiter.params.provider.Arguments.of(1, -74),   // negative pageSize
-        org.junit.jupiter.params.provider.Arguments.of(1, 101)    // pageSize greater than 100
+        of(0, 10),    // zero page
+        of(-1, 10),   // negative page
+        of(1, 0),     // zero pageSize
+        of(1, -74),   // negative pageSize
+        of(1, 101)    // pageSize greater than 100
     );
   }
 

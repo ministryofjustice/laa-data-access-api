@@ -55,7 +55,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                 null,
                 null,
                 null,
-                0,
+                1,
                 10
         ).stream().toList();
 
@@ -95,7 +95,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                 null,
                 null,
                 null,
-                0,
+                1,
                 10
         ).stream().toList();
 
@@ -127,7 +127,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                 null,
                 null,
                 null,
-                0,
+                1,
                 10
         ));
         assertThat(thrown)
