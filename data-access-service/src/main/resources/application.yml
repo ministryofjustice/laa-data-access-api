@@ -81,6 +81,6 @@ aws:
     bucket-name: s3-bucket-output
   event:
     history:
-      enabled: false
+      enabled: ${AWS_DOMAIN_EVENT_ENABLED:false}
 
 # End of file

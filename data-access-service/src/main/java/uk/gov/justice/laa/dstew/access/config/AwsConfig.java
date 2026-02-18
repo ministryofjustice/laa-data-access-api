@@ -11,12 +11,15 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
+import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.S3Configuration;
+import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDb;
 
 /**
  * Configuration class for AWS-related beans and settings.
@@ -36,6 +39,9 @@ public class AwsConfig {
 
   @Value("${aws.secret-key:}")
   private String awsSecretKey;
+
+  @Value("${aws.dynamodb.table-name:domain-events}")
+  private String tableName;
 
 
   /**
@@ -79,6 +85,11 @@ public class AwsConfig {
     return DynamoDbEnhancedClient.builder()
         .dynamoDbClient(dynamoDbClient())
         .build();
+  }
+
+  @Bean
+  public DynamoDbTable<DomainEventDynamoDb> eventTable() {
+    return dynamoDbEnhancedClient().table(tableName, TableSchema.fromBean(DomainEventDynamoDb.class));
   }
 
   /**
