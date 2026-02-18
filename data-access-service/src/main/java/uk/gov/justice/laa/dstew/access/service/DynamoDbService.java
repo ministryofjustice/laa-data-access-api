@@ -9,7 +9,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
@@ -17,6 +16,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.BatchGetItemEnhancedRequest;
+import software.amazon.awssdk.enhanced.dynamodb.model.BatchGetResultPageIterable;
 import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedResponse;
 import software.amazon.awssdk.enhanced.dynamodb.model.ReadBatch;
@@ -40,9 +40,10 @@ import uk.gov.justice.laa.dstew.access.utilities.DynamoKeyBuilder;
 public class DynamoDbService {
 
   public static final String APPLICATION = "APPLICATION";
+  public static final String GS_INDEX_1 = "gs-index-1";
   private final String tableName;
   private final DynamoDbClient dynamoDbClient;
-  private DynamoDbTable<DomainEventDynamoDb> eventTable;
+  private final DynamoDbTable<DomainEventDynamoDb> eventTable;
   private final DynamoDbEnhancedClient dynamoDbEnhancedClient;
 
   /**
@@ -50,15 +51,15 @@ public class DynamoDbService {
    *
    * @param dynamoDbClient         the DynamoDbClient to use for low-level operations
    * @param dynamoDbEnhancedClient the DynamoDbEnhancedClient to use for high-level operations
-   * @param tableName              the name of the DynamoDB table, injected from configuration
+   * @param eventTable             the DynamoDbTable to use for event operations
    */
   public DynamoDbService(DynamoDbClient dynamoDbClient,
                          DynamoDbEnhancedClient dynamoDbEnhancedClient,
-                         @Value("${aws.dynamodb.table-name:EventIndexTable}") String tableName) {
-    this.tableName = tableName;
+                         DynamoDbTable<DomainEventDynamoDb> eventTable) {
+    this.tableName = eventTable.tableName();
     this.dynamoDbClient = dynamoDbClient;
     this.dynamoDbEnhancedClient = dynamoDbEnhancedClient;
-    eventTable = dynamoDbEnhancedClient.table(tableName, TableSchema.fromBean(DomainEventDynamoDb.class));
+    this.eventTable = eventTable;
   }
 
   /**
@@ -132,7 +133,7 @@ public class DynamoDbService {
   public List<DomainEventDynamoDb> getAllApplicationsByIdUntilTime(String id, Instant untilTime) {
     QueryRequest queryRequest = QueryRequest.builder()
         .tableName(tableName)
-        .indexName("gs-index-1")
+        .indexName(GS_INDEX_1)
         .keyConditionExpression("gs1pk = :gs1pkVal AND begins_with(gs1sk, :gs1skVal)")
         .expressionAttributeValues(Map.of(
             ":gs2pkVal", AttributeValue.fromS(DynamoKeyBuilder.pk(APPLICATION, id)),
@@ -191,7 +192,7 @@ public class DynamoDbService {
 
     QueryRequest queryRequest = QueryRequest.builder()
         .tableName(tableName)
-        .indexName("gs-index-1")
+        .indexName(GS_INDEX_1)
         .keyConditionExpression("gs1pk = :gs1pkVal AND begins_with(gs1sk, :gs1skVal)")
         .expressionAttributeValues(Map.of(
             ":gs1pkVal", AttributeValue.fromS("CASEWORKER#" + caseworkerId),
@@ -201,6 +202,44 @@ public class DynamoDbService {
     QueryResponse response = dynamoDbClient.query(queryRequest);
     // If index table is not full copy then will need look up for main table to get full details
 
+    List<Key> indexedEvents = getIndexedEvents(eventType, response);
+
+    if (indexedEvents.isEmpty()) {
+      return List.of();
+    }
+
+    return getEventsFromIndex(indexedEvents);
+  }
+
+  private @NonNull List<Event> getEventsFromIndex(List<Key> indexedEvents) {
+    final int batchSize = 100;
+//    List<Event> allEvents = new ArrayList<>();
+    List<List<Key>> batches = getBatches(indexedEvents, batchSize);
+    return batches.stream()
+        .map(this::addBatchResultToEvent)
+        .flatMap(List::stream).toList();
+//    for (List<Key> batch : batches) {
+//      addBatchResultToEvent(batch);
+//    }
+//    return allEvents;
+  }
+
+  private List<Event> addBatchResultToEvent(List<Key> batch) {
+    ReadBatch.Builder<DomainEventDynamoDb> readBatchBuilder = ReadBatch.builder(DomainEventDynamoDb.class)
+        .mappedTableResource(eventTable);
+    batch.forEach(readBatchBuilder::addGetItem);
+    BatchGetItemEnhancedRequest batchGetItemEnhancedRequest = BatchGetItemEnhancedRequest.builder()
+        .addReadBatch(readBatchBuilder.build())
+        .build();
+    BatchGetResultPageIterable batchResult = dynamoDbEnhancedClient.batchGetItem(batchGetItemEnhancedRequest);
+//    allEvents.addAll(
+       return batchResult.resultsForTable(eventTable).stream()
+            .map(Event::fromDynamoEntity)
+            .toList();
+//    );
+  }
+
+  private @NonNull List<Key> getIndexedEvents(DomainEventType eventType, QueryResponse response) {
     List<Key> indexedEvents = response.items().stream()
         .map(this::convertToIndexedEvent)
         .filter(e -> e.eventType().equals(eventType))
@@ -210,29 +249,7 @@ public class DynamoDbService {
             .sortValue(indexedEvent.sk)
             .build())
         .toList();
-
-    if (indexedEvents.isEmpty()) {
-      return List.of();
-    }
-
-    final int batchSize = 100;
-    List<Event> allEvents = new ArrayList<>();
-    List<List<Key>> batches = getBatches(indexedEvents, batchSize);
-    for (List<Key> batch : batches) {
-      ReadBatch.Builder<DomainEventDynamoDb> readBatchBuilder = ReadBatch.builder(DomainEventDynamoDb.class)
-          .mappedTableResource(eventTable);
-      batch.forEach(readBatchBuilder::addGetItem);
-      BatchGetItemEnhancedRequest batchGetItemEnhancedRequest = BatchGetItemEnhancedRequest.builder()
-          .addReadBatch(readBatchBuilder.build())
-          .build();
-      var batchResult = dynamoDbEnhancedClient.batchGetItem(batchGetItemEnhancedRequest);
-      allEvents.addAll(
-          batchResult.resultsForTable(eventTable).stream()
-              .map(Event::fromDynamoEntity)
-              .toList()
-      );
-    }
-    return allEvents;
+    return indexedEvents;
   }
 
   private static @NonNull List<List<Key>> getBatches(List<Key> indexedEvents, int batchSize) {
