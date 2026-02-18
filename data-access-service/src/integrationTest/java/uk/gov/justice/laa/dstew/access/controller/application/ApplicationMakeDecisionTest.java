@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -24,7 +26,6 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetails;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.RefusalDetails;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -39,6 +40,44 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
 @ActiveProfiles("test")
 public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
+
+    @ParameterizedTest
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
+    void givenMakeDecisionRequestAndInvalidHeader_whenAssignDecision_thenReturnBadRequest(
+            String serviceName
+    ) throws Exception {
+        verifyBadServiceNameHeader(serviceName);
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    void givenMakeDecisionRequestAndNoHeader_whenAssignDecision_thenReturnBadRequest() throws Exception {
+        verifyBadServiceNameHeader(null);
+    }
+
+    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
+
+        MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
+            builder
+                    .userId(UUID.randomUUID())
+                    .eventHistory(EventHistory.builder()
+                            .eventDescription("refusal event")
+                            .build())
+                    .overallDecision(DecisionStatus.REFUSED)
+                    .proceedings(List.of(
+                            createMakeDecisionProceeding(UUID.randomUUID(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1")
+                    ))
+                    .autoGranted(true);
+        });
+
+        // when
+        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION,
+                                    makeDecisionRequest,
+                                    ServiceNameHeader(serviceName),
+                                    UUID.randomUUID());
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+    }
 
     private static Stream<Arguments> missingRefusalDetails() {
         return Stream.of(
@@ -74,7 +113,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .userId(CaseworkerJohnDoe.getId())
-                    .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS)
                     .eventHistory(EventHistory.builder()
                             .eventDescription("refusal event")
                             .build())
@@ -117,10 +155,9 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .userId(CaseworkerJohnDoe.getId())
-                    .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS)
                     .eventHistory(EventHistory.builder()
-                            .eventDescription("refusal event")
-                            .build())
+                        .eventDescription("refusal event")
+                        .build())
                     .overallDecision(DecisionStatus.REFUSED)
                     .proceedings(List.of(
                             createMakeDecisionProceeding(grantedProceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1")
@@ -133,7 +170,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         //then
         ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
-        assertEquals(ApplicationStatus.APPLICATION_IN_PROGRESS, actualApplication.getStatus());
+        assertEquals(ApplicationStatus.APPLICATION_SUBMITTED, actualApplication.getStatus());
         assertEquals(true, actualApplication.getIsAutoGranted());
     }
 
@@ -157,7 +194,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .userId(CaseworkerJohnDoe.getId())
-                    .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
                     .eventHistory(EventHistory.builder()
                             .eventDescription("refusal event")
                             .build())
@@ -178,7 +214,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         assertNoContent(result);
 
         ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
-        assertEquals(ApplicationStatus.APPLICATION_SUBMITTED, actualApplication.getStatus());
+        assertEquals(ApplicationStatus.APPLICATION_IN_PROGRESS, actualApplication.getStatus());
         ApplicationEntity updatedApplicationEntity = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
         assertThat(decisionRepository.countById(updatedApplicationEntity.getDecision().getId())).isEqualTo(1);
 
@@ -233,7 +269,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest assignDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .userId(CaseworkerJohnDoe.getId())
-                    .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
                     .overallDecision(DecisionStatus.REFUSED)
                     .eventHistory(EventHistory.builder()
                             .eventDescription("refusal event")
@@ -296,7 +331,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                 .userId(CaseworkerJohnDoe.getId())
-                .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
                 .overallDecision(DecisionStatus.REFUSED)
                 .eventHistory(EventHistory.builder()
                     .eventDescription("refusal event")
@@ -336,7 +370,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .userId(CaseworkerJohnDoe.getId())
-                    .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
                     .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                     .eventHistory(EventHistory.builder().build())
                     .proceedings(List.of(
@@ -377,7 +410,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .userId(caseworkerId)
-                    .applicationStatus(ApplicationStatus.APPLICATION_SUBMITTED)
                     .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                     .eventHistory(EventHistory.builder().build())
                     .proceedings(List.of(
@@ -407,14 +439,10 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                 .proceedingId(proceedingId)
                 .meritsDecision(
                         MeritsDecisionDetails.builder()
-                                .decision(meritsDecisionStatus)
-                                .refusal(
-                                        RefusalDetails.builder()
-                                                .justification(justification)
-                                                .reason(reason)
-                                                .build()
-                                )
-                                .build()
+                            .decision(meritsDecisionStatus)
+                            .justification(justification)
+                            .reason(reason)
+                            .build()
                 )
                 .build();
     }
@@ -449,7 +477,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                                 EventHistory eventHistory) {
         if (decisionEntity == null) return null;
         return MakeDecisionRequest.builder()
-                .applicationStatus(applicationEntity.getStatus())
                 .overallDecision(decisionEntity.getOverallDecision())
                 .userId(CaseworkerJohnDoe.getId())
                 .eventHistory(eventHistory)
@@ -474,14 +501,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         if (entity == null) return null;
         return MeritsDecisionDetails.builder()
                 .decision(entity.getDecision())
-                .refusal(mapToRefusalDetails(entity))
-                .build();
-    }
-
-    // MeritsDecisionEntity -> RefusalDetails
-    private static RefusalDetails mapToRefusalDetails(MeritsDecisionEntity entity) {
-        if (entity == null) return null;
-        return RefusalDetails.builder()
                 .reason(entity.getReason())
                 .justification(entity.getJustification())
                 .build();

@@ -49,7 +49,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGe
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionDetailsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.MakeDecisionProceedingGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.refusal.RefusalDetailsGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
@@ -665,13 +664,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                     DataGenerator.createDefault(MeritsDecisionDetailsGenerator.class, meritsBuilder ->
                         meritsBuilder
                             .decision(decision)
-                            .refusal(
-                                DataGenerator.createDefault(RefusalDetailsGenerator.class, refusalBuilder ->
-                                    refusalBuilder
-                                        .reason(reason)
-                                        .justification(justification)
-                                )
-                            )
+                            .justification(justification)
+                            .reason(reason)
                     )
                 )
         );
@@ -729,7 +723,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
       return null;
     }
     return MakeDecisionRequest.builder()
-        .applicationStatus(applicationEntity.getStatus())
         .overallDecision(decisionEntity.getOverallDecision())
         .userId(applicationEntity.getCaseworker().getId())
         .eventHistory(eventHistory)
@@ -757,18 +750,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     }
     return MeritsDecisionDetails.builder()
         .decision(entity.getDecision())
-        .refusal(mapToRefusalDetails(entity))
-        .build();
-  }
-
-  // MeritsDecisionEntity -> RefusalDetails
-  private static RefusalDetails mapToRefusalDetails(MeritsDecisionEntity entity) {
-    if (entity == null) {
-      return null;
-    }
-    return RefusalDetails.builder()
-        .reason(entity.getReason())
         .justification(entity.getJustification())
+        .reason(entity.getReason())
         .build();
   }
 }
