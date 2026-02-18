@@ -63,4 +63,6 @@ spec:
               value: {{ .Values.aws.region | quote }}
             - name: FEATURE_DISABLESECURITY
               value: "true"
+            {{ include "dynamoDbConfig" . | nindent 12 }}
+            {{ include "s3Config" . | nindent 12 }}
             {{ include "sentryConfig" . | nindent 12 }}
