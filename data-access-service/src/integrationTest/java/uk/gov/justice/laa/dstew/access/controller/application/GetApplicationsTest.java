@@ -263,6 +263,35 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @ParameterizedTest
+    @MethodSource("invalidPagingParameters")
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    void givenInvalidPagingParameters_whenGetApplications_thenReturnBadRequest(Integer page, Integer pageSize) throws Exception {
+        // when
+        String uri = TestConstants.URIs.GET_APPLICATIONS + "?";
+        if (page != null) {
+            uri += SEARCH_PAGE_PARAM + page;
+        }
+        if (pageSize != null) {
+            uri += (page != null ? "&" : "") + SEARCH_PAGE_SIZE_PARAM + pageSize;
+        }
+        MvcResult result = getUri(uri);
+
+        // then
+        assertBadRequest(result);
+    }
+
+    static Stream<Arguments> invalidPagingParameters() {
+        return Stream.of(
+                // page, pageSize
+                Arguments.of(0, null),    // zero page
+                Arguments.of(-1, null),   // negative page
+                Arguments.of(null, 0),    // zero pageSize
+                Arguments.of(null, -74),  // negative pageSize
+                Arguments.of(null, 200)   // pageSize greater than 100
+        );
+    }
+
+    @ParameterizedTest
     @MethodSource("applicationsSummaryFilteredByStatusCases")
     @WithMockUser(authorities = TestConstants.Roles.READER)
     void givenApplicationsFilteredByStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly(
@@ -766,31 +795,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
-    public void givenPageZero_whenGetApplications_thenDefaultToPageOneAndReturnCorrectResults() throws Exception {
-        // given
-        List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(15, builder ->
-                builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS));
 
-        List<ApplicationSummary> expectedApplicationsSummary = expectedApplications.stream()
-                .map(this::createApplicationSummary)
-                .toList();
-
-        // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_PAGE_PARAM + "0");
-        ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
-
-        // then
-        assertContentHeaders(result);
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertOK(result);
-        assertPaging(actual, 15, 10, 1, 10);
-        assertThat(actual.getApplications().size()).isEqualTo(10);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(0, 10)));
-    }
-
-    @Test
     public void givenNoUser_whenGetApplications_thenReturnUnauthorised() throws Exception {
         // when
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);

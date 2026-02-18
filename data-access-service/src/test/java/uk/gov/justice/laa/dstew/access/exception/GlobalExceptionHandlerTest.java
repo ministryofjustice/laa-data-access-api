@@ -52,6 +52,19 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
+  void handleIllegalArgumentException_returnsBadRequestStatusAndErrorMessage() {
+    var result = globalExceptionHandler.handleIllegalArgumentException(
+            new IllegalArgumentException("page must be greater than or equal to 1"));
+
+    assertThat(result).isNotNull();
+    assertThat(result.getStatusCode().value()).isEqualTo(400);
+    assertThat(result.getBody()).isNotNull();
+    assertThat(result.getBody().getStatus()).isEqualTo(400);
+    assertThat(result.getBody().getTitle()).isEqualTo("Bad Request");
+    assertThat(result.getBody().getDetail()).isEqualTo("page must be greater than or equal to 1");
+  }
+
+  @Test
   void handleGenericException_returnsInternalServerErrorStatusAndErrorMessage() {
     var result = globalExceptionHandler.handleGenericException(new RuntimeException("Something went wrong"));
 

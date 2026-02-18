@@ -1,5 +1,8 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
+import static uk.gov.justice.laa.dstew.access.utils.PaginationConstants.validatePage;
+import static uk.gov.justice.laa.dstew.access.utils.PaginationConstants.validatePageSize;
+
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -38,8 +41,8 @@ public class IndividualsController implements IndividualsApi {
   @LogMethodResponse
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public ResponseEntity<IndividualsResponse> getIndividuals(Integer page, Integer pageSize) {
-    page = (page == null || page < 1) ? 1 : page;
-    pageSize = (pageSize == null || pageSize < 1) ? 10 : Math.min(pageSize, 100);
+    page = validatePage(page);
+    pageSize = validatePageSize(pageSize);
     Page<Individual> individualsReturned = individualsService.getIndividuals(page - 1, pageSize);
     IndividualsResponse response = new IndividualsResponse();
     List<Individual> individuals = individualsReturned.stream().toList();

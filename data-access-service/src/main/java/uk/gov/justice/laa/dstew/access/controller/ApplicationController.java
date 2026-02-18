@@ -1,5 +1,8 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
+import static uk.gov.justice.laa.dstew.access.utils.PaginationConstants.validatePage;
+import static uk.gov.justice.laa.dstew.access.utils.PaginationConstants.validatePageSize;
+
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.LocalDate;
@@ -80,7 +83,8 @@ public class ApplicationController implements ApplicationApi {
           ApplicationOrderBy orderBy,
           Integer page,
           Integer pageSize) {
-    page = (page == null || page < 1) ? 1 : page;
+    page = validatePage(page);
+    pageSize = validatePageSize(pageSize);
 
     Page<ApplicationSummary> applicationsReturned =
             summaryService.getAllApplications(

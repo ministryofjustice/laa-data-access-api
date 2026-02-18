@@ -41,10 +41,28 @@ public class GetIndividualsTest extends BaseIntegrationTest {
         // page, pageSize, expectedPage, expectedPageSize, totalEntities, expectedReturned, expectedTotalRecords
         org.junit.jupiter.params.provider.Arguments.of(1, 10, 1, 10, 15, 10, 15), // first page, 10 of 15
         org.junit.jupiter.params.provider.Arguments.of(2, 10, 2, 10, 15, 5, 15), // second page, 5 of 15
-        org.junit.jupiter.params.provider.Arguments.of(-1, 10, 1, 10, 5, 5, 5), // negative page, default to 1
-        org.junit.jupiter.params.provider.Arguments.of(1, 0, 1, 10, 5, 5, 5), // zero pageSize, default to 10
-        org.junit.jupiter.params.provider.Arguments.of(1, 101, 1, 100, 150, 100, 150), // pageSize > 100 capped
         org.junit.jupiter.params.provider.Arguments.of(100, 10, 100, 10, 15, 0, 15) // page beyond data, empty
+    );
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidPagingParameters")
+  @WithMockUser(authorities = TestConstants.Roles.READER)
+  void givenInvalidPagingParameters_whenGetIndividuals_thenReturnBadRequest(Integer page, Integer pageSize) throws Exception {
+    // when
+    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=" + page + "&pageSize=" + pageSize);
+    // then
+    assertBadRequest(result);
+  }
+
+  static Stream<org.junit.jupiter.params.provider.Arguments> invalidPagingParameters() {
+    return Stream.of(
+        // page, pageSize
+        org.junit.jupiter.params.provider.Arguments.of(0, 10),    // zero page
+        org.junit.jupiter.params.provider.Arguments.of(-1, 10),   // negative page
+        org.junit.jupiter.params.provider.Arguments.of(1, 0),     // zero pageSize
+        org.junit.jupiter.params.provider.Arguments.of(1, -74),   // negative pageSize
+        org.junit.jupiter.params.provider.Arguments.of(1, 101)    // pageSize greater than 100
     );
   }
 
