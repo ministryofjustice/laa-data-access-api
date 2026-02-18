@@ -11,6 +11,7 @@ paths:
       summary: Get applications
       operationId: getApplications
       parameters:
+        - $ref: "#/components/parameters/XServiceName"
         - in: query
           name: status
           description: The current overall status of the applications' decision.
@@ -92,6 +93,8 @@ paths:
         - application
       summary: Create an application
       operationId: createApplication
+      parameters:
+        - $ref: "#/components/parameters/XServiceName"
       requestBody:
         description: Create an application (all fields inside `applicationContent`)
         required: true
@@ -113,6 +116,7 @@ paths:
       summary: Get an application by id
       operationId: getApplicationById
       parameters:
+        - $ref: "#/components/parameters/XServiceName"
         - name: id
           in: path
           required: true
@@ -137,6 +141,7 @@ paths:
       summary: Update an application
       operationId: updateApplication
       parameters:
+        - $ref: "#/components/parameters/XServiceName"
         - name: id
           in: path
           required: true
@@ -165,6 +170,8 @@ paths:
         - caseworkers
       summary: Get list of caseworkers
       operationId: getCaseworkers
+      parameters:
+        - $ref: "#/components/parameters/XServiceName"
       responses:
         '200':
           description: 'Success'
@@ -183,6 +190,7 @@ paths:
       summary: Get a list of events associated with an application
       operationId: getApplicationHistory
       parameters:
+        - $ref: "#/components/parameters/XServiceName"
         - in: path
           name: id
           description: "the ID of the application to get history format"
@@ -215,6 +223,8 @@ paths:
       tags:
         - application
       operationId: assignCaseworker
+      parameters:
+        - $ref: "#/components/parameters/XServiceName"
       summary: Assign a caseworker to one or more applications.
       requestBody:
         description: Assign the supplied caseworker to one or more applications.
@@ -238,6 +248,7 @@ paths:
       operationId: unassignCaseworker
       summary: Unassign a caseworker from an application
       parameters:
+        - $ref: "#/components/parameters/XServiceName"
         - name: id
           in: path
           required: true
@@ -266,6 +277,7 @@ paths:
       operationId: makeDecision
       summary: Make a decision request for an application
       parameters:
+        - $ref: "#/components/parameters/XServiceName"
         - name: id
           in: path
           required: true
@@ -293,6 +305,7 @@ paths:
       summary: Get a list of individuals matching search criteria
       operationId: getIndividuals
       parameters:
+        - $ref: "#/components/parameters/XServiceName"
         - name: page
           in: query
           description: Page number of data to be returned
@@ -316,7 +329,20 @@ paths:
         '403': { description: Forbidden }
         '500': { description: Internal server error }
 components:
+  parameters:
+    XServiceName:
+      in: header
+      name: X-Service-Name
+      required: true
+      schema:
+        $ref: "#/components/schemas/serviceName"
   schemas:
+    serviceName:
+      type: string
+      enum:
+        - CIVIL_APPLY
+        - CIVIL_DECIDE
+      description: Service name
     applicationStatus:
       type: string
       enum:

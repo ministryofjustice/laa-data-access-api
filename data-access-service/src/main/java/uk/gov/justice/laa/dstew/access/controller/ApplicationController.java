@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
@@ -27,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.Paging;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.service.DomainEventService;
@@ -49,7 +51,9 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   @LogMethodResponse
   @Override
-  public ResponseEntity<Void> createApplication(@Valid ApplicationCreateRequest applicationCreateReq) {
+  public ResponseEntity<Void> createApplication(
+          @NotNull ServiceName serviceName,
+          @Valid ApplicationCreateRequest applicationCreateReq) {
     UUID id = service.createApplication(applicationCreateReq);
 
     URI uri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
@@ -59,7 +63,10 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodResponse
   @LogMethodArguments
-  public ResponseEntity<Void> updateApplication(UUID id, @Valid ApplicationUpdateRequest applicationUpdateReq) {
+  public ResponseEntity<Void> updateApplication(
+          @NotNull ServiceName serviceName,
+          UUID id,
+          @Valid ApplicationUpdateRequest applicationUpdateReq) {
     service.updateApplication(id, applicationUpdateReq);
     return ResponseEntity.noContent().build();
   }
@@ -68,6 +75,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<ApplicationSummaryResponse> getApplications(
+          ServiceName serviceName,
           ApplicationStatus status,
           String laaReference,
           String clientFirstName,
@@ -112,14 +120,14 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodResponse
   @LogMethodArguments
-  public ResponseEntity<Application> getApplicationById(UUID id) {
+  public ResponseEntity<Application> getApplicationById(ServiceName serviceName, UUID id) {
     return ResponseEntity.ok(service.getApplication(id));
   }
 
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> assignCaseworker(@Valid CaseworkerAssignRequest request) {
+  public ResponseEntity<Void> assignCaseworker(@NotNull ServiceName serviceName, @Valid CaseworkerAssignRequest request) {
     service.assignCaseworker(request.getCaseworkerId(),
                               request.getApplicationIds(),
                               request.getEventHistory());
@@ -129,7 +137,10 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> unassignCaseworker(UUID id, @Valid CaseworkerUnassignRequest request) {
+  public ResponseEntity<Void> unassignCaseworker(
+          @NotNull ServiceName serviceName,
+          UUID id,
+          @Valid CaseworkerUnassignRequest request) {
 
     service.unassignCaseworker(id, request.getEventHistory());
 
@@ -139,8 +150,10 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(UUID applicationId,
-      @Valid List<DomainEventType> eventType) {
+  public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(
+          @NotNull ServiceName serviceName,
+          UUID applicationId,
+          @Valid List<DomainEventType> eventType) {
     var events = domainService.getEvents(applicationId, eventType);
     return ResponseEntity.ok(ApplicationHistoryResponse.builder()
                                                  .events(events)
@@ -150,7 +163,9 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> makeDecision(UUID applicationId, @Valid MakeDecisionRequest request) {
+  public ResponseEntity<Void> makeDecision(@NotNull ServiceName serviceName,
+                                           UUID applicationId,
+                                           @Valid MakeDecisionRequest request) {
 
     service.makeDecision(applicationId, request);
 

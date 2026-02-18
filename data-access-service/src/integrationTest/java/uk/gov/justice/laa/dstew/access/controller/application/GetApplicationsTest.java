@@ -6,6 +6,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
@@ -13,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -92,6 +95,32 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         getAndConfirmSortedApplications(
                 createUriForSorting(TestConstants.URIs.GET_APPLICATIONS, sortByParameter, orderByParameter),
                 expectedSortedApplications);
+    }
+
+    @ParameterizedTest
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
+    void givenValidApplicationsDataAndIncorrectHeader_whenGetApplications_thenReturnBadRequest(
+            String serviceName
+    ) throws Exception {
+        verifyBadServiceNameHeader(serviceName);
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    void givenValidApplicationsDataAndNoHeader_whenGetApplications_thenReturnBadRequest() throws Exception {
+        verifyBadServiceNameHeader(null);
+    }
+
+    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
+        MvcResult result = getUri(
+                createUriForSorting(TestConstants.URIs.GET_APPLICATIONS,
+                        SEARCH_SORTBY_SUBMITTED_PARAM,
+                        SEARCH_ORDERBY_ASC_PARAM),
+                ServiceNameHeader(serviceName));
+
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+
     }
 
     private String createUriForSorting(String uri, String sortBy, String orderBy) {

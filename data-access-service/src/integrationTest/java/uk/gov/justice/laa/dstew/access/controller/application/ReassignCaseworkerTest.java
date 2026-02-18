@@ -1,6 +1,9 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
@@ -15,14 +18,48 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEn
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerAssignRequestGenerator;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
 
 @ActiveProfiles("test")
 public class ReassignCaseworkerTest extends BaseIntegrationTest {
+
+    @ParameterizedTest
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
+    void givenValidReassignRequestAndInvalidHeader_whenAssignCaseworker_thenReturnBadRequest(
+            String serviceName
+    ) throws Exception {
+        verifyBadServiceNameHeader(serviceName);
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    void givenValidReassignRequestAndNoHeader_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
+        verifyBadServiceNameHeader(null);
+    }
+
+    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
+
+        CaseworkerAssignRequest caseworkerReassignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
+            builder.caseworkerId(BaseIntegrationTest.CaseworkerJaneDoe.getId())
+                    .applicationIds(List.of(UUID.randomUUID()))
+                    .eventHistory(EventHistory.builder()
+                            .eventDescription("Assigning caseworker")
+                            .build());
+        });
+
+        MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER,
+                                    caseworkerReassignRequest,
+                                    ServiceNameHeader(serviceName));
+
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+    }
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.WRITER)
