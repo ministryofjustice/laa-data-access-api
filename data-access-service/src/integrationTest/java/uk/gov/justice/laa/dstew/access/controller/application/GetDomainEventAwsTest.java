@@ -16,7 +16,9 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDb;
@@ -31,6 +33,8 @@ import uk.gov.justice.laa.dstew.access.utils.factory.domainEvent.DomainEventDyna
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventDynamoDbGenerator;
 
+@ActiveProfiles("test")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(properties = "event.history.service.type=aws")
 public class GetDomainEventAwsTest extends BaseIntegrationTest {
 

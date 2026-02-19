@@ -48,7 +48,7 @@ public class TestServiceConfiguration {
   @Bean
   public DynamoDbTable<DomainEventDynamoDb> eventTable() {
     return dynamoDbEnhancedClient()
-        .table("domain-events", TableSchema.fromBean(DomainEventDynamoDb.class));
+        .table("events", TableSchema.fromBean(DomainEventDynamoDb.class));
   }
 
   @Bean
