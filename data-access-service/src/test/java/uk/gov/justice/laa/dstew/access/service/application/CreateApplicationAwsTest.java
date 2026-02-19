@@ -15,7 +15,6 @@ import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -51,11 +50,11 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CreateApplicationAwsTest extends BaseServiceTest {
 
-    @Autowired
-    private ApplicationService serviceUnderTest;
+  @Autowired
+  private ApplicationService serviceUnderTest;
 
-    @Test
-    public void givenNewApplication_whenCreateApplication_thenReturnNewId() throws JsonProcessingException {
+  @Test
+  public void givenNewApplication_whenCreateApplication_thenReturnNewId() throws JsonProcessingException {
 
     // given
     UUID expectedId = UUID.randomUUID();
@@ -74,16 +73,16 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
         UUID.randomUUID(), Map.of("testKey", "testValue").toString()
     )));
 
-        DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
-                .applicationId(expectedId)
-                .type(DomainEventType.APPLICATION_CREATED)
-                .data(objectMapper.writeValueAsString(CreateApplicationDomainEventDetails.builder()
-                        .applicationId(expectedId)
-                        .laaReference(withExpectedId.getLaaReference())
-                        .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS.toString())
-                        .request(objectMapper.writeValueAsString(applicationCreateRequest))
-                        .build()))
-                .build();
+    DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+        .applicationId(expectedId)
+        .type(DomainEventType.APPLICATION_CREATED)
+        .data(objectMapper.writeValueAsString(CreateApplicationDomainEventDetails.builder()
+            .applicationId(expectedId)
+            .laaReference(withExpectedId.getLaaReference())
+            .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS.toString())
+            .request(objectMapper.writeValueAsString(applicationCreateRequest))
+            .build()))
+        .build();
 
     setSecurityContext(TestConstants.Roles.WRITER);
 
@@ -117,7 +116,8 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
 
       assertThat(actualProceedingEntity.getApplicationId()).isEqualTo(expectedId);
       assertThat(actualProceedingEntity.isLead()).isEqualTo(expectedProceeding.getLeadProceeding());
-      assertThat(actualProceedingEntity.getProceedingContent()).isEqualTo(objectMapper.convertValue(expectedProceeding, Map.class));
+      assertThat(actualProceedingEntity.getProceedingContent()).isEqualTo(
+          objectMapper.convertValue(expectedProceeding, Map.class));
     }
   }
 
@@ -174,24 +174,24 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
     verify(domainEventRepository, never()).save(any());
   }
 
-    @ParameterizedTest
-    @MethodSource("invalidApplicationRequests")
-    public void GivenInvalidApplicationAndRoleWriter_whenCreateApplication_thenValidationExceptionWithCorrectMessage(
-            ApplicationCreateRequest applicationCreateRequest,
-            ValidationException validationException
-    ) {
-        setSecurityContext(TestConstants.Roles.WRITER);
+  @ParameterizedTest
+  @MethodSource("invalidApplicationRequests")
+  public void GivenInvalidApplicationAndRoleWriter_whenCreateApplication_thenValidationExceptionWithCorrectMessage(
+      ApplicationCreateRequest applicationCreateRequest,
+      ValidationException validationException
+  ) {
+    setSecurityContext(TestConstants.Roles.WRITER);
 
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));
-        assertThat(thrown)
-                .isInstanceOf(ValidationException.class)
-                .usingRecursiveComparison()
-                .isEqualTo(validationException);
+    Throwable thrown = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));
+    assertThat(thrown)
+        .isInstanceOf(ValidationException.class)
+        .usingRecursiveComparison()
+        .isEqualTo(validationException);
 
-        verify(applicationRepository, never()).findById(any(UUID.class));
-        verify(applicationRepository, never()).save(any());
-        verify(domainEventRepository, never()).save(any());
-    }
+    verify(applicationRepository, never()).findById(any(UUID.class));
+    verify(applicationRepository, never()).save(any());
+    verify(domainEventRepository, never()).save(any());
+  }
 
 
   private Stream<Arguments> invalidApplicationRequests() {
@@ -211,7 +211,7 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
   }
 
   private Map<String, Object> getAppContentParent(List<Proceeding> proceedings,
-                                                        String appContentId) {
+                                                  String appContentId) {
 
 
     ApplicationContent applicationContent = applicationContentFactory.createDefault(appContentBuilder ->
@@ -273,24 +273,24 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
   }
 
 
-    private void verifyThatCreateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled)
-            throws JsonProcessingException {
-        ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
-        verify(domainEventRepository, times(timesCalled)).save(captor.capture());
-        DomainEventEntity actualDomainEvent = captor.getValue();
-        assertThat(expectedDomainEvent)
-                .usingRecursiveComparison()
-                .ignoringFields("createdAt", "data")
-                .isEqualTo(actualDomainEvent);
-        assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
+  private void verifyThatCreateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled)
+      throws JsonProcessingException {
+    ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
+    verify(domainEventRepository, times(timesCalled)).save(captor.capture());
+    DomainEventEntity actualDomainEvent = captor.getValue();
+    assertThat(expectedDomainEvent)
+        .usingRecursiveComparison()
+        .ignoringFields("createdAt", "data")
+        .isEqualTo(actualDomainEvent);
+    assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
 
-        Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
-        Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
-        assertThat(expectedData)
-                .usingRecursiveComparison()
-                .ignoringCollectionOrder()
-                .ignoringFields("createdDate")
-                .isEqualTo(actualData);
-        assertThat(actualData.get("createdDate")).isNotNull();
-    }
+    Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
+    Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
+    assertThat(expectedData)
+        .usingRecursiveComparison()
+        .ignoringCollectionOrder()
+        .ignoringFields("createdDate")
+        .isEqualTo(actualData);
+    assertThat(actualData.get("createdDate")).isNotNull();
+  }
 }
