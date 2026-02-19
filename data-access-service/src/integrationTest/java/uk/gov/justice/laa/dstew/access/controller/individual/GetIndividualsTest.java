@@ -92,6 +92,24 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
+  public void givenNoUser_whenGetIndividuals_thenReturnUnauthorisedResponse() throws Exception {
+    // when
+    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
+    // then
+    assertSecurityHeaders(result);
+    assertUnauthorised(result);
+  }
+
+  @Test
+  public void givenNoUser_whenGetIndividualsWithFilters_thenReturnUnauthorisedResponse() throws Exception {
+    // when
+    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + UUID.randomUUID() + "&individualType=CLIENT");
+    // then
+    assertSecurityHeaders(result);
+    assertUnauthorised(result);
+  }
+
+  @Test
   @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenUnknownRole_whenGetIndividuals_thenReturnForbiddenResponse() throws Exception {
     // when
@@ -102,12 +120,53 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  public void givenNoUser_whenGetIndividuals_thenReturnUnauthorisedResponse() throws Exception {
+  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
+  public void givenUnknownRole_whenGetIndividualsWithFilters_thenReturnForbiddenResponse() throws Exception {
+    // when
+    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + UUID.randomUUID() + "&individualType=CLIENT");
+    // then
+    assertSecurityHeaders(result);
+    assertForbidden(result);
+  }
+
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenWriterRole_whenGetIndividuals_thenReturnForbiddenResponse() throws Exception {
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     // then
     assertSecurityHeaders(result);
-    assertUnauthorised(result);
+    assertForbidden(result);
+  }
+
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenWriterRole_whenGetIndividualsWithFilters_thenReturnForbiddenResponse() throws Exception {
+    // when
+    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + UUID.randomUUID() + "&individualType=CLIENT");
+    // then
+    assertSecurityHeaders(result);
+    assertForbidden(result);
+  }
+
+  @Test
+  @WithMockUser
+  public void givenUserWithNoAuthorities_whenGetIndividuals_thenReturnForbiddenResponse() throws Exception {
+    // when
+    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
+    // then
+    assertSecurityHeaders(result);
+    assertForbidden(result);
+  }
+
+  @Test
+  @WithMockUser
+  public void givenUserWithNoAuthorities_whenGetIndividualsWithPaging_thenReturnForbiddenResponse() throws Exception {
+    // when
+    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=1&pageSize=10");
+    // then
+    assertSecurityHeaders(result);
+    assertForbidden(result);
   }
 
   @Test
