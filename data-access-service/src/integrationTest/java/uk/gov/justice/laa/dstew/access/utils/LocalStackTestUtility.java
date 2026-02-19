@@ -19,18 +19,13 @@ import uk.gov.justice.laa.dstew.access.config.devlopment.LocalStackResourceIniti
 public class LocalStackTestUtility {
     private static final Logger log = LoggerFactory.getLogger(LocalStackTestUtility.class);
 
-//    private final DynamoDbClient dynamoDbClient;
-//    private final S3Client s3Client;
-//
-//    public LocalStackTestUtility(DynamoDbClient dynamoDbClient, S3Client s3Client) {
-//        this.dynamoDbClient = dynamoDbClient;
-//        this.s3Client = s3Client;
-//    }
 
     public void createTableWithGsi(DynamoDbClient dynamoDbClient) {
         String tableName = "events";
         if (dynamoDbClient.listTables().tableNames().contains(tableName)) {
             dynamoDbClient.deleteTable(DeleteTableRequest.builder().tableName(tableName).build());
+            // Wait for table to be fully deleted before creating a new one
+            waitForTableDeleted(dynamoDbClient, tableName);
         }
 
         CreateTableRequest request = LocalStackResourceInitializer
@@ -46,6 +41,23 @@ public class LocalStackTestUtility {
 
         // wait until ACTIVE
         waitForTableActive(dynamoDbClient, tableName);
+    }
+
+    private void waitForTableDeleted(DynamoDbClient dynamoDbClient, String tableName) {
+        for (int i = 0; i < 30; i++) {
+            try {
+                dynamoDbClient.describeTable(DescribeTableRequest.builder().tableName(tableName).build());
+                // Table still exists, wait and retry
+                Thread.sleep(500);
+            } catch (ResourceNotFoundException rnfe) {
+                // Table has been deleted
+                return;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }
+        }
+        throw new RuntimeException("Table was not deleted in time");
     }
 
     private void waitForTableActive(DynamoDbClient dynamoDbClient, String tableName) {

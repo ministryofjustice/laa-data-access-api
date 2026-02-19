@@ -87,6 +87,7 @@ public class AwsConfig {
         .build();
   }
 
+  @Profile("!test")
   @Bean
   public DynamoDbTable<DomainEventDynamoDb> eventTable() {
     return dynamoDbEnhancedClient().table(tableName, TableSchema.fromBean(DomainEventDynamoDb.class));
@@ -97,6 +98,7 @@ public class AwsConfig {
    *
    * @return a configured S3Client instance.
    */
+  @Profile("!test")
   @Bean
   public S3Client s3Client() {
     S3ClientBuilder builder = S3Client.builder()

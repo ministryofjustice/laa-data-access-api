@@ -21,7 +21,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import uk.gov.justice.laa.dstew.access.config.TestAsyncConfig;
+import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDb;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
@@ -31,8 +35,6 @@ import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
-import uk.gov.justice.laa.dstew.access.service.DynamoDbService;
-import uk.gov.justice.laa.dstew.access.service.S3Service;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateRequestFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEntityFactory;
@@ -51,41 +53,48 @@ import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingFactor
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingsEntityFactory;
 
 @SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=false"})
+@TestPropertySource(properties = {
+    "spring.main.allow-bean-definition-overriding=true"
+})
 @ImportAutoConfiguration(exclude = {
-        DataSourceAutoConfiguration.class,
-        HibernateJpaAutoConfiguration.class,
+    DataSourceAutoConfiguration.class,
+    HibernateJpaAutoConfiguration.class,
 })
 @Import(TestAsyncConfig.class)
 @ExtendWith(MockitoExtension.class)
 @ActiveProfiles("unit-test")
 public class BaseServiceTest {
 
-    @MockitoBean
-    protected S3Service s3Service;
+  @MockitoBean
+  protected DynamoDbClient dynamoDbClient;
 
-    @MockitoBean
-    protected DynamoDbService dynamoDbService;
+  @MockitoBean
+  protected DynamoDbEnhancedClient dynamoDbEnhancedClient;
 
-    @MockitoBean
-    protected ApplicationRepository applicationRepository;
+  @MockitoBean
+  protected DynamoDbTable<DomainEventDynamoDb> eventTable;
 
-    @MockitoBean
-    protected DomainEventRepository domainEventRepository;
 
-    @MockitoBean
-    protected CaseworkerRepository caseworkerRepository;
+  @MockitoBean
+  protected ApplicationRepository applicationRepository;
 
-    @MockitoBean
-    protected ApplicationSummaryRepository applicationSummaryRepository;
+  @MockitoBean
+  protected DomainEventRepository domainEventRepository;
 
-    @MockitoBean
-    protected ProceedingRepository proceedingRepository;
+  @MockitoBean
+  protected CaseworkerRepository caseworkerRepository;
 
-    @MockitoBean
-    protected DecisionRepository decisionRepository;
+  @MockitoBean
+  protected ApplicationSummaryRepository applicationSummaryRepository;
 
-    @MockitoBean
-    protected MeritsDecisionRepository meritsDecisionRepository;
+  @MockitoBean
+  protected ProceedingRepository proceedingRepository;
+
+  @MockitoBean
+  protected DecisionRepository decisionRepository;
+
+  @MockitoBean
+  protected MeritsDecisionRepository meritsDecisionRepository;
 
     @MockitoBean
     protected CertificateRepository certificateRepository;
@@ -104,23 +113,23 @@ public class BaseServiceTest {
       Mockito.lenient().when(serviceNameContext.getServiceName()).thenReturn(ServiceName.CIVIL_APPLY);
     }
 
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
-    }
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
 
-    protected void setSecurityContext(String[] roles) {
-        var authorities = Stream.of(roles)
-                .map(SimpleGrantedAuthority::new)
-                .toList();
+  protected void setSecurityContext(String[] roles) {
+    var authorities = Stream.of(roles)
+        .map(SimpleGrantedAuthority::new)
+        .toList();
 
-        var authentication = new TestingAuthenticationToken("user", "password", authorities);
-        authentication.setAuthenticated(true);
+    var authentication = new TestingAuthenticationToken("user", "password", authorities);
+    authentication.setAuthenticated(true);
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-    }
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+  }
 
-    protected void setSecurityContext(String role) {
-        setSecurityContext(new String[] {role});
-    }
+  protected void setSecurityContext(String role) {
+    setSecurityContext(new String[] {role});
+  }
 }

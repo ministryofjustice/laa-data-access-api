@@ -3,8 +3,6 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.testcontainers.containers.localstack.LocalStackContainer.Service.DYNAMODB;
-import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertCreated;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
@@ -17,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -29,11 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.containers.localstack.LocalStackContainer;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -60,10 +53,15 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOffice;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationOffice;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
-import uk.gov.justice.laa.dstew.access.utils.LocalstackContainerInitializer;
+import uk.gov.justice.laa.dstew.access.utils.LocalStackTestUtility;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -79,6 +77,9 @@ import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualGene
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CreateApplicationTest extends BaseIntegrationTest {
   private static final int applicationVersion = 1;
+
+  private LocalStackTestUtility localStackTestUtility;
+
   private Stream<Arguments> createApplicationTestParameters() {
       return Stream.of(
               Arguments.of(new ApplicationOffice()),
@@ -88,118 +89,18 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
   @BeforeEach
   void initializeResources() {
-    createTableWithGsi();
-    createBucket();
-  }
-
-
-  private void createTableWithGsi() {
-    String tableName = "events";
-    if (dynamoDbClient.listTables().tableNames().contains(tableName)) {
-      dynamoDbClient.deleteTable(DeleteTableRequest.builder().tableName(tableName).build());
-    }
-
-    CreateTableRequest request = LocalStackResourceInitializer
-        .getCreateTableRequest(tableName);
-
-    try {
-      dynamoDbClient.createTable(request);
-    } catch (ResourceInUseException e) {
-      // Table already exists - make creation idempotent so tests can run against existing LocalStack
-      // (for example when Testcontainers can't create containers and we fallback to an existing compose-managed LocalStack).
-      // Continue to waiting for the table to be ACTIVE below.
-    }
-
-    // wait until ACTIVE
-    waitForTableActive(tableName);
-  }
-
-  private void waitForTableActive(String tableName) {
-    for (int i = 0; i < 30; i++) {
-      try {
-        DescribeTableResponse resp = dynamoDbClient.describeTable(DescribeTableRequest.builder().tableName(tableName).build());
-        if (resp.table().tableStatus() == TableStatus.ACTIVE) {
-          return;
-        }
-        Thread.sleep(500);
-      } catch (software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException rnfe) {
-        // continue waiting
-        try {
-          Thread.sleep(500);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new RuntimeException(e);
-      }
-    }
-    throw new RuntimeException("Table did not become active in time");
-  }
-
-  private void createBucket() {
-    String bucketName = "test-bucket";
-    int attempts = 0;
-    int maxAttempts = 30;
-    while (true) {
-      try {
-        s3Client.createBucket(CreateBucketRequest.builder().bucket(bucketName).build());
-        return;
-      } catch (S3Exception s3e) {
-        // If the bucket already exists, consider creation successful
-        try {
-          ListBucketsResponse list = s3Client.listBuckets();
-          boolean exists = list.buckets().stream().anyMatch(b -> bucketName.equals(b.name()));
-          if (exists) {
-            return;
-          }
-        } catch (Exception ignored) {
-          // ignore and fall through to retry
-        }
-
-        attempts++;
-        if (attempts >= maxAttempts) {
-          throw new RuntimeException("Failed to create S3 bucket after retries", s3e);
-        }
-        try {
-          Thread.sleep(1000);
-        } catch (InterruptedException ie) {
-          Thread.currentThread().interrupt();
-          throw new RuntimeException(ie);
-        }
-      } catch (Exception e) {
-        // Non-S3 exceptions: attempt to detect if the bucket exists (fallback) then retry
-        try {
-          ListBucketsResponse list = s3Client.listBuckets();
-          boolean exists = list.buckets().stream().anyMatch(b -> bucketName.equals(b.name()));
-          if (exists) {
-            return;
-          }
-        } catch (Exception ignored) {
-          // ignore and fall through to retry
-        }
-
-        attempts++;
-        if (attempts >= maxAttempts) {
-          throw new RuntimeException("Failed to create S3 bucket after retries", e);
-        }
-        try {
-          Thread.sleep(1000);
-        } catch (InterruptedException ie) {
-          Thread.currentThread().interrupt();
-          throw new RuntimeException(ie);
-        }
-      }
-    }
+    localStackTestUtility = new LocalStackTestUtility();
+    localStackTestUtility.createTableWithGsi(dynamoDbClient);
+    localStackTestUtility.createBucket(s3Client);
   }
 
   @ParameterizedTest
   @MethodSource("createApplicationTestParameters")
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenCreateNewApplication_whenCreateApplication_thenReturnCreatedWithLocationHeader(
-          ApplicationOffice office
+      ApplicationOffice office
   ) throws Exception {
-      verifyCreateNewApplication(office, null);
+    verifyCreateNewApplication(office, null);
   }
 
   @Test
@@ -227,6 +128,8 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     assertLinkedApplicationCorrectlyApplied(leadApplication, createdEntity);
   }
 
+  private ApplicationEntity verifyCreateNewApplication(ApplicationOffice office, LinkedApplication linkedApplication)
+      throws Exception {
   @Test
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_raiseIfLeadNotFound() throws Exception {
@@ -352,7 +255,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
     UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
     ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
-      .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
+        .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
     assertApplicationEqual(applicationCreateRequest, createdApplication);
     assertNotNull(createdApplicationId);
 
@@ -396,11 +299,11 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   private void verifyBadServiceNameHeader(String serviceName) throws Exception {
       ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
 
-      MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION,
-              applicationCreateRequest,
-              ServiceNameHeader(serviceName));
-      applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
-    }
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION,
+        applicationCreateRequest,
+        ServiceNameHeader(serviceName));
+    applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+  }
 
   @ParameterizedTest
   @MethodSource("applicationCreateRequestInvalidDataCases")
@@ -429,7 +332,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
 
     ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
-    expectedProblemDetail.setProperty("invalidFields", Map.of("applicationContent","size must be between 1 and 2147483647"));
+    expectedProblemDetail.setProperty("invalidFields", Map.of("applicationContent", "size must be between 1 and 2147483647"));
 
     // when
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
