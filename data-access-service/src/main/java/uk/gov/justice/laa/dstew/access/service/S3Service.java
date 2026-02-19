@@ -2,14 +2,11 @@ package uk.gov.justice.laa.dstew.access.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,17 +38,10 @@ public class S3Service {
   }
 
   /**
-   * Format an S3 URI for the given bucket and key: s3://bucket/key.
-   */
-  private String formatS3Uri(String bucketName, String key) {
-    return String.format("s3://%s/%s", bucketName, key);
-  }
-
-  /**
    * Download object content as a UTF-8 string.
    * Returns null if the object cannot be read.
    */
-  public String downloadObjectAsString(String bucketName, String key) {
+  private String downloadObjectAsString(String bucketName, String key) {
     Objects.requireNonNull(bucketName, "bucketName must not be null");
     Objects.requireNonNull(key, "key must not be null");
 
@@ -87,7 +77,7 @@ public class S3Service {
       while ((read = resp.read(buf)) != -1) {
         out.write(buf, 0, read);
       }
-      return new String(out.toByteArray(), StandardCharsets.UTF_8);
+      return out.toString(StandardCharsets.UTF_8);
     } catch (IOException e) {
       logger.error("Failed to read S3 object stream: {}", e.getMessage(), e);
       return null;
@@ -158,14 +148,12 @@ public class S3Service {
    * Read an InputStream fully into a byte[].
    * If expectedLength is > 0 and <= Integer.MAX_VALUE the ByteArrayOutputStream will be pre-sized.
    */
-  private byte[] toBytes(InputStream inStream, long expectedLength) throws IOException {
+  private byte[] toBytes(InputStream inStream) throws IOException {
     if (inStream == null) {
       throw new IllegalArgumentException("input stream must not be null");
     }
-
-    int initialSize = (expectedLength > 0 && expectedLength <= Integer.MAX_VALUE) ? (int) expectedLength : 0;
     try (InputStream in = inStream;
-         ByteArrayOutputStream out = initialSize > 0 ? new ByteArrayOutputStream(initialSize) : new ByteArrayOutputStream()) {
+         ByteArrayOutputStream out = new ByteArrayOutputStream()) {
       byte[] buffer = new byte[8192];
       int read;
       while ((read = in.read(buffer)) != -1) {
@@ -177,9 +165,6 @@ public class S3Service {
 
 
   private byte[] toBytes(Object payload) throws IOException {
-    if (payload == null) {
-      throw new IllegalArgumentException("payload must not be null");
-    }
 
     if (payload instanceof byte[]) {
       return (byte[]) payload;
@@ -191,16 +176,9 @@ public class S3Service {
 
     if (payload instanceof InputStream) {
       // use the stream helper without an expected length
-      return toBytes((InputStream) payload, -1);
+      return toBytes((InputStream) payload);
     }
 
-    if (payload instanceof File) {
-      return Files.readAllBytes(((File) payload).toPath());
-    }
-
-    if (payload instanceof Path) {
-      return Files.readAllBytes((Path) payload);
-    }
 
     // Prefer JSON serialization for Maps, Collections and POJOs to produce textual payloads that
     // are less likely to confuse S3-compatible servers' parsers (LocalStack historically chokes on

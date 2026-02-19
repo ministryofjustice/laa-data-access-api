@@ -21,6 +21,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * Component that initializes AWS resources (S3 bucket and DynamoDB table) when the application starts in the 'local' profile.
@@ -29,6 +30,7 @@ import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
  */
 @Component
 @Profile("localstack") // Only run this component when the 'localstack' profile is active
+@ExcludeFromGeneratedCodeCoverage
 public class LocalStackResourceInitializer {
 
   private static final Logger log = LoggerFactory.getLogger(LocalStackResourceInitializer.class);
