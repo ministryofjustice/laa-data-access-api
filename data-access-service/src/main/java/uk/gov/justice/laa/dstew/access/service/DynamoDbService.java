@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.service;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -215,8 +214,9 @@ public class DynamoDbService {
     final int batchSize = 100;
 //    List<Event> allEvents = new ArrayList<>();
     List<List<Key>> batches = getBatches(indexedEvents, batchSize);
-    return batches.stream()
-        .map(this::addBatchResultToEvent)
+    List<List<Event>> listStream = batches.stream()
+        .map(this::addBatchResultToEvent).toList();
+    return listStream.stream()
         .flatMap(List::stream).toList();
 //    for (List<Key> batch : batches) {
 //      addBatchResultToEvent(batch);
@@ -232,11 +232,9 @@ public class DynamoDbService {
         .addReadBatch(readBatchBuilder.build())
         .build();
     BatchGetResultPageIterable batchResult = dynamoDbEnhancedClient.batchGetItem(batchGetItemEnhancedRequest);
-//    allEvents.addAll(
-       return batchResult.resultsForTable(eventTable).stream()
-            .map(Event::fromDynamoEntity)
-            .toList();
-//    );
+    return batchResult.resultsForTable(eventTable).stream()
+        .map(Event::fromDynamoEntity)
+        .toList();
   }
 
   private @NonNull List<Key> getIndexedEvents(DomainEventType eventType, QueryResponse response) {

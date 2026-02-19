@@ -27,7 +27,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGe
 
 
 @TestPropertySource(properties = "event.history.service.type=rds")
-
 public class GetEventsTest extends BaseServiceTest {
 
   @Autowired

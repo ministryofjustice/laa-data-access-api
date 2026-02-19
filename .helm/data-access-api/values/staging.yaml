@@ -57,3 +57,7 @@ sentry:
   enabled: true
   environment: staging
   tracesSampleRate: 1
+
+aws:
+  domainEvent:
+    enabled: false
