@@ -46,3 +46,7 @@ sentry:
   enabled: true
   environment: production
   tracesSampleRate: 1
+
+aws:
+  domainEvent:
+    enabled: false

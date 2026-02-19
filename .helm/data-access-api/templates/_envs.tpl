@@ -73,6 +73,13 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
     secretKeyRef:
       name: domain-events
       key: table_name
+{{- if .Values.aws.domainEvent.enabled }}
+- name: AWS_DOMAIN_EVENT_ENABLED
+  value: "true"
+{{- else }}
+- name: AWS_DOMAIN_EVENT_ENABLED
+  value: "false"
+{{- end }}
 {{- end }}
 
 {{/*

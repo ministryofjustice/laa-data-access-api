@@ -53,3 +53,7 @@ sentry:
   enabled: true
   environment: uat
   tracesSampleRate: 1
+
+aws:
+  domainEvent:
+    enabled: true
