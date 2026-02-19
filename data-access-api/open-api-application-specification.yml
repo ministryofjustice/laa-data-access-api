@@ -444,9 +444,6 @@ components:
         lastUpdated:
           type: string
           format: date-time
-        caseworkerId:
-          type: string
-          format: uuid
         assignedTo:
           type: string
           format: uuid
