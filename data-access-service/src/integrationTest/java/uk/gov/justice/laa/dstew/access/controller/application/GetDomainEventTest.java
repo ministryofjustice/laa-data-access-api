@@ -1,6 +1,10 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
@@ -9,6 +13,9 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
+import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
 
 import java.time.ZoneOffset;
@@ -16,6 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
@@ -28,10 +36,34 @@ public class GetDomainEventTest extends BaseIntegrationTest {
 
     private final String SEARCH_EVENT_TYPE_PARAM = "eventType=";
 
+    @ParameterizedTest
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
+    void givenApplicationWithDomainEventsAndNoHeader_whenApplicationHistorySearch_thenReturnBadRequest(
+            String serviceName
+    ) throws Exception {
+        verifyBadServiceNameHeader(serviceName);
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    void givenApplicationWithDomainEventsAndInvalidHeader_whenApplicationHistorySearch_thenReturnBadRequest() throws Exception {
+        verifyBadServiceNameHeader(null);
+    }
+
+    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
+
+        MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH,
+                                    ServiceNameHeader(serviceName),
+                                    UUID.randomUUID());
+
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+    }
+
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
     public void givenApplicationWithDomainEvents_whenApplicationHistorySearch_theReturnDomainEvents() throws Exception {
-        var appId = persistedApplicationFactory.createAndPersist().getId();
+        var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
         // given
         var domainEvents = setUpDomainEvents(appId);
         var expectedDomainEvents = domainEvents.stream().map(GetDomainEventTest::toEvent).toList();
@@ -53,7 +85,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
     public void givenApplicationWithDomainEvents_whenApplicationHistorySearchFilterSingleDomainEvent_thenOnlyFilteredDomainEventTypes() throws Exception {
-        var appId = persistedApplicationFactory.createAndPersist().getId();
+        var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
         // given
         var domainEvents = setUpDomainEvents(appId);
         var expectedAssignDomainEvents = domainEvents.stream()
@@ -80,7 +112,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     @Test
     @WithMockUser(authorities = TestConstants.Roles.READER)
     public void givenApplicationWithDomainEvents_whenApplicationHistorySearchFilterMultipleDomainEvent_thenOnlyFilteredDomainEventTypes() throws Exception {
-        var appId = persistedApplicationFactory.createAndPersist().getId();
+        var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
         // given
         var domainEvents = setUpDomainEvents(appId);
         var expectedAssignDomainEvents = domainEvents.stream()
@@ -142,13 +174,12 @@ public class GetDomainEventTest extends BaseIntegrationTest {
 
     private DomainEventEntity setupDomainEvent(UUID appId, DomainEventType eventType) {
         String eventDesc = "{\"eventDescription\": \"" + eventType.getValue() + "\"}";
-        return persistedDomainEventFactory.createAndPersist(builder ->
-                {
-                    builder.applicationId(appId);
-                    builder.createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds());
-                    builder.data(eventDesc);
-                    builder.type(eventType);
-                }
+        return persistedDataGenerator.createAndPersist(DomainEventGenerator.class, builder ->
+                builder.applicationId(appId)
+                       .caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
+                       .createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds())
+                       .data(eventDesc)
+                       .type(eventType)
         );
     }
 

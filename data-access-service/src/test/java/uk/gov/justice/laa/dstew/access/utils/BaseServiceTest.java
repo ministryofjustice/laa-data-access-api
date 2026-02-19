@@ -20,7 +20,6 @@ import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
-import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
@@ -39,7 +38,6 @@ import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionsEntity
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.MakeDecisionProceedingFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingsEntityFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.refusal.RefusalDetailsFactory;
 
 import java.util.stream.Stream;
 
@@ -72,9 +70,6 @@ public class BaseServiceTest {
 
     @MockitoBean
     protected MeritsDecisionRepository meritsDecisionRepository;
-
-    @MockitoBean
-    protected LinkedApplicationRepository linkedApplicationRepository;
 
     @MockitoBean
     protected IndividualRepository individualRepository;
@@ -123,9 +118,6 @@ public class BaseServiceTest {
 
     @Autowired
     protected ProceedingsEntityFactory proceedingsEntityFactory;
-
-    @Autowired
-    protected RefusalDetailsFactory refusalDetailsFactory;
 
     @Autowired
     protected ProceedingFactory proceedingFactory;

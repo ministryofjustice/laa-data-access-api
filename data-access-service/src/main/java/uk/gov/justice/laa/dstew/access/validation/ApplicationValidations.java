@@ -5,9 +5,10 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
-import uk.gov.justice.laa.dstew.access.model.RefusalDetails;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetails;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 /**
@@ -62,14 +63,13 @@ public class ApplicationValidations {
     }
 
     dto.getProceedings().forEach(proceeding -> {
-      RefusalDetails refusal = proceeding.getMeritsDecision().getRefusal();
-      if (refusal.getReason() == null || refusal.getReason().isEmpty()) {
+      MeritsDecisionDetails mdd = proceeding.getMeritsDecision();
+      if (mdd.getReason() == null || mdd.getReason().isEmpty()) {
         throw new ValidationException(
-                List.of("The Make Decision request must contain a refusal reason for proceeding with id: "
-                        + proceeding.getProceedingId()));
+            List.of("The Make Decision request must contain a refusal reason for proceeding with id: "
+                + proceeding.getProceedingId()));
       }
-
-      if (refusal.getJustification() == null || refusal.getJustification().isEmpty()) {
+      if (mdd.getJustification() == null || mdd.getJustification().isEmpty()) {
         throw new ValidationException(
                 List.of("The Make Decision request must contain a refusal justification for proceeding with id: "
                         + proceeding.getProceedingId()));

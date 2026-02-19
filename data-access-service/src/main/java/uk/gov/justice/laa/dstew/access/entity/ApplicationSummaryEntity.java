@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
@@ -79,6 +80,20 @@ public class ApplicationSummaryEntity {
 
   @Column(name = "is_auto_granted")
   private Boolean isAutoGranted;
+
+  @OneToMany
+  @JoinTable(
+      name = "linked_applications",
+      joinColumns = @JoinColumn(name = "lead_application_id"),
+      inverseJoinColumns = @JoinColumn(name = "associated_application_id")
+  )
+  private Set<ApplicationEntity> linkedApplications;
+
+
+  @Transient
+  public boolean isLead() {
+    return linkedApplications != null && !linkedApplications.isEmpty();
+  }
 
   @Transient
   private ApplicationType type = ApplicationType.INITIAL;

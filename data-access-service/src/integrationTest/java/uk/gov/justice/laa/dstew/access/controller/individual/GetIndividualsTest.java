@@ -15,6 +15,8 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
@@ -25,11 +27,36 @@ import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 
-/**
- * Integration tests for the GET /individuals endpoint.
- */
+import java.util.stream.Stream;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
+
 @ActiveProfiles("test")
 public class GetIndividualsTest extends BaseIntegrationTest {
+
+  @ParameterizedTest
+  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
+  void givenPagingParametersAndInvalidHeader_whenGetIndividuals_thenReturnBadRequest(
+          String serviceName
+  ) throws Exception {
+    verifyServiceNameHeader(serviceName);
+  }
+
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.READER)
+  void givenPagingParametersAndNoHeader_whenGetIndividuals_thenReturnBadRequest() throws Exception {
+    verifyServiceNameHeader(null);
+  }
+
+  private void verifyServiceNameHeader(String serviceName) throws Exception {
+    int page = 1, pageSize = 10;
+
+    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page="+ page + "&pageSize=" + pageSize, ServiceNameHeader(serviceName));
+    applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+  }
 
   @ParameterizedTest
   @MethodSource("pagingParameters")
