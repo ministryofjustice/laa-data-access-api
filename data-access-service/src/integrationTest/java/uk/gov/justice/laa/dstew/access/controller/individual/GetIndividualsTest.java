@@ -88,7 +88,8 @@ public class GetIndividualsTest extends BaseIntegrationTest {
         of(-1, 10),   // negative page
         of(1, 0),     // zero pageSize
         of(1, -74),   // negative pageSize
-        of(1, 101)    // pageSize greater than 100
+        of(1, 101),   // pageSize greater than 100
+        of(0,0)       // zero page and pageSize
     );
   }
 
