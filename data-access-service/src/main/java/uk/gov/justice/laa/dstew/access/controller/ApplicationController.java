@@ -8,7 +8,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -35,6 +34,7 @@ import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.service.DomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
+import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
 
 /**
@@ -90,7 +90,7 @@ public class ApplicationController implements ApplicationApi {
           Integer page,
           Integer pageSize) {
 
-    Page<ApplicationSummary> applicationsReturned =
+    PaginatedResult<ApplicationSummary> result =
             summaryService.getAllApplications(
                     status,
                     laaReference,
@@ -105,14 +105,15 @@ public class ApplicationController implements ApplicationApi {
                     page,
                     pageSize);
 
-    ApplicationSummaryResponse response = new ApplicationSummaryResponse();
-    List<ApplicationSummary> applications = applicationsReturned.stream().toList();
+    List<ApplicationSummary> applications = result.page().stream().toList();
     Paging paging = new Paging();
-    response.setApplications(applications);
-    paging.setPage(applicationsReturned.getNumber() + 1); // Convert zero-based to one-based
-    paging.pageSize(applicationsReturned.getSize());
-    paging.totalRecords((int) applicationsReturned.getTotalElements());
+    paging.setPage(result.requestedPage());
+    paging.pageSize(result.requestedPageSize());
+    paging.totalRecords((int) result.page().getTotalElements());
     paging.itemsReturned(applications.size());
+
+    ApplicationSummaryResponse response = new ApplicationSummaryResponse();
+    response.setApplications(applications);
     response.setPaging(paging);
 
     return ResponseEntity.ok(response);

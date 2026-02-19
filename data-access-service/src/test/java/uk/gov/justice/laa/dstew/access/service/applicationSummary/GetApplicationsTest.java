@@ -57,7 +57,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                 null,
                 1,
                 10
-        ).stream().toList();
+        ).page().stream().toList();
 
         // then
         verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
@@ -97,7 +97,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                 null,
                 1,
                 10
-        ).stream().toList();
+        ).page().stream().toList();
 
         // then
         verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
