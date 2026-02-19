@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -16,7 +17,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import uk.gov.justice.laa.dstew.access.config.TestAsyncConfig;
+import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDb;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
@@ -25,8 +30,6 @@ import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
-import uk.gov.justice.laa.dstew.access.service.DynamoDbService;
-import uk.gov.justice.laa.dstew.access.service.S3Service;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateRequestFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEntityFactory;
@@ -44,119 +47,121 @@ import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.MakeDecisionProc
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingsEntityFactory;
 
-import java.util.stream.Stream;
-
 @SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=false"})
 @TestPropertySource(properties = {
-        "spring.main.allow-bean-definition-overriding=true"
+    "spring.main.allow-bean-definition-overriding=true"
 })
 @ImportAutoConfiguration(exclude = {
-        DataSourceAutoConfiguration.class,
-        HibernateJpaAutoConfiguration.class,
+    DataSourceAutoConfiguration.class,
+    HibernateJpaAutoConfiguration.class,
 })
 @Import(TestAsyncConfig.class)
 @ExtendWith(MockitoExtension.class)
 @ActiveProfiles("unit-test")
 public class BaseServiceTest {
 
-    @MockitoBean
-    protected S3Service s3Service;
+  @MockitoBean
+  protected DynamoDbClient dynamoDbClient;
 
-    @MockitoBean
-    protected DynamoDbService dynamoDbService;
+  @MockitoBean
+  protected DynamoDbEnhancedClient dynamoDbEnhancedClient;
 
-    @MockitoBean
-    protected ApplicationRepository applicationRepository;
+  @MockitoBean
+  protected DynamoDbTable<DomainEventDynamoDb> eventTable;
 
-    @MockitoBean
-    protected DomainEventRepository domainEventRepository;
 
-    @MockitoBean
-    protected CaseworkerRepository caseworkerRepository;
+  @MockitoBean
+  protected ApplicationRepository applicationRepository;
 
-    @MockitoBean
-    protected ApplicationSummaryRepository applicationSummaryRepository;
+  @MockitoBean
+  protected DomainEventRepository domainEventRepository;
 
-    @MockitoBean
-    protected ProceedingRepository proceedingRepository;
+  @MockitoBean
+  protected CaseworkerRepository caseworkerRepository;
 
-    @MockitoBean
-    protected DecisionRepository decisionRepository;
+  @MockitoBean
+  protected ApplicationSummaryRepository applicationSummaryRepository;
 
-    @MockitoBean
-    protected MeritsDecisionRepository meritsDecisionRepository;
+  @MockitoBean
+  protected ProceedingRepository proceedingRepository;
 
-    @MockitoBean
-    protected IndividualRepository individualRepository;
+  @MockitoBean
+  protected DecisionRepository decisionRepository;
 
-    @Autowired
-    protected ObjectMapper objectMapper;
+  @MockitoBean
+  protected MeritsDecisionRepository meritsDecisionRepository;
 
-    @Autowired
-    protected ApplicationEntityFactory applicationEntityFactory;
+  @MockitoBean
+  protected IndividualRepository individualRepository;
 
-    @Autowired
-    protected ApplicationCreateRequestFactory applicationCreateRequestFactory;
+  @Autowired
+  protected ObjectMapper objectMapper;
 
-    @Autowired
-    protected ApplicationUpdateRequestFactory applicationUpdateRequestFactory;
+  @Autowired
+  protected ApplicationEntityFactory applicationEntityFactory;
 
-    @Autowired
-    protected ApplicationSummaryFactory applicationSummaryEntityFactory;
+  @Autowired
+  protected ApplicationCreateRequestFactory applicationCreateRequestFactory;
 
-    @Autowired
-    protected IndividualFactory individualFactory;
+  @Autowired
+  protected ApplicationUpdateRequestFactory applicationUpdateRequestFactory;
 
-    @Autowired
-    protected CaseworkerFactory caseworkerFactory;
+  @Autowired
+  protected ApplicationSummaryFactory applicationSummaryEntityFactory;
 
-    @Autowired
-    protected DomainEventFactory domainEventFactory;
+  @Autowired
+  protected IndividualFactory individualFactory;
 
-    @Autowired
-    protected ApplicationContentFactory applicationContentFactory;
+  @Autowired
+  protected CaseworkerFactory caseworkerFactory;
 
-    @Autowired
-    protected ApplicationMakeDecisionRequestFactory applicationMakeDecisionRequestFactory;
+  @Autowired
+  protected DomainEventFactory domainEventFactory;
 
-    @Autowired
-    protected DecisionEntityFactory decisionEntityFactory;
+  @Autowired
+  protected ApplicationContentFactory applicationContentFactory;
 
-    @Autowired
-    protected MakeDecisionProceedingFactory makeDecisionProceedingFactory;
+  @Autowired
+  protected ApplicationMakeDecisionRequestFactory applicationMakeDecisionRequestFactory;
 
-    @Autowired
-    protected MeritsDecisionDetailsFactory meritsDecisionDetailsFactory;
+  @Autowired
+  protected DecisionEntityFactory decisionEntityFactory;
 
-    @Autowired
-    protected MeritsDecisionsEntityFactory meritsDecisionsEntityFactory;
+  @Autowired
+  protected MakeDecisionProceedingFactory makeDecisionProceedingFactory;
 
-    @Autowired
-    protected ProceedingsEntityFactory proceedingsEntityFactory;
+  @Autowired
+  protected MeritsDecisionDetailsFactory meritsDecisionDetailsFactory;
 
-    @Autowired
-    protected ProceedingFactory proceedingFactory;
+  @Autowired
+  protected MeritsDecisionsEntityFactory meritsDecisionsEntityFactory;
 
-    @Autowired
-    protected IndividualEntityFactory individualEntityFactory;
+  @Autowired
+  protected ProceedingsEntityFactory proceedingsEntityFactory;
 
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
-    }
+  @Autowired
+  protected ProceedingFactory proceedingFactory;
 
-    protected void setSecurityContext(String[] roles) {
-        var authorities = Stream.of(roles)
-                .map(SimpleGrantedAuthority::new)
-                .toList();
+  @Autowired
+  protected IndividualEntityFactory individualEntityFactory;
 
-        var authentication = new TestingAuthenticationToken("user", "password", authorities);
-        authentication.setAuthenticated(true);
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-    }
+  protected void setSecurityContext(String[] roles) {
+    var authorities = Stream.of(roles)
+        .map(SimpleGrantedAuthority::new)
+        .toList();
 
-    protected void setSecurityContext(String role) {
-        setSecurityContext(new String[] {role});
-    }
+    var authentication = new TestingAuthenticationToken("user", "password", authorities);
+    authentication.setAuthenticated(true);
+
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+  }
+
+  protected void setSecurityContext(String role) {
+    setSecurityContext(new String[] {role});
+  }
 }

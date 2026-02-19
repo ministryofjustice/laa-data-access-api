@@ -1,9 +1,9 @@
 package uk.gov.justice.laa.dstew.access.service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
@@ -72,17 +72,15 @@ public class DynamoDbService {
     }
 
     try {
-      String eventId = eventRecord.applicationId() != null ? eventRecord.applicationId() : UUID.randomUUID().toString();
-      Instant timestamp = eventRecord.timestamp() != null ? eventRecord.timestamp() : Instant.now();
+      if (eventRecord.applicationId() == null && eventRecord.timestamp() == null) {
+        return CompletableFuture.failedFuture(
+            new IllegalArgumentException("eventRecord must have an applicationId and timestamp"));
+      }
+      String eventId = eventRecord.applicationId();
+      Instant timestamp = eventRecord.timestamp();
 
-      DomainEventDynamoDb domainEvent = DomainEventDynamoDb.builder()
-          .applicationId(eventId)
-          .type(eventRecord.eventType().toString())
-          .s3location(s3url)
-          .description(eventRecord.description())
-          .createdAt(timestamp.toString())
-          .caseworkerId(eventRecord.caseworkerId())
-          .build();
+      DomainEventDynamoDb domainEvent =
+          getDomainEventDynamoDb(eventRecord, s3url, eventId, timestamp);
 
       // Use putItem variant that returns a PutItemEnhancedResponse so callers can inspect metadata
       PutItemEnhancedRequest<DomainEventDynamoDb> putReq = PutItemEnhancedRequest.builder(DomainEventDynamoDb.class)
@@ -99,6 +97,18 @@ public class DynamoDbService {
     } catch (Exception e) {
       return CompletableFuture.failedFuture(e);
     }
+  }
+
+  private static DomainEventDynamoDb getDomainEventDynamoDb(Event eventRecord, String s3url, String eventId,
+                                                            Instant timestamp) {
+    return DomainEventDynamoDb.builder()
+        .applicationId(eventId)
+        .type(eventRecord.eventType().toString())
+        .s3location(s3url)
+        .description(eventRecord.description())
+        .createdAt(timestamp.toString())
+        .caseworkerId(eventRecord.caseworkerId())
+        .build();
   }
 
   /**
@@ -212,33 +222,59 @@ public class DynamoDbService {
 
   private @NonNull List<Event> getEventsFromIndex(List<Key> indexedEvents) {
     final int batchSize = 100;
-//    List<Event> allEvents = new ArrayList<>();
-    List<List<Key>> batches = getBatches(indexedEvents, batchSize);
-    List<List<Event>> listStream = batches.stream()
-        .map(this::addBatchResultToEvent).toList();
-    return listStream.stream()
-        .flatMap(List::stream).toList();
-//    for (List<Key> batch : batches) {
-//      addBatchResultToEvent(batch);
-//    }
-//    return allEvents;
+    return getBatches(indexedEvents, batchSize).stream()
+        .map(this::addBatchResultToEvent).flatMap(List::stream).toList();
+
   }
 
   private List<Event> addBatchResultToEvent(List<Key> batch) {
+    BatchProcessResult initialResult = batchGetWithUnprocessedKeys(batch);
+    List<Event> events = new ArrayList<>(initialResult.events());
+    List<Key> unprocessedKeys = new ArrayList<>(initialResult.unprocessedKeys());
+
+    final int maxRetries = 3;
+    int attempt = 0;
+    while (!unprocessedKeys.isEmpty() && attempt < maxRetries) {
+      attempt++;
+      BatchProcessResult retryResult = batchGetWithUnprocessedKeys(unprocessedKeys);
+      events.addAll(retryResult.events());
+      unprocessedKeys = new ArrayList<>(retryResult.unprocessedKeys());
+    }
+
+    if (!unprocessedKeys.isEmpty()) {
+      log.warn("Unprocessed keys remain after {} retries: {}", maxRetries, unprocessedKeys.size());
+    }
+
+    return events;
+  }
+
+  private BatchProcessResult batchGetWithUnprocessedKeys(List<Key> keys) {
     ReadBatch.Builder<DomainEventDynamoDb> readBatchBuilder = ReadBatch.builder(DomainEventDynamoDb.class)
         .mappedTableResource(eventTable);
-    batch.forEach(readBatchBuilder::addGetItem);
+    keys.forEach(readBatchBuilder::addGetItem);
     BatchGetItemEnhancedRequest batchGetItemEnhancedRequest = BatchGetItemEnhancedRequest.builder()
         .addReadBatch(readBatchBuilder.build())
         .build();
-    BatchGetResultPageIterable batchResult = dynamoDbEnhancedClient.batchGetItem(batchGetItemEnhancedRequest);
-    return batchResult.resultsForTable(eventTable).stream()
+    BatchGetResultPageIterable batchResult = dynamoDbEnhancedClient
+        .batchGetItem(batchGetItemEnhancedRequest);
+
+    List<Key> unprocessedKeys = batchResult.stream()
+        .map(result -> result.unprocessedKeysForTable(eventTable))
+        .flatMap(List::stream)
+        .toList();
+
+    List<Event> events = batchResult.resultsForTable(eventTable).stream()
         .map(Event::fromDynamoEntity)
         .toList();
+
+    return new BatchProcessResult(events, unprocessedKeys);
+  }
+
+  private record BatchProcessResult(List<Event> events, List<Key> unprocessedKeys) {
   }
 
   private @NonNull List<Key> getIndexedEvents(DomainEventType eventType, QueryResponse response) {
-    List<Key> indexedEvents = response.items().stream()
+    return response.items().stream()
         .map(this::convertToIndexedEvent)
         .filter(e -> e.eventType().equals(eventType))
         .map(indexedEvent -> Key
@@ -247,15 +283,13 @@ public class DynamoDbService {
             .sortValue(indexedEvent.sk)
             .build())
         .toList();
-    return indexedEvents;
   }
 
   private static @NonNull List<List<Key>> getBatches(List<Key> indexedEvents, int batchSize) {
     AtomicInteger index = new AtomicInteger();
-    List<List<Key>> batches = indexedEvents.stream()
+    return indexedEvents.stream()
         .collect(java.util.stream.Collectors.groupingBy(key -> index.getAndIncrement() / batchSize))
         .values().stream().toList();
-    return batches;
   }
 
   private IndexedEvent convertToIndexedEvent(Map<String, AttributeValue> item) {

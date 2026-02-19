@@ -56,19 +56,21 @@ public class EventHistoryPublisher {
    * Core async processing for a single event: upload to S3 and save to DynamoDB.
    * Returns the event UUID if successful, null otherwise.
    */
-  public CompletableFuture<UUID> processEventAsync(Event event) {
-    return CompletableFuture.supplyAsync(() -> uploadedS3Url(event), executor)
+  public void processEventAsync(Event event) {
+    CompletableFuture.supplyAsync(() -> uploadedS3Url(event), executor)
         .thenComposeAsync(s3Url -> {
           if (s3Url == null) {
             return CompletableFuture.completedFuture(null);
           }
           return dynamoDbService.saveDomainEvent(event, s3Url)
-              .thenApply(e -> event.domainEventId())
+              .thenApply(e -> UUID.fromString(event.applicationId()))
               .whenComplete((uuid, throwable) -> {
                 if (throwable == null) {
-                  log.info("Domain event with id '{}' saved successfully", event.applicationId());
+                  log.info("Domain event with application ID '{}' and event type '{}' saved successfully",
+                      event.applicationId(), event.eventType());
                 } else {
-                  log.error("Failed to process event with ID {}", event.domainEventId(), throwable);
+                  log.error("Failed to process eventapplication ID '{}' and event type '{}'", event.applicationId(),
+                      event.eventType());
                 }
               });
         }, executor);
@@ -86,13 +88,13 @@ public class EventHistoryPublisher {
         s3Service.upload(event.requestPayload(), s3BucketName,
             event.applicationId() + "/" + event.eventType().name() + "-" + event.timestamp() + ".json");
     if (!s3UploadResult.isSuccess()) {
-      log.error("S3 Upload failed for event id '{}'", event.domainEventId());
+      log.error("S3 Upload failed for event id '{}'", event.applicationId());
       return null;
     }
     String s3Url = s3UploadResult.getS3Url();
     log.info("Uploading domain event with id '{}'", event.applicationId());
     if (s3Url == null) {
-      log.error("S3 URL is null for event id '{}'", event.domainEventId());
+      log.error("S3 URL is null for event id '{}'", event.applicationId());
     }
     return s3Url;
   }

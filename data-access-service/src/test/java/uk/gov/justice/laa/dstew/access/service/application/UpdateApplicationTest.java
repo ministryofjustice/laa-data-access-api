@@ -24,6 +24,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -34,13 +35,19 @@ import uk.gov.justice.laa.dstew.access.model.Event;
 import uk.gov.justice.laa.dstew.access.model.S3UploadResult;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
+import uk.gov.justice.laa.dstew.access.service.DynamoDbService;
+import uk.gov.justice.laa.dstew.access.service.S3Service;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class UpdateApplicationTest extends BaseServiceTest {
+  @MockitoBean
+  private S3Service s3Service;
 
+  @MockitoBean
+  private DynamoDbService dynamoDbService;
 
   @Autowired
   private ApplicationService serviceUnderTest;
