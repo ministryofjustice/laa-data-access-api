@@ -36,7 +36,7 @@ public class PersistedDataGenerator extends DataGenerator {
     public void init() {
         registerRepository(DomainEventGenerator.class, DomainEventRepository.class);
         registerRepository(ApplicationEntityGenerator.class, ApplicationRepository.class);
-        registerRepository(ApplicationSummaryGenerator.class, ApplicationSummaryRepository.class);
+//        registerRepository(ApplicationSummaryGenerator.class, ApplicationSummaryRepository.class);
         registerRepository(CaseworkerGenerator.class, CaseworkerRepository.class);
         registerRepository(DecisionEntityGenerator.class, DecisionRepository.class);
         registerRepository(ProceedingsEntityGenerator.class, ProceedingRepository.class);
