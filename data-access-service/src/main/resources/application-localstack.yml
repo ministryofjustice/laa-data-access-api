@@ -15,17 +15,15 @@ spring:
 
   sql.init.mode: never # Use Flyway for DB schema.
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${ENTRA_ISSUER_URI}
-          jwk-set-uri: ${ENTRA_JWK_SET_URI}
-          audience: ${ENTRA_AUD}
-
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
+  cloud:
+    azure:
+      active-directory:
+        enabled: true
+        credential:
+          client-id: ${ENTRA_CLIENT_ID}
+        app-id-uri: ${ENTRA_APP_ID_URI}
+        profile:
+          tenant-id: ${ENTRA_TENANT_ID}
 
   event:
     history:
@@ -47,13 +45,6 @@ logging:
         web: INFO
       hibernate: INFO
     com.azure.spring: INFO
-    uk:
-      gov:
-        justice:
-          laa:
-            dstew:
-              access:
-                config: INFO
 
 management:
   endpoints.web.exposure.include: health,info
@@ -74,19 +65,16 @@ sentry:
 ### For example, `FEATURE_SECURITY=false` to disable endpoint authorization,
 ### or `FEATURE_TRANSFORMATION=false` to disable response transformations.
 
-feature:
-  enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}
-  disable-security: ${FEATURE_DISABLE_SECURITY:false}
-
-server:
-  forward-headers-strategy: framework
+#feature:
+#  security: true
+#  transformation: true
 
 # AWS defaults (local dev)
 aws:
   region: ${AWS_REGION:eu-west-2}
-  endpoint:
-  access-key:
-  secret-key:
+  endpoint: ${AWS_ENDPOINT:http://localhost:4566}
+  access-key: ${AWS_ACCESS_KEY:test}
+  secret-key: ${AWS_SECRET_KEY:test}
   dynamodb:
     table-name: domain-events
   s3:
