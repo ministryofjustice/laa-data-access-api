@@ -318,15 +318,13 @@ paths:
           schema:
               type: integer
               default: 20
-        - applicationId:
-          name: applicationId
+        - name: applicationId
           in: query
           description: The ID of the application the individuals are linked to
           schema:
             type: string
             format: uuid
-        - individualType:
-          name: individualType
+        - name: individualType
           in: query
           description: The type of the individual
           schema:

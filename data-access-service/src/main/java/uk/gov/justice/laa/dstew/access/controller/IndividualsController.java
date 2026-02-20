@@ -1,10 +1,8 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
-import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,13 +32,16 @@ public class IndividualsController implements IndividualsApi {
   /**
    * Retrieves a paginated list of individuals.
    *
+   * @param serviceName the service name header
    * @param page the page number (1-based), may be null for default
    * @param pageSize the number of items per page, may be null for default
+   * @param applicationId the application UUID to filter by (nullable)
+   * @param type the individual type to filter by (nullable)
    * @return a {@link ResponseEntity} containing the {@link IndividualsResponse} with paging info
    */
   @Override
-  @LogMethodArguments
   @LogMethodResponse
+  @LogMethodArguments
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public ResponseEntity<IndividualsResponse> getIndividuals(
       ServiceName serviceName,
@@ -49,7 +50,8 @@ public class IndividualsController implements IndividualsApi {
       UUID applicationId,
       IndividualType type
   ) {
-    PaginationHelper.PaginatedResult<Individual> result = individualsService.getIndividuals(page, pageSize);
+    PaginationHelper.PaginatedResult<Individual> result =
+        individualsService.getIndividuals(page, pageSize, applicationId, type);
 
     List<Individual> individuals = result.page().stream().toList();
     Paging paging = new Paging();

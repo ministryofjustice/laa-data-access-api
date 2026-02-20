@@ -1,9 +1,9 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import java.util.UUID;
 import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.createPageable;
 import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.wrapResult;
 
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -40,18 +40,18 @@ public class IndividualsService {
    * @param pageSize the number of items per page
    * @param applicationId the application UUID to filter by (nullable)
    * @param individualType the individual type to filter by (nullable)
-   * @return a {@link Page} of {@link Individual} objects matching the filters
    * @return a {@link PaginatedResult} containing the page and validated pagination parameters
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public PaginatedResult<Individual> getIndividuals(Integer page, Integer pageSize, UUID applicationId, IndividualType individualType) {
+  public PaginatedResult<Individual> getIndividuals(
+      Integer page,
+      Integer pageSize,
+      UUID applicationId,
+      IndividualType individualType) {
     Specification<IndividualEntity> specification = buildSpecification(applicationId, individualType);
     Pageable pageable = createPageable(page, pageSize);
-    Page<IndividualEntity> resultPage = individualRepository.findAll(specification, pageable).map(individualMapper::toIndividual);;
+    Page<IndividualEntity> resultPage = individualRepository.findAll(specification, pageable);
     return wrapResult(page, pageSize, resultPage.map(individualMapper::toIndividual));
-
-    // return individualRepository.findAll(specification, pageable)
-    //    .map(individualMapper::toIndividual);
   }
 
   /**
