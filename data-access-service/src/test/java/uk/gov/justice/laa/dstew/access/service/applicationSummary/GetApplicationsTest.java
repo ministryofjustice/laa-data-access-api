@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
+import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 import java.time.temporal.ChronoUnit;
@@ -186,6 +187,113 @@ public class GetApplicationsTest extends BaseServiceTest {
                 ))
                 .withMessageContaining("Access Denied");
         verify(applicationSummaryRepository, never()).findAll();
+    }
+
+    @Test
+    public void givenDefaultPagination_whenGetApplications_thenReturnApplications() {
+        // given
+        List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(5);
+        Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
+
+        setSecurityContext(TestConstants.Roles.READER);
+
+        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+
+        // when
+        PaginatedResult<ApplicationSummary> result = serviceUnderTest.getAllApplications(
+                null, null, null, null, null, null, null, null, null, null, null, null);
+
+        // then
+        verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
+
+        assertThat(result.requestedPage()).isEqualTo(1); // one-based
+        assertThat(result.requestedPageSize()).isEqualTo(20); // default
+        assertThat(result.page().getContent()).hasSize(5);
+    }
+
+    @Test
+    public void givenSecondPage_whenGetApplications_thenReturnApplications() {
+        // given
+        List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(5);
+        Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
+
+        setSecurityContext(TestConstants.Roles.READER);
+
+        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+
+        // when
+        PaginatedResult<ApplicationSummary> result = serviceUnderTest.getAllApplications(
+                null, null, null, null, null, null, null, null, null, null, 2, 10);
+
+        // then
+        verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
+
+        assertThat(result.requestedPage()).isEqualTo(2); // one-based
+        assertThat(result.requestedPageSize()).isEqualTo(10);
+        assertThat(result.page().getContent()).hasSize(5);
+    }
+
+    @Test
+    public void givenInvalidPage_whenGetApplications_thenThrowException() {
+        // given
+        setSecurityContext(TestConstants.Roles.READER);
+
+        // when/then
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> serviceUnderTest.getAllApplications(
+                        null, null, null, null, null, null, null, null, null, null, 0, 10))
+                .withMessageContaining("page must be greater than or equal to 1");
+
+        verify(applicationSummaryRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    public void givenInvalidPageSize_whenGetApplications_thenThrowException() {
+        // given
+        setSecurityContext(TestConstants.Roles.READER);
+
+        // when/then
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> serviceUnderTest.getAllApplications(
+                        null, null, null, null, null, null, null, null, null, null, 1, 0))
+                .withMessageContaining("pageSize must be greater than or equal to 1");
+
+        verify(applicationSummaryRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    public void givenPageSizeExceedingMax_whenGetApplications_thenThrowException() {
+        // given
+        setSecurityContext(TestConstants.Roles.READER);
+
+        // when/then
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> serviceUnderTest.getAllApplications(
+                        null, null, null, null, null, null, null, null, null, null, 1, 101))
+                .withMessageContaining("pageSize cannot be more than 100");
+
+        verify(applicationSummaryRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    public void givenMaximumPageSize_whenGetApplications_thenReturnApplications() {
+        // given
+        List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(5);
+        Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
+
+        setSecurityContext(TestConstants.Roles.READER);
+
+        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+
+        // when
+        PaginatedResult<ApplicationSummary> result = serviceUnderTest.getAllApplications(
+                null, null, null, null, null, null, null, null, null, null, 1, 100);
+
+        // then
+        verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
+
+        assertThat(result.requestedPageSize()).isEqualTo(100);
+        assertThat(result.page().getContent()).hasSize(5);
     }
 
     private void assertApplicationSummaryListsEqual(List<ApplicationSummary> actualList, List<ApplicationSummaryEntity> expectedList) {
