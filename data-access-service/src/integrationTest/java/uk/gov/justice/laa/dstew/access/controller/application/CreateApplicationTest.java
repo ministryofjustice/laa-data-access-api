@@ -23,24 +23,19 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
-import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMakeDecisionRequestGenerator;
 
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -344,18 +339,5 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
   private void assertLinkedApplicationCorrectlyApplied(ApplicationEntity leadApplication, ApplicationEntity linkedApplication) {
     assertTrue(leadApplication.getLinkedApplications().stream().anyMatch(linkedApp -> linkedApp.getId().equals(linkedApplication.getId())));
-  }
-
-  private MakeDecisionProceeding createMakeDecisionProceeding(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
-    return MakeDecisionProceeding.builder()
-        .proceedingId(proceedingId)
-        .meritsDecision(
-            MeritsDecisionDetails.builder()
-                .decision(meritsDecisionStatus)
-                .justification(justification)
-                .reason(reason)
-                .build()
-        )
-        .build();
   }
 }
