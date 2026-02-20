@@ -39,7 +39,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   private void verifyServiceNameHeader(String serviceName) throws Exception {
-    int page = 1, pageSize = 10;
+    int page = 1, pageSize = 20;
 
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page="+ page + "&pageSize=" + pageSize, ServiceNameHeader(serviceName));
     applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
@@ -110,7 +110,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
     assertThat(response.getPaging().getTotalRecords()).isEqualTo(1);
     assertThat(response.getPaging().getItemsReturned()).isEqualTo(1);
     assertThat(response.getPaging().getPage()).isEqualTo(1);
-    assertThat(response.getPaging().getPageSize()).isEqualTo(10);
+    assertThat(response.getPaging().getPageSize()).isEqualTo(20);
     assertThat(response.getIndividuals()).hasSize(1);
     assertThat(response.getIndividuals().get(0).getFirstName()).isEqualTo(persisted.getFirstName());
     assertThat(response.getIndividuals().get(0).getLastName()).isEqualTo(persisted.getLastName());
@@ -146,7 +146,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
     // then
     assertOK(result);
     assertThat(response.getPaging().getPage()).isEqualTo(1);
-    assertThat(response.getPaging().getPageSize()).isEqualTo(10);
+    assertThat(response.getPaging().getPageSize()).isEqualTo(20);
     assertThat(response.getPaging().getItemsReturned()).isEqualTo(5);
     assertThat(response.getPaging().getTotalRecords()).isEqualTo(5);
   }
