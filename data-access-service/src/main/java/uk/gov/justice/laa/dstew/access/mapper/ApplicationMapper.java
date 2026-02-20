@@ -20,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.Opponent;
 
 /**
  * Mapper interface.
@@ -102,6 +103,9 @@ public interface ApplicationMapper {
       application.setOverallDecision(entity.getDecision().getOverallDecision());
     }
     application.setApplicationType(ApplicationType.INITIAL);
+    application.setOpponents(
+        extractOpponents(entity.getApplicationContent())
+    );
 
     return application;
   }
@@ -110,6 +114,56 @@ public interface ApplicationMapper {
     return individuals
         .stream()
         .map(individualMapper::toIndividual)
+        .filter(Objects::nonNull)
+        .toList();
+  }
+
+  private static List<Opponent> extractOpponents(Map<String, Object> content) {
+
+    if (content == null) {
+      return null;
+    }
+
+    Object meritsObj = content.get("applicationMerits");
+    if (!(meritsObj instanceof Map<?, ?> meritsMap)) {
+      return null;
+    }
+
+    Object opponentsObj = meritsMap.get("opponents");
+    if (!(opponentsObj instanceof List<?> opponentsList)) {
+      return null;
+    }
+
+    return opponentsList.stream()
+        .filter(Map.class::isInstance)
+        .map(Map.class::cast)
+        .map(opponentMap -> {
+
+          Object opposableObj = opponentMap.get("opposable");
+          if (!(opposableObj instanceof Map<?, ?> opposable)) {
+            return null;
+          }
+
+          String opposableType = (String) opposable.get("opposableType");
+          String firstName = (String) opposable.get("firstName");
+          String lastName = (String) opposable.get("lastName");
+          String organisationName = (String) opposable.get("name");
+
+          if (opposableType == null &&
+              firstName == null &&
+              lastName == null &&
+              organisationName == null) {
+            return null;
+          }
+
+          Opponent opponent = new Opponent();
+          opponent.setOpposableType(opposableType);
+          opponent.setFirstName(firstName);
+          opponent.setLastName(lastName);
+          opponent.setOrganisationName(organisationName);
+
+          return opponent;
+        })
         .filter(Objects::nonNull)
         .toList();
   }
