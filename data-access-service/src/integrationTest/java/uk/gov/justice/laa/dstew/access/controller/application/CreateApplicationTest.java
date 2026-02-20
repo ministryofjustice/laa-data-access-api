@@ -110,53 +110,6 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     assertEquals("Linking failed > Lead application not found, ID: " + notFoundLeadId, problemDetail.getDetail());
   }
 
-  @Test
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
-  public void givenProceedingNotLinkedToApplication_whenMakeDecision_thenReturnNotFoundAndMessage()
-      throws Exception {
-
-    // given
-    ApplicationEntity application = persistedApplicationFactory.createAndPersist();
-
-    ApplicationEntity otherApplication = persistedApplicationFactory.createAndPersist();
-
-    // create proceeding linked to otherApplication
-    ProceedingEntity proceeding = persistedProceedingFactory.createAndPersist(builder ->
-        builder.applicationId(otherApplication.getId())
-    );
-
-    MakeDecisionRequest makeDecisionRequest =
-        DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
-          builder
-              .userId(CaseworkerJohnDoe.getId())
-              .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
-              .eventHistory(EventHistory.builder().build())
-              .proceedings(List.of(
-                  createMakeDecisionProceeding(
-                      proceeding.getId(),
-                      MeritsDecisionStatus.REFUSED,
-                      "justification",
-                      "reason"
-                  )
-              ))
-              .autoGranted(true);
-        });
-
-
-    // when
-    MvcResult result = patchUri(
-        TestConstants.URIs.ASSIGN_DECISION,
-        makeDecisionRequest,
-        application.getId()
-    );
-
-    // then
-    assertNotFound(result);
-    assertEquals("application/problem+json", result.getResponse().getContentType());
-    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
-    assertEquals("Not linked to application: " + proceeding.getId(), problemDetail.getDetail());
-  }
-
   private ApplicationEntity verifyCreateNewApplication(ApplicationOffice office, LinkedApplication linkedApplication) throws Exception {
     ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
     ApplicationContent content = applicationContentFactory.create();
