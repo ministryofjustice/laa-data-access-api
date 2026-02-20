@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -43,6 +42,7 @@ import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
  * Controller for handling /api/v0/applications requests.
  */
 @Slf4j
+@RequiredArgsConstructor
 @RestController
 @ExcludeFromGeneratedCodeCoverage
 public class ApplicationController implements ApplicationApi {
@@ -55,8 +55,8 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @Override
   public ResponseEntity<Void> createApplication(
-          @NotNull ServiceName serviceName,
-          @Valid ApplicationCreateRequest applicationCreateReq) {
+      @NotNull ServiceName serviceName,
+      @Valid ApplicationCreateRequest applicationCreateReq) {
     UUID id = service.createApplication(applicationCreateReq);
 
     URI uri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
@@ -67,9 +67,9 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<Void> updateApplication(
-          @NotNull ServiceName serviceName,
-          UUID id,
-          @Valid ApplicationUpdateRequest applicationUpdateReq) {
+      @NotNull ServiceName serviceName,
+      UUID id,
+      @Valid ApplicationUpdateRequest applicationUpdateReq) {
     service.updateApplication(id, applicationUpdateReq);
     return ResponseEntity.noContent().build();
   }
@@ -78,34 +78,34 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<ApplicationSummaryResponse> getApplications(
-          ServiceName serviceName,
-          ApplicationStatus status,
-          String laaReference,
-          String clientFirstName,
-          String clientLastName,
-          LocalDate clientDateOfBirth,
-          UUID userId,
-          Boolean isAutoGranted,
-          MatterType matterType,
-          ApplicationSortBy sortBy,
-          ApplicationOrderBy orderBy,
-          Integer page,
-          Integer pageSize) {
+      ServiceName serviceName,
+      ApplicationStatus status,
+      String laaReference,
+      String clientFirstName,
+      String clientLastName,
+      LocalDate clientDateOfBirth,
+      UUID userId,
+      Boolean isAutoGranted,
+      MatterType matterType,
+      ApplicationSortBy sortBy,
+      ApplicationOrderBy orderBy,
+      Integer page,
+      Integer pageSize) {
 
     PaginatedResult<ApplicationSummary> result =
-            summaryService.getAllApplications(
-                    status,
-                    laaReference,
-                    clientFirstName,
-                    clientLastName,
-                    clientDateOfBirth,
-                    userId,
-                    isAutoGranted,
-                    matterType,
-                    sortBy,
-                    orderBy,
-                    page,
-                    pageSize);
+        summaryService.getAllApplications(
+            status,
+            laaReference,
+            clientFirstName,
+            clientLastName,
+            clientDateOfBirth,
+            userId,
+            isAutoGranted,
+            matterType,
+            sortBy,
+            orderBy,
+            page,
+            pageSize);
 
     List<ApplicationSummary> applications = result.page().stream().toList();
     Paging paging = new Paging();
@@ -142,9 +142,9 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<Void> unassignCaseworker(
-          @NotNull ServiceName serviceName,
-          UUID id,
-          @Valid CaseworkerUnassignRequest request) {
+      @NotNull ServiceName serviceName,
+      UUID id,
+      @Valid CaseworkerUnassignRequest request) {
 
     service.unassignCaseworker(id, request.getEventHistory());
 
@@ -155,9 +155,9 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(
-          @NotNull ServiceName serviceName,
-          UUID applicationId,
-          @Valid List<DomainEventType> eventType) {
+      @NotNull ServiceName serviceName,
+      UUID applicationId,
+      @Valid List<DomainEventType> eventType) {
     var events = eventHistoryService.getEvents(applicationId, eventType);
     return ResponseEntity.ok(ApplicationHistoryResponse.builder()
         .events(events)
