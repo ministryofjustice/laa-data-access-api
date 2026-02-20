@@ -28,7 +28,7 @@ import uk.gov.justice.laa.dstew.access.entity.dynamo.DomainEventDynamoDb;
 public class AwsConfig {
 
   // values are read from application properties or environment variables
-  @Value("${aws.endpoint:}")
+  @Value("${aws.endpoint}")
   private String awsEndpoint;
 
   @Value("${aws.region:eu-west-2}")
