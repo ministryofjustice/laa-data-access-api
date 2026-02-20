@@ -38,6 +38,8 @@ import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
+import uk.gov.justice.laa.dstew.access.security.AllowApiReader;
+import uk.gov.justice.laa.dstew.access.security.AllowApiWriter;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 import uk.gov.justice.laa.dstew.access.validation.PayloadValidationService;
 
@@ -101,7 +103,7 @@ public class ApplicationService {
    * @param id application UUID
    * @return application DTO
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+  @AllowApiReader
   public Application getApplication(final UUID id) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
     return applicationMapper.toApplication(entity);
@@ -113,7 +115,7 @@ public class ApplicationService {
    * @param req DTO containing creation fields
    * @return UUID of the created application
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiWriter
   @Transactional
   public UUID createApplication(final ApplicationCreateRequest req) {
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
