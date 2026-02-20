@@ -15,11 +15,10 @@ import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.Paging;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.IndividualsService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
-
+import uk.gov.justice.laa.dstew.access.utils.PaginationHelper;
 
 /**
  * REST controller for managing individuals.
@@ -50,23 +49,14 @@ public class IndividualsController implements IndividualsApi {
       UUID applicationId,
       IndividualType type
   ) {
-    int validatedPage = (page == null || page < 1) ? 1 : page;
-    int validatedPageSize = (pageSize == null || pageSize < 1) ? 10 : Math.min(pageSize, 100);
+    PaginationHelper.PaginatedResult<Individual> result = individualsService.getIndividuals(page, pageSize);
 
-    Page<Individual> individualsPage = individualsService.getIndividuals(
-        validatedPage - 1,
-        validatedPageSize,
-        applicationId,
-        type
-    );
-
-    List<Individual> individuals = individualsPage.getContent();
-
+    List<Individual> individuals = result.page().stream().toList();
     Paging paging = new Paging();
-    paging.setPage(validatedPage);
-    paging.setPageSize(validatedPageSize);
-    paging.setTotalRecords((int) individualsPage.getTotalElements());
-    paging.setItemsReturned(individuals.size());
+    paging.setPage(result.requestedPage());
+    paging.pageSize(result.requestedPageSize());
+    paging.totalRecords((int) result.page().getTotalElements());
+    paging.itemsReturned(individuals.size());
 
     IndividualsResponse response = new IndividualsResponse();
     response.setIndividuals(individuals);

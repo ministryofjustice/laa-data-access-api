@@ -66,16 +66,16 @@ paths:
             $ref: "#/components/schemas/applicationOrderBy"
         - in: query
           name: page
-          description: Page number of data to be returned (defaults to 1 when 0 or less)
+          description: Page number of data to be returned (defaults to 1)
           schema:
             type: integer
             default: 1
         - in: query
           name: pageSize
-          description: Number of applications in a page
+          description: Number of applications in a page (defaults to 20)
           schema:
             type: integer
-            default: 10
+            default: 20
       responses:
         '200':
           description: 'Success'
@@ -308,15 +308,16 @@ paths:
         - $ref: "#/components/parameters/XServiceName"
         - name: page
           in: query
-          description: Page number of data to be returned
+          description: Page number of data to be returned (defaults to 1)
           schema:
               type: integer
+              default: 1
         - name: pageSize
           in: query
-          description: Number of applications in a page
+          description: Number of individuals in a page (defaults to 20)
           schema:
               type: integer
-              default: 10
+              default: 20
         - applicationId:
           name: applicationId
           in: query
