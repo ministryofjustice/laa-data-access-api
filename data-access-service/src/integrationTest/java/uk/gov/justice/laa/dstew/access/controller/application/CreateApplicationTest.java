@@ -128,8 +128,6 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     assertLinkedApplicationCorrectlyApplied(leadApplication, createdEntity);
   }
 
-  private ApplicationEntity verifyCreateNewApplication(ApplicationOffice office, LinkedApplication linkedApplication)
-      throws Exception {
   @Test
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_raiseIfLeadNotFound() throws Exception {
