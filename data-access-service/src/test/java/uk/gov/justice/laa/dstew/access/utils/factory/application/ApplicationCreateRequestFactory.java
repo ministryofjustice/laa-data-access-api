@@ -26,8 +26,14 @@ public class ApplicationCreateRequestFactory extends BaseFactory<ApplicationCrea
     super(ApplicationCreateRequest::toBuilder, ApplicationCreateRequest.Builder::build);
   }
 
+  public ApplicationCreateRequestFactory(IndividualFactory individualFactory, ApplicationContentFactory requestApplicationContentFactory) {
+    super(ApplicationCreateRequest::toBuilder, ApplicationCreateRequest.Builder::build);
+    this.individualFactory = individualFactory;
+    this.applicationContentFactory = requestApplicationContentFactory;
+  }
+
   @Override
-  public ApplicationCreateRequest createDefault() {
+    public ApplicationCreateRequest createDefault() {
 
     ApplicationContent applicationContent = applicationContentFactory.createDefault();
 

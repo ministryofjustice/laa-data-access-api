@@ -25,6 +25,11 @@ spring:
         profile:
           tenant-id: ${ENTRA_TENANT_ID}
 
+  event:
+    history:
+      service:
+        type: aws # or 'rds' to use the RDS implementation
+
 info:
   app:
     name: LAA Data Stewardship Access - Access Application Data
@@ -63,3 +68,19 @@ sentry:
 #feature:
 #  security: true
 #  transformation: true
+
+# AWS defaults (local dev)
+aws:
+  region: ${AWS_REGION:eu-west-2}
+  endpoint:
+  access-key:
+  secret-key:
+  dynamodb:
+    table-name: domain-events
+  s3:
+    bucket-name: s3-bucket-output
+  event:
+    history:
+      enabled: ${AWS_DOMAIN_EVENT_ENABLED:false}
+
+# End of file
