@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.utils.factory.individual;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 
 import java.time.LocalDate;
@@ -24,6 +25,7 @@ public class IndividualEntityFactory extends BaseFactory<IndividualEntity, Indiv
                 .lastName("Doe")
                 .dateOfBirth(LocalDate.now())
                 .individualContent(new HashMap<>(Map.of("test", "content")))
+                .type(IndividualType.CLIENT)
                 .build();
     }
 
@@ -34,6 +36,7 @@ public class IndividualEntityFactory extends BaseFactory<IndividualEntity, Indiv
                 .lastName(faker.name().lastName())
                 .dateOfBirth(getRandomDate())
                 .individualContent(new HashMap<>(Map.of("test", "content")))
+                .type(IndividualType.CLIENT)
                 .build();
     }
 }
