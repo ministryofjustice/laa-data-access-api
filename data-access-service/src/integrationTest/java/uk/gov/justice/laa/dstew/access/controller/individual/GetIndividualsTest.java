@@ -17,6 +17,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.params.provider.Arguments.of;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
 @ActiveProfiles("test")
@@ -38,7 +39,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   private void verifyServiceNameHeader(String serviceName) throws Exception {
-    int page = 1, pageSize = 10;
+    int page = 1, pageSize = 20;
 
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page="+ page + "&pageSize=" + pageSize, ServiceNameHeader(serviceName));
     applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
@@ -64,12 +65,31 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   static Stream<org.junit.jupiter.params.provider.Arguments> pagingParameters() {
     return Stream.of(
         // page, pageSize, expectedPage, expectedPageSize, totalEntities, expectedReturned, expectedTotalRecords
-        org.junit.jupiter.params.provider.Arguments.of(1, 10, 1, 10, 15, 10, 15), // first page, 10 of 15
-        org.junit.jupiter.params.provider.Arguments.of(2, 10, 2, 10, 15, 5, 15), // second page, 5 of 15
-        org.junit.jupiter.params.provider.Arguments.of(-1, 10, 1, 10, 5, 5, 5), // negative page, default to 1
-        org.junit.jupiter.params.provider.Arguments.of(1, 0, 1, 10, 5, 5, 5), // zero pageSize, default to 10
-        org.junit.jupiter.params.provider.Arguments.of(1, 101, 1, 100, 150, 100, 150), // pageSize > 100 capped
-        org.junit.jupiter.params.provider.Arguments.of(100, 10, 100, 10, 15, 0, 15) // page beyond data, empty
+        of(1, 10, 1, 10, 15, 10, 15), // first page, 10 of 15
+        of(2, 10, 2, 10, 15, 5, 15), // second page, 5 of 15
+        of(100, 10, 100, 10, 15, 0, 15) // page beyond data, empty
+    );
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidPagingParameters")
+  @WithMockUser(authorities = TestConstants.Roles.READER)
+  void givenInvalidPagingParameters_whenGetIndividuals_thenReturnBadRequest(Integer page, Integer pageSize) throws Exception {
+    // when
+    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=" + page + "&pageSize=" + pageSize);
+    // then
+    assertBadRequest(result);
+  }
+
+  static Stream<org.junit.jupiter.params.provider.Arguments> invalidPagingParameters() {
+    return Stream.of(
+        // page, pageSize
+        of(0, 10),    // zero page
+        of(-1, 10),   // negative page
+        of(1, 0),     // zero pageSize
+        of(1, -74),   // negative pageSize
+        of(1, 101),   // pageSize greater than 100
+        of(0,0)       // zero page and pageSize
     );
   }
 
@@ -90,7 +110,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
     assertThat(response.getPaging().getTotalRecords()).isEqualTo(1);
     assertThat(response.getPaging().getItemsReturned()).isEqualTo(1);
     assertThat(response.getPaging().getPage()).isEqualTo(1);
-    assertThat(response.getPaging().getPageSize()).isEqualTo(10);
+    assertThat(response.getPaging().getPageSize()).isEqualTo(20);
     assertThat(response.getIndividuals()).hasSize(1);
     assertThat(response.getIndividuals().get(0).getFirstName()).isEqualTo(persisted.getFirstName());
     assertThat(response.getIndividuals().get(0).getLastName()).isEqualTo(persisted.getLastName());
@@ -126,7 +146,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
     // then
     assertOK(result);
     assertThat(response.getPaging().getPage()).isEqualTo(1);
-    assertThat(response.getPaging().getPageSize()).isEqualTo(10);
+    assertThat(response.getPaging().getPageSize()).isEqualTo(20);
     assertThat(response.getPaging().getItemsReturned()).isEqualTo(5);
     assertThat(response.getPaging().getTotalRecords()).isEqualTo(5);
   }
