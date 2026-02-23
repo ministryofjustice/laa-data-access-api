@@ -71,19 +71,29 @@ public class SecurityConfig {
   }
 
   /**
-   * Configures a {@link JwtAuthenticationConverter} to extract authorities from the "LAA_APP_ROLES" claim.
+   * Configures a {@link JwtAuthenticationConverter} to extract authorities from the "ROLE_" claim.
    *
    * @return a configured JwtAuthenticationConverter bean
    */
   @Bean
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
     JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-    grantedAuthoritiesConverter.setAuthoritiesClaimName("LAA_APP_ROLES");
-    grantedAuthoritiesConverter.setAuthorityPrefix("");
+    grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
+    grantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
 
     JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
-
+    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
+      var authorities = grantedAuthoritiesConverter.convert(jwt);
+      if (authorities == null || authorities.isEmpty()) {
+        // Add default roles
+        return Set.of(
+            new SimpleGrantedAuthority("APPROLE_ApplicationWriter"),
+            new SimpleGrantedAuthority("APPROLE_ApplicationReader"),
+            new SimpleGrantedAuthority("APPROLE_API.Admin")
+        );
+      }
+      return authorities;
+    });
     return jwtAuthenticationConverter;
   }
 
@@ -103,7 +113,7 @@ public class SecurityConfig {
         return OAuth2TokenValidatorResult.success();
       }
       return OAuth2TokenValidatorResult.failure(
-              new OAuth2Error("invalid_token", "The required audience is missing", null)
+          new OAuth2Error("invalid_token", "The required audience is missing", null)
       );
     };
     OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(issuerUri);
@@ -121,7 +131,7 @@ public class SecurityConfig {
     return new EffectiveAuthorizationProvider() {
       @Override
       public boolean hasAppRole(String name) {
-        return getAuthorities().contains(name);
+        return getAuthorities().contains("APPROLE_" + name);
       }
 
       @Override
