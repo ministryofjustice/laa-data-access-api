@@ -7,7 +7,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
@@ -34,12 +33,6 @@ public class AwsConfig {
   @Value("${aws.region:eu-west-2}")
   private String awsRegion;
 
-  @Value("${aws.access-key:}")
-  private String awsAccessKey;
-
-  @Value("${aws.secret-key:}")
-  private String awsSecretKey;
-
   @Value("${aws.dynamodb.table-name:domain-events}")
   private String tableName;
 
@@ -55,24 +48,18 @@ public class AwsConfig {
     DynamoDbClientBuilder builder = DynamoDbClient.builder()
         .region(Region.of(awsRegion));
 
-    // If an explicit endpoint is provided (localstack, etc.) configure it
+    // If an explicit endpoint is provided (localstack, etc.) configure it with static credentials
     if (awsEndpoint != null && !awsEndpoint.isBlank()) {
-      builder = builder.endpointOverride(URI.create(awsEndpoint));
+      builder.endpointOverride(URI.create(awsEndpoint));
+      // Use static credentials for LocalStack or custom endpoint
+      builder.credentialsProvider(
+          StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")));
+    } else {
+      // In Kubernetes, use default provider chain which picks up IRSA credentials
+      builder.credentialsProvider(DefaultCredentialsProvider.builder().build());
     }
-
-    builder.credentialsProvider(getCredentialsProvider());
 
     return builder.build();
-  }
-
-  private AwsCredentialsProvider getCredentialsProvider() {
-    // If explicit credentials are provided (local/dev), use them. Otherwise rely on the default provider
-    // which in Kubernetes will pick up IRSA or other environment/metadata credentials.
-    if (awsAccessKey != null && !awsAccessKey.isBlank() && awsSecretKey != null && !awsSecretKey.isBlank()) {
-      return StaticCredentialsProvider.create(
-          AwsBasicCredentials.create(awsAccessKey, awsSecretKey));
-    }
-    return DefaultCredentialsProvider.builder().build();
   }
 
   /**
@@ -103,15 +90,20 @@ public class AwsConfig {
   public S3Client s3Client() {
     S3ClientBuilder builder = S3Client.builder()
         .forcePathStyle(true)
-        .serviceConfiguration(S3Configuration.builder()
-            .build())
+        .serviceConfiguration(S3Configuration.builder().build())
         .region(Region.of(awsRegion));
-    // If an explicit endpoint is provided (localstack, etc.) configure it
+
+    // If an explicit endpoint is provided (localstack, etc.) configure it with static credentials
     if (awsEndpoint != null && !awsEndpoint.isBlank()) {
-      builder = builder.endpointOverride(URI.create(awsEndpoint));
+      builder.endpointOverride(URI.create(awsEndpoint));
+      // Use static credentials for LocalStack or custom endpoint
+      builder.credentialsProvider(
+          StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")));
+    } else {
+      // In Kubernetes, use default provider chain which picks up IRSA credentials
+      builder.credentialsProvider(DefaultCredentialsProvider.builder().build());
     }
 
-    builder.credentialsProvider(getCredentialsProvider());
     return builder.build();
   }
 

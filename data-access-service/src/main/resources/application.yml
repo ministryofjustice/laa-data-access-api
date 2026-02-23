@@ -72,13 +72,11 @@ sentry:
 # AWS defaults (local dev)
 aws:
   region: ${AWS_REGION:eu-west-2}
-  endpoint:
-  access-key:
-  secret-key:
+  endpoint: ${AWS_ENDPOINT:}
   dynamodb:
-    table-name: domain-events
+    table-name: ${AWS_DYNAMODB_TABLE_NAME:domain-events}
   s3:
-    bucket-name: s3-bucket-output
+    bucket-name: ${AWS_S3_BUCKET_NAME:s3-bucket-output}
   event:
     history:
       enabled: ${AWS_DOMAIN_EVENT_ENABLED:false}
