@@ -420,6 +420,7 @@ components:
         - status
         - laaReference
         - lastUpdated
+        - proceedings
       properties:
         applicationId:
           type: string
@@ -447,6 +448,8 @@ components:
           $ref: "#/components/schemas/decisionStatus"
         applicationType:
           $ref: "#/components/schemas/applicationType"
+        proceedings:
+          $ref: "#/components/schemas/ApplicationProceedings"
 
     ApplicationCreateRequest:
       type: object
@@ -700,3 +703,19 @@ components:
           $ref: "#/components/schemas/EventHistory"
         autoGranted:
           type: boolean
+
+    ApplicationProceedings:
+      type: array
+      items:
+        $ref: "#/components/schemas/ApplicationProceeding"
+
+    ApplicationProceeding:
+      type: object
+      required:
+        - proceedingId
+      properties:
+        proceedingId:
+          type: string
+          format: uuid
+        proceedingDescription:
+          type: string

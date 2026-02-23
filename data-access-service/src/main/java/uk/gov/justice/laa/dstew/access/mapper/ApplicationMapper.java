@@ -102,7 +102,11 @@ public interface ApplicationMapper {
       application.setOverallDecision(entity.getDecision().getOverallDecision());
     }
     application.setApplicationType(ApplicationType.INITIAL);
+  /*
+    entity.getProceedings().forEach(proceeding -> {
 
+    });
+   */
     return application;
   }
 
