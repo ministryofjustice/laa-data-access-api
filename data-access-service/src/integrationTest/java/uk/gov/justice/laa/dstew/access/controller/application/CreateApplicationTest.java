@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertCreated;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertProblemRecord;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
@@ -22,7 +23,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -34,7 +34,6 @@ import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 
@@ -75,6 +74,35 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     final var createdEntity = verifyCreateNewApplication(null, linkedApplication);
     final ApplicationEntity leadApplication = applicationRepository.findById(leadApplicationToLink.getId()).orElseThrow();
     assertLinkedApplicationCorrectlyApplied(leadApplication, createdEntity);
+  }
+
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_raiseIfLeadNotFound() throws Exception {
+    // given
+    UUID notFoundLeadId = UUID.randomUUID();
+
+    LinkedApplication linkedApplication = LinkedApplication.builder()
+        .leadApplicationId(notFoundLeadId)
+        .associatedApplicationId(UUID.randomUUID())
+        .build();
+
+    ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
+    ApplicationContent content = applicationContentFactory.create();
+    content.setAllLinkedApplications(List.of(linkedApplication));
+
+    ApplicationCreateRequest request = applicationCreateRequestFactory.create();
+    request.setApplicationContent(objectMapper.convertValue(content, Map.class));
+
+    // when
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+
+    // then
+    assertSecurityHeaders(result);
+    assertNotFound(result);
+    assertEquals("application/problem+json", result.getResponse().getContentType());
+    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+    assertEquals("Linking failed > Lead application not found, ID: " + notFoundLeadId, problemDetail.getDetail());
   }
 
   private ApplicationEntity verifyCreateNewApplication(ApplicationOffice office, LinkedApplication linkedApplication) throws Exception {

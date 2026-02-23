@@ -1,10 +1,12 @@
 package uk.gov.justice.laa.dstew.access.service;
 
+import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.createPageable;
+import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.wrapResult;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
+import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
@@ -53,9 +56,9 @@ public class ApplicationSummaryService {
    * @param laaReference used to filter results on application reference
    * @param clientFirstName used to filter results on linked individuals first name
    * @param clientLastName used to filter results on  linked individuals last name
-   * @param page the page number to retrieve (zero-based index)
+   * @param page the page number (one-based)
    * @param pageSize the maximum number of results to return per page
-   * @return a list of {@link ApplicationSummary} instances matching the filter criteria
+   * @return a {@link PaginatedResult} containing the page and validated pagination parameters
    */
   @PreAuthorize("@entra.hasAppRole('DSA Test OBO – Reader')")
   public Page<ApplicationSummary> getAllApplications(
@@ -71,13 +74,14 @@ public class ApplicationSummaryService {
           ApplicationOrderBy orderBy,
           Integer page,
           Integer pageSize) {
-    Pageable pageDetails = PageRequest.of(page, pageSize, createSortAndOrderBy(sortBy, orderBy));
+
+    Pageable pageDetails = createPageable(page, pageSize, createSortAndOrderBy(sortBy, orderBy));
 
     if (userId != null && caseworkerRepository.countById(userId) == 0L) {
       throw new ValidationException(List.of("Caseworker not found"));
     }
 
-    return applicationSummaryRepository
+    Page<ApplicationSummary> resultPage = applicationSummaryRepository
             .findAll(ApplicationSummarySpecification
                             .filterBy(applicationStatus,
                                     laaReference,
@@ -89,6 +93,8 @@ public class ApplicationSummaryService {
                                     isAutoGranted),
                     pageDetails)
             .map(mapper::toApplicationSummary);
+
+    return wrapResult(page, pageSize, resultPage);
   }
 
   private Sort createSortAndOrderBy(ApplicationSortBy sortBy,
