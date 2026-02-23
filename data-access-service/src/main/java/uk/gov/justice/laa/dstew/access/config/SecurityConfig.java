@@ -70,6 +70,11 @@ public class SecurityConfig {
     return http.build();
   }
 
+  /**
+   * Configures a {@link JwtAuthenticationConverter} to extract authorities from the "LAA_APP_ROLES" claim.
+   *
+   * @return a configured JwtAuthenticationConverter bean
+   */
   @Bean
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
     JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
@@ -82,21 +87,28 @@ public class SecurityConfig {
     return jwtAuthenticationConverter;
   }
 
+  /**
+   * Configures a {@link JwtDecoder} bean that validates JWT tokens using the provided JWK set URI,
+   * issuer, and audience. The decoder ensures that the token contains the required audience and
+   * is issued by the expected issuer.
+   *
+   * @return a configured JwtDecoder bean
+   */
   @Bean
   public JwtDecoder jwtDecoder() {
-      NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+    NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
 
-      OAuth2TokenValidator<Jwt> audienceValidator = token -> {
-          if (token.getAudience().contains(audience)) {
-              return OAuth2TokenValidatorResult.success();
-          }
-          return OAuth2TokenValidatorResult.failure(
-                  new OAuth2Error("invalid_token", "The required audience is missing", null)
-          );
-      };
-      OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(issuerUri);
-      jwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(withIssuer, audienceValidator));
-      return jwtDecoder;
+    OAuth2TokenValidator<Jwt> audienceValidator = token -> {
+      if (token.getAudience().contains(audience)) {
+        return OAuth2TokenValidatorResult.success();
+      }
+      return OAuth2TokenValidatorResult.failure(
+              new OAuth2Error("invalid_token", "The required audience is missing", null)
+      );
+    };
+    OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(issuerUri);
+    jwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(withIssuer, audienceValidator));
+    return jwtDecoder;
   }
 
   /**

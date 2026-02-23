@@ -60,8 +60,8 @@ public class ApplicationSummaryService {
    * @param pageSize the maximum number of results to return per page
    * @return a {@link PaginatedResult} containing the page and validated pagination parameters
    */
-  @PreAuthorize("@entra.hasAppRole('DSA Test OBO – Reader')")
-  public Page<ApplicationSummary> getAllApplications(
+  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+  public PaginatedResult<ApplicationSummary> getAllApplications(
           ApplicationStatus applicationStatus,
           String laaReference,
           String clientFirstName,

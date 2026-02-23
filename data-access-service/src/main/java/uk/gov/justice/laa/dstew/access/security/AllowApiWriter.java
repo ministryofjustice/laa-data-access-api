@@ -1,8 +1,15 @@
 package uk.gov.justice.laa.dstew.access.security;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import org.springframework.security.access.prepost.PreAuthorize;
-import java.lang.annotation.*;
 
+/**
+ * Security annotation that restricts access to methods or types
+ * to users with the "API.Admin" role.
+ */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @PreAuthorize("hasRole('API.Admin')")
