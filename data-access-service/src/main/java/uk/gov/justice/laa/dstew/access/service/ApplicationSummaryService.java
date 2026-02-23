@@ -57,7 +57,7 @@ public class ApplicationSummaryService {
    * @param pageSize the maximum number of results to return per page
    * @return a list of {@link ApplicationSummary} instances matching the filter criteria
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+  @PreAuthorize("@entra.hasAppRole('DSA Test OBO – Reader')")
   public Page<ApplicationSummary> getAllApplications(
           ApplicationStatus applicationStatus,
           String laaReference,

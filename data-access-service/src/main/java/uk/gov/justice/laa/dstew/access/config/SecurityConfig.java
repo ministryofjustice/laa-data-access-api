@@ -61,7 +61,7 @@ public class SecurityConfig {
         .authorizeHttpRequests(authorize -> authorize
             .requestMatchers("/actuator/health", "/actuator/info").permitAll()
             .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-            .requestMatchers("/api/**").permitAll()
+            .requestMatchers("/api/**").authenticated()
             .anyRequest().authenticated())
         .oauth2ResourceServer(oauth2 -> oauth2
             .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
@@ -72,23 +72,13 @@ public class SecurityConfig {
 
   @Bean
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
-      JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-      grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
-      grantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
+    JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+    grantedAuthoritiesConverter.setAuthoritiesClaimName("LAA_APP_ROLES");
+    grantedAuthoritiesConverter.setAuthorityPrefix("");
 
     JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
-      var authorities = grantedAuthoritiesConverter.convert(jwt);
-      if (authorities == null || authorities.isEmpty()) {
-        // Add default roles
-        return Set.of(
-            new SimpleGrantedAuthority("ROLE_ApplicationWriter"),
-            new SimpleGrantedAuthority("ROLE_ApplicationReader"),
-            new SimpleGrantedAuthority("ROLE_API.Admin")
-        );
-      }
-      return authorities;
-    });
+    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+
     return jwtAuthenticationConverter;
   }
 
@@ -119,7 +109,7 @@ public class SecurityConfig {
     return new EffectiveAuthorizationProvider() {
       @Override
       public boolean hasAppRole(String name) {
-        return getAuthorities().contains("APPROLE_" + name);
+        return getAuthorities().contains(name);
       }
 
       @Override
