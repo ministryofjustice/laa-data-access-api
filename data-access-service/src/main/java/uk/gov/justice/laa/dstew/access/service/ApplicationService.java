@@ -199,6 +199,7 @@ public class ApplicationService {
         ));
   }
 
+
   /**
    * Check existence of a caseworker by ID.
    *
@@ -231,6 +232,25 @@ public class ApplicationService {
       throw new ResourceNotFoundException(exceptionMsg);
     }
     return applications;
+  }
+
+  /**
+   * Checks that applications exist for all the IDs provided.
+   * @param associatedApplyIds Collection of apply applications ids
+   */
+  private void checkIfAllAssociatedApplicationsExist(final List<UUID> associatedApplyIds) {
+    applicationValidations.checkApplicationIdList(associatedApplyIds);
+    List<UUID> foundApplyAppIds = applicationRepository.findAllByApplyApplicationIdIn(associatedApplyIds)
+        .stream()
+        .map(ApplicationEntity::getApplyApplicationId)
+        .toList();
+    if (foundApplyAppIds.size() != associatedApplyIds.size()) {
+      List<UUID> remainingIds = associatedApplyIds.stream()
+          .filter(id ->  !foundApplyAppIds.contains(id))
+          .toList();
+      String exceptionMsg = "No application found with ids: " + remainingIds;
+      throw new ResourceNotFoundException(exceptionMsg);
+    }
   }
 
   /**
@@ -320,8 +340,8 @@ public class ApplicationService {
     applicationRepository.save(application);
 
     DecisionEntity decision = application.getDecision() != null
-            ? application.getDecision()
-            : DecisionEntity.builder().meritsDecisions(Set.of()).build();
+        ? application.getDecision()
+        : DecisionEntity.builder().meritsDecisions(Set.of()).build();
 
     Set<MeritsDecisionEntity> merits = new LinkedHashSet<>(decision.getMeritsDecisions());
 
@@ -414,13 +434,19 @@ public class ApplicationService {
 
   private static UUID getLeadApplicationId(List<LinkedApplication> linkedApplications) {
     return (linkedApplications != null && linkedApplications.size() != 0)
-        ? linkedApplications.getFirst().getLeadApplicationId() 
+        ? linkedApplications.getFirst().getLeadApplicationId()
         : null;
   }
 
   private Optional<ApplicationEntity> getLeadApplication(ApplicationContent requestContent) {
     final UUID leadApplicationId = getLeadApplicationId(requestContent.getAllLinkedApplications());
-    if (leadApplicationId == null)  {
+    List<UUID> list = requestContent.getAllLinkedApplications().stream()
+        .map(LinkedApplication::getAssociatedApplicationId)
+        .filter(uuid -> !uuid.equals(requestContent.getId()))
+        .toList();
+
+    checkIfAllAssociatedApplicationsExist(list);
+    if (leadApplicationId == null) {
       return Optional.empty();
     }
 
