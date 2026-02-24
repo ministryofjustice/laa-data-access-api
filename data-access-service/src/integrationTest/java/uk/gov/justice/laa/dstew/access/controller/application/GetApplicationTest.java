@@ -151,6 +151,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
             application.setOverallDecision(applicationEntity.getDecision().getOverallDecision());
         }
         application.isLead(applicationEntity.isLead());
+        application.setProvider(applicationEntity.getOfficeCode());
         return application;
     }
 }

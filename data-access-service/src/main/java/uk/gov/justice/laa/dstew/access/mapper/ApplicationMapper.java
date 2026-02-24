@@ -102,6 +102,7 @@ public interface ApplicationMapper {
       application.setOverallDecision(entity.getDecision().getOverallDecision());
     }
     application.setApplicationType(ApplicationType.INITIAL);
+    application.setProvider(entity.getOfficeCode());
 
     return application;
   }

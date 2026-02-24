@@ -45,6 +45,7 @@ public class ApplicationEntityGenerator extends BaseGenerator<ApplicationEntity,
                 .isAutoGranted(true)
                 .categoryOfLaw(CategoryOfLaw.FAMILY)
                 .matterType(MatterType.SPECIAL_CHILDREN_ACT)
+                .officeCode("officeCode")
                 .build();
     }
 }
