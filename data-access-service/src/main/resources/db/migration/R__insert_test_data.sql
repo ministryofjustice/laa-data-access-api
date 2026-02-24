@@ -1,8 +1,4 @@
 -- R__insert_test_data.sql
--- Delete all existing caseworkers
-DELETE FROM caseworkers;
-
--- Insert new caseworkers with specific UUIDs
 INSERT INTO caseworkers (id, username) VALUES ('8a082fe2-d539-4177-aae3-7498fd5904c7', 'caseworker1');
 INSERT INTO caseworkers (id, username) VALUES ('41435bf3-625f-495a-ac1d-9bb95229b5a4', 'caseworker2');
 INSERT INTO caseworkers (id, username) VALUES ('afffcfe0-2b5b-40da-a8fc-5e31d724bb25', 'caseworker3');
