@@ -234,7 +234,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, 9, 10, 1, 9);
+        assertPaging(actual, 9, 20, 1, 9);
         assertThat(actual.getApplications().size()).isEqualTo(9);
         assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
     }
@@ -243,7 +243,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.READER)
     void givenApplicationsRequiringPageTwo_whenGetApplications_thenReturnSecondPageOfApplicationsCorrectly() throws Exception {
         // given
-        List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory.createAndPersistMultiple(20, builder ->
+        List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory.createAndPersistMultiple(40, builder ->
                         builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS))
                 .stream()
                 .map(this::createApplicationSummary)
@@ -258,9 +258,9 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, 20, 10, 2, 10);
-        assertThat(actual.getApplications().size()).isEqualTo(10);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(10, 20)));
+        assertPaging(actual, 40, 20, 2, 20);
+        assertThat(actual.getApplications().size()).isEqualTo(20);
+        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(20, 40)));
     }
 
     @Test
@@ -292,6 +292,36 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @ParameterizedTest
+    @MethodSource("invalidPagingParameters")
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    void givenInvalidPagingParameters_whenGetApplications_thenReturnBadRequest(Integer page, Integer pageSize) throws Exception {
+        // when
+        String uri = TestConstants.URIs.GET_APPLICATIONS + "?";
+        if (page != null) {
+            uri += SEARCH_PAGE_PARAM + page;
+        }
+        if (pageSize != null) {
+            uri += (page != null ? "&" : "") + SEARCH_PAGE_SIZE_PARAM + pageSize;
+        }
+        MvcResult result = getUri(uri);
+
+        // then
+        assertBadRequest(result);
+    }
+
+    static Stream<Arguments> invalidPagingParameters() {
+        return Stream.of(
+                // page, pageSize
+                Arguments.of(0, 10),    // zero page
+                Arguments.of(-1, 10),   // negative page
+                Arguments.of(1, 0),    // zero pageSize
+                Arguments.of(1, -74),  // negative pageSize
+                Arguments.of(1, 200),   // pageSize greater than 100
+                Arguments.of(0, 0)     // zero page and pageSize
+        );
+    }
+
+    @ParameterizedTest
     @MethodSource("applicationsSummaryFilteredByStatusCases")
     @WithMockUser(authorities = TestConstants.Roles.READER)
     void givenApplicationsFilteredByStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly(
@@ -311,7 +341,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, numberOfApplications, 10, 1, numberOfApplications);
+        assertPaging(actual, numberOfApplications, 20, 1, numberOfApplications);
         assertThat(actual.getApplications().size()).isEqualTo(numberOfApplications);
         assertTrue((actual.getApplications()).containsAll(expectedApplicationsSummary));
     }
@@ -338,7 +368,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, 5, 10, 1, 5);
+        assertPaging(actual, 5, 20, 1, 5);
         assertThat(actual.getApplications().size()).isEqualTo(5);
         assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
     }
@@ -364,7 +394,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, 6, 10, 1, 6);
+        assertPaging(actual, 6, 20, 1, 6);
         assertThat(actual.getApplications().size()).isEqualTo(6);
         assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
     }
@@ -374,7 +404,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     void givenApplicationsFilteredBySubmittedStatusWithPaging_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory
-                .createAndPersistMultiple(17, builder -> builder.status(ApplicationStatus.APPLICATION_SUBMITTED))
+                .createAndPersistMultiple(27, builder -> builder.status(ApplicationStatus.APPLICATION_SUBMITTED))
                 .stream()
                 .map(this::createApplicationSummary)
                 .toList();
@@ -391,9 +421,9 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, 17, 10, 2, 7);
+        assertPaging(actual, 27, 20, 2, 7);
         assertThat(actual.getApplications().size()).isEqualTo(7);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(10, 17)));
+        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(20, 27)));
     }
 
     @ParameterizedTest
@@ -423,7 +453,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, expectedCount, 10, 1, expectedCount);
+        assertPaging(actual, expectedCount, 20, 1, expectedCount);
         assertThat(actual.getApplications().size()).isEqualTo(expectedCount);
         assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
     }
@@ -454,7 +484,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, 7, 10, 1, 7);
+        assertPaging(actual, 7, 20, 1, 7);
         assertThat(actual.getApplications().size()).isEqualTo(7);
         assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
     }
@@ -485,7 +515,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, expectedCount, 10, 1, expectedCount);
+        assertPaging(actual, expectedCount, 20, 1, expectedCount);
         assertThat(actual.getApplications().size()).isEqualTo(expectedCount);
         assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
     }
@@ -521,7 +551,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, 7, 10, 1, 7);
+        assertPaging(actual, 7, 20, 1, 7);
         assertThat(actual.getApplications().size()).isEqualTo(7);
         assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
     }
@@ -551,7 +581,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, 2, 10, 1, 2);
+        assertPaging(actual, 2, 20, 1, 2);
         assertThat(actual.getApplications().size()).isEqualTo(2);
         assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
     }
@@ -587,7 +617,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, 1, 10, 1, 1);
+        assertPaging(actual, 1, 20, 1, 1);
         assertThat(actual.getApplications().size()).isEqualTo(1);
         assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
     }
@@ -596,7 +626,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.READER)
     void givenApplicationsFilteredByFirstNameAndLastNameAndStatusWithPaging_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
-        List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(13, builder ->
+        List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(23, builder ->
                 builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS)
                         .individuals(Set.of(individualEntityFactory.create(i -> i.firstName("George").lastName("Theodore")))));
 
@@ -624,9 +654,9 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, 13, 10, 2, 3);
+        assertPaging(actual, 23, 20, 2, 3);
         assertThat(actual.getApplications().size()).isEqualTo(3);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(10, 13)));
+        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(20, 23)));
     }
 
     @Test
@@ -650,7 +680,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, 2, 10, 1, 2);
+        assertPaging(actual, 2, 20, 1, 2);
         assertThat(actual.getApplications().size()).isEqualTo(2);
         assertArrayEquals(actual.getApplications().toArray(), expectedApplicationSummary.toArray());
     }
@@ -693,7 +723,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, 0, 10, 1, 0);
+        assertPaging(actual, 0, 20, 1, 0);
         assertThat(actual.getApplications().size()).isEqualTo(0);
     }
 
@@ -720,7 +750,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, 4, 10, 1, 4);
+        assertPaging(actual, 4, 20, 1, 4);
         assertThat(actual.getApplications().size()).isEqualTo(4);
         assertArrayEquals(expectedApplicationsSummary.toArray(), actual.getApplications().toArray());
     }
@@ -746,7 +776,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, 4, 10, 1, 4);
+        assertPaging(actual, 4, 20, 1, 4);
         assertThat(actual.getApplications().size()).isEqualTo(4);
         assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
     }
@@ -782,7 +812,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        assertPaging(actual, 4, 10, 1, 4);
+        assertPaging(actual, 4, 20, 1, 4);
         assertThat(actual.getApplications().size()).isEqualTo(4);
         assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
     }
@@ -795,31 +825,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
-    public void givenPageZero_whenGetApplications_thenDefaultToPageOneAndReturnCorrectResults() throws Exception {
-        // given
-        List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(15, builder ->
-                builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS));
 
-        List<ApplicationSummary> expectedApplicationsSummary = expectedApplications.stream()
-                .map(this::createApplicationSummary)
-                .toList();
-
-        // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_PAGE_PARAM + "0");
-        ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
-
-        // then
-        assertContentHeaders(result);
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertOK(result);
-        assertPaging(actual, 15, 10, 1, 10);
-        assertThat(actual.getApplications().size()).isEqualTo(10);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(0, 10)));
-    }
-
-    @Test
     public void givenNoUser_whenGetApplications_thenReturnUnauthorised() throws Exception {
         // when
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
