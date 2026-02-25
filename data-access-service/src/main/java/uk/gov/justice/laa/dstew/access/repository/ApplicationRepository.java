@@ -13,6 +13,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 @Repository
 public interface ApplicationRepository extends JpaRepository<ApplicationEntity, UUID> {
   ApplicationEntity findByApplyApplicationId(UUID applyApplicationId);
+
   List<ApplicationEntity> findAllByApplyApplicationIdIn(List<UUID> applyApplicationIds);
 }
 

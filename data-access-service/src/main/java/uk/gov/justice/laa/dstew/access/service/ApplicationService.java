@@ -236,6 +236,7 @@ public class ApplicationService {
 
   /**
    * Checks that applications exist for all the IDs provided.
+   *
    * @param associatedApplyIds Collection of apply applications ids
    */
   private void checkIfAllAssociatedApplicationsExist(final List<UUID> associatedApplyIds) {
@@ -248,7 +249,7 @@ public class ApplicationService {
       List<UUID> remainingIds = associatedApplyIds.stream()
           .filter(id ->  !foundApplyAppIds.contains(id))
           .toList();
-      String exceptionMsg = "No application found with ids: " + remainingIds;
+      String exceptionMsg = "No linked application found with associated apply ids: " + remainingIds;
       throw new ResourceNotFoundException(exceptionMsg);
     }
   }

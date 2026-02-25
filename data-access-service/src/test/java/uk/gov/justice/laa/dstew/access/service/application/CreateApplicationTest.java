@@ -25,9 +25,11 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.aot.ApplicationContextAotGenerator;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
+import uk.gov.justice.laa.dstew.access.entity.LinkedApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
@@ -35,10 +37,13 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationsGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -82,6 +87,53 @@ public class CreateApplicationTest extends BaseServiceTest {
 
     verifyThatApplicationSaved(applicationCreateRequest, 1);
     verifyThatProceedingsSaved(applicationContent, expectedId);
+    verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
+  }
+
+  @Test
+  public void givenNewApplicationWithLinkedApplication_whenCreateApplication_thenReturnNewId() throws JsonProcessingException {
+
+    // given
+    UUID expectedId = UUID.randomUUID();
+    UUID applyApplicationId = UUID.randomUUID();
+    UUID associatedApplicationId = UUID.randomUUID();
+    LinkedApplicationsGenerator linkedApplicationsGenerator = new LinkedApplicationsGenerator();
+    LinkedApplication linkedApplication = linkedApplicationsGenerator.createDefault(
+        linkedApplicationBuilder -> linkedApplicationBuilder
+            .leadApplicationId(applyApplicationId)
+            .associatedApplicationId(associatedApplicationId));
+
+    ApplicationContentGenerator applicationContentGenerator = new ApplicationContentGenerator();
+    ApplicationContent applicationContent1 = applicationContentGenerator.createDefault(appContentBuilder ->
+        appContentBuilder.id(applyApplicationId).allLinkedApplications(List.of(linkedApplication)));
+    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault(builder ->
+        builder.applicationContent(objectMapper.convertValue(applicationContent1, Map.class)));
+    ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder ->
+        builder.id(expectedId).applicationContent(objectMapper.convertValue(applicationContent1, Map.class)).isAutoGranted(null)
+    );
+    when(applicationRepository.findByApplyApplicationId(applyApplicationId)).thenReturn(applicationEntityFactory.createDefault());
+    when(applicationRepository.save(any())).thenReturn(withExpectedId);
+    DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+        .applicationId(expectedId)
+        .type(DomainEventType.APPLICATION_CREATED)
+        .data(objectMapper.writeValueAsString(CreateApplicationDomainEventDetails.builder()
+            .applicationId(expectedId)
+            .laaReference(withExpectedId.getLaaReference())
+            .applicationStatus(ApplicationStatus.APPLICATION_IN_PROGRESS.toString())
+            .request(objectMapper.writeValueAsString(applicationCreateRequest))
+            .build()))
+        .build();
+
+    setSecurityContext(TestConstants.Roles.WRITER);
+
+    // when
+    UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
+
+    // then
+    assertEquals(expectedId, actualId);
+
+    verifyThatApplicationSaved(applicationCreateRequest, 1);
+    verifyThatProceedingsSaved(applicationContent1, expectedId);
     verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
   }
 
