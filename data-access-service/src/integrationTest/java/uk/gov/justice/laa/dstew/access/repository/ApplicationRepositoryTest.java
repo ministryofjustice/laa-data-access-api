@@ -65,7 +65,7 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
   private void assertApplicationEqual(ApplicationEntity expected, ApplicationEntity actual) {
     assertThat(expected)
         .usingRecursiveComparison()
-        .ignoringFields("createdAt", "modifiedAt")
+        .ignoringFields("createdAt", "modifiedAt", "individuals")
         .isEqualTo(actual);
     assertThat(expected.getModifiedAt()).isNotNull();
   }

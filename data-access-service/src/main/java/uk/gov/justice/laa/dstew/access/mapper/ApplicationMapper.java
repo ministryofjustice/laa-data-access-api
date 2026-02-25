@@ -106,6 +106,7 @@ public interface ApplicationMapper {
     application.setOpponents(
         extractOpponents(entity.getApplicationContent())
     );
+    application.setProvider(entity.getOfficeCode());
 
     return application;
   }

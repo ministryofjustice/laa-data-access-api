@@ -318,6 +318,17 @@ paths:
           schema:
               type: integer
               default: 20
+        - name: applicationId
+          in: query
+          description: The ID of the application the individuals are linked to
+          schema:
+            type: string
+            format: uuid
+        - name: individualType
+          in: query
+          description: The type of the individual
+          schema:
+            $ref: "#/components/schemas/individualType"
       responses:
         '200':
           description: 'Success'
@@ -464,6 +475,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Opponent"
+        provider:
+          type: string
 
     ApplicationCreateRequest:
       type: object

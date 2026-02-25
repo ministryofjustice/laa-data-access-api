@@ -37,6 +37,7 @@ class ApplicationMapperTest {
         Instant createdAt = Instant.now().minusSeconds(600000);
         Instant updatedAt = Instant.now();
         Set<IndividualEntity> individuals = Set.of();
+        String officeCode = "officeCode";
 
         ApplicationEntity expectedApplicationEntity = ApplicationEntity.builder()
                 .id(id)
@@ -47,6 +48,7 @@ class ApplicationMapperTest {
                 .createdAt(createdAt)
                 .modifiedAt(updatedAt)
                 .individuals(individuals)
+                .officeCode(officeCode)
                 .build();
 
         Application actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
@@ -56,6 +58,7 @@ class ApplicationMapperTest {
         assertThat(actualApplication.getLaaReference()).isEqualTo(laaReference);
         assertThat(actualApplication.getStatus()).isEqualTo(status);
         assertThat(actualApplication.getLastUpdated()).isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
+        assertThat(actualApplication.getProvider()).isEqualTo(officeCode);
     }
 
 
