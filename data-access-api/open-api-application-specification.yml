@@ -95,6 +95,7 @@ paths:
       operationId: createApplication
       parameters:
         - $ref: "#/components/parameters/XServiceName"
+        - $ref: "#/components/parameters/XSchemaVersion"
       requestBody:
         description: Create an application (all fields inside `applicationContent`)
         required: true
@@ -348,6 +349,15 @@ components:
       required: true
       schema:
         $ref: "#/components/schemas/serviceName"
+    XSchemaVersion:
+      in: header
+      name: X-Schema-Version
+      required: false
+      description: Schema version to validate the applicationContent against. Defaults to 1.
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
   schemas:
     serviceName:
       type: string

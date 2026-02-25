@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "Proceeding.json",
+  "title": "Proceeding",
+  "description": "A proceeding within the application",
+  "type": "object",
+  "required": [
+    "id",
+    "leadProceeding",
+    "description"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the proceeding"
+    },
+    "categoryOfLaw": {
+      "type": ["string", "null"],
+      "description": "Category of law for this proceeding"
+    },
+    "matterType": {
+      "type": ["string", "null"],
+      "description": "Matter type for this proceeding"
+    },
+    "usedDelegatedFunctions": {
+      "type": ["boolean", "null"],
+      "description": "Whether delegated functions were used"
+    },
+    "leadProceeding": {
+      "type": "boolean",
+      "description": "Whether this is the lead proceeding"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the proceeding"
+    }
+  },
+  "additionalProperties": true
+}
