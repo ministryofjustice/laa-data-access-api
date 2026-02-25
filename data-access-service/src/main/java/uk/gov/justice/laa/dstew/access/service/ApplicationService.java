@@ -247,7 +247,7 @@ public class ApplicationService {
         .toList();
     if (foundApplyAppIds.size() != associatedApplyIds.size()) {
       List<UUID> remainingIds = associatedApplyIds.stream()
-          .filter(id ->  !foundApplyAppIds.contains(id))
+          .filter(id -> !foundApplyAppIds.contains(id))
           .toList();
       String exceptionMsg = "No linked application found with associated apply ids: " + remainingIds;
       throw new ResourceNotFoundException(exceptionMsg);
@@ -441,12 +441,15 @@ public class ApplicationService {
 
   private Optional<ApplicationEntity> getLeadApplication(ApplicationContent requestContent) {
     final UUID leadApplicationId = getLeadApplicationId(requestContent.getAllLinkedApplications());
-    List<UUID> list = requestContent.getAllLinkedApplications().stream()
-        .map(LinkedApplication::getAssociatedApplicationId)
-        .filter(uuid -> !uuid.equals(requestContent.getId()))
-        .toList();
+    if (requestContent.getAllLinkedApplications() != null) {
+      List<UUID> list = requestContent.getAllLinkedApplications().stream()
+          .map(LinkedApplication::getAssociatedApplicationId)
+          .filter(uuid -> !uuid.equals(requestContent.getId()))
+          .toList();
 
-    checkIfAllAssociatedApplicationsExist(list);
+      checkIfAllAssociatedApplicationsExist(list);
+    }
+
     if (leadApplicationId == null) {
       return Optional.empty();
     }
