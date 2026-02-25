@@ -9,7 +9,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -42,7 +41,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenMakeDecisionRequestAndInvalidHeader_whenAssignDecision_thenReturnBadRequest(
             String serviceName
@@ -51,7 +50,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenMakeDecisionRequestAndNoHeader_whenAssignDecision_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
@@ -92,7 +91,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("missingRefusalDetails")
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenMakeDecisionRequest_whenAssignDecision_thenReturnBadRequest(
             String reason,
             String justification,
@@ -138,7 +137,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenMakeDecisionRequest_whenAssignDecision_thenUpdateApplicationEntity() throws Exception {
         // given
         ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
@@ -175,7 +174,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenReturnNoContent_andDecisionSaved()
             throws Exception {
         // given
@@ -232,7 +231,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenMakeDecisionRequestWithExistingContentAndNewContent_whenAssignDecision_thenReturnNoContent_andDecisionUpdated()
             throws Exception {
         // given
@@ -307,7 +306,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenProceedingsNotFoundAndNotLinkedToApplication_whenMakeDecision_thenReturnNotFoundWithAllIds()
         throws Exception {
         // given
@@ -362,7 +361,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenNoApplication_whenAssignDecisionApplication_thenReturnNotFoundAndMessage()
             throws Exception {
         // given
@@ -395,7 +394,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenNoCaseworker_whenAssignDecisionApplication_thenReturnNotFoundAndMessage()
             throws Exception {
         // given

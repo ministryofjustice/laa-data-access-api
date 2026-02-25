@@ -32,7 +32,7 @@ public class GetEventsTest extends BaseServiceTest {
     @Test
     void givenExpectedDomainEvents_whenGetEvents_thenReturnDomainEventsInCreatedAtOrder() {
         // given
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
         List<DomainEventEntity> generatedDomainEvents = DataGenerator.createMultipleDefault(
                 DomainEventGenerator.class,20);
 

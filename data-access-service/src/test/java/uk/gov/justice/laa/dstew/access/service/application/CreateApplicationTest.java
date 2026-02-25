@@ -72,7 +72,7 @@ public class CreateApplicationTest extends BaseServiceTest {
                         .build()))
                 .build();
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     // when
     UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
@@ -112,7 +112,7 @@ public class CreateApplicationTest extends BaseServiceTest {
   void mapToApplicationEntity_SuccessfullyMapFromApplicationContentFields(ApplicationCreateRequest application,
                                                                           boolean expectedUseDelegatedFunctions) {
     // Given
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     UUID expectedId = UUID.randomUUID();
     ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder -> builder.id(expectedId));
@@ -165,7 +165,7 @@ public class CreateApplicationTest extends BaseServiceTest {
             ApplicationCreateRequest applicationCreateRequest,
             ValidationException validationException
     ) {
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         Throwable thrown = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));
         assertThat(thrown)

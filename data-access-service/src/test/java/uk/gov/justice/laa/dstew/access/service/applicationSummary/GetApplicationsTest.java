@@ -40,7 +40,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
         Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "submittedAt"));
 
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
@@ -80,7 +80,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
         Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "submittedAt"));
 
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
@@ -110,7 +110,7 @@ public class GetApplicationsTest extends BaseServiceTest {
     public void givenPageZeroAndUserId_whenGetApplicationsAndNoCaseworkerFound_thenThrowValidationException() {
 
         // given
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
         ValidationException validationException = new ValidationException(List.of(
                 "Caseworker not found"
         ));
@@ -195,7 +195,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(5);
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
 
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
@@ -217,7 +217,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(5);
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
 
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
@@ -236,7 +236,7 @@ public class GetApplicationsTest extends BaseServiceTest {
     @Test
     public void givenInvalidPage_whenGetApplications_thenThrowException() {
         // given
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         // when/then
         assertThatExceptionOfType(IllegalArgumentException.class)
@@ -250,7 +250,7 @@ public class GetApplicationsTest extends BaseServiceTest {
     @Test
     public void givenInvalidPageSize_whenGetApplications_thenThrowException() {
         // given
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         // when/then
         assertThatExceptionOfType(IllegalArgumentException.class)
@@ -264,7 +264,7 @@ public class GetApplicationsTest extends BaseServiceTest {
     @Test
     public void givenPageSizeExceedingMax_whenGetApplications_thenThrowException() {
         // given
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         // when/then
         assertThatExceptionOfType(IllegalArgumentException.class)
@@ -281,7 +281,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(5);
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
 
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 

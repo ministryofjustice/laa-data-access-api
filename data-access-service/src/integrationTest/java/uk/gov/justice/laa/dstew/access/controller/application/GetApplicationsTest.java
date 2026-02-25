@@ -6,8 +6,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
@@ -15,7 +13,6 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -74,7 +71,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     @MethodSource("searchFieldAndOrderParameters")
     void givenApplicationWithoutFilteringAndOrderedBy_whenGetApplications_thenReturnApplication(
             String sortByParameter,
@@ -98,7 +95,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenValidApplicationsDataAndIncorrectHeader_whenGetApplications_thenReturnBadRequest(
             String serviceName
@@ -107,7 +104,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenValidApplicationsDataAndNoHeader_whenGetApplications_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
@@ -188,7 +185,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationWithoutFilteringAndNullAutoGranted_whenGetApplications_thenReturnApplication() throws Exception {
         // given
         List<ApplicationEntity> expectedApplicationsWithNullAutoGrant =
@@ -206,7 +203,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsWithoutFiltering_whenGetApplications_thenReturnApplicationsWithPagingCorrectly() throws Exception {
         // given
         List<ApplicationEntity> expectedApplicationsWithCaseworker = persistedApplicationFactory.createAndPersistMultiple(3, builder ->
@@ -240,7 +237,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsRequiringPageTwo_whenGetApplications_thenReturnSecondPageOfApplicationsCorrectly() throws Exception {
         // given
         List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory.createAndPersistMultiple(40, builder ->
@@ -264,7 +261,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsAndPageSizeOfTwenty_whenGetApplications_thenReturnTwentyRecords() throws Exception {
         // given
         List<ApplicationEntity> inProgressApplications = persistedApplicationFactory.createAndPersistMultiple(15, builder -> builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS));
@@ -293,7 +290,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("invalidPagingParameters")
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenInvalidPagingParameters_whenGetApplications_thenReturnBadRequest(Integer page, Integer pageSize) throws Exception {
         // when
         String uri = TestConstants.URIs.GET_APPLICATIONS + "?";
@@ -323,7 +320,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("applicationsSummaryFilteredByStatusCases")
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsFilteredByStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly(
             ApplicationStatus Status,
             Supplier<List<ApplicationSummary>> expectedApplicationsSummarySupplier,
@@ -348,7 +345,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     // TODO: is this test superseded by parameterized test above?
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsFilteredByInProgressStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory
@@ -375,7 +372,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     // TODO: is this test superseded by parameterized test above?
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsFilteredBySubmittedStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory
@@ -400,7 +397,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsFilteredBySubmittedStatusWithPaging_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         List<ApplicationSummary> expectedApplicationsSummary = persistedApplicationFactory
@@ -428,7 +425,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("firstNameSearchCases")
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsFilteredByFirstName_whenGetApplications_thenReturnExpectedApplicationsCorrectly(
             String searchFirstName,
             String persistedFirstName,
@@ -459,7 +456,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsFilteredByFirstNameAndStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         persistedApplicationFactory.createAndPersistMultiple(8, builder ->
@@ -491,7 +488,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("lastNameSearchCases")
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsFilteredByLastName_whenGetApplications_thenReturnExpectedApplicationsCorrectly(
             String searchLastName,
             String persistedLastName,
@@ -521,7 +518,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsFilteredByLastNameAndStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         persistedApplicationFactory.createAndPersistMultiple(1, builder ->
@@ -557,7 +554,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsFilteredByFirstNameAndLastName_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         persistedApplicationFactory.createAndPersistMultiple(3, builder ->
@@ -587,7 +584,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsFilteredByFirstNameAndLastNameAndStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(1, builder ->
@@ -623,7 +620,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsFilteredByFirstNameAndLastNameAndStatusWithPaging_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(23, builder ->
@@ -660,7 +657,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsFilteredByClientDateOfBirth_whenGetAllApplications_thenReturnExpectedApplication() throws Exception {
         //given
         LocalDate clientDOB = LocalDate.of(1942, 11, 27);
@@ -686,14 +683,14 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationFilteredByClientDateOfBirth_whenGetAllApplicationsAndInvalidFormat_thenReturnBadRequest() throws Exception {
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_CLIENTDOB_PARAM + "something");
         assertBadRequest(result);
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationsFilteredByStatusAndNoApplicationsMatch_whenGetApplications_thenReturnEmptyResult() throws Exception {
         // given
         persistedApplicationFactory.createAndPersistMultiple(7, builder ->
@@ -728,7 +725,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenApplicationsFilteredByCaseworkerJohnDoe_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(4, builder ->
@@ -757,7 +754,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenApplicationFilteredByAutoGrant_whenGetApplications_thenReturnExpectedApplicationsCorrectly(boolean isAutoGranted) throws Exception {
         // given
         List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(4, builder ->
@@ -782,7 +779,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenApplicationFilteredByAutoGrant_whenGetApplicationsAndInvalidFormat_thenReturnBadRequest() throws Exception {
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_ISAUTOGRANTED_PARAM + "something");
         assertBadRequest(result);
@@ -794,7 +791,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("getApplicationSummaryQueryMatterTypes")
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenApplicationFilteredByMatterType_whenGetApplications_thenReturnExpectedApplicationsCorrectly(MatterType matterType) throws Exception {
         // given
         List<ApplicationEntity> expectedApplications = persistedApplicationFactory.createAndPersistMultiple(4, builder ->
@@ -818,7 +815,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenApplicationFilteredByMatterType_whenGetApplicationsAndInvalidFormat_thenReturnBadRequest() throws Exception {
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_MATTERTYPE_PARAM + "something");
         assertBadRequest(result);

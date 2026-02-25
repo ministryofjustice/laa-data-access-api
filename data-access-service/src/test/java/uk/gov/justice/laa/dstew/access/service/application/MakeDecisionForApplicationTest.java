@@ -108,7 +108,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                     .caseworker(caseworker)
     );
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     ProceedingEntity refusedProceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
             builder.id(refusedProceedingId).applicationId(applicationId)
@@ -188,7 +188,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         ))
         .build();
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     ProceedingEntity grantedProceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
         builder.id(grantedProceedingId).applicationId(applicationId)
@@ -257,7 +257,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     expectedApplicationEntity.setDecision(currentSavedDecisionEntity);
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
         builder.id(proceedingId).applicationId(applicationId)
@@ -338,7 +338,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         ))
         .build();
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     ProceedingEntity existingProceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
                 builder.id(proceedingId).applicationId(applicationId)
@@ -414,7 +414,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                 builder.id(newProceedingId).applicationId(applicationId)
                 );
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     // when
     when(proceedingRepository.findAllById(List.of(newProceedingId, currentProceedingId)))
@@ -450,7 +450,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
     );
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
@@ -477,7 +477,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
     );
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     Throwable thrown = catchThrowable(() ->
         serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest));
@@ -516,7 +516,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             .caseworker(caseworker)
         );
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
         builder.id(proceedingId)
@@ -561,7 +561,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                     .caseworker(caseworker)
             );
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder -> builder.id(proceedingId).applicationId(unrelatedApplicationId));
 
@@ -611,7 +611,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                     .caseworker(caseworker)
             );
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     ProceedingEntity unrelatedApplicationProceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder -> builder.id(unrelatedApplicationProceedingId).applicationId(unrelatedApplicationId));
 

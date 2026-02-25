@@ -77,7 +77,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
 
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         // when
         serviceUnderTest.unassignCaseworker(applicationId, eventHistory);
@@ -102,7 +102,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
 
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         // when
         serviceUnderTest.unassignCaseworker(applicationId, eventHistory);
@@ -120,7 +120,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
     ) {
 
         // given
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         // when
         Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(applicationId, new EventHistory()));
@@ -137,7 +137,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
     @Test
     void givenRoleReader_whenUnassignCaseworker_thenThrowUnauthorizedException() {
         // given
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.NO_ROLE);
 
         // when
         Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistory()));

@@ -87,7 +87,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         when(caseworkerRepository.findById(expectedCaseworker.getId()))
                 .thenReturn(Optional.of(expectedCaseworker));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         // when
         serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), List.of(applicationId), eventHistory);
@@ -102,7 +102,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
 
     @Test
     void givenNullCasworkerId_whenAsssignCaseworker_thenThrowNullPointerException() {
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         // when
         Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(null, null, null));
@@ -119,7 +119,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
 
     @Test
     void givenNullApplicationIdInList_whenAsssignCaseworker_thenThrowValidationException() {
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
         List<UUID> applicationIdsWithNull = Arrays.asList(UUID.randomUUID(), null, UUID.randomUUID());
         CaseworkerEntity expectedCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder -> builder.id(UUID.randomUUID()));
         when(caseworkerRepository.findById(expectedCaseworker.getId()))
@@ -149,7 +149,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         when(caseworkerRepository.findById(nonexistentCaseworkerId))
                 .thenReturn(Optional.empty());
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         // when
         Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(nonexistentCaseworkerId, List.of(UUID.randomUUID()), new EventHistory()));
@@ -173,7 +173,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
                 .thenReturn(Optional.of(expectedCaseworker));
 
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         List<UUID> emptyApplicationIds = Collections.emptyList();
 
@@ -222,7 +222,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         when(caseworkerRepository.findById(expectedCaseworker.getId()))
                 .thenReturn(Optional.of(expectedCaseworker));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         // when
         serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds, eventHistory);
@@ -267,7 +267,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         when(caseworkerRepository.findById(existingCaseworker.getId()))
                 .thenReturn(Optional.of(existingCaseworker));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         // when
         serviceUnderTest.assignCaseworker(existingCaseworker.getId(), applicationIds, eventHistory);
@@ -298,7 +298,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         when(caseworkerRepository.findById(expectedCaseworker.getId()))
                 .thenReturn(Optional.of(expectedCaseworker));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         // when
         Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds, eventHistory));
@@ -319,7 +319,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
     @Test
     void givenRoleReader_whenAssignCaseworker_thenThrowUnauthorizedException() {
         // given
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.NO_ROLE);
 
         // when
         Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(UUID.randomUUID(), List.of(UUID.randomUUID()), new EventHistory()));

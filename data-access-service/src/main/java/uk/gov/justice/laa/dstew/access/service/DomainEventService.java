@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
@@ -25,8 +24,7 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
-import uk.gov.justice.laa.dstew.access.security.AllowApiReader;
-import uk.gov.justice.laa.dstew.access.security.AllowApiWriter;
+import uk.gov.justice.laa.dstew.access.security.AllowApiAdmin;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
 /**
@@ -69,7 +67,7 @@ public class DomainEventService {
    * Posts an APPLICATION_CREATED domain event.
    *
    */
-  @AllowApiWriter
+  @AllowApiAdmin
   public void saveCreateApplicationDomainEvent(
       ApplicationEntity applicationEntity,
       ApplicationCreateRequest request,
@@ -101,7 +99,7 @@ public class DomainEventService {
    * Posts an APPLICATION_UPDATED domain event.
    *
    */
-  @AllowApiWriter
+  @AllowApiAdmin
   public void saveUpdateApplicationDomainEvent(
       ApplicationEntity applicationEntity,
       String updatedBy) {
@@ -128,7 +126,7 @@ public class DomainEventService {
    * Posts an ASSIGN_APPLICATION_TO_CASEWORKER domain event.
    *
    */
-  @AllowApiWriter
+  @AllowApiAdmin
   public void saveAssignApplicationDomainEvent(
       UUID applicationId,
       UUID caseworkerId,
@@ -171,7 +169,7 @@ public class DomainEventService {
    * Posts a domain event {@link DomainEventEntity} object.
    *
    */
-  @AllowApiWriter
+  @AllowApiAdmin
   public void saveUnassignApplicationDomainEvent(
       UUID applicationId,
       UUID caseworkerId,
@@ -196,7 +194,7 @@ public class DomainEventService {
   /**
    * Provides a list of events associated with an application in createdAt ascending order.
    */
-  @AllowApiReader
+  @AllowApiAdmin
   public List<ApplicationDomainEvent> getEvents(UUID applicationId,
                                                 @Valid List<DomainEventType> eventType) {
 
@@ -212,7 +210,7 @@ public class DomainEventService {
    * Posts a MAKE_DECISION_REFUSED domain event.
    *
    */
-  @AllowApiWriter
+  @AllowApiAdmin
   public void saveMakeDecisionRefusedDomainEvent(
           UUID applicationId,
           MakeDecisionRequest request) {
