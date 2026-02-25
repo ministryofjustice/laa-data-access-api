@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.config;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,7 +13,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -49,6 +47,10 @@ public class SecurityConfig {
   @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
   private String jwkSetUri;
 
+  private static final String AUTHORITY_PREFIX = "APPROLE_";
+
+  private static final String APP_ROLES_CLAIM = "LAA_APP_ROLES";
+
   /**
    * Return the security filter chain.
    *
@@ -72,15 +74,15 @@ public class SecurityConfig {
   }
 
   /**
-   * Configures a {@link JwtAuthenticationConverter} to extract authorities from the "LAA_APP_ROLES" claim.
+   * Configures a {@link JwtAuthenticationConverter} to extract authorities from the APP_ROLES_CLAIM.
    *
    * @return a configured JwtAuthenticationConverter bean
    */
   @Bean
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
     JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-    grantedAuthoritiesConverter.setAuthoritiesClaimName("LAA_APP_ROLES");
-    grantedAuthoritiesConverter.setAuthorityPrefix("APPROLE_");
+    grantedAuthoritiesConverter.setAuthoritiesClaimName(APP_ROLES_CLAIM);
+    grantedAuthoritiesConverter.setAuthorityPrefix(AUTHORITY_PREFIX);
 
     JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
     jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
@@ -121,14 +123,14 @@ public class SecurityConfig {
     return new EffectiveAuthorizationProvider() {
       @Override
       public boolean hasAppRole(String name) {
-        return getAuthorities().contains("APPROLE_" + name);
+        return getAuthorities().contains(AUTHORITY_PREFIX + name);
       }
 
       @Override
       public boolean hasAnyAppRole(String... names) {
         final var authorities = getAuthorities();
         return Arrays.stream(names)
-            .anyMatch(name -> authorities.contains("APPROLE_" + name));
+            .anyMatch(name -> authorities.contains(AUTHORITY_PREFIX + name));
       }
 
       private Set<String> getAuthorities() {
