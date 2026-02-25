@@ -25,6 +25,8 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.security.AllowApiReader;
+import uk.gov.justice.laa.dstew.access.security.AllowApiWriter;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
 /**
@@ -67,7 +69,7 @@ public class DomainEventService {
    * Posts an APPLICATION_CREATED domain event.
    *
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiWriter
   public void saveCreateApplicationDomainEvent(
       ApplicationEntity applicationEntity,
       ApplicationCreateRequest request,
@@ -99,7 +101,7 @@ public class DomainEventService {
    * Posts an APPLICATION_UPDATED domain event.
    *
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiWriter
   public void saveUpdateApplicationDomainEvent(
       ApplicationEntity applicationEntity,
       String updatedBy) {
@@ -126,7 +128,7 @@ public class DomainEventService {
    * Posts an ASSIGN_APPLICATION_TO_CASEWORKER domain event.
    *
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiWriter
   public void saveAssignApplicationDomainEvent(
       UUID applicationId,
       UUID caseworkerId,
@@ -169,7 +171,7 @@ public class DomainEventService {
    * Posts a domain event {@link DomainEventEntity} object.
    *
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiWriter
   public void saveUnassignApplicationDomainEvent(
       UUID applicationId,
       UUID caseworkerId,
@@ -194,7 +196,7 @@ public class DomainEventService {
   /**
    * Provides a list of events associated with an application in createdAt ascending order.
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+  @AllowApiReader
   public List<ApplicationDomainEvent> getEvents(UUID applicationId,
                                                 @Valid List<DomainEventType> eventType) {
 
@@ -210,7 +212,7 @@ public class DomainEventService {
    * Posts a MAKE_DECISION_REFUSED domain event.
    *
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiWriter
   public void saveMakeDecisionRefusedDomainEvent(
           UUID applicationId,
           MakeDecisionRequest request) {

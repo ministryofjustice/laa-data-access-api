@@ -160,7 +160,7 @@ public class ApplicationService {
    * @param id  application UUID
    * @param req DTO with update fields
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiWriter
   public void updateApplication(final UUID id, final ApplicationUpdateRequest req) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
     applicationValidations.checkApplicationUpdateRequest(req);
@@ -243,7 +243,7 @@ public class ApplicationService {
    * @throws ResourceNotFoundException if the application or caseworker does not exist
    */
   @Transactional
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiWriter
   public void assignCaseworker(@NonNull final UUID caseworkerId,
                                final List<UUID> applicationIds,
                                final EventHistory eventHistory) {
@@ -273,7 +273,7 @@ public class ApplicationService {
    * @param applicationId the UUID of the application to update
    * @throws ResourceNotFoundException if the application does not exist
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiWriter
   public void unassignCaseworker(final UUID applicationId, EventHistory history) {
     final ApplicationEntity entity = checkIfApplicationExists(applicationId);
 
@@ -310,7 +310,7 @@ public class ApplicationService {
    * @param request       DTO with update fields
    */
   @Transactional
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiWriter
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     checkIfCaseworkerExists(request.getUserId());

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.mapper.CaseworkerMapper;
 import uk.gov.justice.laa.dstew.access.model.Caseworker;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
+import uk.gov.justice.laa.dstew.access.security.AllowApiReader;
 
 /**
  * Service for providing caseworkers.
@@ -21,7 +22,7 @@ public class CaseworkerService {
   /**
   * Provides a list of all caseworkers.
   */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+  @AllowApiReader
   public List<Caseworker> getAllCaseworkers() {
     return caseworkerRepository.findAll()
                                 .stream()

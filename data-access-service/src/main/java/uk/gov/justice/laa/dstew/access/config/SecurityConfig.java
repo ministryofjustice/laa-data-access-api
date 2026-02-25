@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.config;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
@@ -71,29 +72,18 @@ public class SecurityConfig {
   }
 
   /**
-   * Configures a {@link JwtAuthenticationConverter} to extract authorities from the "ROLE_" claim.
+   * Configures a {@link JwtAuthenticationConverter} to extract authorities from the "LAA_APP_ROLES" claim.
    *
    * @return a configured JwtAuthenticationConverter bean
    */
   @Bean
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
     JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-    grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
-    grantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
+    grantedAuthoritiesConverter.setAuthoritiesClaimName("LAA_APP_ROLES");
+    grantedAuthoritiesConverter.setAuthorityPrefix("APPROLE_");
 
     JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
-      var authorities = grantedAuthoritiesConverter.convert(jwt);
-      if (authorities == null || authorities.isEmpty()) {
-        // Add default roles
-        return Set.of(
-            new SimpleGrantedAuthority("APPROLE_ApplicationWriter"),
-            new SimpleGrantedAuthority("APPROLE_ApplicationReader"),
-            new SimpleGrantedAuthority("APPROLE_API.Admin")
-        );
-      }
-      return authorities;
-    });
+    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
     return jwtAuthenticationConverter;
   }
 

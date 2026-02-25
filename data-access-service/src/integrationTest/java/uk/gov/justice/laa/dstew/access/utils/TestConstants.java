@@ -21,8 +21,8 @@ public class TestConstants {
     }
 
     public static class Roles {
-        public static final String READER = "APPROLE_ApplicationReader";
-        public static final String WRITER = "APPROLE_ApplicationWriter";
+        public static final String READER = "APPROLE_DSA Test OBO – Reader";
+        public static final String WRITER = "APPROLE_DSA Test OBO – Writer";
         public static final String UNKNOWN = "Unknown-DO-NOT-IMPLEMENT";
     }
 }

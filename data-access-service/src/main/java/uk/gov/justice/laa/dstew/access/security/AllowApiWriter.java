@@ -12,6 +12,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-@PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+@PreAuthorize("@entra.hasAppRole('DSA Test OBO – Writer')")
 public @interface AllowApiWriter {
 }

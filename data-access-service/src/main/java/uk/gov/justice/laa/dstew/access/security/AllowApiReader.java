@@ -12,6 +12,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-@PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+@PreAuthorize("@entra.hasAppRole('DSA Test OBO – Reader')")
 public @interface AllowApiReader {
 }

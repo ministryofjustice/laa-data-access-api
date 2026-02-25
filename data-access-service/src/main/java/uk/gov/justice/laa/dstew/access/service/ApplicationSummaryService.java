@@ -61,7 +61,7 @@ public class ApplicationSummaryService {
    * @param pageSize the maximum number of results to return per page
    * @return a {@link PaginatedResult} containing the page and validated pagination parameters
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+  @AllowApiReader
   public PaginatedResult<ApplicationSummary> getAllApplications(
           ApplicationStatus applicationStatus,
           String laaReference,

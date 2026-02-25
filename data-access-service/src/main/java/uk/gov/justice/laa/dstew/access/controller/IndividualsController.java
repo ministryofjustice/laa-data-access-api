@@ -13,6 +13,7 @@ import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.Paging;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.security.AllowApiReader;
 import uk.gov.justice.laa.dstew.access.service.IndividualsService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
@@ -42,7 +43,7 @@ public class IndividualsController implements IndividualsApi {
   @Override
   @LogMethodResponse
   @LogMethodArguments
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+  @AllowApiReader
   public ResponseEntity<IndividualsResponse> getIndividuals(
       ServiceName serviceName,
       Integer page,
