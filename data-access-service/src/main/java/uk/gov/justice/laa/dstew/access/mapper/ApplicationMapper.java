@@ -142,18 +142,12 @@ public interface ApplicationMapper {
 
     return opponentsList.stream()
         .map(OpponentDetails::getOpposable)
-        .map(opposableObj -> {
-          if (opposableObj != null) {
-            Opponent opponent = new Opponent();
-            opponent.setOpposableType(opposableObj.getOpposableType());
-            opponent.setFirstName(opposableObj.getFirstName());
-            opponent.setLastName(opposableObj.getLastName());
-            opponent.setOrganisationName(opposableObj.getName());
-            return opponent;
-          }
-          return null;
-        })
-        .filter(Objects::nonNull)
+        .map(opposableObj -> Opponent.builder()
+            .opposableType(opposableObj.getOpposableType())
+            .firstName(opposableObj.getFirstName())
+            .lastName(opposableObj.getLastName())
+            .organisationName(opposableObj.getName())
+            .build())
         .toList();
   }
 }

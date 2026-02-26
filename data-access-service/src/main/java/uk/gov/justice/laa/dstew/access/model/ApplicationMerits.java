@@ -11,7 +11,6 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * ApplicationMerits pojo.
- * Using the same format as the OpenAPI generator to enable switch when schema stable
  */
 @Builder(toBuilder = true)
 @NoArgsConstructor
