@@ -3,11 +3,7 @@ package uk.gov.justice.laa.dstew.access.mapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -18,6 +14,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
@@ -108,11 +105,13 @@ public interface ApplicationMapper {
     application.setApplicationType(ApplicationType.INITIAL);
     application.setProvider(entity.getOfficeCode());
     if (entity.getProceedings() != null) {
+
       entity.getProceedings().forEach(
               proceeding -> {
                 ApplicationProceeding applicationProceeding =
                     proceedingMapper.toApplicationProceeding(proceeding);
 
+                applicationProceeding.setInvolvedChildren(getInvolvedChildren(entity));
                 Optional<MeritsDecisionEntity> meritsDecision =
                         entity.getDecision().getMeritsDecisions().stream()
                         .filter(m -> m.getProceeding().getId() == proceeding.getId())
@@ -121,17 +120,25 @@ public interface ApplicationMapper {
                 meritsDecision.ifPresent(meritsDecisionEntity ->
                         applicationProceeding.setMeritsDecision(meritsDecisionEntity.getDecision()));
 
-                if (entity.getApplicationContent().get("scopeLimitations") != null) {
-                  applicationProceeding.setScopeLimitations(
-                          Map.of("scopeLimitations", entity.getApplicationContent().get("scopeLimitations")));
-                }
-                applicationProceeding.setInvolvedChildren(applicationProceeding.getInvolvedChildren());
-
                 application.getProceedings().add(applicationProceeding);
               }
       );
     }
     return application;
+  }
+
+  private static ArrayList getInvolvedChildren(ApplicationEntity entity) {
+      ObjectMapper mapper = MapperUtil.getObjectMapper();
+      ApplicationContent content = mapper.convertValue(entity.getApplicationContent(), ApplicationContent.class);
+      LinkedHashMap applicationcontent = (LinkedHashMap) content.getAdditionalApplicationContent().get("applicationContent");
+      if (applicationcontent == null) {
+        return null;
+      }
+      LinkedHashMap applicationmerits = (LinkedHashMap) applicationcontent.get("applicationMerits");
+      if (applicationmerits == null) {
+        return null;
+      }
+      return (ArrayList) applicationmerits.get("involvedChildren");
   }
 
   private static List<Individual> getIndividuals(Set<IndividualEntity> individuals) {

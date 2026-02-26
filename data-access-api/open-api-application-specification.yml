@@ -747,12 +747,12 @@ components:
         substantiveCostLimitation:
           type: string
         scopeLimitations:
-          type: object
-          additionalProperties: true
-          minProperties: 0
+          type: array
+          items:
+            type: object
         meritsDecision:
           $ref: "#/components/schemas/meritsDecisionStatus"
         involvedChildren:
-          type: object
-          additionalProperties: true
-          minProperties: 0
+          type: array
+          items:
+            type: object

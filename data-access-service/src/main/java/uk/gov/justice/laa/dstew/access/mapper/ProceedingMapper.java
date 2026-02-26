@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.lang3.BooleanUtils;
@@ -50,10 +51,6 @@ public interface ProceedingMapper {
     Proceeding proceeding = MapperUtil.getObjectMapper()
             .convertValue(proceedingEntity.getProceedingContent(), Proceeding.class);
 
-    if (proceeding.getAdditionalProceedingsData().get("scopeLimitations") != null) {
-      proceeding.setScopeLimitations(Map.of("scopeLimitations", proceeding.getAdditionalProceedingsData().get("scopeLimitations")));
-    }
-
     ApplicationProceeding applicationProceeding = new ApplicationProceeding();
     applicationProceeding.setProceedingId(proceedingEntity.getId());
     applicationProceeding.setProceedingDescription(proceedingEntity.getDescription());
@@ -63,7 +60,7 @@ public interface ProceedingMapper {
     applicationProceeding.setMatterType(proceeding.getMatterType());
     applicationProceeding.setLevelOfService(proceeding.getSubstantiveLevelOfServiceName());
     applicationProceeding.setSubstantiveCostLimitation(proceeding.getSubstantiveCostLimitation());
-    applicationProceeding.setScopeLimitations(proceeding.getScopeLimitations());
+    applicationProceeding.setScopeLimitations(Collections.singletonList(proceeding.getScopeLimitations()));
 
     return applicationProceeding;
   }

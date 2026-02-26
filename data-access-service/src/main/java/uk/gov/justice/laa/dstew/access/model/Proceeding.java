@@ -11,6 +11,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -60,8 +61,7 @@ public class Proceeding implements Serializable {
 
   @Nullable private String substantiveCostLimitation;
 
-  @JsonIgnore
-  @Nullable private Map<String, Object> scopeLimitations;
+  @Nullable private List<Map<String, Object>> scopeLimitations;
 
   /**
    * A container for additional, undeclared properties.
