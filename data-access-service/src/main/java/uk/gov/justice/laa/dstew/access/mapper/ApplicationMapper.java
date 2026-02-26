@@ -3,9 +3,12 @@ package uk.gov.justice.laa.dstew.access.mapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.mapstruct.BeanMapping;
@@ -19,8 +22,8 @@ import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
@@ -137,17 +140,17 @@ public interface ApplicationMapper {
   }
 
   private static ArrayList getInvolvedChildren(ApplicationEntity entity) {
-      ObjectMapper mapper = MapperUtil.getObjectMapper();
-      ApplicationContent content = mapper.convertValue(entity.getApplicationContent(), ApplicationContent.class);
-      LinkedHashMap applicationcontent = (LinkedHashMap) content.getAdditionalApplicationContent().get("applicationContent");
-      if (applicationcontent == null) {
-        return null;
-      }
-      LinkedHashMap applicationmerits = (LinkedHashMap) applicationcontent.get("applicationMerits");
-      if (applicationmerits == null) {
-        return null;
-      }
-      return (ArrayList) applicationmerits.get("involvedChildren");
+    ObjectMapper mapper = MapperUtil.getObjectMapper();
+    ApplicationContent content = mapper.convertValue(entity.getApplicationContent(), ApplicationContent.class);
+    LinkedHashMap applicationcontent = (LinkedHashMap) content.getAdditionalApplicationContent().get("applicationContent");
+    if (applicationcontent == null) {
+      return null;
+    }
+    LinkedHashMap applicationmerits = (LinkedHashMap) applicationcontent.get("applicationMerits");
+    if (applicationmerits == null) {
+      return null;
+    }
+    return (ArrayList) applicationmerits.get("involvedChildren");
   }
 
   private static List<Individual> getIndividuals(Set<IndividualEntity> individuals) {
