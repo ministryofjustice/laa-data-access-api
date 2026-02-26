@@ -16,11 +16,15 @@ import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.Opponent;
+import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
+import uk.gov.justice.laa.dstew.access.model.Opposable;
 
 /**
  * Mapper interface.
@@ -125,45 +129,29 @@ public interface ApplicationMapper {
       return null;
     }
 
-    Object meritsObj = content.get("applicationMerits");
-    if (!(meritsObj instanceof Map<?, ?> meritsMap)) {
+    ApplicationContent applicationContent = MapperUtil.getObjectMapper().convertValue(content, ApplicationContent.class);
+    ApplicationMerits meritsObj = applicationContent.getApplicationMerits();
+    if (meritsObj == null) {
       return null;
     }
 
-    Object opponentsObj = meritsMap.get("opponents");
-    if (!(opponentsObj instanceof List<?> opponentsList)) {
+    List<OpponentDetails> opponentsList = meritsObj.getOpponents();
+    if (opponentsList == null) {
       return null;
     }
 
     return opponentsList.stream()
-        .filter(Map.class::isInstance)
-        .map(Map.class::cast)
-        .map(opponentMap -> {
-
-          Object opposableObj = opponentMap.get("opposable");
-          if (!(opposableObj instanceof Map<?, ?> opposable)) {
-            return null;
+        .map(OpponentDetails::getOpposable)
+        .map(opposableObj -> {
+          if (opposableObj != null) {
+            Opponent opponent = new Opponent();
+            opponent.setOpposableType(opposableObj.getOpposableType());
+            opponent.setFirstName(opposableObj.getFirstName());
+            opponent.setLastName(opposableObj.getLastName());
+            opponent.setOrganisationName(opposableObj.getName());
+            return opponent;
           }
-
-          String opposableType = (String) opposable.get("opposableType");
-          String firstName = (String) opposable.get("firstName");
-          String lastName = (String) opposable.get("lastName");
-          String organisationName = (String) opposable.get("name");
-
-          if (opposableType == null &&
-              firstName == null &&
-              lastName == null &&
-              organisationName == null) {
-            return null;
-          }
-
-          Opponent opponent = new Opponent();
-          opponent.setOpposableType(opposableType);
-          opponent.setFirstName(firstName);
-          opponent.setLastName(lastName);
-          opponent.setOrganisationName(organisationName);
-
-          return opponent;
+          return null;
         })
         .filter(Objects::nonNull)
         .toList();
