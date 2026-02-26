@@ -2,12 +2,14 @@ package uk.gov.justice.laa.dstew.access.model;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -50,6 +52,16 @@ public class Proceeding implements Serializable {
   @Schema(name = "description", requiredMode = Schema.RequiredMode.REQUIRED)
   private String description;
 
+  @Nullable private String meaning;
+
+  @Nullable private LocalDate usedDelegatedFunctionsOn;
+
+  @Nullable private String substantiveLevelOfServiceName;
+
+  @Nullable private String substantiveCostLimitation;
+
+  @JsonIgnore
+  @Nullable private Map<String, Object> scopeLimitations;
 
   /**
    * A container for additional, undeclared properties.

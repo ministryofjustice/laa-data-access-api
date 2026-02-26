@@ -729,5 +729,28 @@ components:
         proceedingId:
           type: string
           format: uuid
+        proceedingType:
+          type: string
         proceedingDescription:
           type: string
+        usedDelegatedFunctionsOn:
+          type: string
+          format: date
+        categoryOfLaw:
+          type: string
+        matterType:
+          type: string
+        levelOfService:
+          type: string
+        substantiveCostLimitation:
+          type: string
+        scopeLimitations:
+          type: object
+          additionalProperties: true
+          minProperties: 0
+        meritsDecision:
+          $ref: "#/components/schemas/meritsDecisionStatus"
+        involvedChildren:
+          type: object
+          additionalProperties: true
+          minProperties: 0

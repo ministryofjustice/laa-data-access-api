@@ -34,8 +34,7 @@ public class GetApplicationTest extends BaseServiceTest {
     public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {
         // given
         ApplicationEntity expectedApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class);
-        ProceedingEntity expectedProceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class);
-        expectedApplication.setProceedings(Set.of(expectedProceeding));
+        expectedApplication.setProceedings(Set.of(DataGenerator.createDefault(ProceedingsEntityGenerator.class)));
 
         when(applicationRepository.findById(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
 
@@ -46,22 +45,7 @@ public class GetApplicationTest extends BaseServiceTest {
 
         // then
         assertApplicationEqual(expectedApplication, actualApplication);
-        assertProceedingsEqual(expectedApplication.getProceedings(), actualApplication.getProceedings());
         verify(applicationRepository, times(1)).findById(expectedApplication.getId());
-    }
-
-    private void assertProceedingsEqual(Set<ProceedingEntity> expectedProceedings,
-                                        List<ApplicationProceeding> actualProceedings) {
-
-        if (expectedProceedings == null && actualProceedings == null) {
-            return;
-        }
-
-        assertThat(expectedProceedings).isNotNull();
-        assertThat(actualProceedings).isNotNull();
-
-        assertThat(expectedProceedings.size()).isEqualTo(actualProceedings.size());
-
     }
 
     @Test
@@ -111,5 +95,25 @@ public class GetApplicationTest extends BaseServiceTest {
     public void assertApplicationEqual(ApplicationEntity expectedApplication, Application actualApplication) {
         assertThat(actualApplication.getStatus()).isEqualTo(expectedApplication.getStatus());
         assertThat(actualApplication.getLaaReference()).isEqualTo(expectedApplication.getLaaReference());
+        assertProceedingsEqual(expectedApplication.getProceedings(), actualApplication.getProceedings());
     }
+
+    private void assertProceedingsEqual(Set<ProceedingEntity> expectedProceedings,
+                                        List<ApplicationProceeding> actualProceedings) {
+
+        if (expectedProceedings == null && actualProceedings == null) {
+            return;
+        }
+
+        assertThat(expectedProceedings).isNotNull();
+        assertThat(actualProceedings).isNotNull();
+        ProceedingEntity expectedProceedingEntity = expectedProceedings.iterator().next();
+        ApplicationProceeding actualApplicationProceeding = actualProceedings.getFirst();
+
+        assertThat(expectedProceedings.size()).isEqualTo(actualProceedings.size());
+        assertThat(expectedProceedingEntity.getId()).isEqualTo(actualApplicationProceeding.getProceedingId());
+        assertThat(expectedProceedingEntity.getDescription()).isEqualTo(actualApplicationProceeding.getProceedingDescription());
+
+    }
+
 }
