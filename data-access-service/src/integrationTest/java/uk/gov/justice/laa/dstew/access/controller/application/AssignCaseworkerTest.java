@@ -48,7 +48,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 public class AssignCaseworkerTest extends BaseIntegrationTest {
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenValidAssignRequestAndInvalidHeader_whenAssignCaseworker_thenReturnBadRequest(
             String serviceName
@@ -57,7 +57,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenValidAssignRequestAndNoHeader_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
@@ -78,7 +78,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("validAssignCaseworkerRequestCases")
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenValidAssignRequest_whenAssignCaseworker_thenReturnOK_andAssignCaseworker(
             AssignCaseworkerCase assignCaseworkerCase
     ) throws Exception {
@@ -128,7 +128,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("invalidAssignCaseworkerRequestCases")
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenInvalidAssignRequestBecauseApplicationDoesNotExist_whenAssignCaseworker_thenReturnNotFound_andGiveMissingIds(
             AssignCaseworkerCase assignCaseworkerCase
     ) throws Exception {
@@ -175,7 +175,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenInvalidAssignRequestBecauseSomeApplicationsDoNotExist_whenAssignCaseworker_thenReturnNotFound_andAssignAvailableApplications_andGiveMissingIds() throws Exception {
         // given
         List<ApplicationEntity> expectedAssignedApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,
@@ -223,7 +223,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("invalidApplicationIdListsCases")
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenInvalidAssignmentRequestBecauseInvalidApplicationIds_whenAssignCaseworker_thenReturnBadRequest(
             List<UUID> invalidApplicationIdList
     ) throws Exception {
@@ -251,7 +251,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenInvalidAssignmentRequestBecauseCaseworkerDoesNotExist_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
         // given
         ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> builder.caseworker(null));

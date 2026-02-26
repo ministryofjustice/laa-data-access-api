@@ -8,10 +8,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Security annotation that restricts access to methods or types
- * to users with the "ADS_ADMIN" role.
+ * to users with the "LAA_CASEWORKER" role.
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-@PreAuthorize("@entra.hasAppRole('ADS_ADMIN')")
-public @interface AllowApiAdmin {
+@PreAuthorize("@entra.hasAppRole('LAA_CASEWORKER')")
+public @interface AllowApiCaseworker {
 }

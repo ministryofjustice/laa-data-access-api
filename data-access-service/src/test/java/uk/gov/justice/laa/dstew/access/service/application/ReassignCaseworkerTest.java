@@ -77,7 +77,7 @@ public class ReassignCaseworkerTest extends BaseServiceTest {
         when(caseworkerRepository.findById(expectedCaseworker.getId()))
                 .thenReturn(Optional.of(expectedCaseworker));
 
-        setSecurityContext(TestConstants.Roles.ADMIN);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
         serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), List.of(applicationId), eventHistory);

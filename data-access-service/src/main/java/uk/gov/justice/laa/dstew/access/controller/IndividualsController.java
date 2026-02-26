@@ -12,7 +12,7 @@ import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.Paging;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.security.AllowApiAdmin;
+import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.IndividualsService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
@@ -42,7 +42,7 @@ public class IndividualsController implements IndividualsApi {
   @Override
   @LogMethodResponse
   @LogMethodArguments
-  @AllowApiAdmin
+  @AllowApiCaseworker
   public ResponseEntity<IndividualsResponse> getIndividuals(
       ServiceName serviceName,
       Integer page,

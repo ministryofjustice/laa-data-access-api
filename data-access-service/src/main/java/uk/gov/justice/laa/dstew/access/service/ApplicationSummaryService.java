@@ -19,7 +19,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
-import uk.gov.justice.laa.dstew.access.security.AllowApiAdmin;
+import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -60,7 +60,7 @@ public class ApplicationSummaryService {
    * @param pageSize the maximum number of results to return per page
    * @return a {@link PaginatedResult} containing the page and validated pagination parameters
    */
-  @AllowApiAdmin
+  @AllowApiCaseworker
   public PaginatedResult<ApplicationSummary> getAllApplications(
           ApplicationStatus applicationStatus,
           String laaReference,

@@ -35,7 +35,7 @@ public class GetApplicationTest extends BaseServiceTest {
 
         when(applicationRepository.findById(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
 
-        setSecurityContext(TestConstants.Roles.ADMIN);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
         Application actualApplication = serviceUnderTest.getApplication(expectedApplication.getId());
@@ -52,7 +52,7 @@ public class GetApplicationTest extends BaseServiceTest {
         UUID applicationId = UUID.randomUUID();
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
 
-        setSecurityContext(TestConstants.Roles.ADMIN);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
         // then

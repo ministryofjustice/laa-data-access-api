@@ -41,7 +41,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenMakeDecisionRequestAndInvalidHeader_whenAssignDecision_thenReturnBadRequest(
             String serviceName
@@ -50,7 +50,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenMakeDecisionRequestAndNoHeader_whenAssignDecision_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
@@ -91,7 +91,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("missingRefusalDetails")
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenMakeDecisionRequest_whenAssignDecision_thenReturnBadRequest(
             String reason,
             String justification,
@@ -137,7 +137,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenMakeDecisionRequest_whenAssignDecision_thenUpdateApplicationEntity() throws Exception {
         // given
         ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
@@ -174,7 +174,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenReturnNoContent_andDecisionSaved()
             throws Exception {
         // given
@@ -231,7 +231,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenMakeDecisionRequestWithExistingContentAndNewContent_whenAssignDecision_thenReturnNoContent_andDecisionUpdated()
             throws Exception {
         // given
@@ -306,7 +306,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenProceedingsNotFoundAndNotLinkedToApplication_whenMakeDecision_thenReturnNotFoundWithAllIds()
         throws Exception {
         // given
@@ -361,7 +361,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenNoApplication_whenAssignDecisionApplication_thenReturnNotFoundAndMessage()
             throws Exception {
         // given
@@ -394,7 +394,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenNoCaseworker_whenAssignDecisionApplication_thenReturnNotFoundAndMessage()
             throws Exception {
         // given

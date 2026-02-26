@@ -35,7 +35,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 public class UpdateApplicationTest extends BaseIntegrationTest {
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenValidApplicationDataAndIncorrectHeader_whenUpdateApplication_thenReturnBadRequest(
             String serviceName
@@ -44,7 +44,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenValidApplicationDataAndIncorrectHeader_whenUpdateApplication_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
@@ -64,7 +64,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenUpdateRequestWithNewContentAndStatus_whenUpdateApplication_thenReturnOK_andUpdateApplication() throws Exception {
         // given
         ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
@@ -99,7 +99,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("invalidApplicationUpdateRequestCases")
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenUpdateRequestWithInvalidContent_whenUpdateApplication_thenReturnBadRequest(
             ApplicationUpdateRequest applicationUpdateRequest
     ) throws Exception {
@@ -120,7 +120,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenUpdateRequestWithWrongId_whenUpdateApplication_thenReturnNotFound() throws Exception {
         // given
         ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
@@ -142,7 +142,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"f8c3de3d-1fea-4d7c-a8b0", "not a UUID"})
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenUpdateRequestWithInvalidId_whenUpdateApplication_thenReturnNotFound(String uuid) throws Exception {
         // given
         persistedApplicationFactory.createAndPersist(builder -> {

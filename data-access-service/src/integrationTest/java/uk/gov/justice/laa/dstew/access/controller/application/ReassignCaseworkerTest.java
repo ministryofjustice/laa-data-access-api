@@ -28,7 +28,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 public class ReassignCaseworkerTest extends BaseIntegrationTest {
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenValidReassignRequestAndInvalidHeader_whenAssignCaseworker_thenReturnBadRequest(
             String serviceName
@@ -37,7 +37,7 @@ public class ReassignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenValidReassignRequestAndNoHeader_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
@@ -60,7 +60,7 @@ public class ReassignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenValidReassignRequest_whenAssignCaseworker_thenReturnOK_andAssignCaseworker() throws Exception {
         // given
         List<ApplicationEntity> toReassignedApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,

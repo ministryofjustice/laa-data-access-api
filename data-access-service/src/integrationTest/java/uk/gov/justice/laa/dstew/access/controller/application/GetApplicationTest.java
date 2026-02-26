@@ -34,7 +34,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 public class GetApplicationTest extends BaseIntegrationTest {
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenApplicationDataAndIncorrectHeader_whenGetApplications_thenReturnBadRequest(
             String serviceName
@@ -43,7 +43,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationDataAndNoHeader_whenGetApplication_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
@@ -56,7 +56,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenExistingApplication_whenGetApplication_thenReturnOKWithCorrectData() throws Exception {
         // given
         DecisionEntity decision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
@@ -82,7 +82,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenApplicationNotExist_whenGetApplication_thenReturnNotFound() throws Exception {
         // given
         UUID notExistApplicationId = UUID.randomUUID();

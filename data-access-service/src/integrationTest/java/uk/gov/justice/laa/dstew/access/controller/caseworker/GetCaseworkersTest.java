@@ -23,13 +23,13 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 public class GetCaseworkersTest extends BaseIntegrationTest {
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenRoleReaderAndNoHeader_whenGetCaseworkers_thenReturnBadRequest() throws Exception {
         verifyServiceNameHeader(null);
     }
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenRoleReaderAndIncorrectHeader_whenGetCaseworkers_thenReturnBadRequest(
             String serviceName
@@ -44,7 +44,7 @@ public class GetCaseworkersTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenRoleReader_whenGetCaseworkers_thenReturnOk() throws Exception {
         // given
         // two caseworkers created in BaseIntegrationTest data setup.

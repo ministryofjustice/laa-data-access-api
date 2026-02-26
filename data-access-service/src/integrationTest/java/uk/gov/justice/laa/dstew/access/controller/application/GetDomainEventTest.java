@@ -34,7 +34,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     private final String SEARCH_EVENT_TYPE_PARAM = "eventType=";
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenApplicationWithDomainEventsAndNoHeader_whenApplicationHistorySearch_thenReturnBadRequest(
             String serviceName
@@ -43,7 +43,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithDomainEventsAndInvalidHeader_whenApplicationHistorySearch_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
@@ -58,7 +58,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenApplicationWithDomainEvents_whenApplicationHistorySearch_theReturnDomainEvents() throws Exception {
         var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
         // given
@@ -80,7 +80,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenApplicationWithDomainEvents_whenApplicationHistorySearchFilterSingleDomainEvent_thenOnlyFilteredDomainEventTypes() throws Exception {
         var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
         // given
@@ -107,7 +107,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenApplicationWithDomainEvents_whenApplicationHistorySearchFilterMultipleDomainEvent_thenOnlyFilteredDomainEventTypes() throws Exception {
         var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
         // given

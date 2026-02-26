@@ -13,7 +13,7 @@ import uk.gov.justice.laa.dstew.access.mapper.IndividualMapper;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
-import uk.gov.justice.laa.dstew.access.security.AllowApiAdmin;
+import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.specification.IndividualSpecification;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
@@ -42,7 +42,7 @@ public class IndividualsService {
    * @param individualType the individual type to filter by (nullable)
    * @return a {@link PaginatedResult} containing the page and validated pagination parameters
    */
-  @AllowApiAdmin
+  @AllowApiCaseworker
   public PaginatedResult<Individual> getIndividuals(
       Integer page,
       Integer pageSize,
