@@ -24,7 +24,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.Opponent;
 import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
-import uk.gov.justice.laa.dstew.access.model.Opposable;
 
 /**
  * Mapper interface.

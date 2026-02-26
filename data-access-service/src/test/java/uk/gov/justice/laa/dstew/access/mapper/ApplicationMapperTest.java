@@ -270,7 +270,6 @@ class ApplicationMapperTest {
     ApplicationEntity entity = ApplicationEntity.builder()
         .applicationContent(content)
         .status(initialStatus)
-        .applicationContent(content)
         .createdAt(createdAt)
         .modifiedAt(modifiedAt)
         .build();
@@ -307,7 +306,6 @@ class ApplicationMapperTest {
     ApplicationEntity entity = ApplicationEntity.builder()
         .applicationContent(content)
         .status(initialStatus)
-        .applicationContent(content)
         .createdAt(createdAt)
         .modifiedAt(modifiedAt)
         .build();
