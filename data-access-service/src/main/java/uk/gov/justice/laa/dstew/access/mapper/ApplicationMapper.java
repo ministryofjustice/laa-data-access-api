@@ -3,7 +3,10 @@ package uk.gov.justice.laa.dstew.access.mapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -17,9 +20,12 @@ import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.Opponent;
+import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
 
 /**
  * Mapper interface.
@@ -103,6 +109,9 @@ public interface ApplicationMapper {
       application.setOverallDecision(entity.getDecision().getOverallDecision());
     }
     application.setApplicationType(ApplicationType.INITIAL);
+    application.setOpponents(
+        extractOpponents(entity.getApplicationContent())
+    );
     application.setProvider(entity.getOfficeCode());
     if (entity.getProceedings() != null) {
 
@@ -146,6 +155,34 @@ public interface ApplicationMapper {
         .stream()
         .map(individualMapper::toIndividual)
         .filter(Objects::nonNull)
+        .toList();
+  }
+
+  private static List<Opponent> extractOpponents(Map<String, Object> content) {
+
+    if (content == null) {
+      return null;
+    }
+
+    ApplicationContent applicationContent = MapperUtil.getObjectMapper().convertValue(content, ApplicationContent.class);
+    ApplicationMerits meritsObj = applicationContent.getApplicationMerits();
+    if (meritsObj == null) {
+      return null;
+    }
+
+    List<OpponentDetails> opponentsList = meritsObj.getOpponents();
+    if (opponentsList == null) {
+      return null;
+    }
+
+    return opponentsList.stream()
+        .map(OpponentDetails::getOpposable)
+        .map(opposableObj -> Opponent.builder()
+            .opposableType(opposableObj.getOpposableType())
+            .firstName(opposableObj.getFirstName())
+            .lastName(opposableObj.getLastName())
+            .organisationName(opposableObj.getName())
+            .build())
         .toList();
   }
 }
