@@ -462,6 +462,8 @@ components:
           $ref: "#/components/schemas/applicationType"
         proceedings:
           $ref: "#/components/schemas/ApplicationProceedings"
+        provider:
+          type: string
 
     ApplicationCreateRequest:
       type: object
