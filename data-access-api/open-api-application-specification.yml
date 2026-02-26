@@ -459,6 +459,8 @@ components:
           $ref: "#/components/schemas/decisionStatus"
         applicationType:
           $ref: "#/components/schemas/applicationType"
+        provider:
+          type: string
 
     ApplicationCreateRequest:
       type: object
