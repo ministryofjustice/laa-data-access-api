@@ -18,7 +18,7 @@
     "proceedings": {
       "type": "array",
       "items": {
-        "$ref": "Proceeding.json"
+        "$ref": "../common/Proceeding.json"
       },
       "description": "List of proceedings associated with the application"
     },
@@ -36,15 +36,15 @@
     },
     "office": {
       "oneOf": [
-        { "$ref": "ApplicationOffice.json" },
-        { "type": "object" }
+        { "$ref": "../common/ApplicationOffice.json"},
+        { "type": "null" }
       ],
       "description": "Office associated with the application"
     },
     "allLinkedApplications": {
       "type": ["array", "null"],
       "items": {
-        "$ref": "LinkedApplication.json"
+        "$ref": "../common/LinkedApplication.json"
       },
       "description": "All linked applications"
     }
