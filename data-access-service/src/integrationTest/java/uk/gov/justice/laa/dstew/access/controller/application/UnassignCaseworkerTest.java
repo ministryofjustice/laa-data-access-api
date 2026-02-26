@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
@@ -34,7 +33,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 public class UnassignCaseworkerTest extends BaseIntegrationTest {
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenValidUnassignRequestAndInvalidHeader_whenUnassignCaseworker_thenReturnBadRequest(
             String serviceName
@@ -43,7 +42,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenValidUnassignRequestAndNoHeader_whenUnassignCaseworker_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
@@ -71,7 +70,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenValidUnassignRequest_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
         // given
         ApplicationEntity toUnassignedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
@@ -112,7 +111,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenValidUnassignRequestWithBlankEventDescription_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
         // given
         ApplicationEntity toUnassignedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
@@ -153,7 +152,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenValidUnassignRequestWithNullEventDescription_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
         // given
         ApplicationEntity expectedUnassignedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
@@ -183,7 +182,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenApplicationNotExist_whenUnassignCaseworker_thenReturnNotFound() throws Exception {
         // given
         CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class);
@@ -198,7 +197,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenCaseworkerNotExist_whenUnassignCaseworker_thenReturnOK() throws Exception {
         // given
         ApplicationEntity expectedUnassignedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
@@ -225,7 +224,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
     public void givenReaderRole_whenUnassignCaseworker_thenReturnForbidden() throws Exception {
         // given
         CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class);

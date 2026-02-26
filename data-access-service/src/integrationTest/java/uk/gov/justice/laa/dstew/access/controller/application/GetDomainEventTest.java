@@ -3,8 +3,6 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
@@ -15,7 +13,6 @@ import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
-import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
 
 import java.time.ZoneOffset;
@@ -37,7 +34,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     private final String SEARCH_EVENT_TYPE_PARAM = "eventType=";
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenApplicationWithDomainEventsAndNoHeader_whenApplicationHistorySearch_thenReturnBadRequest(
             String serviceName
@@ -46,7 +43,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenApplicationWithDomainEventsAndInvalidHeader_whenApplicationHistorySearch_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
@@ -61,7 +58,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenApplicationWithDomainEvents_whenApplicationHistorySearch_theReturnDomainEvents() throws Exception {
         var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
         // given
@@ -83,7 +80,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenApplicationWithDomainEvents_whenApplicationHistorySearchFilterSingleDomainEvent_thenOnlyFilteredDomainEventTypes() throws Exception {
         var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
         // given
@@ -110,7 +107,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenApplicationWithDomainEvents_whenApplicationHistorySearchFilterMultipleDomainEvent_thenOnlyFilteredDomainEventTypes() throws Exception {
         var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
         // given

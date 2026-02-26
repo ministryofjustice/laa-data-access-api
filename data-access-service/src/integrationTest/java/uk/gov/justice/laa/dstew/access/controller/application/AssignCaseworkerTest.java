@@ -7,7 +7,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -49,7 +48,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 public class AssignCaseworkerTest extends BaseIntegrationTest {
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenValidAssignRequestAndInvalidHeader_whenAssignCaseworker_thenReturnBadRequest(
             String serviceName
@@ -58,7 +57,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenValidAssignRequestAndNoHeader_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
@@ -79,7 +78,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("validAssignCaseworkerRequestCases")
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenValidAssignRequest_whenAssignCaseworker_thenReturnOK_andAssignCaseworker(
             AssignCaseworkerCase assignCaseworkerCase
     ) throws Exception {
@@ -129,7 +128,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("invalidAssignCaseworkerRequestCases")
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenInvalidAssignRequestBecauseApplicationDoesNotExist_whenAssignCaseworker_thenReturnNotFound_andGiveMissingIds(
             AssignCaseworkerCase assignCaseworkerCase
     ) throws Exception {
@@ -176,7 +175,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenInvalidAssignRequestBecauseSomeApplicationsDoNotExist_whenAssignCaseworker_thenReturnNotFound_andAssignAvailableApplications_andGiveMissingIds() throws Exception {
         // given
         List<ApplicationEntity> expectedAssignedApplications = persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,
@@ -224,7 +223,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("invalidApplicationIdListsCases")
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenInvalidAssignmentRequestBecauseInvalidApplicationIds_whenAssignCaseworker_thenReturnBadRequest(
             List<UUID> invalidApplicationIdList
     ) throws Exception {
@@ -252,7 +251,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenInvalidAssignmentRequestBecauseCaseworkerDoesNotExist_whenAssignCaseworker_thenReturnBadRequest() throws Exception {
         // given
         ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> builder.caseworker(null));
@@ -278,7 +277,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
     public void givenReaderRole_whenAssignCaseworker_thenReturnForbidden() throws Exception {
         // given
         CaseworkerAssignRequest caseworkerAssignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class);

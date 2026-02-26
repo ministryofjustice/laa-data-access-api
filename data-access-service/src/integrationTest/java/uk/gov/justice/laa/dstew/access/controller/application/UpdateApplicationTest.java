@@ -6,8 +6,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
@@ -16,7 +14,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -38,7 +35,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 public class UpdateApplicationTest extends BaseIntegrationTest {
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenValidApplicationDataAndIncorrectHeader_whenUpdateApplication_thenReturnBadRequest(
             String serviceName
@@ -47,7 +44,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     void givenValidApplicationDataAndIncorrectHeader_whenUpdateApplication_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
@@ -67,7 +64,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenUpdateRequestWithNewContentAndStatus_whenUpdateApplication_thenReturnOK_andUpdateApplication() throws Exception {
         // given
         ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
@@ -102,7 +99,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("invalidApplicationUpdateRequestCases")
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenUpdateRequestWithInvalidContent_whenUpdateApplication_thenReturnBadRequest(
             ApplicationUpdateRequest applicationUpdateRequest
     ) throws Exception {
@@ -123,7 +120,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenUpdateRequestWithWrongId_whenUpdateApplication_thenReturnNotFound() throws Exception {
         // given
         ApplicationEntity applicationEntity = persistedApplicationFactory.createAndPersist(builder -> {
@@ -145,7 +142,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"f8c3de3d-1fea-4d7c-a8b0", "not a UUID"})
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.ADMIN)
     public void givenUpdateRequestWithInvalidId_whenUpdateApplication_thenReturnNotFound(String uuid) throws Exception {
         // given
         persistedApplicationFactory.createAndPersist(builder -> {
@@ -166,7 +163,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
     public void givenReaderRole_whenUpdateApplication_thenReturnForbidden() throws Exception {
         // given
         ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.create();

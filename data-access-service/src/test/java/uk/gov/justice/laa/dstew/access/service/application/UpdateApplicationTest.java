@@ -49,7 +49,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
         UUID applicationId = UUID.randomUUID();
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         // when / then
         assertThatExceptionOfType(ResourceNotFoundException.class)
@@ -74,7 +74,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
         ApplicationUpdateRequest updateRequest = applicationUpdateRequestFactory.createDefault();
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
                 .applicationId(applicationId)
@@ -111,7 +111,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
         );
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         // when
         // then
@@ -130,7 +130,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
         // given
         UUID applicationId = UUID.randomUUID();
 
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.NO_ROLE);
 
         // when
         // then

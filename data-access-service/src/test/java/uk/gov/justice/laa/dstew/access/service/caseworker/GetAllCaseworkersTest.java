@@ -37,7 +37,7 @@ public class GetAllCaseworkersTest extends BaseServiceTest {
 
         when(caseworkerRepository.findAll()).thenReturn(expectedCaseworkers);
 
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.ADMIN);
 
         // when
         List<Caseworker> actualCaseworkers = serviceUnderTest.getAllCaseworkers();

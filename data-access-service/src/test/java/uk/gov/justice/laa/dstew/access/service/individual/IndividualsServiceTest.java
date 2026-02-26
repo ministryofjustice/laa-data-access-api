@@ -38,7 +38,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     List<IndividualEntity> expectedIndividuals = DataGenerator.createMultipleDefault(IndividualEntityGenerator.class, count);
     Page<IndividualEntity> pageResult = new PageImpl<>(expectedIndividuals);
 
-    setSecurityContext(TestConstants.Roles.READER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
@@ -56,7 +56,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     List<IndividualEntity> expectedIndividuals = DataGenerator.createMultipleDefault(IndividualEntityGenerator.class, 5);
     Page<IndividualEntity> pageResult = new PageImpl<>(expectedIndividuals);
 
-    setSecurityContext(TestConstants.Roles.READER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
@@ -77,7 +77,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     List<IndividualEntity> expectedIndividuals = DataGenerator.createMultipleDefault(IndividualEntityGenerator.class, 5);
     Page<IndividualEntity> pageResult = new PageImpl<>(expectedIndividuals);
 
-    setSecurityContext(TestConstants.Roles.READER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
@@ -95,7 +95,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
   @Test
   public void givenInvalidPage_whenGetIndividuals_thenThrowException() {
     // given
-    setSecurityContext(TestConstants.Roles.READER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     // when/then
     assertThatExceptionOfType(IllegalArgumentException.class)
@@ -108,7 +108,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
   @Test
   public void givenInvalidPageSize_whenGetIndividuals_thenThrowException() {
     // given
-    setSecurityContext(TestConstants.Roles.READER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     // when/then
     assertThatExceptionOfType(IllegalArgumentException.class)
@@ -121,7 +121,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
   @Test
   public void givenPageSizeExceedingMax_whenGetIndividuals_thenThrowException() {
     // given
-    setSecurityContext(TestConstants.Roles.READER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     // when/then
     assertThatExceptionOfType(IllegalArgumentException.class)
@@ -137,7 +137,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     List<IndividualEntity> expectedIndividuals = DataGenerator.createMultipleDefault(IndividualEntityGenerator.class, 5);
     Page<IndividualEntity> pageResult = new PageImpl<>(expectedIndividuals);
 
-    setSecurityContext(TestConstants.Roles.READER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
 
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
@@ -154,7 +154,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
   @Test
   @SuppressWarnings("unchecked")
   public void noFilters_whenGetIndividuals_thenRepositoryFindAllWithSpecificationAndPageable() {
-    setSecurityContext(TestConstants.Roles.READER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
     IndividualEntity entity = individualEntityFactory.createDefault();
     Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
@@ -170,7 +170,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
   @Test
   @SuppressWarnings("unchecked")
   public void applicationIdProvided_whenGetIndividuals_thenRepositoryFindAllWithSpecificationAndPageable() {
-    setSecurityContext(TestConstants.Roles.READER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
     UUID appId = UUID.randomUUID();
     IndividualEntity entity = individualEntityFactory.createDefault();
     Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
@@ -186,7 +186,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
   @Test
   @SuppressWarnings("unchecked")
   public void individualTypeProvided_whenGetIndividuals_thenRepositoryFindAllWithSpecificationAndPageable() {
-    setSecurityContext(TestConstants.Roles.READER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
     IndividualType type = IndividualType.CLIENT;
     IndividualEntity entity = individualEntityFactory.createDefault();
     Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
@@ -202,7 +202,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
   @Test
   @SuppressWarnings("unchecked")
   public void bothFiltersProvided_whenGetIndividuals_thenRepositoryFindAllWithSpecificationAndPageable() {
-    setSecurityContext(TestConstants.Roles.READER);
+    setSecurityContext(TestConstants.Roles.ADMIN);
     UUID appId = UUID.randomUUID();
     IndividualType type = IndividualType.CLIENT;
     IndividualEntity entity = individualEntityFactory.createDefault();
