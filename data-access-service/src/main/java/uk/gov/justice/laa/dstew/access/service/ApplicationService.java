@@ -117,8 +117,9 @@ public class ApplicationService {
   @Transactional
   public UUID createApplication(final ApplicationCreateRequest req) {
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
+    Object content = req.getApplicationContent();
     ApplicationContent applicationContent =
-        payloadValidationService.convertAndValidate(req.getApplicationContent(), ApplicationContent.class);
+        payloadValidationService.convertAndValidate(content, ApplicationContent.class);
     setValuesFromApplicationContent(entity, applicationContent);
     entity.setSchemaVersion(applicationVersion);
 
