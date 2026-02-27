@@ -51,7 +51,18 @@ public class JsonSchemaValidator {
 
     if (!errors.isEmpty()) {
       List<String> messages = errors.stream()
-          .map(ValidationMessage::getMessage)
+          .map(v -> {
+            String msg = v.getMessage();
+            // Try to extract path from message (e.g., "$['field']: error")
+            String path = msg;
+            String reason = msg;
+            int colonIdx = msg.indexOf(":");
+            if (colonIdx > 0) {
+              path = msg.substring(0, colonIdx).replaceAll("^\\$\\.?", "").replaceAll("[\\[\\]']", "");
+              reason = msg.substring(colonIdx + 1).trim();
+            }
+            return path + ": " + reason;
+          })
           .toList();
       throw new ValidationException(messages);
     }
