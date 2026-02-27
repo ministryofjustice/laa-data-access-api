@@ -4,16 +4,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
@@ -32,6 +34,7 @@ public class GetApplicationTest extends BaseServiceTest {
     public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {
         // given
         ApplicationEntity expectedApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class);
+        expectedApplication.setProceedings(Set.of(DataGenerator.createDefault(ProceedingsEntityGenerator.class)));
 
         when(applicationRepository.findById(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
 
@@ -92,5 +95,25 @@ public class GetApplicationTest extends BaseServiceTest {
     public void assertApplicationEqual(ApplicationEntity expectedApplication, Application actualApplication) {
         assertThat(actualApplication.getStatus()).isEqualTo(expectedApplication.getStatus());
         assertThat(actualApplication.getLaaReference()).isEqualTo(expectedApplication.getLaaReference());
+        assertProceedingsEqual(expectedApplication.getProceedings(), actualApplication.getProceedings());
     }
+
+    private void assertProceedingsEqual(Set<ProceedingEntity> expectedProceedings,
+                                        List<ApplicationProceeding> actualProceedings) {
+
+        if (expectedProceedings == null && actualProceedings == null) {
+            return;
+        }
+
+        assertThat(expectedProceedings).isNotNull();
+        assertThat(actualProceedings).isNotNull();
+        ProceedingEntity expectedProceedingEntity = expectedProceedings.iterator().next();
+        ApplicationProceeding actualApplicationProceeding = actualProceedings.getFirst();
+
+        assertThat(expectedProceedings.size()).isEqualTo(actualProceedings.size());
+        assertThat(expectedProceedingEntity.getId()).isEqualTo(actualApplicationProceeding.getProceedingId());
+        assertThat(expectedProceedingEntity.getDescription()).isEqualTo(actualApplicationProceeding.getProceedingDescription());
+
+    }
+
 }

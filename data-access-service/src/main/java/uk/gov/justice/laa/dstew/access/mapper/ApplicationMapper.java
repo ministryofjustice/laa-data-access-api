@@ -6,6 +6,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.mapstruct.BeanMapping;
@@ -15,10 +16,12 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
@@ -34,6 +37,7 @@ import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
 public interface ApplicationMapper {
 
   IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
+  ProceedingMapper proceedingMapper = Mappers.getMapper(ProceedingMapper.class);
 
   /**
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
@@ -110,8 +114,40 @@ public interface ApplicationMapper {
         extractOpponents(entity.getApplicationContent())
     );
     application.setProvider(entity.getOfficeCode());
+    if (entity.getProceedings() != null) {
 
+      entity.getProceedings().forEach(
+              proceeding -> {
+                ApplicationProceeding applicationProceeding =
+                    proceedingMapper.toApplicationProceeding(proceeding);
+
+                applicationProceeding.setInvolvedChildren(getInvolvedChildren(entity));
+                Optional<MeritsDecisionEntity> meritsDecision =
+                        entity.getDecision().getMeritsDecisions().stream()
+                        .filter(m -> m.getProceeding().getId() == proceeding.getId())
+                        .findFirst();
+
+                meritsDecision.ifPresent(meritsDecisionEntity ->
+                        applicationProceeding.setMeritsDecision(meritsDecisionEntity.getDecision()));
+
+                application.getProceedings().add(applicationProceeding);
+              }
+      );
+    }
     return application;
+  }
+
+  private static List<Object> getInvolvedChildren(ApplicationEntity entity) {
+
+    ApplicationContent applicationContent = MapperUtil.getObjectMapper()
+                    .convertValue(entity.getApplicationContent(), ApplicationContent.class);
+    ApplicationMerits meritsObj = applicationContent.getApplicationMerits();
+
+    if (meritsObj == null) {
+      return null;
+    }
+
+    return (List<Object>) meritsObj.getAdditionalContent().get("involvedChildren");
   }
 
   private static List<Individual> getIndividuals(Set<IndividualEntity> individuals) {
