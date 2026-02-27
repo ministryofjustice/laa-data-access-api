@@ -3,8 +3,6 @@ package uk.gov.justice.laa.dstew.access.mapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -139,18 +137,17 @@ public interface ApplicationMapper {
     return application;
   }
 
-  private static ArrayList getInvolvedChildren(ApplicationEntity entity) {
-    ObjectMapper mapper = MapperUtil.getObjectMapper();
-    ApplicationContent content = mapper.convertValue(entity.getApplicationContent(), ApplicationContent.class);
-    LinkedHashMap applicationcontent = (LinkedHashMap) content.getAdditionalApplicationContent().get("applicationContent");
-    if (applicationcontent == null) {
+  private static List<Object> getInvolvedChildren(ApplicationEntity entity) {
+
+    ApplicationContent applicationContent = MapperUtil.getObjectMapper()
+                    .convertValue(entity.getApplicationContent(), ApplicationContent.class);
+    ApplicationMerits meritsObj = applicationContent.getApplicationMerits();
+
+    if (meritsObj == null) {
       return null;
     }
-    LinkedHashMap applicationmerits = (LinkedHashMap) applicationcontent.get("applicationMerits");
-    if (applicationmerits == null) {
-      return null;
-    }
-    return (ArrayList) applicationmerits.get("involvedChildren");
+
+    return (List<Object>) meritsObj.getAdditionalContent().get("involvedChildren");
   }
 
   private static List<Individual> getIndividuals(Set<IndividualEntity> individuals) {
