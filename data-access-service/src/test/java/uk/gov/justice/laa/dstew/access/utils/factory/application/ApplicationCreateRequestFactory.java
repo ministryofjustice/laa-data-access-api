@@ -35,6 +35,7 @@ public class ApplicationCreateRequestFactory extends BaseFactory<ApplicationCrea
         .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
         .laaReference("REF7327")
         .individuals(List.of(individualFactory.createDefault()))
+        .applicationType(ApplicationCreateRequest.ApplicationTypeEnum.APPLY)
         .applicationContent(MapperUtil.getObjectMapper().convertValue(applicationContent, Map.class))
         .build();
   }

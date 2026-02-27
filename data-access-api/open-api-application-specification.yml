@@ -502,6 +502,11 @@ components:
         - laaReference
         - individuals
       properties:
+        applicationType:
+          type: string
+          enum:
+            - APPLY
+            - CCS
         status:
           $ref: "#/components/schemas/applicationStatus"
         applicationContent:
