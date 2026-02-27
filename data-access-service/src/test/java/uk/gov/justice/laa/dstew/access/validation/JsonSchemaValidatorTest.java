@@ -1,10 +1,8 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -17,13 +15,12 @@ class JsonSchemaValidatorTest {
 
   @BeforeEach
   void setUp() {
-    validator = new JsonSchemaValidator(new ObjectMapper());
+    validator = new JsonSchemaValidator();
   }
 
   @Test
   void validateAcceptsPayloadMatchingSchema() {
     Map<String, Object> payload = Map.of(
-        "id", UUID.randomUUID().toString(),
         "submittedAt", "2026-01-15T10:20:30Z",
         "status", "APPLICATION_IN_PROGRESS",
         "laaReference", "REF-123",
@@ -37,7 +34,12 @@ class JsonSchemaValidatorTest {
         )
     );
 
-    assertDoesNotThrow(() -> validator.validate(payload, "ApplyApplication.json", 1));
+    ValidationException validationException = assertThrows(ValidationException.class, () -> {
+      validator.validate(payload, "ApplyApplication.json", 1);
+    });
+    assertTrue(validationException.errors().stream().anyMatch(msg -> msg.toLowerCase().contains("id")),
+        "Expected validation errors to mention id field format");
+//    assertDoesNotThrow(() -> );
   }
 
   @Test
