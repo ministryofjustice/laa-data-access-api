@@ -167,7 +167,7 @@ public class CreateApplicationTest extends BaseServiceTest {
 
     // when
     assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequest))
+        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequest, 1))
         .withMessageContaining("Linking failed > Lead application not found, ID: " + applyApplicationId);
   }
 
@@ -206,7 +206,7 @@ public class CreateApplicationTest extends BaseServiceTest {
 
     // when
     assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequest))
+        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequest, 1))
         .withMessageContaining("No linked application found with associated apply ids: " + List.of(otherAssociatedApplication));
   }
 

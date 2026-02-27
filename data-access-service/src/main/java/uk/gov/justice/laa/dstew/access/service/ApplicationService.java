@@ -121,7 +121,16 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   @Transactional
   public UUID createApplication(final ApplicationCreateRequest req, final int schemaVersion) {
-    jsonSchemaValidator.validate(req.getApplicationContent(), "ApplyApplication.json", schemaVersion);
+
+    ApplicationCreateRequest.ApplicationTypeEnum applicationType = req.getApplicationType() != null
+        ? req.getApplicationType()
+        : ApplicationCreateRequest.ApplicationTypeEnum.APPLY;
+    String formType = switch (applicationType) {
+      case APPLY -> "ApplyApplication.json";
+      case CCS -> "NonApplyApplication.json";
+    };
+
+    jsonSchemaValidator.validate(req.getApplicationContent(), formType, schemaVersion);
 
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
     ApplicationContent applicationContent =
@@ -441,7 +450,7 @@ public class ApplicationService {
   }
 
   private static UUID getLeadApplicationId(List<LinkedApplication> linkedApplications) {
-    return (linkedApplications != null && linkedApplications.size() != 0)
+    return (linkedApplications != null && !linkedApplications.isEmpty())
         ? linkedApplications.getFirst().getLeadApplicationId()
         : null;
   }
