@@ -489,7 +489,7 @@ components:
         status:
           $ref: "#/components/schemas/applicationStatus"
         applicationContent:
-          $ref: "#/components/schemas/BaseApplicationContent"
+          $ref: "./open-api-application-content-specification.yml#/components/BaseApplicationContent"
         laaReference:
           type: string
           minLength: 1
@@ -728,60 +728,3 @@ components:
         autoGranted:
           type: boolean
 
-    BaseApplicationContent:
-      description: "Test"
-      oneOf:
-          - $ref: '#/components/schemas/applyApplication'
-          - $ref: '#/components/schemas/complexObject'
-      discriminator:
-          propertyName: objectType
-          mapping:
-              simple: '#/components/schemas/applyApplication'
-              complex: '#/components/schemas/complexObject'
-
-    applyApplication:
-      type: object
-      required:
-        - objectType
-        - id
-        - submittedAt
-      properties:
-        objectType:
-          type: string
-        id:
-          type: string
-          format: uuid
-        submittedAt:
-          type: string
-          format: date-time
-      additionalProperties: true
-
-    complexObject:
-      type: object
-      required:
-        - objectType
-        - id
-        - submittedAt
-        - proceedings
-      properties:
-        objectType:
-          type: string
-        id:
-          type: string
-          format: uuid
-        submittedAt:
-          type: string
-          format: date-time
-        proceedings:
-            type: array
-            minItems: 1
-            items:
-                type: object
-                required:
-                - id
-                properties:
-                id:
-                    type: string
-                    format: uuid
-                additionalProperties: true
-    additionalProperties: true

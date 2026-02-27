@@ -19,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplyApplication;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.Opponent;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
@@ -111,17 +112,19 @@ class ApplicationMapperTest {
         ApplicationStatus status = ApplicationStatus.APPLICATION_SUBMITTED;
     UUID applicationContentId = UUID.randomUUID();
 
-      ApplicationContent applicationContent = ApplicationContent.builder()
-          .id(applicationContentId)
-          .proceedings(List.of(
-              Proceeding.builder()
-                  .leadProceeding(true)
-                  .categoryOfLaw("Crime")
-                  .matterType("Defence")
-                  .usedDelegatedFunctions(true)
-                  .description("Test proceeding")
-                  .build()
-          )).build();
+      ApplyApplication applyApplication = ApplyApplication.builder()
+          .id(applicationContentId).build()
+          .putAdditionalProperty("proceedings", List.of(
+                  Proceeding.builder()
+                      .leadProceeding(true)
+                      .categoryOfLaw("Crime")
+                      .matterType("Defence")
+                      .usedDelegatedFunctions(true)
+                      .description("Test proceeding")
+                      .build()
+              )
+          );
+
       String laaReference = "laa_reference";
     List<Individual> expectedIndividuals = List.of(
         Individual.builder().build(),
@@ -130,7 +133,7 @@ class ApplicationMapperTest {
 
     ApplicationCreateRequest expectedApplicationCreateRequest = ApplicationCreateRequest.builder()
         .status(status)
-        .applicationContent(MapperUtil.getObjectMapper().convertValue(applicationContent, Map.class))
+        .applicationContent(applyApplication)
         .laaReference(laaReference)
         .individuals(expectedIndividuals)
         .build();
@@ -149,7 +152,7 @@ class ApplicationMapperTest {
     assertThat(actualApplicationEntity.getApplicationContent())
         .isNotNull()
         .usingRecursiveComparison()
-        .isEqualTo(MapperUtil.getObjectMapper().convertValue(applicationContent, Map.class));
+        .isEqualTo(MapperUtil.getObjectMapper().convertValue(applyApplication, Map.class));
   }
 
   @Test

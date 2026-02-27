@@ -35,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.ApplyApplication;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
@@ -44,6 +45,7 @@ import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplyApplicationGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationsGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -330,15 +332,15 @@ public class CreateApplicationTest extends BaseServiceTest {
         ));
   }
 
-  private Map<String, Object> getAppContentParent(List<Proceeding> proceedings,
-                                                  String appContentId) {
+  private ApplyApplication getAppContentParent(List<Proceeding> proceedings,
+                                               String appContentId) {
 
-
-    ApplicationContent applicationContent = applicationContentFactory.createDefault(appContentBuilder ->
-        appContentBuilder.submittedAt("2026-01-15T10:20:30Z").proceedings(proceedings).id(UUID.fromString(appContentId)));
-
-    applicationContent.putAdditionalApplicationContent("testPropertyInTest", "testValue");
-    return objectMapper.convertValue(applicationContent, Map.class);
+    ApplyApplicationGenerator applyApplicationGenerator = new ApplyApplicationGenerator();
+    ApplyApplication aDefault = applyApplicationGenerator.createDefault(builder -> builder.id(UUID.fromString(appContentId))
+        .additionalProperties(
+        Map.of("proceedings", proceedings)
+    ));
+    return aDefault;
 
   }
 
