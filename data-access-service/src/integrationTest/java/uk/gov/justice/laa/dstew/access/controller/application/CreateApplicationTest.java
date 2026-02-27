@@ -81,15 +81,17 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_raiseIfLeadNotFound() throws Exception {
     // given
     UUID notFoundLeadId = UUID.randomUUID();
+    UUID associatedApplicationId = UUID.randomUUID();
 
     LinkedApplication linkedApplication = LinkedApplication.builder()
         .leadApplicationId(notFoundLeadId)
-        .associatedApplicationId(UUID.randomUUID())
+        .associatedApplicationId(associatedApplicationId)
         .build();
 
     ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
     ApplicationContent content = applicationContentFactory.create();
     content.setAllLinkedApplications(List.of(linkedApplication));
+    content.setId(associatedApplicationId);
 
     ApplicationCreateRequest request = applicationCreateRequestFactory.create();
     request.setApplicationContent(objectMapper.convertValue(content, Map.class));
@@ -105,12 +107,53 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     assertEquals("Linking failed > Lead application not found, ID: " + notFoundLeadId, problemDetail.getDetail());
   }
 
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_raiseIfAssociatedNotFound() throws Exception {
+    // given
+    UUID leadApplicationId = UUID.randomUUID();
+    UUID associatedApplicationId = UUID.randomUUID();
+    UUID missingLinkedApplication = UUID.randomUUID();
+
+    persistedApplicationFactory.createAndPersist(applicationEntityBuilder ->
+        applicationEntityBuilder.applyApplicationId(leadApplicationId));
+
+    LinkedApplication linkedApplication = LinkedApplication.builder()
+        .leadApplicationId(leadApplicationId)
+        .associatedApplicationId(associatedApplicationId)
+        .build();
+
+    LinkedApplication invalidLinkedApplication = LinkedApplication.builder()
+        .leadApplicationId(leadApplicationId)
+        .associatedApplicationId(missingLinkedApplication)
+        .build();
+    ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
+    ApplicationContent content = applicationContentFactory.create();
+    content.setAllLinkedApplications(List.of(linkedApplication, invalidLinkedApplication));
+    content.setId(associatedApplicationId);
+
+    ApplicationCreateRequest request = applicationCreateRequestFactory.create();
+    request.setApplicationContent(objectMapper.convertValue(content, Map.class));
+
+    // when
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+
+    // then
+    assertSecurityHeaders(result);
+    assertNotFound(result);
+    assertEquals("application/problem+json", result.getResponse().getContentType());
+    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+    assertEquals("No linked application found with associated apply ids: " + List.of(missingLinkedApplication), problemDetail.getDetail());
+  }
+
   private ApplicationEntity verifyCreateNewApplication(ApplicationOffice office, LinkedApplication linkedApplication) throws Exception {
     ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
     ApplicationContent content = applicationContentFactory.create();
     content.setOffice(office);
     content.setAllLinkedApplications(linkedApplication == null ? null : List.of(linkedApplication));
-
+    if(linkedApplication != null) {
+      content.setId(linkedApplication.getAssociatedApplicationId());
+    }
     ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
     applicationCreateRequest.setApplicationContent(objectMapper.convertValue(content, Map.class));
 
@@ -174,9 +217,8 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @Test
   @WithMockUser(authorities = TestConstants.Roles.WRITER)
   public void givenInvalidApplicationContent_EmptyMap_whenCreateApplication_thenReturnBadRequest() throws Exception {
-    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder -> {
-      builder.applicationContent(new HashMap<>());
-    });
+    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder ->
+        builder.applicationContent(new HashMap<>()));
 
 
     ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
