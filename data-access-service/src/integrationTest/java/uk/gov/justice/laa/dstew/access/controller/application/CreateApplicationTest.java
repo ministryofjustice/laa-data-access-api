@@ -146,6 +146,37 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     assertEquals("No linked application found with associated apply ids: " + List.of(missingLinkedApplication), problemDetail.getDetail());
   }
 
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  public void givenDuplicateApplyApplicationId_whenCreateApplication_thenReturnBadRequest() throws Exception {
+    // given
+    ApplicationEntity existingApplication = persistedApplicationFactory.createAndPersist();
+
+    ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
+    ApplicationContent content = applicationContentFactory.create();
+    content.setId(existingApplication.getApplyApplicationId());
+
+    ApplicationCreateRequest request = applicationCreateRequestFactory.create();
+    request.setApplicationContent(objectMapper.convertValue(content, Map.class));
+
+    ProblemDetail expectedProblemDetail = ProblemDetailBuilder.create()
+        .status(HttpStatus.BAD_REQUEST)
+        .title("Bad Request")
+        .detail("Generic Validation Error")
+        .build();
+
+    expectedProblemDetail.setProperty("errors",
+        List.of("Application already exists. Application Id: " + existingApplication.getId()));
+
+    // when
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+    ProblemDetail detail = deserialise(result, ProblemDetail.class);
+
+    // then
+    assertSecurityHeaders(result);
+    assertProblemRecord(HttpStatus.BAD_REQUEST, expectedProblemDetail, result, detail);
+  }
+
   private ApplicationEntity verifyCreateNewApplication(ApplicationOffice office, LinkedApplication linkedApplication) throws Exception {
     ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
     ApplicationContent content = applicationContentFactory.create();

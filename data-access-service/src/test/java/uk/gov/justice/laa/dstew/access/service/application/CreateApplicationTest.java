@@ -294,6 +294,41 @@ public class CreateApplicationTest extends BaseServiceTest {
     verify(domainEventRepository, never()).save(any());
   }
 
+  @Test
+  public void givenDuplicateApplyApplicationId_whenCreateApplication_thenThrowValidationException() {
+    // given
+    setSecurityContext(TestConstants.Roles.WRITER);
+
+    UUID applyApplicationId = UUID.randomUUID();
+    UUID existingApplicationId = UUID.randomUUID();
+
+    ApplicationContent applicationContent =
+        applicationContentGenerator.createDefault(builder -> builder.id(applyApplicationId));
+
+    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault(builder ->
+        builder.applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
+
+    ApplicationEntity existingApplication = applicationEntityGenerator.createDefault(builder ->
+        builder.id(existingApplicationId).applyApplicationId(applyApplicationId));
+
+    ValidationException validationException = new ValidationException(
+        List.of("Application already exists. Application Id: " + existingApplicationId)
+    );
+
+    when(applicationRepository.findByApplyApplicationId(applyApplicationId)).thenReturn(existingApplication);
+
+    // when
+    Throwable throwable = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));
+
+    //then
+    assertThat(throwable)
+        .isInstanceOf(ValidationException.class)
+        .usingRecursiveComparison()
+        .isEqualTo(validationException);
+
+    verify(applicationRepository, never()).save(existingApplication);
+  }
+
   @ParameterizedTest
   @MethodSource("invalidApplicationRequests")
   public void GivenInvalidApplicationAndRoleWriter_whenCreateApplication_thenValidationExceptionWithCorrectMessage(
