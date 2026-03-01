@@ -10,6 +10,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertProblemRecord;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.HashMap;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -28,49 +30,68 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationOffice;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
+import uk.gov.justice.laa.dstew.access.utils.LocalStackTestUtility;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 
+@Testcontainers
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CreateApplicationTest extends BaseIntegrationTest {
   private static final int applicationVersion = 1;
 
+  private LocalStackTestUtility localStackTestUtility;
+
   private Stream<Arguments> createApplicationTestParameters() {
-      return Stream.of(
-              Arguments.of(new ApplicationOffice()),
-              Arguments.of(ApplicationOffice.builder().code("XX456F").build())
-      );
+    return Stream.of(
+        Arguments.of(new ApplicationOffice()),
+        Arguments.of(ApplicationOffice.builder().code("XX456F").build())
+    );
+  }
+
+  @BeforeEach
+  void initializeResources() {
+    localStackTestUtility = new LocalStackTestUtility();
+    localStackTestUtility.createTableWithGsi(dynamoDbClient);
+    localStackTestUtility.createBucket(s3Client);
   }
 
   @ParameterizedTest
   @MethodSource("createApplicationTestParameters")
   @WithMockUser(authorities = TestConstants.Roles.WRITER)
   public void givenCreateNewApplication_whenCreateApplication_thenReturnCreatedWithLocationHeader(
-          ApplicationOffice office
+      ApplicationOffice office
   ) throws Exception {
-      verifyCreateNewApplication(office, null);
+    verifyCreateNewApplication(office, null);
   }
 
   @Test
   @WithMockUser(authorities = TestConstants.Roles.WRITER)
-  public void givenCreateNewApplication_whenCreateApplicationAndNoOffice_thenReturnCreatedWithLocationHeader() throws Exception {
+  public void givenCreateNewApplication_whenCreateApplicationAndNoOffice_thenReturnCreatedWithLocationHeader()
+      throws Exception {
     verifyCreateNewApplication(null, null);
   }
 
   @Test
   @WithMockUser(authorities = TestConstants.Roles.WRITER)
-  public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_thenReturnCreatedWithLocationHeader() throws Exception {
+  public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_thenReturnCreatedWithLocationHeader()
+      throws Exception {
     final ApplicationEntity leadApplicationToLink = persistedApplicationFactory.createAndPersist();
-    final LinkedApplication linkedApplication = LinkedApplication.builder().leadApplicationId(leadApplicationToLink.getApplyApplicationId())
-                                                            .associatedApplicationId(UUID.randomUUID())
-                                                            .build();
+    final LinkedApplication linkedApplication =
+        LinkedApplication.builder().leadApplicationId(leadApplicationToLink.getApplyApplicationId())
+            .associatedApplicationId(UUID.randomUUID())
+            .build();
     final var createdEntity = verifyCreateNewApplication(null, linkedApplication);
     final ApplicationEntity leadApplication = applicationRepository.findById(leadApplicationToLink.getId()).orElseThrow();
     assertLinkedApplicationCorrectlyApplied(leadApplication, createdEntity);
@@ -164,7 +185,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
     UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
     ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
-      .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
+        .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
     assertApplicationEqual(applicationCreateRequest, createdApplication);
     assertNotNull(createdApplicationId);
 
@@ -172,14 +193,14 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     return createdApplication;
   }
 
-    @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
-    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
-    public void givenCreateNewApplication_whenCreateApplicationAndInvalidServiceNameHeader_thenReturnBadRequest(
-            String serviceName
-    ) throws Exception {
-      verifyBadServiceNameHeader(serviceName);
-    }
+  @ParameterizedTest
+  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
+  public void givenCreateNewApplication_whenCreateApplicationAndInvalidServiceNameHeader_thenReturnBadRequest(
+      String serviceName
+  ) throws Exception {
+    verifyBadServiceNameHeader(serviceName);
+  }
 
   @Test
   @WithMockUser(authorities = TestConstants.Roles.WRITER)
@@ -188,13 +209,13 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   private void verifyBadServiceNameHeader(String serviceName) throws Exception {
-      ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
+    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
 
-      MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION,
-              applicationCreateRequest,
-              ServiceNameHeader(serviceName));
-      applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
-    }
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION,
+        applicationCreateRequest,
+        ServiceNameHeader(serviceName));
+    applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+  }
 
   @ParameterizedTest
   @MethodSource("applicationCreateRequestInvalidDataCases")
@@ -222,7 +243,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
 
     ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
-    expectedProblemDetail.setProperty("invalidFields", Map.of("applicationContent","size must be between 1 and 2147483647"));
+    expectedProblemDetail.setProperty("invalidFields", Map.of("applicationContent", "size must be between 1 and 2147483647"));
 
     // when
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);

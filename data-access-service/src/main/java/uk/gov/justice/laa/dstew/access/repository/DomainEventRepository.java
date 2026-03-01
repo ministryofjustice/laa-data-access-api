@@ -12,5 +12,4 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 @Repository
 public interface DomainEventRepository extends
     JpaRepository<DomainEventEntity, UUID>, JpaSpecificationExecutor<DomainEventEntity> {
-    
 }

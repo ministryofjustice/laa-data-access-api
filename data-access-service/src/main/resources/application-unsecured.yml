@@ -47,3 +47,10 @@ management:
 feature:
   security: false
 #  transformation: true
+# AWS defaults (local dev)
+aws:
+  region: ${AWS_REGION:eu-west-2}
+  dynamodb:
+    table-name: ${AWS_DYNAMODB_TABLE_NAME}
+  s3:
+    bucket-name: ${AWS_S3_BUCKET_NAME}

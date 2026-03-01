@@ -1,0 +1,86 @@
+spring:
+  application.name: LAA Data Stewardship Access - Access Application Data
+
+  # Default connection details for local dev, overridden in other envs
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/laa_data_access_api
+    username: laa_user
+    password: laa_password
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate.ddl-auto: none  # Use Flyway for DB schema.
+    show-sql: true
+
+  sql.init.mode: never # Use Flyway for DB schema.
+
+  cloud:
+    azure:
+      active-directory:
+        enabled: true
+        credential:
+          client-id: ${ENTRA_CLIENT_ID}
+        app-id-uri: ${ENTRA_APP_ID_URI}
+        profile:
+          tenant-id: ${ENTRA_TENANT_ID}
+
+  event:
+    history:
+      service:
+        type: aws # or 'rds' to use the RDS implementation
+
+info:
+  app:
+    name: LAA Data Stewardship Access - Access Application Data
+    description: LAA Data Stewardship Access - Access Application Data that provides APIs to Legal Aid Application related data.
+    version: 1.0.0
+
+logging:
+  level:
+    tomcat: INFO
+    root: INFO
+    org:
+      springframework:
+        web: INFO
+      hibernate: INFO
+    com.azure.spring: INFO
+
+management:
+  endpoints.web.exposure.include: health,info
+  endpoint.health.show-details: always
+  info.env.enabled: true
+
+sentry:
+  enabled: ${SENTRY_ENABLED:false}
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:local}
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:1}
+  send-default-pii: false
+  logging:
+    minimum-event-level: error
+    minimum-breadcrumb-level: info
+
+### Set feature flags in the environment to avoid committing insecure values.
+### For example, `FEATURE_SECURITY=false` to disable endpoint authorization,
+### or `FEATURE_TRANSFORMATION=false` to disable response transformations.
+
+#feature:
+#  security: true
+#  transformation: true
+
+# AWS defaults (local dev)
+aws:
+  region: ${AWS_REGION:eu-west-2}
+  endpoint: ${AWS_ENDPOINT:http://localhost:4566}
+  access-key: ${AWS_ACCESS_KEY:test}
+  secret-key: ${AWS_SECRET_KEY:test}
+  dynamodb:
+    table-name: domain-events
+  s3:
+    bucket-name: s3-bucket-output
+  event:
+    history:
+      enabled: ${AWS_DOMAIN_EVENT_ENABLED:false}
+
+# End of file

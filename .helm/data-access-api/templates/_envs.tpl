@@ -63,3 +63,32 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
   value: "false"
 {{- end }}
 {{- end }}
+
+{{/*
+  Define DynamoDB environment variables
+*/}}
+{{- define "dynamoDbConfig" }}
+- name: AWS_DYNAMODB_TABLE_NAME
+  valueFrom:
+    secretKeyRef:
+      name: domain-events
+      key: table_name
+{{- if .Values.aws.domainEvent.enabled }}
+- name: AWS_DOMAIN_EVENT_ENABLED
+  value: "true"
+{{- else }}
+- name: AWS_DOMAIN_EVENT_ENABLED
+  value: "false"
+{{- end }}
+{{- end }}
+
+{{/*
+  Define S3 environment variables
+*/}}
+{{- define "s3Config" }}
+- name: AWS_S3_BUCKET_NAME
+  valueFrom:
+    secretKeyRef:
+      name: s3-bucket-output
+      key: bucket_name
+{{- end }}
