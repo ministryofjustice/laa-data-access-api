@@ -161,11 +161,9 @@ public class ApplicationService {
    */
 
   private void checkForDuplicateApplication(final UUID applyApplicationId) {
-    ApplicationEntity application = applicationRepository.findByApplyApplicationId(applyApplicationId);
-
-    if (application != null) {
+    if (applicationRepository.existsByApplyApplicationId(applyApplicationId)) {
       throw new ValidationException(
-          List.of("Application already exists. Application Id: " + application.getId())
+          List.of("Application already exists for Apply Application Id: " + applyApplicationId)
       );
     }
   }

@@ -312,10 +312,10 @@ public class CreateApplicationTest extends BaseServiceTest {
         builder.id(existingApplicationId).applyApplicationId(applyApplicationId));
 
     ValidationException validationException = new ValidationException(
-        List.of("Application already exists. Application Id: " + existingApplicationId)
+        List.of("Application already exists for Apply Application Id: " + applyApplicationId)
     );
 
-    when(applicationRepository.findByApplyApplicationId(applyApplicationId)).thenReturn(existingApplication);
+    when(applicationRepository.existsByApplyApplicationId(applyApplicationId)).thenReturn(true);
 
     // when
     Throwable throwable = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));

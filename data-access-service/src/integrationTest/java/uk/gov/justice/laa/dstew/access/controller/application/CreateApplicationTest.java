@@ -166,7 +166,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         .build();
 
     expectedProblemDetail.setProperty("errors",
-        List.of("Application already exists. Application Id: " + existingApplication.getId()));
+        List.of("Application already exists for Apply Application Id: " + existingApplication.getApplyApplicationId()));
 
     // when
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
