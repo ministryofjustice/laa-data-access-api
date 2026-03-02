@@ -3,15 +3,18 @@ package uk.gov.justice.laa.dstew.access.validation;
 
 import com.networknt.schema.AbsoluteIri;
 import com.networknt.schema.Error;
+import com.networknt.schema.InputFormat;
 import com.networknt.schema.Schema;
 import com.networknt.schema.SchemaLocation;
 import com.networknt.schema.SchemaRegistry;
 import com.networknt.schema.SpecificationVersion;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Validates payloads against versioned JSON Schemas loaded from the classpath.
@@ -32,7 +35,7 @@ public class JsonSchemaValidator {
    * @throws ValidationException if the payload does not conform to the schema
    */
   public void validate(Object payload, String schemaName, int schemaVersion) {
-    JsonNode jsonNode = tools.jackson.databind.json.JsonMapper.builder()
+    JsonNode jsonNode = JsonMapper.builder()
         .build()
         .valueToTree(payload);
 
@@ -42,11 +45,15 @@ public class JsonSchemaValidator {
     Schema schema = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_7)
         .getSchema(schemaLocation);
 
-    List<Error> validate = schema.validate(jsonNode);
+    // Enable format assertions to validate UUIDs, date-times, etc. as per the schema
+    List<Error> validate = schema.validate(String.valueOf(jsonNode), InputFormat.JSON,
+        context -> context.executionConfig(
+            config -> config.formatAssertionsEnabled(true)
+        ));
     if (!validate.isEmpty()) {
       Set<String> errorMessages = validate.stream()
           .map(Error::getMessage)
-          .collect(java.util.stream.Collectors.toSet());
+          .collect(Collectors.toSet());
       throw new ValidationException(errorMessages.stream().toList());
     }
   }
