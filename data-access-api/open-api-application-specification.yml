@@ -494,6 +494,8 @@ components:
       properties:
         officeCode:
           type: string
+        version:
+          type: string
 
     ApplicationCreateRequest:
       type: object
@@ -523,6 +525,7 @@ components:
       type: object
       required:
         - applicationContent
+        - version
       properties:
         status:
           $ref: "#/components/schemas/ApplicationStatus"
@@ -531,6 +534,9 @@ components:
           description: Application data to update
           additionalProperties: true
           minProperties: 1
+        version:
+          type: string
+          description: The current version of the application being updated, used for optimistic locking
 
     ApplicationSummary:
       type: object

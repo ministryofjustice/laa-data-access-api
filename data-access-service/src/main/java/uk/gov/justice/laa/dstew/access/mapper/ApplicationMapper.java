@@ -116,16 +116,10 @@ public interface ApplicationMapper {
             ? new Provider().officeCode(entity.getOfficeCode())
             : null
     );
+    application.setProvider(entity.getOfficeCode());
+    application.setVersion(entity.getVersion().toString());
 
     return application;
-  }
-
-  private static List<Individual> getIndividuals(Set<IndividualEntity> individuals) {
-    return individuals
-        .stream()
-        .map(individualMapper::toIndividual)
-        .filter(Objects::nonNull)
-        .toList();
   }
 
   private static List<Opponent> extractOpponents(Map<String, Object> content) {
