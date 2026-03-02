@@ -300,16 +300,12 @@ public class CreateApplicationTest extends BaseServiceTest {
     setSecurityContext(TestConstants.Roles.WRITER);
 
     UUID applyApplicationId = UUID.randomUUID();
-    UUID existingApplicationId = UUID.randomUUID();
 
     ApplicationContent applicationContent =
         applicationContentGenerator.createDefault(builder -> builder.id(applyApplicationId));
 
     ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault(builder ->
         builder.applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
-
-    ApplicationEntity existingApplication = applicationEntityGenerator.createDefault(builder ->
-        builder.id(existingApplicationId).applyApplicationId(applyApplicationId));
 
     ValidationException validationException = new ValidationException(
         List.of("Application already exists for Apply Application Id: " + applyApplicationId)
@@ -325,8 +321,6 @@ public class CreateApplicationTest extends BaseServiceTest {
         .isInstanceOf(ValidationException.class)
         .usingRecursiveComparison()
         .isEqualTo(validationException);
-
-    verify(applicationRepository, never()).save(existingApplication);
   }
 
   @ParameterizedTest
