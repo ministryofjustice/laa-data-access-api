@@ -25,6 +25,22 @@ class JsonSchemaValidatorTest {
         "submittedAt", "2026-01-15T10:20:30Z",
         "status", "APPLICATION_IN_PROGRESS",
         "laaReference", "REF-123",
+        "office", Map.of("code", "OFF1")
+
+    );
+
+
+    validator.validate(payload, "ApplyApplication.json", 1);
+
+  }
+
+  @Test
+  void validateAcceptsPayloadMatchingSchema_Css() {
+    Map<String, Object> payload = Map.of(
+        "id", UUID.randomUUID().toString(),
+        "submittedAt", "2026-01-15T10:20:30Z",
+        "status", "APPLICATION_IN_PROGRESS",
+        "laaReference", "REF-123",
         "office", Map.of("code", "OFF1"),
         "proceedings", List.of(
             Map.of(
@@ -36,8 +52,24 @@ class JsonSchemaValidatorTest {
     );
 
 
-    validator.validate(payload, "ApplyApplication.json", 1);
+    validator.validate(payload, "CssApplication.json", 1);
 
+  }
+
+  @Test
+  void validateRejectsMissingRequiredField_Css() {
+    Map<String, Object> payload = Map.of(
+        "id", UUID.randomUUID().toString(),
+        "submittedAt", "2026-01-15T10:20:30Z",
+        "status", "APPLICATION_IN_PROGRESS",
+        "office", Map.of("code", "OFF1")
+    );
+
+    ValidationException ex = assertThrows(ValidationException.class,
+        () -> validator.validate(payload, "CssApplication.json", 1));
+
+    assertTrue(ex.errors().stream().anyMatch(msg -> msg.contains("laaReference")),
+        "Expected validation errors to mention laaReference field format");
   }
 
   @Test

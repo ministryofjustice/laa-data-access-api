@@ -128,7 +128,7 @@ public class ApplicationService {
         : ApplicationCreateRequest.ApplicationTypeEnum.APPLY;
     String formType = switch (applicationType) {
       case APPLY -> "ApplyApplication.json";
-      case CCS -> "NonApplyApplication.json";
+      case CCS -> "CssApplication.json";
     };
 
     jsonSchemaValidator.validate(req.getApplicationContent(), formType, schemaVersion);
