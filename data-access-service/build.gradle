@@ -121,8 +121,14 @@ dependencies {
     implementation 'io.netty:netty-codec-http2:4.1.125.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-15307781
     implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.52'
-    //https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924]
+    //https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924
     implementation 'com.fasterxml.jackson.core:jackson-core:2.21.1'
+
+    //https://security.snyk.io/vuln/SNYK-JAVA-TOOLSJACKSONCORE-15365915
+    implementation 'tools.jackson.core:jackson-core:3.1.0'
+    implementation 'tools.jackson.core:jackson-databind:3.1.0'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.21'
+
 
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8'
 
