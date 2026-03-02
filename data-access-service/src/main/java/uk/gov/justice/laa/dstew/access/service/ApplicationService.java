@@ -39,6 +39,7 @@ import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.PayloadValidationService;
 
 /**
@@ -47,7 +48,6 @@ import uk.gov.justice.laa.dstew.access.validation.PayloadValidationService;
 @Service
 public class ApplicationService {
 
-  private final int applicationVersion = 1;
   private final ApplicationRepository applicationRepository;
   private final ApplicationMapper applicationMapper;
   private final ApplicationValidations applicationValidations;
@@ -60,6 +60,7 @@ public class ApplicationService {
   private final MeritsDecisionRepository meritsDecisionRepository;
   private final ProceedingsService proceedingsService;
   private final PayloadValidationService payloadValidationService;
+  private final JsonSchemaValidator jsonSchemaValidator;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -79,7 +80,9 @@ public class ApplicationService {
                             final ApplicationContentParserService applicationContentParserService,
                             final ProceedingRepository proceedingRepository,
                             final MeritsDecisionRepository meritsDecisionRepository,
-                            final ProceedingsService proceedingsService, PayloadValidationService payloadValidationService) {
+                            final ProceedingsService proceedingsService,
+                            final PayloadValidationService payloadValidationService,
+                            final JsonSchemaValidator jsonSchemaValidator) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.applicationValidations = applicationValidations;
@@ -87,6 +90,7 @@ public class ApplicationService {
     this.proceedingRepository = proceedingRepository;
     this.proceedingsService = proceedingsService;
     this.payloadValidationService = payloadValidationService;
+    this.jsonSchemaValidator = jsonSchemaValidator;
     objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
     this.caseworkerRepository = caseworkerRepository;
@@ -110,17 +114,29 @@ public class ApplicationService {
   /**
    * Create a new application.
    *
-   * @param req DTO containing creation fields
+   * @param req           DTO containing creation fields
+   * @param schemaVersion the schema version to validate applicationContent against
    * @return UUID of the created application
    */
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   @Transactional
-  public UUID createApplication(final ApplicationCreateRequest req) {
+  public UUID createApplication(final ApplicationCreateRequest req, final int schemaVersion) {
+
+    ApplicationCreateRequest.ApplicationTypeEnum applicationType = req.getApplicationType() != null
+        ? req.getApplicationType()
+        : ApplicationCreateRequest.ApplicationTypeEnum.APPLY;
+    String formType = switch (applicationType) {
+      case APPLY -> "ApplyApplication.json";
+      case CCS -> "NonApplyApplication.json";
+    };
+
+    jsonSchemaValidator.validate(req.getApplicationContent(), formType, schemaVersion);
+
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
     ApplicationContent applicationContent =
         payloadValidationService.convertAndValidate(req.getApplicationContent(), ApplicationContent.class);
     setValuesFromApplicationContent(entity, applicationContent);
-    entity.setSchemaVersion(applicationVersion);
+    entity.setSchemaVersion(schemaVersion);
 
     final ApplicationEntity saved = applicationRepository.save(entity);
 
@@ -434,7 +450,7 @@ public class ApplicationService {
   }
 
   private static UUID getLeadApplicationId(List<LinkedApplication> linkedApplications) {
-    return (linkedApplications != null && linkedApplications.size() != 0)
+    return (linkedApplications != null && !linkedApplications.isEmpty())
         ? linkedApplications.getFirst().getLeadApplicationId()
         : null;
   }

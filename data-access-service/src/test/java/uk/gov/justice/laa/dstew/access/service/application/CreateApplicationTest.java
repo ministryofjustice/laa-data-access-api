@@ -84,7 +84,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     setSecurityContext(TestConstants.Roles.WRITER);
 
     // when
-    UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
+    UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest, 1);
 
     // then
     assertEquals(expectedId, actualId);
@@ -131,7 +131,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     setSecurityContext(TestConstants.Roles.WRITER);
 
     // when
-    UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
+    UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest, 1);
 
     // then
     assertEquals(expectedId, actualId);
@@ -167,7 +167,7 @@ public class CreateApplicationTest extends BaseServiceTest {
 
     // when
     assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequest))
+        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequest, 1))
         .withMessageContaining("Linking failed > Lead application not found, ID: " + applyApplicationId);
   }
 
@@ -206,7 +206,7 @@ public class CreateApplicationTest extends BaseServiceTest {
 
     // when
     assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequest))
+        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequest, 1))
         .withMessageContaining("No linked application found with associated apply ids: " + List.of(otherAssociatedApplication));
   }
 
@@ -254,7 +254,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     when(applicationRepository.save(any())).thenReturn(withExpectedId);
 
     // When
-    UUID entity = serviceUnderTest.createApplication(application);
+    UUID entity = serviceUnderTest.createApplication(application, 1);
     ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
     verify(applicationRepository, times(1)).save(captor.capture());
     ApplicationEntity actualApplicationEntity = captor.getValue();
@@ -276,7 +276,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     // when
     // then
     assertThatExceptionOfType(AuthorizationDeniedException.class)
-        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
+        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault(), 1))
         .withMessageContaining("Access Denied");
 
     verify(applicationRepository, times(0)).findById(any(UUID.class));
@@ -287,7 +287,7 @@ public class CreateApplicationTest extends BaseServiceTest {
   public void givenNewApplicationAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
 
     assertThatExceptionOfType(AuthorizationDeniedException.class)
-        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
+        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault(), 1))
         .withMessageContaining("Access Denied");
 
     verify(applicationRepository, times(0)).findById(any(UUID.class));
@@ -302,7 +302,7 @@ public class CreateApplicationTest extends BaseServiceTest {
   ) {
     setSecurityContext(TestConstants.Roles.WRITER);
 
-    Throwable thrown = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));
+    Throwable thrown = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest, 1));
     assertThat(thrown)
         .isInstanceOf(ValidationException.class)
         .usingRecursiveComparison()

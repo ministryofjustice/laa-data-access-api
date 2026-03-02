@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ApplyApplication.json",
+  "title": "ApplicationContent",
+  "description": "Schema for validating ApplicationContent",
+  "type": "object",
+  "required": [
+    "id",
+    "submittedAt"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the application"
+    },
+    "proceedings": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/Proceeding.json"
+      },
+      "description": "List of proceedings associated with the application"
+    },
+    "submittedAt": {
+      "type": "string",
+      "description": "Timestamp when the application was submitted"
+    },
+    "status": {
+      "type": ["string", "null"],
+      "description": "Current status of the application"
+    },
+    "laaReference": {
+      "type": ["string", "null"],
+      "description": "LAA reference number"
+    },
+    "office": {
+      "oneOf": [
+        { "$ref": "../common/ApplicationOffice.json"},
+        { "type": "null" }
+      ],
+      "description": "Office associated with the application"
+    },
+    "allLinkedApplications": {
+      "type": ["array", "null"],
+      "items": {
+        "$ref": "../common/LinkedApplication.json"
+      },
+      "description": "All linked applications"
+    }
+  },
+  "additionalProperties": true
+}

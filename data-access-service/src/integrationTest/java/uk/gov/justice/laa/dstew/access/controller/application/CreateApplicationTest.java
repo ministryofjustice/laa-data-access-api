@@ -323,8 +323,8 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         Arguments.of(applicationCreateRequestFactory.create(builder -> {
           builder.applicationContent(Map.of("applicationContent", Map.of("proceedings", List.of())));
         }), ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request").detail("Generic Validation Error")
-            .build(), Map.of("errors", List.of("id: must not be null",
-            "submittedAt: must not be null"))),
+            .build(), Map.of("errors", List.of("required property 'id' not found",
+            "required property 'submittedAt' not found"))),
         Arguments.of(applicationCreateRequestFactory.create(builder -> {
           builder.individuals(null);
         }), problemDetail, Map.of("invalidFields", Map.of("individuals", "size must be between 1 and 2147483647"))),

@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.controller;
 
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.time.LocalDate;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
@@ -54,8 +56,9 @@ public class ApplicationController implements ApplicationApi {
   @Override
   public ResponseEntity<Void> createApplication(
           @NotNull ServiceName serviceName,
-          @Valid ApplicationCreateRequest applicationCreateReq) {
-    UUID id = service.createApplication(applicationCreateReq);
+          @Valid ApplicationCreateRequest applicationCreateReq,
+          @Min(1) @RequestHeader(value = "X-Schema-Version", defaultValue = "1") Integer schemaVersion) {
+    UUID id = service.createApplication(applicationCreateReq, schemaVersion);
 
     URI uri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
     return ResponseEntity.created(uri).build();
