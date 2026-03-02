@@ -21,6 +21,7 @@ class JsonSchemaValidatorTest {
   @Test
   void validateAcceptsPayloadMatchingSchema() {
     Map<String, Object> payload = Map.of(
+        "id", UUID.randomUUID().toString(),
         "submittedAt", "2026-01-15T10:20:30Z",
         "status", "APPLICATION_IN_PROGRESS",
         "laaReference", "REF-123",
@@ -34,12 +35,32 @@ class JsonSchemaValidatorTest {
         )
     );
 
-    ValidationException validationException = assertThrows(ValidationException.class, () -> {
-      validator.validate(payload, "ApplyApplication.json", 1);
-    });
+
+    validator.validate(payload, "ApplyApplication.json", 1);
+
+  }
+
+  @Test
+  void validateExceptionOnInvalidUUIDPayloadMatchingSchema() {
+    Map<String, Object> payload = Map.of(
+        "id", "test-id-not-uuid",
+        "submittedAt", "2026-01-15T10:20:30Z",
+        "status", "APPLICATION_IN_PROGRESS",
+        "laaReference", "REF-123",
+        "office", Map.of("code", "OFF1"),
+        "proceedings", List.of(
+            Map.of(
+                "id", UUID.randomUUID().toString(),
+                "leadProceeding", true,
+                "description", "Test proceeding"
+            )
+        )
+    );
+
+    ValidationException validationException =
+        assertThrows(ValidationException.class, () -> validator.validate(payload, "ApplyApplication.json", 1));
     assertTrue(validationException.errors().stream().anyMatch(msg -> msg.toLowerCase().contains("id")),
         "Expected validation errors to mention id field format");
-//    assertDoesNotThrow(() -> );
   }
 
   @Test
