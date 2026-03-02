@@ -489,7 +489,7 @@ components:
         status:
           $ref: "#/components/schemas/applicationStatus"
         applicationContent:
-          $ref: "./open-api-application-content-specification.yml#/components/BaseApplicationContent"
+          $ref: "./open-api-application-content-specification.yml#/components/schemas/BaseApplicationContent"
         laaReference:
           type: string
           minLength: 1

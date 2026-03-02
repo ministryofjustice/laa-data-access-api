@@ -4,16 +4,17 @@ info:
   title: Applications API
 
 components:
+  schemas:
     BaseApplicationContent:
       description: "Test"
       oneOf:
-        - $ref: '#/components/applyApplication'
-        - $ref: '#/components/decideApplication'
+        - $ref: '#/components/schemas/applyApplication'
+        - $ref: '#/components/schemas/decideApplication'
       discriminator:
         propertyName: objectType
         mapping:
-          simple: '#/components/applyApplication'
-          complex: '#/components/decideApplication'
+          simple: '#/components/schemas/applyApplication'
+          complex: '#/components/schemas/decideApplication'
 
     applyApplication:
       type: object
@@ -34,21 +35,27 @@ components:
 
     decideApplication:
       allOf:
-        - $ref: '#/components/applyApplication'
+        - $ref: '#/components/schemas/applyApplication'
         - type: object
+          required:
+            - proceedings
+          properties:
+            proceedings:
+              $ref: '#/components/schemas/proceedings'
+          additionalProperties: true
+
+    proceedings:
+      type: array
+      minItems: 1
+      items:
+        $ref: '#/components/schemas/proceeding'
+
+    proceeding:
+      type: object
       required:
-        - proceedings
+        - id
       properties:
-        proceedings:
-          type: array
-          minItems: 1
-          items:
-            type: object
-            required:
-              - id
-            properties:
-            id:
-              type: string
-              format: uuid
-            additionalProperties: true
-    additionalProperties: true
+        id:
+          type: string
+          format: uuid
+      additionalProperties: true
