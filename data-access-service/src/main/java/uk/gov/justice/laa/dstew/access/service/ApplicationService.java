@@ -40,6 +40,7 @@ import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 import uk.gov.justice.laa.dstew.access.validation.PayloadValidationService;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
  * Service class for managing Applications.
@@ -120,6 +121,7 @@ public class ApplicationService {
     ApplicationContent applicationContent =
         payloadValidationService.convertAndValidate(req.getApplicationContent(), ApplicationContent.class);
     setValuesFromApplicationContent(entity, applicationContent);
+    checkForDuplicateApplication(entity.getApplyApplicationId());
     entity.setSchemaVersion(applicationVersion);
 
     final ApplicationEntity saved = applicationRepository.save(entity);
@@ -151,6 +153,20 @@ public class ApplicationService {
     entity.setOfficeCode(parsedContentDetails.officeCode());
   }
 
+  /**
+   * Validates that the application ID is not a duplicate.
+   *
+   * @param applyApplicationId the UUID of the application to check
+   * @throws ValidationException if a duplicate application exists
+   */
+
+  private void checkForDuplicateApplication(final UUID applyApplicationId) {
+    if (applicationRepository.existsByApplyApplicationId(applyApplicationId)) {
+      throw new ValidationException(
+          List.of("Application already exists for Apply Application Id: " + applyApplicationId)
+      );
+    }
+  }
 
   /**
    * Update an existing application.
