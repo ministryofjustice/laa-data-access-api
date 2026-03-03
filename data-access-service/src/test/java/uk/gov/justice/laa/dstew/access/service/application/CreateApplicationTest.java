@@ -128,7 +128,7 @@ public class CreateApplicationTest extends BaseServiceTest {
             .build()))
         .build();
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     // when
     UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
@@ -163,7 +163,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     when(applicationRepository.findByApplyApplicationId(applyApplicationId))
         .thenReturn(null);
     when(applicationRepository.save(any())).thenReturn(withExpectedId);
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     // when
     assertThatExceptionOfType(ResourceNotFoundException.class)
@@ -202,7 +202,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     when(applicationRepository.findByApplyApplicationId(otherAssociatedApplication))
         .thenReturn(null);
     when(applicationRepository.save(any())).thenReturn(withExpectedId);
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     // when
     assertThatExceptionOfType(ResourceNotFoundException.class)

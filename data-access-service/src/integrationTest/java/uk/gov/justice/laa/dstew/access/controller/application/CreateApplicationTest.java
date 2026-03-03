@@ -108,7 +108,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_raiseIfAssociatedNotFound() throws Exception {
     // given
     UUID leadApplicationId = UUID.randomUUID();
