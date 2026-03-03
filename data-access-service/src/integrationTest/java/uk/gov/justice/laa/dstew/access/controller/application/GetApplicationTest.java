@@ -134,7 +134,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithOpponents_whenGetApplication_thenReturnsOpponents() throws Exception {
 
         Map<String, Object> opposable = Map.of(
@@ -185,7 +185,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithEmptyOpponents_whenGetApplication_thenReturnsEmptyList() throws Exception {
 
         Map<String, Object> merits = Map.of(
@@ -211,7 +211,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithoutOpponentsSection_whenGetApplication_thenOpponentsIsEmpty() throws Exception {
 
         Map<String, Object> content = Map.of(
@@ -232,7 +232,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenOpponentWithMissingFirstName_whenGetApplication_thenReturnsRemainingFields() throws Exception {
 
         Map<String, Object> opposable = Map.of(
