@@ -13,6 +13,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -81,11 +82,20 @@ public class SecurityConfig {
   @Bean
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
     JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-    grantedAuthoritiesConverter.setAuthoritiesClaimName(APP_ROLES_CLAIM);
-    grantedAuthoritiesConverter.setAuthorityPrefix(AUTHORITY_PREFIX);
+    grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
+    grantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
 
     JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
+      var authorities = grantedAuthoritiesConverter.convert(jwt);
+      if (authorities == null || authorities.isEmpty()) {
+        // Add default roles
+        return Set.of(
+            new SimpleGrantedAuthority("APPROLE_LAA_CASEWORKER")
+        );
+      }
+      return authorities;
+    });
     return jwtAuthenticationConverter;
   }
 
