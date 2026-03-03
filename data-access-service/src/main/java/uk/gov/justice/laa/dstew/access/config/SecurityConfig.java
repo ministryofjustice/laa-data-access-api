@@ -3,6 +3,8 @@ package uk.gov.justice.laa.dstew.access.config;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -25,7 +27,9 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.filter.OncePerRequestFilter;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
@@ -60,7 +64,14 @@ public class SecurityConfig {
    * @throws Exception if anything went wrong.
    */
   @Bean
-  SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
+  SecurityFilterChain securityFilterChain(
+      final HttpSecurity http,
+      @Autowired(required = false) @Qualifier("devTokenFilter") OncePerRequestFilter devTokenFilter) throws Exception {
+
+    if (devTokenFilter != null) {
+      http.addFilterBefore(devTokenFilter, BearerTokenAuthenticationFilter.class);
+    }
+
     http
         .authorizeHttpRequests(authorize -> authorize
             .requestMatchers("/actuator/health", "/actuator/info").permitAll()
