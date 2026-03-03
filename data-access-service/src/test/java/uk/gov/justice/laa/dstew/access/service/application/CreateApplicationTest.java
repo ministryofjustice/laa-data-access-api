@@ -314,7 +314,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     when(applicationRepository.existsByApplyApplicationId(applyApplicationId)).thenReturn(true);
 
     // when
-    Throwable throwable = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));
+    Throwable throwable = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest, 1));
 
     //then
     assertThat(throwable)
