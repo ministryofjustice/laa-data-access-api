@@ -138,7 +138,7 @@ public class ApplicationService {
         payloadValidationService.convertAndValidate(req.getApplicationContent(), ApplicationContent.class);
     setValuesFromApplicationContent(entity, applicationContent);
     checkForDuplicateApplication(entity.getApplyApplicationId());
-    entity.setSchemaVersion(applicationVersion);
+    entity.setSchemaVersion(schemaVersion);
 
     final ApplicationEntity saved = applicationRepository.save(entity);
 
