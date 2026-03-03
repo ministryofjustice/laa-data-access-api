@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.validation;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -113,5 +114,25 @@ class JsonSchemaValidatorTest {
 
     assertTrue(ex.errors().stream().anyMatch(msg -> msg.toLowerCase().contains("id")),
         "Expected validation errors to mention missing id");
+  }
+
+  @Test
+  void validateRejectsEmptyArrayWhenMinItemsRequired() {
+    Map<String, Object> payload = Map.of(
+        "id", UUID.randomUUID().toString(),
+        "submittedAt", "2026-01-15T10:20:30Z",
+        "status", "APPLICATION_IN_PROGRESS",
+        "office", Map.of("code", "OFF1"),
+        "proceedings", Collections.emptyList()
+    );
+
+    ValidationException ex = assertThrows(ValidationException.class,
+        () -> validator.validate(payload, "ApplyApplication.json", 2));
+
+    // Debug: print all errors to understand the structure
+    ex.errors().forEach(error -> System.out.println("Error: " + error));
+
+    assertTrue(ex.errors().stream().anyMatch(msg -> msg.toLowerCase().contains("proceedings")),
+        "Expected validation errors to mention proceedings field. Actual errors: " + ex.errors());
   }
 }
