@@ -3,15 +3,16 @@ package uk.gov.justice.laa.dstew.access.validation;
 
 import com.networknt.schema.AbsoluteIri;
 import com.networknt.schema.Error;
+import com.networknt.schema.ExecutionContext;
 import com.networknt.schema.InputFormat;
 import com.networknt.schema.Schema;
 import com.networknt.schema.SchemaLocation;
 import com.networknt.schema.SchemaRegistry;
 import com.networknt.schema.SpecificationVersion;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -39,22 +40,37 @@ public class JsonSchemaValidator {
         .build()
         .valueToTree(payload);
 
-    String schemaPath = "schema/" + schemaVersion + "/" + schemaName;
-    AbsoluteIri iri = new AbsoluteIri("classpath:" + schemaPath);
-    SchemaLocation schemaLocation = new SchemaLocation(iri);
     Schema schema = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_7)
-        .getSchema(schemaLocation);
+        .getSchema(getSchemaLocation(schemaName, schemaVersion));
 
-    // Enable format assertions to validate UUIDs, date-times, etc. as per the schema
     List<Error> validate = schema.validate(String.valueOf(jsonNode), InputFormat.JSON,
-        context -> context.executionConfig(
-            config -> config.formatAssertionsEnabled(true)
-        ));
+        getExecutionCustomizer());
     if (!validate.isEmpty()) {
-      Set<String> errorMessages = validate.stream()
-          .map(Error::getMessage)
-          .collect(Collectors.toSet());
-      throw new ValidationException(errorMessages.stream().toList());
+      List<String> errorMessages = validate.stream()
+          .map(Error::toString)
+          .map(JsonSchemaValidator::formatError)
+          .toList();
+      throw new ValidationException(errorMessages);
     }
   }
+
+  private static @NonNull Consumer<ExecutionContext> getExecutionCustomizer() {
+    // Enable format assertions to validate UUIDs, date-times, etc. as per the schema
+    return context -> context.executionConfig(
+        config -> config.formatAssertionsEnabled(true)
+    );
+  }
+
+  private static @NonNull SchemaLocation getSchemaLocation(String schemaName, int schemaVersion) {
+    String schemaPath = "schema/" + schemaVersion + "/" + schemaName;
+    AbsoluteIri iri = new AbsoluteIri("classpath:" + schemaPath);
+    return new SchemaLocation(iri);
+  }
+
+  private static String formatError(String error) {
+    // Remove leading and trailing blank lines, remove initial / and : characters
+    error = error.trim();
+    return error.replaceAll("^[/:]+", ""); // Remove leading / and :
+  }
+
 }

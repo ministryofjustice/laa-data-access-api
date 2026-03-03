@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "Address.json",
+  "title": "Address",
+  "description": "An address associated with the application",
+  "type": "object",
+  "required": [
+    "id"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the proceeding"
+    }
+  },
+  "additionalProperties": true
+}
