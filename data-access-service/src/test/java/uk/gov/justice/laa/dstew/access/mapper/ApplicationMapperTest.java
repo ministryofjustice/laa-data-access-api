@@ -20,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.Opponent;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 
 class ApplicationMapperTest {
@@ -208,5 +209,117 @@ class ApplicationMapperTest {
     assertThat(entityToAffect.getApplicationContent()).isEqualTo(updatedContent);
     assertThat(entityToAffect.getCreatedAt()).isEqualTo(createdAt);
     assertThat(entityToAffect.getModifiedAt()).isEqualTo(modifiedAt);
+  }
+
+  @Test
+  void givenApplicationWithOpponents_whenToApplication_thenMapsOpponentsCorrectly() {
+    ApplicationStatus initialStatus = ApplicationStatus.APPLICATION_IN_PROGRESS;
+    Instant createdAt = Instant.now().minusSeconds(10000);
+    Instant modifiedAt = Instant.now().minusSeconds(5000);
+    Map<String, Object> opposable = Map.of(
+        "opposableType", "ApplicationMeritsTask::Individual",
+        "firstName", "John",
+        "lastName", "Smith",
+        "name", "Acme Ltd"
+    );
+
+    Map<String, Object> opponent = Map.of(
+        "opposable", opposable
+    );
+
+    Map<String, Object> merits = Map.of(
+        "opponents", List.of(opponent)
+    );
+
+    Map<String, Object> content = Map.of(
+        "applicationMerits", merits
+    );
+
+    ApplicationEntity entity = ApplicationEntity.builder()
+        .status(initialStatus)
+        .applicationContent(content)
+        .createdAt(createdAt)
+        .modifiedAt(modifiedAt)
+        .build();
+
+    Application result = applicationMapper.toApplication(entity);
+
+    assertThat(result.getOpponents()).isNotNull();
+    assertThat(result.getOpponents()).hasSize(1);
+
+    Opponent mapped = result.getOpponents().get(0);
+    assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
+    assertThat(mapped.getFirstName()).isEqualTo("John");
+    assertThat(mapped.getLastName()).isEqualTo("Smith");
+    assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
+  }
+
+  @Test
+  void givenApplicationWithEmptyOpponentsList_whenToApplication_thenReturnsEmptyList() {
+    ApplicationStatus initialStatus = ApplicationStatus.APPLICATION_IN_PROGRESS;
+    Instant createdAt = Instant.now().minusSeconds(10000);
+    Instant modifiedAt = Instant.now().minusSeconds(5000);
+    Map<String, Object> merits = Map.of(
+        "opponents", List.of()
+    );
+
+    Map<String, Object> content = Map.of(
+        "applicationMerits", merits
+    );
+
+    ApplicationEntity entity = ApplicationEntity.builder()
+        .applicationContent(content)
+        .status(initialStatus)
+        .createdAt(createdAt)
+        .modifiedAt(modifiedAt)
+        .build();
+
+    Application result = applicationMapper.toApplication(entity);
+
+    assertThat(result.getOpponents()).isNotNull();
+    assertThat(result.getOpponents()).isEmpty();
+  }
+
+  @Test
+  void givenOpponentWithMissingFirstName_whenToApplication_thenMapsRemainingFields() {
+    ApplicationStatus initialStatus = ApplicationStatus.APPLICATION_IN_PROGRESS;
+    Instant createdAt = Instant.now().minusSeconds(10000);
+    Instant modifiedAt = Instant.now().minusSeconds(5000);
+    Map<String, Object> opposable = Map.of(
+        "opposableType", "ApplicationMeritsTask::Individual",
+        "lastName", "Smith",
+        "name", "Acme Ltd"
+    );
+
+    Map<String, Object> opponent = Map.of(
+        "opposable", opposable
+    );
+
+    Map<String, Object> merits = Map.of(
+        "opponents", List.of(opponent)
+    );
+
+    Map<String, Object> content = Map.of(
+        "applicationMerits", merits
+    );
+
+    ApplicationEntity entity = ApplicationEntity.builder()
+        .applicationContent(content)
+        .status(initialStatus)
+        .createdAt(createdAt)
+        .modifiedAt(modifiedAt)
+        .build();
+
+    Application result = applicationMapper.toApplication(entity);
+
+    assertThat(result.getOpponents()).isNotNull();
+    assertThat(result.getOpponents()).hasSize(1);
+
+    var mapped = result.getOpponents().get(0);
+
+    assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
+    assertThat(mapped.getFirstName()).isNull();
+    assertThat(mapped.getLastName()).isEqualTo("Smith");
+    assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
   }
 }

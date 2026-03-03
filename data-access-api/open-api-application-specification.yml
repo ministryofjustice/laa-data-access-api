@@ -402,6 +402,18 @@ components:
         - ASC
         - DESC
 
+    Opponent:
+      type: object
+      properties:
+        opposableType:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        organisationName:
+          type: string
+
     Individual:
       type: object
       required:
@@ -459,6 +471,10 @@ components:
           $ref: "#/components/schemas/decisionStatus"
         applicationType:
           $ref: "#/components/schemas/applicationType"
+        opponents:
+          type: array
+          items:
+            $ref: "#/components/schemas/Opponent"
         provider:
           type: string
 
