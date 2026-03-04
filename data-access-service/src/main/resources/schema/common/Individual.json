@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "Individual.json",
+  "title": "Individual",
+  "description": "An individual associated with the application",
+  "type": "object",
+  "required": [
+    "firstName",
+    "lastName",
+    "dateOfBirth",
+    "details",
+    "type"
+  ],
+  "properties": {
+    "firstName": {
+      "type": "string",
+      "description": "First name of the individual"
+    },
+    "lastName": {
+      "type": "string",
+      "description": "Last name of the individual"
+    },
+    "dateOfBirth": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of birth (ISO 8601 date format)"
+    },
+    "details": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": true,
+      "description": "Additional details about the individual"
+    },
+    "type": {
+      "$ref": "IndividualType.json",
+      "description": "Type of the individual"
+    }
+  },
+  "additionalProperties": false
+}
