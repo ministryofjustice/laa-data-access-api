@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.service.application;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,7 +8,9 @@ import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
@@ -18,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEn
 import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.helpers.SpringContext;
 
 import java.util.*;
 
@@ -55,14 +59,24 @@ public class GetApplicationTest extends BaseServiceTest {
                                                                                 )
                                                                             )
                                                                         )
-                                                                ));
+                                                                        ));
         ApplicationEntity expectedApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class);
         expectedApplication.setDecision(DataGenerator.createDefault(DecisionEntityGenerator.class));
         expectedApplication.getDecision().setMeritsDecisions(
                 Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class,
                         builder -> builder.proceeding(proceeding))));
-        expectedApplication.setProceedings(Set.of(proceeding));
 
+        Map<String, Object> applicationContent = expectedApplication.getApplicationContent();
+        applicationContent.put("applicationMerits",
+                Map.of("involvedChildren",
+                    List.of(
+                        Map.of("first_name", "John",
+                                "last_name", "Smith",
+                                "date_of_birth", "Mon Aug 20 2022 20:20:00 GMT+0100 (British Summer Time)")
+                    )
+                ));
+
+        expectedApplication.setProceedings(Set.of(proceeding));
         when(applicationRepository.findById(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
 
         setSecurityContext(TestConstants.Roles.READER);
@@ -75,6 +89,11 @@ public class GetApplicationTest extends BaseServiceTest {
         assertApplicationProceedingsEqual(expectedApplication.getProceedings(),
                                             actualApplication.getProceedings(),
                 MeritsDecisionStatus.REFUSED);
+        assertThat(actualApplication.getProceedings().getFirst().getInvolvedChildren()).hasSize(1);
+        Map<String, Object> data = (Map<String, Object>) actualApplication.getProceedings().getFirst().getInvolvedChildren().getFirst();
+        assertThat(data.get("first_name")).isEqualTo("John");
+        assertThat(data.get("last_name")).isEqualTo("Smith");
+        assertThat(data.get("date_of_birth")).isEqualTo("Mon Aug 20 2022 20:20:00 GMT+0100 (British Summer Time)");
         verify(applicationRepository, times(1)).findById(expectedApplication.getId());
     }
 
