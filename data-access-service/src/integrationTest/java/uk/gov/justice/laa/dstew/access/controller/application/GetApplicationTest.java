@@ -1,9 +1,20 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -109,187 +120,187 @@ public class GetApplicationTest extends BaseIntegrationTest {
         // given
         UUID notExistApplicationId = UUID.randomUUID();
 
-        // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, notExistApplicationId);
+    // when
+    MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, notExistApplicationId);
 
-        // then
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertNotFound(result);
-        assertEquals("application/problem+json", result.getResponse().getContentType());
-        ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
-        assertEquals("No application found with id: " + notExistApplicationId, problemDetail.getDetail());
+    // then
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertNotFound(result);
+    assertEquals("application/problem+json", result.getResponse().getContentType());
+    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+    assertEquals("No application found with id: " + notExistApplicationId, problemDetail.getDetail());
 
-    }
+  }
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
-    public void givenUnknownRole_whenGetApplication_thenReturnForbidden() throws Exception {
-        // given
-        ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
+  public void givenUnknownRole_whenGetApplication_thenReturnForbidden() throws Exception {
+    // given
+    ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
-        // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
+    // when
+    MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
 
-        // then
-        assertSecurityHeaders(result);
-        assertForbidden(result);
-    }
+    // then
+    assertSecurityHeaders(result);
+    assertForbidden(result);
+  }
 
-    @Test
-    public void givenNoUser_whenGetApplication_thenReturnUnauthorised() throws Exception {
-        // given
-        ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+  @Test
+  public void givenNoUser_whenGetApplication_thenReturnUnauthorised() throws Exception {
+    // given
+    ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
-        // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
+    // when
+    MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
 
-        // then
-        assertSecurityHeaders(result);
-        assertUnauthorised(result);
-    }
+    // then
+    assertSecurityHeaders(result);
+    assertUnauthorised(result);
+  }
 
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithOpponents_whenGetApplication_thenReturnsOpponents() throws Exception {
 
-        Map<String, Object> opposable = Map.of(
-            "opposableType", "ApplicationMeritsTask::Individual",
-            "firstName", "John",
-            "lastName", "Smith",
-            "name", "Acme Ltd"
-        );
+    Map<String, Object> opposable = Map.of(
+        "opposableType", "ApplicationMeritsTask::Individual",
+        "firstName", "John",
+        "lastName", "Smith",
+        "name", "Acme Ltd"
+    );
 
-        Map<String, Object> opponent = Map.of(
-            "opposable", opposable
-        );
+    Map<String, Object> opponent = Map.of(
+        "opposable", opposable
+    );
 
-        Map<String, Object> merits = Map.of(
-            "opponents", List.of(opponent)
-        );
+    Map<String, Object> merits = Map.of(
+        "opponents", List.of(opponent)
+    );
 
-        Map<String, Object> content = Map.of(
-            "applicationMerits", merits
-        );
+    Map<String, Object> content = Map.of(
+        "applicationMerits", merits
+    );
 
-        ApplicationEntity application = persistedDataGenerator.createAndPersist(
-            ApplicationEntityGenerator.class,
-            builder -> builder
-                .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
-                .applicationContent(content)
-                .createdAt(Instant.now().minusSeconds(10000))
-                .modifiedAt(Instant.now())
-        );
+    ApplicationEntity application = persistedDataGenerator.createAndPersist(
+        ApplicationEntityGenerator.class,
+        builder -> builder
+            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+            .applicationContent(content)
+            .createdAt(Instant.now().minusSeconds(10000))
+            .modifiedAt(Instant.now())
+    );
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        Application response = deserialise(result, Application.class);
+    MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    Application response = deserialise(result, Application.class);
 
-        assertContentHeaders(result);
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertOK(result);
+    assertContentHeaders(result);
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertOK(result);
 
-        Assertions.assertThat(response.getOpponents()).isNotNull();
-        Assertions.assertThat(response.getOpponents()).hasSize(1);
+    Assertions.assertThat(response.getOpponents()).isNotNull();
+    Assertions.assertThat(response.getOpponents()).hasSize(1);
 
-        var mapped = response.getOpponents().get(0);
-        Assertions.assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
-        Assertions.assertThat(mapped.getFirstName()).isEqualTo("John");
-        Assertions.assertThat(mapped.getLastName()).isEqualTo("Smith");
-        Assertions.assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
-    }
+    var mapped = response.getOpponents().getFirst();
+    Assertions.assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
+    Assertions.assertThat(mapped.getFirstName()).isEqualTo("John");
+    Assertions.assertThat(mapped.getLastName()).isEqualTo("Smith");
+    Assertions.assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
+  }
 
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithEmptyOpponents_whenGetApplication_thenReturnsEmptyList() throws Exception {
 
-        Map<String, Object> merits = Map.of(
-            "opponents", List.of()
-        );
+    Map<String, Object> merits = Map.of(
+        "opponents", List.of()
+    );
 
-        Map<String, Object> content = Map.of(
-            "applicationMerits", merits
-        );
+    Map<String, Object> content = Map.of(
+        "applicationMerits", merits
+    );
 
-        ApplicationEntity application = persistedDataGenerator.createAndPersist(
-            ApplicationEntityGenerator.class,
-            builder -> builder.applicationContent(content)
-        );
+    ApplicationEntity application = persistedDataGenerator.createAndPersist(
+        ApplicationEntityGenerator.class,
+        builder -> builder.applicationContent(content)
+    );
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        Application response = deserialise(result, Application.class);
+    MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    Application response = deserialise(result, Application.class);
 
-        assertOK(result);
-        Assertions.assertThat(response.getOpponents()).isNotNull();
-        Assertions.assertThat(response.getOpponents()).isEmpty();
-    }
+    assertOK(result);
+    Assertions.assertThat(response.getOpponents()).isNotNull();
+    Assertions.assertThat(response.getOpponents()).isEmpty();
+  }
 
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithoutOpponentsSection_whenGetApplication_thenOpponentsIsEmpty() throws Exception {
 
-        Map<String, Object> content = Map.of(
-            "someOtherKey", "value"
-        );
+    Map<String, Object> content = Map.of(
+        "someOtherKey", "value"
+    );
 
-        ApplicationEntity application = persistedDataGenerator.createAndPersist(
-            ApplicationEntityGenerator.class,
-            builder -> builder.applicationContent(content)
-        );
+    ApplicationEntity application = persistedDataGenerator.createAndPersist(
+        ApplicationEntityGenerator.class,
+        builder -> builder.applicationContent(content)
+    );
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        Application response = deserialise(result, Application.class);
+    MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    Application response = deserialise(result, Application.class);
 
-        assertOK(result);
-        Assertions.assertThat(response.getOpponents()).isEmpty();
-    }
+    assertOK(result);
+    Assertions.assertThat(response.getOpponents()).isEmpty();
+  }
 
 
     @Test
     @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenOpponentWithMissingFirstName_whenGetApplication_thenReturnsRemainingFields() throws Exception {
 
-        Map<String, Object> opposable = Map.of(
-            "opposableType", "ApplicationMeritsTask::Individual",
-            // firstName intentionally missing
-            "lastName", "Smith",
-            "name", "Acme Ltd"
-        );
+    Map<String, Object> opposable = Map.of(
+        "opposableType", "ApplicationMeritsTask::Individual",
+        // firstName intentionally missing
+        "lastName", "Smith",
+        "name", "Acme Ltd"
+    );
 
-        Map<String, Object> opponent = Map.of(
-            "opposable", opposable
-        );
+    Map<String, Object> opponent = Map.of(
+        "opposable", opposable
+    );
 
-        Map<String, Object> merits = Map.of(
-            "opponents", List.of(opponent)
-        );
+    Map<String, Object> merits = Map.of(
+        "opponents", List.of(opponent)
+    );
 
-        Map<String, Object> content = Map.of(
-            "applicationMerits", merits
-        );
+    Map<String, Object> content = Map.of(
+        "applicationMerits", merits
+    );
 
-        ApplicationEntity application = persistedDataGenerator.createAndPersist(
-            ApplicationEntityGenerator.class,
-            builder -> builder.applicationContent(content)
-        );
+    ApplicationEntity application = persistedDataGenerator.createAndPersist(
+        ApplicationEntityGenerator.class,
+        builder -> builder.applicationContent(content)
+    );
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        Application response = deserialise(result, Application.class);
+    MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    Application response = deserialise(result, Application.class);
 
-        assertOK(result);
+    assertOK(result);
 
-        Assertions.assertThat(response.getOpponents()).isNotNull();
-        Assertions.assertThat(response.getOpponents()).hasSize(1);
+    Assertions.assertThat(response.getOpponents()).isNotNull();
+    Assertions.assertThat(response.getOpponents()).hasSize(1);
 
-        var mapped = response.getOpponents().get(0);
-        Assertions.assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
-        Assertions.assertThat(mapped.getFirstName()).isNull();
-        Assertions.assertThat(mapped.getLastName()).isEqualTo("Smith");
-        Assertions.assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
-    }
+    var mapped = response.getOpponents().getFirst();
+    Assertions.assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
+    Assertions.assertThat(mapped.getFirstName()).isNull();
+    Assertions.assertThat(mapped.getLastName()).isEqualTo("Smith");
+    Assertions.assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
+  }
 
     private Application createApplication(ApplicationEntity applicationEntity,
                                           ProceedingEntity proceeding,
