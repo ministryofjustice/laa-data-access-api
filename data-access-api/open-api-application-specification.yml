@@ -730,3 +730,6 @@ components:
           $ref: "#/components/schemas/EventHistory"
         autoGranted:
           type: boolean
+        certificate:
+          type: object
+          description: Certificate information (required when overallDecision is GRANTED)

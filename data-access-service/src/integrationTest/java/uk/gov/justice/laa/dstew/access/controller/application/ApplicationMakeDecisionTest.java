@@ -15,6 +15,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
@@ -461,6 +462,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         Assertions.assertThat(actual)
                 .usingRecursiveComparison()
                 .ignoringCollectionOrder()
+                .ignoringFields("certificate")
                 .isEqualTo(expectedMakeDecisionRequest);
 
         Assertions.assertThat(savedDecision.getModifiedAt()).isNotNull();
@@ -504,5 +506,205 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                 .reason(entity.getReason())
                 .justification(entity.getJustification())
                 .build();
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    public void givenGrantedDecisionWithNoCertificate_whenAssignDecision_thenReturnBadRequest()
+            throws Exception {
+        // given
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
+            builder.applicationContent(new HashMap<>(Map.of(
+                    "test", "content"
+            )));
+            builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
+        });
+
+        ProceedingEntity proceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+                builder -> builder.applicationId(applicationEntity.getId()));
+
+        MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
+            builder
+                    .userId(CaseworkerJohnDoe.getId())
+                    .eventHistory(EventHistory.builder()
+                            .eventDescription("granted event")
+                            .build())
+                    .overallDecision(DecisionStatus.GRANTED)
+                    .proceedings(List.of(
+                            createMakeDecisionProceeding(proceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1")
+                    ))
+                    .certificate(null)
+                    .autoGranted(false);
+        });
+
+        // when
+        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+
+        // then
+        assertSecurityHeaders(result);
+        assertNoCacheHeaders(result);
+        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+        assertEquals("application/problem+json", result.getResponse().getContentType());
+
+        ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+        @SuppressWarnings("unchecked")
+        List<String> errors = (List<String>) problemDetail.getProperties().get("errors");
+        Assertions.assertThat(errors).contains("The Make Decision request must contain a certificate when overallDecision is GRANTED");
+
+        // Verify no certificate was persisted
+        List<CertificateEntity> certificates = certificateRepository.findAll();
+        assertThat(certificates.size()).isEqualTo(0);
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    public void givenGrantedDecisionWithCertificate_whenAssignDecision_thenReturnNoContent_andDecisionAndCertificateSaved()
+            throws Exception {
+        // given
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
+            builder.applicationContent(new HashMap<>(Map.of(
+                    "test", "content"
+            )));
+            builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
+        });
+
+        ProceedingEntity proceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+                builder -> builder.applicationId(applicationEntity.getId()));
+
+        Map<String, Object> certificateData = new HashMap<>();
+        certificateData.put("certificateNumber", "TESTCERT001");
+        certificateData.put("issueDate", "2026-03-03");
+        certificateData.put("validUntil", "2027-03-03");
+
+        MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
+            builder
+                    .userId(CaseworkerJohnDoe.getId())
+                    .eventHistory(EventHistory.builder()
+                            .eventDescription("granted event")
+                            .build())
+                    .overallDecision(DecisionStatus.GRANTED)
+                    .proceedings(List.of(
+                            createMakeDecisionProceeding(proceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1")
+                    ))
+                    .certificate(certificateData)
+                    .autoGranted(false);
+        });
+
+        // when
+        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+
+        // then
+        assertSecurityHeaders(result);
+        assertNoCacheHeaders(result);
+        assertNoContent(result);
+
+        ApplicationEntity updatedApplicationEntity = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+        assertEquals(ApplicationStatus.APPLICATION_SUBMITTED, updatedApplicationEntity.getStatus());
+        assertEquals(false, updatedApplicationEntity.getIsAutoGranted());
+        assertThat(decisionRepository.countById(updatedApplicationEntity.getDecision().getId())).isEqualTo(1);
+
+        verifyDecisionSavedCorrectly(
+                applicationEntity.getId(),
+                makeDecisionRequest
+        );
+
+        // Verify certificate was persisted
+        List<CertificateEntity> certificates = certificateRepository.findAll();
+        assertThat(certificates.size()).isEqualTo(1);
+
+        CertificateEntity certificate = certificates.get(0);
+        assertThat(certificate.getApplicationId()).isEqualTo(applicationEntity.getId());
+        assertThat(certificate.getCertificateContent()).isNotNull();
+        assertThat(certificate.getCertificateContent().get("certificateNumber")).isEqualTo("TESTCERT001");
+        assertThat(certificate.getCertificateContent().get("issueDate")).isEqualTo("2026-03-03");
+        assertThat(certificate.getCertificateContent().get("validUntil")).isEqualTo("2027-03-03");
+        assertThat(certificate.getCreatedBy()).isEqualTo(CaseworkerJohnDoe.getId().toString());
+        assertThat(certificate.getUpdatedBy()).isEqualTo(CaseworkerJohnDoe.getId().toString());
+        assertThat(certificate.getCreatedAt()).isNotNull();
+        assertThat(certificate.getModifiedAt()).isNotNull();
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    public void givenRefusedDecisionWithNoCertificate_whenAssignDecision_thenReturnNoContent()
+            throws Exception {
+        // given
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
+            builder.applicationContent(new HashMap<>(Map.of(
+                    "test", "content"
+            )));
+            builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
+        });
+
+        ProceedingEntity proceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+                builder -> builder.applicationId(applicationEntity.getId()));
+
+        MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
+            builder
+                    .userId(CaseworkerJohnDoe.getId())
+                    .eventHistory(EventHistory.builder()
+                            .eventDescription("refusal event")
+                            .build())
+                    .overallDecision(DecisionStatus.REFUSED)
+                    .proceedings(List.of(
+                            createMakeDecisionProceeding(proceedingEntity.getId(), MeritsDecisionStatus.REFUSED, "justification 1", "reason 1")
+                    ))
+                    .certificate(null)
+                    .autoGranted(false);
+        });
+
+        // when
+        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+
+        // then
+        assertSecurityHeaders(result);
+        assertNoCacheHeaders(result);
+        assertNoContent(result);
+
+        // Verify no certificate was persisted
+        List<CertificateEntity> certificates = certificateRepository.findAll();
+        assertThat(certificates.size()).isEqualTo(0);
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    public void givenPartiallyGrantedDecisionWithNoCertificate_whenAssignDecision_thenReturnNoContent()
+            throws Exception {
+        // given
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
+            builder.applicationContent(new HashMap<>(Map.of(
+                    "test", "content"
+            )));
+            builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
+        });
+
+        ProceedingEntity proceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+                builder -> builder.applicationId(applicationEntity.getId()));
+
+        MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
+            builder
+                    .userId(CaseworkerJohnDoe.getId())
+                    .eventHistory(EventHistory.builder()
+                            .eventDescription("partially granted event")
+                            .build())
+                    .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                    .proceedings(List.of(
+                            createMakeDecisionProceeding(proceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1")
+                    ))
+                    .certificate(null)
+                    .autoGranted(false);
+        });
+
+        // when
+        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+
+        // then
+        assertSecurityHeaders(result);
+        assertNoCacheHeaders(result);
+        assertNoContent(result);
+
+        // Verify no certificate was persisted (only GRANTED requires certificate)
+        List<CertificateEntity> certificates = certificateRepository.findAll();
+        assertThat(certificates.size()).isEqualTo(0);
     }
 }
