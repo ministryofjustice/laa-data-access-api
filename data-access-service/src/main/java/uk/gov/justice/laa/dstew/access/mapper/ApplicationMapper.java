@@ -122,14 +122,15 @@ public interface ApplicationMapper {
                     proceedingMapper.toApplicationProceeding(proceeding);
 
                 applicationProceeding.setInvolvedChildren(getInvolvedChildren(entity));
-                Optional<MeritsDecisionEntity> meritsDecision =
-                        entity.getDecision().getMeritsDecisions().stream()
-                        .filter(m -> m.getProceeding().getId() == proceeding.getId())
-                        .findFirst();
+                if (entity.getDecision() != null) {
+                  Optional<MeritsDecisionEntity> meritsDecision =
+                          entity.getDecision().getMeritsDecisions().stream()
+                                  .filter(m -> m.getProceeding().getId() == proceeding.getId())
+                                  .findFirst();
 
-                meritsDecision.ifPresent(meritsDecisionEntity ->
-                        applicationProceeding.setMeritsDecision(meritsDecisionEntity.getDecision()));
-
+                  meritsDecision.ifPresent(meritsDecisionEntity ->
+                          applicationProceeding.setMeritsDecision(meritsDecisionEntity.getDecision()));
+                }
                 application.getProceedings().add(applicationProceeding);
               }
       );

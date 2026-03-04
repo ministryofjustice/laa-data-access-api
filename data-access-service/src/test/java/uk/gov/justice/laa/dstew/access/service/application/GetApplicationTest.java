@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.service.application;
 
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -8,11 +9,14 @@ import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
 import java.util.*;
@@ -23,7 +27,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.IndividualAssert.assertIndividualCollectionsEqual;
 
 public class GetApplicationTest extends BaseServiceTest {
 
@@ -33,8 +36,32 @@ public class GetApplicationTest extends BaseServiceTest {
     @Test
     public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {
         // given
+        ProceedingEntity proceeding =
+                DataGenerator.createDefault(
+                        ProceedingsEntityGenerator.class,
+                        builder -> builder.id(UUID.randomUUID())
+                                                                .proceedingContent(Map.of(
+                                                                    "meaning", "mean",
+                                                                        "matterType", "SCA",
+                                                                        "categoryOfLaw", "FAMILY",
+                                                                        "usedDelegatedFunctionsOn", "2025-05-06",
+                                                                        "substantiveCostLimitation", "3.56",
+                                                                        "substantiveLevelOfServiceName", "myService",
+                                                                        "scopeLimitations", List.of(
+                                                                                Map.of(
+                                                                                "id", "100",
+                                                                                "code", "AB123D",
+                                                                                "meaning", "hearing"
+                                                                                )
+                                                                            )
+                                                                        )
+                                                                ));
         ApplicationEntity expectedApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class);
-        expectedApplication.setProceedings(Set.of(DataGenerator.createDefault(ProceedingsEntityGenerator.class)));
+        expectedApplication.setDecision(DataGenerator.createDefault(DecisionEntityGenerator.class));
+        expectedApplication.getDecision().setMeritsDecisions(
+                Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class,
+                        builder -> builder.proceeding(proceeding))));
+        expectedApplication.setProceedings(Set.of(proceeding));
 
         when(applicationRepository.findById(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
 
@@ -45,6 +72,9 @@ public class GetApplicationTest extends BaseServiceTest {
 
         // then
         assertApplicationEqual(expectedApplication, actualApplication);
+        assertApplicationProceedingsEqual(expectedApplication.getProceedings(),
+                                            actualApplication.getProceedings(),
+                MeritsDecisionStatus.REFUSED);
         verify(applicationRepository, times(1)).findById(expectedApplication.getId());
     }
 
@@ -95,11 +125,11 @@ public class GetApplicationTest extends BaseServiceTest {
     public void assertApplicationEqual(ApplicationEntity expectedApplication, Application actualApplication) {
         assertThat(actualApplication.getStatus()).isEqualTo(expectedApplication.getStatus());
         assertThat(actualApplication.getLaaReference()).isEqualTo(expectedApplication.getLaaReference());
-        assertProceedingsEqual(expectedApplication.getProceedings(), actualApplication.getProceedings());
     }
 
-    private void assertProceedingsEqual(Set<ProceedingEntity> expectedProceedings,
-                                        List<ApplicationProceeding> actualProceedings) {
+    private void assertApplicationProceedingsEqual(Set<ProceedingEntity> expectedProceedings,
+                                        List<ApplicationProceeding> actualProceedings,
+                                        MeritsDecisionStatus expectedStatus) {
 
         if (expectedProceedings == null && actualProceedings == null) {
             return;
@@ -112,8 +142,38 @@ public class GetApplicationTest extends BaseServiceTest {
 
         assertThat(expectedProceedings.size()).isEqualTo(actualProceedings.size());
         assertThat(expectedProceedingEntity.getId()).isEqualTo(actualApplicationProceeding.getProceedingId());
+        assertThat(getValueFromProceedingContent("meaning", expectedProceedingEntity.getProceedingContent()))
+                .isEqualTo(actualApplicationProceeding.getProceedingType());
         assertThat(expectedProceedingEntity.getDescription()).isEqualTo(actualApplicationProceeding.getProceedingDescription());
-
+        assertThat(getValueFromProceedingContent("usedDelegatedFunctionsOn", expectedProceedingEntity.getProceedingContent()))
+                .isEqualTo(actualApplicationProceeding.getUsedDelegatedFunctionsOn().toString());
+        assertThat(getValueFromProceedingContent("categoryOfLaw", expectedProceedingEntity.getProceedingContent()))
+                .isEqualTo(actualApplicationProceeding.getCategoryOfLaw());
+        assertThat(getValueFromProceedingContent("matterType", expectedProceedingEntity.getProceedingContent()))
+                .isEqualTo(actualApplicationProceeding.getMatterType());
+        assertThat(getValueFromProceedingContent("substantiveLevelOfServiceName", expectedProceedingEntity.getProceedingContent()))
+                .isEqualTo(actualApplicationProceeding.getLevelOfService());
+        assertThat(getValueFromProceedingContent("substantiveCostLimitation", expectedProceedingEntity.getProceedingContent()))
+                .isEqualTo(actualApplicationProceeding.getSubstantiveCostLimitation());
+        List<Map<String, Object>> scopeLimitations = (List<Map<String, Object>>) actualApplicationProceeding.getScopeLimitations().getFirst();
+        assertThat(scopeLimitations).isNotNull();
+        Map<String, Object> scopeLimitation = scopeLimitations.getFirst();
+        assertThat(getValueFromScopeLimitations(0, "id", expectedProceedingEntity.getProceedingContent()))
+                    .isEqualTo(scopeLimitation.get("id").toString());
+        assertThat(getValueFromScopeLimitations(0, "code", expectedProceedingEntity.getProceedingContent()))
+                .isEqualTo(scopeLimitation.get("code").toString());
+        assertThat(getValueFromScopeLimitations(0, "meaning", expectedProceedingEntity.getProceedingContent()))
+                .isEqualTo(scopeLimitation.get("meaning").toString());
+        assertThat(expectedStatus).isEqualTo(actualApplicationProceeding.getMeritsDecision());
     }
 
+    private String getValueFromProceedingContent(String fieldName, Map<String, Object> proceedingContent) {
+        return (String) proceedingContent.get(fieldName);
+    }
+
+    private String getValueFromScopeLimitations(int index, String fieldName, Map<String, Object> proceedingContent) {
+        List<Map<String, Object>> scopeLimitations = (List<Map<String, Object>>) proceedingContent.get("scopeLimitations");
+        Map<String, Object> scopeLimitation = scopeLimitations.get(index);
+        return (String) scopeLimitation.get(fieldName);
+    }
 }
