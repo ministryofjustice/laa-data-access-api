@@ -69,8 +69,9 @@ public class JsonSchemaValidator {
 
   private static String formatError(String error) {
     // Remove leading and trailing blank lines, remove initial / and : characters
-    error = error.trim();
-    return error.replaceAll("^[/:]+", ""); // Remove leading / and :
+    error = error.strip();
+    error = error.replaceAll("^[/:]+", ""); // Remove leading / and :
+    return error.strip();
   }
 
 }
