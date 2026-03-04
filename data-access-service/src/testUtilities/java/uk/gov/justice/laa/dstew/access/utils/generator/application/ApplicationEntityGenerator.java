@@ -1,13 +1,12 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -27,6 +26,8 @@ public class ApplicationEntityGenerator extends BaseGenerator<ApplicationEntity,
   public ApplicationEntity createDefault() {
     ObjectMapper mapper = SpringContext.getObjectMapper();
 
+    HashSet<IndividualEntity> individualEntities = new HashSet<>();
+    individualEntities.add(individualEntityGenerator.createDefault());
     return ApplicationEntity.builder()
         .schemaVersion(1)
         .createdAt(Instant.now())
@@ -35,18 +36,15 @@ public class ApplicationEntityGenerator extends BaseGenerator<ApplicationEntity,
         .modifiedAt(Instant.now())
         .submittedAt(Instant.parse("2024-01-01T12:00:00Z"))
         .laaReference("REF7327")
-        .individuals(new HashSet<>(List.of(individualEntityGenerator.createDefault())))
+        .individuals(individualEntities)
         .applicationContent(
-            new HashMap<>(
-                java.util.Map.of(
-                    "applicationContent",
-                    mapper.convertValue(applicationContentGenerator.createDefault(), Map.class))))
+            mapper.convertValue(applicationContentGenerator.createDefault(), new TypeReference<>() {
+            }))
         .usedDelegatedFunctions(false)
         .isAutoGranted(true)
         .categoryOfLaw(CategoryOfLaw.FAMILY)
         .matterType(MatterType.SPECIAL_CHILDREN_ACT)
         .officeCode("officeCode")
-        .version(0L)
         .build();
   }
 }
