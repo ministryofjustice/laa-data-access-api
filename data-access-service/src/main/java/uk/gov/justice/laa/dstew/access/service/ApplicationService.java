@@ -353,7 +353,8 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
-    checkIfCaseworkerExists(request.getUserId());
+    final UUID userId = request.getUserId();
+    checkIfCaseworkerExists(userId);
 
     applicationValidations.checkApplicationMakeDecisionRequest(request);
 
@@ -407,12 +408,11 @@ public class ApplicationService {
           new TypeReference<>() {}
       );
 
-      String userId = request.getUserId().toString();
       CertificateEntity certificate = CertificateEntity.builder()
           .applicationId(applicationId)
           .certificateContent(certificateContent)
-          .createdBy(userId)
-          .updatedBy(userId)
+          .createdBy(String.valueOf(userId))
+          .updatedBy(String.valueOf(userId))
           .build();
 
       certificateRepository.save(certificate);
