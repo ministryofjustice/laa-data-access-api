@@ -106,6 +106,7 @@ dependencies {
     implementation 'org.springframework.security:spring-security-core:6.5.5'
     implementation 'org.springframework:spring-core:6.2.11'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'org.springframework.boot:spring-boot-starter-security'
