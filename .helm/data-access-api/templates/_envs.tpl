@@ -63,3 +63,55 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
   value: "false"
 {{- end }}
 {{- end }}
+
+{{/*
+  Define OAuth2 client and provider environment variables
+*/}}
+{{- define "oauth2Config" }}
+- name: AUTH_CLIENT_ID
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_CLIENT_ID
+- name: AUTH_CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_CLIENT_SECRET
+- name: AUTH_SCOPE
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_SCOPE
+- name: AUTH_TENANT_ID
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_TENANT_ID
+{{- end }}
+
+{{/*
+  Define SDS API environment variables
+*/}}
+{{- define "sdsApiConfig" }}
+- name: SDS_API_URL
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_URL
+- name: SDS_API_BUCKET
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_BUCKET
+- name: SDS_API_CLIENT_REGISTRATION_ID
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_CLIENT_REGISTRATION_ID
+- name: SDS_API_PRINCIPAL_NAME
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_PRINCIPAL_NAME
+{{- end }}
