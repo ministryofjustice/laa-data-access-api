@@ -7,9 +7,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -20,7 +22,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * Spring configuration to allow dev tokens.
  */
 @Configuration
-@Profile("dev-tokens")
+@ConditionalOnProperty(prefix = "feature", name = "enable-dev-token", havingValue = "true")
 public class DevTokenConfig {
 
   private static final Map<String, List<String>> DEV_TOKENS = Map.of(
@@ -28,20 +30,13 @@ public class DevTokenConfig {
       List.of("APPROLE_LAA_CASEWORKER")
   );
 
-  private boolean devTokensAllowed() {
+  private static final Logger log = LoggerFactory.getLogger(DevTokenConfig.class);
 
-    boolean runningInK8s =
-        System.getenv("KUBERNETES_SERVICE_HOST") != null;
-
-    if (!runningInK8s) {
-      // Local / CI / integration tests
-      return true;
-    }
-
-    // Running inside Kubernetes so enforce namespace check
-    String namespace = System.getenv("K8S_NAMESPACE");
-
-    return "laa-data-access-api-uat".equals(namespace) || "laa-data-access-api-staging".equals(namespace);
+  /**
+   * Log dev token status on startup to make it clear when dev tokens are enabled and what environment variables are present.
+   */
+  public DevTokenConfig() {
+    log.info("DevTokenConfig enabled: dev tokens are available in this environment.");
   }
 
   /**
@@ -60,11 +55,6 @@ public class DevTokenConfig {
           HttpServletResponse response,
           FilterChain filterChain)
           throws ServletException, IOException {
-
-        if (!devTokensAllowed()) {
-          filterChain.doFilter(request, response);
-          return;
-        }
 
         // 2️⃣ Extract bearer token
         String authHeader = request.getHeader("Authorization");

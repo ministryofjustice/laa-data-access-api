@@ -54,5 +54,6 @@ sentry:
   environment: uat
   tracesSampleRate: 1
 
-spring:
-  profile: dev-tokens
+feature:
+  disableSecurity: false
+  enableDevToken: true

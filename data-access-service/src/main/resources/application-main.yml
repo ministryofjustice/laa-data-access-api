@@ -44,6 +44,6 @@ management:
 ### For example, `FEATURE_SECURITY=false` to disable endpoint authorization,
 ### or `FEATURE_TRANSFORMATION=false` to disable response transformations.
 
-#feature:
-#  security: true
-#  transformation: true
+feature:
+  disable-security: ${FEATURE_DISABLE_SECURITY:false}
+  enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}

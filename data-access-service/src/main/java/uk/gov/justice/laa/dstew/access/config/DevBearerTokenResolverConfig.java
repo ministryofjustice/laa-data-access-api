@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.config;
 
 import java.util.Set;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -10,7 +11,7 @@ import org.springframework.security.oauth2.server.resource.web.BearerTokenResolv
  * Spring configuration to allow certain dev tokens to bypass the JWT filter and be handled by the DevTokenFilter instead.
  */
 @Configuration
-@Profile("dev-tokens")
+@ConditionalOnProperty(prefix = "feature", name = "enable-dev-token", havingValue = "true")
 public class DevBearerTokenResolverConfig {
 
   private static final Set<String> DEV_TOKENS = Set.of(

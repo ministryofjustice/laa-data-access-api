@@ -62,6 +62,8 @@ spec:
             - name: AWS_REGION
               value: {{ .Values.aws.region | quote }}
             - name: FEATURE_DISABLESECURITY
-              value: "false"
+              value: {{ .Values.feature.disableSecurity | quote }}
+            - name: FEATURE_ENABLEDEVTOKEN
+              value: {{ .Values.feature.enableDevToken | quote }}
             {{ include "oauth2Config" . | nindent 12 }}
             {{ include "sentryConfig" . | nindent 12 }}
