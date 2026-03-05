@@ -732,4 +732,5 @@ components:
           type: boolean
         certificate:
           type: object
+          additionalProperties: true
           description: Certificate information (required when overallDecision is GRANTED)

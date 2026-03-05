@@ -32,7 +32,9 @@ import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMakeDecisionRequestGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateContentGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.testDto.certificate.CertificateContent;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -571,10 +573,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         ProceedingEntity proceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
                 builder -> builder.applicationId(applicationEntity.getId()));
 
-        Map<String, Object> certificateData = new HashMap<>();
-        certificateData.put("certificateNumber", "TESTCERT001");
-        certificateData.put("issueDate", "2026-03-03");
-        certificateData.put("validUntil", "2027-03-03");
+        CertificateContent expectedCertificateContent = DataGenerator.createDefault(CertificateContentGenerator.class);
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
@@ -586,7 +585,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                     .proceedings(List.of(
                             createMakeDecisionProceeding(proceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1")
                     ))
-                    .certificate(certificateData)
+                    .certificate(objectMapper.convertValue(expectedCertificateContent, Map.class))
                     .autoGranted(false);
         });
 

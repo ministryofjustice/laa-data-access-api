@@ -403,14 +403,9 @@ public class ApplicationService {
 
     // Persist certificate if overallDecision is GRANTED
     if (decision.getOverallDecision() == DecisionStatus.GRANTED && request.getCertificate() != null) {
-      Map<String, Object> certificateContent = objectMapper.convertValue(
-          request.getCertificate(),
-          new TypeReference<>() {}
-      );
-
       CertificateEntity certificate = CertificateEntity.builder()
           .applicationId(applicationId)
-          .certificateContent(certificateContent)
+          .certificateContent(request.getCertificate())
           .createdBy(String.valueOf(userId))
           .updatedBy(String.valueOf(userId))
           .build();
