@@ -174,9 +174,8 @@ public class GetApplicationTest extends BaseServiceTest {
                 .isEqualTo(actualApplicationProceeding.getLevelOfService());
         assertThat(getValueFromProceedingContent("substantiveCostLimitation", expectedProceedingEntity.getProceedingContent()))
                 .isEqualTo(actualApplicationProceeding.getSubstantiveCostLimitation());
-        List<Map<String, Object>> scopeLimitations = (List<Map<String, Object>>) actualApplicationProceeding.getScopeLimitations().getFirst();
-        assertThat(scopeLimitations).isNotNull();
-        Map<String, Object> scopeLimitation = scopeLimitations.getFirst();
+        assertThat(actualApplicationProceeding.getScopeLimitations()).isNotNull();
+        Map<String, Object> scopeLimitation = (Map<String, Object>) actualApplicationProceeding.getScopeLimitations().getFirst();
         assertThat(getValueFromScopeLimitations(0, "id", expectedProceedingEntity.getProceedingContent()))
                     .isEqualTo(scopeLimitation.get("id").toString());
         assertThat(getValueFromScopeLimitations(0, "code", expectedProceedingEntity.getProceedingContent()))

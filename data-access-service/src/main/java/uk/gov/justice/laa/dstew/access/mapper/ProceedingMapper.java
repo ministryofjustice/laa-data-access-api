@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.lang3.BooleanUtils;
@@ -60,7 +61,9 @@ public interface ProceedingMapper {
     applicationProceeding.setMatterType(proceeding.getMatterType());
     applicationProceeding.setLevelOfService(proceeding.getSubstantiveLevelOfServiceName());
     applicationProceeding.setSubstantiveCostLimitation(proceeding.getSubstantiveCostLimitation());
-    applicationProceeding.setScopeLimitations(Collections.singletonList(proceeding.getScopeLimitations()));
+    List<Object> scopeLimitations = new ArrayList<>();
+    proceeding.getScopeLimitations().forEach(s -> scopeLimitations.add(s));
+    applicationProceeding.setScopeLimitations(scopeLimitations);
 
     return applicationProceeding;
   }
