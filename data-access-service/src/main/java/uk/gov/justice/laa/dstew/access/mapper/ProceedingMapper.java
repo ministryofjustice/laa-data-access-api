@@ -61,9 +61,11 @@ public interface ProceedingMapper {
     applicationProceeding.setMatterType(proceeding.getMatterType());
     applicationProceeding.setLevelOfService(proceeding.getSubstantiveLevelOfServiceName());
     applicationProceeding.setSubstantiveCostLimitation(proceeding.getSubstantiveCostLimitation());
-    List<Object> scopeLimitations = new ArrayList<>();
-    proceeding.getScopeLimitations().forEach(s -> scopeLimitations.add(s));
-    applicationProceeding.setScopeLimitations(scopeLimitations);
+    if (proceeding.getScopeLimitations() != null) {
+      List<Object> scopeLimitations = new ArrayList<>();
+      proceeding.getScopeLimitations().forEach(s -> scopeLimitations.add(s));
+      applicationProceeding.setScopeLimitations(scopeLimitations);
+    }
 
     return applicationProceeding;
   }
