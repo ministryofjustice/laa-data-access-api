@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.NonNull;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -177,6 +178,10 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void updateApplication(final UUID id, final ApplicationUpdateRequest req) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
+    if (Long.valueOf(req.getVersion()) != entity.getVersion()) {
+      throw new OptimisticLockingFailureException(
+          String.format("Application with id %s and version %s not found", id, req.getVersion()));
+    }
     applicationValidations.checkApplicationUpdateRequest(req);
     applicationMapper.updateApplicationEntity(entity, req);
     entity.setModifiedAt(Instant.now());

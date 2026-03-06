@@ -21,7 +21,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.IndividualAssert.assertIndividualCollectionsEqual;
 
 public class GetApplicationTest extends BaseServiceTest {
 
@@ -32,7 +31,7 @@ public class GetApplicationTest extends BaseServiceTest {
     public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {
         // given
         ApplicationEntity expectedApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class);
-
+        expectedApplication.setVersion(0L);
         when(applicationRepository.findById(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
 
         setSecurityContext(TestConstants.Roles.READER);
