@@ -79,8 +79,6 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
         ProceedingEntity proceeding = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class, builder -> {
             builder.applicationId(application.getId());
-            builder.description("description");
-            builder.isLead(Boolean.TRUE);
             builder.proceedingContent(
                     Map.of(
                             "categoryOfLaw","FAMILY",
@@ -107,14 +105,6 @@ public class GetApplicationTest extends BaseIntegrationTest {
         });
 
         application.setDecision(decision);
-        application.getApplicationContent().put("applicationMerits",
-                Map.of("involvedChildren",
-                        List.of(
-                                Map.of("first_name", "John",
-                                        "last_name", "Smith",
-                                        "date_of_birth", "Mon Aug 20 2022 20:20:00 GMT+0100 (British Summer Time)")
-                        )
-                ));
         applicationRepository.saveAndFlush(application);
         clearCache();
 
