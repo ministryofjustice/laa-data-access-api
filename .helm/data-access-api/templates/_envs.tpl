@@ -15,7 +15,7 @@ For the preview branches, set DB connection details to Bitnami Postgres specific
       key: postgres-password
 - name: DB_HOST
   value: {{ .Release.Name }}-postgresql
-{{- else if eq .Values.spring.profile "main" }}
+{{- else if or (eq .Values.spring.profile "main") (eq .Values.spring.profile "unsecured") }}
 {{/*
 For the main branch, extract DB environment variables from rds-postgresql-instance-output secret
 */}}
@@ -39,5 +39,27 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
     secretKeyRef:
       name: rds-postgresql-instance-output
       key: rds_instance_address
+{{- end }}
+{{- end }}
+
+{{/*
+  Define Sentry environment variables
+*/}}
+{{- define "sentryConfig" }}
+{{- if .Values.sentry.enabled }}
+- name: SENTRY_ENABLED
+  value: "true"
+- name: SENTRY_DSN
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SENTRY_DSN
+- name: SENTRY_ENVIRONMENT
+  value: {{ .Values.sentry.environment | quote }}
+- name: SENTRY_TRACES_SAMPLE_RATE
+  value: {{ .Values.sentry.tracesSampleRate | quote }}
+{{- else }}
+- name: SENTRY_ENABLED
+  value: "false"
 {{- end }}
 {{- end }}

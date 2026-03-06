@@ -6,16 +6,14 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import java.time.Instant;
 import lombok.Data;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * Represents the common audit fields in entities.
  */
+@ExcludeFromGeneratedCodeCoverage
 @Embeddable
 @Data
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
@@ -25,16 +23,7 @@ public class EmbeddedRecordHistoryEntity {
   @CreatedDate  //@CreationTimestamp
   private Instant createdAt;
 
-  @CreatedBy
-  @Column(name = "created_by", updatable = false)
-  private String createdBy;
-
-  @Column(name = "updated_at")
+  @Column(name = "modified_at")
   @LastModifiedDate  //@UpdateTimestamp
   private Instant updatedAt;
-
-  @LastModifiedBy
-  @Column(name = "updated_by")
-  private String updatedBy;
-
 }

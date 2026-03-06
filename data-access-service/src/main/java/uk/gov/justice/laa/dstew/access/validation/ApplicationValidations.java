@@ -1,52 +1,79 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
-import static uk.gov.justice.laa.dstew.access.validation.ValidationUtils.notNull;
-
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetails;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 /**
- * Validations for a particular domain (Applications).
- * Currently, this avoids any kind of validation framework apart from a holder for validation errors (ValidationState)
- * and an exception that wraps those errors (ValidationException).
+ * Class that runs validations for Access.
  */
 @Component
 @RequiredArgsConstructor
 public class ApplicationValidations {
+
   private final EffectiveAuthorizationProvider entra;
 
+
   /**
-   * Validate an ApplicationCreateRequest instance.
-   *
-   * @param dto DTO to validate.
+   * One by
+   * Validates an incoming PATCH.
    */
-  public void checkApplicationCreateRequest(final ApplicationCreateRequest dto) {
-    final var state = ValidationErrors.empty();
-    state.addIf(
-              (dto.getProviderOfficeId() == null)
-                    && (!(notNull(dto.getIsEmergencyApplication()) && (dto.getStatusCode().contentEquals("NEW")))
-              ),
-            "BRR-01: Provider office id is required (unless unsubmitted ECT)");
-    state.throwIfAny();
+  public void checkApplicationUpdateRequest(final ApplicationUpdateRequest dto) {
+    ValidationErrors validationErrors = ValidationErrors
+        .empty()
+        .addIf((dto == null), "ApplicationUpdateRequest and its content cannot be null")
+        .addIf(dto.getApplicationContent() == null, "Application content cannot be null")
+        .addIf(dto.getApplicationContent().isEmpty(), "Application content cannot be empty");
+    if (!validationErrors.errors().isEmpty()) {
+      throw new ValidationException(
+          validationErrors
+              .errors()
+              .stream()
+              .distinct()
+              .toList());
+    }
   }
 
   /**
-   * Validate an ApplicationUpdateRequest instance.
-   *
-   * @param dto     DTO to validate.
-   * @param current existing persisted entity.
+   * Validates a list of application ids and throw ValidationException.
    */
-  public void checkApplicationUpdateRequest(final ApplicationUpdateRequest dto,
-                                          final ApplicationEntity current) {
-    ValidationErrors.empty()
-            .addIf(entra.hasAppRole("Provider")
-                            && !entra.hasAnyAppRole("Caseworker", "Administrator")
-                            && (dto.getClientId() != null),
-                    "BRR-03: Provider role cannot update the client date of birth or NI number")
-            .throwIfAny();
+  public void checkApplicationIdList(final List<UUID> appIds) {
+    if (appIds.stream().anyMatch(Objects::isNull)) {
+      throw new ValidationException(
+          List.of("Request contains null values for ids")
+      );
+    }
+  }
+
+  /**
+   * Validates an incoming apply Decision PATCH.
+   */
+  public void checkApplicationMakeDecisionRequest(final MakeDecisionRequest dto) {
+    if (dto == null || dto.getProceedings().isEmpty()) {
+      throw new ValidationException(
+              List.of("The Make Decision request must contain at least one proceeding")
+      );
+    }
+
+    dto.getProceedings().forEach(proceeding -> {
+      MeritsDecisionDetails mdd = proceeding.getMeritsDecision();
+      if (mdd.getReason() == null || mdd.getReason().isEmpty()) {
+        throw new ValidationException(
+            List.of("The Make Decision request must contain a refusal reason for proceeding with id: "
+                + proceeding.getProceedingId()));
+      }
+      if (mdd.getJustification() == null || mdd.getJustification().isEmpty()) {
+        throw new ValidationException(
+                List.of("The Make Decision request must contain a refusal justification for proceeding with id: "
+                        + proceeding.getProceedingId()));
+      }
+    });
   }
 }

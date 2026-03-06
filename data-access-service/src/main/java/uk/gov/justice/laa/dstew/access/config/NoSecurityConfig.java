@@ -6,11 +6,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 /**
  * Spring Security configuration if security is disabled (e.g. for development).
  */
+@ExcludeFromGeneratedCodeCoverage
 @ConditionalOnProperty(prefix = "feature", name = "disable-security", havingValue = "true")
 @Configuration
 class NoSecurityConfig {

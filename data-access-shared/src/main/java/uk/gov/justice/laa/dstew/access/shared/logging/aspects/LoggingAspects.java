@@ -29,6 +29,7 @@ public class LoggingAspects {
       Object[] argumentsArray = Objects.requireNonNullElse(joinPoint.getArgs(), new Object[] {});
       String allMethodArguments =
           Arrays.stream(argumentsArray)
+              .filter(arg -> arg != null)
               .map(Object::toString)
               .collect(Collectors.joining(",", "[", "]"));
 

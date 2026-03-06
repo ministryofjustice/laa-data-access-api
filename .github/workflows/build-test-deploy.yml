@@ -18,10 +18,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v5
         with:
-          java-version: 21
+          java-version: 25
           distribution: 'corretto'
 
       - name: Set up Gradle
@@ -36,7 +36,7 @@ jobs:
         run: ./gradlew jacocoTestCoverageVerification
 
       - name: Integration test
-        run: ./gradlew integrationTest --tests '*IntegrationTest'
+        run: ./gradlew integrationTest
 
       - name: Publish api models package
         run: |
@@ -107,10 +107,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v5
         with:
-          java-version: 21
+          java-version: 25
           distribution: 'corretto'
 
       - name: Set up Gradle

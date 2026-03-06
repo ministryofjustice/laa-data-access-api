@@ -23,6 +23,10 @@ project.ext.gitPackageKey = PAT_CREATED_ABOVE
 
 Go back to Github to authorize MOJ for SSO
 
+### Pre-commit hooks
+
+See `docs/pre-commit-hooks.md` for information on setting up and using pre-commit hooks in this project.
+
 ### Project structure
 Includes the following subprojects:
 
@@ -35,14 +39,22 @@ Includes the following subprojects:
 - Continue to update this `README.md` file to include information such as what this project does.
 - Agree provisional content of `CODEOWNERS` file and PR review policy (e.g. number of reviewers).
 - Ensure the project has been added to the [Legal Aid Agency Snyk](https://app.snyk.io/org/legal-aid-agency) organisation.
-- Check why `build-test-pr.yml` and `pr-merge-main.yml` were not brought across.
 
 ## Build and run application
 ### Developing application within Intellij
-Java version 21 is recommended
+Java version 25 is required
 
-Set the security environment variable
-`FEATURE_DISABLESECURITY=true`
+To update to Java 25:
+
+1. Download JDK 25 from https://www.oracle.com/uk/java/technologies/downloads/
+
+2. Configure IntelliJ IDEA:
+    - Go to **File** > **Project Structure** > **SDK**
+    - Select **Add JDK from disk** and choose your Java 25 installation
+    - Go to **IntelliJ IDEA** > **Settings** > **Build, Execution, Deployment** > **Build Tools** > **Gradle**
+    - Set **Gradle JVM** to Java 25
+
+Set the security environment variable `FEATURE_DISABLESECURITY=true`
 
 ### Build application
 Execute
@@ -77,6 +89,17 @@ followed by
 Then execute
 
 `./gradlew bootRun`
+
+### Useful gradle commands
+
+Prior to pushing code, it's useful to run the following commands to check code style:
+- `./gradlew checkStyleMain` - runs checkstyle on `main` source code
+- `./gradlew checkStyleTest` - runs checkstyle on `test` source code
+
+To generate coverage reports locally:
+- `./gradlew jacocoAggregatedReport` - generates aggregate coverage report
+
+The report will be available in `data-access-service/build/reports/jacoco/jacocoAggregatedReport/html/index.html`
 
 ### Dropping database tables (may not be applicable)
 You may need to drop database tables manually prior to running app so Flyway can create the latest schema. To do this:
@@ -124,3 +147,4 @@ sensible defaults for the following plugins:
 
 The plugin is provided by [laa-spring-boot-common](https://github.com/ministryofjustice/laa-spring-boot-common), where you can find
 more information regarding (required) setup and usage.
+

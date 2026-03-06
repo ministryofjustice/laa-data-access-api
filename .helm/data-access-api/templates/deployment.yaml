@@ -63,3 +63,4 @@ spec:
               value: {{ .Values.aws.region | quote }}
             - name: FEATURE_DISABLESECURITY
               value: "true"
+            {{ include "sentryConfig" . | nindent 12 }}

@@ -61,13 +61,20 @@ runs:
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
       run: |
         LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
+        echo "Environment: ${APP_ENVIRONMENT}"
+
+        if [ "${APP_ENVIRONMENT}" = "production" ]; then
+          SPRING_PROFILE="main"
+        else
+          SPRING_PROFILE="unsecured"
+        fi
 
         helm upgrade laa-data-access-api .helm/data-access-api \
           --namespace ${KUBE_NAMESPACE} \
           --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
           --set image.tag="${GIT_SHA}" \
           --set ingress.annotations."nginx\.ingress\.kubernetes\.io/whitelist-source-range"="$LAA_IPS" \
-          --set spring.profile="main" \
+          --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
           --values ${VALUES_FILE} \
           --install \
