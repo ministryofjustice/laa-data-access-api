@@ -63,3 +63,24 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
   value: "false"
 {{- end }}
 {{- end }}
+
+{{/*
+  Define OAuth2/Entra ID environment variables for authentication
+*/}}
+{{- define "oauth2Config" }}
+- name: ENTRA_ISSUER_URI
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: ENTRA_ISSUER_URI
+- name: ENTRA_JWK_SET_URI
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: ENTRA_JWK_SET_URI
+- name: ENTRA_AUD
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: ENTRA_AUD
+{{- end }}

@@ -81,7 +81,7 @@ public class CreateApplicationTest extends BaseServiceTest {
             .build()))
         .build();
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     // when
     UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
@@ -128,7 +128,7 @@ public class CreateApplicationTest extends BaseServiceTest {
             .build()))
         .build();
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     // when
     UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
@@ -163,7 +163,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     when(applicationRepository.findByApplyApplicationId(applyApplicationId))
         .thenReturn(null);
     when(applicationRepository.save(any())).thenReturn(withExpectedId);
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     // when
     assertThatExceptionOfType(ResourceNotFoundException.class)
@@ -202,7 +202,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     when(applicationRepository.findByApplyApplicationId(otherAssociatedApplication))
         .thenReturn(null);
     when(applicationRepository.save(any())).thenReturn(withExpectedId);
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     // when
     assertThatExceptionOfType(ResourceNotFoundException.class)
@@ -247,7 +247,7 @@ public class CreateApplicationTest extends BaseServiceTest {
   void mapToApplicationEntity_SuccessfullyMapFromApplicationContentFields(ApplicationCreateRequest application,
                                                                           boolean expectedUseDelegatedFunctions) {
     // Given
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     UUID expectedId = UUID.randomUUID();
     ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder -> builder.id(expectedId));
@@ -297,7 +297,7 @@ public class CreateApplicationTest extends BaseServiceTest {
   @Test
   public void givenDuplicateApplyApplicationId_whenCreateApplication_thenThrowValidationException() {
     // given
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     UUID applyApplicationId = UUID.randomUUID();
 
@@ -329,19 +329,18 @@ public class CreateApplicationTest extends BaseServiceTest {
       ApplicationCreateRequest applicationCreateRequest,
       ValidationException validationException
   ) {
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    Throwable thrown = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));
-    assertThat(thrown)
-        .isInstanceOf(ValidationException.class)
-        .usingRecursiveComparison()
-        .isEqualTo(validationException);
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));
+        assertThat(thrown)
+                .isInstanceOf(ValidationException.class)
+                .usingRecursiveComparison()
+                .isEqualTo(validationException);
 
-    verify(applicationRepository, never()).findById(any(UUID.class));
-    verify(applicationRepository, never()).save(any());
-    verify(domainEventRepository, never()).save(any());
-  }
-
+        verify(applicationRepository, never()).findById(any(UUID.class));
+        verify(applicationRepository, never()).save(any());
+        verify(domainEventRepository, never()).save(any());
+    }
 
   private Stream<Arguments> invalidApplicationRequests() {
     ValidationException validationException = new ValidationException(List.of(

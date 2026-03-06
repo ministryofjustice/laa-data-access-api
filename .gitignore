@@ -12,6 +12,8 @@ data-access-api/bin/
 data-access-service/bin/
 data-access-shared/bin/
 
+data-access-service/src/main/resources/application.yml
+
 ### IntelliJ IDEA ###
 .idea
 *.iws

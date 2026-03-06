@@ -45,6 +45,11 @@ class NoSecurityConfig {
       public boolean hasAnyAppRole(String... names) {
         return true;
       }
+
+      @Override
+      public boolean hasName() {
+          return true;
+      }
     };
   }
 }
