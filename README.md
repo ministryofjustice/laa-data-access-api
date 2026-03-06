@@ -146,5 +146,4 @@ sensible defaults for the following plugins:
 - [Versions](https://github.com/ben-manes/gradle-versions-plugin)
 
 The plugin is provided by [laa-spring-boot-common](https://github.com/ministryofjustice/laa-spring-boot-common), where you can find
-more information regarding (required) setup and usage.
-
+more information regarding (required) setup and usage
