@@ -127,6 +127,15 @@ public class ApplicationEntity implements AuditableEntity {
   )
   private Set<ApplicationEntity> linkedApplications;
 
+  @OneToMany
+  @JoinTable(
+      name = "proceedings",
+      joinColumns = @JoinColumn(name = "application_id"),
+      inverseJoinColumns = @JoinColumn(name = "id")
+  )
+  private Set<ProceedingEntity> proceedings;
+
+
   @Transient
   public boolean isLead() {
     return linkedApplications != null && !linkedApplications.isEmpty();

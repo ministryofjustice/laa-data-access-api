@@ -444,6 +444,7 @@ components:
         - status
         - laaReference
         - lastUpdated
+        - proceedings
       properties:
         applicationId:
           type: string
@@ -475,6 +476,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Opponent"
+        proceedings:
+          $ref: "#/components/schemas/ApplicationProceedings"
         provider:
           type: string
 
@@ -730,3 +733,42 @@ components:
           $ref: "#/components/schemas/EventHistory"
         autoGranted:
           type: boolean
+
+    ApplicationProceedings:
+      type: array
+      items:
+        $ref: "#/components/schemas/ApplicationProceeding"
+
+    ApplicationProceeding:
+      type: object
+      required:
+        - proceedingId
+      properties:
+        proceedingId:
+          type: string
+          format: uuid
+        proceedingType:
+          type: string
+        proceedingDescription:
+          type: string
+        usedDelegatedFunctionsOn:
+          type: string
+          format: date
+        categoryOfLaw:
+          type: string
+        matterType:
+          type: string
+        levelOfService:
+          type: string
+        substantiveCostLimitation:
+          type: string
+        scopeLimitations:
+          type: array
+          items:
+            type: object
+        meritsDecision:
+          $ref: "#/components/schemas/meritsDecisionStatus"
+        involvedChildren:
+          type: array
+          items:
+            type: object
