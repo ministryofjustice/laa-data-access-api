@@ -1,8 +1,11 @@
 package uk.gov.justice.laa.dstew.access.config;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +31,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.filter.OncePerRequestFilter;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
@@ -80,8 +84,12 @@ public class SecurityConfig {
             .anyRequest().authenticated())
         .oauth2ResourceServer(oauth2 -> oauth2
             .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+            .authenticationEntryPoint(authenticationEntryPoint())
         )
-        .csrf(AbstractHttpConfigurer::disable);
+        .csrf(AbstractHttpConfigurer::disable)
+        .exceptionHandling(exception -> exception
+            .authenticationEntryPoint(authenticationEntryPoint())
+        );
     return http.build();
   }
 
@@ -132,6 +140,22 @@ public class SecurityConfig {
     OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(issuerUri);
     jwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(withIssuer, audienceValidator));
     return jwtDecoder;
+  }
+
+  /**
+   * Configures an {@link AuthenticationEntryPoint} that handles authentication failures by logging the reason
+   * and sending a 401 Unauthorized response with an appropriate message.
+   *
+   * @return a configured AuthenticationEntryPoint bean
+   */
+  @Bean
+  public AuthenticationEntryPoint authenticationEntryPoint() {
+    Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
+    return (request, response, authException) -> {
+      String reason = authException.getMessage();
+      logger.warn("401 Unauthorized: {}", reason);
+      response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    };
   }
 
   /**
