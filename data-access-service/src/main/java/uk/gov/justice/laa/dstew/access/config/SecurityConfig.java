@@ -122,7 +122,7 @@ public class SecurityConfig {
     NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
 
     OAuth2TokenValidator<Jwt> audienceValidator = token -> {
-      if (token.getAudience().contains(audience)) {
+      if (token.getAudience().contains(audience) && token.getClaimAsString(APP_ROLES_CLAIM) != null) {
         return OAuth2TokenValidatorResult.success();
       }
       return OAuth2TokenValidatorResult.failure(
@@ -152,6 +152,12 @@ public class SecurityConfig {
         final var authorities = getAuthorities();
         return Arrays.stream(names)
             .anyMatch(name -> authorities.contains(AUTHORITY_PREFIX + name));
+      }
+
+      @Override
+      public boolean hasName() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.isAuthenticated() && !auth.getName().isBlank();
       }
 
       private Set<String> getAuthorities() {

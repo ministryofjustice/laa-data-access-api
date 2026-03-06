@@ -12,6 +12,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-@PreAuthorize("@entra.hasAppRole('LAA_CASEWORKER')")
+@PreAuthorize("@entra.hasAppRole('LAA_CASEWORKER') && @entra.hasName()")
 public @interface AllowApiCaseworker {
 }
