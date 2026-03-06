@@ -22,10 +22,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
@@ -66,12 +66,12 @@ public class IndividualEntity implements AuditableEntity {
   @Enumerated(EnumType.STRING)
   private IndividualType type;
 
-  @Column(name = "created_at")
-  @CreationTimestamp
+  @Column(name = "created_at", nullable = false, updatable = false)
+  @CreatedDate
   private Instant createdAt;
 
-  @Column(name = "modified_at")
-  @UpdateTimestamp
+  @Column(name = "modified_at", nullable = false)
+  @LastModifiedDate
   private Instant modifiedAt;
 
   @ManyToMany(mappedBy = "individuals")

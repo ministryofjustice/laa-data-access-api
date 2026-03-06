@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.caseworker;
 
+import java.time.Instant;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
@@ -8,8 +9,11 @@ import java.util.function.Consumer;
 public class CaseworkerFactoryImpl implements Factory<CaseworkerEntity, CaseworkerEntity.CaseworkerEntityBuilder> {
     @Override
     public CaseworkerEntity create() {
-        return CaseworkerEntity.builder()
+      Instant creationTime = Instant.now();
+      return CaseworkerEntity.builder()
                 .username("JohnDoe")
+            .createdAt(creationTime)
+            .modifiedAt(creationTime)
                 .build();
     }
 
