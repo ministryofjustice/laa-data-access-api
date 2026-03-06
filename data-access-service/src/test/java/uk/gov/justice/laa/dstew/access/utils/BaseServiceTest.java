@@ -17,6 +17,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
+import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
@@ -70,6 +71,9 @@ public class BaseServiceTest {
 
     @MockitoBean
     protected MeritsDecisionRepository meritsDecisionRepository;
+
+    @MockitoBean
+    protected CertificateRepository certificateRepository;
 
     @MockitoBean
     protected IndividualRepository individualRepository;

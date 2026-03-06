@@ -18,6 +18,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
+import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
@@ -35,6 +36,7 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
+import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
@@ -59,6 +61,7 @@ public class ApplicationService {
   private final DecisionRepository decisionRepository;
   private final ProceedingRepository proceedingRepository;
   private final MeritsDecisionRepository meritsDecisionRepository;
+  private final CertificateRepository certificateRepository;
   private final ProceedingsService proceedingsService;
   private final PayloadValidationService payloadValidationService;
 
@@ -80,6 +83,7 @@ public class ApplicationService {
                             final ApplicationContentParserService applicationContentParserService,
                             final ProceedingRepository proceedingRepository,
                             final MeritsDecisionRepository meritsDecisionRepository,
+                            final CertificateRepository certificateRepository,
                             final ProceedingsService proceedingsService, PayloadValidationService payloadValidationService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
@@ -94,6 +98,7 @@ public class ApplicationService {
     this.domainEventService = domainEventService;
     this.decisionRepository = decisionRepository;
     this.meritsDecisionRepository = meritsDecisionRepository;
+    this.certificateRepository = certificateRepository;
   }
 
   /**
@@ -348,7 +353,8 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
-    checkIfCaseworkerExists(request.getUserId());
+    final UUID userId = request.getUserId();
+    checkIfCaseworkerExists(userId);
 
     applicationValidations.checkApplicationMakeDecisionRequest(request);
 
@@ -394,6 +400,18 @@ public class ApplicationService {
     decision.setOverallDecision(DecisionStatus.valueOf(request.getOverallDecision().getValue()));
     decision.setModifiedAt(Instant.now());
     decisionRepository.save(decision);
+
+    // Persist certificate if overallDecision is GRANTED
+    if (decision.getOverallDecision() == DecisionStatus.GRANTED && request.getCertificate() != null) {
+      CertificateEntity certificate = CertificateEntity.builder()
+          .applicationId(applicationId)
+          .certificateContent(request.getCertificate())
+          .createdBy(String.valueOf(userId))
+          .updatedBy(String.valueOf(userId))
+          .build();
+
+      certificateRepository.save(certificate);
+    }
 
     if (decision.getOverallDecision() == DecisionStatus.REFUSED) {
       domainEventService.saveMakeDecisionRefusedDomainEvent(

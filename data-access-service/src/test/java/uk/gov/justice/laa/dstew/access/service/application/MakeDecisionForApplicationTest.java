@@ -49,6 +49,8 @@ import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGe
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionDetailsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.MakeDecisionProceedingGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateContentGenerator;
+import uk.gov.justice.laa.dstew.access.utils.testDto.certificate.CertificateContent;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
@@ -633,6 +635,168 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             .hasMessageContaining(nonExistentProceedingId.toString())
             .hasMessageContaining("Not linked to application:")
             .hasMessageContaining(unrelatedApplicationProceedingId.toString());
+  }
+
+  @Test
+  void givenGrantedDecisionWithoutCertificate_whenMakeDecision_thenValidationExceptionThrown() {
+    // given
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
+
+    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
+        requestBuilder
+            .userId(caseworker.getId())
+            .overallDecision(DecisionStatus.GRANTED)
+            .eventHistory(EventHistory.builder()
+                .eventDescription("granted event")
+                .build())
+            .proceedings(List.of(
+                createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "justification", "reason")
+            ))
+            .certificate(null)
+    );
+
+    ApplicationEntity applicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
+        builder
+            .id(applicationId)
+            .applicationContent(new HashMap<>(Map.of("test", "content")))
+            .caseworker(caseworker)
+    );
+
+    ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
+        builder.id(proceedingId).applicationId(applicationId)
+    );
+
+    setSecurityContext(TestConstants.Roles.WRITER);
+
+    when(caseworkerRepository.findById(caseworker.getId())).thenReturn(Optional.of(caseworker));
+    when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
+    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+
+    // when
+    Throwable thrown = catchThrowable(() ->
+        serviceUnderTest.makeDecision(applicationId, makeDecisionRequest)
+    );
+
+    // then
+    assertThat(thrown).isInstanceOf(ValidationException.class);
+    ValidationException validationException = (ValidationException) thrown;
+    assertThat(validationException.errors())
+        .contains("The Make Decision request must contain a certificate when overallDecision is GRANTED");
+
+    verify(certificateRepository, never()).save(any());
+    verify(applicationRepository, times(1)).findById(applicationId);
+    verify(applicationRepository, never()).save(any());
+  }
+
+  @Test
+  void givenGrantedDecisionWithCertificate_whenMakeDecision_thenCertificateSaved() {
+    // given
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder ->
+        builder.id(caseworkerId)
+    );
+
+    CertificateContent certificateContent = DataGenerator.createDefault(CertificateContentGenerator.class);
+    Map<String, Object> certificateData = objectMapper.convertValue(certificateContent, Map.class);
+
+    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
+        requestBuilder
+            .userId(caseworkerId)
+            .overallDecision(DecisionStatus.GRANTED)
+            .eventHistory(EventHistory.builder()
+                .eventDescription("granted event")
+                .build())
+            .proceedings(List.of(
+                createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "justification", "reason")
+            ))
+            .certificate(certificateData)
+    );
+
+    ApplicationEntity applicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
+        builder
+            .id(applicationId)
+            .applicationContent(new HashMap<>(Map.of("test", "content")))
+            .caseworker(caseworker)
+    );
+
+    ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
+        builder.id(proceedingId).applicationId(applicationId)
+    );
+
+    setSecurityContext(TestConstants.Roles.WRITER);
+
+    when(caseworkerRepository.findById(caseworker.getId())).thenReturn(Optional.of(caseworker));
+    when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
+    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+
+    // when
+    serviceUnderTest.makeDecision(applicationId, makeDecisionRequest);
+
+    // then
+    ArgumentCaptor<uk.gov.justice.laa.dstew.access.entity.CertificateEntity> certificateCaptor =
+        ArgumentCaptor.forClass(uk.gov.justice.laa.dstew.access.entity.CertificateEntity.class);
+    verify(certificateRepository, times(1)).save(certificateCaptor.capture());
+
+    uk.gov.justice.laa.dstew.access.entity.CertificateEntity savedCertificate = certificateCaptor.getValue();
+    assertThat(savedCertificate.getApplicationId()).isEqualTo(applicationId);
+    assertThat(savedCertificate.getCertificateContent()).isEqualTo(certificateData);
+    assertThat(savedCertificate.getCreatedBy()).isEqualTo(caseworkerId.toString());
+    assertThat(savedCertificate.getUpdatedBy()).isEqualTo(caseworkerId.toString());
+
+    verify(applicationRepository, times(1)).findById(applicationId);
+    verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
+    verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+  }
+
+  @Test
+  void givenRefusedDecisionWithoutCertificate_whenMakeDecision_thenNoCertificateSaved() {
+    // given
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
+
+    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
+        requestBuilder
+            .userId(caseworker.getId())
+            .overallDecision(DecisionStatus.REFUSED)
+            .eventHistory(EventHistory.builder()
+                .eventDescription("refusal event")
+                .build())
+            .proceedings(List.of(
+                createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.REFUSED, "justification", "reason")
+            ))
+            .certificate(null)
+    );
+
+    ApplicationEntity applicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
+        builder
+            .id(applicationId)
+            .applicationContent(new HashMap<>(Map.of("test", "content")))
+            .caseworker(caseworker)
+    );
+
+    ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
+        builder.id(proceedingId).applicationId(applicationId)
+    );
+
+    setSecurityContext(TestConstants.Roles.WRITER);
+
+    when(caseworkerRepository.findById(caseworker.getId())).thenReturn(Optional.of(caseworker));
+    when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
+    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+
+    // when
+    serviceUnderTest.makeDecision(applicationId, makeDecisionRequest);
+
+    // then
+    verify(certificateRepository, never()).save(any());
+    verify(applicationRepository, times(1)).findById(applicationId);
+    verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
+    verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
   }
 
   private DecisionEntity createDecisionEntityWithProceeding(
