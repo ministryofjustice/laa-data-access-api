@@ -35,7 +35,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class DomainEventEntity {
   @Id
-  @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
+  @GeneratedValue(strategy = jakarta.persistence.GenerationType.AUTO)
   @Column(columnDefinition = "UUID")
   private UUID id;
 

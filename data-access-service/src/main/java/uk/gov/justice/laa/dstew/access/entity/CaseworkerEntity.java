@@ -32,7 +32,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class CaseworkerEntity {
   @Id
-  @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
+  @GeneratedValue(strategy = jakarta.persistence.GenerationType.AUTO)
   @Column(columnDefinition = "UUID")
   private UUID id;
 

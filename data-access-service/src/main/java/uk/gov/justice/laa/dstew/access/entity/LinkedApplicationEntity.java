@@ -33,7 +33,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 public class LinkedApplicationEntity {
 
   @Id
-  @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
+  @GeneratedValue(strategy = jakarta.persistence.GenerationType.AUTO)
   @Column(columnDefinition = "UUID")
   private UUID id;
 

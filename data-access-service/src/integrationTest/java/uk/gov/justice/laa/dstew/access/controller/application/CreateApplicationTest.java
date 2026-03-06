@@ -1,9 +1,9 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertCreated;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;

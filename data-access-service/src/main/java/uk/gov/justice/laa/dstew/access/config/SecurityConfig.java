@@ -1,8 +1,7 @@
 package uk.gov.justice.laa.dstew.access.config;
 
-import static org.springframework.security.config.Customizer.withDefaults;
+import static org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher.withDefaults;
 
-import com.azure.spring.cloud.autoconfigure.implementation.aad.security.AadResourceServerHttpSecurityConfigurer;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -34,10 +33,9 @@ public class SecurityConfig {
    *
    * @param http Used to configure web security.
    * @return The built security configuration.
-   * @throws Exception if anything went wrong.
    */
   @Bean
-  SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
+  SecurityFilterChain securityFilterChain(final HttpSecurity http) {
     http
         .authorizeHttpRequests(authorize -> authorize
             .requestMatchers("/actuator/health", "/actuator/info").permitAll()
