@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.entity;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import com.vladmihalcea.hibernate.type.json.JsonType;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -30,8 +29,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -55,7 +55,7 @@ public class ApplicationEntity implements AuditableEntity {
 
   @Id
   @Column(columnDefinition = "UUID")
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @GeneratedValue(strategy = GenerationType.AUTO)
   private UUID id;
 
   @Column(name = "status", nullable = false)
@@ -68,7 +68,7 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "office_code")
   private String officeCode;
 
-  @Type(JsonType.class)
+  @JdbcTypeCode(SqlTypes.JSON)
   @Column(columnDefinition = "json")
   private Map<String, Object> applicationContent;
 
@@ -142,8 +142,8 @@ public class ApplicationEntity implements AuditableEntity {
   }
 
   /**
-  * adds an application to the set of linked applications.
-  */
+   * adds an application to the set of linked applications.
+   */
   public void addLinkedApplication(ApplicationEntity toAdd) {
     if (linkedApplications == null) {
       linkedApplications = new HashSet<>();
