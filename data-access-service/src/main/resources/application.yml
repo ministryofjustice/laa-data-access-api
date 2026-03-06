@@ -24,7 +24,9 @@ spring:
         app-id-uri: ${ENTRA_APP_ID_URI}
         profile:
           tenant-id: ${ENTRA_TENANT_ID}
-
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
 info:
   app:
     name: LAA Data Stewardship Access - Access Application Data

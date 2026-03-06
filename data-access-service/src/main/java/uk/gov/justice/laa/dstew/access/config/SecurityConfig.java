@@ -1,8 +1,10 @@
 package uk.gov.justice.laa.dstew.access.config;
 
-import static org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher.withDefaults;
+import static org.springframework.security.config.Customizer.withDefaults;
 
+import com.azure.spring.cloud.autoconfigure.implementation.aad.security.AadResourceServerHttpSecurityConfigurer;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -71,6 +73,7 @@ public class SecurityConfig {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return (auth != null && auth.isAuthenticated()) ? auth.getAuthorities().stream()
             .map(GrantedAuthority::getAuthority)
+            .filter(Objects::nonNull)
             .collect(Collectors.toUnmodifiableSet()) : Set.of();
       }
     };
