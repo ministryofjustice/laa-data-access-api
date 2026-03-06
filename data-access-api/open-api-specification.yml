@@ -20,6 +20,16 @@ paths:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1decision"
   /api/v0/individuals:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1individuals"
+  /sds/save-file:
+    $ref: "./open-api-application-specification.yml#/paths/~1sds~1save-file"
+  /sds/save-or-update-file:
+    $ref: "./open-api-application-specification.yml#/paths/~1sds~1save-or-update-file"
+  /sds/file/{id}:
+    $ref: "./open-api-application-specification.yml#/paths/~1sds~1file~1{id}"
+  /sds/delete-files:
+    $ref: "./open-api-application-specification.yml#/paths/~1sds~1delete-files"
+  /sds/health:
+    $ref: "./open-api-application-specification.yml#/paths/~1sds~1health"
 
 components:
   schemas:
@@ -49,3 +59,9 @@ components:
       $ref: "./open-api-application-specification.yml#/components/schemas/Individual"
     IndividualsResponse:
       $ref: "./open-api-application-specification.yml#/components/schemas/IndividualsResponse"
+    SdsGetFileResponse:
+      $ref: "./open-api-application-specification.yml#/components/schemas/SdsGetFileResponse"
+    SdsSaveFileResponse:
+      $ref: "./open-api-application-specification.yml#/components/schemas/SdsSaveFileResponse"
+    SdsHealthResponse:
+      $ref: "./open-api-application-specification.yml#/components/schemas/SdsHealthResponse"

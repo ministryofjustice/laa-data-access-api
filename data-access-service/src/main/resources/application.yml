@@ -15,6 +15,19 @@ spring:
 
   sql.init.mode: never # Use Flyway for DB schema.
 
+  security:
+    oauth2:
+      client:
+        registration:
+          moj-identity:
+            client-id: ${AUTH_CLIENT_ID}
+            client-secret: ${AUTH_CLIENT_SECRET}
+            scope: ${AUTH_SCOPE}
+            authorization-grant-type: client_credentials
+        provider:
+          moj-identity:
+            issuer-uri: https://login.microsoftonline.com/${AUTH_TENANT_ID}/oauth2/v2.0/token
+
   cloud:
     azure:
       active-directory:
@@ -45,6 +58,13 @@ management:
   endpoints.web.exposure.include: health,info
   endpoint.health.show-details: always
   info.env.enabled: true
+
+app:
+  sds-api:
+    url: ${SDS_API_URL}
+    bucket-name: ${SDS_API_BUCKET}
+    client-registration-id: ${SDS_API_CLIENT_REGISTRATION_ID}
+    principal-name: ${SDS_API_PRINCIPAL_NAME}
 
 sentry:
   enabled: ${SENTRY_ENABLED:false}

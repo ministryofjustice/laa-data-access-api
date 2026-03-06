@@ -340,6 +340,121 @@ paths:
         '401': { description: Unauthorized }
         '403': { description: Forbidden }
         '500': { description: Internal server error }
+  /sds/file/{id}:
+    get:
+        tags:
+            - sds
+        summary: Get a file from SDS by ID
+        operationId: getFile
+        parameters:
+          - in: path
+            name: id
+            required: true
+            schema:
+              type: string
+        responses:
+          '200':
+            description: OK
+            content:
+                application/json:
+                    schema:
+                      $ref: "#/components/schemas/SdsGetFileResponse"
+          '401': { description: Unauthorized }
+          '403': { description: Forbidden }
+          '404': { description: File not found }
+          '503': { description: Internal server error }
+  /sds/save-file:
+    post:
+      tags:
+        - sds
+      summary: Save a file to SDS and return the file ID
+      operationId: saveFile
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SdsSaveFileResponse"
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '409': { description: Conflict - file with same name already exists }
+        '500': { description: Internal server error }
+  /sds/save-or-update-file:
+    put:
+      tags:
+        - sds
+      summary: Save or update a file to SDS and return the file checksum
+      operationId: saveOrUpdateFile
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SdsSaveFileResponse"
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '500': { description: Internal server error }
+  /sds/delete-files:
+    delete:
+      tags:
+        - sds
+      summary: Delete files from SDS by IDs
+      operationId: deleteFiles
+      parameters:
+        - in: query
+          name: file_keys
+          required: true
+          description: Comma-separated list of file IDs to delete
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: 'Files deleted successfully'
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '500': { description: Internal server error }
+  /sds/health:
+    get:
+      tags:
+        - sds
+      summary: Check SDS Api health
+      operationId: getSdsHealth
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SdsHealthResponse"
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '503': { description: Internal server error }
 components:
   parameters:
     XServiceName:
@@ -730,3 +845,25 @@ components:
           $ref: "#/components/schemas/EventHistory"
         autoGranted:
           type: boolean
+
+    SdsGetFileResponse:
+      type: object
+      properties:
+        fileURL:
+          type: string
+
+    SdsSaveFileResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        success:
+          type: string
+        checksum:
+          type: string
+
+    SdsHealthResponse:
+        type: object
+        properties:
+          Health:
+            type: string
