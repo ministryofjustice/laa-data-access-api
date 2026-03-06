@@ -14,6 +14,8 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 public interface ApplicationRepository extends JpaRepository<ApplicationEntity, UUID> {
   ApplicationEntity findByApplyApplicationId(UUID applyApplicationId);
 
+  boolean existsByApplyApplicationId(UUID applyApplicationId);
+
   List<ApplicationEntity> findAllByApplyApplicationIdIn(List<UUID> applyApplicationIds);
 }
 
