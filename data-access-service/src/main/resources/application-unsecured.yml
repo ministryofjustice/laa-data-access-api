@@ -16,14 +16,13 @@ spring:
     aws:
       region: ${AWS_REGION}
 
-    azure:
-      active-directory:
-        enabled: true
-        credential:
-          client-id: ${ENTRA_CLIENT_ID}
-        app-id-uri: ${ENTRA_APP_ID_URI}
-        profile:
-          tenant-id: ${ENTRA_TENANT_ID}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${ENTRA_ISSUER_URI}
+          jwk-set-uri: ${ENTRA_JWK_SET_URI}
+          audience: ${ENTRA_AUD}
 
 info:
   app:
