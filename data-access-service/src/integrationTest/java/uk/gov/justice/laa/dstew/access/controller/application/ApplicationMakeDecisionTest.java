@@ -607,12 +607,15 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                 makeDecisionRequest
         );
 
-        // Verify certificate was persisted
+        verifyCertificateSavedCorrectly(applicationEntity.getId());
+    }
+
+    private void verifyCertificateSavedCorrectly(UUID applicationId) {
         List<CertificateEntity> certificates = certificateRepository.findAll();
         assertThat(certificates.size()).isEqualTo(1);
 
         CertificateEntity certificate = certificates.get(0);
-        assertThat(certificate.getApplicationId()).isEqualTo(applicationEntity.getId());
+        assertThat(certificate.getApplicationId()).isEqualTo(applicationId);
         assertThat(certificate.getCertificateContent()).isNotNull();
         assertThat(certificate.getCertificateContent().get("certificateNumber")).isEqualTo("TESTCERT001");
         assertThat(certificate.getCertificateContent().get("issueDate")).isEqualTo("2026-03-03");

@@ -49,6 +49,8 @@ import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGe
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionDetailsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.MakeDecisionProceedingGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateContentGenerator;
+import uk.gov.justice.laa.dstew.access.utils.testDto.certificate.CertificateContent;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
@@ -698,9 +700,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         builder.id(caseworkerId)
     );
 
-    Map<String, Object> certificateData = new HashMap<>();
-    certificateData.put("certificateNumber", "TESTCERT001");
-    certificateData.put("issueDate", "2026-03-03");
+    CertificateContent certificateContent = DataGenerator.createDefault(CertificateContentGenerator.class);
+    Map<String, Object> certificateData = objectMapper.convertValue(certificateContent, Map.class);
 
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
