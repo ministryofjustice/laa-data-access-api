@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.mapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -121,7 +122,15 @@ public interface ApplicationMapper {
                 ApplicationProceeding applicationProceeding =
                     proceedingMapper.toApplicationProceeding(proceeding);
 
-                applicationProceeding.setInvolvedChildren(getInvolvedChildren(entity));
+                List<Map<String, Object>> involvedChildren = getInvolvedChildren(entity);
+                if (involvedChildren != null) {
+                  List<Object> children = new ArrayList<>();
+                  involvedChildren.forEach(c -> children.add(c));
+                  applicationProceeding.setInvolvedChildren(children);
+                } else {
+                  applicationProceeding.setInvolvedChildren(null);
+                }
+
                 if (entity.getDecision() != null) {
                   Optional<MeritsDecisionEntity> meritsDecision =
                           entity.getDecision().getMeritsDecisions().stream()
@@ -138,7 +147,7 @@ public interface ApplicationMapper {
     return application;
   }
 
-  private static List<Object> getInvolvedChildren(ApplicationEntity entity) {
+  private static List<Map<String, Object>> getInvolvedChildren(ApplicationEntity entity) {
 
     ApplicationContent applicationContent = MapperUtil.getObjectMapper()
                     .convertValue(entity.getApplicationContent(), ApplicationContent.class);
@@ -148,7 +157,7 @@ public interface ApplicationMapper {
       return null;
     }
 
-    return (List<Object>) meritsObj.getAdditionalContent().get("involvedChildren");
+    return meritsObj.getInvolvedChildren();
   }
 
   private static List<Individual> getIndividuals(Set<IndividualEntity> individuals) {

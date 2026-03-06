@@ -26,6 +26,9 @@ public class ApplicationMerits {
   @Nullable
   private List<OpponentDetails> opponents = new ArrayList<>();
 
+  @Nullable
+  private List<Map<String, Object>> involvedChildren;
+
   @JsonAnyGetter
   private Map<String, Object> additionalContent;
 

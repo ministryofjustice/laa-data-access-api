@@ -9,15 +9,14 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
-import uk.gov.justice.laa.dstew.access.model.Application;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
-import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMeritsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
@@ -40,41 +39,31 @@ public class GetApplicationTest extends BaseServiceTest {
     @Test
     public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {
         // given
-        ProceedingEntity proceeding =
-                DataGenerator.createDefault(
-                        ProceedingsEntityGenerator.class,
-                        builder -> builder.id(UUID.randomUUID())
-                                                                .proceedingContent(Map.of(
-                                                                    "meaning", "mean",
-                                                                        "matterType", "SCA",
-                                                                        "categoryOfLaw", "FAMILY",
-                                                                        "usedDelegatedFunctionsOn", "2025-05-06",
-                                                                        "substantiveCostLimitation", "3.56",
-                                                                        "substantiveLevelOfServiceName", "myService",
-                                                                        "scopeLimitations", List.of(
-                                                                                Map.of(
-                                                                                "id", "100",
-                                                                                "code", "AB123D",
-                                                                                "meaning", "hearing"
-                                                                                )
-                                                                            )
-                                                                        )
-                                                                        ));
+        ProceedingEntity proceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class,
+builder -> builder
+                .proceedingContent(Map.of(
+                "meaning", "hearing",
+                "matterType", "SPECIAL_CHILDREN_ACT",
+                "categoryOfLaw", "Family",
+                "usedDelegatedFunctionsOn", "2025-05-06",
+                "substantiveCostLimitation", "23.45",
+                "substantiveLevelOfServiceName", "service",
+                "scopeLimitations", List.of(
+                        Map.of(
+                        "id", "100",
+                        "code", "AB123D",
+                        "meaning", "hearing"
+                        )
+                    )
+            )
+        ));
+
         ApplicationEntity expectedApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class);
+
         expectedApplication.setDecision(DataGenerator.createDefault(DecisionEntityGenerator.class));
         expectedApplication.getDecision().setMeritsDecisions(
                 Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class,
                         builder -> builder.proceeding(proceeding))));
-
-        Map<String, Object> applicationContent = expectedApplication.getApplicationContent();
-        applicationContent.put("applicationMerits",
-                Map.of("involvedChildren",
-                    List.of(
-                        Map.of("first_name", "John",
-                                "last_name", "Smith",
-                                "date_of_birth", "Mon Aug 20 2022 20:20:00 GMT+0100 (British Summer Time)")
-                    )
-                ));
 
         expectedApplication.setProceedings(Set.of(proceeding));
         when(applicationRepository.findById(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
@@ -90,10 +79,14 @@ public class GetApplicationTest extends BaseServiceTest {
                                             actualApplication.getProceedings(),
                 MeritsDecisionStatus.REFUSED);
         assertThat(actualApplication.getProceedings().getFirst().getInvolvedChildren()).hasSize(1);
-        Map<String, Object> data = (Map<String, Object>) actualApplication.getProceedings().getFirst().getInvolvedChildren().getFirst();
-        assertThat(data.get("first_name")).isEqualTo("John");
-        assertThat(data.get("last_name")).isEqualTo("Smith");
-        assertThat(data.get("date_of_birth")).isEqualTo("Mon Aug 20 2022 20:20:00 GMT+0100 (British Summer Time)");
+
+        Map<String, Object> actualApplicationInvolvedChild =
+                objectMapper.convertValue(actualApplication.getProceedings().getFirst().getInvolvedChildren().getFirst(), Map.class);
+        ApplicationContent expectedApplicationContent =
+                objectMapper.convertValue(expectedApplication.getApplicationContent(), ApplicationContent.class);
+
+        assertThat(expectedApplicationContent.getApplicationMerits().getInvolvedChildren().getFirst())
+                .isEqualTo(actualApplicationInvolvedChild);
         verify(applicationRepository, times(1)).findById(expectedApplication.getId());
     }
 
