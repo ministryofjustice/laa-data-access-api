@@ -39,24 +39,7 @@ public class GetApplicationTest extends BaseServiceTest {
     @Test
     public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {
         // given
-        ProceedingEntity proceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class,
-builder -> builder
-                .proceedingContent(Map.of(
-                "meaning", "hearing",
-                "matterType", "SPECIAL_CHILDREN_ACT",
-                "categoryOfLaw", "Family",
-                "usedDelegatedFunctionsOn", "2025-05-06",
-                "substantiveCostLimitation", "23.45",
-                "substantiveLevelOfServiceName", "service",
-                "scopeLimitations", List.of(
-                        Map.of(
-                        "id", "100",
-                        "code", "AB123D",
-                        "meaning", "hearing"
-                        )
-                    )
-            )
-        ));
+        ProceedingEntity proceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class);
 
         ApplicationEntity expectedApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class);
 
