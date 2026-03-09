@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "IndividualType.json",
+  "title": "IndividualType",
+  "description": "Individual type",
+  "type": "string",
+  "enum": [
+    "CLIENT"
+  ]
+}

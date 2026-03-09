@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "Applicant.json",
+  "title": "Applicant",
+  "description": "An applicant associated with the application",
+  "type": "object",
+  "required": [
+    "id",
+    "addresses"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the applicant"
+    },
+    "addresses": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "Address.json"
+      },
+      "description": "List of addresses associated with the applicant"
+    }
+  },
+  "additionalProperties": true
+}
