@@ -101,7 +101,7 @@ public interface ApplicationMapper {
             : null
     );
     application.setIsLead(entity.isLead());
-    application.setUseDelegatedFunctions(entity.getUsedDelegatedFunctions());
+    application.setUsedDelegatedFunctions(entity.getUsedDelegatedFunctions());
     application.setAutoGrant(entity.getIsAutoGranted());
     if (entity.getDecision() != null) {
       application.setOverallDecision(entity.getDecision().getOverallDecision());

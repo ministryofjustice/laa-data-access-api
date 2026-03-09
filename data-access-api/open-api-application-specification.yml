@@ -463,7 +463,7 @@ components:
           format: date-time
         isLead:
           type: boolean
-        useDelegatedFunctions:
+        usedDelegatedFunctions:
           type: boolean
         autoGrant:
           type: boolean
