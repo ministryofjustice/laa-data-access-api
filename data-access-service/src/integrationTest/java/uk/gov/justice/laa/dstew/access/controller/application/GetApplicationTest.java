@@ -79,23 +79,6 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
         ProceedingEntity proceeding = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class, builder -> {
             builder.applicationId(application.getId());
-            builder.proceedingContent(
-                    Map.of(
-                            "categoryOfLaw","FAMILY",
-                            "matterType", "SCA",
-                            "substantiveLevelOfServiceName","service1",
-                            "meaning","meaning 1",
-                            "usedDelegatedFunctionsOn", "2025-10-01",
-                            "substantiveCostLimitation","1.0",
-                            "scopeLimitations", List.of(
-                                    Map.of(
-                                            "id", "100",
-                                            "code", "AB123D",
-                                            "meaning", "hearing"
-                                    )
-                            )
-                    )
-            );
         });
 
         DecisionEntity decision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
