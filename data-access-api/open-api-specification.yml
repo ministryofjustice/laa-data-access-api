@@ -21,15 +21,15 @@ paths:
   /api/v0/individuals:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1individuals"
   /sds/save-file:
-    $ref: "./open-api-application-specification.yml#/paths/~1sds~1save-file"
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1sds~1save-file"
   /sds/save-or-update-file:
-    $ref: "./open-api-application-specification.yml#/paths/~1sds~1save-or-update-file"
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1sds~1save-or-update-file"
   /sds/file/{id}:
-    $ref: "./open-api-application-specification.yml#/paths/~1sds~1file~1{id}"
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1sds~1file~1{id}"
   /sds/delete-files:
-    $ref: "./open-api-application-specification.yml#/paths/~1sds~1delete-files"
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1sds~1delete-files"
   /sds/health:
-    $ref: "./open-api-application-specification.yml#/paths/~1sds~1health"
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1sds~1health"
 
 components:
   schemas:
