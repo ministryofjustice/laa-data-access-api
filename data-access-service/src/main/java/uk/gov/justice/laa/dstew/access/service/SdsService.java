@@ -54,7 +54,6 @@ public class SdsService {
           throw new FileConflictException("File already exists in SDS");
         })
         .body(SdsSaveFileResponse.class);
-    log.info("Body: {}", sdsSaveFileResponse.getSuccess());
     return sdsSaveFileResponse;
   }
 
@@ -76,7 +75,6 @@ public class SdsService {
         .body(builder.build())
         .retrieve()
         .body(SdsSaveFileResponse.class);
-    log.info("Body: {}", sdsSaveFileResponse.getSuccess());
     return sdsSaveFileResponse;
   }
 
@@ -98,8 +96,6 @@ public class SdsService {
         })
         .body(SdsGetFileResponse.class);
 
-    log.info("Body: {}", sdsGetFileResponse);
-
     return sdsGetFileResponse;
   }
 
@@ -116,7 +112,6 @@ public class SdsService {
         .retrieve()
         .body(String.class);
 
-    log.info("Body: {}", response);
     if (response == null) {
       throw new RuntimeException("Failed to get health status from SDS");
     }
@@ -135,8 +130,6 @@ public class SdsService {
         .accept(MediaType.APPLICATION_JSON)
         .retrieve()
         .body(SdsHealthResponse.class);
-
-    log.info("Body: {}", sdsHealthResponse);
 
     return sdsHealthResponse;
   }
