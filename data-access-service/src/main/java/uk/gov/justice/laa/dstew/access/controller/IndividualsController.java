@@ -18,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.service.IndividualsService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
  * REST controller for managing individuals.
@@ -53,6 +54,8 @@ public class IndividualsController implements IndividualsApi {
       UUID applicationId,
       IndividualType type
   ) {
+    validateRequest(applicationId, include);
+
     PaginationHelper.PaginatedResult<Individual> result =
         individualsService.getIndividuals(page, pageSize, applicationId, type);
 
@@ -68,5 +71,17 @@ public class IndividualsController implements IndividualsApi {
     response.setPaging(paging);
 
     return ResponseEntity.ok(response);
+  }
+
+  private void validateRequest(UUID applicationId, IncludedAdditionalData includedDataTypes) {
+    if (includedDataTypes == null) {
+      return;
+    }
+
+    if (includedDataTypes == IncludedAdditionalData.CLIENT_DETAILS) {
+      if (applicationId == null) {
+        throw new ValidationException(List.of("Application ID is required when included data is CLIENT_DETAILS"));
+      }
+    }
   }
 }
