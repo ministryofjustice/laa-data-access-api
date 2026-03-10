@@ -300,7 +300,7 @@ public class GetApplicationsTest extends BaseServiceTest {
     }
 
     @Test
-    public void givenOnlyLeads_whenGetApplications_thenLinkedApplicationsContainsAssociatesNotSelf() {
+    public void givenOnlyLead_whenGetApplications_thenLinkedApplicationsContainsAssociateNotSelf() {
         // given
         setSecurityContext(TestConstants.Roles.READER);
 
