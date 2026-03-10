@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.service.applicationSummary;
 
 import java.util.Set;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -300,36 +299,6 @@ public class GetApplicationsTest extends BaseServiceTest {
         assertThat(result.page().getContent()).hasSize(5);
     }
 
-    private void assertApplicationSummaryListsEqual(List<ApplicationSummary> actualList, List<ApplicationSummaryEntity> expectedList) {
-        assertThat(actualList).hasSameSizeAs(expectedList);
-
-        for (ApplicationSummaryEntity expected : expectedList) {
-            boolean match = actualList.stream()
-                    .anyMatch(actual -> {
-                        try {
-                            assertApplicationSummaryEqual(expected, actual);
-                            return true;
-                        } catch (AssertionError e) {
-                            return false;
-                        }
-                    });
-            assertThat(match)
-                    .as("No matching ApplicationSummaryEntity found for expected: " + expected)
-                    .isTrue();
-        }
-    }
-
-    private void assertApplicationSummaryEqual(ApplicationSummaryEntity expected, ApplicationSummary actual) {
-        assertThat(expected.getId()).isEqualTo(actual.getApplicationId());
-        assertThat(expected.getLaaReference()).isEqualTo(actual.getLaaReference());
-        assertThat(expected.getStatus()).isEqualTo(actual.getStatus());
-        assertThat(expected.getMatterType()).isEqualTo(actual.getMatterType());
-        assertThat(expected.getModifiedAt().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(actual.getLastUpdated().toInstant().truncatedTo(ChronoUnit.SECONDS));
-        if (expected.getCaseworker() != null) {
-            assertThat(expected.getCaseworker().getId()).isEqualTo(actual.getAssignedTo());
-        }
-    }
-
     @Test
     public void givenOnlyLeads_whenGetApplications_thenLinkedApplicationsContainsAssociatesNotSelf() {
         // given
@@ -370,6 +339,7 @@ public class GetApplicationsTest extends BaseServiceTest {
 
     @Test
     public void givenAssociatesOfSameLead_whenGetApplications_thenEachAssociateSeesLeadAndSiblingNotSelf() {
+        // given
         setSecurityContext(TestConstants.Roles.READER);
 
         UUID leadId = UUID.randomUUID();
@@ -410,6 +380,7 @@ public class GetApplicationsTest extends BaseServiceTest {
 
     @Test
     public void givenAssociatesOfDifferentLeads_whenGetApplications_thenNoGroupCrossContamination() {
+        // given
         setSecurityContext(TestConstants.Roles.READER);
 
         UUID firstLeadId = UUID.randomUUID();
@@ -441,23 +412,18 @@ public class GetApplicationsTest extends BaseServiceTest {
             .extracting(LinkedApplicationSummary::getApplicationId)
             .containsExactlyInAnyOrder(firstLeadId);
         assertThat(firstAssociate.getLinkedApplications())
-            .noneMatch(la -> {
-              Assertions.assertNotNull(la.getApplicationId());
-              return la.getApplicationId().equals(secondAssociateApplication.getId());
-            });
+            .noneMatch(la -> la.getApplicationId().equals(secondAssociateApplication.getId()));
 
         assertThat(secondAssociate.getLinkedApplications())
             .extracting(LinkedApplicationSummary::getApplicationId)
             .containsExactlyInAnyOrder(secondLeadId);
         assertThat(secondAssociate.getLinkedApplications())
-            .noneMatch(la -> {
-              Assertions.assertNotNull(la.getApplicationId());
-              return la.getApplicationId().equals(firstAssociateApplication.getId());
-            });
+            .noneMatch(la -> la.getApplicationId().equals(firstAssociateApplication.getId()));
     }
 
     @Test
     public void givenOnlyStandalone_whenGetApplications_thenLinkedApplicationsIsEmpty() {
+        // given
         setSecurityContext(TestConstants.Roles.READER);
 
         ApplicationSummaryEntity standaloneApplication = applicationSummaryEntityFactory.createDefault();
@@ -475,5 +441,35 @@ public class GetApplicationsTest extends BaseServiceTest {
         assertThat(actualApplications).hasSize(1);
         assertThat(actualApplications).allMatch(r -> r.getLinkedApplications().isEmpty());
         verify(applicationRepository, never()).findAllLinkedApplicationsByLeadIds(any());
+    }
+
+    private void assertApplicationSummaryListsEqual(List<ApplicationSummary> actualList, List<ApplicationSummaryEntity> expectedList) {
+        assertThat(actualList).hasSameSizeAs(expectedList);
+
+        for (ApplicationSummaryEntity expected : expectedList) {
+            boolean match = actualList.stream()
+                    .anyMatch(actual -> {
+                        try {
+                            assertApplicationSummaryEqual(expected, actual);
+                            return true;
+                        } catch (AssertionError e) {
+                            return false;
+                        }
+                    });
+            assertThat(match)
+                    .as("No matching ApplicationSummaryEntity found for expected: " + expected)
+                    .isTrue();
+        }
+    }
+
+    private void assertApplicationSummaryEqual(ApplicationSummaryEntity expected, ApplicationSummary actual) {
+        assertThat(expected.getId()).isEqualTo(actual.getApplicationId());
+        assertThat(expected.getLaaReference()).isEqualTo(actual.getLaaReference());
+        assertThat(expected.getStatus()).isEqualTo(actual.getStatus());
+        assertThat(expected.getMatterType()).isEqualTo(actual.getMatterType());
+        assertThat(expected.getModifiedAt().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(actual.getLastUpdated().toInstant().truncatedTo(ChronoUnit.SECONDS));
+        if (expected.getCaseworker() != null) {
+            assertThat(expected.getCaseworker().getId()).isEqualTo(actual.getAssignedTo());
+        }
     }
 }
