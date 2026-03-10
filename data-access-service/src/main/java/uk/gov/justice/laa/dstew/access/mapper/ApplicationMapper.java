@@ -31,8 +31,6 @@ import uk.gov.justice.laa.dstew.access.model.Provider;
 public interface ApplicationMapper {
 
   IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
-  ProceedingMapper proceedingMapper = Mappers.getMapper(ProceedingMapper.class);
-
   /**
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
    *
@@ -115,7 +113,7 @@ public interface ApplicationMapper {
     if (entity.getVersion() == null) {
       throw new IllegalArgumentException("Application version cannot be null");
     }
-    application.setVersion(Integer.getInteger(entity.getVersion().toString()));
+    application.setVersion(entity.getVersion());
 
     return application;
   }

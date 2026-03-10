@@ -21,7 +21,7 @@ public class ApplicationUpdateRequestFactory extends BaseFactory<ApplicationUpda
     return ApplicationUpdateRequest.builder()
         .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
         .applicationContent(new HashMap<>(Map.of("test", "changed")))
-        .version(0)
+        .version(0L)
         .build();
   }
 }

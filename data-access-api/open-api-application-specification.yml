@@ -490,6 +490,7 @@ components:
           $ref: "#/components/schemas/Provider"
         version:
           type: integer
+          format: int64
 
     Provider:
       type: object
@@ -536,6 +537,7 @@ components:
           minProperties: 1
         version:
           type: integer
+          format: int64
           description: The current version of the application being updated, used for optimistic locking
 
     ApplicationSummary:
