@@ -479,6 +479,12 @@ components:
         proceedings:
           $ref: "#/components/schemas/ApplicationProceedings"
         provider:
+          $ref: "#/components/schemas/Provider"
+
+    Provider:
+      type: object
+      properties:
+        officeCode:
           type: string
 
     ApplicationCreateRequest:

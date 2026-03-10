@@ -28,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.Opponent;
 import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
+import uk.gov.justice.laa.dstew.access.model.Provider;
 
 /**
  * Mapper interface.
@@ -113,6 +114,11 @@ public interface ApplicationMapper {
     application.setApplicationType(ApplicationType.INITIAL);
     application.setOpponents(
         extractOpponents(entity.getApplicationContent())
+    );
+    application.setProvider(
+        entity.getOfficeCode() != null
+            ? new Provider().officeCode(entity.getOfficeCode())
+            : null
     );
     application.setProvider(entity.getOfficeCode());
     if (entity.getProceedings() != null) {

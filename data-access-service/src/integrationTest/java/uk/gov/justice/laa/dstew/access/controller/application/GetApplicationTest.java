@@ -8,8 +8,6 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -21,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.Provider;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
@@ -315,6 +314,11 @@ public class GetApplicationTest extends BaseIntegrationTest {
             application.setOverallDecision(applicationEntity.getDecision().getOverallDecision());
         }
         application.isLead(applicationEntity.isLead());
+        application.setProvider(
+            applicationEntity.getOfficeCode() != null
+                ? new Provider().officeCode(applicationEntity.getOfficeCode())
+                : null
+        );
         application.setProvider(applicationEntity.getOfficeCode());
         Map<String, Object> applicationMerits = (Map<String, Object>) applicationEntity.getApplicationContent().get("applicationMerits");
 

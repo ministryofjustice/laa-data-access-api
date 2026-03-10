@@ -22,6 +22,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.Opponent;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
+import uk.gov.justice.laa.dstew.access.model.Provider;
 
 class ApplicationMapperTest {
 
@@ -58,7 +59,7 @@ class ApplicationMapperTest {
         assertThat(actualApplication.getLaaReference()).isEqualTo(laaReference);
         assertThat(actualApplication.getStatus()).isEqualTo(status);
         assertThat(actualApplication.getLastUpdated()).isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
-        assertThat(actualApplication.getProvider()).isEqualTo(officeCode);
+        assertThat(actualApplication.getProvider()).isEqualTo(new Provider().officeCode(officeCode));
     }
 
 
