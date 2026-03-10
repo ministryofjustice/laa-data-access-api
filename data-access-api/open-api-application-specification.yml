@@ -488,13 +488,13 @@ components:
           $ref: "#/components/schemas/ApplicationProceedings"
         provider:
           $ref: "#/components/schemas/Provider"
+        version:
+          type: integer
 
     Provider:
       type: object
       properties:
         officeCode:
-          type: string
-        version:
           type: string
 
     ApplicationCreateRequest:
@@ -535,7 +535,7 @@ components:
           additionalProperties: true
           minProperties: 1
         version:
-          type: string
+          type: integer
           description: The current version of the application being updated, used for optimistic locking
 
     ApplicationSummary:

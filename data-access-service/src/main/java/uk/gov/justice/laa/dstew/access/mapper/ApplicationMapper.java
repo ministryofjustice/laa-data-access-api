@@ -112,11 +112,10 @@ public interface ApplicationMapper {
             ? new Provider().officeCode(entity.getOfficeCode())
             : null
     );
-    application.setProvider(entity.getOfficeCode());
     if (entity.getVersion() == null) {
       throw new IllegalArgumentException("Application version cannot be null");
     }
-    application.setVersion(entity.getVersion().toString());
+    application.setVersion(Integer.getInteger(entity.getVersion().toString()));
 
     return application;
   }

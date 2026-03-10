@@ -17,7 +17,7 @@ public class ApplicationUpdateFactoryImpl implements Factory<ApplicationUpdateRe
             put("test", "value");
           }
         })
-        .version("0")
+        .version(0)
         .build();
   }
 

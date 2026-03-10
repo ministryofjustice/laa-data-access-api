@@ -347,6 +347,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
                 .scopeLimitations((List<Object>) proceeding.getProceedingContent().get("scopeLimitations"))
                 .build()
         ));
+        application.setVersion(0);
         return application;
     }
 }
