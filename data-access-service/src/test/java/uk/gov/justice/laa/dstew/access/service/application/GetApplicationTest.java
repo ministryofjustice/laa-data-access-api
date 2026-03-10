@@ -40,6 +40,7 @@ public class GetApplicationTest extends BaseServiceTest {
     public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {
         // given
         ProceedingEntity proceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class);
+        Set<ProceedingEntity> proceedings = Set.of(proceeding);
 
         ApplicationEntity expectedApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class);
 
@@ -48,7 +49,7 @@ public class GetApplicationTest extends BaseServiceTest {
                 Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class,
                         builder -> builder.proceeding(proceeding))));
 
-        expectedApplication.setProceedings(Set.of(proceeding));
+        when(proceedingRepository.findAllByApplicationId(expectedApplication.getId())).thenReturn(proceedings);
         when(applicationRepository.findById(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
 
         setSecurityContext(TestConstants.Roles.READER);
@@ -58,9 +59,9 @@ public class GetApplicationTest extends BaseServiceTest {
 
         // then
         assertApplicationEqual(expectedApplication, actualApplication);
-        assertApplicationProceedingsEqual(expectedApplication.getProceedings(),
+        assertApplicationProceedingsEqual(proceedings,
                                             actualApplication.getProceedings(),
-                MeritsDecisionStatus.REFUSED);
+                                            MeritsDecisionStatus.REFUSED);
         assertThat(actualApplication.getProceedings().getFirst().getInvolvedChildren()).hasSize(1);
 
         Map<String, Object> actualApplicationInvolvedChild =
