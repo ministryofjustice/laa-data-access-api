@@ -4,6 +4,7 @@ import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -17,9 +18,21 @@ public class ProceedingsEntityGenerator extends BaseGenerator<ProceedingEntity, 
         return ProceedingEntity.builder()
                 .applyProceedingId(UUID.randomUUID())
                 .description("description")
-                .proceedingContent(new HashMap<>(Map.of(
-                        "test", "content"
-                )))
+                .proceedingContent(Map.of(
+                        "meaning", "hearing",
+                        "matterType", "SPECIAL_CHILDREN_ACT",
+                        "categoryOfLaw", "Family",
+                        "usedDelegatedFunctionsOn", "2025-05-06",
+                        "substantiveCostLimitation", "23.45",
+                        "substantiveLevelOfServiceName", "service",
+                        "scopeLimitations", List.of(
+                                Map.of(
+                                        "id", "100",
+                                        "code", "AB123D",
+                                        "meaning", "hearing"
+                                )
+                        )
+                ))
                 .build();
     }
 }
