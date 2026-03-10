@@ -59,5 +59,4 @@ sentry:
 ### or `FEATURE_TRANSFORMATION=false` to disable response transformations.
 
 feature:
-  disable-security: ${FEATURE_DISABLE_SECURITY:false}
   enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}

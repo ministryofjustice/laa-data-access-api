@@ -46,11 +46,3 @@ management:
   endpoints.web.exposure.include: health,info
   endpoint.health.show-details: always
   info.env.enabled: true
-
-### Set feature flags in the environment to avoid committing insecure values.
-### For example, `FEATURE_SECURITY=false` to disable endpoint authorization,
-### or `FEATURE_TRANSFORMATION=false` to disable response transformations.
-
-feature:
-  disable-security: ${FEATURE_DISABLE_SECURITY:false}
-  enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}

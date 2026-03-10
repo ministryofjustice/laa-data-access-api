@@ -12,9 +12,6 @@ data-access-api/bin/
 data-access-service/bin/
 data-access-shared/bin/
 
-data-access-service/src/main/resources/application-local.yml
-run-local.sh
-
 ### IntelliJ IDEA ###
 .idea
 *.iws

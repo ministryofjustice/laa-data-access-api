@@ -41,7 +41,6 @@ import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationPro
  * Spring Security configuration if security is not disabled.
  */
 @ExcludeFromGeneratedCodeCoverage
-@ConditionalOnProperty(prefix = "feature", name = "disable-security", havingValue = "false", matchIfMissing = true)
 @Configuration
 @EnableMethodSecurity
 @EnableWebSecurity

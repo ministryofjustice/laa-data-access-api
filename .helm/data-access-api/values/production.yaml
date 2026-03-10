@@ -46,7 +46,3 @@ sentry:
   enabled: true
   environment: production
   tracesSampleRate: 1
-
-feature:
-  disableSecurity: false
-  enableDevToken: false
