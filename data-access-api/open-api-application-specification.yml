@@ -306,6 +306,12 @@ paths:
       operationId: getIndividuals
       parameters:
         - $ref: "#/components/parameters/XServiceName"
+        - name: include
+          in: query
+          description: determines additional data in the response
+          schema:
+            type: string
+            $ref: "#/components/schemas/IncludedAdditionalData"
         - name: page
           in: query
           description: Page number of data to be returned (defaults to 1)
@@ -369,6 +375,11 @@ components:
         - ASSIGN_APPLICATION_TO_CASEWORKER
         - UNASSIGN_APPLICATION_TO_CASEWORKER
         - APPLICATION_MAKE_DECISION_REFUSED
+
+    IncludedAdditionalData:
+      type: string
+      enum:
+        - CLIENT_DETAILS
 
     categoryOfLaw:
       type: string

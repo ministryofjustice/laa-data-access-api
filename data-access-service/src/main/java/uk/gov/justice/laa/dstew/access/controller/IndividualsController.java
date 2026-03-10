@@ -8,6 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.api.IndividualsApi;
+import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
@@ -33,6 +34,7 @@ public class IndividualsController implements IndividualsApi {
    * Retrieves a paginated list of individuals.
    *
    * @param serviceName the service name header
+   * @param include the additional data to be included in response
    * @param page the page number (1-based), may be null for default
    * @param pageSize the number of items per page, may be null for default
    * @param applicationId the application UUID to filter by (nullable)
@@ -45,6 +47,7 @@ public class IndividualsController implements IndividualsApi {
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public ResponseEntity<IndividualsResponse> getIndividuals(
       ServiceName serviceName,
+      IncludedAdditionalData include,
       Integer page,
       Integer pageSize,
       UUID applicationId,
