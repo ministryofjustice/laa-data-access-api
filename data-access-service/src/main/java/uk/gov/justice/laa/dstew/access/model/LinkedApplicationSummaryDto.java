@@ -3,7 +3,7 @@ package uk.gov.justice.laa.dstew.access.model;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
@@ -12,7 +12,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
  *
  */
 @Builder(toBuilder = true)
-@Getter
+@Data
 @AllArgsConstructor
 @NoArgsConstructor
 @ExcludeFromGeneratedCodeCoverage

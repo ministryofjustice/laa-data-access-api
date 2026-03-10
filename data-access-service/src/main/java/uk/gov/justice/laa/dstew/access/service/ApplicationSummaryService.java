@@ -41,10 +41,12 @@ public class ApplicationSummaryService {
   private final ApplicationSummaryMapper mapper;
 
   /**
-   * Constructs a new {@link ApplicationSummaryService} with the required repository and mapper.
+   * Constructs a new {@link ApplicationSummaryService} with the required repositories and mapper.
    *
    * @param applicationSummaryRepository the repository used to access application summary data
+   * @param applicationRepository the repository used to access application entities
    * @param applicationSummaryMapper the mapper used to convert entities into API-facing models
+   * @param caseworkerRepository the repository used to access caseworker data
    */
   public ApplicationSummaryService(
       final ApplicationSummaryRepository applicationSummaryRepository,
@@ -125,14 +127,14 @@ public class ApplicationSummaryService {
         .map(ApplicationSummaryEntity::getId)
         .toList();
 
-    List<UUID> leadIdsFromAssociates = applicationRepository
-        .findLeadIdsByAssociatedIds(applicationIdsFromPage);
-
     List<UUID> leadIdsFromPage = pageResults.getContent()
         .stream()
         .filter(ApplicationSummaryEntity::isLead)
         .map(ApplicationSummaryEntity::getId)
         .toList();
+
+    List<UUID> leadIdsFromAssociates = applicationRepository
+        .findLeadIdsByAssociatedIds(applicationIdsFromPage);
 
     List<UUID> allLeadIds = Stream.concat(
             leadIdsFromAssociates.stream(),
