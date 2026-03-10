@@ -5,19 +5,25 @@ import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.wrapResult;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortFields;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
+import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
@@ -30,6 +36,7 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 @Service
 public class ApplicationSummaryService {
   private final ApplicationSummaryRepository applicationSummaryRepository;
+  private final ApplicationRepository applicationRepository;
   private final CaseworkerRepository caseworkerRepository;
   private final ApplicationSummaryMapper mapper;
 
@@ -41,10 +48,12 @@ public class ApplicationSummaryService {
    */
   public ApplicationSummaryService(
       final ApplicationSummaryRepository applicationSummaryRepository,
+      final ApplicationRepository applicationRepository,
       final ApplicationSummaryMapper applicationSummaryMapper,
       final CaseworkerRepository caseworkerRepository
   ) {
     this.applicationSummaryRepository = applicationSummaryRepository;
+    this.applicationRepository = applicationRepository;
     this.mapper = applicationSummaryMapper;
     this.caseworkerRepository = caseworkerRepository;
   }
@@ -81,20 +90,80 @@ public class ApplicationSummaryService {
       throw new ValidationException(List.of("Caseworker not found"));
     }
 
-    Page<ApplicationSummary> resultPage = applicationSummaryRepository
-            .findAll(ApplicationSummarySpecification
-                            .filterBy(applicationStatus,
-                                    laaReference,
-                                    clientFirstName,
-                                    clientLastName,
-                                    clientDateOfBirth,
-                                    userId,
-                                    matterType,
-                                    isAutoGranted),
-                    pageDetails)
-            .map(mapper::toApplicationSummary);
+    Page<ApplicationSummaryEntity> pageResults = applicationSummaryRepository
+        .findAll(ApplicationSummarySpecification
+                .filterBy(applicationStatus,
+                    laaReference,
+                    clientFirstName,
+                    clientLastName,
+                    clientDateOfBirth,
+                    userId,
+                    matterType,
+                    isAutoGranted),
+            pageDetails);
+
+    Map<UUID, List<LinkedApplicationSummaryDto>> linkedApplications = retrieveLinkedApplications(pageResults);
+
+    Page<ApplicationSummary> resultPage = pageResults.map(entity -> {
+      ApplicationSummary applicationSummary = mapper.toApplicationSummary(entity);
+      applicationSummary.setLinkedApplications(
+          groupLinkedApplicationsByLead(entity, linkedApplications)
+              .stream()
+              .filter(dto -> !dto.getApplicationId().equals(entity.getId()))
+              .map(mapper::toLinkedApplicationSummary)
+              .toList()
+      );
+      return applicationSummary;
+    });
 
     return wrapResult(page, pageSize, resultPage);
+  }
+
+  private Map<UUID, List<LinkedApplicationSummaryDto>> retrieveLinkedApplications(Page<ApplicationSummaryEntity> pageResults) {
+    List<UUID> applicationIdsFromPage = pageResults.getContent()
+        .stream()
+        .map(ApplicationSummaryEntity::getId)
+        .toList();
+
+    List<UUID> leadIdsFromAssociates = applicationRepository
+        .findLeadIdsByAssociatedIds(applicationIdsFromPage);
+
+    List<UUID> leadIdsFromPage = pageResults.getContent()
+        .stream()
+        .filter(ApplicationSummaryEntity::isLead)
+        .map(ApplicationSummaryEntity::getId)
+        .toList();
+
+    List<UUID> allLeadIds = Stream.concat(
+            leadIdsFromAssociates.stream(),
+            leadIdsFromPage.stream())
+        .distinct()
+        .toList();
+
+    return allLeadIds.isEmpty()
+        ? Map.of()
+        : applicationRepository
+        .findAllLinkedApplicationsByLeadIds(allLeadIds)
+        .stream()
+        .collect(Collectors.groupingBy(LinkedApplicationSummaryDto::getLeadApplicationId));
+  }
+
+  private List<LinkedApplicationSummaryDto> groupLinkedApplicationsByLead(
+      ApplicationSummaryEntity applicationSummaryEntity,
+      Map<UUID, List<LinkedApplicationSummaryDto>> linkedByLeadId) {
+
+    List<LinkedApplicationSummaryDto> linkedApplications = linkedByLeadId
+        .getOrDefault(applicationSummaryEntity.getId(), List.of());
+
+    if (linkedApplications.isEmpty()) {
+      linkedApplications = linkedByLeadId.values().stream()
+          .filter(group -> group.stream()
+              .anyMatch(dto -> dto.getApplicationId().equals(applicationSummaryEntity.getId())))
+          .findFirst()
+          .orElse(List.of());
+    }
+
+    return linkedApplications;
   }
 
   private Sort createSortAndOrderBy(ApplicationSortBy sortBy,

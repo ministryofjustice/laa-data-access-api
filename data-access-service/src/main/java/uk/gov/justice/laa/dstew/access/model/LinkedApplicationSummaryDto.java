@@ -1,0 +1,24 @@
+package uk.gov.justice.laa.dstew.access.model;
+
+import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
+
+/**
+ * Model to represent linked application summary.
+ *
+ */
+@Builder(toBuilder = true)
+@Getter
+@AllArgsConstructor
+@NoArgsConstructor
+@ExcludeFromGeneratedCodeCoverage
+public class LinkedApplicationSummaryDto {
+  private UUID applicationId;
+  private String laaReference;
+  private boolean isLead;
+  private UUID leadApplicationId;
+}

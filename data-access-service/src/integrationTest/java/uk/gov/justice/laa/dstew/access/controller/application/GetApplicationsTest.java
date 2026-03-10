@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -914,5 +915,137 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         applicationSummary.setClientDateOfBirth(applicationEntity.getIndividuals().stream().findFirst().get().getDateOfBirth());
         applicationSummary.setIsLead(applicationEntity.isLead());
         return applicationSummary;
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    public void givenApplicationWithNoLinkedApplications_whenGetApplicationSummary_thenLinkedApplicationsIsEmpty() throws Exception {
+        // given
+        ApplicationEntity application = persistedApplicationFactory.createAndPersist();
+
+        // when
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
+        ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+        // then
+        assertContentHeaders(result);
+        assertSecurityHeaders(result);
+        assertNoCacheHeaders(result);
+        assertOK(result);
+        ApplicationSummary actualSummary = findApplicationSummaryById(actual.getApplications(), application.getId());
+        assertNotNull(actualSummary.getLinkedApplications());
+        assertThat(actualSummary.getLinkedApplications().isEmpty());
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    public void givenLeadApplicationOnPage_whenGetApplicationSummary_thenLinkedApplicationsContainsAssociatesWithCorrectFields() throws Exception {
+        // given
+        ApplicationEntity lead = persistedApplicationFactory.createAndPersist(builder ->
+            builder.laaReference("LEAD-REF-001"));
+        ApplicationEntity associate = persistedApplicationFactory.createAndPersist(builder ->
+            builder.laaReference("ASSOC-REF-001"));
+        persistLink(lead, associate);
+
+        // when
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
+        ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+        // then
+        assertContentHeaders(result);
+        assertSecurityHeaders(result);
+        assertNoCacheHeaders(result);
+        assertOK(result);
+        ApplicationSummary leadSummary = findApplicationSummaryById(actual.getApplications(), lead.getId());
+        assertThat(leadSummary.getLinkedApplications().size()).isEqualTo(1);
+        LinkedApplicationSummary linkedApplicationSummary = leadSummary.getLinkedApplications().getFirst();
+        assertThat(linkedApplicationSummary.getApplicationId()).isEqualTo(associate.getId());
+        assertThat(linkedApplicationSummary.getLaaReference()).isEqualTo(associate.getLaaReference());
+        assertThat(linkedApplicationSummary.getIsLead()).isFalse();
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    public void givenAssociateOnPageAndLeadNotOnPage_whenGetApplications_thenLinkedApplicationsStillPopulated() throws Exception {
+        // given
+        // Associate appears early in the sort order (page 1) and lead appears later (page 2)
+        ApplicationEntity associate = persistedApplicationFactory.createAndPersist(builder ->
+            builder.laaReference("ASSOC-REF-001"));
+
+        // Fill page with other applications to ensure lead appears on page 2
+        persistedApplicationFactory.createAndPersistMultiple(19, builder ->
+            builder.laaReference("LAA-REF-" + UUID.randomUUID()));
+
+        ApplicationEntity lead = persistedApplicationFactory.createAndPersist(builder ->
+            builder.laaReference("LEAD-REF-001"));
+
+        persistLink(lead, associate);
+
+        // when
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_PAGE_PARAM + "1");
+        ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+        // then
+        assertContentHeaders(result);
+        assertSecurityHeaders(result);
+        assertNoCacheHeaders(result);
+        assertOK(result);
+        ApplicationSummary associateSummary = findApplicationSummaryById(actual.getApplications(), associate.getId());
+        assertThat(associateSummary.getLinkedApplications().size()).isEqualTo(1);
+        assertThat(associateSummary.getLinkedApplications().getFirst().getApplicationId()).isEqualTo(lead.getId());
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.READER)
+    public void givenOnlyAssociateMatchesFilter_whenGetApplications_thenLinkedApplicationsContainsLeadAndSiblingNotInResults() throws Exception {
+        // given
+        // Only associate1 matches the filter - lead and associate2 should still be returned in linked applications, but not appear in main results
+        ApplicationEntity associate1 = persistedApplicationFactory.createAndPersist(builder ->
+            builder.laaReference("ASSOC-REF-001")
+                .individuals(Set.of(individualEntityFactory.create(i -> i.firstName("John")))));
+        ApplicationEntity lead = persistedApplicationFactory.createAndPersist(builder ->
+            builder.laaReference("LEAD-REF-001")
+                .individuals(Set.of(individualEntityFactory.create(i -> i.firstName("Bob")))));
+        ApplicationEntity associate2 = persistedApplicationFactory.createAndPersist(builder ->
+            builder.laaReference("ASSOC-REF-002")
+                .individuals(Set.of(individualEntityFactory.create(i -> i.firstName("Charlie")))));
+
+        persistLink(lead, associate1);
+        persistLink(lead, associate2);
+
+        // when
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_FIRSTNAME_PARAM + "John");
+        ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+        // then
+        assertContentHeaders(result);
+        assertSecurityHeaders(result);
+        assertNoCacheHeaders(result);
+        assertOK(result);
+
+        assertThat(actual.getApplications().size()).isEqualTo(1);
+        ApplicationSummary associate1Summary = findApplicationSummaryById(actual.getApplications(), associate1.getId());
+        assertThat(associate1Summary.getLinkedApplications().size()).isEqualTo(2);
+
+        List<UUID> linkedIds = associate1Summary.getLinkedApplications().stream()
+            .map(LinkedApplicationSummary::getApplicationId)
+            .toList();
+        assertTrue(linkedIds.contains(lead.getId()));
+        assertTrue(linkedIds.contains(associate2.getId()));
+    }
+
+    private ApplicationSummary findApplicationSummaryById(List<ApplicationSummary> applicationSummaries, UUID id) {
+        return applicationSummaries.stream()
+            .filter(application -> application.getApplicationId().equals(id))
+            .findFirst()
+            .orElseThrow();
+    }
+
+    private void persistLink(ApplicationEntity lead, ApplicationEntity associate) {
+        entityManager.persist(linkedApplicationFactory.create(builder ->
+            builder.leadApplicationId(lead.getId())
+                .associatedApplicationId(associate.getId())
+                .build()));
+        clearCache();
     }
 }
