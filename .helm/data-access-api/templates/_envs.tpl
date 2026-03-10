@@ -84,3 +84,14 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
       name: laa-data-access-api-secrets
       key: ENTRA_AUD
 {{- end }}
+
+{{/*
+  Define feature environment variables for flags
+*/}}
+{{- define "featureConfig" }}
+- name: FEATURE_ENABLE_DEV_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: FEATURE_ENABLE_DEV_TOKEN
+{{- end }}

@@ -61,10 +61,6 @@ spec:
               value: {{ .Values.spring.profile | quote }}
             - name: AWS_REGION
               value: {{ .Values.aws.region | quote }}
-            - name: FEATURE_ENABLE_DEV_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: laa-data-access-api-secrets
-                  key: FEATURE_ENABLE_DEV_TOKEN
+            {{ include "featureConfig" . | nindent 12 }}
             {{ include "oauth2Config" . | nindent 12 }}
             {{ include "sentryConfig" . | nindent 12 }}
