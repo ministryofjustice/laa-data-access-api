@@ -120,7 +120,6 @@ public interface ApplicationMapper {
             ? new Provider().officeCode(entity.getOfficeCode())
             : null
     );
-    application.setProvider(entity.getOfficeCode());
     if (entity.getProceedings() != null) {
 
       entity.getProceedings().forEach(

@@ -319,7 +319,6 @@ public class GetApplicationTest extends BaseIntegrationTest {
                 ? new Provider().officeCode(applicationEntity.getOfficeCode())
                 : null
         );
-        application.setProvider(applicationEntity.getOfficeCode());
         Map<String, Object> applicationMerits = (Map<String, Object>) applicationEntity.getApplicationContent().get("applicationMerits");
 
         application.setProceedings(List.of(
