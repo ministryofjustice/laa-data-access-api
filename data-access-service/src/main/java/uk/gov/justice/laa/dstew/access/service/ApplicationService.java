@@ -23,9 +23,13 @@ import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
+import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
+import uk.gov.justice.laa.dstew.access.mapper.ProceedingMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
@@ -51,6 +55,7 @@ public class ApplicationService {
   private final int applicationVersion = 1;
   private final ApplicationRepository applicationRepository;
   private final ApplicationMapper applicationMapper;
+  private final ProceedingMapper proceedingMapper;
   private final ApplicationValidations applicationValidations;
   private final ObjectMapper objectMapper;
   private final CaseworkerRepository caseworkerRepository;
@@ -72,6 +77,7 @@ public class ApplicationService {
    */
   public ApplicationService(final ApplicationRepository applicationRepository,
                             final ApplicationMapper applicationMapper,
+                            final ProceedingMapper proceedingMapper,
                             final ApplicationValidations applicationValidations,
                             final ObjectMapper objectMapper,
                             final CaseworkerRepository caseworkerRepository,
@@ -83,6 +89,7 @@ public class ApplicationService {
                             final ProceedingsService proceedingsService, PayloadValidationService payloadValidationService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
+    this.proceedingMapper = proceedingMapper;
     this.applicationValidations = applicationValidations;
     this.applicationContentParser = applicationContentParserService;
     this.proceedingRepository = proceedingRepository;
@@ -105,7 +112,54 @@ public class ApplicationService {
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
   public Application getApplication(final UUID id) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
-    return applicationMapper.toApplication(entity);
+    Application application = applicationMapper.toApplication(entity);
+
+    Set<ProceedingEntity> proceedings = proceedingRepository.findAllByApplicationId(id);
+
+    if (proceedings != null) {
+
+      proceedings.forEach(
+              proceeding -> {
+                ApplicationProceeding applicationProceeding =
+                        proceedingMapper.toApplicationProceeding(proceeding);
+
+                List<Map<String, Object>> involvedChildren = getInvolvedChildren(entity);
+                if (involvedChildren != null) {
+                  List<Object> children = new ArrayList<>();
+                  involvedChildren.forEach(c -> children.add(c));
+                  applicationProceeding.setInvolvedChildren(children);
+                } else {
+                  applicationProceeding.setInvolvedChildren(null);
+                }
+
+                if (entity.getDecision() != null) {
+                  Optional<MeritsDecisionEntity> meritsDecision =
+                          entity.getDecision().getMeritsDecisions().stream()
+                                  .filter(m -> m.getProceeding().getId() == proceeding.getId())
+                                  .findFirst();
+
+                  meritsDecision.ifPresent(meritsDecisionEntity ->
+                          applicationProceeding.setMeritsDecision(meritsDecisionEntity.getDecision()));
+                }
+                application.getProceedings().add(applicationProceeding);
+              }
+      );
+    }
+
+    return application;
+  }
+
+  private List<Map<String, Object>> getInvolvedChildren(ApplicationEntity entity) {
+
+    ApplicationContent applicationContent = MapperUtil.getObjectMapper()
+            .convertValue(entity.getApplicationContent(), ApplicationContent.class);
+    ApplicationMerits meritsObj = applicationContent.getApplicationMerits();
+
+    if (meritsObj == null) {
+      return null;
+    }
+
+    return meritsObj.getInvolvedChildren();
   }
 
   /**

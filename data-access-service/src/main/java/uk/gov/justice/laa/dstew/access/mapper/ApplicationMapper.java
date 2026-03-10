@@ -35,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.model.Provider;
 public interface ApplicationMapper {
 
   IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
+  ProceedingMapper proceedingMapper = Mappers.getMapper(ProceedingMapper.class);
 
   /**
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
