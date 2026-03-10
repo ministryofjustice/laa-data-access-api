@@ -84,6 +84,7 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(OptimisticLockingFailureException.class)
   public ResponseEntity<ProblemDetail> handleOptimisticLoggingException(OptimisticLockingFailureException exception) {
+    Sentry.captureException(exception);
     return ResponseEntity.badRequest().body(
         getCustomProblemDetail(HttpStatus.CONFLICT, exception.getMessage()));
   }
