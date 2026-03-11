@@ -5,6 +5,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -31,6 +32,7 @@ import uk.gov.justice.laa.dstew.access.model.Provider;
 public interface ApplicationMapper {
 
   IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
+
   /**
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
    *
@@ -137,6 +139,7 @@ public interface ApplicationMapper {
 
     return opponentsList.stream()
         .map(OpponentDetails::getOpposable)
+        .filter(Objects::nonNull)
         .map(opposableObj -> Opponent.builder()
             .opposableType(opposableObj.getOpposableType())
             .firstName(opposableObj.getFirstName())

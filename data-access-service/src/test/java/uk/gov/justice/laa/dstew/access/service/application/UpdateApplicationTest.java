@@ -139,7 +139,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
       ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.createDefault();
       when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
 
-      setSecurityContext(TestConstants.Roles.WRITER);
+      setSecurityContext(TestConstants.Roles.CASEWORKER);
 
       // when
       // then
