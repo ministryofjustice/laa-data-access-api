@@ -137,11 +137,11 @@ public class ApplicationSummaryService {
 
     return content.stream().collect(Collectors.toMap(
         ApplicationSummaryEntity::getId,
-        entity -> resolveLinkedApplicationsFor(entity.getId(), linkedAppsByLeadId)
+        entity -> resolveLinkedApplications(entity.getId(), linkedAppsByLeadId)
     ));
   }
 
-  private List<LinkedApplicationSummaryDto> resolveLinkedApplicationsFor(
+  private List<LinkedApplicationSummaryDto> resolveLinkedApplications(
       UUID applicationId,
       Map<UUID, List<LinkedApplicationSummaryDto>> linkedAppsByLeadId) {
 
