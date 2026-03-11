@@ -3,6 +3,9 @@ info:
   version: 1.0.0
   title: Applications API
 
+security:
+  - bearerAuth: []
+
 paths:
   /api/v0/applications:
     get:
@@ -341,6 +344,11 @@ paths:
         '403': { description: Forbidden }
         '500': { description: Internal server error }
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
     XServiceName:
       in: header

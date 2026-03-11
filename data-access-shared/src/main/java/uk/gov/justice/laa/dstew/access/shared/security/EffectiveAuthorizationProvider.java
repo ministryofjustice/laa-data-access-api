@@ -20,5 +20,7 @@ public interface EffectiveAuthorizationProvider {
    * @return boolean true if any was found.
    */
   boolean hasAnyAppRole(String... names);
+
+  boolean hasName();
 }
 

@@ -18,9 +18,9 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
  * `@ConfigurationPropertiesScan` or similar on the `SpringApplication` class.
  * Alternatively, you can use `@ConditionalOnProperty` without this class.
  *
- * @param disableSecurity whether OAuth2 authorization is disabled.
- *        Spring property: `feature.disable-security`.
- *        Environment variable: `FEATURE_DISABLESECURITY`.
+ * @param enableDevToken whether OAuth2 authorization allows dev tokens.
+ *        Spring property: `feature.enable-dev-token`.
+ *        Environment variable: `FEATURE_ENABLE_DEV_TOKEN`.
  * @param disableJpaAuditing whether JPA auditing is disabled.
  *        Spring property: `feature.disable-jpa-auditing`.
  *        Environment variable: `FEATURE_DISABLEJPAAUDITING`.
@@ -29,6 +29,6 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
  */
 @ExcludeFromGeneratedCodeCoverage
 @ConfigurationProperties(prefix = "feature")
-public record FeatureProperties(boolean disableSecurity,
+public record FeatureProperties(boolean enableDevToken,
                                 boolean disableJpaAuditing) {
 }
