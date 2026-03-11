@@ -130,23 +130,28 @@ public class ApplicationSummaryService {
       return Map.of();
     }
 
-    Map<UUID, List<LinkedApplicationSummaryDto>> byLead = applicationRepository
+    Map<UUID, List<LinkedApplicationSummaryDto>> linkedAppsByLeadId = applicationRepository
         .findAllLinkedApplicationsByLeadIds(allLeadIds)
         .stream()
         .collect(Collectors.groupingBy(LinkedApplicationSummaryDto::getLeadApplicationId));
 
     return content.stream().collect(Collectors.toMap(
         ApplicationSummaryEntity::getId,
-        entity -> {
-          UUID id = entity.getId();
-          List<LinkedApplicationSummaryDto> group = byLead.getOrDefault(id,
-              byLead.values().stream()
-                  .filter(g -> g.stream().anyMatch(dto -> dto.getApplicationId().equals(id)))
-                  .findFirst()
-                  .orElse(List.of()));
-          return group.stream().filter(dto -> !dto.getApplicationId().equals(id)).toList();
-        }
+        entity -> resolveLinkedApplicationsFor(entity.getId(), linkedAppsByLeadId)
     ));
+  }
+
+  private List<LinkedApplicationSummaryDto> resolveLinkedApplicationsFor(
+      UUID applicationId,
+      Map<UUID, List<LinkedApplicationSummaryDto>> linkedAppsByLeadId) {
+
+    List<LinkedApplicationSummaryDto> group = linkedAppsByLeadId.getOrDefault(applicationId,
+        linkedAppsByLeadId.values().stream()
+            .filter(linkedGroup -> linkedGroup.stream().anyMatch(dto -> dto.getApplicationId().equals(applicationId)))
+            .findFirst()
+            .orElse(List.of()));
+
+    return group.stream().filter(dto -> !dto.getApplicationId().equals(applicationId)).toList();
   }
 
   private Sort createSortAndOrderBy(ApplicationSortBy sortBy,
