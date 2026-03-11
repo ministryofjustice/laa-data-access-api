@@ -668,7 +668,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         builder.id(proceedingId).applicationId(applicationId)
     );
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     when(caseworkerRepository.findById(caseworker.getId())).thenReturn(Optional.of(caseworker));
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
@@ -727,7 +727,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         builder.id(proceedingId).applicationId(applicationId)
     );
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     when(caseworkerRepository.findById(caseworker.getId())).thenReturn(Optional.of(caseworker));
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
@@ -783,7 +783,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         builder.id(proceedingId).applicationId(applicationId)
     );
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     when(caseworkerRepository.findById(caseworker.getId())).thenReturn(Optional.of(caseworker));
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));

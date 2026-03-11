@@ -9,6 +9,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -510,7 +511,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenGrantedDecisionWithNoCertificate_whenAssignDecision_thenReturnBadRequest()
             throws Exception {
         // given
@@ -558,7 +559,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenGrantedDecisionWithCertificate_whenAssignDecision_thenReturnNoContent_andDecisionAndCertificateSaved()
             throws Exception {
         // given
@@ -626,7 +627,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenRefusedDecisionWithNoCertificate_whenAssignDecision_thenReturnNoContent()
             throws Exception {
         // given
@@ -668,7 +669,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenPartiallyGrantedDecisionWithNoCertificate_whenAssignDecision_thenReturnNoContent()
             throws Exception {
         // given
