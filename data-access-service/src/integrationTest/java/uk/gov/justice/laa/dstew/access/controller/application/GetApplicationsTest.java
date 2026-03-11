@@ -823,7 +823,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithNoLinkedApplications_whenGetApplications_thenLinkedApplicationsIsEmpty() throws Exception {
         // given
         ApplicationEntity application = persistedApplicationFactory.createAndPersist();
@@ -844,7 +844,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenLeadApplicationOnPage_whenGetApplications_thenLinkedApplicationsContainsAssociatesWithCorrectFields() throws Exception {
         // given
         ApplicationEntity leadApplication = persistedApplicationFactory.createAndPersist(builder ->
@@ -872,7 +872,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenAssociateOnPageAndLeadNotOnPage_whenGetApplications_thenLinkedApplicationsStillPopulated() throws Exception {
         // given
         ApplicationEntity associateApplication = persistedApplicationFactory.createAndPersist(builder ->
@@ -902,7 +902,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenOnlyAssociateMatchesFilter_whenGetApplications_thenLinkedApplicationsContainsLeadAndSiblingNotInResults() throws Exception {
         // given
         ApplicationEntity associateApplication1 = persistedApplicationFactory.createAndPersist(builder ->

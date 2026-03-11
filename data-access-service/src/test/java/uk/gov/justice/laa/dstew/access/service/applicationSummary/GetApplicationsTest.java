@@ -302,7 +302,7 @@ public class GetApplicationsTest extends BaseServiceTest {
     @Test
     public void givenOnlyLead_whenGetApplications_thenLinkedApplicationsContainsAssociateNotSelf() {
         // given
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         UUID associateId = UUID.randomUUID();
         ApplicationSummaryEntity leadApplication = applicationSummaryEntityFactory.createDefault(
@@ -340,7 +340,7 @@ public class GetApplicationsTest extends BaseServiceTest {
     @Test
     public void givenAssociatesOfSameLead_whenGetApplications_thenEachAssociateSeesLeadAndSiblingNotSelf() {
         // given
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         UUID leadId = UUID.randomUUID();
         ApplicationSummaryEntity firstAssociateApplication = applicationSummaryEntityFactory.createDefault();
@@ -381,7 +381,7 @@ public class GetApplicationsTest extends BaseServiceTest {
     @Test
     public void givenAssociatesOfDifferentLeads_whenGetApplications_thenNoGroupCrossContamination() {
         // given
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         UUID firstLeadId = UUID.randomUUID();
         UUID secondLeadId = UUID.randomUUID();
@@ -424,7 +424,7 @@ public class GetApplicationsTest extends BaseServiceTest {
     @Test
     public void givenOnlyStandalone_whenGetApplications_thenLinkedApplicationsIsEmpty() {
         // given
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         ApplicationSummaryEntity standaloneApplication = applicationSummaryEntityFactory.createDefault();
 
