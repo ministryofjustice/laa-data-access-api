@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.mapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -131,22 +132,23 @@ public interface ApplicationMapper {
   private static List<Opponent> extractOpponents(Map<String, Object> content) {
 
     if (content == null) {
-      return null;
+      return Collections.emptyList();
     }
 
     ApplicationContent applicationContent = MapperUtil.getObjectMapper().convertValue(content, ApplicationContent.class);
     ApplicationMerits meritsObj = applicationContent.getApplicationMerits();
     if (meritsObj == null) {
-      return null;
+      return Collections.emptyList();
     }
 
     List<OpponentDetails> opponentsList = meritsObj.getOpponents();
     if (opponentsList == null) {
-      return null;
+      return Collections.emptyList();
     }
 
     return opponentsList.stream()
         .map(OpponentDetails::getOpposable)
+        .filter(Objects::nonNull)
         .map(opposableObj -> Opponent.builder()
             .opposableType(opposableObj.getOpposableType())
             .firstName(opposableObj.getFirstName())

@@ -12,6 +12,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -269,7 +270,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenInvalidApplicationContent_whenCreateApplication_thenReturnBadRequest() throws Exception {
     ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder -> {
-      builder.applicationContent(null);
+      builder.applicationContent(Collections.emptyMap());
     });
 
     Map<String, String> invalidFields = new HashMap<>();
