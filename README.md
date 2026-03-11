@@ -41,6 +41,24 @@ Includes the following subprojects:
 - Ensure the project has been added to the [Legal Aid Agency Snyk](https://app.snyk.io/org/legal-aid-agency) organisation.
 
 ## Build and run application
+
+### Set up environment variables
+
+Create or modify your '~/.zshrc' file to include the following environment variables:
+
+```
+export ENTRA_ISSUER_URI=https://dummy-issuer
+export ENTRA_JWK_SET_URI=https://dummy-jwk-set-uri
+export ENTRA_AUD=dummy-aud
+export FEATURE_ENABLE_DEV_TOKEN=true
+```
+
+This will ensure that where-ever you run the application from locally (IntelliJ, any terminal window, etc)
+, these environment variables will be set. 
+
+You can verify that they have been set by running `printenv` in your terminal or 
+looking in the environment variable section in the run/debug configuration in IntelliJ 
+
 ### Developing application within Intellij
 Java version 25 is required
 
@@ -53,8 +71,6 @@ To update to Java 25:
     - Select **Add JDK from disk** and choose your Java 25 installation
     - Go to **IntelliJ IDEA** > **Settings** > **Build, Execution, Deployment** > **Build Tools** > **Gradle**
     - Set **Gradle JVM** to Java 25
-
-Set the security environment variable `FEATURE_DISABLESECURITY=true`
 
 ### Build application
 Execute
@@ -70,9 +86,9 @@ Execute
 `./gradlew integrationTest`
 
 ### Run application
-If the environment setting does not exist then set it
 
-`export FEATURE_DISABLESECURITY=true`
+Ensure that the environment variables specified in the 
+[Set up environment variables](#set-up-environment-variables) section have been set.
 
 To start up Localstack and Postgres
 
@@ -89,6 +105,23 @@ followed by
 Then execute
 
 `./gradlew bootRun`
+
+### Executing endpoints
+
+You can use a tool such as Postman or curl to execute endpoints. For example, to execute the `GET /applications` 
+endpoint using curl:
+
+```
+curl -X GET "http://localhost:8080/applications" -H "accept: application/json" -H "Authorization: Bearer {token}"
+```
+
+You can also use the Swagger UI to execute endpoints, which is described below in the 
+[API documentation](#api-documentation) section.
+
+If FEATURE_ENABLE_DEV_TOKEN is set to true, you can use the following token for testing purposes
+```
+Authorization: Bearer swagger-caseworker-token
+```
 
 ### Useful gradle commands
 
@@ -110,6 +143,17 @@ You may need to drop database tables manually prior to running app so Flyway can
 ### API documentation
 #### Swagger UI
 - http://localhost:8080/swagger-ui/index.html
+
+The "Authorize" button is available in the top right of the Swagger UI, which allows you to enter a Bearer token for 
+authentication when executing endpoints. 
+If you have set up the environment variables as specified in the 
+[Set up environment variables](#set-up-environment-variables) section, 
+you can use the "Authorize" button to enter the following token for testing purposes:
+
+```
+swagger-caseworker-token
+```
+
 #### API docs (JSON)
 - http://localhost:8080/v3/api-docs
 

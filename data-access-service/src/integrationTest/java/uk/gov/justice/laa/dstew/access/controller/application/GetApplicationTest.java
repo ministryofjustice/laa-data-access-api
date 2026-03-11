@@ -1,31 +1,37 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.Provider;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -42,7 +48,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 public class GetApplicationTest extends BaseIntegrationTest {
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenApplicationDataAndIncorrectHeader_whenGetApplications_thenReturnBadRequest(
             String serviceName
@@ -51,7 +57,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationDataAndNoHeader_whenGetApplication_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
@@ -64,21 +70,28 @@ public class GetApplicationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenExistingApplication_whenGetApplication_thenReturnOKWithCorrectData() throws Exception {
         // given
-        DecisionEntity decision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
-            builder.overallDecision(DecisionStatus.REFUSED);
-        });
-        ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
-            builder.decision(decision);
-            builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
+        ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder ->
+                builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe).linkedApplications(Set.of()));
+
+        ProceedingEntity proceeding = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class, builder -> {
+            builder.applicationId(application.getId());
         });
 
-        Application expectedApplication = createApplication(application);
+        DecisionEntity decision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
+            builder.meritsDecisions(Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class, mBuilder -> {
+                mBuilder.proceeding(proceeding);
+            })));
+        });
+
+        application.setDecision(decision);
+        applicationRepository.saveAndFlush(application);
+        clearCache();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getApplicationId());
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         Application actualApplication = deserialise(result, Application.class);
 
         // then
@@ -86,11 +99,12 @@ public class GetApplicationTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
+        Application expectedApplication = createApplication(application, proceeding, decision);
         assertThat(actualApplication).isEqualTo(expectedApplication);
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenApplicationNotExist_whenGetApplication_thenReturnNotFound() throws Exception {
         // given
         UUID notExistApplicationId = UUID.randomUUID();
@@ -137,7 +151,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithOpponents_whenGetApplication_thenReturnsOpponents() throws Exception {
 
         Map<String, Object> opposable = Map.of(
@@ -188,7 +202,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithEmptyOpponents_whenGetApplication_thenReturnsEmptyList() throws Exception {
 
         Map<String, Object> merits = Map.of(
@@ -214,7 +228,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithoutOpponentsSection_whenGetApplication_thenOpponentsIsEmpty() throws Exception {
 
         Map<String, Object> content = Map.of(
@@ -235,7 +249,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenOpponentWithMissingFirstName_whenGetApplication_thenReturnsRemainingFields() throws Exception {
 
         Map<String, Object> opposable = Map.of(
@@ -277,7 +291,9 @@ public class GetApplicationTest extends BaseIntegrationTest {
         Assertions.assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
     }
 
-    private Application createApplication(ApplicationEntity applicationEntity) {
+    private Application createApplication(ApplicationEntity applicationEntity,
+                                          ProceedingEntity proceeding,
+                                          DecisionEntity decision) {
         Application application = new Application();
         application.setApplicationId(applicationEntity.getId());
         application.setStatus(applicationEntity.getStatus());
@@ -292,13 +308,34 @@ public class GetApplicationTest extends BaseIntegrationTest {
                 ? OffsetDateTime.ofInstant(applicationEntity.getSubmittedAt(), ZoneOffset.UTC)
                 : null
         );
-        application.setUseDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
+        application.setUsedDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
         application.setAutoGrant(applicationEntity.getIsAutoGranted());
         if (applicationEntity.getDecision() != null) {
             application.setOverallDecision(applicationEntity.getDecision().getOverallDecision());
         }
         application.isLead(applicationEntity.isLead());
-        application.setProvider(applicationEntity.getOfficeCode());
+        application.setProvider(
+            applicationEntity.getOfficeCode() != null
+                ? new Provider().officeCode(applicationEntity.getOfficeCode())
+                : null
+        );
+        Map<String, Object> applicationMerits = (Map<String, Object>) applicationEntity.getApplicationContent().get("applicationMerits");
+
+        application.setProceedings(List.of(
+                ApplicationProceeding.builder()
+                .proceedingId(proceeding.getId())
+                .proceedingDescription(proceeding.getDescription())
+                .proceedingType(proceeding.getProceedingContent().get("meaning").toString())
+                .categoryOfLaw(proceeding.getProceedingContent().get("categoryOfLaw").toString())
+                .matterType(proceeding.getProceedingContent().get("matterType").toString())
+                .levelOfService(proceeding.getProceedingContent().get("substantiveLevelOfServiceName").toString())
+                .substantiveCostLimitation(proceeding.getProceedingContent().get("substantiveCostLimitation").toString())
+                .usedDelegatedFunctionsOn(LocalDate.parse(proceeding.getProceedingContent().get("usedDelegatedFunctionsOn").toString()))
+                .meritsDecision(decision.getMeritsDecisions().iterator().next().getDecision())
+                .involvedChildren((List<Object>) applicationMerits.get("involvedChildren"))
+                .scopeLimitations((List<Object>) proceeding.getProceedingContent().get("scopeLimitations"))
+                .build()
+        ));
         return application;
     }
 }
