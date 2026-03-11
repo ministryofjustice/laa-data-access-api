@@ -574,6 +574,10 @@ components:
           $ref: "#/components/schemas/applicationType"
         isLead:
           type: boolean
+        linkedApplications:
+          type: array
+          items:
+            $ref: "#/components/schemas/LinkedApplicationSummary"
 
     ApplicationSummaryResponse:
       type: object
@@ -584,6 +588,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationSummary"
+
+    LinkedApplicationSummary:
+      type: object
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        laaReference:
+          type: string
+        isLead:
+          type: boolean
+
     Caseworker:
       type: object
       properties:

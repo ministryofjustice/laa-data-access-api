@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.service.applicationSummary;
 
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -9,6 +10,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
@@ -294,6 +297,150 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         assertThat(result.requestedPageSize()).isEqualTo(100);
         assertThat(result.page().getContent()).hasSize(5);
+    }
+
+    @Test
+    public void givenOnlyLead_whenGetApplications_thenLinkedApplicationsContainsAssociateNotSelf() {
+        // given
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+        UUID associateId = UUID.randomUUID();
+        ApplicationSummaryEntity leadApplication = applicationSummaryEntityFactory.createDefault(
+            b -> b.linkedApplications(Set.of(applicationEntityFactory.createDefault()))
+        );
+
+        List<ApplicationSummaryEntity> expectedApplications = List.of(leadApplication);
+        List<LinkedApplicationSummaryDto> linkedDtos = List.of(
+            new LinkedApplicationSummaryDto(associateId, "ASSOC-REF-0", false, leadApplication.getId()),
+            new LinkedApplicationSummaryDto(leadApplication.getId(), leadApplication.getLaaReference(), true, leadApplication.getId())
+        );
+
+        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(expectedApplications));
+        when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
+        when(applicationRepository.findAllLinkedApplicationsByLeadIds(any())).thenReturn(linkedDtos);
+
+        // when
+        List<ApplicationSummary> actualApplications = serviceUnderTest.getAllApplications(
+            null, null, null, null, null, null, null, null, null, null, 1, 10
+        ).page().getContent();
+
+        // then
+        assertThat(actualApplications).hasSize(1);
+        List<LinkedApplicationSummary> linked = actualApplications.getFirst().getLinkedApplications();
+        UUID leadId = actualApplications.getFirst().getApplicationId();
+
+        assertThat(linked).hasSize(1);
+        assertThat(linked.getFirst().getApplicationId()).isEqualTo(associateId);
+        assertThat(linked.getFirst().getIsLead()).isFalse();
+        assertThat(linked)
+            .noneMatch(la -> la.getApplicationId().equals(leadId));
+    }
+
+    @Test
+    public void givenAssociatesOfSameLead_whenGetApplications_thenEachAssociateSeesLeadAndSiblingNotSelf() {
+        // given
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+        UUID leadId = UUID.randomUUID();
+        ApplicationSummaryEntity firstAssociateApplication = applicationSummaryEntityFactory.createDefault();
+        ApplicationSummaryEntity secondAssociateApplication = applicationSummaryEntityFactory.createDefault();
+
+        List<LinkedApplicationSummaryDto> linkedApplicationSummaryDtos = List.of(
+            new LinkedApplicationSummaryDto(firstAssociateApplication.getId(), firstAssociateApplication.getLaaReference(), false, leadId),
+            new LinkedApplicationSummaryDto(secondAssociateApplication.getId(), secondAssociateApplication.getLaaReference(), false, leadId),
+            new LinkedApplicationSummaryDto(leadId, "LEAD-REF", true, leadId)
+        );
+
+        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(firstAssociateApplication, secondAssociateApplication)));
+        when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of(leadId));
+        when(applicationRepository.findAllLinkedApplicationsByLeadIds(any())).thenReturn(linkedApplicationSummaryDtos);
+
+        // when
+        List<ApplicationSummary> actualApplications = serviceUnderTest.getAllApplications(
+            null, null, null, null, null, null, null, null, null, null, 1, 10
+        ).page().getContent();
+        ApplicationSummary firstAssociate = actualApplications.get(0);
+        ApplicationSummary secondAssociate = actualApplications.get(1);
+
+        // then
+        assertThat(firstAssociate.getLinkedApplications())
+            .extracting(LinkedApplicationSummary::getApplicationId)
+            .containsExactlyInAnyOrder(secondAssociateApplication.getId(), leadId);
+        assertThat(firstAssociate.getLinkedApplications())
+            .noneMatch(la -> la.getApplicationId().equals(firstAssociateApplication.getId()));
+
+        assertThat(secondAssociate.getLinkedApplications())
+            .extracting(LinkedApplicationSummary::getApplicationId)
+            .containsExactlyInAnyOrder(firstAssociateApplication.getId(), leadId);
+        assertThat(secondAssociate.getLinkedApplications())
+            .noneMatch(la -> la.getApplicationId().equals(secondAssociateApplication.getId()));
+    }
+
+    @Test
+    public void givenAssociatesOfDifferentLeads_whenGetApplications_thenNoGroupCrossContamination() {
+        // given
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+        UUID firstLeadId = UUID.randomUUID();
+        UUID secondLeadId = UUID.randomUUID();
+        ApplicationSummaryEntity firstAssociateApplication = applicationSummaryEntityFactory.createDefault();
+        ApplicationSummaryEntity secondAssociateApplication = applicationSummaryEntityFactory.createDefault();
+
+        List<LinkedApplicationSummaryDto> linkedDtos = List.of(
+            new LinkedApplicationSummaryDto(firstAssociateApplication.getId(), firstAssociateApplication.getLaaReference(), false, firstLeadId),
+            new LinkedApplicationSummaryDto(firstLeadId, "LEAD-REF-1", true, firstLeadId),
+            new LinkedApplicationSummaryDto(secondAssociateApplication.getId(), secondAssociateApplication.getLaaReference(), false, secondLeadId),
+            new LinkedApplicationSummaryDto(secondLeadId, "LEAD-REF-2", true, secondLeadId)
+        );
+
+        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(firstAssociateApplication, secondAssociateApplication)));
+        when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of(firstLeadId, secondLeadId));
+        when(applicationRepository.findAllLinkedApplicationsByLeadIds(any())).thenReturn(linkedDtos);
+
+        // when
+        List<ApplicationSummary> actualApplications = serviceUnderTest.getAllApplications(
+            null, null, null, null, null, null, null, null, null, null, 1, 10
+        ).page().getContent();
+        ApplicationSummary firstAssociate = actualApplications.get(0);
+        ApplicationSummary secondAssociate = actualApplications.get(1);
+
+        // then
+        assertThat(firstAssociate.getLinkedApplications())
+            .extracting(LinkedApplicationSummary::getApplicationId)
+            .containsExactlyInAnyOrder(firstLeadId);
+        assertThat(firstAssociate.getLinkedApplications())
+            .noneMatch(la -> la.getApplicationId().equals(secondAssociateApplication.getId()));
+
+        assertThat(secondAssociate.getLinkedApplications())
+            .extracting(LinkedApplicationSummary::getApplicationId)
+            .containsExactlyInAnyOrder(secondLeadId);
+        assertThat(secondAssociate.getLinkedApplications())
+            .noneMatch(la -> la.getApplicationId().equals(firstAssociateApplication.getId()));
+    }
+
+    @Test
+    public void givenOnlyStandalone_whenGetApplications_thenLinkedApplicationsIsEmpty() {
+        // given
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+        ApplicationSummaryEntity standaloneApplication = applicationSummaryEntityFactory.createDefault();
+
+        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(standaloneApplication)));
+        when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
+
+        // when
+        List<ApplicationSummary> actualApplications = serviceUnderTest.getAllApplications(
+            null, null, null, null, null, null, null, null, null, null, 1, 10
+        ).page().getContent();
+
+        // then
+        assertThat(actualApplications).hasSize(1);
+        assertThat(actualApplications).allMatch(r -> r.getLinkedApplications().isEmpty());
+        verify(applicationRepository, never()).findAllLinkedApplicationsByLeadIds(any());
     }
 
     private void assertApplicationSummaryListsEqual(List<ApplicationSummary> actualList, List<ApplicationSummaryEntity> expectedList) {

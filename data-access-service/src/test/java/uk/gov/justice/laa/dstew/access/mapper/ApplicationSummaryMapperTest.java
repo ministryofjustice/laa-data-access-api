@@ -23,6 +23,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 
 
@@ -116,5 +118,28 @@ public class ApplicationSummaryMapperTest {
     @Test
     void givenNullApplicationSummary_whenToApplicationSummary_thenReturnNull() {
         assertThat(applicationMapper.toApplicationSummary(null)).isNull();
+    }
+
+    @Test
+    void givenLinkedApplicationsSummaryDto_whenToLinkedApplicationSummary_thenMapsFieldsCorrectly() {
+        // given
+        UUID applicationId = UUID.randomUUID();
+        String laaReference = "ref1";
+        boolean isLead = true;
+
+        LinkedApplicationSummaryDto dto = LinkedApplicationSummaryDto.builder()
+            .applicationId(applicationId)
+            .laaReference(laaReference)
+            .isLead(isLead)
+            .build();
+
+        // when
+        LinkedApplicationSummary result = applicationMapper.toLinkedApplicationSummary(dto);
+
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result.getApplicationId()).isEqualTo(applicationId);
+        assertThat(result.getLaaReference()).isEqualTo(laaReference);
+        assertThat(result.getIsLead()).isEqualTo(isLead);
     }
 }

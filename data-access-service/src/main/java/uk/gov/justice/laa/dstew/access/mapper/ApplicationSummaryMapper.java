@@ -8,6 +8,8 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 
 /**
  * Mapper between ApplicationSummaryEntity and DTOs.
@@ -73,4 +75,12 @@ public interface ApplicationSummaryMapper {
   private static boolean isClient(IndividualEntity individual) {
     return individual.getType() == IndividualType.CLIENT;
   }
+
+  /**
+   * Maps the given linked application summary DTO to a linked application summary.
+   *
+   * @param dto the linked application summary DTO
+   * @return the linked application summary
+   */
+  LinkedApplicationSummary toLinkedApplicationSummary(LinkedApplicationSummaryDto dto);
 }
