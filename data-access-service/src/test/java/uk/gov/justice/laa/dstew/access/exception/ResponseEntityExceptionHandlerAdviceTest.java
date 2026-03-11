@@ -7,8 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+
 import java.beans.PropertyChangeEvent;
 import java.util.Arrays;
 import java.util.List;
@@ -32,6 +31,8 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.exc.MismatchedInputException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 
@@ -194,8 +195,8 @@ class ResponseEntityExceptionHandlerAdviceTest {
       Class<?> classExpected) {
     HttpMessageNotReadableException exception = mock(HttpMessageNotReadableException.class);
     MismatchedInputException mismatchedInputException = mock(MismatchedInputException.class);
-    JsonMappingException.Reference reference = mock(JsonMappingException.Reference.class);
-    when(reference.getFieldName()).thenReturn("testField");
+    JacksonException.Reference reference = mock(JacksonException.Reference.class);
+    when(reference.getPropertyName()).thenReturn("testField");
     when(mismatchedInputException.getPath()).thenReturn(List.of(reference));
     Class clazz = classExpected;
     when(mismatchedInputException.getTargetType()).thenReturn(clazz);
@@ -207,8 +208,8 @@ class ResponseEntityExceptionHandlerAdviceTest {
       Class<?> classExpected) {
     HttpMessageNotReadableException exception = mock(HttpMessageNotReadableException.class);
     MismatchedInputException mismatchedInputException = mock(MismatchedInputException.class);
-    JsonMappingException.Reference reference = mock(JsonMappingException.Reference.class);
-    when(reference.getFieldName()).thenReturn(null);
+    JacksonException.Reference reference = mock(JacksonException.Reference.class);
+    when(reference.getPropertyName()).thenReturn(null);
     when(mismatchedInputException.getPath()).thenReturn(List.of(reference));
     Class clazz = classExpected;
     when(mismatchedInputException.getTargetType()).thenReturn(clazz);

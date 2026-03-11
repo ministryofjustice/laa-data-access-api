@@ -3,8 +3,6 @@ package uk.gov.justice.laa.dstew.access.exception;
 
 import static uk.gov.justice.laa.dstew.access.exception.ProblemDetailUtility.getCustomProblemDetail;
 
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +25,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.exc.MismatchedInputException;
 
 
 /**
@@ -101,7 +101,7 @@ public class ResponseEntityExceptionHandlerAdvice extends ResponseEntityExceptio
   private static @NonNull String getMessageForMismatchedInputException(HttpMessageNotReadableException ex,
                                                                        MismatchedInputException mie) {
     String field = mie.getPath().stream()
-        .map(JsonMappingException.Reference::getFieldName)
+        .map(JacksonException.Reference::getPropertyName)
         .filter(Objects::nonNull)
         .collect(Collectors.joining("."));
 

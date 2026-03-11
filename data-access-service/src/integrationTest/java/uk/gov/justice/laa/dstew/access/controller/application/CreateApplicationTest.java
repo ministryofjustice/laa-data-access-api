@@ -348,7 +348,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         }), problemDetail, Map.of("invalidFields", Map.of("laaReference", mustNotBeNull))),
         Arguments.of(applicationCreateRequestFactory.create(builder -> {
           builder.applicationContent(null);
-        }), problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
+        }), problemDetail, Map.of("invalidFields", Map.of("applicationContent", mustNotBeNull))),
         Arguments.of(applicationCreateRequestFactory.create(builder -> {
           builder.applicationContent(new HashMap<>());
         }), problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
@@ -359,7 +359,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
             "submittedAt: must not be null"))),
         Arguments.of(applicationCreateRequestFactory.create(builder -> {
           builder.individuals(null);
-        }), problemDetail, Map.of("invalidFields", Map.of("individuals", "size must be between 1 and 2147483647"))),
+        }), problemDetail, Map.of("invalidFields", Map.of("individuals", mustNotBeNull))),
         Arguments.of(applicationCreateRequestFactory.create(builder -> {
           builder.individuals(List.of());
         }), problemDetail, Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))), Arguments.of(
@@ -369,7 +369,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         Arguments.of(
             applicationCreateRequestFactory.create(builder -> builder.individuals(
                 List.of(individualFactory.create(individualBuilder -> individualBuilder.details(null))))), problemDetail,
-            Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
+            Map.of("invalidFields", Map.of("individuals[0].details", mustNotBeNull))),
         Arguments.of(
             applicationCreateRequestFactory.create(builder -> builder.individuals(
                 List.of(individualFactory.create(individualBuilder -> individualBuilder.details(new HashMap<>()))))),
@@ -386,7 +386,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
                 builder -> builder.individuals(List.of(individualFactory.create(
                     individualBuilder -> individualBuilder.dateOfBirth(null).firstName(null).lastName(null).details(null))))),
             problemDetail, Map.of("invalidFields",
-                Map.of("individuals[0].details", minimumSizErrorMessage,
+                Map.of("individuals[0].details", mustNotBeNull,
                     "individuals[0].lastName", mustNotBeNull,
                     "individuals[0].firstName", mustNotBeNull,
                     "individuals[0].dateOfBirth", mustNotBeNull
