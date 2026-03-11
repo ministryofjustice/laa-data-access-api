@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -15,7 +16,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.NonNull;
 import org.springframework.dao.OptimisticLockingFailureException;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
@@ -128,7 +128,7 @@ public class ApplicationService {
                 List<Map<String, Object>> involvedChildren = getInvolvedChildren(entity);
                 if (involvedChildren != null) {
                   List<Object> children = new ArrayList<>();
-                  involvedChildren.forEach(c -> children.add(c));
+                  involvedChildren.forEach(children::add);
                   applicationProceeding.setInvolvedChildren(children);
                 } else {
                   applicationProceeding.setInvolvedChildren(null);
@@ -233,10 +233,7 @@ public class ApplicationService {
   @AllowApiCaseworker
   public void updateApplication(final UUID id, final ApplicationUpdateRequest req) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
-    if (Long.valueOf(req.getVersion()) != entity.getVersion()) {
-      throw new OptimisticLockingFailureException(
-          String.format("Application with id %s and version %s not found", id, req.getVersion()));
-    }
+    checkEntityVersionLocking(id, entity.getVersion(), req.getVersion());
     applicationValidations.checkApplicationUpdateRequest(req);
     applicationMapper.updateApplicationEntity(entity, req);
     entity.setModifiedAt(Instant.now());
@@ -250,6 +247,13 @@ public class ApplicationService {
         new TypeReference<Map<String, Object>>() {
         }
     );
+  }
+
+  private static void checkEntityVersionLocking(UUID id, Long entityVersion, @NotNull Long reqVersion) {
+    if (reqVersion.equals(entityVersion)) {
+      throw new OptimisticLockingFailureException(
+          String.format("Application with id %s and version %s not found", id, reqVersion));
+    }
   }
 
   /**
