@@ -92,7 +92,7 @@ public class ApplicationSummaryService {
       throw new ValidationException(List.of("Caseworker not found"));
     }
 
-    Page<ApplicationSummaryEntity> pageResults = applicationSummaryRepository
+    Page<ApplicationSummaryEntity> resultPage = applicationSummaryRepository
         .findAll(ApplicationSummarySpecification
                 .filterBy(applicationStatus,
                     laaReference,
@@ -104,9 +104,9 @@ public class ApplicationSummaryService {
                     isAutoGranted),
             pageDetails);
 
-    Map<UUID, List<LinkedApplicationSummaryDto>> linkedApplications = retrieveLinkedApplications(pageResults.getContent());
+    Map<UUID, List<LinkedApplicationSummaryDto>> linkedApplications = retrieveLinkedApplications(resultPage.getContent());
 
-    Page<ApplicationSummary> resultPage = pageResults.map(entity -> {
+    return wrapResult(page, pageSize, resultPage.map(entity -> {
       ApplicationSummary summary = mapper.toApplicationSummary(entity);
       summary.setLinkedApplications(
           linkedApplications.getOrDefault(entity.getId(), List.of())
@@ -115,9 +115,7 @@ public class ApplicationSummaryService {
               .toList()
       );
       return summary;
-    });
-
-    return wrapResult(page, pageSize, resultPage);
+    }));
   }
 
   private Map<UUID, List<LinkedApplicationSummaryDto>> retrieveLinkedApplications(List<ApplicationSummaryEntity> content) {
