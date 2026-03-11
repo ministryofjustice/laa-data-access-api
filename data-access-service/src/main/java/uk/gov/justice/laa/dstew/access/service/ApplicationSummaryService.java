@@ -122,30 +122,18 @@ public class ApplicationSummaryService {
   }
 
   private Map<UUID, List<LinkedApplicationSummaryDto>> retrieveLinkedApplications(Page<ApplicationSummaryEntity> pageResults) {
-    List<UUID> applicationIdsFromPage = pageResults.getContent()
-        .stream()
-        .map(ApplicationSummaryEntity::getId)
-        .toList();
-
-    List<UUID> leadIdsFromPage = pageResults.getContent()
-        .stream()
-        .filter(ApplicationSummaryEntity::isLead)
-        .map(ApplicationSummaryEntity::getId)
-        .toList();
-
-    List<UUID> leadIdsFromAssociates = applicationRepository
-        .findLeadIdsByAssociatedIds(applicationIdsFromPage);
+    List<ApplicationSummaryEntity> content = pageResults.getContent();
+    List<UUID> pageIds = content.stream().map(ApplicationSummaryEntity::getId).toList();
 
     List<UUID> allLeadIds = Stream.concat(
-            leadIdsFromAssociates.stream(),
-            leadIdsFromPage.stream())
+            content.stream().filter(ApplicationSummaryEntity::isLead).map(ApplicationSummaryEntity::getId),
+            applicationRepository.findLeadIdsByAssociatedIds(pageIds).stream())
         .distinct()
         .toList();
 
     return allLeadIds.isEmpty()
         ? Map.of()
-        : applicationRepository
-        .findAllLinkedApplicationsByLeadIds(allLeadIds)
+        : applicationRepository.findAllLinkedApplicationsByLeadIds(allLeadIds)
         .stream()
         .collect(Collectors.groupingBy(LinkedApplicationSummaryDto::getLeadApplicationId));
   }
@@ -153,19 +141,14 @@ public class ApplicationSummaryService {
   private List<LinkedApplicationSummaryDto> groupLinkedApplicationsByLead(
       ApplicationSummaryEntity applicationSummaryEntity,
       Map<UUID, List<LinkedApplicationSummaryDto>> linkedByLeadId) {
-
-    List<LinkedApplicationSummaryDto> linkedApplications = linkedByLeadId
-        .getOrDefault(applicationSummaryEntity.getId(), List.of());
-
-    if (linkedApplications.isEmpty()) {
-      linkedApplications = linkedByLeadId.values().stream()
-          .filter(group -> group.stream()
-              .anyMatch(dto -> dto.getApplicationId().equals(applicationSummaryEntity.getId())))
-          .findFirst()
-          .orElse(List.of());
-    }
-
-    return linkedApplications;
+    return linkedByLeadId.getOrDefault(
+        applicationSummaryEntity.getId(),
+        linkedByLeadId.values().stream()
+            .filter(group -> group.stream()
+                .anyMatch(dto -> dto.getApplicationId().equals(applicationSummaryEntity.getId())))
+            .findFirst()
+            .orElse(List.of())
+    );
   }
 
   private Sort createSortAndOrderBy(ApplicationSortBy sortBy,
