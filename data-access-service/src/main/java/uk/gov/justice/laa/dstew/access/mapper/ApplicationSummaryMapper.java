@@ -82,14 +82,5 @@ public interface ApplicationSummaryMapper {
    * @param dto the linked application summary DTO
    * @return the linked application summary
    */
-  default LinkedApplicationSummary toLinkedApplicationSummary(LinkedApplicationSummaryDto dto) {
-    if (dto == null) {
-      return null;
-    }
-    LinkedApplicationSummary linked = new LinkedApplicationSummary();
-    linked.setApplicationId(dto.getApplicationId());
-    linked.setLaaReference(dto.getLaaReference());
-    linked.setIsLead(dto.isLead());
-    return linked;
-  }
+  LinkedApplicationSummary toLinkedApplicationSummary(LinkedApplicationSummaryDto dto);
 }

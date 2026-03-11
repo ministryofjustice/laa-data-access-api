@@ -19,20 +19,21 @@ public interface ApplicationRepository extends JpaRepository<ApplicationEntity, 
 
   List<ApplicationEntity> findAllByApplyApplicationIdIn(List<UUID> applyApplicationIds);
 
-  @Query("SELECT la.leadApplicationId FROM LinkedApplicationEntity la WHERE la.associatedApplicationId IN :pageIds")
+  @Query(
+      value = "SELECT la.lead_application_id FROM linked_applications la WHERE la.associated_application_id IN :pageIds",
+      nativeQuery = true)
   List<UUID> findLeadIdsByAssociatedIds(@Param("pageIds") List<UUID> pageIds);
 
-  @Query("SELECT new uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto("
-      + "a.id, a.laaReference, false, la.leadApplicationId) "
-      + "FROM ApplicationEntity a "
-      + "JOIN LinkedApplicationEntity la ON a.id = la.associatedApplicationId "
-      + "WHERE la.leadApplicationId IN :leadIds "
-      + "UNION "
-      + "SELECT new uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto("
-      + "a.id, a.laaReference, true, a.id) "
-      + "FROM ApplicationEntity a "
-      + "WHERE a.id IN :leadIds")
+  @Query(
+      value = "SELECT a.id, a.laa_reference, false AS is_lead, la.lead_application_id "
+          + "FROM applications a "
+          + "JOIN linked_applications la ON a.id = la.associated_application_id "
+          + "WHERE la.lead_application_id IN :leadIds "
+          + "UNION "
+          + "SELECT a.id, a.laa_reference, true AS is_lead, a.id "
+          + "FROM applications a "
+          + "WHERE a.id IN :leadIds",
+      nativeQuery = true)
   List<LinkedApplicationSummaryDto> findAllLinkedApplicationsByLeadIds(@Param("leadIds") List<UUID> leadIds);
-
 }
 

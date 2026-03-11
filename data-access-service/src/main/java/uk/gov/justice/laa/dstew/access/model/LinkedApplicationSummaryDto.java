@@ -19,6 +19,6 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 public class LinkedApplicationSummaryDto {
   private UUID applicationId;
   private String laaReference;
-  private boolean isLead;
+  private Boolean isLead;
   private UUID leadApplicationId;
 }
