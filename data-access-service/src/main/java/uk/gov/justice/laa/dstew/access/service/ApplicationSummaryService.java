@@ -12,7 +12,6 @@ import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
@@ -26,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
+import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -71,7 +71,7 @@ public class ApplicationSummaryService {
    * @param pageSize the maximum number of results to return per page
    * @return a {@link PaginatedResult} containing the page and validated pagination parameters
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+  @AllowApiCaseworker
   public PaginatedResult<ApplicationSummary> getAllApplications(
           ApplicationStatus applicationStatus,
           String laaReference,

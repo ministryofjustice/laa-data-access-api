@@ -14,7 +14,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.NonNull;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
@@ -23,9 +22,13 @@ import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
+import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
+import uk.gov.justice.laa.dstew.access.mapper.ProceedingMapper;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
@@ -38,8 +41,10 @@ import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
+import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 import uk.gov.justice.laa.dstew.access.validation.PayloadValidationService;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
  * Service class for managing Applications.
@@ -50,6 +55,7 @@ public class ApplicationService {
   private final int applicationVersion = 1;
   private final ApplicationRepository applicationRepository;
   private final ApplicationMapper applicationMapper;
+  private final ProceedingMapper proceedingMapper;
   private final ApplicationValidations applicationValidations;
   private final ObjectMapper objectMapper;
   private final CaseworkerRepository caseworkerRepository;
@@ -71,6 +77,7 @@ public class ApplicationService {
    */
   public ApplicationService(final ApplicationRepository applicationRepository,
                             final ApplicationMapper applicationMapper,
+                            final ProceedingMapper proceedingMapper,
                             final ApplicationValidations applicationValidations,
                             final ObjectMapper objectMapper,
                             final CaseworkerRepository caseworkerRepository,
@@ -82,6 +89,7 @@ public class ApplicationService {
                             final ProceedingsService proceedingsService, PayloadValidationService payloadValidationService) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
+    this.proceedingMapper = proceedingMapper;
     this.applicationValidations = applicationValidations;
     this.applicationContentParser = applicationContentParserService;
     this.proceedingRepository = proceedingRepository;
@@ -101,10 +109,57 @@ public class ApplicationService {
    * @param id application UUID
    * @return application DTO
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+  @AllowApiCaseworker
   public Application getApplication(final UUID id) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
-    return applicationMapper.toApplication(entity);
+    Application application = applicationMapper.toApplication(entity);
+
+    Set<ProceedingEntity> proceedings = proceedingRepository.findAllByApplicationId(id);
+
+    if (proceedings != null) {
+
+      proceedings.forEach(
+              proceeding -> {
+                ApplicationProceeding applicationProceeding =
+                        proceedingMapper.toApplicationProceeding(proceeding);
+
+                List<Map<String, Object>> involvedChildren = getInvolvedChildren(entity);
+                if (involvedChildren != null) {
+                  List<Object> children = new ArrayList<>();
+                  involvedChildren.forEach(c -> children.add(c));
+                  applicationProceeding.setInvolvedChildren(children);
+                } else {
+                  applicationProceeding.setInvolvedChildren(null);
+                }
+
+                if (entity.getDecision() != null) {
+                  Optional<MeritsDecisionEntity> meritsDecision =
+                          entity.getDecision().getMeritsDecisions().stream()
+                                  .filter(m -> m.getProceeding().getId() == proceeding.getId())
+                                  .findFirst();
+
+                  meritsDecision.ifPresent(meritsDecisionEntity ->
+                          applicationProceeding.setMeritsDecision(meritsDecisionEntity.getDecision()));
+                }
+                application.getProceedings().add(applicationProceeding);
+              }
+      );
+    }
+
+    return application;
+  }
+
+  private List<Map<String, Object>> getInvolvedChildren(ApplicationEntity entity) {
+
+    ApplicationContent applicationContent = MapperUtil.getObjectMapper()
+            .convertValue(entity.getApplicationContent(), ApplicationContent.class);
+    ApplicationMerits meritsObj = applicationContent.getApplicationMerits();
+
+    if (meritsObj == null) {
+      return null;
+    }
+
+    return meritsObj.getInvolvedChildren();
   }
 
   /**
@@ -113,13 +168,14 @@ public class ApplicationService {
    * @param req DTO containing creation fields
    * @return UUID of the created application
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiCaseworker
   @Transactional
   public UUID createApplication(final ApplicationCreateRequest req) {
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
     ApplicationContent applicationContent =
         payloadValidationService.convertAndValidate(req.getApplicationContent(), ApplicationContent.class);
     setValuesFromApplicationContent(entity, applicationContent);
+    checkForDuplicateApplication(entity.getApplyApplicationId());
     entity.setSchemaVersion(applicationVersion);
 
     final ApplicationEntity saved = applicationRepository.save(entity);
@@ -151,6 +207,20 @@ public class ApplicationService {
     entity.setOfficeCode(parsedContentDetails.officeCode());
   }
 
+  /**
+   * Validates that the application ID is not a duplicate.
+   *
+   * @param applyApplicationId the UUID of the application to check
+   * @throws ValidationException if a duplicate application exists
+   */
+
+  private void checkForDuplicateApplication(final UUID applyApplicationId) {
+    if (applicationRepository.existsByApplyApplicationId(applyApplicationId)) {
+      throw new ValidationException(
+          List.of("Application already exists for Apply Application Id: " + applyApplicationId)
+      );
+    }
+  }
 
   /**
    * Update an existing application.
@@ -158,7 +228,7 @@ public class ApplicationService {
    * @param id  application UUID
    * @param req DTO with update fields
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiCaseworker
   public void updateApplication(final UUID id, final ApplicationUpdateRequest req) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
     applicationValidations.checkApplicationUpdateRequest(req);
@@ -262,7 +332,7 @@ public class ApplicationService {
    * @throws ResourceNotFoundException if the application or caseworker does not exist
    */
   @Transactional
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiCaseworker
   public void assignCaseworker(@NonNull final UUID caseworkerId,
                                final List<UUID> applicationIds,
                                final EventHistory eventHistory) {
@@ -292,7 +362,7 @@ public class ApplicationService {
    * @param applicationId the UUID of the application to update
    * @throws ResourceNotFoundException if the application does not exist
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiCaseworker
   public void unassignCaseworker(final UUID applicationId, EventHistory history) {
     final ApplicationEntity entity = checkIfApplicationExists(applicationId);
 
@@ -329,7 +399,7 @@ public class ApplicationService {
    * @param request       DTO with update fields
    */
   @Transactional
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiCaseworker
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     checkIfCaseworkerExists(request.getUserId());

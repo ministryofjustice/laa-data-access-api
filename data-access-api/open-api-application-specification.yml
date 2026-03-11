@@ -3,6 +3,9 @@ info:
   version: 1.0.0
   title: Applications API
 
+security:
+  - bearerAuth: []
+
 paths:
   /api/v0/applications:
     get:
@@ -341,6 +344,11 @@ paths:
         '403': { description: Forbidden }
         '500': { description: Internal server error }
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
     XServiceName:
       in: header
@@ -444,6 +452,7 @@ components:
         - status
         - laaReference
         - lastUpdated
+        - proceedings
       properties:
         applicationId:
           type: string
@@ -463,7 +472,7 @@ components:
           format: date-time
         isLead:
           type: boolean
-        useDelegatedFunctions:
+        usedDelegatedFunctions:
           type: boolean
         autoGrant:
           type: boolean
@@ -475,7 +484,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Opponent"
+        proceedings:
+          $ref: "#/components/schemas/ApplicationProceedings"
         provider:
+          $ref: "#/components/schemas/Provider"
+
+    Provider:
+      type: object
+      properties:
+        officeCode:
           type: string
 
     ApplicationCreateRequest:
@@ -746,3 +763,42 @@ components:
           $ref: "#/components/schemas/EventHistory"
         autoGranted:
           type: boolean
+
+    ApplicationProceedings:
+      type: array
+      items:
+        $ref: "#/components/schemas/ApplicationProceeding"
+
+    ApplicationProceeding:
+      type: object
+      required:
+        - proceedingId
+      properties:
+        proceedingId:
+          type: string
+          format: uuid
+        proceedingType:
+          type: string
+        proceedingDescription:
+          type: string
+        usedDelegatedFunctionsOn:
+          type: string
+          format: date
+        categoryOfLaw:
+          type: string
+        matterType:
+          type: string
+        levelOfService:
+          type: string
+        substantiveCostLimitation:
+          type: string
+        scopeLimitations:
+          type: array
+          items:
+            type: object
+        meritsDecision:
+          $ref: "#/components/schemas/meritsDecisionStatus"
+        involvedChildren:
+          type: array
+          items:
+            type: object

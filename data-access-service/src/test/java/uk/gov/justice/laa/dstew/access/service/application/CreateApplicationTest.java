@@ -81,7 +81,7 @@ public class CreateApplicationTest extends BaseServiceTest {
             .build()))
         .build();
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     // when
     UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
@@ -128,7 +128,7 @@ public class CreateApplicationTest extends BaseServiceTest {
             .build()))
         .build();
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     // when
     UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
@@ -163,7 +163,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     when(applicationRepository.findByApplyApplicationId(applyApplicationId))
         .thenReturn(null);
     when(applicationRepository.save(any())).thenReturn(withExpectedId);
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     // when
     assertThatExceptionOfType(ResourceNotFoundException.class)
@@ -202,7 +202,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     when(applicationRepository.findByApplyApplicationId(otherAssociatedApplication))
         .thenReturn(null);
     when(applicationRepository.save(any())).thenReturn(withExpectedId);
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     // when
     assertThatExceptionOfType(ResourceNotFoundException.class)
@@ -247,7 +247,7 @@ public class CreateApplicationTest extends BaseServiceTest {
   void mapToApplicationEntity_SuccessfullyMapFromApplicationContentFields(ApplicationCreateRequest application,
                                                                           boolean expectedUseDelegatedFunctions) {
     // Given
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     UUID expectedId = UUID.randomUUID();
     ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder -> builder.id(expectedId));
@@ -294,25 +294,53 @@ public class CreateApplicationTest extends BaseServiceTest {
     verify(domainEventRepository, never()).save(any());
   }
 
+  @Test
+  public void givenDuplicateApplyApplicationId_whenCreateApplication_thenThrowValidationException() {
+    // given
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+    UUID applyApplicationId = UUID.randomUUID();
+
+    ApplicationContent applicationContent =
+        applicationContentGenerator.createDefault(builder -> builder.id(applyApplicationId));
+
+    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault(builder ->
+        builder.applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
+
+    ValidationException validationException = new ValidationException(
+        List.of("Application already exists for Apply Application Id: " + applyApplicationId)
+    );
+
+    when(applicationRepository.existsByApplyApplicationId(applyApplicationId)).thenReturn(true);
+
+    // when
+    Throwable throwable = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));
+
+    //then
+    assertThat(throwable)
+        .isInstanceOf(ValidationException.class)
+        .usingRecursiveComparison()
+        .isEqualTo(validationException);
+  }
+
   @ParameterizedTest
   @MethodSource("invalidApplicationRequests")
   public void GivenInvalidApplicationAndRoleWriter_whenCreateApplication_thenValidationExceptionWithCorrectMessage(
       ApplicationCreateRequest applicationCreateRequest,
       ValidationException validationException
   ) {
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    Throwable thrown = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));
-    assertThat(thrown)
-        .isInstanceOf(ValidationException.class)
-        .usingRecursiveComparison()
-        .isEqualTo(validationException);
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));
+        assertThat(thrown)
+                .isInstanceOf(ValidationException.class)
+                .usingRecursiveComparison()
+                .isEqualTo(validationException);
 
-    verify(applicationRepository, never()).findById(any(UUID.class));
-    verify(applicationRepository, never()).save(any());
-    verify(domainEventRepository, never()).save(any());
-  }
-
+        verify(applicationRepository, never()).findById(any(UUID.class));
+        verify(applicationRepository, never()).save(any());
+        verify(domainEventRepository, never()).save(any());
+    }
 
   private Stream<Arguments> invalidApplicationRequests() {
     ValidationException validationException = new ValidationException(List.of(

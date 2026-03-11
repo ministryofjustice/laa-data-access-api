@@ -77,7 +77,7 @@ public class ApplicationAsserts {
                         ? OffsetDateTime.ofInstant(applicationEntity.getSubmittedAt(), ZoneOffset.UTC)
                         : null
         );
-        application.setUseDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
+        application.setUsedDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
         application.setAutoGrant(applicationEntity.getIsAutoGranted());
         if (applicationEntity.getDecision() != null) {
             application.setOverallDecision(applicationEntity.getDecision().getOverallDecision());

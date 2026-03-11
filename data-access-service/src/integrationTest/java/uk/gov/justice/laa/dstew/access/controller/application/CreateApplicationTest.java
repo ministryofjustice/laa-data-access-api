@@ -51,7 +51,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("createApplicationTestParameters")
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenCreateNewApplication_whenCreateApplication_thenReturnCreatedWithLocationHeader(
           ApplicationOffice office
   ) throws Exception {
@@ -59,13 +59,13 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenCreateNewApplication_whenCreateApplicationAndNoOffice_thenReturnCreatedWithLocationHeader() throws Exception {
     verifyCreateNewApplication(null, null);
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_thenReturnCreatedWithLocationHeader() throws Exception {
     final ApplicationEntity leadApplicationToLink = persistedApplicationFactory.createAndPersist();
     final LinkedApplication linkedApplication = LinkedApplication.builder().leadApplicationId(leadApplicationToLink.getApplyApplicationId())
@@ -77,7 +77,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_raiseIfLeadNotFound() throws Exception {
     // given
     UUID notFoundLeadId = UUID.randomUUID();
@@ -108,7 +108,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_raiseIfAssociatedNotFound() throws Exception {
     // given
     UUID leadApplicationId = UUID.randomUUID();
@@ -146,6 +146,37 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     assertEquals("No linked application found with associated apply ids: " + List.of(missingLinkedApplication), problemDetail.getDetail());
   }
 
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
+  public void givenDuplicateApplyApplicationId_whenCreateApplication_thenReturnBadRequest() throws Exception {
+    // given
+    ApplicationEntity existingApplication = persistedApplicationFactory.createAndPersist();
+
+    ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
+    ApplicationContent content = applicationContentFactory.create();
+    content.setId(existingApplication.getApplyApplicationId());
+
+    ApplicationCreateRequest request = applicationCreateRequestFactory.create();
+    request.setApplicationContent(objectMapper.convertValue(content, Map.class));
+
+    ProblemDetail expectedProblemDetail = ProblemDetailBuilder.create()
+        .status(HttpStatus.BAD_REQUEST)
+        .title("Bad Request")
+        .detail("Generic Validation Error")
+        .build();
+
+    expectedProblemDetail.setProperty("errors",
+        List.of("Application already exists for Apply Application Id: " + existingApplication.getApplyApplicationId()));
+
+    // when
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+    ProblemDetail detail = deserialise(result, ProblemDetail.class);
+
+    // then
+    assertSecurityHeaders(result);
+    assertProblemRecord(HttpStatus.BAD_REQUEST, expectedProblemDetail, result, detail);
+  }
+
   private ApplicationEntity verifyCreateNewApplication(ApplicationOffice office, LinkedApplication linkedApplication) throws Exception {
     ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
     ApplicationContent content = applicationContentFactory.create();
@@ -173,7 +204,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.WRITER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     public void givenCreateNewApplication_whenCreateApplicationAndInvalidServiceNameHeader_thenReturnBadRequest(
             String serviceName
@@ -182,7 +213,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenCreateNewApplication_whenCreateApplicationAndNoServiceNameHeader_thenReturnBadRequest() throws Exception {
     verifyBadServiceNameHeader(null);
   }
@@ -198,7 +229,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("applicationCreateRequestInvalidDataCases")
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenInvalidApplicationRequestData_whenCreateApplication_thenReturnBadRequest(ApplicationCreateRequest request,
                                                                                             ProblemDetail expectedDetail,
                                                                                             Map<String, Object> problemDetailProperties)
@@ -215,7 +246,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenInvalidApplicationContent_EmptyMap_whenCreateApplication_thenReturnBadRequest() throws Exception {
     ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder ->
         builder.applicationContent(new HashMap<>()));
@@ -235,7 +266,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenInvalidApplicationContent_whenCreateApplication_thenReturnBadRequest() throws Exception {
     ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder -> {
       builder.applicationContent(null);
@@ -258,7 +289,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"", "{}"})
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenNoRequestBody_whenCreateApplication_thenReturnBadRequest(String request) throws Exception {
     // when
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -272,7 +303,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenCorrectRequestBodyAndReaderRole_whenCreateApplication_thenReturnForbidden() throws Exception {
     // given
     ApplicationCreateRequest request = applicationCreateRequestFactory.create();
