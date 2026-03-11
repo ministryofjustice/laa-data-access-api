@@ -104,51 +104,51 @@ public class ApplicationSummaryService {
                     isAutoGranted),
             pageDetails);
 
-    Map<UUID, List<LinkedApplicationSummaryDto>> linkedApplications = retrieveLinkedApplications(pageResults);
+    Map<UUID, List<LinkedApplicationSummaryDto>> linkedApplications = retrieveLinkedApplications(pageResults.getContent());
 
     Page<ApplicationSummary> resultPage = pageResults.map(entity -> {
-      ApplicationSummary applicationSummary = mapper.toApplicationSummary(entity);
-      applicationSummary.setLinkedApplications(
-          groupLinkedApplicationsByLead(entity, linkedApplications)
+      ApplicationSummary summary = mapper.toApplicationSummary(entity);
+      summary.setLinkedApplications(
+          linkedApplications.getOrDefault(entity.getId(), List.of())
               .stream()
-              .filter(dto -> !dto.getApplicationId().equals(entity.getId()))
               .map(mapper::toLinkedApplicationSummary)
               .toList()
       );
-      return applicationSummary;
+      return summary;
     });
 
     return wrapResult(page, pageSize, resultPage);
   }
 
-  private Map<UUID, List<LinkedApplicationSummaryDto>> retrieveLinkedApplications(Page<ApplicationSummaryEntity> pageResults) {
-    List<ApplicationSummaryEntity> content = pageResults.getContent();
+  private Map<UUID, List<LinkedApplicationSummaryDto>> retrieveLinkedApplications(List<ApplicationSummaryEntity> content) {
     List<UUID> pageIds = content.stream().map(ApplicationSummaryEntity::getId).toList();
-
     List<UUID> allLeadIds = Stream.concat(
             content.stream().filter(ApplicationSummaryEntity::isLead).map(ApplicationSummaryEntity::getId),
             applicationRepository.findLeadIdsByAssociatedIds(pageIds).stream())
         .distinct()
         .toList();
 
-    return allLeadIds.isEmpty()
-        ? Map.of()
-        : applicationRepository.findAllLinkedApplicationsByLeadIds(allLeadIds)
+    if (allLeadIds.isEmpty()) {
+      return Map.of();
+    }
+
+    Map<UUID, List<LinkedApplicationSummaryDto>> byLead = applicationRepository
+        .findAllLinkedApplicationsByLeadIds(allLeadIds)
         .stream()
         .collect(Collectors.groupingBy(LinkedApplicationSummaryDto::getLeadApplicationId));
-  }
 
-  private List<LinkedApplicationSummaryDto> groupLinkedApplicationsByLead(
-      ApplicationSummaryEntity applicationSummaryEntity,
-      Map<UUID, List<LinkedApplicationSummaryDto>> linkedByLeadId) {
-    return linkedByLeadId.getOrDefault(
-        applicationSummaryEntity.getId(),
-        linkedByLeadId.values().stream()
-            .filter(group -> group.stream()
-                .anyMatch(dto -> dto.getApplicationId().equals(applicationSummaryEntity.getId())))
-            .findFirst()
-            .orElse(List.of())
-    );
+    return content.stream().collect(Collectors.toMap(
+        ApplicationSummaryEntity::getId,
+        entity -> {
+          UUID id = entity.getId();
+          List<LinkedApplicationSummaryDto> group = byLead.getOrDefault(id,
+              byLead.values().stream()
+                  .filter(g -> g.stream().anyMatch(dto -> dto.getApplicationId().equals(id)))
+                  .findFirst()
+                  .orElse(List.of()));
+          return group.stream().filter(dto -> !dto.getApplicationId().equals(id)).toList();
+        }
+    ));
   }
 
   private Sort createSortAndOrderBy(ApplicationSortBy sortBy,
