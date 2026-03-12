@@ -10,7 +10,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.IndividualAssert.assertIndividualCollectionsEqual;
+import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.
+        ApplicationCreateRequestIndividualAssert.assertIndividualCollectionsEqual;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.time.Instant;

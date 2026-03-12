@@ -448,6 +448,29 @@ components:
         type:
           $ref: "#/components/schemas/individualType"
 
+    ApplicationCreateRequestIndividual:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - dateOfBirth
+        - details
+        - type
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        details:
+          type: object
+          additionalProperties: true
+          minProperties: 1
+        type:
+          $ref: "#/components/schemas/individualType"
+
     Application:
       type: object
       required:
@@ -520,7 +543,7 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: "#/components/schemas/Individual"
+            $ref: "#/components/schemas/ApplicationCreateRequestIndividual"
 
     ApplicationUpdateRequest:
       type: object

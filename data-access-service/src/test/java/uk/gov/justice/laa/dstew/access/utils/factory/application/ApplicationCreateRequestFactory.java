@@ -10,6 +10,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
+import uk.gov.justice.laa.dstew.access.utils.factory.individual.ApplicationCreateRequestIndividualFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactory;
 
 @Profile("unit-test")
@@ -17,7 +18,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactor
 public class ApplicationCreateRequestFactory extends BaseFactory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> {
 
   @Autowired
-  private IndividualFactory individualFactory;
+  private ApplicationCreateRequestIndividualFactory individualFactory;
 
   @Autowired
   private ApplicationContentFactory applicationContentFactory;
