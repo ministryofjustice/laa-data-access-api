@@ -9,6 +9,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
 import org.jspecify.annotations.NonNull;
@@ -49,14 +50,15 @@ public class ApplicationAsserts {
 
     assertEquals(expected.size(), (actual.size()));
 
-    List<Application> actualApplications = actual.stream()
+    List<UUID> actualApplications = actual.stream()
         .map(this::createApplication)
+        .map(Application::getApplicationId)
         .toList();
 
-    List<Application> expectedApplications = expected.stream()
+    List<UUID> expectedApplications = expected.stream()
         .map(this::createApplication)
+        .map(Application::getApplicationId)
         .toList();
-
     assertTrue(expectedApplications.containsAll(actualApplications));
   }
 
