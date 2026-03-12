@@ -38,7 +38,7 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class MeritsDecisionEntity implements AuditableEntity {
   @Id
-  @GeneratedValue(strategy = GenerationType.AUTO)
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(columnDefinition = "UUID")
   private UUID id;
 

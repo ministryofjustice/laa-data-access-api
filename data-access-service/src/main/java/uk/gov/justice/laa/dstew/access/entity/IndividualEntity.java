@@ -46,7 +46,7 @@ import uk.gov.justice.laa.dstew.access.model.IndividualType;
 public class IndividualEntity implements AuditableEntity {
   @Id
   @Column(columnDefinition = "UUID")
-  @GeneratedValue(strategy = GenerationType.AUTO)
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
   private UUID id;
 
   @Column(name = "first_name", nullable = false)

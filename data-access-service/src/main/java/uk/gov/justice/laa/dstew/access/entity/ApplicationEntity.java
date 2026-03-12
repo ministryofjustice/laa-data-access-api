@@ -55,7 +55,7 @@ public class ApplicationEntity implements AuditableEntity {
 
   @Id
   @Column(columnDefinition = "UUID")
-  @GeneratedValue(strategy = GenerationType.AUTO)
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
   private UUID id;
 
   @Column(name = "status", nullable = false)

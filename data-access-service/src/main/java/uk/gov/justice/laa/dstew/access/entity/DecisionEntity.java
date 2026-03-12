@@ -41,7 +41,7 @@ import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class DecisionEntity implements AuditableEntity {
   @Id
-  @GeneratedValue(strategy = GenerationType.AUTO)
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(columnDefinition = "UUID")
   private UUID id;
 
