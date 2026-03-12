@@ -3,6 +3,9 @@ info:
   title: Applications API
   version: 1.0.0
 
+security:
+  - bearerAuth: []
+
 paths:
   /api/v0/applications:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications"
@@ -22,6 +25,11 @@ paths:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1individuals"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     Application:
       $ref: "./open-api-application-specification.yml#/components/schemas/Application"

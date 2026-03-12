@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.api.IndividualsApi;
@@ -14,6 +13,7 @@ import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.Paging;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.IndividualsService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
@@ -45,7 +45,7 @@ public class IndividualsController implements IndividualsApi {
   @Override
   @LogMethodResponse
   @LogMethodArguments
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+  @AllowApiCaseworker
   public ResponseEntity<IndividualsResponse> getIndividuals(
       ServiceName serviceName,
       IncludedAdditionalData include,

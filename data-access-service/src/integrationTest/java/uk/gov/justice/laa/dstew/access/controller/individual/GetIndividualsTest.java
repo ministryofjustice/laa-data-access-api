@@ -33,7 +33,7 @@ import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 public class GetIndividualsTest extends BaseIntegrationTest {
 
   @ParameterizedTest
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
   void givenPagingParametersAndInvalidHeader_whenGetIndividuals_thenReturnBadRequest(
           String serviceName
@@ -42,7 +42,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenPagingParametersAndNoHeader_whenGetIndividuals_thenReturnBadRequest() throws Exception {
     verifyServiceNameHeader(null);
   }
@@ -77,7 +77,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("pagingParameters")
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenPagingParameters_whenGetIndividuals_thenCorrectPagingInResponse(
       Integer page,
       Integer pageSize,
@@ -112,7 +112,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("invalidPagingParameters")
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenInvalidPagingParameters_whenGetIndividuals_thenReturnBadRequest(
       Integer page,
       Integer pageSize
@@ -137,7 +137,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenExistingIndividual_whenGetIndividuals_thenReturnOKWithCorrectData() throws Exception {
     // given
     IndividualEntity persisted = persistedIndividualFactory.createAndPersist();
@@ -179,7 +179,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenNullPageAndPageSize_whenGetIndividuals_thenDefaultsAreApplied() throws Exception {
     // given
     persistedIndividualFactory.createAndPersistMultiple(5, builder -> {});
@@ -195,7 +195,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenApplicationId_whenGetIndividuals_thenFiltersByApplicationId() throws Exception {
     // given
     IndividualEntity individual = individualEntityFactory.create();
@@ -212,7 +212,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenIndividualType_whenGetIndividuals_thenFiltersByIndividualType() throws Exception {
     // given
     persistedIndividualFactory.createAndPersist(builder -> builder.type(IndividualType.CLIENT));
@@ -226,7 +226,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenBothFilters_whenGetIndividuals_thenFiltersByApplicationIdAndIndividualType() throws Exception {
     // given
     IndividualEntity client = individualEntityFactory.create(builder -> builder.type(IndividualType.CLIENT));
@@ -245,7 +245,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenInvalidApplicationId_whenGetIndividuals_thenReturnsBadRequest() throws Exception {
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=not-a-uuid");
@@ -254,7 +254,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenInvalidIndividualType_whenGetIndividuals_thenReturnsBadRequest() throws Exception {
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?individualType=NOT_A_TYPE");
@@ -263,7 +263,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenLowercaseIndividualType_whenGetIndividuals_thenReturnsBadRequest() throws Exception {
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?individualType=client");
@@ -272,7 +272,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenNoMatchingFilters_whenGetIndividuals_thenReturnsEmptyList() throws Exception {
     // given
     IndividualEntity client = individualEntityFactory.create(builder -> builder.type(IndividualType.CLIENT));
@@ -288,7 +288,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenNonExistentApplicationId_whenGetIndividuals_thenReturnsEmptyList() throws Exception {
     // given
     persistedIndividualFactory.createAndPersist(builder -> builder.type(IndividualType.CLIENT));
@@ -301,7 +301,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenMultipleIndividualsLinkedToApplication_whenGetIndividuals_thenReturnsAllLinked() throws Exception {
     // given
     IndividualEntity individual1 = individualEntityFactory.create();
@@ -323,7 +323,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenIndividualLinkedToMultipleApplications_whenGetIndividuals_thenReturnsIndividual() throws Exception {
     // given
     IndividualEntity sharedIndividual = individualEntityFactory.create();
@@ -364,7 +364,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenWriterRole_whenGetIndividuals_thenReturnForbiddenResponse() throws Exception {
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
@@ -374,7 +374,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.WRITER)
+  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenWriterRole_whenGetIndividualsWithFilters_thenReturnForbiddenResponse() throws Exception {
     // when
     MvcResult result = getUri(

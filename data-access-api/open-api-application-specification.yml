@@ -3,6 +3,9 @@ info:
   version: 1.0.0
   title: Applications API
 
+security:
+  - bearerAuth: []
+
 paths:
   /api/v0/applications:
     get:
@@ -347,6 +350,11 @@ paths:
         '403': { description: Forbidden }
         '500': { description: Internal server error }
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
     XServiceName:
       in: header
@@ -600,6 +608,10 @@ components:
           $ref: "#/components/schemas/applicationType"
         isLead:
           type: boolean
+        linkedApplications:
+          type: array
+          items:
+            $ref: "#/components/schemas/LinkedApplicationSummary"
 
     ApplicationSummaryResponse:
       type: object
@@ -610,6 +622,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationSummary"
+
+    LinkedApplicationSummary:
+      type: object
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        laaReference:
+          type: string
+        isLead:
+          type: boolean
+
     Caseworker:
       type: object
       properties:
