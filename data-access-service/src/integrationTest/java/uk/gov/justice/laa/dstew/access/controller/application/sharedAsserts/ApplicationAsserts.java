@@ -51,7 +51,7 @@ public class ApplicationAsserts {
         List<ApplicationEntity> actual = applicationRepository.findAllById(
                 expected.stream().map(ApplicationEntity::getId).collect(Collectors.toList()));
 
-        assertThat(expected.size()).isEqualTo(actual.size());
+        assertEquals(expected.size(),(actual.size()));
 
         List<Application> actualApplications = actual.stream()
                 .map(this::createApplication)

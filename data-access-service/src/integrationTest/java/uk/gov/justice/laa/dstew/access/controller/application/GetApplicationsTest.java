@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -1015,8 +1016,8 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         ApplicationSummary applicationSummary = new ApplicationSummary();
         applicationSummary.setApplicationId(applicationEntity.getId());
         applicationSummary.setStatus(applicationEntity.getStatus());
-        applicationSummary.setSubmittedAt(applicationEntity.getSubmittedAt().atOffset(ZoneOffset.UTC));
-        applicationSummary.setLastUpdated(applicationEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+        applicationSummary.setSubmittedAt(applicationEntity.getSubmittedAt().truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC));
+        applicationSummary.setLastUpdated(applicationEntity.getModifiedAt().truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC));
         applicationSummary.setUsedDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
         applicationSummary.setCategoryOfLaw(applicationEntity.getCategoryOfLaw());
         applicationSummary.setMatterType(applicationEntity.getMatterType());
