@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
+import java.time.Instant;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
@@ -31,7 +32,8 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                 )))
                 .type(IndividualType.CLIENT)
                 .build();
-        var instant = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();
+        var instant = Instant.now();
+//        var instant = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();
         return ApplicationEntity.builder()
                 .applyApplicationId(UUID.randomUUID())
                 .createdAt(instant)
