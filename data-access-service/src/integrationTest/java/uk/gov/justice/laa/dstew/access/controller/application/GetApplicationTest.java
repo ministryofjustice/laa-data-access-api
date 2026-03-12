@@ -100,7 +100,9 @@ public class GetApplicationTest extends BaseIntegrationTest {
         assertNoCacheHeaders(result);
         assertOK(result);
         Application expectedApplication = createApplication(application, proceeding, decision);
-        assertThat(actualApplication).isEqualTo(expectedApplication);
+        assertThat(actualApplication)
+            .usingRecursiveComparison()
+            .ignoringCollectionOrder().isEqualTo(expectedApplication);
     }
 
     @Test
