@@ -250,7 +250,7 @@ public class ApplicationService {
   }
 
   private static void checkEntityVersionLocking(UUID id, Long entityVersion, @NotNull Long reqVersion) {
-    if (reqVersion.equals(entityVersion)) {
+    if (!reqVersion.equals(entityVersion)) {
       throw new OptimisticLockingFailureException(
           String.format("Application with id %s and version %s not found", id, reqVersion));
     }
