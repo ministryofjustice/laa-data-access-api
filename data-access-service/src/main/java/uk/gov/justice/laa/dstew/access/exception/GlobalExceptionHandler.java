@@ -7,6 +7,7 @@ import static uk.gov.justice.laa.dstew.access.exception.ProblemDetailUtility.get
 import io.sentry.Sentry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,6 @@ import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
-
 
 
 /**
@@ -34,7 +34,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(ResourceNotFoundException.class)
   public ResponseEntity<ProblemDetail> handleResourceNotFound(ResourceNotFoundException exception) {
     return ResponseEntity.status(NOT_FOUND).body(getCustomProblemDetail(
-            HttpStatus.NOT_FOUND, exception.getMessage()));
+        HttpStatus.NOT_FOUND, exception.getMessage()));
   }
 
 
@@ -48,7 +48,7 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ProblemDetail> handleValidationException(ValidationException exception) {
 
     final ProblemDetail problemDetail = getCustomProblemDetail(
-              HttpStatus.BAD_REQUEST, "Generic Validation Error");
+        HttpStatus.BAD_REQUEST, "Generic Validation Error");
     problemDetail.setProperty("errors", exception.errors());
     return ResponseEntity.badRequest().body(problemDetail);
   }
@@ -64,7 +64,7 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ProblemDetail> handleIllegalArgumentException(IllegalArgumentException exception) {
     log.debug("Invalid argument: {}", exception.getMessage());
     return ResponseEntity.badRequest().body(
-            getCustomProblemDetail(HttpStatus.BAD_REQUEST, exception.getMessage()));
+        getCustomProblemDetail(HttpStatus.BAD_REQUEST, exception.getMessage()));
   }
 
 
@@ -73,9 +73,20 @@ public class GlobalExceptionHandler {
    *
    */
   @ExceptionHandler(AuthorizationDeniedException.class)
-  public void handleAuthorizationDeniedException(AuthorizationDeniedException exception) 
+  public void handleAuthorizationDeniedException(AuthorizationDeniedException exception)
       throws AuthorizationDeniedException {
     throw exception; //rely on Spring ExceptionTranslationFilter to differ between 403 and 401 return codes
+  }
+
+  /**
+   * The handler for ViolationException.
+   *
+   */
+  @ExceptionHandler(OptimisticLockingFailureException.class)
+  public ResponseEntity<ProblemDetail> handleOptimisticLoggingException(OptimisticLockingFailureException exception) {
+    Sentry.captureException(exception);
+    return ResponseEntity.badRequest().body(
+        getCustomProblemDetail(HttpStatus.CONFLICT, exception.getMessage()));
   }
 
   /**
@@ -90,10 +101,11 @@ public class GlobalExceptionHandler {
     log.error(logMessage, exception);
     // Do NOT use the exception type or message in the response (it may leak security-sensitive info)
     return ResponseEntity.internalServerError().body(
-            getCustomProblemDetail(INTERNAL_SERVER_ERROR, logMessage));
+        getCustomProblemDetail(INTERNAL_SERVER_ERROR, logMessage));
   }
 
-  /**The handler for Spring DataAccessExceptions.
+  /**
+   * The handler for Spring DataAccessExceptions.
    *
    * @param exception Data Access Exception
    * @return the response with the fixed title and detail
@@ -106,7 +118,7 @@ public class GlobalExceptionHandler {
     log.error(logMessage, exception);
     Sentry.captureException(exception);
     return ResponseEntity.internalServerError().body(
-            getCustomProblemDetail(INTERNAL_SERVER_ERROR, responseMessage));
+        getCustomProblemDetail(INTERNAL_SERVER_ERROR, responseMessage));
   }
 
 

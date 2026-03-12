@@ -1,26 +1,24 @@
 package uk.gov.justice.laa.dstew.access.service.application;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.jetbrains.annotations.NotNull;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
-import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMeritsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.helpers.SpringContext;
 
 import java.util.*;
 
@@ -42,7 +40,9 @@ public class GetApplicationTest extends BaseServiceTest {
         ProceedingEntity proceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class);
         Set<ProceedingEntity> proceedings = Set.of(proceeding);
 
-        ApplicationEntity expectedApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class);
+        ApplicationEntity expectedApplication = DataGenerator
+            .createDefault(ApplicationEntityGenerator.class, applicationEntityBuilder ->
+            applicationEntityBuilder.version(0L));
 
         expectedApplication.setDecision(DataGenerator.createDefault(DecisionEntityGenerator.class));
         expectedApplication.getDecision().setMeritsDecisions(

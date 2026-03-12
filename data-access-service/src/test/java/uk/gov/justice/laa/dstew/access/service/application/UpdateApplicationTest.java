@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
@@ -123,6 +124,35 @@ public class UpdateApplicationTest extends BaseServiceTest {
         verify(applicationRepository, times(1)).findById(applicationId);
         verify(applicationRepository, never()).save(any());
         verify(domainEventRepository, never()).save(any());
+    }
+
+    @Test
+    void givenUpdateRequestOldVersion_whenUpdateApplication_thenOptimisticLockingExceptionWithCorrectMessage() {
+      UUID applicationId = UUID.randomUUID();
+      // given
+      ApplicationEntity expectedEntity = applicationEntityFactory.createDefault(builder ->
+          builder.id(applicationId)
+              .version(1L)
+              .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+      );
+
+      ApplicationUpdateRequest applicationUpdateRequest = applicationUpdateRequestFactory.createDefault();
+      when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
+
+      setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+      // when
+      // then
+      OptimisticLockingFailureException optimisticLockingFailureException =
+          new OptimisticLockingFailureException("Application has been modified by another process");
+      Throwable thrown = catchThrowable(() -> serviceUnderTest.updateApplication(applicationId, applicationUpdateRequest));
+      assertThat(thrown)
+          .isInstanceOf(OptimisticLockingFailureException.class)
+          .usingRecursiveComparison()
+          .isEqualTo(optimisticLockingFailureException);
+      verify(applicationRepository, times(1)).findById(applicationId);
+      verify(applicationRepository, never()).save(any());
+      verify(domainEventRepository, never()).save(any());
     }
 
     @Test

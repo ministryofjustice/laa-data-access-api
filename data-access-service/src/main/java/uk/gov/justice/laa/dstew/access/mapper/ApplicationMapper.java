@@ -6,7 +6,6 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -14,14 +13,12 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.Opponent;
 import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
 import uk.gov.justice.laa.dstew.access.model.Provider;
@@ -35,7 +32,6 @@ import uk.gov.justice.laa.dstew.access.model.Provider;
 public interface ApplicationMapper {
 
   IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
-  ProceedingMapper proceedingMapper = Mappers.getMapper(ProceedingMapper.class);
 
   /**
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
@@ -116,16 +112,12 @@ public interface ApplicationMapper {
             ? new Provider().officeCode(entity.getOfficeCode())
             : null
     );
+    if (entity.getVersion() == null) {
+      throw new IllegalArgumentException("Application version cannot be null");
+    }
+    application.setVersion(entity.getVersion());
 
     return application;
-  }
-
-  private static List<Individual> getIndividuals(Set<IndividualEntity> individuals) {
-    return individuals
-        .stream()
-        .map(individualMapper::toIndividual)
-        .filter(Objects::nonNull)
-        .toList();
   }
 
   private static List<Opponent> extractOpponents(Map<String, Object> content) {
@@ -147,6 +139,7 @@ public interface ApplicationMapper {
 
     return opponentsList.stream()
         .map(OpponentDetails::getOpposable)
+        .filter(Objects::nonNull)
         .map(opposableObj -> Opponent.builder()
             .opposableType(opposableObj.getOpposableType())
             .firstName(opposableObj.getFirstName())
