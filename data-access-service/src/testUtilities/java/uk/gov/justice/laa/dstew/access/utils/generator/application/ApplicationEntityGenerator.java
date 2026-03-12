@@ -1,13 +1,14 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.helpers.SpringContext;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -25,7 +26,9 @@ public class ApplicationEntityGenerator extends BaseGenerator<ApplicationEntity,
 
     @Override
     public ApplicationEntity createDefault() {
-        ObjectMapper mapper = SpringContext.getObjectMapper();
+        ObjectMapper mapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
         return ApplicationEntity.builder()
                 .schemaVersion(1)
