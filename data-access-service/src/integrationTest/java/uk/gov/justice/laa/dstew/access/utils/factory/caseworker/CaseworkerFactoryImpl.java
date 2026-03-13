@@ -5,11 +5,12 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
 import java.util.function.Consumer;
+import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
 
 public class CaseworkerFactoryImpl implements Factory<CaseworkerEntity, CaseworkerEntity.CaseworkerEntityBuilder> {
     @Override
     public CaseworkerEntity create() {
-      Instant creationTime = Instant.now();
+      Instant creationTime = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();
       return CaseworkerEntity.builder()
                 .username("JohnDoe")
             .createdAt(creationTime)
