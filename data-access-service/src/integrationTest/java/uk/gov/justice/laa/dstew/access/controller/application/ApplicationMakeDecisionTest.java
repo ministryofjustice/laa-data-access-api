@@ -498,6 +498,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                     "test", "content"
             )));
             builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
+            builder.caseworker(CaseworkerJohnDoe);
         });
 
         ProceedingEntity proceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
@@ -505,7 +506,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
-                    .userId(CaseworkerJohnDoe.getId())
                     .eventHistory(EventHistory.builder()
                             .eventDescription("granted event")
                             .build())
@@ -546,6 +546,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                     "test", "content"
             )));
             builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
+            builder.caseworker(CaseworkerJohnDoe);
         });
 
         ProceedingEntity proceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
@@ -555,7 +556,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
-                    .userId(CaseworkerJohnDoe.getId())
                     .eventHistory(EventHistory.builder()
                             .eventDescription("granted event")
                             .build())
@@ -614,6 +614,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                     "test", "content"
             )));
             builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
+            builder.caseworker(CaseworkerJohnDoe);
         });
 
         ProceedingEntity proceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
@@ -621,7 +622,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
-                    .userId(CaseworkerJohnDoe.getId())
                     .eventHistory(EventHistory.builder()
                             .eventDescription("refusal event")
                             .build())
@@ -656,6 +656,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                     "test", "content"
             )));
             builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
+            builder.caseworker(CaseworkerJohnDoe);
         });
 
         ProceedingEntity proceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
@@ -663,7 +664,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
-                    .userId(CaseworkerJohnDoe.getId())
                     .eventHistory(EventHistory.builder()
                             .eventDescription("partially granted event")
                             .build())

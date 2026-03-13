@@ -597,7 +597,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworker.getId())
             .overallDecision(DecisionStatus.GRANTED)
             .eventHistory(EventHistory.builder()
                 .eventDescription("granted event")
@@ -656,7 +655,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworkerId)
             .overallDecision(DecisionStatus.GRANTED)
             .eventHistory(EventHistory.builder()
                 .eventDescription("granted event")
@@ -712,7 +710,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworker.getId())
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(EventHistory.builder()
                 .eventDescription("refusal event")
