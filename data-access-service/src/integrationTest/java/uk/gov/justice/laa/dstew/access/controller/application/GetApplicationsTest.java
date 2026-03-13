@@ -242,7 +242,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 9, 20, 1, 9);
         assertThat(actual.getApplications().size()).isEqualTo(9);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
+        assertSummaries(actual.getApplications(), expectedApplicationsSummary);
     }
 
     @Test
@@ -266,7 +266,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 40, 20, 2, 20);
         assertThat(actual.getApplications().size()).isEqualTo(20);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(20, 40)));
+        assertSummaries(actual.getApplications(), expectedApplicationsSummary.subList(20, 40));
     }
 
     @Test
@@ -349,7 +349,8 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, numberOfApplications, 20, 1, numberOfApplications);
         assertThat(actual.getApplications().size()).isEqualTo(numberOfApplications);
-        assertTrue((actual.getApplications()).containsAll(expectedApplicationsSummary));
+        assertSummaries(actual.getApplications(), expectedApplicationsSummary
+        );
     }
 
     // TODO: is this test superseded by parameterized test above?
@@ -376,7 +377,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 5, 20, 1, 5);
         assertThat(actual.getApplications().size()).isEqualTo(5);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
+        assertSummaries(actual.getApplications(), expectedApplicationsSummary);
     }
 
     // TODO: is this test superseded by parameterized test above?
@@ -402,7 +403,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 6, 20, 1, 6);
         assertThat(actual.getApplications().size()).isEqualTo(6);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
+        assertSummaries(actual.getApplications(), expectedApplicationsSummary);
     }
 
     @Test
@@ -429,7 +430,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 27, 20, 2, 7);
         assertThat(actual.getApplications().size()).isEqualTo(7);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(20, 27)));
+        assertSummaries(actual.getApplications(), expectedApplicationsSummary.subList(20, 27));
     }
 
     @ParameterizedTest
@@ -559,7 +560,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 7, 20, 1, 7);
         assertThat(actual.getApplications().size()).isEqualTo(7);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
+        assertSummaries(actual.getApplications(), expectedApplicationsSummary);
     }
 
     @Test
@@ -589,7 +590,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 2, 20, 1, 2);
         assertThat(actual.getApplications().size()).isEqualTo(2);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
+        assertSummaries(actual.getApplications(), expectedApplicationsSummary);
     }
 
     @Test
@@ -625,7 +626,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 1, 20, 1, 1);
         assertThat(actual.getApplications().size()).isEqualTo(1);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
+        assertSummaries(actual.getApplications(), expectedApplicationsSummary);
     }
 
     @Test
@@ -662,7 +663,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 23, 20, 2, 3);
         assertThat(actual.getApplications().size()).isEqualTo(3);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary.subList(20, 23)));
+        assertSummaries(actual.getApplications(), expectedApplicationsSummary.subList(20, 23));
     }
 
     @Test
