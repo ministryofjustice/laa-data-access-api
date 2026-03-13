@@ -112,12 +112,40 @@ public interface ApplicationMapper {
         extractOpponents(entity.getApplicationContent())
     );
     application.setProvider(
-        entity.getOfficeCode() != null
-            ? new Provider().officeCode(entity.getOfficeCode())
-            : null
+        extractProvider(entity)
     );
 
     return application;
+  }
+
+  private static Provider extractProvider(ApplicationEntity entity) {
+    String officeCode = entity.getOfficeCode();
+    String contactEmail = extractContactEmail(entity.getApplicationContent());
+
+    if (officeCode == null && contactEmail == null) {
+      return null;
+    }
+
+    Provider provider = new Provider();
+    provider.setOfficeCode(officeCode);
+    provider.setContactEmail(contactEmail);
+    return provider;
+  }
+
+  private static String extractContactEmail(Map<String, Object> content) {
+    if (content == null) {
+      return null;
+    }
+
+    ApplicationContent applicationContent = MapperUtil.getObjectMapper()
+        .convertValue(content, ApplicationContent.class);
+
+    if (applicationContent.getAdditionalApplicationContent() == null) {
+      return null;
+    }
+
+    Object submitterEmail = applicationContent.getAdditionalApplicationContent().get("submitterEmail");
+    return submitterEmail instanceof String ? (String) submitterEmail : null;
   }
 
   private static List<Individual> getIndividuals(Set<IndividualEntity> individuals) {
