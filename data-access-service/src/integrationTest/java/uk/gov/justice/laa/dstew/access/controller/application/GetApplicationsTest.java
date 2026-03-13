@@ -1,6 +1,31 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertBadRequest;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
+
+import jakarta.validation.Valid;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Objects;
+import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,32 +36,14 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationType;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Set;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
-
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertBadRequest;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -681,10 +688,35 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 2, 20, 1, 2);
         assertThat(actual.getApplications().size()).isEqualTo(2);
-        assertArrayEquals(actual.getApplications().toArray(), expectedApplicationSummary.toArray());
+      assertSummaries(actual.getApplications(), expectedApplicationSummary);
     }
 
-    @Test
+  private static void assertSummaries(List<@Valid ApplicationSummary> actual,
+                                      List<ApplicationSummary> expectedApplicationSummary) {
+    assertThat(actual.size()).isEqualTo(expectedApplicationSummary.size());
+
+    for (int i = 0; i < actual.size(); i++) {
+      ApplicationSummary actualSummary = actual.get(i);
+      ApplicationSummary expectedSummary = expectedApplicationSummary.get(i);
+
+      assertThat(actualSummary.getApplicationId()).isEqualTo(expectedSummary.getApplicationId());
+      assertThat(actualSummary.getStatus()).isEqualTo(expectedSummary.getStatus());
+      assertThat(actualSummary.getUsedDelegatedFunctions()).isEqualTo(expectedSummary.getUsedDelegatedFunctions());
+      assertThat(actualSummary.getCategoryOfLaw()).isEqualTo(expectedSummary.getCategoryOfLaw());
+      assertThat(actualSummary.getMatterType()).isEqualTo(expectedSummary.getMatterType());
+      assertThat(actualSummary.getAssignedTo()).isEqualTo(expectedSummary.getAssignedTo());
+      assertThat(actualSummary.getAutoGrant()).isEqualTo(expectedSummary.getAutoGrant());
+      assertThat(actualSummary.getLaaReference()).isEqualTo(expectedSummary.getLaaReference());
+      assertThat(actualSummary.getApplicationType()).isEqualTo(expectedSummary.getApplicationType());
+      assertThat(actualSummary.getClientFirstName()).isEqualTo(expectedSummary.getClientFirstName());
+      assertThat(actualSummary.getClientLastName()).isEqualTo(expectedSummary.getClientLastName());
+      assertThat(actualSummary.getClientDateOfBirth()).isEqualTo(expectedSummary.getClientDateOfBirth());
+      assertThat(actualSummary.getIsLead()).isEqualTo(expectedSummary.getIsLead());
+    }
+  }
+
+
+  @Test
     @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationFilteredByClientDateOfBirth_whenGetAllApplicationsAndInvalidFormat_thenReturnBadRequest() throws Exception {
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_CLIENTDOB_PARAM + "something");
@@ -751,7 +783,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 4, 20, 1, 4);
         assertThat(actual.getApplications().size()).isEqualTo(4);
-        assertArrayEquals(expectedApplicationsSummary.toArray(), actual.getApplications().toArray());
+      assertSummaries(expectedApplicationsSummary, actual.getApplications());
     }
 
     @ParameterizedTest

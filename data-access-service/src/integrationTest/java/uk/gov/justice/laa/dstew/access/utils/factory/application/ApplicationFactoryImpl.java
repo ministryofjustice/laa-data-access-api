@@ -1,21 +1,22 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
-import java.time.Instant;
+import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Consumer;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
-import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
-
-import java.time.InstantSource;
-import java.time.LocalDate;
-import java.util.*;
-import java.util.function.Consumer;
+import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
 
 @Component
 public class ApplicationFactoryImpl implements Factory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder> {
@@ -37,7 +38,7 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                 .applyApplicationId(UUID.randomUUID())
                 .createdAt(instant)
                 .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
-                .modifiedAt(instant)
+//                .modifiedAt(instant)
                 .submittedAt(instant)
                 .individuals(new HashSet<>(Set.of(individualEntity)))
                 .applicationContent(new LinkedHashMap<>(Map.of(
