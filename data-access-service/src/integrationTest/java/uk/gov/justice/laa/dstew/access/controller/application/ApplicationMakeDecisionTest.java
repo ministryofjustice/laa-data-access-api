@@ -375,6 +375,43 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         assertEquals("No application found with id: " + applicationId, problemDetail.getDetail());
     }
 
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
+    public void givenApplicationWithNoCaseworker_whenAssignDecisionApplication_thenReturnNotFoundAndMessage()
+        throws Exception {
+        // given
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
+            builder.applicationContent(new HashMap<>(Map.of(
+                "test", "content"
+            )));
+        });
+
+        MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
+            builder
+                .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+                .eventHistory(EventHistory.builder().build())
+                .proceedings(List.of(
+                    createMakeDecisionProceeding(
+                        UUID.randomUUID(),
+                        MeritsDecisionStatus.REFUSED,
+                        "justification",
+                        "reason")
+                ))
+                .autoGranted(true);
+        });
+
+        // when
+        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+
+        // then
+        assertSecurityHeaders(result);
+        assertNoCacheHeaders(result);
+        assertNotFound(result);
+        assertEquals("application/problem+json", result.getResponse().getContentType());
+        ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+        assertEquals("Caseworker not found for application id: " + applicationEntity.getId(), problemDetail.getDetail());
+    }
+
     private MakeDecisionProceeding createMakeDecisionProceeding(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
         return MakeDecisionProceeding.builder()
                 .proceedingId(proceedingId)

@@ -20,13 +20,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -97,8 +93,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     );
 
     // when
-    when(caseworkerRepository.findById(caseworker.getId()))
-            .thenReturn(Optional.of(caseworker));
     when(proceedingRepository.findAllById(List.of(refusedProceedingEntity.getId())))
             .thenReturn(List.of(refusedProceedingEntity));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
@@ -179,8 +173,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     );
 
     // when
-    when(caseworkerRepository.findById(caseworker.getId()))
-                .thenReturn(Optional.of(caseworker));
     when(proceedingRepository.findAllById(List.of(grantedProceedingEntity.getId(), refusedProceedingEntity.getId())))
             .thenReturn(List.of(grantedProceedingEntity, refusedProceedingEntity));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
@@ -245,8 +237,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     // when
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
-    when(caseworkerRepository.findById(caseworker.getId()))
-                .thenReturn(Optional.of(caseworker));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
@@ -329,8 +319,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     // when
     when(proceedingRepository.findAllById(List.of(newProceedingId))).thenReturn(List.of(newProceedingEntity));
-    when(caseworkerRepository.findById(caseworker.getId()))
-                .thenReturn(Optional.of(caseworker));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
@@ -397,8 +385,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // when
     when(proceedingRepository.findAllById(List.of(newProceedingId, currentProceedingId)))
                 .thenReturn(List.of(newProceedingEntity, currentProceedingEntity));
-    when(caseworkerRepository.findById(caseworker.getId()))
-                .thenReturn(Optional.of(caseworker));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
@@ -408,6 +394,33 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
     verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, 2);
+  }
+
+  @Test
+  void givenApplicationWithNoCaseworker_whenAssignDecision_thenThrowResourceNotFoundException() {
+    UUID applicationId = UUID.randomUUID();
+
+    // given
+    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class);
+
+    // expected saved application entity
+    ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
+        builder
+            .id(applicationId)
+            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+    );
+
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+    when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
+
+    Throwable thrown = catchThrowable(() ->
+        serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest));
+
+    assertThat(thrown)
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("Caseworker not found for application id: " + applicationId.toString());
+
   }
 
   @Test
@@ -470,8 +483,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     // when
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
-    when(caseworkerRepository.findById(caseworker.getId()))
-        .thenReturn(Optional.of(caseworker));
 
     Throwable thrown = catchThrowable(
         () -> serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest)
@@ -512,8 +523,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     // when
     when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedApplicationEntity));
-    when(caseworkerRepository.findById(caseworker.getId()))
-            .thenReturn(Optional.of(caseworker));
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
 
     Throwable thrown = catchThrowable(
@@ -561,8 +570,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     // when
     when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedApplicationEntity));
-    when(caseworkerRepository.findById(caseworker.getId()))
-            .thenReturn(Optional.of(caseworker));
     when(proceedingRepository.findAllById(List.of(nonExistentProceedingId, unrelatedApplicationProceedingId)))
         .thenReturn(List.of(unrelatedApplicationProceeding));
 
