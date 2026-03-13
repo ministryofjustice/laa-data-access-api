@@ -188,7 +188,6 @@ public class SecurityConfig {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return (auth != null && auth.isAuthenticated()) ? auth.getAuthorities().stream()
             .map(GrantedAuthority::getAuthority)
-            .filter(Objects::nonNull)
             .collect(Collectors.toUnmodifiableSet()) : Set.of();
       }
     };

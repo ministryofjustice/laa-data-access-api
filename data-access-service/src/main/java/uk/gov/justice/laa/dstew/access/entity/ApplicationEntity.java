@@ -142,8 +142,8 @@ public class ApplicationEntity implements AuditableEntity {
   }
 
   /**
-   * adds an application to the set of linked applications.
-   */
+  * adds an application to the set of linked applications.
+  */
   public void addLinkedApplication(ApplicationEntity toAdd) {
     if (linkedApplications == null) {
       linkedApplications = new HashSet<>();

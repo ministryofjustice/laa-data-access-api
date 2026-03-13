@@ -29,18 +29,18 @@ public class OpponentDetails {
    * the 'additionalProperties' keyword in the OAS document.
    */
   @JsonAnyGetter
-  private Map<String, Object> additionalApplicationContent;
+  private Map<String, Object> additionalContent;
 
   /**
    * Set the additional (undeclared) property with the specified name and value.
    * If the property does not already exist, create it otherwise replace it.
    */
   @JsonAnySetter
-  public OpponentDetails putAdditionalApplicationContent(String key, Object value) {
-    if (this.additionalApplicationContent == null) {
-      this.additionalApplicationContent = new HashMap<>();
+  public OpponentDetails putAdditionalContent(String key, Object value) {
+    if (this.additionalContent == null) {
+      this.additionalContent = new HashMap<>();
     }
-    this.additionalApplicationContent.put(key, value);
+    this.additionalContent.put(key, value);
     return this;
   }
 }
