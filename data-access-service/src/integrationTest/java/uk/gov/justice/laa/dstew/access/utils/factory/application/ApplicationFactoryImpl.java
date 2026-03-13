@@ -32,8 +32,7 @@ public class ApplicationFactoryImpl implements Factory<ApplicationEntity, Applic
                 )))
                 .type(IndividualType.CLIENT)
                 .build();
-        var instant = Instant.now();
-//        var instant = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();
+        var instant = DateTimeHelper.GetSystemInstanceWithoutNanoseconds();
         return ApplicationEntity.builder()
                 .applyApplicationId(UUID.randomUUID())
                 .createdAt(instant)
