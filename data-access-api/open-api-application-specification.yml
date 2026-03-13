@@ -718,7 +718,6 @@ components:
       type: object
       required:
         - decision
-        - reason
         - justification
       properties:
         decision:
@@ -743,15 +742,11 @@ components:
     MakeDecisionRequest:
       type: object
       required:
-        - userId
         - overallDecision
         - proceedings
         - eventHistory
         - autoGranted
       properties:
-        userId:
-          type: string
-          format: uuid
         overallDecision:
           $ref: "#/components/schemas/DecisionStatus"
         proceedings:

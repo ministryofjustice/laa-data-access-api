@@ -407,8 +407,13 @@ public class ApplicationService {
   @AllowApiCaseworker
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
-    final UUID userId = request.getUserId();
-    checkIfCaseworkerExists(userId);
+    final CaseworkerEntity caseworker = application.getCaseworker();
+    if (caseworker == null) {
+      throw new ResourceNotFoundException(
+          String.format("Caseworker not found for application id: %s", applicationId)
+      );
+    }
+    final UUID caseworkerId = caseworker.getId();
 
     applicationValidations.checkApplicationMakeDecisionRequest(request);
 
@@ -460,8 +465,8 @@ public class ApplicationService {
       CertificateEntity certificate = CertificateEntity.builder()
           .applicationId(applicationId)
           .certificateContent(request.getCertificate())
-          .createdBy(String.valueOf(userId))
-          .updatedBy(String.valueOf(userId))
+          .createdBy(String.valueOf(caseworkerId))
+          .updatedBy(String.valueOf(caseworkerId))
           .build();
 
       certificateRepository.save(certificate);
@@ -470,7 +475,8 @@ public class ApplicationService {
     if (decision.getOverallDecision() == DecisionStatus.REFUSED) {
       domainEventService.saveMakeDecisionRefusedDomainEvent(
           applicationId,
-          request
+          request,
+          caseworkerId
       );
     }
 
