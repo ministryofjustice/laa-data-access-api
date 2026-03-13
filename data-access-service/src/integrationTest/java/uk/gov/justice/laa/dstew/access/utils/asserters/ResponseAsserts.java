@@ -1,16 +1,19 @@
 package uk.gov.justice.laa.dstew.access.utils.asserters;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.test.web.servlet.MvcResult;
+import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 public class ResponseAsserts {
@@ -52,18 +55,32 @@ public class ResponseAsserts {
       String expectedShortCode,
       String expectedDetail,
       MvcResult response,
-      ProblemDetail actualDetail, Map<String, Object> expectedProblemDetailProperties) {
+      ProblemDetail actualDetail, Map<String, Object> expectedProblemDetailProperties)
+      throws UnsupportedEncodingException, JsonProcessingException {
 
     assertEquals("application/problem+json", response.getResponse().getContentType());
     assertEquals(expectedStatus.value(), response.getResponse().getStatus());
     assertEquals(expectedShortCode, actualDetail.getTitle());
     assertEquals(expectedDetail, actualDetail.getDetail());
-    Map<String, Object> actualProperties = actualDetail.getProperties();
+    Map responseMap = MapperUtil.getObjectMapper().readValue(response.getResponse().getContentAsString(), Map.class);
+
+
     if (expectedProblemDetailProperties == null) {
-      assertNull(actualProperties);
+      assertNull(responseMap.get("errors"));
+      assertNull(responseMap.get("invalidFields"));
       return;
     }
 
+    Object invalidFields = responseMap.get("invalidFields");
+    Object errors = responseMap.get("errors");
+    if(invalidFields != null) {
+      actualDetail.setProperty("invalidFields", invalidFields);
+    }
+    if(errors != null) {
+      actualDetail.setProperty("errors", errors);
+    }
+
+    Map<String, Object> actualProperties = actualDetail.getProperties();
     assertNotNull(actualProperties);
     assertThat(actualProperties.keySet())
         .containsExactlyInAnyOrderElementsOf(expectedProblemDetailProperties.keySet());
@@ -102,8 +119,12 @@ public class ResponseAsserts {
 
   public static void assertProblemRecord(HttpStatus status, ProblemDetail expectedDetail, MvcResult response,
                                          ProblemDetail actualDetail) {
-    assertProblemRecord(status, expectedDetail.getTitle(), expectedDetail.getDetail(), response, actualDetail,
-        expectedDetail.getProperties());
+    try {
+      assertProblemRecord(status, expectedDetail.getTitle(), expectedDetail.getDetail(), response, actualDetail,
+          expectedDetail.getProperties());
+    } catch (UnsupportedEncodingException | JsonProcessingException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public static void assertBadRequest(MvcResult response) {

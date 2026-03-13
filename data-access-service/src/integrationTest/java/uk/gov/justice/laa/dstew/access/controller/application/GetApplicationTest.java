@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import org.assertj.core.api.Assertions;
@@ -100,7 +101,9 @@ public class GetApplicationTest extends BaseIntegrationTest {
         assertNoCacheHeaders(result);
         assertOK(result);
         Application expectedApplication = createApplication(application, proceeding, decision);
-        assertThat(actualApplication).isEqualTo(expectedApplication);
+        assertThat(actualApplication)
+            .usingRecursiveComparison()
+            .ignoringCollectionOrder().isEqualTo(expectedApplication);
     }
 
     @Test
@@ -301,8 +304,8 @@ public class GetApplicationTest extends BaseIntegrationTest {
         if (applicationEntity.getCaseworker() != null) {
             application.setAssignedTo(applicationEntity.getCaseworker().getId());
         }
-        application.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt(), ZoneOffset.UTC));
-        application.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt(), ZoneOffset.UTC));
+        application.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt().truncatedTo(ChronoUnit.MICROS), ZoneOffset.UTC));
+        application.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt().truncatedTo(ChronoUnit.MICROS), ZoneOffset.UTC));
         application.setSubmittedAt(
             applicationEntity.getSubmittedAt() != null
                 ? OffsetDateTime.ofInstant(applicationEntity.getSubmittedAt(), ZoneOffset.UTC)

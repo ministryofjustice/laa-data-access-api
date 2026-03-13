@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.entity;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import com.vladmihalcea.hibernate.type.json.JsonType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -23,9 +22,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.Type;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
@@ -43,7 +43,7 @@ import uk.gov.justice.laa.dstew.access.model.IndividualType;
 @Table(name = "individuals")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class IndividualEntity  implements AuditableEntity {
+public class IndividualEntity implements AuditableEntity {
   @Id
   @Column(columnDefinition = "UUID")
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -58,7 +58,7 @@ public class IndividualEntity  implements AuditableEntity {
   @Column(name = "date_of_birth", nullable = false)
   private LocalDate dateOfBirth;
 
-  @Type(JsonType.class)
+  @JdbcTypeCode(SqlTypes.JSON)
   @Column(columnDefinition = "jsonb", nullable = false)
   private Map<String, Object> individualContent;
 
@@ -66,12 +66,12 @@ public class IndividualEntity  implements AuditableEntity {
   @Enumerated(EnumType.STRING)
   private IndividualType type;
 
-  @Column(name = "created_at")
-  @CreationTimestamp
+  @Column(name = "created_at", nullable = false, updatable = false)
+  @CreatedDate
   private Instant createdAt;
 
-  @Column(name = "modified_at")
-  @UpdateTimestamp
+  @Column(name = "modified_at", nullable = false)
+  @LastModifiedDate
   private Instant modifiedAt;
 
   @ManyToMany(mappedBy = "individuals")

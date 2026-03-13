@@ -7,8 +7,10 @@ import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.json.AutoConfigureJson;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
@@ -16,6 +18,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.AccessApp;
+import uk.gov.justice.laa.dstew.access.config.JacksonConfig;
 import uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts.ApplicationAsserts;
 import uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts.DomainEventAsserts;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -63,7 +66,7 @@ public abstract class BaseIntegrationTest {
     protected EntityManager entityManager;
 
     @Autowired protected MockMvc mockMvc;
-    @Autowired protected ObjectMapper objectMapper;
+    protected ObjectMapper objectMapper = new JacksonConfig().objectMapper();
 
     @Autowired
     protected PersistedDataGenerator persistedDataGenerator;

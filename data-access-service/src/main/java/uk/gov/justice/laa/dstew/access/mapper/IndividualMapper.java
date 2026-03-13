@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
-import java.util.Map;
 import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Individual;
@@ -19,8 +18,7 @@ public interface IndividualMapper {
    * the method returns {@code null}.
    *
    * @param entity the {@link IndividualEntity} to map (might be null)
-   * @return a new {@link Individual} object populated with first name, last name, date of birth,
-   *         and individual content, or {@code null} if the input or individual is null
+   * @return a new {@link Individual} object populated with first name, last name, date of birth, and individual content
    */
   default Individual toIndividual(IndividualEntity entity) {
     if (entity == null) {
@@ -42,19 +40,17 @@ public interface IndividualMapper {
    * the method returns {@code null}.
    *
    * @param individual API model the {@link Individual} to map (might be null)
-   * @return a new {@link IndividualEntity} object populated with first name, last name, date of birth,
-   *         and individual content, or {@code null} if the input or individual is null
+   * @return a new {@link IndividualEntity} object populated with first name, last name, date of birth, and individual content
    */
   default IndividualEntity toIndividualEntity(Individual individual) {
-    return individual == null 
-            ? 
-            null : 
-            IndividualEntity.builder()
-                            .firstName(individual.getFirstName())
-                            .lastName(individual.getLastName())
-                            .dateOfBirth(individual.getDateOfBirth())
-                            .individualContent(individual.getDetails())
-                            .type(individual.getType())
-                            .build();
+    return individual == null
+        ? null
+        : IndividualEntity.builder()
+        .firstName(individual.getFirstName())
+        .lastName(individual.getLastName())
+        .dateOfBirth(individual.getDateOfBirth())
+        .individualContent(individual.getDetails())
+        .type(individual.getType())
+        .build();
   }
 }
