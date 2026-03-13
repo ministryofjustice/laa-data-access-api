@@ -59,25 +59,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   @Autowired
   private ApplicationService serviceUnderTest;
 
-  private static Stream<Arguments> missingRefusalDetails() {
-    return Stream.of(
-        Arguments.of("",
-                        "",
-                        "The Make Decision request must contain a refusal reason for proceeding with id: "),
-        Arguments.of("",
-                        "justification 1",
-                        "The Make Decision request must contain a refusal reason for proceeding with id: "),
-        Arguments.of("refusal 1",
-                        "",
-                        "The Make Decision request must contain a refusal justification for proceeding with id: ")
-      );
-  }
-
-  @ParameterizedTest
-  @MethodSource("missingRefusalDetails")
-  void givenMakeDecisionRequestWithOneProceedingAndInvalidRefusal_whenAssignDecision_thenDecisionSaved(
-          String refusedReason, String refusedJustification, String errorMessage
-  ) throws JsonProcessingException {
+  @Test
+  void givenMakeDecisionRequestWithOneProceedingAndInvalidRefusal_whenAssignDecision_thenDecisionSaved() throws JsonProcessingException {
 
     UUID applicationId = UUID.randomUUID();
     UUID refusedProceedingId = UUID.randomUUID();
@@ -89,7 +72,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
             requestBuilder
-                    .userId(caseworker.getId())
                     .overallDecision(DecisionStatus.REFUSED)
                     .eventHistory(
                             EventHistory.builder()
@@ -97,7 +79,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                                     .build()
                     )
                     .proceedings(List.of(
-                            createMakeDecisionProceedingDetails(refusedProceedingId, refusedDecision, refusedReason, refusedJustification)
+                            createMakeDecisionProceedingDetails(refusedProceedingId, refusedDecision, "refusal 1", "")
                     ))
     );
 
@@ -129,7 +111,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     assertThat(validationException.errors())
             .isInstanceOf(List.class)
-            .contains(errorMessage + refusedProceedingId);
+            .contains("The Make Decision request must contain a refusal justification for proceeding with id: " + refusedProceedingId);
   }
 
   @Test
@@ -152,7 +134,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // overwrite some fields of default assign decision request
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworker.getId())
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(
                 EventHistory.builder()
@@ -226,7 +207,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworker.getId())
             .eventHistory(
                 EventHistory.builder()
                     .eventDescription("event")
@@ -291,7 +271,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworker.getId())
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(
                 EventHistory.builder()
@@ -375,7 +354,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworker.getId())
             .eventHistory(EventHistory.builder().build())
             .proceedings(List.of(
                 createMakeDecisionProceedingDetails(newProceedingId,
@@ -433,37 +411,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   }
 
   @Test
-  void givenNoCaseworker_whenAssignDecision_thenThrowResourceNotFoundException() {
-    UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
-
-    // given
-    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
-        requestBuilder
-            .userId(caseworkerId)
-    );
-
-    // expected saved application entity
-    ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-        builder
-            .id(applicationId)
-            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
-    );
-
-    setSecurityContext(TestConstants.Roles.CASEWORKER);
-
-    when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
-
-    Throwable thrown = catchThrowable(() ->
-        serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest));
-
-    assertThat(thrown)
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessage("No caseworker found with id: " + caseworkerId.toString());
-
-  }
-
-  @Test
   void givenNoApplication_whenAssignDecision_thenThrowResourceNotFoundException() {
     UUID applicationId = UUID.randomUUID();
 
@@ -502,7 +449,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // overwrite some fields of default assign decision request
     final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworker.getId())
             .proceedings(List.of(
                 createMakeDecisionProceedingDetails(proceedingId, decision, reason, justification)
             ))
@@ -548,7 +494,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
             requestBuilder
-                .userId(caseworker.getId())
                 .proceedings(List.of(
                     createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "reason", "justification")
                 ))
@@ -593,7 +538,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
             requestBuilder
-                .userId(caseworker.getId())
                 .proceedings(List.of(
                     createMakeDecisionProceedingDetails(nonExistentProceedingId,
                         MeritsDecisionStatus.GRANTED, "reason1",
@@ -724,7 +668,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     }
     return MakeDecisionRequest.builder()
         .overallDecision(decisionEntity.getOverallDecision())
-        .userId(applicationEntity.getCaseworker().getId())
         .eventHistory(eventHistory)
         .proceedings(decisionEntity.getMeritsDecisions().stream()
             .map(MakeDecisionForApplicationTest::mapToProceedingDetails)

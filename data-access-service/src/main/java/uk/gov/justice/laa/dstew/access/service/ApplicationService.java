@@ -402,7 +402,12 @@ public class ApplicationService {
   @AllowApiCaseworker
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
-    checkIfCaseworkerExists(request.getUserId());
+    final CaseworkerEntity caseworker = application.getCaseworker();
+    if (caseworker == null) {
+      throw new ResourceNotFoundException(
+          String.format("Caseworker not found for application id: %s", applicationId)
+      );
+    }
 
     applicationValidations.checkApplicationMakeDecisionRequest(request);
 
@@ -452,7 +457,8 @@ public class ApplicationService {
     if (decision.getOverallDecision() == DecisionStatus.REFUSED) {
       domainEventService.saveMakeDecisionRefusedDomainEvent(
           applicationId,
-          request
+          request,
+          caseworker.getId()
       );
     }
 
