@@ -1,6 +1,10 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
@@ -8,12 +12,6 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.helpers.SpringContext;
-
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.UUID;
 
 public class ApplicationEntityGenerator extends BaseGenerator<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder> {
     private final IndividualEntityGenerator individualEntityGenerator = new IndividualEntityGenerator();
@@ -29,10 +27,10 @@ public class ApplicationEntityGenerator extends BaseGenerator<ApplicationEntity,
 
         return ApplicationEntity.builder()
                 .schemaVersion(1)
-                .createdAt(Instant.now())
+            .createdAt(Instant.parse("2024-01-01T12:00:00Z"))
                 .applyApplicationId(UUID.randomUUID())
                 .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
-                .modifiedAt(Instant.now())
+            .modifiedAt(Instant.parse("2024-01-01T12:00:00Z"))
                 .submittedAt(Instant.parse("2024-01-01T12:00:00Z"))
                 .laaReference("REF7327")
                 .individuals(new HashSet<>(java.util.List.of(individualEntityGenerator.createDefault())))

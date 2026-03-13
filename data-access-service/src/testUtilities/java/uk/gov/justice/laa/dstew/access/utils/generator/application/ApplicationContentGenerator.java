@@ -1,11 +1,10 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
+import java.util.List;
+import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
-
-import java.util.List;
-import java.util.UUID;
 
 public class ApplicationContentGenerator extends BaseGenerator<ApplicationContent, ApplicationContent.ApplicationContentBuilder> {
     private final ProceedingGenerator proceedingDtoGenerator = new ProceedingGenerator();
