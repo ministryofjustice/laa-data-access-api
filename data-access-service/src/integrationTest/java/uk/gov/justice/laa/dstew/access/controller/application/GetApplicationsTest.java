@@ -294,7 +294,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 25, 20, 1, 20);
         assertThat(actual.getApplications().size()).isEqualTo(20);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
+        assertSummaries(expectedApplicationsSummary, actual.getApplications());
     }
 
     @ParameterizedTest
@@ -461,7 +461,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, expectedCount, 20, 1, expectedCount);
         assertThat(actual.getApplications().size()).isEqualTo(expectedCount);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
+        assertSummaries(actual.getApplications(), expectedApplicationsSummary);
     }
 
     @Test
@@ -492,7 +492,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 7, 20, 1, 7);
         assertThat(actual.getApplications().size()).isEqualTo(7);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
+        assertSummaries(expectedApplicationsSummary, actual.getApplications());
     }
 
     @ParameterizedTest
@@ -523,7 +523,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, expectedCount, 20, 1, expectedCount);
         assertThat(actual.getApplications().size()).isEqualTo(expectedCount);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
+        assertSummaries(expectedApplicationsSummary, actual.getApplications());
     }
 
     @Test
@@ -809,7 +809,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 4, 20, 1, 4);
         assertThat(actual.getApplications().size()).isEqualTo(4);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
+        assertSummaries(expectedApplicationsSummary, actual.getApplications());
     }
 
     @Test
@@ -845,7 +845,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 4, 20, 1, 4);
         assertThat(actual.getApplications().size()).isEqualTo(4);
-        assertTrue(actual.getApplications().containsAll(expectedApplicationsSummary));
+        assertSummaries(expectedApplicationsSummary, actual.getApplications());
     }
 
     @Test
