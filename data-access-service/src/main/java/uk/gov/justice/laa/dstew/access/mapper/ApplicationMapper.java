@@ -140,12 +140,7 @@ public interface ApplicationMapper {
     ApplicationContent applicationContent = MapperUtil.getObjectMapper()
         .convertValue(content, ApplicationContent.class);
 
-    if (applicationContent.getAdditionalApplicationContent() == null) {
-      return null;
-    }
-
-    Object submitterEmail = applicationContent.getAdditionalApplicationContent().get("submitterEmail");
-    return submitterEmail instanceof String ? (String) submitterEmail : null;
+    return applicationContent.getSubmitterEmail();
   }
 
   private static List<Individual> getIndividuals(Set<IndividualEntity> individuals) {
