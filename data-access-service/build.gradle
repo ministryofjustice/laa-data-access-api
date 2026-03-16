@@ -17,7 +17,6 @@ configurations.all {
     resolutionStrategy {
         force 'com.fasterxml.jackson.core:jackson-core:2.21.1'
         force 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
-        force 'com.fasterxml.jackson.core:jackson-annotations:2.21.1'
         force 'tools.jackson.core:jackson-core:3.1.0'
         force 'tools.jackson.core:jackson-databind:3.1.0'
         force 'tools.jackson:jackson-bom:3.1.0'
@@ -141,7 +140,6 @@ dependencies {
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
     implementation 'com.fasterxml.jackson.core:jackson-core:2.21.1'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.21.1'
     implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8') {
         exclude group: 'tools.jackson.core'
     }
