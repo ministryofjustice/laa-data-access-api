@@ -12,6 +12,18 @@ def versions = [
         sentry : '8.28.0'
 ]
 
+configurations.all {
+    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
+    resolutionStrategy {
+        force 'com.fasterxml.jackson.core:jackson-core:2.21.1'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
+        force 'com.fasterxml.jackson.core:jackson-annotations:2.21.1'
+        force 'tools.jackson.core:jackson-core:3.1.0'
+        force 'tools.jackson.core:jackson-databind:3.1.0'
+        force 'tools.jackson:jackson-bom:3.1.0'
+    }
+}
+
 sourceSets {
     testUtilities {
         java {
@@ -79,6 +91,10 @@ jacocoTestReport {
 }
 
 dependencyManagement {
+    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
+    imports {
+        mavenBom 'tools.jackson:jackson-bom:3.1.0'
+    }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
             entry 'sentry-spring-boot-starter'
@@ -122,8 +138,10 @@ dependencies {
     implementation 'io.netty:netty-codec-http2:4.1.125.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-15307781
     implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.52'
-    // fix https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924
-
+    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.1'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.21.1'
     implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8') {
         exclude group: 'tools.jackson.core'
     }
