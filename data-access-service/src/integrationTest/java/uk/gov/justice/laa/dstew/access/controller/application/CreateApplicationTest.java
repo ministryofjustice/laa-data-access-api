@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertCreated;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
@@ -311,7 +312,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     );
 
     Map<String, String> invalidFields = new HashMap<>();
-    invalidFields.put("applicationContent", "size must be between 1 and 2147483647");
+    invalidFields.put("applicationContent", "must not be null");
 
     ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
     expectedProblemDetail.setProperty("invalidFields", invalidFields);
@@ -336,7 +337,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     // then
     assertSecurityHeaders(result);
     assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request",
-        "Invalid data type for field 'unknown'. Expected: ApplicationCreateRequest.", result, detail, null);
+        "Invalid request payload", result, detail, null);
     assertEquals(0, applicationRepository.count());
   }
 
@@ -435,7 +436,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
                     indBuilder -> indBuilder.dateOfBirth(null).firstName(null).lastName(null).details(null))
             ))),
             problemDetail, Map.of("invalidFields",
-                Map.of("individuals[0].details", minimumSizErrorMessage,
+                Map.of("individuals[0].details", mustNotBeNull,
                     "individuals[0].lastName", mustNotBeNull,
                     "individuals[0].firstName", mustNotBeNull,
                     "individuals[0].dateOfBirth", mustNotBeNull
