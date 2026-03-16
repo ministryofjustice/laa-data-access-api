@@ -13,9 +13,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.util.Map;
+import org.mockito.ArgumentCaptor;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
+import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+
 public class DomainEvent {
 
-    public static void verifyThatDomainEventSaved(DomainEventRepository domainEventRepository, ObjectMapper objectMapper, DomainEventEntity expectedDomainEvent, int timesCalled) throws JsonProcessingException {
+    public static void verifyThatDomainEventSaved(DomainEventRepository domainEventRepository, ObjectMapper objectMapper, DomainEventEntity expectedDomainEvent, int timesCalled) throws JacksonException {
         ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
         verify(domainEventRepository, times(timesCalled)).save(captor.capture());
         DomainEventEntity actualDomainEvent = captor.getValue();

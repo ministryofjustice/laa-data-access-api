@@ -1,5 +1,12 @@
 package uk.gov.justice.laa.dstew.access.controller.caseworker;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
+
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -10,14 +17,6 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.model.Caseworker;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
 @ActiveProfiles("test")
 public class GetCaseworkersTest extends BaseIntegrationTest {
@@ -53,7 +52,8 @@ public class GetCaseworkersTest extends BaseIntegrationTest {
         MvcResult result = getUri(TestConstants.URIs.GET_CASEWORKERS);
         List<Caseworker> actualCaseworkers = objectMapper.readValue(
                 result.getResponse().getContentAsString(),
-                new com.fasterxml.jackson.core.type.TypeReference<List<Caseworker>>() {}
+            new tools.jackson.core.type.TypeReference<>() {
+            }
         );
 
         // then

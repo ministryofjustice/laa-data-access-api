@@ -1,15 +1,11 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.domainEvent;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
+import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
-import uk.gov.justice.laa.dstew.access.utils.helpers.SpringContext;
-
-import java.time.Instant;
-import java.util.UUID;
 
 public class DomainEventGenerator extends BaseGenerator<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder> {
     public DomainEventGenerator() {

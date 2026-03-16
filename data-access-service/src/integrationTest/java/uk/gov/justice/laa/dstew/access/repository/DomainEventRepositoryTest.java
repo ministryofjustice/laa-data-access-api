@@ -1,8 +1,10 @@
 package uk.gov.justice.laa.dstew.access.repository;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
@@ -11,14 +13,12 @@ import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 class DomainEventRepositoryTest extends BaseIntegrationTest {
 
   private final ObjectMapper mapper = new ObjectMapper();
 
   @Test
-  void givenDomainEventEntity_whenSaved_thenPersistedWithCorrectJsonData() throws Exception {
+  void givenDomainEventEntity_whenSaved_thenPersistedWithCorrectJsonData() {
 
     // given
     ApplicationEntity existing = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
@@ -63,20 +63,20 @@ class DomainEventRepositoryTest extends BaseIntegrationTest {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode jsonNode = mapper.readTree(actual.getData());
 
-    assertThat(jsonNode.get("applicationId").asText())
+    assertThat(jsonNode.get("applicationId").asString())
         .isEqualTo("11111111-1111-1111-1111-111111111111");
 
-    assertThat(jsonNode.get("applicationStatus").asText())
+    assertThat(jsonNode.get("applicationStatus").asString())
         .isEqualTo("APPLICATION_IN_PROGRESS");
 
-    assertThat(jsonNode.get("applicationContent").asText())
+    assertThat(jsonNode.get("applicationContent").asString())
         .contains("foo");
 
     assertThat(jsonNode.get("createdBy").isNull()).isTrue();
   }
 
   @Test
-  void givenApplicationUpdatedDomainEvent_whenSaved_thenPersistedWithCorrectJsonData() throws Exception {
+  void givenApplicationUpdatedDomainEvent_whenSaved_thenPersistedWithCorrectJsonData() {
 
     // given
     ApplicationEntity existing = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
@@ -120,19 +120,19 @@ class DomainEventRepositoryTest extends BaseIntegrationTest {
     // JSON assertions
     JsonNode jsonNode = mapper.readTree(actual.getData());
 
-    assertThat(jsonNode.get("applicationId").asText())
+    assertThat(jsonNode.get("applicationId").asString())
         .isEqualTo("22222222-2222-2222-2222-222222222222");
 
-    assertThat(jsonNode.get("applicationStatus").asText())
+    assertThat(jsonNode.get("applicationStatus").asString())
         .isEqualTo("APPLICATION_SUBMITTED");
 
-    assertThat(jsonNode.get("applicationContent").asText())
+    assertThat(jsonNode.get("applicationContent").asString())
         .contains("bar");
 
-    assertThat(jsonNode.get("updatedAt").asText())
+    assertThat(jsonNode.get("updatedAt").asString())
         .isEqualTo("2025-02-01T12:30:00Z");
 
-    assertThat(jsonNode.get("updatedBy").asText())
+    assertThat(jsonNode.get("updatedBy").asString())
         .isEqualTo("caseworker-123");
   }
 }

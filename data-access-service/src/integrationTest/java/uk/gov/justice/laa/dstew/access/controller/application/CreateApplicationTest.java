@@ -11,8 +11,6 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,9 +27,15 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationOffice;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -337,7 +341,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     // then
     assertSecurityHeaders(result);
     assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request",
-        "Invalid request payload", result, detail, null);
+        "Invalid data type for field 'unknown'. Expected: ApplicationCreateRequest.", result, detail, null);
     assertEquals(0, applicationRepository.count());
   }
 
@@ -446,7 +450,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
 
   private void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual)
-      throws JsonProcessingException {
+      throws JacksonException {
     assertNotNull(actual.getId());
 
     JsonNode expectedContentNode = objectMapper.readTree(objectMapper.writeValueAsString(expected.getApplicationContent()));
