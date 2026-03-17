@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class MakeDecisionRefusedDomainEventDetails implements Serializable {
+public class MakeDecisionDomainEventDetails implements Serializable {
   private UUID applicationId;
   private UUID caseworkerId;
   private String request;

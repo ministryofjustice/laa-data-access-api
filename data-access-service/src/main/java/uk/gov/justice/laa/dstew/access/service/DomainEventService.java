@@ -20,7 +20,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRefusedDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
@@ -218,8 +218,8 @@ public class DomainEventService {
 
     String eventDescription = request.getEventHistory().getEventDescription();
 
-    MakeDecisionRefusedDomainEventDetails domainEventDetails =
-            MakeDecisionRefusedDomainEventDetails.builder()
+    MakeDecisionDomainEventDetails domainEventDetails =
+        MakeDecisionDomainEventDetails.builder()
                     .applicationId(applicationId)
                     .caseworkerId(caseworkerId)
                     .createdAt(Instant.now())
@@ -232,6 +232,37 @@ public class DomainEventService {
             caseworkerId,
             DomainEventType.APPLICATION_MAKE_DECISION_REFUSED,
             domainEventDetails
+    );
+  }
+
+  /**
+   * Posts a MAKE_DECISION_GRANTED domain event.
+   *
+   * @param applicationId the id of the application for which the decision was made
+   * @param request       the details of the decision that was made
+   */
+  @AllowApiCaseworker
+  public void saveMakeDecisionGrantedDomainEvent(
+      UUID applicationId,
+      MakeDecisionRequest request) {
+
+    String eventDescription = request.getEventHistory().getEventDescription();
+    UUID caseworkerId = request.getUserId();
+
+    MakeDecisionDomainEventDetails domainEventDetails =
+        MakeDecisionDomainEventDetails.builder()
+            .applicationId(applicationId)
+            .caseworkerId(caseworkerId)
+            .createdAt(Instant.now())
+            .request(getEventDetailsAsJson(request, DomainEventType.APPLICATION_MAKE_DECISION_GRANTED))
+            .eventDescription(eventDescription)
+            .build();
+
+    saveDomainEvent(
+        applicationId,
+        caseworkerId,
+        DomainEventType.APPLICATION_MAKE_DECISION_GRANTED,
+        domainEventDetails
     );
   }
 }
