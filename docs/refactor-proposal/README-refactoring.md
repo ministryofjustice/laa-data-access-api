@@ -350,10 +350,10 @@ public class ApplicationController implements ApplicationApi {
 ## References
 
 ### Internal Documents
-- All documents in this `docs/` directory
-- `conventional_commits.md` - Commit standards
-- `pre-commit-hooks.md` - Code quality
-- `deployment.md` - Deployment process
+- All documents in this `docs/refactor-proposal/` directory
+- [`../conventional_commits.md`](../conventional_commits.md) - Commit standards
+- [`../pre-commit-hooks.md`](../pre-commit-hooks.md) - Code quality
+- [`../deployment.md`](../deployment.md) - Deployment process
 
 ### External Resources
 - Clean Architecture - Robert C. Martin
