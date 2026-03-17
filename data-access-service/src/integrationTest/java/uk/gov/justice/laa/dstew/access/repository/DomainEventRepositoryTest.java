@@ -3,9 +3,13 @@ package uk.gov.justice.laa.dstew.access.repository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,6 +21,8 @@ class DomainEventRepositoryTest extends BaseIntegrationTest {
   void givenDomainEventEntity_whenSaved_thenPersistedWithCorrectJsonData() throws Exception {
 
     // given
+    ApplicationEntity existing = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+
     String jsonData = """
             {
               "applicationId": "11111111-1111-1111-1111-111111111111",
@@ -27,8 +33,10 @@ class DomainEventRepositoryTest extends BaseIntegrationTest {
             }
             """;
 
-    DomainEventEntity expected = domainEventFactory.create(builder ->
+    DomainEventEntity expected = DataGenerator.createDefault(DomainEventGenerator.class, builder ->
         builder
+            .applicationId(existing.getId())
+            .caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
             .type(DomainEventType.APPLICATION_CREATED)
             .createdBy(null)
             .data(jsonData)
@@ -71,6 +79,8 @@ class DomainEventRepositoryTest extends BaseIntegrationTest {
   void givenApplicationUpdatedDomainEvent_whenSaved_thenPersistedWithCorrectJsonData() throws Exception {
 
     // given
+    ApplicationEntity existing = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+
     String jsonData = """
         {
           "applicationId": "22222222-2222-2222-2222-222222222222",
@@ -81,8 +91,10 @@ class DomainEventRepositoryTest extends BaseIntegrationTest {
         }
         """;
 
-    DomainEventEntity expected = domainEventFactory.create(builder ->
+    DomainEventEntity expected = DataGenerator.createDefault(DomainEventGenerator.class, builder ->
         builder
+            .applicationId(existing.getId())
+            .caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
             .type(DomainEventType.APPLICATION_UPDATED)
             .createdBy("")
             .data(jsonData)

@@ -47,6 +47,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
 import java.net.URI;
 import java.util.UUID;
 import java.util.List;
+import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
@@ -85,33 +86,6 @@ public abstract class BaseIntegrationTest {
     @Autowired
     protected DomainEventAsserts domainEventAsserts;
 
-    @Autowired
-    protected Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder> domainEventFactory;
-
-    @Autowired
-    protected PersistedFactory<
-            CaseworkerRepository,
-            Factory<CaseworkerEntity, CaseworkerEntity.CaseworkerEntityBuilder>,
-            CaseworkerEntity,
-            CaseworkerEntity.CaseworkerEntityBuilder,
-            UUID> persistedCaseworkerFactory;
-
-    @Autowired
-    protected PersistedFactory<
-            MeritsDecisionRepository,
-            Factory<MeritsDecisionEntity, MeritsDecisionEntity.MeritsDecisionEntityBuilder>,
-            MeritsDecisionEntity,
-            MeritsDecisionEntity.MeritsDecisionEntityBuilder,
-            UUID> persistedMeritsDecisionFactory;
-
-    @Autowired
-    protected PersistedFactory<
-            DecisionRepository,
-            Factory<DecisionEntity, DecisionEntity.DecisionEntityBuilder>,
-            DecisionEntity,
-            DecisionEntity.DecisionEntityBuilder,
-            UUID> persistedDecisionFactory;
-
     // for use in tests and factories where applicable (i.e. default in ApplicationFactoryImpl)
     public static CaseworkerEntity CaseworkerJohnDoe;
     public static CaseworkerEntity CaseworkerJaneDoe;
@@ -120,9 +94,9 @@ public abstract class BaseIntegrationTest {
     @BeforeEach
     void setupCaseworkers() {
         caseworkerRepository.deleteAll();
-        CaseworkerJohnDoe = persistedCaseworkerFactory.createAndPersist(builder ->
+        CaseworkerJohnDoe = persistedDataGenerator.createAndPersist(CaseworkerGenerator.class, builder ->
                 builder.username("JohnDoe").build());
-        CaseworkerJaneDoe = persistedCaseworkerFactory.createAndPersist(builder ->
+        CaseworkerJaneDoe = persistedDataGenerator.createAndPersist(CaseworkerGenerator.class, builder ->
                 builder.username("JaneDoe").build());
         Caseworkers = List.of(CaseworkerJohnDoe, CaseworkerJaneDoe);
 
