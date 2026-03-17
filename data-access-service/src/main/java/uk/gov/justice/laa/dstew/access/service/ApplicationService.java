@@ -468,6 +468,7 @@ public class ApplicationService {
           .build();
 
       certificateRepository.save(certificate);
+      domainEventService.saveMakeDecisionGrantedDomainEvent(applicationId, request);
     }
 
     if (decision.getOverallDecision() == DecisionStatus.REFUSED) {
