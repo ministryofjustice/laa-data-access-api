@@ -86,45 +86,7 @@ public abstract class BaseIntegrationTest {
     protected DomainEventAsserts domainEventAsserts;
 
     @Autowired
-    protected Factory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder> applicationFactory;
-
-    @Autowired
-    protected Factory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> applicationCreateRequestFactory;
-
-    @Autowired
-    protected Factory<ApplicationUpdateRequest, ApplicationUpdateRequest.Builder> applicationUpdateRequestFactory;
-
-    @Autowired
-    protected Factory<CaseworkerAssignRequest, CaseworkerAssignRequest.Builder> caseworkerAssignRequestFactory;
-
-    @Autowired
-    protected Factory<CaseworkerUnassignRequest, CaseworkerUnassignRequest.Builder> caseworkerUnassignRequestFactory;
-
-    @Autowired
-    protected Factory<IndividualEntity, IndividualEntity.IndividualEntityBuilder> individualEntityFactory;
-
-    @Autowired
-    protected Factory<CaseworkerEntity, CaseworkerEntity.CaseworkerEntityBuilder> caseworkerFactory;
-
-    @Autowired
     protected Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder> domainEventFactory;
-
-    @Autowired
-    protected Factory<MakeDecisionRequest, MakeDecisionRequest.Builder> makeDecisionRequestFactory;
-
-    @Autowired
-    protected Factory<Individual, Individual.Builder> individualFactory;
-
-    @Autowired
-    protected Factory<LinkedApplicationEntity, LinkedApplicationEntity.LinkedApplicationEntityBuilder> linkedApplicationFactory;
-
-    @Autowired
-    protected PersistedFactory<
-            ApplicationRepository,
-            Factory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder>,
-            ApplicationEntity,
-            ApplicationEntity.ApplicationEntityBuilder,
-            UUID> persistedApplicationFactory;
 
     @Autowired
     protected PersistedFactory<
@@ -133,22 +95,6 @@ public abstract class BaseIntegrationTest {
             CaseworkerEntity,
             CaseworkerEntity.CaseworkerEntityBuilder,
             UUID> persistedCaseworkerFactory;
-
-    @Autowired
-    protected PersistedFactory<
-              DomainEventRepository,
-              Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder>,
-              DomainEventEntity,
-              DomainEventEntity.DomainEventEntityBuilder,
-              UUID> persistedDomainEventFactory;
-
-    @Autowired
-    protected PersistedFactory<
-            ProceedingRepository,
-            Factory<ProceedingEntity, ProceedingEntity.ProceedingEntityBuilder>,
-            ProceedingEntity,
-            ProceedingEntity.ProceedingEntityBuilder,
-            UUID> persistedProceedingFactory;
 
     @Autowired
     protected PersistedFactory<
@@ -165,15 +111,6 @@ public abstract class BaseIntegrationTest {
             DecisionEntity,
             DecisionEntity.DecisionEntityBuilder,
             UUID> persistedDecisionFactory;
-
-  @Autowired
-  protected PersistedFactory<
-      IndividualRepository,
-      Factory<IndividualEntity, IndividualEntity.IndividualEntityBuilder>,
-      IndividualEntity,
-      IndividualEntity.IndividualEntityBuilder,
-      UUID> persistedIndividualFactory;
-
 
     // for use in tests and factories where applicable (i.e. default in ApplicationFactoryImpl)
     public static CaseworkerEntity CaseworkerJohnDoe;

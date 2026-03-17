@@ -1,12 +1,16 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
+import java.util.LinkedList;
 import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
 import java.util.List;
 import java.util.Map;
 
 public class ApplicationMeritsGenerator extends BaseGenerator<ApplicationMerits, ApplicationMerits.ApplicationMeritsBuilder> {
+    private final OpponentDetailsGenerator opponentDetailsGenerator = new OpponentDetailsGenerator();
+
     public ApplicationMeritsGenerator() {
         super(ApplicationMerits::toBuilder, ApplicationMerits.ApplicationMeritsBuilder::build);
     }
@@ -14,7 +18,7 @@ public class ApplicationMeritsGenerator extends BaseGenerator<ApplicationMerits,
     @Override
     public ApplicationMerits createDefault() {
         return ApplicationMerits.builder()
-                .opponents(List.of())
+                .opponents(new LinkedList<OpponentDetails>(List.of(opponentDetailsGenerator.createDefault())))
                 .involvedChildren(
                     List.of(
                         Map.of("first_name", "John",
