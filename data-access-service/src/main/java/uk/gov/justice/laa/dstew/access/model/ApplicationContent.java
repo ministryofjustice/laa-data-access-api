@@ -65,6 +65,10 @@ public class ApplicationContent implements Serializable {
   @Nullable
   private ApplicationMerits applicationMerits;
 
+  @Nullable
+  @Schema(name = "submitterEmail", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+  private String submitterEmail;
+
   /**
    * A container for additional, undeclared properties.
    * This is a holder for any undeclared properties as specified with
