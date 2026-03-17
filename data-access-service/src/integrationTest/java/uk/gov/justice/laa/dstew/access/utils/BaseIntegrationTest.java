@@ -34,6 +34,7 @@ import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
+import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
@@ -81,6 +82,9 @@ public abstract class BaseIntegrationTest {
     protected DecisionRepository decisionRepository;
 
     @Autowired
+    protected CertificateRepository certificateRepository;
+
+    @Autowired
     protected ApplicationAsserts applicationAsserts;
 
     @Autowired
@@ -116,15 +120,18 @@ public abstract class BaseIntegrationTest {
     public MvcResult getUri(String uri, HttpHeaders httpHeaders) throws Exception {
         clearCache();
 
+        MvcResult result;
         if (httpHeaders == null) {
-            return mockMvc
+          result = mockMvc
                     .perform(get(uri))
                     .andReturn();
         }
 
-        return mockMvc
+      result = mockMvc
                 .perform(get(uri).headers(httpHeaders))
                 .andReturn();
+        clearCache();
+        return result;
     }
 
     public MvcResult getUri(String uri) throws Exception {
