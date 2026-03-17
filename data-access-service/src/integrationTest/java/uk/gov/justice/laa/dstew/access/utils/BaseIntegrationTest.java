@@ -125,11 +125,12 @@ public abstract class BaseIntegrationTest {
           result = mockMvc
                     .perform(get(uri))
                     .andReturn();
+        } else {
+          result = mockMvc
+              .perform(get(uri).headers(httpHeaders))
+              .andReturn();
         }
 
-      result = mockMvc
-                .perform(get(uri).headers(httpHeaders))
-                .andReturn();
         clearCache();
         return result;
     }
