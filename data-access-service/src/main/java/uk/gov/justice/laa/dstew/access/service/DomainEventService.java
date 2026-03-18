@@ -213,10 +213,10 @@ public class DomainEventService {
   @AllowApiCaseworker
   public void saveMakeDecisionRefusedDomainEvent(
           UUID applicationId,
-          MakeDecisionRequest request) {
+          MakeDecisionRequest request,
+          UUID caseworkerId) {
 
     String eventDescription = request.getEventHistory().getEventDescription();
-    UUID caseworkerId = request.getUserId();
 
     MakeDecisionRefusedDomainEventDetails domainEventDetails =
             MakeDecisionRefusedDomainEventDetails.builder()
