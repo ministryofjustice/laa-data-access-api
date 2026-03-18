@@ -66,6 +66,12 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
   @Test
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
+  public void givenCreateNewApplication_whenCreateApplicationWithCivilDecideServiceName_thenReturnCreatedAndPersistServiceName() throws Exception {
+    verifyCreateNewApplicationWithServiceName(ServiceName.CIVIL_DECIDE);
+  }
+
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_thenReturnCreatedWithLocationHeader() throws Exception {
     final ApplicationEntity leadApplicationToLink = persistedApplicationFactory.createAndPersist();
     final LinkedApplication linkedApplication = LinkedApplication.builder().leadApplicationId(leadApplicationToLink.getApplyApplicationId())
@@ -201,6 +207,24 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
     domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED);
     return createdApplication;
+  }
+
+  private void verifyCreateNewApplicationWithServiceName(ServiceName serviceName) throws Exception {
+    ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
+    ApplicationContent content = applicationContentFactory.create();
+    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
+    applicationCreateRequest.setApplicationContent(objectMapper.convertValue(content, Map.class));
+
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest, ServiceNameHeader(serviceName.getValue()));
+
+    assertSecurityHeaders(result);
+    assertCreated(result);
+
+    UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
+      .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
+
+    domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED, serviceName);
   }
 
     @ParameterizedTest
