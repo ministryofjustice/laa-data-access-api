@@ -313,7 +313,6 @@ paths:
           in: query
           description: determines additional data in the response
           schema:
-            type: string
             $ref: "#/components/schemas/IncludedAdditionalData"
         - name: page
           in: query
@@ -435,13 +434,18 @@ components:
 
     Individual:
       type: object
-      required:
-        - firstName
-        - lastName
-        - dateOfBirth
-        - details
-        - type
       properties:
+        clientId:
+          type: string
+          format: uuid
+        lastNameAtBirth:
+          type: string
+        previousApplicationReference:
+          type: string
+        relationshipToChildren:
+          type: string
+        correspondenceAddressType:
+          type: string
         firstName:
           type: string
         lastName:
@@ -449,10 +453,14 @@ components:
         dateOfBirth:
           type: string
           format: date
+        correspondenceAddress:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
         details:
           type: object
           additionalProperties: true
-          minProperties: 1
         type:
           $ref: "#/components/schemas/individualType"
 

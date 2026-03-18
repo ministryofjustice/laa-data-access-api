@@ -53,6 +53,16 @@ public class ApplicationContent implements Serializable {
 
   private @Nullable String laaReference;
 
+  private @Nullable String lastNameAtBirth;
+
+  private @Nullable String previousApplicationReference;
+
+  private @Nullable String relationshipToChildren;
+
+  private @Nullable String correspondenceAddressType;
+
+  private @Nullable ApplicationApplicant applicant;
+
   @Nullable
   @Valid
   @Schema(name = "office", requiredMode = Schema.RequiredMode.NOT_REQUIRED)

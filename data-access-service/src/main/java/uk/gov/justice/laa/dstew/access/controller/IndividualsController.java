@@ -57,7 +57,7 @@ public class IndividualsController implements IndividualsApi {
     validateRequest(applicationId, include);
 
     PaginationHelper.PaginatedResult<Individual> result =
-        individualsService.getIndividuals(page, pageSize, applicationId, type);
+        individualsService.getIndividuals(page, pageSize, applicationId, type, include);
 
     List<Individual> individuals = result.page().stream().toList();
     Paging paging = new Paging();

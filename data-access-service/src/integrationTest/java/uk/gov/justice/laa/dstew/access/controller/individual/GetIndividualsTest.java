@@ -58,7 +58,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenIncludeParametersAndNoAppId_whenGetIndividuals_thenReturnBadRequest() throws Exception {
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?include=CLIENT_DETAILS");
     assertBadRequest(result);
@@ -68,7 +68,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenIncludeParametersAndAppId_whenGetIndividuals_thenProcessCorrectly() throws Exception {
     persistedIndividualFactory.createAndPersist();
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?include=CLIENT_DETAILS&applicationId=660f3064-a65c-4bbf-bacd-a6a9482dce8b");

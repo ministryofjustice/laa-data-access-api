@@ -1,10 +1,15 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequestIndividual;
+import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
 import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
 /**
  * Mapper interface for Individuals.
@@ -34,6 +39,37 @@ public interface IndividualMapper {
     dto.setDateOfBirth(entity.getDateOfBirth());
     dto.setDetails(entity.getIndividualContent());
     dto.setType(entity.getType());
+    return dto;
+  }
+
+  /**
+   * Converts a {@link IndividualEntity} to an API-facing {@link Individual} model.
+   * Safely handles nulls: if the {@code entity} itself is null,
+   * the method returns {@code null}.
+   *
+   * @param entity the {@link IndividualEntity} to map (might be null)
+   * @return a new {@link Individual} object populated with first name, last name, date of birth,
+   *         and individual content, or {@code null} if the input or individual is null
+   */
+  default Individual toExtendedIndividual(IndividualEntity entity,
+                                          IndividualType individualType,
+                                          IncludedAdditionalData include,
+                                          ApplicationContent applicationContent) {
+
+    Individual dto = toIndividual(entity);
+
+    if (dto == null) {
+      return null;
+    }
+
+    if (individualType == IndividualType.CLIENT && include == IncludedAdditionalData.CLIENT_DETAILS) {
+      dto.setClientId(entity.getId());
+      dto.setLastNameAtBirth(applicationContent.getLastNameAtBirth());
+      dto.setPreviousApplicationReference(applicationContent.getPreviousApplicationReference());
+      dto.setRelationshipToChildren(applicationContent.getRelationshipToChildren());
+      dto.setCorrespondenceAddressType(applicationContent.getCorrespondenceAddressType());
+      dto.setCorrespondenceAddress(applicationContent.getApplicant().getAddresses());
+    }
     return dto;
   }
 
