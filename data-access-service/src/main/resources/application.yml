@@ -63,3 +63,6 @@ sentry:
 
 feature:
   enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}
+
+server:
+  forward-headers-strategy: framework
