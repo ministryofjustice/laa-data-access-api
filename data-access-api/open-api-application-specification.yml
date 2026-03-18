@@ -885,12 +885,12 @@ components:
     BaseApplicationContent:
       description: "Test"
       oneOf:
-          - $ref: '#/components/schemas/applyApplication'
+          - $ref: './v1/open-api-apply-application.yml#/components/schemas/applyApplication'
           - $ref: '#/components/schemas/applyApplicationV2'
       discriminator:
           propertyName: objectType
           mapping:
-              apply: '#/components/schemas/applyApplication'
+              apply: './v1/open-api-apply-application.yml#/components/schemas/applyApplication'
               applyV2: '#/components/schemas/applyApplicationV2'
 
     applyApplication:
