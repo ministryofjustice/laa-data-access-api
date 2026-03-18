@@ -10,9 +10,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -22,12 +20,14 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 
 @ActiveProfiles("test")
 public class GetIndividualsTest extends BaseIntegrationTest {
@@ -70,9 +70,19 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   @Test
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenIncludeParametersAndAppId_whenGetIndividuals_thenProcessCorrectly() throws Exception {
-    persistedIndividualFactory.createAndPersist();
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?include=CLIENT_DETAILS&applicationId=660f3064-a65c-4bbf-bacd-a6a9482dce8b");
+    ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+    persistedIndividualFactory.createAndPersist(builder -> builder.applications(Set.of(application)));
+    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?include=CLIENT_DETAILS&individualType=CLIENT&applicationId="+application.getId().toString());
+
     assertOK(result);
+    IndividualsResponse response = deserialise(result, IndividualsResponse.class);
+    Individual actualIndividual = response.getIndividuals().getFirst();
+    assertThat(actualIndividual.getRelationshipToChildren()).isEqualTo("relationshipToChildren");
+    assertThat(actualIndividual.getLastNameAtBirth()).isEqualTo("Alberts");
+    assertThat(actualIndividual.getPreviousApplicationReference()).isEqualTo("ZZ999Z");
+    assertThat(actualIndividual.getCorrespondenceAddressType()).isEqualTo("Home");
+    assertThat(actualIndividual.getCorrespondenceAddress()).hasSize(2);
+
   }
 
   @ParameterizedTest

@@ -62,13 +62,23 @@ public interface IndividualMapper {
       return null;
     }
 
+    dto.setClientId(null);
+    dto.setLastNameAtBirth(null);
+    dto.setPreviousApplicationReference(null);
+    dto.setRelationshipToChildren(null);
+    dto.setCorrespondenceAddressType(null);
+    dto.setCorrespondenceAddress(null);
+
+    // only populate fields if rules are set
     if (individualType == IndividualType.CLIENT && include == IncludedAdditionalData.CLIENT_DETAILS) {
       dto.setClientId(entity.getId());
       dto.setLastNameAtBirth(applicationContent.getLastNameAtBirth());
       dto.setPreviousApplicationReference(applicationContent.getPreviousApplicationReference());
       dto.setRelationshipToChildren(applicationContent.getRelationshipToChildren());
       dto.setCorrespondenceAddressType(applicationContent.getCorrespondenceAddressType());
-      dto.setCorrespondenceAddress(applicationContent.getApplicant().getAddresses());
+      if (applicationContent.getApplicant() != null) {
+        dto.setCorrespondenceAddress(applicationContent.getApplicant().getAddresses());
+      }
     }
     return dto;
   }

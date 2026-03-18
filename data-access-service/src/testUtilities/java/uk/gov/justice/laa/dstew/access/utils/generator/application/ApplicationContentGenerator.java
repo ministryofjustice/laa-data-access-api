@@ -25,7 +25,7 @@ public class ApplicationContentGenerator extends BaseGenerator<ApplicationConten
                 .submittedAt("2024-01-01T12:00:00Z")
                 .previousApplicationReference("ZZ999Z")
                 .lastNameAtBirth("Alberts")
-                .relationshipToChildren("Relationship")
+                .relationshipToChildren("relationshipToChildren")
                 .correspondenceAddressType("Home")
                 .applicant(ApplicationApplicant.builder()
                         .addresses(List.of(

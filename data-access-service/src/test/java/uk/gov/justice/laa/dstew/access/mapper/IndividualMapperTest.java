@@ -82,6 +82,10 @@ class IndividualMapperTest {
         assertThat(actualIndividual.getLastNameAtBirth()).isEqualTo(lastName);
         assertThat(actualIndividual.getPreviousApplicationReference()).isEqualTo(previousApplicationReference);
         assertThat(actualIndividual.getRelationshipToChildren()).isEqualTo(relationshipToChildren);
+        List<Map<String, Object>> actualAddresses = actualIndividual.getCorrespondenceAddress();
+        assertThat(actualAddresses).hasSize(addresses.size());
+        assertThat(actualAddresses.getFirst().get("k1").toString()).isEqualTo("v1");
+        assertThat(actualAddresses.getLast().get("k2").toString()).isEqualTo("v2");
     }
 
     @ParameterizedTest
@@ -108,11 +112,12 @@ class IndividualMapperTest {
                         addresses));
 
         assertThat(actualIndividual).isNotNull();
-        assertThat(actualIndividual.getClientId()).isEqualTo(expectedIndividualEntity.getId());
+        assertThat(actualIndividual.getClientId()).isNull();
         assertThat(actualIndividual.getCorrespondenceAddressType()).isNull();
         assertThat(actualIndividual.getLastNameAtBirth()).isNull();
         assertThat(actualIndividual.getPreviousApplicationReference()).isNull();
         assertThat(actualIndividual.getRelationshipToChildren()).isNull();
+        assertThat(actualIndividual.getCorrespondenceAddress()).isNull();
     }
 
     @Test
