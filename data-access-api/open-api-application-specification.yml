@@ -494,6 +494,8 @@ components:
       properties:
         officeCode:
           type: string
+        contactEmail:
+          type: string
 
     ApplicationCreateRequest:
       type: object
