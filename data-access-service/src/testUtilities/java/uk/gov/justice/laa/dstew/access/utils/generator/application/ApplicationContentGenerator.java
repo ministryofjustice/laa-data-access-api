@@ -35,6 +35,8 @@ public class ApplicationContentGenerator extends BaseGenerator<ApplicationConten
                         .build())
                 .applicationMerits(meritsGenerator.createDefault())
                 .proceedings(List.of(proceedingDtoGenerator.createDefault()))
+                .submitterEmail("test@example.com")
                 .build();
+
     }
 }

@@ -29,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
+import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
@@ -73,6 +74,9 @@ public abstract class BaseIntegrationTest {
 
     @Autowired
     protected DecisionRepository decisionRepository;
+
+    @Autowired
+    protected CertificateRepository certificateRepository;
 
     @Autowired
     protected ApplicationAsserts applicationAsserts;

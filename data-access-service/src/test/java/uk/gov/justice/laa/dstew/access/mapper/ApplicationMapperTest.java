@@ -23,10 +23,12 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequestIndividual;
 import uk.gov.justice.laa.dstew.access.model.Opponent;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.model.Provider;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 
 class ApplicationMapperTest {
 
   private final ApplicationMapper applicationMapper = Mappers.getMapper(ApplicationMapper.class);
+  private final ApplicationEntityGenerator applicationEntityGenerator = new ApplicationEntityGenerator();
 
     @Test
     void givenApplicationEntity_whenToApplication_thenMapsFieldsCorrectly() {
@@ -59,7 +61,7 @@ class ApplicationMapperTest {
         assertThat(actualApplication.getLaaReference()).isEqualTo(laaReference);
         assertThat(actualApplication.getStatus()).isEqualTo(status);
         assertThat(actualApplication.getLastUpdated()).isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
-        assertThat(actualApplication.getProvider()).isEqualTo(new Provider().officeCode(officeCode));
+        assertProviderEquals(actualApplication.getProvider(), officeCode, null);
     }
 
 
@@ -322,5 +324,56 @@ class ApplicationMapperTest {
     assertThat(mapped.getFirstName()).isNull();
     assertThat(mapped.getLastName()).isEqualTo("Smith");
     assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
+  }
+
+  @Test
+  void givenApplicationWithContactEmailOnly_whenToApplication_thenMapsProviderWithContactEmail() {
+    ApplicationEntity entity = applicationEntityGenerator.createDefault(builder -> builder
+        .officeCode(null));
+
+    Application result = applicationMapper.toApplication(entity);
+
+    assertProviderEquals(result.getProvider(), null, "test@example.com");
+  }
+
+  @Test
+  void givenApplicationWithoutContactEmail_whenToApplication_thenProviderHasNullContactEmail() {
+    ApplicationEntity entity = applicationEntityGenerator.createDefault(builder -> builder
+        .applicationContent(Map.of("otherField", "value")));
+
+    Application result = applicationMapper.toApplication(entity);
+
+    assertProviderEquals(result.getProvider(), "officeCode", null);
+  }
+
+  @Test
+  void givenApplicationWithNullApplicationContent_whenToApplication_thenProviderHasOfficeCodeOnly() {
+    ApplicationEntity entity = applicationEntityGenerator.createDefault(builder -> builder
+        .applicationContent(null));
+
+    Application result = applicationMapper.toApplication(entity);
+
+    assertProviderEquals(result.getProvider(), "officeCode", null);
+  }
+
+  @Test
+  void givenApplicationWithNoProviderData_whenToApplication_thenProviderIsNull() {
+    ApplicationEntity entity = applicationEntityGenerator.createDefault(builder -> builder
+        .officeCode(null)
+        .applicationContent(Map.of()));
+
+    Application result = applicationMapper.toApplication(entity);
+
+    assertProviderEquals(result.getProvider(), null, null);
+  }
+
+  private void assertProviderEquals(Provider actual, String expectedOfficeCode, String expectedContactEmail) {
+    if (expectedOfficeCode == null && expectedContactEmail == null) {
+      assertThat(actual).isNull();
+    } else {
+      assertThat(actual).isNotNull();
+      assertThat(actual.getOfficeCode()).isEqualTo(expectedOfficeCode);
+      assertThat(actual.getContactEmail()).isEqualTo(expectedContactEmail);
+    }
   }
 }
