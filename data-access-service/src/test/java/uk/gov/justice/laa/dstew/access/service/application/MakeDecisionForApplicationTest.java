@@ -64,7 +64,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   private ApplicationService serviceUnderTest;
 
   @Test
-  void givenMakeDecisionRequestWithOneProceedingAndInvalidRefusal_whenAssignDecision_thenDecisionSaved() throws JsonProcessingException {
+  void givenMakeDecisionRequestWithOneProceedingAndInvalidRefusal_whenAssignDecision_thenDecisionSaved() {
 
     UUID applicationId = UUID.randomUUID();
     UUID refusedProceedingId = UUID.randomUUID();
