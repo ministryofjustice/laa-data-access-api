@@ -281,6 +281,40 @@ public class GetApplicationTest extends BaseIntegrationTest {
         Assertions.assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
     }
 
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
+    void givenApplicationWithSubmitterEmail_whenGetApplication_thenReturnsProviderWithContactEmail() throws Exception {
+
+        ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+        Application response = deserialise(result, Application.class);
+
+        assertOK(result);
+        Assertions.assertThat(response.getProvider()).isNotNull();
+        Assertions.assertThat(response.getProvider().getOfficeCode()).isEqualTo("officeCode");
+        Assertions.assertThat(response.getProvider().getContactEmail()).isEqualTo("test@example.com");
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
+    void givenApplicationWithoutSubmitterEmail_whenGetApplication_thenReturnsProviderWithoutContactEmail() throws Exception {
+
+        ApplicationEntity application = persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder -> builder.applicationContent(Map.of("someOtherKey", "value"))
+        );
+
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+        Application response = deserialise(result, Application.class);
+
+        assertOK(result);
+        Assertions.assertThat(response.getProvider()).isNotNull();
+        Assertions.assertThat(response.getProvider().getOfficeCode()).isEqualTo("officeCode");
+        Assertions.assertThat(response.getProvider().getContactEmail()).isNull();
+    }
+
     private Application createApplication(ApplicationEntity applicationEntity,
                                           ProceedingEntity proceeding,
                                           DecisionEntity decision) {
@@ -304,13 +338,21 @@ public class GetApplicationTest extends BaseIntegrationTest {
             application.setOverallDecision(applicationEntity.getDecision().getOverallDecision());
         }
         application.isLead(applicationEntity.isLead());
-        application.setProvider(
-            applicationEntity.getOfficeCode() != null
-                ? new Provider().officeCode(applicationEntity.getOfficeCode())
-                : null
-        );
 
-        Map<String, Object> applicationMerits = (Map<String, Object>) applicationEntity.getApplicationContent().get("applicationMerits");
+        // Extract provider with both officeCode and contactEmail
+        String officeCode = applicationEntity.getOfficeCode();
+        String contactEmail = extractContactEmail(applicationEntity.getApplicationContent());
+
+        if (officeCode != null || contactEmail != null) {
+            Provider provider = new Provider();
+            provider.setOfficeCode(officeCode);
+            provider.setContactEmail(contactEmail);
+            application.setProvider(provider);
+        }
+
+        Map<String, Object> applicationMerits = applicationEntity.getApplicationContent() != null
+            ? (Map<String, Object>) applicationEntity.getApplicationContent().get("applicationMerits")
+            : null;
 
         application.setProceedings(List.of(
                 ApplicationProceeding.builder()
@@ -351,5 +393,13 @@ public class GetApplicationTest extends BaseIntegrationTest {
                     .organisationName(opposable.get("name") != null ? opposable.get("name").toString() : null)
                     .build();
         }).toList();
+    }
+
+    private static String extractContactEmail(Map<String, Object> content) {
+        if (content == null) {
+            return null;
+        }
+        Object submitterEmail = content.get("submitterEmail");
+        return submitterEmail instanceof String ? (String) submitterEmail : null;
     }
 }

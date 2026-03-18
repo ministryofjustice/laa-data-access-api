@@ -25,6 +25,8 @@ public class ApplicationContentGenerator extends BaseGenerator<ApplicationConten
                 .submittedAt("2024-01-01T12:00:00Z")
                 .applicationMerits(meritsGenerator.createDefault())
                 .proceedings(List.of(proceedingDtoGenerator.createDefault()))
+                .submitterEmail("test@example.com")
                 .build();
+
     }
 }
