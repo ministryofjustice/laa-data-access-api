@@ -54,7 +54,6 @@ import java.util.stream.Stream;
 })
 @ExtendWith(MockitoExtension.class)
 @ActiveProfiles("unit-test")
-@Import(TestScopeConfig.class)
 public class BaseServiceTest {
 
     @MockitoBean
