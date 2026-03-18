@@ -433,6 +433,34 @@ components:
         organisationName:
           type: string
 
+    ApplicationCreateRequestIndividual:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - dateOfBirth
+        - details
+        - type
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        details:
+          type: object
+          additionalProperties: true
+          minProperties: 1
+        type:
+          $ref: "#/components/schemas/IndividualType"
+
+    IncludedAdditionalData:
+      type: string
+      enum:
+        - CLIENT_DETAILS
+
     Individual:
       type: object
       properties:
@@ -463,29 +491,6 @@ components:
           type: object
           additionalProperties: true
         type:
-          $ref: "#/components/schemas/individualType"
-
-    ApplicationCreateRequestIndividual:
-      type: object
-      required:
-        - firstName
-        - lastName
-        - dateOfBirth
-        - details
-        - type
-      properties:
-        firstName:
-          type: string
-        lastName:
-          type: string
-        dateOfBirth:
-          type: string
-          format: date
-        details:
-          type: object
-          additionalProperties: true
-          minProperties: 1
-        type:
           $ref: "#/components/schemas/IndividualType"
 
     Application:
@@ -503,7 +508,7 @@ components:
         status:
           $ref: "#/components/schemas/ApplicationStatus"
         laaReference:
-            type: string
+          type: string
         lastUpdated:
           type: string
           format: date-time
@@ -607,7 +612,7 @@ components:
         clientFirstName:
           type: string
         clientLastName:
-          type: string 
+          type: string
         clientDateOfBirth:
           type: string
           format: date
@@ -723,7 +728,7 @@ components:
           type: string
         eventDescription:
           type: string
-        
+
     Paging:
       type: object
       properties:
