@@ -8,6 +8,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 
 import java.util.List;
@@ -42,6 +43,7 @@ public class DomainEventAsserts {
             assertEquals(expectedDomainEventType, domainEvent.getType());
             assertTrue(applicationIds.contains(domainEvent.getApplicationId()));
             assertEquals(caseWorkerId, domainEvent.getCaseworkerId());
+            assertThat(domainEvent.getServiceName()).isEqualTo(ServiceName.CIVIL_APPLY);
             if (expectedEventHistory.getEventDescription() != null) {
                 assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
             } else {
@@ -62,6 +64,7 @@ public class DomainEventAsserts {
         assertThat(event.getApplicationId()).isEqualTo(application.getId());
         assertThat(event.getType()).isEqualTo(expectedType);
         assertThat(event.getCreatedAt()).isNotNull();
+        assertThat(event.getServiceName()).isEqualTo(ServiceName.CIVIL_APPLY);
 
         // ---- JSON payload assertions ----
         ObjectMapper mapper = new ObjectMapper();
