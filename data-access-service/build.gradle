@@ -140,7 +140,7 @@ dependencies {
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
     implementation 'com.fasterxml.jackson.core:jackson-core:2.21.1'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
-    implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8') {
+    implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2') {
         exclude group: 'tools.jackson.core'
     }
     implementation("org.springframework.boot:spring-boot-starter-flyway:4.0.1")
