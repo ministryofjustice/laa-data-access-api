@@ -18,16 +18,16 @@ paths:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1history-search"
   /api/v0/applications/{id}/decision:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1decision"
+  /api/v0/applications/{id}/upload-document:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1upload-document"
+  /api/v0/applications/{id}/download-document/{documentId}:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1download-document~1{documentId}"
+  /api/v0/applications/{id}/update-document:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1update-document"
+  /api/v0/applications/{id}/delete-document:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1delete-document"
   /api/v0/individuals:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1individuals"
-  /sds/save-file:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1sds~1save-file"
-  /sds/save-or-update-file:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1sds~1save-or-update-file"
-  /sds/file/{id}:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1sds~1file~1{id}"
-  /sds/delete-files:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1sds~1delete-files"
   /sds/health:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1sds~1health"
 
@@ -59,9 +59,11 @@ components:
       $ref: "./open-api-application-specification.yml#/components/schemas/Individual"
     IndividualsResponse:
       $ref: "./open-api-application-specification.yml#/components/schemas/IndividualsResponse"
-    SdsGetFileResponse:
-      $ref: "./open-api-application-specification.yml#/components/schemas/SdsGetFileResponse"
-    SdsSaveFileResponse:
-      $ref: "./open-api-application-specification.yml#/components/schemas/SdsSaveFileResponse"
+    DocumentDownloadResponse:
+      $ref: "./open-api-application-specification.yml#/components/schemas/DocumentDownloadResponse"
+    DocumentUploadResponse:
+      $ref: "./open-api-application-specification.yml#/components/schemas/DocumentUploadResponse"
+    DocumentUpdateResponse:
+      $ref: "./open-api-application-specification.yml#/components/schemas/DocumentUpdateResponse"
     SdsHealthResponse:
       $ref: "./open-api-application-specification.yml#/components/schemas/SdsHealthResponse"

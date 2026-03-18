@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.service;
 
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,9 +12,12 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.SdsGetFileResponse;
+import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
+import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
+import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
+//import uk.gov.justice.laa.dstew.access.model.SdsGetFileResponse;
 import uk.gov.justice.laa.dstew.access.model.SdsHealthResponse;
-import uk.gov.justice.laa.dstew.access.model.SdsSaveFileResponse;
+//import uk.gov.justice.laa.dstew.access.model.SdsSaveFileResponse;
 
 /**
  * Service class for checking the health of the SDS service.
@@ -39,12 +43,13 @@ public class SdsService {
    * @return the file URL response from SDS
    */
 
-  public SdsSaveFileResponse saveFile(MultipartFile file) {
+  public DocumentUploadResponse saveFile(UUID applicationId, MultipartFile file) {
     MultipartBodyBuilder builder = new MultipartBodyBuilder();
+    String folderName = applicationId.toString();
     builder.part("file", file.getResource()).contentType(MediaType.APPLICATION_OCTET_STREAM);
-    builder.part("body", String.format("{\"bucketName\":\"%s\"}", bucketName));
+    builder.part("body", String.format("{\"bucketName\":\"%s\",\"folder\":\"%s\"}", bucketName, folderName));
 
-    SdsSaveFileResponse sdsSaveFileResponse = sdsRestClient.post()
+    DocumentUploadResponse sdsSaveFileResponse = sdsRestClient.post()
         .uri(sdsApiUrl + "/save_file")
         .header("Authorization", "Bearer " + tokenService.getSdsAccessToken())
         .contentType(MediaType.MULTIPART_FORM_DATA)
@@ -53,7 +58,8 @@ public class SdsService {
         .onStatus(status -> status.value() == 409, (request, response) -> {
           throw new FileConflictException("File already exists in SDS");
         })
-        .body(SdsSaveFileResponse.class);
+        .body(DocumentUploadResponse.class);
+    log.info("Body: {}", sdsSaveFileResponse.toString());
     return sdsSaveFileResponse;
   }
 
@@ -63,18 +69,19 @@ public class SdsService {
    * @param file the file to be saved or updated
    * @return the file URL response from SDS
    */
-  public SdsSaveFileResponse saveOrUpdateFile(MultipartFile file) {
+  public DocumentUpdateResponse saveOrUpdateFile(MultipartFile file) {
     MultipartBodyBuilder builder = new MultipartBodyBuilder();
     builder.part("file", file.getResource()).contentType(MediaType.APPLICATION_OCTET_STREAM);
     builder.part("body", String.format("{\"bucketName\":\"%s\"}", bucketName));
 
-    SdsSaveFileResponse sdsSaveFileResponse = sdsRestClient.put()
+    DocumentUpdateResponse sdsSaveFileResponse = sdsRestClient.put()
         .uri(sdsApiUrl + "/save_or_update_file")
         .header("Authorization", "Bearer " + tokenService.getSdsAccessToken())
         .contentType(MediaType.MULTIPART_FORM_DATA)
         .body(builder.build())
         .retrieve()
-        .body(SdsSaveFileResponse.class);
+        .body(DocumentUpdateResponse.class);
+    log.info("Body: {}", sdsSaveFileResponse.toString());
     return sdsSaveFileResponse;
   }
 
@@ -83,18 +90,22 @@ public class SdsService {
    *
    * @return the file URL response from SDS
    */
-  public SdsGetFileResponse getFile(String id) {
+  public DocumentDownloadResponse getFile(UUID applicationId, String documentId) {
+    String folderName = applicationId.toString();
+    String fileKey = folderName + "/" + documentId;
 
-    SdsGetFileResponse sdsGetFileResponse = sdsRestClient
+    DocumentDownloadResponse sdsGetFileResponse = sdsRestClient
         .get()
-        .uri(sdsApiUrl + "/get_file?file_key=" + id)
+        .uri(sdsApiUrl + "/get_file?file_key=" + fileKey)
         .header("Authorization", "Bearer " + tokenService.getSdsAccessToken())
         .accept(MediaType.APPLICATION_JSON)
         .retrieve()
         .onStatus(status -> status.value() == 404, (request, response) -> {
           throw new ResourceNotFoundException("File not found");
         })
-        .body(SdsGetFileResponse.class);
+        .body(DocumentDownloadResponse.class);
+
+    log.info("Body: {}", sdsGetFileResponse.toString());
 
     return sdsGetFileResponse;
   }
@@ -105,16 +116,15 @@ public class SdsService {
    * @Param fileIds the list of file IDs to be deleted
    */
   public void deleteFiles(List<String> fileIds) {
-    String response = sdsRestClient
+    sdsRestClient
         .delete()
         .uri(sdsApiUrl + "/delete_files?file_keys=" + String.join("&file_keys=", fileIds))
         .header("Authorization", "Bearer " + tokenService.getSdsAccessToken())
         .retrieve()
-        .body(String.class);
-
-    if (response == null) {
-      throw new RuntimeException("Failed to get health status from SDS");
-    }
+        .onStatus(status -> status.value() == 404, (request, response) -> {
+          throw new ResourceNotFoundException("File not found");
+        })
+        .toBodilessEntity();
   }
 
   /**

@@ -298,6 +298,140 @@ paths:
         '403': { description: Forbidden }
         '404': { description: Not found }
         '500': { description: Internal server error }
+
+  /api/v0/applications/{id}/upload-document:
+    post:
+      tags:
+        - application
+      summary: Upload a document to document storage and return the file ID
+      operationId: uploadDocument
+      parameters:
+        - $ref: "#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentUploadResponse"
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '409': { description: Conflict - file with same name already exists }
+        '500': { description: Internal server error }
+
+  /api/v0/applications/{id}/download-document/{documentId}:
+    get:
+      tags:
+        - application
+      summary: Get a download URL for a document in document storage
+      operationId: downloadDocument
+      parameters:
+        - $ref: "#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentDownloadResponse"
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: File not found }
+        '503': { description: Internal server error }
+
+  /api/v0/applications/{id}/update-document:
+    put:
+      tags:
+        - application
+      summary: Update an existing document in document storage and return the file ID
+      operationId: updateDocument
+      parameters:
+        - $ref: "#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentUpdateResponse"
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '500': { description: Internal server error }
+
+  /api/v0/applications/{id}/delete-document:
+    delete:
+      tags:
+        - application
+      summary: Delete document from document storage
+      operationId: deleteDocument
+      parameters:
+        - $ref: "#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: documentIds
+          required: true
+          description: List of document IDs to delete from document storage
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '204': { description: Document(s) deleted successfully }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: File not found }
+        '500': { description: Internal server error }
+
   /api/v0/individuals:
     get:
       tags:
@@ -340,105 +474,8 @@ paths:
         '401': { description: Unauthorized }
         '403': { description: Forbidden }
         '500': { description: Internal server error }
-  /api/v0/sds/file/{id}:
-    get:
-        tags:
-            - sds
-        summary: Get a file from SDS by ID
-        operationId: getFile
-        parameters:
-          - in: path
-            name: id
-            required: true
-            schema:
-              type: string
-        responses:
-          '200':
-            description: OK
-            content:
-                application/json:
-                    schema:
-                      $ref: "#/components/schemas/SdsGetFileResponse"
-          '401': { description: Unauthorized }
-          '403': { description: Forbidden }
-          '404': { description: File not found }
-          '503': { description: Internal server error }
-  /api/v0/sds/save-file:
-    post:
-      tags:
-        - sds
-      summary: Save a file to SDS and return the file ID
-      operationId: saveFile
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SdsSaveFileResponse"
-        '400': { description: Bad request }
-        '401': { description: Unauthorized }
-        '403': { description: Forbidden }
-        '409': { description: Conflict - file with same name already exists }
-        '500': { description: Internal server error }
-  /api/v0/sds/save-or-update-file:
-    put:
-      tags:
-        - sds
-      summary: Save or update a file to SDS and return the file checksum
-      operationId: saveOrUpdateFile
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
-      responses:
-        '200':
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SdsSaveFileResponse"
-        '400': { description: Bad request }
-        '401': { description: Unauthorized }
-        '403': { description: Forbidden }
-        '500': { description: Internal server error }
-  /api/v0/sds/delete-files:
-    delete:
-      tags:
-        - sds
-      summary: Delete files from SDS by IDs
-      operationId: deleteFiles
-      parameters:
-        - in: query
-          name: file_keys
-          required: true
-          description: Comma-separated list of file IDs to delete
-          schema:
-            type: array
-            items:
-              type: string
-      responses:
-        '200':
-          description: 'Files deleted successfully'
-        '401': { description: Unauthorized }
-        '403': { description: Forbidden }
-        '500': { description: Internal server error }
+
+
   /api/v0/sds/health:
     get:
       tags:
@@ -846,13 +883,7 @@ components:
         autoGranted:
           type: boolean
 
-    SdsGetFileResponse:
-      type: object
-      properties:
-        fileURL:
-          type: string
-
-    SdsSaveFileResponse:
+    DocumentUploadResponse:
       type: object
       properties:
         detail:
@@ -860,6 +891,18 @@ components:
         success:
           type: string
         checksum:
+          type: string
+
+    DocumentDownloadResponse:
+      type: object
+      properties:
+        fileURL:
+          type: string
+
+    DocumentUpdateResponse:
+      type: object
+      properties:
+        fileURL:
           type: string
 
     SdsHealthResponse:
