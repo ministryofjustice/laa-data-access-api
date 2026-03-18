@@ -179,8 +179,9 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         ProceedingEntity grantedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
                 builder -> builder.applicationId(applicationEntity.getId()));
+      ApplicationEntity applicationEntity1 = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
 
-        MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
+      MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .eventHistory(EventHistory.builder()
                             .eventDescription("refusal event")
@@ -224,7 +225,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     public void givenMakeDecisionRequestWithExistingContentAndNewContent_whenAssignDecision_thenReturnNoContent_andDecisionUpdated()
             throws Exception {
         // given
-        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
+        ApplicationEntity initialApplicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
             builder.applicationContent(new HashMap<>(Map.of(
                     "test", "content"
             )));
@@ -233,7 +234,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         ProceedingEntity proceedingEntityOne = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-                builder -> builder.applicationId(applicationEntity.getId()));
+                builder -> builder.applicationId(initialApplicationEntity.getId()));
 
         MeritsDecisionEntity meritsDecisionEntityOne = persistedDataGenerator.createAndPersist(
             MeritsDecisionsEntityGenerator.class,
@@ -244,7 +245,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         );
 
         ProceedingEntity proceedingEntityTwo = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-                builder -> builder.applicationId(applicationEntity.getId()));
+                builder -> builder.applicationId(initialApplicationEntity.getId()));
 
         DecisionEntity decision = persistedDataGenerator.createAndPersist(
             DecisionEntityGenerator.class,
@@ -254,9 +255,10 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                 }
         );
 
-        applicationEntity.setDecision(decision);
-        applicationRepository.save(applicationEntity);
+        initialApplicationEntity.setDecision(decision);
+        ApplicationEntity applicationEntity = applicationRepository.saveAndFlush(initialApplicationEntity);
 
+        Long currentVersion = applicationEntity.getVersion();
         MakeDecisionRequest assignDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .overallDecision(DecisionStatus.REFUSED)
@@ -267,6 +269,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                             createMakeDecisionProceeding(proceedingEntityTwo.getId(), MeritsDecisionStatus.REFUSED, "justification new", "reason new"),
                             createMakeDecisionProceeding(proceedingEntityOne.getId(), MeritsDecisionStatus.GRANTED, "justification update", "reason update")
                     ))
+                    .version(currentVersion)
                     .autoGranted(true);
         });
 
@@ -447,7 +450,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         Assertions.assertThat(actual)
                 .usingRecursiveComparison()
                 .ignoringCollectionOrder()
-                .ignoringFields("certificate")
+                .ignoringFields("certificate", "version")
                 .isEqualTo(expectedMakeDecisionRequest);
 
         Assertions.assertThat(savedDecision.getModifiedAt()).isNotNull();

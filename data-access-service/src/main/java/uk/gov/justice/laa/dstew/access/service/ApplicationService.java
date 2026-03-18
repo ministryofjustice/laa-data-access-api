@@ -43,6 +43,7 @@ import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
+import uk.gov.justice.laa.dstew.access.utils.VersionCheckHelper;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 import uk.gov.justice.laa.dstew.access.validation.PayloadValidationService;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -129,7 +130,7 @@ public class ApplicationService {
                 List<Map<String, Object>> involvedChildren = getInvolvedChildren(entity);
                 if (involvedChildren != null) {
                   List<Object> children = new ArrayList<>();
-                  involvedChildren.forEach(c -> children.add(c));
+                  involvedChildren.forEach(children::add);
                   applicationProceeding.setInvolvedChildren(children);
                 } else {
                   applicationProceeding.setInvolvedChildren(null);
@@ -405,14 +406,13 @@ public class ApplicationService {
   @AllowApiCaseworker
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
+    VersionCheckHelper.checkEntityVersionLocking(applicationId, application.getVersion(), request.getVersion());
     final CaseworkerEntity caseworker = application.getCaseworker();
     if (caseworker == null) {
       throw new ResourceNotFoundException(
           String.format("Caseworker not found for application id: %s", applicationId)
       );
     }
-    final UUID caseworkerId = caseworker.getId();
-
     applicationValidations.checkApplicationMakeDecisionRequest(request);
 
     application.setModifiedAt(Instant.now());

@@ -2,12 +2,14 @@ package uk.gov.justice.laa.dstew.access.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatException;
+import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataRetrievalFailureException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -89,6 +91,18 @@ class GlobalExceptionHandlerTest {
     assertThat(result.getStatusCode()).isEqualTo(INTERNAL_SERVER_ERROR);
     assertThat(result.getBody()).isNotNull();
     assertThat(result.getBody().getDetail()).isEqualTo("An unexpected error has occurred.");
+  }
+
+  @Test
+  void handleOptimisticLockingxception_returnsConflictStatusAndErrorMessage() {
+    var result = globalExceptionHandler
+        .handleOptimisticLoggingException(new OptimisticLockingFailureException("Application with id 123 and version 1 not found") {
+    });
+
+    assertThat(result).isNotNull();
+    assertThat(result.getStatusCode()).isEqualTo(CONFLICT);
+    assertThat(result.getBody()).isNotNull();
+    assertThat(result.getBody().getDetail()).isEqualTo("Application with id 123 and version 1 not found");
   }
 
 }

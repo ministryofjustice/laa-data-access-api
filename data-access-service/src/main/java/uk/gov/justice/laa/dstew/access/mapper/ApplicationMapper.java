@@ -114,6 +114,7 @@ public interface ApplicationMapper {
     application.setProvider(
         extractProvider(entity)
     );
+    application.setVersion(entity.getVersion());
 
     return application;
   }
@@ -141,14 +142,6 @@ public interface ApplicationMapper {
         .convertValue(content, ApplicationContent.class);
 
     return applicationContent.getSubmitterEmail();
-  }
-
-  private static List<Individual> getIndividuals(Set<IndividualEntity> individuals) {
-    return individuals
-        .stream()
-        .map(individualMapper::toIndividual)
-        .filter(Objects::nonNull)
-        .toList();
   }
 
   private static List<Opponent> extractOpponents(Map<String, Object> content) {

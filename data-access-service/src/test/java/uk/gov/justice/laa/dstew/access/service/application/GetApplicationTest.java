@@ -42,7 +42,9 @@ public class GetApplicationTest extends BaseServiceTest {
         ProceedingEntity proceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class);
         Set<ProceedingEntity> proceedings = Set.of(proceeding);
 
-        ApplicationEntity expectedApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class);
+        ApplicationEntity expectedApplication = DataGenerator
+            .createDefault(ApplicationEntityGenerator.class, applicationEntityBuilder ->
+            applicationEntityBuilder.version(0L));
 
         expectedApplication.setDecision(DataGenerator.createDefault(DecisionEntityGenerator.class));
         expectedApplication.getDecision().setMeritsDecisions(

@@ -87,12 +87,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                     ))
     );
 
-    final ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-            builder
-                    .id(applicationId)
-                    .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
-                    .caseworker(caseworker)
-    );
+    final ApplicationEntity expectedApplicationEntity = getApplicationEntity(applicationId, caseworker, "unmodified");
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -149,12 +144,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     );
 
     // expected saved application entity
-    final ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-        builder
-            .id(applicationId)
-            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
-            .caseworker(caseworker)
-    );
+    final ApplicationEntity expectedApplicationEntity =
+        getApplicationEntity(applicationId, caseworker, "unmodified");
 
     final DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
         .applicationId(applicationId)
@@ -221,12 +212,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     );
 
     // expected saved application entity
-    final ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-        builder
-            .id(applicationId)
-            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
-            .caseworker(caseworker)
-    );
+    final ApplicationEntity expectedApplicationEntity =
+        getApplicationEntity(applicationId, caseworker, "unmodified");
 
     final DecisionEntity currentSavedDecisionEntity = createDecisionEntityWithProceeding(
         proceedingId,
@@ -284,12 +271,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     );
 
     // expected saved application entity
-    final ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-        builder
-            .id(applicationId)
-            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
-            .caseworker(caseworker)
-    );
+    final ApplicationEntity expectedApplicationEntity = getApplicationEntity(applicationId, caseworker, "unmodified");
 
     final DecisionEntity currentSavedDecisionEntity = createDecisionEntityWithProceeding(
         proceedingId,
@@ -364,12 +346,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     );
 
     // expected saved application entity
-    final ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-        builder
-            .id(applicationId)
-            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
-            .caseworker(caseworker)
-    );
+    final ApplicationEntity expectedApplicationEntity = getApplicationEntity(applicationId, caseworker, "unmodified");
 
     final DecisionEntity currentSavedDecisionEntity = createDecisionEntityWithProceeding(
         currentProceedingId,
@@ -404,6 +381,25 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, 2);
   }
 
+  private static ApplicationEntity getApplicationEntity(UUID applicationId, CaseworkerEntity caseworker, String content) {
+    return DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
+        builder
+            .id(applicationId)
+            .applicationContent(new HashMap<>(Map.of("test", content)))
+            .caseworker(caseworker)
+            .version(0L)
+    );
+  }
+
+  private static ApplicationEntity getApplicationEntity(UUID applicationId, String content) {
+    return DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
+        builder
+            .id(applicationId)
+            .applicationContent(new HashMap<>(Map.of("test", content)))
+            .version(0L)
+    );
+  }
+
   @Test
   void givenApplicationWithNoCaseworker_whenAssignDecision_thenThrowResourceNotFoundException() {
     UUID applicationId = UUID.randomUUID();
@@ -412,11 +408,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class);
 
     // expected saved application entity
-    ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-        builder
-            .id(applicationId)
-            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
-    );
+    ApplicationEntity expectedApplicationEntity = getApplicationEntity(applicationId, "unmodified");
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -439,11 +431,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class);
 
     // expected saved application entity
-    ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-        builder
-            .id(applicationId)
-            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
-    );
+    ApplicationEntity expectedApplicationEntity = getApplicationEntity(applicationId, "unmodified");
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -476,12 +464,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     );
 
     // expected saved application entity
-    ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-        builder
-            .id(applicationId)
-            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
-            .caseworker(caseworker)
-        );
+    ApplicationEntity expectedApplicationEntity = getApplicationEntity(applicationId, caseworker, "unmodified");
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -518,12 +501,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                 ))
         );
 
-    ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-                builder
-                    .id(applicationId)
-                    .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
-                    .caseworker(caseworker)
-            );
+    ApplicationEntity expectedApplicationEntity = getApplicationEntity(applicationId, caseworker, "unmodified");
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -565,12 +543,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                 ))
         );
 
-    ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-                builder
-                    .id(applicationId)
-                    .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
-                    .caseworker(caseworker)
-            );
+    ApplicationEntity expectedApplicationEntity =
+        getApplicationEntity(applicationId, caseworker, "unmodified");
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -613,12 +587,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             .certificate(null)
     );
 
-    ApplicationEntity applicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-        builder
-            .id(applicationId)
-            .applicationContent(new HashMap<>(Map.of("test", "content")))
-            .caseworker(caseworker)
-    );
+    ApplicationEntity applicationEntity = getApplicationEntity(applicationId, caseworker, "content");
 
     ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
         builder.id(proceedingId).applicationId(applicationId)
@@ -670,12 +639,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             .certificate(certificateData)
     );
 
-    ApplicationEntity applicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-        builder
-            .id(applicationId)
-            .applicationContent(new HashMap<>(Map.of("test", "content")))
-            .caseworker(caseworker)
-    );
+    ApplicationEntity applicationEntity = getApplicationEntity(applicationId, caseworker, "content");
 
     ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
         builder.id(proceedingId).applicationId(applicationId)
@@ -724,12 +688,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             .certificate(null)
     );
 
-    ApplicationEntity applicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-        builder
-            .id(applicationId)
-            .applicationContent(new HashMap<>(Map.of("test", "content")))
-            .caseworker(caseworker)
-    );
+    ApplicationEntity applicationEntity = getApplicationEntity(applicationId, caseworker, "content");
 
     ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
         builder.id(proceedingId).applicationId(applicationId)
@@ -748,6 +707,36 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     verify(applicationRepository, times(1)).findById(applicationId);
     verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
+  }
+
+  @Test
+  void givenDecisionWithIncorrectVersionThenThrowException() {
+    // given
+    UUID applicationId = UUID.randomUUID();
+
+    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
+        requestBuilder
+            .version(1L) // version should be 0 for the first decision
+    );
+
+    ApplicationEntity applicationEntity = getApplicationEntity(applicationId, "content");
+
+    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+    Throwable thrown = catchThrowable(() ->
+        serviceUnderTest.makeDecision(applicationId, makeDecisionRequest)
+    );
+
+    // then
+    assertThat(thrown).isInstanceOf(OptimisticLockingFailureException.class);
+    assertThat(thrown.getMessage())
+        .contains("version 1 not found");
+
+    verify(meritsDecisionRepository, never()).save(any());
+    verify(applicationRepository, times(1)).findById(applicationId);
+    verify(applicationRepository, never()).save(any());
   }
 
   private DecisionEntity createDecisionEntityWithProceeding(
@@ -807,7 +796,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     assertThat(actual)
         .usingRecursiveComparison()
         .ignoringCollectionOrder()
-        .ignoringFields("proceedings")
+        .ignoringFields("proceedings", "version")
         .isEqualTo(expectedMakeDecisionRequest);
 
     // Assert only on the set of proceedings that are updated or added via the request.
