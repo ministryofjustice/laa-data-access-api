@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -10,6 +9,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertProblemRecord;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.HashMap;
@@ -35,7 +35,12 @@ import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCreateRequestGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationOfficeGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualGenerator;
 
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -45,7 +50,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   private Stream<Arguments> createApplicationTestParameters() {
       return Stream.of(
               Arguments.of(new ApplicationOffice()),
-              Arguments.of(ApplicationOffice.builder().code("XX456F").build())
+              Arguments.of(DataGenerator.createDefault(ApplicationOfficeGenerator.class))
       );
   }
 
@@ -67,10 +72,11 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @Test
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_thenReturnCreatedWithLocationHeader() throws Exception {
-    final ApplicationEntity leadApplicationToLink = persistedApplicationFactory.createAndPersist();
-    final LinkedApplication linkedApplication = LinkedApplication.builder().leadApplicationId(leadApplicationToLink.getApplyApplicationId())
-                                                            .associatedApplicationId(UUID.randomUUID())
-                                                            .build();
+    final ApplicationEntity leadApplicationToLink = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+    final LinkedApplication linkedApplication = LinkedApplication.builder()
+        .leadApplicationId(leadApplicationToLink.getApplyApplicationId())
+        .associatedApplicationId(UUID.randomUUID())
+        .build();
     final var createdEntity = verifyCreateNewApplication(null, linkedApplication);
     final ApplicationEntity leadApplication = applicationRepository.findById(leadApplicationToLink.getId()).orElseThrow();
     assertLinkedApplicationCorrectlyApplied(leadApplication, createdEntity);
@@ -88,13 +94,14 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         .associatedApplicationId(associatedApplicationId)
         .build();
 
-    ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
-    ApplicationContent content = applicationContentFactory.create();
-    content.setAllLinkedApplications(List.of(linkedApplication));
-    content.setId(associatedApplicationId);
+    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class,
+        builder -> builder.allLinkedApplications(List.of(linkedApplication))
+                          .id(associatedApplicationId)
+    );
 
-    ApplicationCreateRequest request = applicationCreateRequestFactory.create();
-    request.setApplicationContent(objectMapper.convertValue(content, Map.class));
+    ApplicationCreateRequest request = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
+    );
 
     // when
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -115,8 +122,10 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     UUID associatedApplicationId = UUID.randomUUID();
     UUID missingLinkedApplication = UUID.randomUUID();
 
-    persistedApplicationFactory.createAndPersist(applicationEntityBuilder ->
-        applicationEntityBuilder.applyApplicationId(leadApplicationId));
+    persistedDataGenerator.createAndPersist(
+        ApplicationEntityGenerator.class,
+        applicationEntityBuilder -> applicationEntityBuilder.applyApplicationId(leadApplicationId)
+    );
 
     LinkedApplication linkedApplication = LinkedApplication.builder()
         .leadApplicationId(leadApplicationId)
@@ -127,13 +136,15 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         .leadApplicationId(leadApplicationId)
         .associatedApplicationId(missingLinkedApplication)
         .build();
-    ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
-    ApplicationContent content = applicationContentFactory.create();
-    content.setAllLinkedApplications(List.of(linkedApplication, invalidLinkedApplication));
-    content.setId(associatedApplicationId);
 
-    ApplicationCreateRequest request = applicationCreateRequestFactory.create();
-    request.setApplicationContent(objectMapper.convertValue(content, Map.class));
+    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class,
+        builder -> builder.allLinkedApplications(List.of(linkedApplication, invalidLinkedApplication))
+                          .id(associatedApplicationId)
+    );
+
+    ApplicationCreateRequest request = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
+    );
 
     // when
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -150,14 +161,15 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenDuplicateApplyApplicationId_whenCreateApplication_thenReturnBadRequest() throws Exception {
     // given
-    ApplicationEntity existingApplication = persistedApplicationFactory.createAndPersist();
+    ApplicationEntity existingApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
-    ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
-    ApplicationContent content = applicationContentFactory.create();
-    content.setId(existingApplication.getApplyApplicationId());
+    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class,
+        builder -> builder.id(existingApplication.getApplyApplicationId())
+    );
 
-    ApplicationCreateRequest request = applicationCreateRequestFactory.create();
-    request.setApplicationContent(objectMapper.convertValue(content, Map.class));
+    ApplicationCreateRequest request = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
+    );
 
     ProblemDetail expectedProblemDetail = ProblemDetailBuilder.create()
         .status(HttpStatus.BAD_REQUEST)
@@ -178,15 +190,15 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   private ApplicationEntity verifyCreateNewApplication(ApplicationOffice office, LinkedApplication linkedApplication) throws Exception {
-    ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
-    ApplicationContent content = applicationContentFactory.create();
-    content.setOffice(office);
-    content.setAllLinkedApplications(linkedApplication == null ? null : List.of(linkedApplication));
-    if(linkedApplication != null) {
-      content.setId(linkedApplication.getAssociatedApplicationId());
-    }
-    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
-    applicationCreateRequest.setApplicationContent(objectMapper.convertValue(content, Map.class));
+    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class,
+        builder -> builder.office(office)
+                          .allLinkedApplications(linkedApplication == null ? null : List.of(linkedApplication))
+                          .id(linkedApplication == null ? UUID.randomUUID() : linkedApplication.getAssociatedApplicationId())
+    );
+
+    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
+    );
 
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
 
@@ -219,7 +231,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   private void verifyBadServiceNameHeader(String serviceName) throws Exception {
-      ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create();
+      ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
 
       MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION,
               applicationCreateRequest,
@@ -248,8 +260,9 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @Test
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenInvalidApplicationContent_EmptyMap_whenCreateApplication_thenReturnBadRequest() throws Exception {
-    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder ->
-        builder.applicationContent(new HashMap<>()));
+    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+        builder -> builder.applicationContent(new HashMap<>())
+    );
 
 
     ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
@@ -268,9 +281,9 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @Test
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenInvalidApplicationContent_whenCreateApplication_thenReturnBadRequest() throws Exception {
-    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.create(builder -> {
-      builder.applicationContent(null);
-    });
+    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+        builder -> builder.applicationContent(null)
+    );
 
     Map<String, String> invalidFields = new HashMap<>();
     invalidFields.put("applicationContent", "size must be between 1 and 2147483647");
@@ -306,7 +319,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenCorrectRequestBodyAndReaderRole_whenCreateApplication_thenReturnForbidden() throws Exception {
     // given
-    ApplicationCreateRequest request = applicationCreateRequestFactory.create();
+    ApplicationCreateRequest request = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
 
     // when
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -319,7 +332,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @Test
   public void givenCorrectRequestBodyAndNoAuthentication_whenCreateApplication_thenReturnUnauthorised() throws Exception {
     // given
-    ApplicationCreateRequest request = applicationCreateRequestFactory.create();
+    ApplicationCreateRequest request = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
 
     // when
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -339,51 +352,63 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
 
     return Stream.of(
-        Arguments.of(applicationCreateRequestFactory.create(builder -> {
-          builder.status(null);
-        }), problemDetail, Map.of("invalidFields", Map.of("status", mustNotBeNull))),
-        Arguments.of(applicationCreateRequestFactory.create(builder -> {
-          builder.laaReference(null);
-        }), problemDetail, Map.of("invalidFields", Map.of("laaReference", mustNotBeNull))),
-        Arguments.of(applicationCreateRequestFactory.create(builder -> {
-          builder.applicationContent(null);
-        }), problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
-        Arguments.of(applicationCreateRequestFactory.create(builder -> {
-          builder.applicationContent(new HashMap<>());
-        }), problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
-        Arguments.of(applicationCreateRequestFactory.create(builder -> {
-          builder.applicationContent(Map.of("applicationContent", Map.of("proceedings", List.of())));
-        }), ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request").detail("Generic Validation Error")
-            .build(), Map.of("errors", List.of("id: must not be null",
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+            builder -> builder.status(null)),
+            problemDetail, Map.of("invalidFields", Map.of("status", mustNotBeNull))),
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+            builder -> builder.laaReference(null)),
+            problemDetail, Map.of("invalidFields", Map.of("laaReference", mustNotBeNull))),
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(null)),
+            problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(new HashMap<>())),
+            problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(Map.of("applicationContent", Map.of("proceedings", List.of())))),
+            ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request").detail("Generic Validation Error")
+                .build(), Map.of("errors", List.of("id: must not be null",
             "submittedAt: must not be null"))),
-        Arguments.of(applicationCreateRequestFactory.create(builder -> {
-          builder.individuals(null);
-        }), problemDetail, Map.of("invalidFields", Map.of("individuals", "size must be between 1 and 2147483647"))),
-        Arguments.of(applicationCreateRequestFactory.create(builder -> {
-          builder.individuals(List.of());
-        }), problemDetail, Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))), Arguments.of(
-            applicationCreateRequestFactory.create(builder -> builder.individuals(
-                List.of(individualFactory.create(individualBuilder -> individualBuilder.dateOfBirth(null))))), problemDetail,
-            Map.of("invalidFields", Map.of("individuals[0].dateOfBirth", mustNotBeNull))),
-        Arguments.of(
-            applicationCreateRequestFactory.create(builder -> builder.individuals(
-                List.of(individualFactory.create(individualBuilder -> individualBuilder.details(null))))), problemDetail,
-            Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
-        Arguments.of(
-            applicationCreateRequestFactory.create(builder -> builder.individuals(
-                List.of(individualFactory.create(individualBuilder -> individualBuilder.details(new HashMap<>()))))),
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+            builder -> builder.individuals(null)),
+            problemDetail, Map.of("invalidFields", Map.of("individuals", "size must be between 1 and 2147483647"))),
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+            builder -> builder.individuals(List.of())),
+            problemDetail, Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))),
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+            builder -> builder.individuals(List.of(
+                DataGenerator.createDefault(IndividualGenerator.class,
+                    indBuilder -> indBuilder.dateOfBirth(null))
+            ))),
+            problemDetail, Map.of("invalidFields", Map.of("individuals[0].dateOfBirth", mustNotBeNull))),
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+            builder -> builder.individuals(List.of(
+                DataGenerator.createDefault(IndividualGenerator.class,
+                    indBuilder -> indBuilder.details(null))
+            ))),
             problemDetail, Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
-        Arguments.of(
-            applicationCreateRequestFactory.create(builder -> builder.individuals(List.of(individualFactory.create(
-                individualBuilder -> individualBuilder.dateOfBirth(null).firstName("").lastName("").type(null)
-                    .details(new HashMap<>()))))), problemDetail, Map.of("invalidFields",
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+            builder -> builder.individuals(List.of(
+                DataGenerator.createDefault(IndividualGenerator.class,
+                    indBuilder -> indBuilder.details(new HashMap<>()))
+            ))),
+            problemDetail, Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+            builder -> builder.individuals(List.of(
+                DataGenerator.createDefault(IndividualGenerator.class,
+                    indBuilder -> indBuilder.dateOfBirth(null).firstName("").lastName("").type(null)
+                        .details(new HashMap<>()))
+            ))),
+            problemDetail, Map.of("invalidFields",
                 Map.of(
                     "individuals[0].details", minimumSizErrorMessage,
                     "individuals[0].type", mustNotBeNull,
                     "individuals[0].dateOfBirth", mustNotBeNull))),
-        Arguments.of(applicationCreateRequestFactory.create(
-                builder -> builder.individuals(List.of(individualFactory.create(
-                    individualBuilder -> individualBuilder.dateOfBirth(null).firstName(null).lastName(null).details(null))))),
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+            builder -> builder.individuals(List.of(
+                DataGenerator.createDefault(IndividualGenerator.class,
+                    indBuilder -> indBuilder.dateOfBirth(null).firstName(null).lastName(null).details(null))
+            ))),
             problemDetail, Map.of("invalidFields",
                 Map.of("individuals[0].details", minimumSizErrorMessage,
                     "individuals[0].lastName", mustNotBeNull,
@@ -411,6 +436,8 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   private void assertLinkedApplicationCorrectlyApplied(ApplicationEntity leadApplication, ApplicationEntity linkedApplication) {
-    assertTrue(leadApplication.getLinkedApplications().stream().anyMatch(linkedApp -> linkedApp.getId().equals(linkedApplication.getId())));
+    assertEquals(1, leadApplication.getLinkedApplications().stream()
+        .filter(linkedApp -> linkedApp.getId().equals(linkedApplication.getId()))
+        .count());
   }
 }

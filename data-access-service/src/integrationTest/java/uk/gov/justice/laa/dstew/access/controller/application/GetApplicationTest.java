@@ -16,15 +16,21 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.Opponent;
+import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
+import uk.gov.justice.laa.dstew.access.model.Opposable;
 import uk.gov.justice.laa.dstew.access.model.Provider;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMeritsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
@@ -154,30 +160,11 @@ public class GetApplicationTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithOpponents_whenGetApplication_thenReturnsOpponents() throws Exception {
 
-        Map<String, Object> opposable = Map.of(
-            "opposableType", "ApplicationMeritsTask::Individual",
-            "firstName", "John",
-            "lastName", "Smith",
-            "name", "Acme Ltd"
-        );
-
-        Map<String, Object> opponent = Map.of(
-            "opposable", opposable
-        );
-
-        Map<String, Object> merits = Map.of(
-            "opponents", List.of(opponent)
-        );
-
-        Map<String, Object> content = Map.of(
-            "applicationMerits", merits
-        );
-
+        // default contains opponent data
         ApplicationEntity application = persistedDataGenerator.createAndPersist(
             ApplicationEntityGenerator.class,
             builder -> builder
                 .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
-                .applicationContent(content)
                 .createdAt(Instant.now().minusSeconds(10000))
                 .modifiedAt(Instant.now())
         );
@@ -205,17 +192,17 @@ public class GetApplicationTest extends BaseIntegrationTest {
     @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithEmptyOpponents_whenGetApplication_thenReturnsEmptyList() throws Exception {
 
-        Map<String, Object> merits = Map.of(
-            "opponents", List.of()
-        );
-
-        Map<String, Object> content = Map.of(
-            "applicationMerits", merits
-        );
+        ApplicationContent applicationContent =
+            DataGenerator.createDefault(ApplicationContentGenerator.class,
+                builder -> builder
+                    .applicationMerits(DataGenerator.createDefault(ApplicationMeritsGenerator.class,
+                        meritsBuilder -> meritsBuilder.opponents(List.of())
+                    )));
 
         ApplicationEntity application = persistedDataGenerator.createAndPersist(
             ApplicationEntityGenerator.class,
-            builder -> builder.applicationContent(content)
+            builder -> builder
+                .applicationContent(objectMapper.convertValue(applicationContent, Map.class))
         );
 
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
@@ -251,6 +238,9 @@ public class GetApplicationTest extends BaseIntegrationTest {
     @Test
     @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenOpponentWithMissingFirstName_whenGetApplication_thenReturnsRemainingFields() throws Exception {
+
+        // leaving this here as a TODO as it does something specific that the test harness currently does not,
+        // i.e. test that a key in the JSON completely missing does not break the functionality.
 
         Map<String, Object> opposable = Map.of(
             "opposableType", "ApplicationMeritsTask::Individual",
@@ -379,7 +369,30 @@ public class GetApplicationTest extends BaseIntegrationTest {
                 .scopeLimitations((List<Object>) proceeding.getProceedingContent().get("scopeLimitations"))
                 .build()
         ));
+
+        application.setOpponents(applicationEntity.getApplicationContent() != null
+            ? applicationEntity.getApplicationContent().get("applicationMerits") != null
+                ? extractOpponents(applicationEntity.getApplicationContent())
+                : List.of()
+            : List.of()
+        );
+
         return application;
+    }
+
+    private List<Opponent> extractOpponents(Map<String, Object> applicationContent) {
+        Map<String, Object> merits = (Map<String, Object>) applicationContent.get("applicationMerits");
+        List<Map<String, Object>> opponents = (List<Map<String, Object>>) merits.get("opponents");
+
+        return opponents.stream().map(opponent -> {
+            Map<String, Object> opposable = (Map<String, Object>) opponent.get("opposable");
+            return Opponent.builder()
+                    .opposableType(opposable.get("opposableType").toString())
+                    .firstName(opposable.get("firstName") != null ? opposable.get("firstName").toString() : null)
+                    .lastName(opposable.get("lastName") != null ? opposable.get("lastName").toString() : null)
+                    .organisationName(opposable.get("name") != null ? opposable.get("name").toString() : null)
+                    .build();
+        }).toList();
     }
 
     private static String extractContactEmail(Map<String, Object> content) {
