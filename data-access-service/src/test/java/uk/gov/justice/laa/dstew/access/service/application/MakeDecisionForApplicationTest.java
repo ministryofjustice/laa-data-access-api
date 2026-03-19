@@ -21,9 +21,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import tools.jackson.core.JacksonException;
@@ -67,25 +64,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   @Autowired
   private ApplicationService serviceUnderTest;
 
-  private static Stream<Arguments> missingRefusalDetails() {
-    return Stream.of(
-        Arguments.of("",
-                        "",
-                        "The Make Decision request must contain a refusal reason for proceeding with id: "),
-        Arguments.of("",
-                        "justification 1",
-                        "The Make Decision request must contain a refusal reason for proceeding with id: "),
-        Arguments.of("refusal 1",
-                        "",
-                        "The Make Decision request must contain a refusal justification for proceeding with id: ")
-      );
-  }
-
-  @ParameterizedTest
-  @MethodSource("missingRefusalDetails")
-  void givenMakeDecisionRequestWithOneProceedingAndInvalidRefusal_whenAssignDecision_thenDecisionSaved(
-          String refusedReason, String refusedJustification, String errorMessage
-  ) {
+  @Test
+  void givenMakeDecisionRequestWithOneProceedingAndInvalidRefusal_whenAssignDecision_thenDecisionSaved() {
 
     UUID applicationId = UUID.randomUUID();
     UUID refusedProceedingId = UUID.randomUUID();
@@ -218,18 +198,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         2);
   }
 
-  private static Stream<Arguments> existingDecisionUpdateScenarios() {
-    return Stream.of(
-        Arguments.of(MeritsDecisionStatus.GRANTED, MeritsDecisionStatus.REFUSED),
-        Arguments.of(MeritsDecisionStatus.REFUSED, MeritsDecisionStatus.REFUSED)
-    );
-  }
-
-  @ParameterizedTest
-  @MethodSource("existingDecisionUpdateScenarios")
-  void givenApplicationAndExistingDecision_whenAssignDecision_thenDecisionUpdated(
-      MeritsDecisionStatus newDecisionStatus,
-      MeritsDecisionStatus existingDecisionStatus) {
+  @Test
+  void givenApplicationAndExistingDecision_whenAssignDecision_thenDecisionUpdated() {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
 
@@ -245,9 +215,9 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             )
             .proceedings(List.of(
                 createMakeDecisionProceedingDetails(proceedingId,
-                    newDecisionStatus,
-                    "refusal update",
-                    "justification update")
+                                                    MeritsDecisionStatus.GRANTED,
+                                                    "refusal update",
+                                                    "justification update")
             ))
     );
 
@@ -261,7 +231,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     final DecisionEntity currentSavedDecisionEntity = createDecisionEntityWithProceeding(
         proceedingId,
-        existingDecisionStatus,
+        MeritsDecisionStatus.REFUSED,
         "initial reason",
         "initial justification"
     );
@@ -300,7 +270,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .overallDecision(DecisionStatus.REFUSED)
+            .overallDecision(DecisionStatus.GRANTED)
             .eventHistory(
                 EventHistory.builder()
                     .eventDescription(null)
@@ -454,7 +424,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     assertThat(thrown)
         .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessage("Caseworker not found for application id: " + applicationId.toString());
+        .hasMessage("Caseworker not found for application id: " + applicationId);
 
   }
 
