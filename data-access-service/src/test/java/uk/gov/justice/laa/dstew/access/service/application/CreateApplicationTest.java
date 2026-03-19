@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -264,7 +265,7 @@ public class CreateApplicationTest extends BaseServiceTest {
       savedEntityWithProceedings = capturedEntities.size() > 1 ? capturedEntities.get(1) : capturedEntities.getFirst();
     }
 
-    List<ProceedingEntity> actualProceedingEntities = new ArrayList<>(savedEntityWithProceedings.getProceedings());
+    Set<ProceedingEntity> actualProceedingEntities = savedEntityWithProceedings.getProceedings();
 
     ApplicationContent applicationContentDetails =
         objectMapper.convertValue(applicationCreateRequest, ApplicationContent.class);
@@ -272,9 +273,13 @@ public class CreateApplicationTest extends BaseServiceTest {
     List<Proceeding> expectedProceedings = applicationContentDetails.getProceedings();
 
     assertEquals(expectedProceedings.size(), actualProceedingEntities.size());
-    for (int index = 0; index < expectedProceedings.size(); index++) {
-      Proceeding expectedProceeding = expectedProceedings.get(index);
-      ProceedingEntity actualProceedingEntity = actualProceedingEntities.get(index);
+
+    // For each expected proceeding, find the matching actual proceeding and verify
+    for (Proceeding expectedProceeding : expectedProceedings) {
+      ProceedingEntity actualProceedingEntity = actualProceedingEntities.stream()
+          .filter(p -> p.getApplyProceedingId().equals(expectedProceeding.getId()))
+          .findFirst()
+          .orElseThrow(() -> new AssertionError("No proceeding found for apply ID: " + expectedProceeding.getId()));
 
       assertThat(actualProceedingEntity.getApplicationId()).isEqualTo(expectedId);
       assertThat(actualProceedingEntity.isLead()).isEqualTo(expectedProceeding.getLeadProceeding());
