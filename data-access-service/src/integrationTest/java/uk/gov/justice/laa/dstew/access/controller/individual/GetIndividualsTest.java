@@ -10,6 +10,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -17,9 +18,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
@@ -56,6 +59,34 @@ public class GetIndividualsTest extends BaseIntegrationTest {
         TestConstants.URIs.GET_INDIVIDUALS + "?page=" + page + "&pageSize=" + pageSize,
         ServiceNameHeader(serviceName));
     applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+  }
+
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
+  void givenIncludeParametersAndNoAppId_whenGetIndividuals_thenReturnBadRequest() throws Exception {
+    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?include=CLIENT_DETAILS");
+    assertBadRequest(result);
+    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+    assertThat(problemDetail.getProperties())
+            .containsEntry("errors", List.of("Application ID is required when included data is CLIENT_DETAILS"));
+  }
+
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
+  void givenIncludeParametersAndAppId_whenGetIndividuals_thenProcessCorrectly() throws Exception {
+    ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+    persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class,
+            builder -> builder.applications(Set.of(application)));
+    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?include=CLIENT_DETAILS&individualType=CLIENT&applicationId="+application.getId().toString());
+
+    assertOK(result);
+    IndividualsResponse response = deserialise(result, IndividualsResponse.class);
+    Individual actualIndividual = response.getIndividuals().getFirst();
+    assertThat(actualIndividual.getRelationshipToChildren()).isEqualTo("relationshipToChildren");
+    assertThat(actualIndividual.getLastNameAtBirth()).isEqualTo("Alberts");
+    assertThat(actualIndividual.getPreviousApplicationReference()).isEqualTo("ZZ999Z");
+    assertThat(actualIndividual.getCorrespondenceAddressType()).isEqualTo("Home");
+    assertThat(actualIndividual.getCorrespondenceAddress()).hasSize(2);
   }
 
   @ParameterizedTest

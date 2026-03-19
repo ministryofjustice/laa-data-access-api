@@ -3,15 +3,20 @@ package uk.gov.justice.laa.dstew.access.service;
 import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.createPageable;
 import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.wrapResult;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.mapper.IndividualMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
+import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.specification.IndividualSpecification;
@@ -26,11 +31,21 @@ public class IndividualsService {
 
   private final IndividualRepository individualRepository;
   private final IndividualMapper individualMapper;
+  private final ApplicationRepository applicationRepository;
+  private final ObjectMapper objectMapper;
 
+  /**
+   * Constructor for managing individual records.
+   */
   public IndividualsService(final IndividualRepository individualRepository,
-                            final IndividualMapper individualMapper) {
+                            final IndividualMapper individualMapper,
+                            ApplicationRepository applicationRepository,
+                            final ObjectMapper objectMapper
+                            ) {
     this.individualRepository = individualRepository;
     this.individualMapper = individualMapper;
+    this.applicationRepository = applicationRepository;
+    this.objectMapper = objectMapper;
   }
 
   /**
@@ -47,10 +62,22 @@ public class IndividualsService {
       Integer page,
       Integer pageSize,
       UUID applicationId,
-      IndividualType individualType) {
+      IndividualType individualType,
+      IncludedAdditionalData include) {
     Specification<IndividualEntity> specification = buildSpecification(applicationId, individualType);
     Pageable pageable = createPageable(page, pageSize);
     Page<IndividualEntity> resultPage = individualRepository.findAll(specification, pageable);
+    if (include != null) {
+      ApplicationEntity application = applicationRepository.findById(applicationId).orElseThrow();
+
+      return wrapResult(page, pageSize, resultPage.map(individual -> {
+        return individualMapper.toExtendedIndividual(
+          individual,
+          individualType,
+          include,
+          objectMapper.convertValue(application.getApplicationContent(), ApplicationContent.class));
+      }));
+    }
     return wrapResult(page, pageSize, resultPage.map(individualMapper::toIndividual));
   }
 

@@ -19,7 +19,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequestIndividual;
 import uk.gov.justice.laa.dstew.access.model.Opponent;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.model.Provider;
@@ -126,9 +126,9 @@ class ApplicationMapperTest {
                   .build()
           )).build();
       String laaReference = "laa_reference";
-    List<Individual> expectedIndividuals = List.of(
-        Individual.builder().build(),
-        Individual.builder().build()
+    List<ApplicationCreateRequestIndividual> expectedIndividuals = List.of(
+            ApplicationCreateRequestIndividual.builder().build(),
+            ApplicationCreateRequestIndividual.builder().build()
     );
 
     ApplicationCreateRequest expectedApplicationCreateRequest = ApplicationCreateRequest.builder()

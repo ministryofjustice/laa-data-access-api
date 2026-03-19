@@ -40,6 +40,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCo
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCreateRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationOfficeGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.individual.ApplicationCreateRequestIndividualGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualGenerator;
 
 @ActiveProfiles("test")
@@ -401,25 +402,25 @@ public class CreateApplicationTest extends BaseIntegrationTest {
             problemDetail, Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(List.of(
-                DataGenerator.createDefault(IndividualGenerator.class,
+                DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
                     indBuilder -> indBuilder.dateOfBirth(null))
             ))),
             problemDetail, Map.of("invalidFields", Map.of("individuals[0].dateOfBirth", mustNotBeNull))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(List.of(
-                DataGenerator.createDefault(IndividualGenerator.class,
+                DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
                     indBuilder -> indBuilder.details(null))
             ))),
             problemDetail, Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(List.of(
-                DataGenerator.createDefault(IndividualGenerator.class,
+                DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
                     indBuilder -> indBuilder.details(new HashMap<>()))
             ))),
             problemDetail, Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(List.of(
-                DataGenerator.createDefault(IndividualGenerator.class,
+                DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
                     indBuilder -> indBuilder.dateOfBirth(null).firstName("").lastName("").type(null)
                         .details(new HashMap<>()))
             ))),
@@ -430,7 +431,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
                     "individuals[0].dateOfBirth", mustNotBeNull))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(List.of(
-                DataGenerator.createDefault(IndividualGenerator.class,
+                DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
                     indBuilder -> indBuilder.dateOfBirth(null).firstName(null).lastName(null).details(null))
             ))),
             problemDetail, Map.of("invalidFields",
