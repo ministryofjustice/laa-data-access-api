@@ -224,8 +224,9 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
   private void verifyCreateNewApplicationWithServiceName(ServiceName serviceName) throws Exception {
     ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class);
-    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
-    applicationCreateRequest.setApplicationContent(objectMapper.convertValue(content, Map.class));
+    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
+    );
 
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest, ServiceNameHeader(serviceName.getValue()));
 
