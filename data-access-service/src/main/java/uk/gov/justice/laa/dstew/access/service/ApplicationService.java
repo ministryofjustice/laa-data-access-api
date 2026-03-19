@@ -413,6 +413,8 @@ public class ApplicationService {
           String.format("Caseworker not found for application id: %s", applicationId)
       );
     }
+    final UUID caseworkerId = caseworker.getId();
+
     applicationValidations.checkApplicationMakeDecisionRequest(request);
 
     application.setModifiedAt(Instant.now());
