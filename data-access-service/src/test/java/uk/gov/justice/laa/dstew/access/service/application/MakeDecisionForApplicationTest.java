@@ -20,13 +20,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -61,25 +57,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   @Autowired
   private ApplicationService serviceUnderTest;
 
-  private static Stream<Arguments> missingRefusalDetails() {
-    return Stream.of(
-        Arguments.of("",
-                        "",
-                        "The Make Decision request must contain a refusal reason for proceeding with id: "),
-        Arguments.of("",
-                        "justification 1",
-                        "The Make Decision request must contain a refusal reason for proceeding with id: "),
-        Arguments.of("refusal 1",
-                        "",
-                        "The Make Decision request must contain a refusal justification for proceeding with id: ")
-      );
-  }
-
-  @ParameterizedTest
-  @MethodSource("missingRefusalDetails")
-  void givenMakeDecisionRequestWithOneProceedingAndInvalidRefusal_whenAssignDecision_thenDecisionSaved(
-          String refusedReason, String refusedJustification, String errorMessage
-  ) throws JsonProcessingException {
+  @Test
+  void givenMakeDecisionRequestWithOneProceedingAndInvalidRefusal_whenAssignDecision_thenDecisionSaved() throws JsonProcessingException {
 
     UUID applicationId = UUID.randomUUID();
     UUID refusedProceedingId = UUID.randomUUID();
@@ -91,7 +70,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
             requestBuilder
-                    .userId(caseworker.getId())
                     .overallDecision(DecisionStatus.REFUSED)
                     .eventHistory(
                             EventHistory.builder()
@@ -99,7 +77,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                                     .build()
                     )
                     .proceedings(List.of(
-                            createMakeDecisionProceedingDetails(refusedProceedingId, refusedDecision, refusedReason, refusedJustification)
+                            createMakeDecisionProceedingDetails(refusedProceedingId, refusedDecision, "refusal 1", "")
                     ))
     );
 
@@ -117,8 +95,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     );
 
     // when
-    when(caseworkerRepository.findById(caseworker.getId()))
-            .thenReturn(Optional.of(caseworker));
     when(proceedingRepository.findAllById(List.of(refusedProceedingEntity.getId())))
             .thenReturn(List.of(refusedProceedingEntity));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
@@ -131,7 +107,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     assertThat(validationException.errors())
             .isInstanceOf(List.class)
-            .contains(errorMessage + refusedProceedingId);
+            .contains("The Make Decision request must contain a refusal justification for proceeding with id: " + refusedProceedingId);
   }
 
   @Test
@@ -154,7 +130,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // overwrite some fields of default assign decision request
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworker.getId())
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(
                 EventHistory.builder()
@@ -200,8 +175,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     );
 
     // when
-    when(caseworkerRepository.findById(caseworker.getId()))
-                .thenReturn(Optional.of(caseworker));
     when(proceedingRepository.findAllById(List.of(grantedProceedingEntity.getId(), refusedProceedingEntity.getId())))
             .thenReturn(List.of(grantedProceedingEntity, refusedProceedingEntity));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
@@ -228,7 +201,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworker.getId())
             .eventHistory(
                 EventHistory.builder()
                     .eventDescription("event")
@@ -267,8 +239,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     // when
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
-    when(caseworkerRepository.findById(caseworker.getId()))
-                .thenReturn(Optional.of(caseworker));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
@@ -293,7 +263,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworker.getId())
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(
                 EventHistory.builder()
@@ -352,8 +321,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     // when
     when(proceedingRepository.findAllById(List.of(newProceedingId))).thenReturn(List.of(newProceedingEntity));
-    when(caseworkerRepository.findById(caseworker.getId()))
-                .thenReturn(Optional.of(caseworker));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
@@ -377,7 +344,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworker.getId())
             .eventHistory(EventHistory.builder().build())
             .proceedings(List.of(
                 createMakeDecisionProceedingDetails(newProceedingId,
@@ -421,8 +387,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // when
     when(proceedingRepository.findAllById(List.of(newProceedingId, currentProceedingId)))
                 .thenReturn(List.of(newProceedingEntity, currentProceedingEntity));
-    when(caseworkerRepository.findById(caseworker.getId()))
-                .thenReturn(Optional.of(caseworker));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
@@ -435,15 +399,11 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   }
 
   @Test
-  void givenNoCaseworker_whenAssignDecision_thenThrowResourceNotFoundException() {
+  void givenApplicationWithNoCaseworker_whenAssignDecision_thenThrowResourceNotFoundException() {
     UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
 
     // given
-    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
-        requestBuilder
-            .userId(caseworkerId)
-    );
+    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class);
 
     // expected saved application entity
     ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
@@ -461,7 +421,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     assertThat(thrown)
         .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessage("No caseworker found with id: " + caseworkerId.toString());
+        .hasMessage("Caseworker not found for application id: " + applicationId.toString());
 
   }
 
@@ -504,7 +464,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // overwrite some fields of default assign decision request
     final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworker.getId())
             .proceedings(List.of(
                 createMakeDecisionProceedingDetails(proceedingId, decision, reason, justification)
             ))
@@ -526,8 +485,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     // when
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
-    when(caseworkerRepository.findById(caseworker.getId()))
-        .thenReturn(Optional.of(caseworker));
 
     Throwable thrown = catchThrowable(
         () -> serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest)
@@ -550,7 +507,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
             requestBuilder
-                .userId(caseworker.getId())
                 .proceedings(List.of(
                     createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "reason", "justification")
                 ))
@@ -569,8 +525,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     // when
     when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedApplicationEntity));
-    when(caseworkerRepository.findById(caseworker.getId()))
-            .thenReturn(Optional.of(caseworker));
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
 
     Throwable thrown = catchThrowable(
@@ -595,7 +549,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
             requestBuilder
-                .userId(caseworker.getId())
                 .proceedings(List.of(
                     createMakeDecisionProceedingDetails(nonExistentProceedingId,
                         MeritsDecisionStatus.GRANTED, "reason1",
@@ -619,8 +572,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     // when
     when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedApplicationEntity));
-    when(caseworkerRepository.findById(caseworker.getId()))
-            .thenReturn(Optional.of(caseworker));
     when(proceedingRepository.findAllById(List.of(nonExistentProceedingId, unrelatedApplicationProceedingId)))
         .thenReturn(List.of(unrelatedApplicationProceeding));
 
@@ -646,7 +597,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworker.getId())
             .overallDecision(DecisionStatus.GRANTED)
             .eventHistory(EventHistory.builder()
                 .eventDescription("granted event")
@@ -670,7 +620,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    when(caseworkerRepository.findById(caseworker.getId())).thenReturn(Optional.of(caseworker));
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
     when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
 
@@ -705,7 +654,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworkerId)
             .overallDecision(DecisionStatus.GRANTED)
             .eventHistory(EventHistory.builder()
                 .eventDescription("granted event")
@@ -729,7 +677,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    when(caseworkerRepository.findById(caseworker.getId())).thenReturn(Optional.of(caseworker));
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
     when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
 
@@ -761,7 +708,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .userId(caseworker.getId())
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(EventHistory.builder()
                 .eventDescription("refusal event")
@@ -785,7 +731,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    when(caseworkerRepository.findById(caseworker.getId())).thenReturn(Optional.of(caseworker));
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
     when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
 
@@ -888,7 +833,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     }
     return MakeDecisionRequest.builder()
         .overallDecision(decisionEntity.getOverallDecision())
-        .userId(applicationEntity.getCaseworker().getId())
         .eventHistory(eventHistory)
         .proceedings(decisionEntity.getMeritsDecisions().stream()
             .map(MakeDecisionForApplicationTest::mapToProceedingDetails)

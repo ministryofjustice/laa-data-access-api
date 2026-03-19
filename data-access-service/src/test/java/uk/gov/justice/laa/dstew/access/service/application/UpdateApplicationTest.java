@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
@@ -187,9 +188,10 @@ public class UpdateApplicationTest extends BaseServiceTest {
         DomainEventEntity actualDomainEvent = captor.getValue();
         assertThat(expectedDomainEvent)
                 .usingRecursiveComparison()
-                .ignoringFields("createdAt", "data")
+                .ignoringFields("createdAt", "data", "serviceName")
                 .isEqualTo(actualDomainEvent);
         assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
+        assertThat(actualDomainEvent.getServiceName()).isEqualTo(ServiceName.CIVIL_APPLY);
 
         Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
         Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);

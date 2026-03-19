@@ -10,24 +10,25 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
-import java.util.*;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
 
 @ActiveProfiles("test")
 public class GetIndividualsTest extends BaseIntegrationTest {
@@ -57,34 +58,6 @@ public class GetIndividualsTest extends BaseIntegrationTest {
     applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
   }
 
-  @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-  void givenIncludeParametersAndNoAppId_whenGetIndividuals_thenReturnBadRequest() throws Exception {
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?include=CLIENT_DETAILS");
-    assertBadRequest(result);
-    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
-    assertThat(problemDetail.getProperties())
-            .containsEntry("errors", List.of("Application ID is required when included data is CLIENT_DETAILS"));
-  }
-
-  @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-  void givenIncludeParametersAndAppId_whenGetIndividuals_thenProcessCorrectly() throws Exception {
-    ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-    persistedIndividualFactory.createAndPersist(builder -> builder.applications(Set.of(application)));
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?include=CLIENT_DETAILS&individualType=CLIENT&applicationId="+application.getId().toString());
-
-    assertOK(result);
-    IndividualsResponse response = deserialise(result, IndividualsResponse.class);
-    Individual actualIndividual = response.getIndividuals().getFirst();
-    assertThat(actualIndividual.getRelationshipToChildren()).isEqualTo("relationshipToChildren");
-    assertThat(actualIndividual.getLastNameAtBirth()).isEqualTo("Alberts");
-    assertThat(actualIndividual.getPreviousApplicationReference()).isEqualTo("ZZ999Z");
-    assertThat(actualIndividual.getCorrespondenceAddressType()).isEqualTo("Home");
-    assertThat(actualIndividual.getCorrespondenceAddress()).hasSize(2);
-
-  }
-
   @ParameterizedTest
   @MethodSource("pagingParameters")
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
@@ -98,7 +71,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
       int expectedTotalRecords
   ) throws Exception {
     // given
-    persistedIndividualFactory.createAndPersistMultiple(totalEntities, builder -> {});
+    persistedDataGenerator.createAndPersistMultiple(IndividualEntityGenerator.class, totalEntities);
     // when
     MvcResult result = getUri(
         TestConstants.URIs.GET_INDIVIDUALS + "?page=" + page + "&pageSize=" + pageSize);
@@ -150,7 +123,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenExistingIndividual_whenGetIndividuals_thenReturnOKWithCorrectData() throws Exception {
     // given
-    IndividualEntity persisted = persistedIndividualFactory.createAndPersist();
+    IndividualEntity persisted = persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class);
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
@@ -192,7 +165,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenNullPageAndPageSize_whenGetIndividuals_thenDefaultsAreApplied() throws Exception {
     // given
-    persistedIndividualFactory.createAndPersistMultiple(5, builder -> {});
+    persistedDataGenerator.createAndPersistMultiple(IndividualEntityGenerator.class,5);
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
@@ -208,9 +181,10 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenApplicationId_whenGetIndividuals_thenFiltersByApplicationId() throws Exception {
     // given
-    IndividualEntity individual = individualEntityFactory.create();
-    var application = persistedApplicationFactory.createAndPersist(builder -> builder.individuals(Set.of(individual)));
-    persistedIndividualFactory.createAndPersist(); // unrelated individual
+    IndividualEntity individual = DataGenerator.createDefault(IndividualEntityGenerator.class);
+    var application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class,
+        builder -> builder.individuals(Set.of(individual)));
+    persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class); // unrelated individual
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + application.getId());
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
@@ -225,7 +199,8 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenIndividualType_whenGetIndividuals_thenFiltersByIndividualType() throws Exception {
     // given
-    persistedIndividualFactory.createAndPersist(builder -> builder.type(IndividualType.CLIENT));
+    persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class,
+        builder -> builder.type(IndividualType.CLIENT));
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?individualType=CLIENT");
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
@@ -239,9 +214,12 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenBothFilters_whenGetIndividuals_thenFiltersByApplicationIdAndIndividualType() throws Exception {
     // given
-    IndividualEntity client = individualEntityFactory.create(builder -> builder.type(IndividualType.CLIENT));
-    var application = persistedApplicationFactory.createAndPersist(builder -> builder.individuals(Set.of(client)));
-    persistedIndividualFactory.createAndPersist(builder -> builder.type(IndividualType.CLIENT));
+    IndividualEntity client = DataGenerator.createDefault(IndividualEntityGenerator.class,
+        builder -> builder.type(IndividualType.CLIENT));
+    var application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class,
+        builder -> builder.individuals(Set.of(client)));
+    persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class,
+        builder -> builder.type(IndividualType.CLIENT));
     // when
     MvcResult result = getUri(
         TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + application.getId() + "&individualType=CLIENT");
@@ -285,8 +263,10 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenNoMatchingFilters_whenGetIndividuals_thenReturnsEmptyList() throws Exception {
     // given
-    IndividualEntity client = individualEntityFactory.create(builder -> builder.type(IndividualType.CLIENT));
-    persistedApplicationFactory.createAndPersist(builder -> builder.individuals(Set.of(client)));
+    IndividualEntity client = DataGenerator.createDefault(IndividualEntityGenerator.class,
+        builder -> builder.type(IndividualType.CLIENT));
+    persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class,
+        builder -> builder.individuals(Set.of(client)));
     // when
     MvcResult result = getUri(
         TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + UUID.randomUUID() + "&individualType=CLIENT");
@@ -301,7 +281,8 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenNonExistentApplicationId_whenGetIndividuals_thenReturnsEmptyList() throws Exception {
     // given
-    persistedIndividualFactory.createAndPersist(builder -> builder.type(IndividualType.CLIENT));
+    persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class,
+        builder -> builder.type(IndividualType.CLIENT));
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + UUID.randomUUID());
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
@@ -314,13 +295,14 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenMultipleIndividualsLinkedToApplication_whenGetIndividuals_thenReturnsAllLinked() throws Exception {
     // given
-    IndividualEntity individual1 = individualEntityFactory.create();
-    IndividualEntity individual2 = individualEntityFactory.create();
-    IndividualEntity individual3 = individualEntityFactory.create();
-    var application = persistedApplicationFactory.createAndPersist(
+    IndividualEntity individual1 = DataGenerator.createDefault(IndividualEntityGenerator.class);
+    IndividualEntity individual2 = DataGenerator.createDefault(IndividualEntityGenerator.class);
+    IndividualEntity individual3 = DataGenerator.createDefault(IndividualEntityGenerator.class);
+    var application = persistedDataGenerator.createAndPersist(
+        ApplicationEntityGenerator.class,
         builder -> builder.individuals(Set.of(individual1, individual2, individual3))
     );
-    persistedIndividualFactory.createAndPersist(); // unrelated individual
+    persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class); // unrelated individual
     // when
     MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + application.getId());
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
@@ -336,11 +318,13 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenIndividualLinkedToMultipleApplications_whenGetIndividuals_thenReturnsIndividual() throws Exception {
     // given
-    IndividualEntity sharedIndividual = individualEntityFactory.create();
-    var application1 = persistedApplicationFactory.createAndPersist(
+    IndividualEntity sharedIndividual = DataGenerator.createDefault(IndividualEntityGenerator.class);
+    var application1 = persistedDataGenerator.createAndPersist(
+        ApplicationEntityGenerator.class,
         builder -> builder.individuals(Set.of(sharedIndividual))
     );
-    persistedApplicationFactory.createAndPersist(
+    persistedDataGenerator.createAndPersist(
+        ApplicationEntityGenerator.class,
         builder -> builder.individuals(Set.of(sharedIndividual))
     );
     // when

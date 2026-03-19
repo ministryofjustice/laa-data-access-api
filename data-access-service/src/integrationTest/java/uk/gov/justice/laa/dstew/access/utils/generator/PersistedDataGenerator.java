@@ -9,10 +9,13 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.repository.*;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationSummaryGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualGenerator;
@@ -43,8 +46,8 @@ public class PersistedDataGenerator extends DataGenerator {
         registerRepository(DecisionEntityGenerator.class, DecisionRepository.class);
         registerRepository(ProceedingsEntityGenerator.class, ProceedingRepository.class);
         registerRepository(MeritsDecisionsEntityGenerator.class, MeritsDecisionRepository.class);
-        registerRepository(IndividualGenerator.class, IndividualRepository.class);
         registerRepository(CertificateEntityGenerator.class, CertificateRepository.class);
+        registerRepository(IndividualEntityGenerator.class, IndividualRepository.class);
     }
 
     public <TGenerator, TRepository extends JpaRepository<?, ?>>
@@ -90,13 +93,13 @@ public class PersistedDataGenerator extends DataGenerator {
         return (JpaRepository<TEntity, ?>) applicationContext.getBean(repoClass);
     }
 
-    private <TEntity, TGenerator> TEntity persist(Class<TGenerator> generatorType, TEntity entity) {
+    public <TEntity, TGenerator> TEntity persist(Class<TGenerator> generatorType, TEntity entity) {
         JpaRepository<TEntity, ?> repository = getRepository(generatorType);
         repository.saveAndFlush(entity);
         return entity;
     }
 
-    private <TEntity, TGenerator> List<TEntity> persist(Class<TGenerator> generatorType, List<TEntity> entities) {
+    public <TEntity, TGenerator> List<TEntity> persist(Class<TGenerator> generatorType, List<TEntity> entities) {
         JpaRepository<TEntity, ?> repository = getRepository(generatorType);
         repository.saveAllAndFlush(entities);
         return entities;

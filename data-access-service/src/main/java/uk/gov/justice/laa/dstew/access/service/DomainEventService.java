@@ -10,6 +10,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
@@ -29,6 +30,8 @@ import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
 /**
  * Service class for managing domain events.
+ * Service name for all domain events is retrieved from the request-scoped ServiceNameContext,
+ * which is populated by the ServiceNameInterceptor from the X-Service-Name header.
  */
 @Service
 @RequiredArgsConstructor
@@ -39,10 +42,10 @@ public class DomainEventService {
   private final DomainEventRepository domainEventRepository;
   private final ObjectMapper objectMapper;
   private final DomainEventMapper mapper;
+  private final ServiceNameContext serviceNameContext;
 
   /**
    * Shared internal logic for persisting domain events.
-   *
    */
   private void saveDomainEvent(
       UUID applicationId,
@@ -58,6 +61,7 @@ public class DomainEventService {
             .createdBy(defaultCreatedByName)
             .type(eventType)
             .data(getEventDetailsAsJson(data, eventType))
+            .serviceName(serviceNameContext.getServiceName())
             .build();
 
     domainEventRepository.save(entity);
@@ -65,7 +69,6 @@ public class DomainEventService {
 
   /**
    * Posts an APPLICATION_CREATED domain event.
-   *
    */
   @AllowApiCaseworker
   public void saveCreateApplicationDomainEvent(
@@ -83,21 +86,21 @@ public class DomainEventService {
             .build();
 
     DomainEventEntity domainEventEntity =
-          DomainEventEntity.builder()
-              .applicationId(applicationEntity.getId())
-              .caseworkerId(null)
-              .type(DomainEventType.APPLICATION_CREATED)
-              .createdAt(Instant.now())
-              .createdBy(createdBy)
-              .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.APPLICATION_CREATED))
-              .build();
+        DomainEventEntity.builder()
+            .applicationId(applicationEntity.getId())
+            .caseworkerId(null)
+            .type(DomainEventType.APPLICATION_CREATED)
+            .createdAt(Instant.now())
+            .createdBy(createdBy)
+            .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.APPLICATION_CREATED))
+            .serviceName(serviceNameContext.getServiceName())
+            .build();
 
     domainEventRepository.save(domainEventEntity);
   }
 
   /**
    * Posts an APPLICATION_UPDATED domain event.
-   *
    */
   @AllowApiCaseworker
   public void saveUpdateApplicationDomainEvent(
@@ -124,7 +127,6 @@ public class DomainEventService {
 
   /**
    * Posts an ASSIGN_APPLICATION_TO_CASEWORKER domain event.
-   *
    */
   @AllowApiCaseworker
   public void saveAssignApplicationDomainEvent(
@@ -166,8 +168,7 @@ public class DomainEventService {
   }
 
   /**
-   * Posts a domain event {@link DomainEventEntity} object.
-   *
+   * Posts an UNASSIGN_APPLICATION_TO_CASEWORKER domain event.
    */
   @AllowApiCaseworker
   public void saveUnassignApplicationDomainEvent(
@@ -208,15 +209,14 @@ public class DomainEventService {
 
   /**
    * Posts a MAKE_DECISION_REFUSED domain event.
-   *
    */
   @AllowApiCaseworker
   public void saveMakeDecisionRefusedDomainEvent(
           UUID applicationId,
-          MakeDecisionRequest request) {
+          MakeDecisionRequest request,
+          UUID caseworkerId) {
 
     String eventDescription = request.getEventHistory().getEventDescription();
-    UUID caseworkerId = request.getUserId();
 
     MakeDecisionRefusedDomainEventDetails domainEventDetails =
             MakeDecisionRefusedDomainEventDetails.builder()

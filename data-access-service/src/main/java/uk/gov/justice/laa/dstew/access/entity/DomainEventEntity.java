@@ -20,6 +20,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 
 /**
  * Represents a domain events table.
@@ -58,4 +59,8 @@ public class DomainEventEntity {
 
   @Column(name = "created_by")
   private String createdBy;
+
+  @Column(name = "service_name")
+  @Enumerated(EnumType.STRING)
+  private ServiceName serviceName;
 }

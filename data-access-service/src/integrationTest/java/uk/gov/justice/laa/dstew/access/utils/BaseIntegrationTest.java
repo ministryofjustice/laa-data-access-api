@@ -26,7 +26,12 @@ import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.entity.LinkedApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
-import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
+import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
@@ -43,6 +48,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
 import java.net.URI;
 import java.util.UUID;
 import java.util.List;
+import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
@@ -84,99 +90,6 @@ public abstract class BaseIntegrationTest {
     @Autowired
     protected DomainEventAsserts domainEventAsserts;
 
-    @Autowired
-    protected Factory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder> applicationFactory;
-
-    @Autowired
-    protected Factory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> applicationCreateRequestFactory;
-
-    @Autowired
-    protected Factory<ApplicationUpdateRequest, ApplicationUpdateRequest.Builder> applicationUpdateRequestFactory;
-
-    @Autowired
-    protected Factory<CaseworkerAssignRequest, CaseworkerAssignRequest.Builder> caseworkerAssignRequestFactory;
-
-    @Autowired
-    protected Factory<CaseworkerUnassignRequest, CaseworkerUnassignRequest.Builder> caseworkerUnassignRequestFactory;
-
-    @Autowired
-    protected Factory<IndividualEntity, IndividualEntity.IndividualEntityBuilder> individualEntityFactory;
-
-    @Autowired
-    protected Factory<CaseworkerEntity, CaseworkerEntity.CaseworkerEntityBuilder> caseworkerFactory;
-
-    @Autowired
-    protected Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder> domainEventFactory;
-
-    @Autowired
-    protected Factory<MakeDecisionRequest, MakeDecisionRequest.Builder> makeDecisionRequestFactory;
-
-    @Autowired
-    protected Factory<Individual, Individual.Builder> individualFactory;
-
-    @Autowired
-    protected Factory<ApplicationCreateRequestIndividual, ApplicationCreateRequestIndividual.Builder> applicationCreateRequestIndividualFactory;
-
-    @Autowired
-    protected Factory<LinkedApplicationEntity, LinkedApplicationEntity.LinkedApplicationEntityBuilder> linkedApplicationFactory;
-
-    @Autowired
-    protected PersistedFactory<
-            ApplicationRepository,
-            Factory<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder>,
-            ApplicationEntity,
-            ApplicationEntity.ApplicationEntityBuilder,
-            UUID> persistedApplicationFactory;
-
-    @Autowired
-    protected PersistedFactory<
-            CaseworkerRepository,
-            Factory<CaseworkerEntity, CaseworkerEntity.CaseworkerEntityBuilder>,
-            CaseworkerEntity,
-            CaseworkerEntity.CaseworkerEntityBuilder,
-            UUID> persistedCaseworkerFactory;
-
-    @Autowired
-    protected PersistedFactory<
-              DomainEventRepository,
-              Factory<DomainEventEntity, DomainEventEntity.DomainEventEntityBuilder>,
-              DomainEventEntity,
-              DomainEventEntity.DomainEventEntityBuilder,
-              UUID> persistedDomainEventFactory;
-
-    @Autowired
-    protected PersistedFactory<
-            ProceedingRepository,
-            Factory<ProceedingEntity, ProceedingEntity.ProceedingEntityBuilder>,
-            ProceedingEntity,
-            ProceedingEntity.ProceedingEntityBuilder,
-            UUID> persistedProceedingFactory;
-
-    @Autowired
-    protected PersistedFactory<
-            MeritsDecisionRepository,
-            Factory<MeritsDecisionEntity, MeritsDecisionEntity.MeritsDecisionEntityBuilder>,
-            MeritsDecisionEntity,
-            MeritsDecisionEntity.MeritsDecisionEntityBuilder,
-            UUID> persistedMeritsDecisionFactory;
-
-    @Autowired
-    protected PersistedFactory<
-            DecisionRepository,
-            Factory<DecisionEntity, DecisionEntity.DecisionEntityBuilder>,
-            DecisionEntity,
-            DecisionEntity.DecisionEntityBuilder,
-            UUID> persistedDecisionFactory;
-
-  @Autowired
-  protected PersistedFactory<
-      IndividualRepository,
-      Factory<IndividualEntity, IndividualEntity.IndividualEntityBuilder>,
-      IndividualEntity,
-      IndividualEntity.IndividualEntityBuilder,
-      UUID> persistedIndividualFactory;
-
-
     // for use in tests and factories where applicable (i.e. default in ApplicationFactoryImpl)
     public static CaseworkerEntity CaseworkerJohnDoe;
     public static CaseworkerEntity CaseworkerJaneDoe;
@@ -185,9 +98,9 @@ public abstract class BaseIntegrationTest {
     @BeforeEach
     void setupCaseworkers() {
         caseworkerRepository.deleteAll();
-        CaseworkerJohnDoe = persistedCaseworkerFactory.createAndPersist(builder ->
+        CaseworkerJohnDoe = persistedDataGenerator.createAndPersist(CaseworkerGenerator.class, builder ->
                 builder.username("JohnDoe").build());
-        CaseworkerJaneDoe = persistedCaseworkerFactory.createAndPersist(builder ->
+        CaseworkerJaneDoe = persistedDataGenerator.createAndPersist(CaseworkerGenerator.class, builder ->
                 builder.username("JaneDoe").build());
         Caseworkers = List.of(CaseworkerJohnDoe, CaseworkerJaneDoe);
 
@@ -207,15 +120,19 @@ public abstract class BaseIntegrationTest {
     public MvcResult getUri(String uri, HttpHeaders httpHeaders) throws Exception {
         clearCache();
 
+        MvcResult result;
         if (httpHeaders == null) {
-            return mockMvc
+          result = mockMvc
                     .perform(get(uri))
                     .andReturn();
+        } else {
+          result = mockMvc
+              .perform(get(uri).headers(httpHeaders))
+              .andReturn();
         }
 
-        return mockMvc
-                .perform(get(uri).headers(httpHeaders))
-                .andReturn();
+        clearCache();
+        return result;
     }
 
     public MvcResult getUri(String uri) throws Exception {

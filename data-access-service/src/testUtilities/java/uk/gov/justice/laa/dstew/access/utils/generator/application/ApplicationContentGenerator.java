@@ -12,6 +12,7 @@ import java.util.UUID;
 public class ApplicationContentGenerator extends BaseGenerator<ApplicationContent, ApplicationContent.ApplicationContentBuilder> {
     private final ProceedingGenerator proceedingDtoGenerator = new ProceedingGenerator();
     private final ApplicationMeritsGenerator meritsGenerator = new ApplicationMeritsGenerator();
+    private final ApplicationOfficeGenerator officeGenerator = new ApplicationOfficeGenerator();
 
     public ApplicationContentGenerator() {
         super(ApplicationContent::toBuilder, ApplicationContent.ApplicationContentBuilder::build);
@@ -22,6 +23,7 @@ public class ApplicationContentGenerator extends BaseGenerator<ApplicationConten
         UUID applicationId = UUID.randomUUID();
         return ApplicationContent.builder()
                 .id(applicationId)
+                .office(officeGenerator.createDefault())
                 .submittedAt("2024-01-01T12:00:00Z")
                 .previousApplicationReference("ZZ999Z")
                 .lastNameAtBirth("Alberts")
