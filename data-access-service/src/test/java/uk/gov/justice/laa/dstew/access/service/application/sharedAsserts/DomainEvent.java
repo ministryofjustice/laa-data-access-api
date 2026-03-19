@@ -1,8 +1,8 @@
 package uk.gov.justice.laa.dstew.access.service.application.sharedAsserts;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.mockito.ArgumentCaptor;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
@@ -13,12 +13,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import java.util.Map;
-import org.mockito.ArgumentCaptor;
+
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+
 
 public class DomainEvent {
 
