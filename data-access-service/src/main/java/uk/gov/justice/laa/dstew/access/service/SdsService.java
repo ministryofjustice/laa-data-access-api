@@ -15,9 +15,7 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
-//import uk.gov.justice.laa.dstew.access.model.SdsGetFileResponse;
 import uk.gov.justice.laa.dstew.access.model.SdsHealthResponse;
-//import uk.gov.justice.laa.dstew.access.model.SdsSaveFileResponse;
 
 /**
  * Service class for checking the health of the SDS service.
