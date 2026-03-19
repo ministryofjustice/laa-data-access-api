@@ -86,11 +86,21 @@ public class GetApplicationTest extends BaseIntegrationTest {
             builder.application(application);
         });
 
-        DecisionEntity decision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
-            builder.meritsDecisions(new java.util.HashSet<>(java.util.Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class, mBuilder -> {
+        // Create merit with proceeding set
+        uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity merit =
+            DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class, mBuilder -> {
                 mBuilder.proceeding(proceeding);
-            }))));
+            });
+
+        // Create decision without merits, then add the merit with proper relationship
+        DecisionEntity decision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
+            builder.meritsDecisions(new java.util.HashSet<>());
         });
+
+        // Properly establish bidirectional relationship
+        merit.setDecisionEntity(decision);
+        decision.addMeritsDecision(merit);
+        decision = decisionRepository.saveAndFlush(decision);
 
         application.setDecision(decision);
         applicationRepository.saveAndFlush(application);

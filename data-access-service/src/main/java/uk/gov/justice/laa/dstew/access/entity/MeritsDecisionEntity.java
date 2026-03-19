@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -50,6 +51,11 @@ public class MeritsDecisionEntity implements AuditableEntity {
 
   @Setter
   @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "decisions_id", nullable = false)
+  private DecisionEntity decisionEntity;
+
+  @Setter
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "proceeding_id", nullable = false, insertable = false, updatable = false)
   private ProceedingEntity proceeding;
 
@@ -77,7 +83,7 @@ public class MeritsDecisionEntity implements AuditableEntity {
   private String justification;
 
   /**
-   * Custom setter that ensures proceedingId is synced with proceeding relationship.
+   * Custom setter that ensures proceedingId is set when proceeding is set.
    */
   public void setProceeding(ProceedingEntity proceeding) {
     this.proceeding = proceeding;
@@ -88,6 +94,7 @@ public class MeritsDecisionEntity implements AuditableEntity {
 
   /**
    * Ensures proceedingId is synced with proceeding relationship before persistence.
+   * Handles cases where test fixtures set only the proceeding relationship.
    */
   @PrePersist
   protected void ensureProceedingIdBeforePersist() {

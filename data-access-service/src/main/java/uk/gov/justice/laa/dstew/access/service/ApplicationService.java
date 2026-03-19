@@ -453,7 +453,7 @@ public class ApplicationService {
 
       if (existingMerit.isPresent()) {
         var merit = existingMerit.get();
-        merit.setProceedingId(proceedingId); // Ensure proceedingId is set
+        merit.setProceedingId(proceedingId);
         merit.setModifiedAt(Instant.now());
         merit.setDecision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()));
         merit.setReason(proceeding.getMeritsDecision().getReason());
@@ -465,7 +465,7 @@ public class ApplicationService {
         newMerit.setDecision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()));
         newMerit.setReason(proceeding.getMeritsDecision().getReason());
         newMerit.setJustification(proceeding.getMeritsDecision().getJustification());
-        finalMerits.add(newMerit);
+        decision.addMeritsDecision(newMerit);
       }
 
     });
@@ -488,7 +488,20 @@ public class ApplicationService {
     // Save application with cascaded decision and certificates
     if (application.getDecision() == null) {
       application.setDecision(decision);
+    } else if (application.getDecision() != decision) {
+      // If decision was replaced, ensure bidirectional relationship is set
+      application.setDecision(decision);
     }
+
+    // Ensure all merits have the decision relationship set before cascade save
+    if (decision.getMeritsDecisions() != null) {
+      for (MeritsDecisionEntity merit : decision.getMeritsDecisions()) {
+        if (merit.getDecisionEntity() == null || merit.getDecisionEntity() != decision) {
+          merit.setDecisionEntity(decision);
+        }
+      }
+    }
+
     applicationRepository.save(application);
 
     if (decision.getOverallDecision() == DecisionStatus.REFUSED) {

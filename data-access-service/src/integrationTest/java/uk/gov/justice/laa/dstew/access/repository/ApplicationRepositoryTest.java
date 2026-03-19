@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.repository;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -27,11 +28,22 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
     ProceedingEntity proceeding = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class, builder -> {
         builder.application(expected);
     });
-    DecisionEntity expectedDecision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
-        builder.meritsDecisions(new java.util.HashSet<>(java.util.Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class, mBuilder -> {
-                mBuilder.proceeding(proceeding);
-        }))));
+
+    // Create merit with proceeding set
+    MeritsDecisionEntity merit = DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class, mBuilder -> {
+        mBuilder.proceeding(proceeding);
     });
+
+    // Create decision without merits, then add the merit with proper relationship
+    DecisionEntity expectedDecision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
+        builder.meritsDecisions(new java.util.HashSet<>());
+    });
+
+    // Properly establish bidirectional relationship
+    merit.setDecisionEntity(expectedDecision);
+    expectedDecision.addMeritsDecision(merit);
+    expectedDecision = decisionRepository.saveAndFlush(expectedDecision);
+
     expected.setDecision(expectedDecision);
     applicationRepository.saveAndFlush(expected);
     clearCache();

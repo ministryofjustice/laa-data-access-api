@@ -235,7 +235,8 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         ProceedingEntity proceedingEntityOne = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
                 builder -> builder.application(applicationEntity));
 
-        MeritsDecisionEntity meritsDecisionEntityOne = persistedDataGenerator.createAndPersist(
+        // Create merit WITHOUT persisting separately - avoid FK sync issues
+        MeritsDecisionEntity meritsDecisionEntityOne = uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator.createDefault(
             MeritsDecisionsEntityGenerator.class,
             builder -> { builder
                         .proceeding(proceedingEntityOne)
@@ -249,10 +250,14 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         DecisionEntity decision = persistedDataGenerator.createAndPersist(
             DecisionEntityGenerator.class,
                 builder -> { builder
-                        .meritsDecisions(new HashSet<>(Set.of(meritsDecisionEntityOne)))
                         .overallDecision(DecisionStatus.REFUSED);
                 }
         );
+
+        // Properly establish bidirectional relationship and persist decision with cascaded merit
+        meritsDecisionEntityOne.setDecisionEntity(decision);
+        decision.addMeritsDecision(meritsDecisionEntityOne);
+        decisionRepository.save(decision);
 
         applicationEntity.setDecision(decision);
         applicationRepository.save(applicationEntity);

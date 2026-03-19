@@ -7,14 +7,14 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -53,17 +53,23 @@ public class DecisionEntity implements AuditableEntity {
   @UpdateTimestamp
   private Instant modifiedAt;
 
-  @ManyToMany(cascade = CascadeType.PERSIST)
-  @JoinTable(
-          name = "linked_merits_decisions",
-          joinColumns = @JoinColumn(name = "decisions_id"),
-          inverseJoinColumns = @JoinColumn(name = "merits_decisions_id")
-  )
+  @OneToMany(mappedBy = "decisionEntity", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
   private Set<MeritsDecisionEntity> meritsDecisions;
 
   @Column(name = "overall_decision", nullable = false)
   @Enumerated(EnumType.STRING)
   private DecisionStatus overallDecision;
+
+  /**
+   * Helper method to properly add MeritsDecision while maintaining bidirectional relationship.
+   */
+  public void addMeritsDecision(MeritsDecisionEntity merit) {
+    if (this.meritsDecisions == null) {
+      this.meritsDecisions = new HashSet<>();
+    }
+    this.meritsDecisions.add(merit);
+    merit.setDecisionEntity(this);
+  }
 
   @Override
   public Instant getCreatedAt() {
