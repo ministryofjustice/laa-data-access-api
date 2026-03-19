@@ -9,6 +9,8 @@ import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Map;
@@ -45,8 +47,9 @@ public class ProceedingEntity implements AuditableEntity {
   @Column(columnDefinition = "UUID")
   private UUID id;
 
-  @Column(name = "application_id", nullable = false)
-  private UUID applicationId;
+  @ManyToOne
+  @JoinColumn(name = "application_id", nullable = false)
+  private ApplicationEntity application;
 
   @Column(name = "apply_proceeding_id", nullable = false)
   private UUID applyProceedingId;
@@ -93,5 +96,13 @@ public class ProceedingEntity implements AuditableEntity {
   @Override
   public String getUpdatedBy() {
     return updatedBy;
+  }
+
+  /**
+   * Convenience method to get the application ID from the application relationship
+   * @return the application ID or null if application is not set
+   */
+  public UUID getApplicationId() {
+    return application != null ? application.getId() : null;
   }
 }

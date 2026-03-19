@@ -97,7 +97,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         ProceedingEntity grantedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-                builder -> builder.applicationId(applicationEntity.getId()));
+                builder -> builder.application(applicationEntity));
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
@@ -139,7 +139,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         ProceedingEntity grantedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-                builder -> builder.applicationId(applicationEntity.getId()));
+                builder -> builder.application(applicationEntity));
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
@@ -175,10 +175,10 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         ProceedingEntity refusedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-                builder -> builder.applicationId(applicationEntity.getId()));
+                builder -> builder.application(applicationEntity));
 
         ProceedingEntity grantedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-                builder -> builder.applicationId(applicationEntity.getId()));
+                builder -> builder.application(applicationEntity));
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
@@ -233,7 +233,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         ProceedingEntity proceedingEntityOne = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-                builder -> builder.applicationId(applicationEntity.getId()));
+                builder -> builder.application(applicationEntity));
 
         MeritsDecisionEntity meritsDecisionEntityOne = persistedDataGenerator.createAndPersist(
             MeritsDecisionsEntityGenerator.class,
@@ -244,7 +244,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         );
 
         ProceedingEntity proceedingEntityTwo = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-                builder -> builder.applicationId(applicationEntity.getId()));
+                builder -> builder.application(applicationEntity));
 
         DecisionEntity decision = persistedDataGenerator.createAndPersist(
             DecisionEntityGenerator.class,
@@ -315,7 +315,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         ProceedingEntity proceedingNotLinkedToApplication = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(unrelatedApplicationEntity.getId()));
+            builder -> builder.application(unrelatedApplicationEntity));
 
         UUID proceedingIdNotFound = UUID.randomUUID();
 
@@ -506,7 +506,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         ProceedingEntity proceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-                builder -> builder.applicationId(applicationEntity.getId()));
+                builder -> builder.application(applicationEntity));
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
@@ -554,7 +554,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         ProceedingEntity proceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-                builder -> builder.applicationId(applicationEntity.getId()));
+                builder -> builder.application(applicationEntity));
 
         CertificateContent expectedCertificateContent = DataGenerator.createDefault(CertificateContentGenerator.class);
 
@@ -622,7 +622,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         ProceedingEntity proceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-                builder -> builder.applicationId(applicationEntity.getId()));
+                builder -> builder.application(applicationEntity));
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
@@ -664,7 +664,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         ProceedingEntity proceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-                builder -> builder.applicationId(applicationEntity.getId()));
+                builder -> builder.application(applicationEntity));
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder

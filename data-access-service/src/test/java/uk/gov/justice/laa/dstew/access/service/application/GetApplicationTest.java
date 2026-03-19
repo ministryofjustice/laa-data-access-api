@@ -39,17 +39,19 @@ public class GetApplicationTest extends BaseServiceTest {
     @Test
     public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {
         // given
-        ProceedingEntity proceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class);
+        ApplicationEntity expectedApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class);
+
+        ProceedingEntity proceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class,
+                builder -> builder.application(expectedApplication));
         Set<ProceedingEntity> proceedings = Set.of(proceeding);
 
-        ApplicationEntity expectedApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class);
+        expectedApplication.setProceedings(proceedings);
 
         expectedApplication.setDecision(DataGenerator.createDefault(DecisionEntityGenerator.class));
         expectedApplication.getDecision().setMeritsDecisions(
                 Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class,
                         builder -> builder.proceeding(proceeding))));
 
-        when(proceedingRepository.findAllByApplicationId(expectedApplication.getId())).thenReturn(proceedings);
         when(applicationRepository.findById(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);

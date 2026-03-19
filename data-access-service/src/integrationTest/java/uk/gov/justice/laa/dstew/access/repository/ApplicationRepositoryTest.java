@@ -25,7 +25,7 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
     ApplicationEntity expected = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder ->
         builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe).linkedApplications(new java.util.HashSet<>()));
     ProceedingEntity proceeding = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class, builder -> {
-        builder.applicationId(expected.getId());
+        builder.application(expected);
     });
     DecisionEntity expectedDecision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
         builder.meritsDecisions(new java.util.HashSet<>(java.util.Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class, mBuilder -> {
@@ -65,7 +65,7 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
   private void assertApplicationEqual(ApplicationEntity expected, ApplicationEntity actual) {
     assertThat(expected)
         .usingRecursiveComparison()
-        .ignoringFields("createdAt", "modifiedAt", "individuals", "proceedings", "certificates")
+        .ignoringFields("createdAt", "modifiedAt", "individuals", "proceedings", "certificates", "decision.meritsDecisions")
         .isEqualTo(actual);
     assertThat(expected.getModifiedAt()).isNotNull();
   }

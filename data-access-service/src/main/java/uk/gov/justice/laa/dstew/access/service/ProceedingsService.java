@@ -1,8 +1,8 @@
 package uk.gov.justice.laa.dstew.access.service;
 
 import java.util.List;
-import java.util.UUID;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ProceedingMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
@@ -25,11 +25,11 @@ public class ProceedingsService {
    * Saves proceedings from application content to the repository.
    *
    * @param applicationContent the application content containing proceedings
-   * @param id                 the associated application ID
+   * @param application        the associated application entity
    */
-  public void saveProceedings(ApplicationContent applicationContent, UUID id) {
+  public void saveProceedings(ApplicationContent applicationContent, ApplicationEntity application) {
     List<ProceedingEntity> proceedingEntities = applicationContent.getProceedings().stream()
-        .map(proceeding -> proceedingMapper.toProceedingEntity(proceeding, id)).toList();
+        .map(proceeding -> proceedingMapper.toProceedingEntity(proceeding, application)).toList();
     proceedingRepository.saveAll(proceedingEntities);
   }
 

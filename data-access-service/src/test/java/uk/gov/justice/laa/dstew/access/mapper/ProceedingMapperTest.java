@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingFactory;
@@ -17,12 +18,12 @@ class ProceedingMapperTest {
 
   @Test
   void requestToProceedingEntity() {
-    UUID applicationId = UUID.randomUUID();
+    ApplicationEntity application = ApplicationEntity.builder().id(UUID.randomUUID()).build();
     Proceeding proceeding = proceedingFactory.createDefault();
-    ProceedingEntity proceedingEntity = proceedingMapper.toProceedingEntity(proceeding, applicationId);
+    ProceedingEntity proceedingEntity = proceedingMapper.toProceedingEntity(proceeding, application);
 
     assertEquals(proceedingEntity.getApplyProceedingId(), proceeding.getId());
-    assertEquals(proceedingEntity.getApplicationId(), applicationId);
+    assertEquals(proceedingEntity.getApplicationId(), application.getId());
     assertEquals(proceedingEntity.getProceedingContent(), MapperUtil.getObjectMapper().convertValue(proceeding, Map.class));
     assertEquals(proceedingEntity.isLead(), proceeding.getLeadProceeding());
     assertEquals(proceedingEntity.getDescription(), proceeding.getDescription());

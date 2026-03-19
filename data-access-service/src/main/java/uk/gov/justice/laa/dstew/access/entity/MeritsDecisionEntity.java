@@ -6,11 +6,14 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -29,7 +32,6 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
  */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
@@ -42,27 +44,64 @@ public class MeritsDecisionEntity implements AuditableEntity {
   @Column(columnDefinition = "UUID")
   private UUID id;
 
-  @OneToOne()
-  @JoinColumn(name = "proceeding_id", nullable = false)
+  @Setter
+  @Column(name = "proceeding_id", nullable = false)
+  private UUID proceedingId;
+
+  @Setter
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "proceeding_id", nullable = false, insertable = false, updatable = false)
   private ProceedingEntity proceeding;
 
+  @Setter
   @Column(name = "created_at")
   @CreationTimestamp
   private Instant createdAt;
 
+  @Setter
   @Column(name = "modified_at")
   @UpdateTimestamp
   private Instant modifiedAt;
 
+  @Setter
   @Column(name = "decision", nullable = false)
   @Enumerated(EnumType.STRING)
   private MeritsDecisionStatus decision;
 
+  @Setter
   @Column(name = "reason")
   private String reason;
 
+  @Setter
   @Column(name = "justification")
   private String justification;
+
+  /**
+   * Custom setter that ensures proceedingId is synced with proceeding relationship.
+   */
+  public void setProceeding(ProceedingEntity proceeding) {
+    this.proceeding = proceeding;
+    if (proceeding != null && proceeding.getId() != null) {
+      this.proceedingId = proceeding.getId();
+    }
+  }
+
+  /**
+   * Ensures proceedingId is synced with proceeding relationship before persistence.
+   */
+  @PrePersist
+  protected void ensureProceedingIdBeforePersist() {
+    if (this.proceedingId == null && this.proceeding != null) {
+      this.proceedingId = this.proceeding.getId();
+    }
+  }
+
+  @PreUpdate
+  protected void ensureProceedingIdBeforeUpdate() {
+    if (this.proceedingId == null && this.proceeding != null) {
+      this.proceedingId = this.proceeding.getId();
+    }
+  }
 
   @Override
   public Instant getCreatedAt() {

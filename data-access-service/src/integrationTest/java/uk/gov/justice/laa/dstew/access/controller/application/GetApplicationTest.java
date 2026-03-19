@@ -83,7 +83,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
                 builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe).linkedApplications(new java.util.HashSet<>()));
 
         ProceedingEntity proceeding = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class, builder -> {
-            builder.applicationId(application.getId());
+            builder.application(application);
         });
 
         DecisionEntity decision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
