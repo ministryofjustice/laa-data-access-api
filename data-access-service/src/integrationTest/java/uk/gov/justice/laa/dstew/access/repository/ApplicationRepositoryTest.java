@@ -23,14 +23,14 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
 
     // given
     ApplicationEntity expected = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder ->
-        builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe).linkedApplications(Set.of()));
+        builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe).linkedApplications(new java.util.HashSet<>()));
     ProceedingEntity proceeding = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class, builder -> {
         builder.applicationId(expected.getId());
     });
     DecisionEntity expectedDecision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
-        builder.meritsDecisions(Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class, mBuilder -> {
+        builder.meritsDecisions(new java.util.HashSet<>(java.util.Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class, mBuilder -> {
                 mBuilder.proceeding(proceeding);
-        })));
+        }))));
     });
     expected.setDecision(expectedDecision);
     applicationRepository.saveAndFlush(expected);
@@ -65,7 +65,7 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
   private void assertApplicationEqual(ApplicationEntity expected, ApplicationEntity actual) {
     assertThat(expected)
         .usingRecursiveComparison()
-        .ignoringFields("createdAt", "modifiedAt", "individuals")
+        .ignoringFields("createdAt", "modifiedAt", "individuals", "proceedings", "certificates")
         .isEqualTo(actual);
     assertThat(expected.getModifiedAt()).isNotNull();
   }

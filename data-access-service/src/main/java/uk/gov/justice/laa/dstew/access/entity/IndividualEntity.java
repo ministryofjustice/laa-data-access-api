@@ -74,9 +74,6 @@ public class IndividualEntity  implements AuditableEntity {
   @UpdateTimestamp
   private Instant modifiedAt;
 
-  @ManyToMany(mappedBy = "individuals")
-  private Set<ApplicationEntity> applications;
-
   @Override
   public Instant getCreatedAt() {
     return createdAt;

@@ -306,7 +306,7 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         UUID associateId = UUID.randomUUID();
         ApplicationSummaryEntity leadApplication = applicationSummaryEntityFactory.createDefault(
-            b -> b.linkedApplications(Set.of(applicationEntityFactory.createDefault()))
+            b -> b.linkedApplications(Set.of(applicationSummaryEntityFactory.createDefault()))
         );
 
         List<ApplicationSummaryEntity> expectedApplications = List.of(leadApplication);

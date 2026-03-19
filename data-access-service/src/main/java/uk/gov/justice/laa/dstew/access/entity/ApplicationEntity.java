@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.vladmihalcea.hibernate.type.json.JsonType;
@@ -30,6 +31,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -48,6 +50,7 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 @NoArgsConstructor
 @Builder(toBuilder = true)
 @Entity
+@DynamicUpdate
 @Table(name = "applications")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
@@ -101,9 +104,17 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "submitted_at")
   private Instant submittedAt;
 
-  @OneToOne()
+  @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
   @JoinColumn(name = "decision_id", referencedColumnName = "id")
   private DecisionEntity decision;
+
+  @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+  @JoinColumn(name = "application_id")
+  private Set<ProceedingEntity> proceedings = new HashSet<>();
+
+  @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+  @JoinColumn(name = "application_id")
+  private Set<CertificateEntity> certificates = new HashSet<>();
 
   @Column(name = "used_delegated_functions")
   private Boolean usedDelegatedFunctions;
@@ -119,6 +130,7 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "is_auto_granted")
   private Boolean isAutoGranted;
 
+  @JsonIgnore
   @OneToMany
   @JoinTable(
       name = "linked_applications",
@@ -127,6 +139,7 @@ public class ApplicationEntity implements AuditableEntity {
   )
   private Set<ApplicationEntity> linkedApplications;
 
+  @JsonIgnore
   @Transient
   public boolean isLead() {
     return linkedApplications != null && !linkedApplications.isEmpty();

@@ -249,7 +249,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         DecisionEntity decision = persistedDataGenerator.createAndPersist(
             DecisionEntityGenerator.class,
                 builder -> { builder
-                        .meritsDecisions(Set.of(meritsDecisionEntityOne))
+                        .meritsDecisions(new HashSet<>(Set.of(meritsDecisionEntityOne)))
                         .overallDecision(DecisionStatus.REFUSED);
                 }
         );

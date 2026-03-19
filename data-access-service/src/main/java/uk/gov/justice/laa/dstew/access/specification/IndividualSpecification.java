@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.specification;
 
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
@@ -11,18 +12,25 @@ import uk.gov.justice.laa.dstew.access.model.IndividualType;
  */
 public class IndividualSpecification {
   /**
-   * Filters by applicationId using a join to applications (ManyToMany).
+   * Filters by applicationId using a subquery (since the bidirectional relationship was removed).
    */
   public static Specification<IndividualEntity> filterApplicationId(UUID applicationId) {
     if (applicationId == null) {
       return Specification.unrestricted();
     }
-    // Join to applications and filter by applicationId
-    return (root, query, builder) ->
-        builder.equal(
-            root.join("applications").get("id"),
-            applicationId
-        );
+    // Use a subquery to find individuals linked to the application through the join table
+    return (root, query, builder) -> {
+      var appSubquery = query.subquery(UUID.class);
+      var appRoot = appSubquery.from(ApplicationEntity.class);
+      var joinedIndividuals = appRoot.join("individuals");
+      appSubquery.select(appRoot.get("id")).where(
+          builder.and(
+              builder.equal(appRoot.get("id"), applicationId),
+              builder.equal(joinedIndividuals.get("id"), root.get("id"))
+          )
+      );
+      return builder.exists(appSubquery);
+    };
   }
 
   /**

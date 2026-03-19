@@ -87,7 +87,7 @@ public class ApplicationSummaryEntity {
       joinColumns = @JoinColumn(name = "lead_application_id"),
       inverseJoinColumns = @JoinColumn(name = "associated_application_id")
   )
-  private Set<ApplicationEntity> linkedApplications;
+  private Set<ApplicationSummaryEntity> linkedApplications;
 
 
   @Transient

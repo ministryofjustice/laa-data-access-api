@@ -80,16 +80,16 @@ public class GetApplicationTest extends BaseIntegrationTest {
     public void givenExistingApplication_whenGetApplication_thenReturnOKWithCorrectData() throws Exception {
         // given
         ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder ->
-                builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe).linkedApplications(Set.of()));
+                builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe).linkedApplications(new java.util.HashSet<>()));
 
         ProceedingEntity proceeding = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class, builder -> {
             builder.applicationId(application.getId());
         });
 
         DecisionEntity decision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
-            builder.meritsDecisions(Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class, mBuilder -> {
+            builder.meritsDecisions(new java.util.HashSet<>(java.util.Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class, mBuilder -> {
                 mBuilder.proceeding(proceeding);
-            })));
+            }))));
         });
 
         application.setDecision(decision);
