@@ -1,6 +1,6 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -32,57 +32,55 @@ class TokenServiceTest {
     when(accessToken.getExpiresAt()).thenReturn(Instant.now().plusSeconds(600));
     when(accessToken.getTokenValue()).thenReturn("access-token");
 
-    TokenService tokenService = new TokenService(tokenProvider);
+    // When
+    String result = tokenService.getSdsAccessToken();
+
+    // Then
+    assertThat(result).isEqualTo("access-token");
+    verify(tokenProvider, never()).evictToken();
+  }
+
+  @Test
+  void givenExpiredToken_whenGetSdsAccessToken_thenEvictAndReturnNewTokenValue() {
+    // Given
+    when(tokenProvider.getTokenFromProvider()).thenReturn(accessToken);
+    when(accessToken.getExpiresAt()).thenReturn(Instant.now().minusSeconds(1));
+    when(accessToken.getTokenValue()).thenReturn("new-access-token");
 
     // When
     String result = tokenService.getSdsAccessToken();
 
     // Then
-    assertEquals("access-token", result);
-    verify(tokenProvider, never()).evictToken();
+    assertThat(result).isEqualTo("new-access-token");
+    verify(tokenProvider).evictToken();
   }
 
-    @Test
-    void givenExpiredToken_whenGetSdsAccessToken_thenEvictAndReturnNewTokenValue() {
-      // Given
-      when(tokenProvider.getTokenFromProvider()).thenReturn(accessToken);
-      when(accessToken.getExpiresAt()).thenReturn(Instant.now().minusSeconds(1));
-      when(accessToken.getTokenValue()).thenReturn("new-access-token");
+  @Test
+  void givenNullToken_whenGetSdsAccessToken_thenEvictAndReturnNewTokenValue() {
+    // Given
+    when(tokenProvider.getTokenFromProvider()).thenReturn(null).thenReturn(accessToken);
+    when(accessToken.getTokenValue()).thenReturn("new-access-token");
 
-      // When
-      String result = tokenService.getSdsAccessToken();
+    // When
+    String result = tokenService.getSdsAccessToken();
 
-      // Then
-      assertEquals("new-access-token", result);
-      verify(tokenProvider).evictToken();
-    }
+    // Then
+    assertThat(result).isEqualTo("new-access-token");
+    verify(tokenProvider).evictToken();
+  }
 
-    @Test
-    void givenNullToken_whenGetSdsAccessToken_thenEvictAndReturnNewTokenValue() {
-      // Given
-      when(tokenProvider.getTokenFromProvider()).thenReturn(null).thenReturn(accessToken);
-      when(accessToken.getTokenValue()).thenReturn("new-access-token");
+  @Test
+  void givenTokenWithNullExpiry_whenGetSdsAccessToken_thenEvictAndReturnNewTokenValue() {
+    // Given
+    when(tokenProvider.getTokenFromProvider()).thenReturn(accessToken);
+    when(accessToken.getExpiresAt()).thenReturn(null);
+    when(accessToken.getTokenValue()).thenReturn("new-access-token");
 
-      // When
-      String result = tokenService.getSdsAccessToken();
+    // When
+    String result = tokenService.getSdsAccessToken();
 
-      // Then
-      assertEquals("new-access-token", result);
-      verify(tokenProvider).evictToken();
-    }
-
-    @Test
-    void givenTokenWithNullExpiry_whenGetSdsAccessToken_thenEvictAndReturnNewTokenValue() {
-      // Given
-      when(tokenProvider.getTokenFromProvider()).thenReturn(accessToken);
-      when(accessToken.getExpiresAt()).thenReturn(null);
-      when(accessToken.getTokenValue()).thenReturn("new-access-token");
-
-      // When
-      String result = tokenService.getSdsAccessToken();
-
-      // Then
-      assertEquals("new-access-token", result);
-      verify(tokenProvider).evictToken();
-    }
+    // Then
+    assertThat(result).isEqualTo("new-access-token");
+    verify(tokenProvider).evictToken();
+  }
 }
