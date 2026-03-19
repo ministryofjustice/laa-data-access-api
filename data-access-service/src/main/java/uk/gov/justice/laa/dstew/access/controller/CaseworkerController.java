@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.api.CaseworkersApi;
 import uk.gov.justice.laa.dstew.access.model.Caseworker;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.CaseworkerService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
@@ -24,7 +25,7 @@ public class CaseworkerController implements CaseworkersApi {
   @LogMethodArguments
   @LogMethodResponse
   @Override
-  public ResponseEntity<List<Caseworker>> getCaseworkers() {
+  public ResponseEntity<List<Caseworker>> getCaseworkers(ServiceName serviceName) {
     return ResponseEntity.ok(caseworkerService.getAllCaseworkers());
   }  
 }

@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.controller.caseworker;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
@@ -21,7 +23,28 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 public class GetCaseworkersTest extends BaseIntegrationTest {
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.READER)
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
+    void givenRoleReaderAndNoHeader_whenGetCaseworkers_thenReturnBadRequest() throws Exception {
+        verifyServiceNameHeader(null);
+    }
+
+    @ParameterizedTest
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
+    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
+    void givenRoleReaderAndIncorrectHeader_whenGetCaseworkers_thenReturnBadRequest(
+            String serviceName
+    ) throws Exception {
+        verifyServiceNameHeader(serviceName);
+    }
+
+    private void verifyServiceNameHeader(String serviceName) throws Exception {
+        MvcResult result = getUri(TestConstants.URIs.GET_CASEWORKERS, ServiceNameHeader(serviceName));
+
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenRoleReader_whenGetCaseworkers_thenReturnOk() throws Exception {
         // given
         // two caseworkers created in BaseIntegrationTest data setup.

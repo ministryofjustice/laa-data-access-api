@@ -53,6 +53,20 @@ public class GlobalExceptionHandler {
     return ResponseEntity.badRequest().body(problemDetail);
   }
 
+  /**
+   * The handler for IllegalArgumentException.
+   * Used for parameter validation (e.g., invalid page, pageSize).
+   *
+   * @param exception the exception.
+   * @return the response with the exception message.
+   */
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<ProblemDetail> handleIllegalArgumentException(IllegalArgumentException exception) {
+    log.debug("Invalid argument: {}", exception.getMessage());
+    return ResponseEntity.badRequest().body(
+            getCustomProblemDetail(HttpStatus.BAD_REQUEST, exception.getMessage()));
+  }
+
 
   /**
    * The handler for ViolationException.

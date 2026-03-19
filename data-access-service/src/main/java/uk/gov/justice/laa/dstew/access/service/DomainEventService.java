@@ -9,12 +9,12 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
 /**
@@ -66,18 +67,19 @@ public class DomainEventService {
    * Posts an APPLICATION_CREATED domain event.
    *
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiCaseworker
   public void saveCreateApplicationDomainEvent(
       ApplicationEntity applicationEntity,
+      ApplicationCreateRequest request,
       String createdBy) {
 
     CreateApplicationDomainEventDetails domainEventDetails =
         CreateApplicationDomainEventDetails.builder()
             .applicationId(applicationEntity.getId())
             .createdDate(applicationEntity.getCreatedAt())
-            .createdBy(applicationEntity.getCreatedBy())
+            .laaReference(applicationEntity.getLaaReference())
             .applicationStatus(String.valueOf(applicationEntity.getStatus()))
-            .applicationContent(applicationEntity.getApplicationContent().toString())
+            .request(getEventDetailsAsJson(request, DomainEventType.APPLICATION_CREATED))
             .build();
 
     DomainEventEntity domainEventEntity =
@@ -97,7 +99,7 @@ public class DomainEventService {
    * Posts an APPLICATION_UPDATED domain event.
    *
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiCaseworker
   public void saveUpdateApplicationDomainEvent(
       ApplicationEntity applicationEntity,
       String updatedBy) {
@@ -124,7 +126,7 @@ public class DomainEventService {
    * Posts an ASSIGN_APPLICATION_TO_CASEWORKER domain event.
    *
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiCaseworker
   public void saveAssignApplicationDomainEvent(
       UUID applicationId,
       UUID caseworkerId,
@@ -167,7 +169,7 @@ public class DomainEventService {
    * Posts a domain event {@link DomainEventEntity} object.
    *
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiCaseworker
   public void saveUnassignApplicationDomainEvent(
       UUID applicationId,
       UUID caseworkerId,
@@ -192,7 +194,7 @@ public class DomainEventService {
   /**
    * Provides a list of events associated with an application in createdAt ascending order.
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+  @AllowApiCaseworker
   public List<ApplicationDomainEvent> getEvents(UUID applicationId,
                                                 @Valid List<DomainEventType> eventType) {
 
@@ -208,13 +210,13 @@ public class DomainEventService {
    * Posts a MAKE_DECISION_REFUSED domain event.
    *
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationWriter')")
+  @AllowApiCaseworker
   public void saveMakeDecisionRefusedDomainEvent(
           UUID applicationId,
-          MakeDecisionRequest request) {
+          MakeDecisionRequest request,
+          UUID caseworkerId) {
 
     String eventDescription = request.getEventHistory().getEventDescription();
-    UUID caseworkerId = request.getUserId();
 
     MakeDecisionRefusedDomainEventDetails domainEventDetails =
             MakeDecisionRefusedDomainEventDetails.builder()

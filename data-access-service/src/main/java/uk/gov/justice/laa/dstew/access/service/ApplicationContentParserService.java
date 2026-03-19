@@ -1,13 +1,16 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContentDetails;
+import uk.gov.justice.laa.dstew.access.convertors.CategoryOfLawTypeConvertor;
+import uk.gov.justice.laa.dstew.access.convertors.MatterTypeConvertor;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ParsedAppContentDetails;
-import uk.gov.justice.laa.dstew.access.model.ProceedingDto;
+import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
@@ -16,23 +19,20 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 @Service
 public class ApplicationContentParserService {
 
-  private final ObjectMapper objectMapper;
+  private static final MatterTypeConvertor matterTypeDeserializer = new MatterTypeConvertor();
+  private static final CategoryOfLawTypeConvertor categoryOfLawTypeDeserializer = new CategoryOfLawTypeConvertor();
 
-  public ApplicationContentParserService(final ObjectMapper objectMapper) {
-    this.objectMapper = objectMapper;
-  }
 
   /**
    * Normalises application content details from the create request.
    *
-   * @param appContentMap the application create request
+   * @param applicationContent the application create request
    * @return the extracted application content details
    */
   public ParsedAppContentDetails normaliseApplicationContentDetails(
-      Map<String, Object> appContentMap) {
-    ApplicationContentDetails
-        applicationContentDetails = objectMapper.convertValue(appContentMap, ApplicationContentDetails.class);
-    return processingApplicationContent(applicationContentDetails);
+      ApplicationContent applicationContent) {
+
+    return processingApplicationContent(applicationContent);
 
   }
 
@@ -42,27 +42,60 @@ public class ApplicationContentParserService {
    * @param applicationContent the application content to process
    * @return the extracted application content details
    */
-  private static ParsedAppContentDetails processingApplicationContent(ApplicationContentDetails applicationContent) {
-    if (applicationContent.getProceedings() == null || applicationContent.getProceedings().isEmpty()) {
-      throw new ValidationException(List.of("No proceedings found in application content"));
+  private static ParsedAppContentDetails processingApplicationContent(
+      ApplicationContent applicationContent) {
+    if (applicationContent == null) {
+      throw new ValidationException(List.of("Application content is null"));
     }
-    ProceedingDto leadProceeding = applicationContent.getProceedings().stream()
-        .filter(Objects::nonNull)
-        .filter(ProceedingDto::leadProceeding)
-        .findFirst()
-        .orElseThrow(() -> new ValidationException(List.of("No lead proceeding found in application content")));
-    boolean usedDelegatedFunction =
-        applicationContent.getProceedings().stream()
-            .filter(Objects::nonNull)
-            .filter(proceeding -> null != proceeding.usedDelegatedFunctions())
-            .anyMatch(ProceedingDto::usedDelegatedFunctions);
+    Proceeding leadProceeding = null;
+    Boolean usedDelegatedFunction = null;
+    if (applicationContent.getProceedings() != null
+        && !applicationContent.getProceedings().isEmpty()) {
+      List<Proceeding> proceedingList = applicationContent.getProceedings().stream()
+          .filter(Objects::nonNull).toList();
+      leadProceeding = proceedingList
+          .stream()
+          .filter(proceeding -> proceeding.getLeadProceeding().equals(Boolean.TRUE))
+          .findFirst()
+          .orElseThrow(() -> new ValidationException(List.of("No lead proceeding found in application content")));
+      List<Boolean> usedDelegatedFunctionValues = proceedingList
+          .stream()
+          .map(Proceeding::getUsedDelegatedFunctions)
+          .filter(Objects::nonNull)
+          .toList();
+      if (!usedDelegatedFunctionValues.isEmpty()) {
+        usedDelegatedFunction = usedDelegatedFunctionValues.stream()
+            .anyMatch(Boolean::booleanValue);
+      }
+    }
+
+
+    String officeCode = (applicationContent.getOffice() == null) ? null : applicationContent.getOffice().getCode();
+
     return ParsedAppContentDetails
         .builder()
         .applyApplicationId(applicationContent.getId())
-        .categoryOfLaw(leadProceeding.categoryOfLaw())
-        .matterType(leadProceeding.matterType())
-        .submittedAt(applicationContent.getSubmittedAt())
-        .useDelegatedFunctions(usedDelegatedFunction)
+        .categoryOfLaw(getCategoryOfLaw(leadProceeding))
+        .matterType(getMatterType(leadProceeding))
+        .submittedAt(Instant.parse(applicationContent.getSubmittedAt()))
+        .usedDelegatedFunctions(usedDelegatedFunction)
+        .officeCode(officeCode)
         .build();
   }
+
+  private static MatterType getMatterType(Proceeding leadProceeding) {
+    if (Objects.isNull(leadProceeding)) {
+      return null;
+    }
+    return matterTypeDeserializer.lenientEnumConversion(leadProceeding.getMatterType());
+  }
+
+  private static CategoryOfLaw getCategoryOfLaw(Proceeding leadProceeding) {
+    if (Objects.isNull(leadProceeding)) {
+      return null;
+    }
+    return categoryOfLawTypeDeserializer.lenientEnumConversion(leadProceeding.getCategoryOfLaw());
+  }
+
+
 }

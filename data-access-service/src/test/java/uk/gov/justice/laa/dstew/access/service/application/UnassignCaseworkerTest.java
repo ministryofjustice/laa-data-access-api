@@ -18,6 +18,9 @@ import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -47,9 +50,9 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
         // given
         UUID applicationId = UUID.randomUUID();
 
-        CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+        CaseworkerEntity expectedCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
 
-        ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+        ApplicationEntity existingApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
                 builder.id(applicationId).caseworker(expectedCaseworker)
         );
 
@@ -74,7 +77,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
 
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
         serviceUnderTest.unassignCaseworker(applicationId, eventHistory);
@@ -89,7 +92,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
     @Test
     void givenAlreadyUnassigned_whenUnassignCaseworker_thenNotSave() throws JsonProcessingException {
         UUID applicationId = UUID.randomUUID();
-        ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+        ApplicationEntity existingApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
                 builder.id(applicationId).caseworker(null)
         );
 
@@ -99,7 +102,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
 
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
         serviceUnderTest.unassignCaseworker(applicationId, eventHistory);
@@ -117,7 +120,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
     ) {
 
         // given
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
         Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(applicationId, new EventHistory()));
@@ -134,7 +137,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
     @Test
     void givenRoleReader_whenUnassignCaseworker_thenThrowUnauthorizedException() {
         // given
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.NO_ROLE);
 
         // when
         Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistory()));

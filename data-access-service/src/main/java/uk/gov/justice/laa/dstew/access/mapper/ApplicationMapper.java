@@ -1,8 +1,10 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -14,9 +16,15 @@ import org.mapstruct.factory.Mappers;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.Opponent;
+import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
+import uk.gov.justice.laa.dstew.access.model.Provider;
 
 /**
  * Mapper interface.
@@ -27,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.model.Individual;
 public interface ApplicationMapper {
 
   IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
+  ProceedingMapper proceedingMapper = Mappers.getMapper(ProceedingMapper.class);
 
   /**
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
@@ -42,14 +51,16 @@ public interface ApplicationMapper {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setStatus(req.getStatus());
     entity.setLaaReference(req.getLaaReference());
+    ObjectMapper mapper = MapperUtil.getObjectMapper();
     var individuals = req.getIndividuals()
         .stream()
         .map(individualMapper::toIndividualEntity)
         .collect(Collectors.toSet());
-    entity.setApplicationContent(req.getApplicationContent());
+    entity.setApplicationContent(mapper.convertValue(req.getApplicationContent(), Map.class));
     entity.setIndividuals(individuals);
     return entity;
   }
+
 
   /**
    * Updates an existing {@link ApplicationEntity} using values from an {@link ApplicationUpdateRequest}.
@@ -79,25 +90,92 @@ public interface ApplicationMapper {
     }
 
     Application application = new Application();
-    application.setId(entity.getId());
+    application.setApplicationId(entity.getId());
     application.setStatus(entity.getStatus());
-    application.setSchemaVersion(entity.getSchemaVersion());
-    application.setApplicationContent(entity.getApplicationContent());
     application.setLaaReference(entity.getLaaReference());
-    application.caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
-    application.setCreatedAt(OffsetDateTime.ofInstant(entity.getCreatedAt(), ZoneOffset.UTC));
-    application.setUpdatedAt(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
-
-    application.setIndividuals(getIndividuals(entity.getIndividuals()));
+    application.setLastUpdated(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
+    application.assignedTo(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null);
+    application.setLastUpdated(OffsetDateTime.ofInstant(entity.getUpdatedAt(), ZoneOffset.UTC));
+    application.setSubmittedAt(
+        entity.getSubmittedAt() != null
+            ? OffsetDateTime.ofInstant(entity.getSubmittedAt(), ZoneOffset.UTC)
+            : null
+    );
+    application.setIsLead(entity.isLead());
+    application.setUsedDelegatedFunctions(entity.getUsedDelegatedFunctions());
+    application.setAutoGrant(entity.getIsAutoGranted());
+    if (entity.getDecision() != null) {
+      application.setOverallDecision(entity.getDecision().getOverallDecision());
+    }
+    application.setApplicationType(ApplicationType.INITIAL);
+    application.setOpponents(
+        extractOpponents(entity.getApplicationContent())
+    );
+    application.setProvider(
+        extractProvider(entity)
+    );
 
     return application;
   }
 
+  private static Provider extractProvider(ApplicationEntity entity) {
+    String officeCode = entity.getOfficeCode();
+    String contactEmail = extractContactEmail(entity.getApplicationContent());
+
+    if (officeCode == null && contactEmail == null) {
+      return null;
+    }
+
+    Provider provider = new Provider();
+    provider.setOfficeCode(officeCode);
+    provider.setContactEmail(contactEmail);
+    return provider;
+  }
+
+  private static String extractContactEmail(Map<String, Object> content) {
+    if (content == null) {
+      return null;
+    }
+
+    ApplicationContent applicationContent = MapperUtil.getObjectMapper()
+        .convertValue(content, ApplicationContent.class);
+
+    return applicationContent.getSubmitterEmail();
+  }
+
   private static List<Individual> getIndividuals(Set<IndividualEntity> individuals) {
     return individuals
-          .stream()
-          .map(individualMapper::toIndividual)
-          .filter(Objects::nonNull)
-          .toList();
+        .stream()
+        .map(individualMapper::toIndividual)
+        .filter(Objects::nonNull)
+        .toList();
+  }
+
+  private static List<Opponent> extractOpponents(Map<String, Object> content) {
+
+    if (content == null) {
+      return null;
+    }
+
+    ApplicationContent applicationContent = MapperUtil.getObjectMapper().convertValue(content, ApplicationContent.class);
+    ApplicationMerits meritsObj = applicationContent.getApplicationMerits();
+    if (meritsObj == null) {
+      return null;
+    }
+
+    List<OpponentDetails> opponentsList = meritsObj.getOpponents();
+    if (opponentsList == null) {
+      return null;
+    }
+
+    return opponentsList.stream()
+        .map(OpponentDetails::getOpposable)
+        .map(opposableObj -> Opponent.builder()
+            .opposableType(opposableObj.getOpposableType())
+            .firstName(opposableObj.getFirstName())
+            .lastName(opposableObj.getLastName())
+            .organisationName(opposableObj.getName())
+            .build())
+        .toList();
   }
 }

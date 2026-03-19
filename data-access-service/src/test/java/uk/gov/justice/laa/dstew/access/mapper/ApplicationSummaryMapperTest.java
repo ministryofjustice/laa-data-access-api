@@ -23,6 +23,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 
 
@@ -52,7 +54,7 @@ public class ApplicationSummaryMapperTest {
         Instant modifiedAt = Instant.now();
         Instant submittedAt = Instant.now();
         CategoryOfLaw categoryOfLaw = CategoryOfLaw.FAMILY;
-        MatterType matterType = MatterType.SCA;
+        MatterType matterType = MatterType.SPECIAL_CHILDREN_ACT;
         boolean usedDelegatedFunctions = true;
         String laaReference = "ref1";
         ApplicationStatus status = ApplicationStatus.APPLICATION_IN_PROGRESS;
@@ -61,6 +63,7 @@ public class ApplicationSummaryMapperTest {
         String clientLastName = "Doe";
         LocalDate clientDateOfBirth = LocalDate.of(1980, 5, 2);
         IndividualType clientType = IndividualType.CLIENT;
+        String officeCode = "office-code";
 
         // Builders use the data
         IndividualEntity individual = IndividualEntity.builder()
@@ -84,6 +87,7 @@ public class ApplicationSummaryMapperTest {
         entity.setMatterType(matterType);
         entity.setUsedDelegatedFunctions(usedDelegatedFunctions);
         entity.setLaaReference(laaReference);
+        entity.setOfficeCode(officeCode);
         entity.setStatus(status);
         entity.setCaseworker(caseworker);
         entity.setIndividuals(Set.of(individual));
@@ -108,10 +112,34 @@ public class ApplicationSummaryMapperTest {
         assertThat(result.getClientLastName()).isEqualTo(clientLastName);
         assertThat(result.getClientDateOfBirth()).isEqualTo(clientDateOfBirth);
         assertThat(result.getApplicationType()).isEqualTo(applicationType);
+        assertThat(result.getOfficeCode()).isEqualTo(officeCode);
     }
 
     @Test
     void givenNullApplicationSummary_whenToApplicationSummary_thenReturnNull() {
         assertThat(applicationMapper.toApplicationSummary(null)).isNull();
+    }
+
+    @Test
+    void givenLinkedApplicationsSummaryDto_whenToLinkedApplicationSummary_thenMapsFieldsCorrectly() {
+        // given
+        UUID applicationId = UUID.randomUUID();
+        String laaReference = "ref1";
+        boolean isLead = true;
+
+        LinkedApplicationSummaryDto dto = LinkedApplicationSummaryDto.builder()
+            .applicationId(applicationId)
+            .laaReference(laaReference)
+            .isLead(isLead)
+            .build();
+
+        // when
+        LinkedApplicationSummary result = applicationMapper.toLinkedApplicationSummary(dto);
+
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result.getApplicationId()).isEqualTo(applicationId);
+        assertThat(result.getLaaReference()).isEqualTo(laaReference);
+        assertThat(result.getIsLead()).isEqualTo(isLead);
     }
 }

@@ -1,8 +1,8 @@
 plugins {
     id 'java'
     id 'jacoco'
-    id 'io.freefair.lombok' version '8.13.1'
-    id "com.gorylenko.gradle-git-properties" version "2.4.1"
+    id 'io.freefair.lombok' version '9.2.0'
+    id "com.gorylenko.gradle-git-properties" version "2.4.2"
     id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin' version '1.0.4'
     id 'com.avast.gradle.docker-compose' version '0.17.12'
     id 'io.sentry.jvm.gradle' version '5.12.2'
@@ -11,6 +11,32 @@ plugins {
 def versions = [
         sentry : '8.28.0'
 ]
+
+sourceSets {
+    testUtilities {
+        java {
+            srcDir 'src/testUtilities/java'
+        }
+        resources {
+            srcDir 'src/testUtilities/resources'
+        }
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+    test {
+        compileClasspath += sourceSets.testUtilities.output
+        runtimeClasspath += sourceSets.testUtilities.output
+    }
+    integrationTest {
+        compileClasspath += sourceSets.testUtilities.output
+        runtimeClasspath += sourceSets.testUtilities.output
+    }
+}
+
+configurations {
+    testUtilitiesImplementation.extendsFrom testImplementation
+    testUtilitiesRuntimeOnly.extendsFrom testRuntimeOnly
+}
 
 dockerCompose {
     useComposeFiles = ['../docker-compose.yml']
@@ -29,7 +55,7 @@ test {
 }
 
 jacoco {
-    toolVersion = "0.8.12"
+    toolVersion = "0.8.13"
 }
 
 //so that we load properties from gradle properties
@@ -61,6 +87,18 @@ dependencyManagement {
     }
 }
 
+// Workaround: Disable gradle-git-properties due to compatibility issues with Java 21+ and newer Gradle
+tasks.named('generateGitProperties') {
+    enabled = false
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+
 dependencies {
     implementation project(':data-access-api')
     implementation project(':data-access-shared')
@@ -81,8 +119,10 @@ dependencies {
     implementation 'io.netty:netty-codec-http:4.1.125.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-12485150
     implementation 'io.netty:netty-codec-http2:4.1.125.Final'
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-13733966
-    implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.48'
+    //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-15307781
+    implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.52'
+    // fix https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.1'
 
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8'
 

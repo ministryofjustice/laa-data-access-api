@@ -10,7 +10,7 @@ access-datastore-api/generated
 
 data-access-api/bin/
 data-access-service/bin/
-data-access-api/bin/
+data-access-shared/bin/
 
 ### IntelliJ IDEA ###
 .idea

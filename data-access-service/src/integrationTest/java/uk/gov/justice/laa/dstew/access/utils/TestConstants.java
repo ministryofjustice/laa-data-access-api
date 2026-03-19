@@ -17,11 +17,11 @@ public class TestConstants {
         public static final String ASSIGN_DECISION = "/api/v0/applications/{id}/decision";
 
         public static final String GET_CASEWORKERS = "/api/v0/caseworkers";
+        public static final String GET_INDIVIDUALS = "/api/v0/individuals";
     }
 
     public static class Roles {
-        public static final String READER = "APPROLE_ApplicationReader";
-        public static final String WRITER = "APPROLE_ApplicationWriter";
+        public static final String CASEWORKER = "APPROLE_LAA_CASEWORKER";
         public static final String UNKNOWN = "Unknown-DO-NOT-IMPLEMENT";
     }
 }

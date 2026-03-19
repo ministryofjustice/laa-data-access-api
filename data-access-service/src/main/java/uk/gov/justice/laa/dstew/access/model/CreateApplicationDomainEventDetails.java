@@ -20,7 +20,7 @@ public class CreateApplicationDomainEventDetails {
 
   private UUID applicationId;
   private String applicationStatus;
-  private String applicationContent;
+  private String request;
   private Instant createdDate;
-  private String createdBy;
+  private String laaReference;
 }

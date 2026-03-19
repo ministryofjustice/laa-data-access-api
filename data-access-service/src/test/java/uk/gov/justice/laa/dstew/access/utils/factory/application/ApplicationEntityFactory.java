@@ -18,6 +18,7 @@ public class ApplicationEntityFactory extends BaseFactory<ApplicationEntity, App
 
   @Autowired
   private IndividualEntityFactory individualEntityFactory;
+
   @Autowired
   private ApplicationContentFactory applicationContentFactory;
 
@@ -39,8 +40,8 @@ public class ApplicationEntityFactory extends BaseFactory<ApplicationEntity, App
         .individuals(Set.of(
             individualEntityFactory.createDefault()
         ))
-        .applicationContent(applicationContentFactory.createDefaultAsMapWithApplicationContent())
-        .useDelegatedFunctions(false)
+        .applicationContent(applicationContentFactory.createDefaultAsMapOfApplicationContent())
+        .usedDelegatedFunctions(false)
         .isAutoGranted(true)
         .build();
   }
