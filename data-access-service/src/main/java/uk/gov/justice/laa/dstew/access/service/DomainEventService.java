@@ -240,14 +240,14 @@ public class DomainEventService {
    *
    * @param applicationId the id of the application for which the decision was made
    * @param request       the details of the decision that was made
+   * @param caseworkerId  the id of the caseworker who made the decision
    */
   @AllowApiCaseworker
   public void saveMakeDecisionGrantedDomainEvent(
       UUID applicationId,
-      MakeDecisionRequest request) {
+      MakeDecisionRequest request, UUID caseworkerId) {
 
     String eventDescription = request.getEventHistory().getEventDescription();
-    UUID caseworkerId = request.getUserId();
 
     MakeDecisionDomainEventDetails domainEventDetails =
         MakeDecisionDomainEventDetails.builder()
