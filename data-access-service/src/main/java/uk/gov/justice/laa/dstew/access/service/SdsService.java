@@ -115,10 +115,14 @@ public class SdsService {
    *
    * @Param fileIds the list of file IDs to be deleted
    */
-  public void deleteFiles(List<String> fileIds) {
+  public void deleteFiles(UUID applicationId, List<String> fileIds) {
+    String folderName = applicationId.toString();
+    List<String> fileKeys = fileIds.stream()
+        .map(fileId -> folderName + "/" + fileId)
+        .toList();
     sdsRestClient
         .delete()
-        .uri(sdsApiUrl + "/delete_files?file_keys=" + String.join("&file_keys=", fileIds))
+        .uri(sdsApiUrl + "/delete_files?file_keys=" + String.join("&file_keys=", fileKeys))
         .header("Authorization", "Bearer " + tokenService.getSdsAccessToken())
         .retrieve()
         .onStatus(status -> status.value() == 404, (request, response) -> {

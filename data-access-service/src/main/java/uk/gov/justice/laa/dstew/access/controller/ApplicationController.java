@@ -209,7 +209,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @Override
   public ResponseEntity<Void> deleteDocument(ServiceName serviceName, UUID id, List<String> fileKeys) {
-    sdsService.deleteFiles(fileKeys);
+    sdsService.deleteFiles(id, fileKeys);
     return ResponseEntity.noContent().build();
   }
 }
