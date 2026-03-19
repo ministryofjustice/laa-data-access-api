@@ -1,0 +1,23 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Apply Application V1
+
+components:
+  schemas:
+    applyApplication:
+      type: object
+      required:
+        - objectType
+        - id
+        - submittedAt
+      properties:
+        objectType:
+          type: string
+        id:
+          type: string
+          format: uuid
+        submittedAt:
+          type: string
+          format: date-time
+      additionalProperties: true
