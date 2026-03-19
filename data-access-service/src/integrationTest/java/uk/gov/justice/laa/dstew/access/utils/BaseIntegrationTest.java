@@ -27,6 +27,7 @@ import uk.gov.justice.laa.dstew.access.entity.LinkedApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequestIndividual;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
@@ -289,4 +290,7 @@ public abstract class BaseIntegrationTest {
         entityManager.flush();
         entityManager.clear();
     }
+
+    @Autowired
+    protected Factory<ApplicationCreateRequestIndividual, ApplicationCreateRequestIndividual.Builder> applicationCreateRequestIndividualFactory;
 }

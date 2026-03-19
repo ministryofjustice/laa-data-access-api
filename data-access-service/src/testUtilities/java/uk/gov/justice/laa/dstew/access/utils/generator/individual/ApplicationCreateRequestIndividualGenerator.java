@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.individual;
 
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequestIndividual;
-import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
