@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertCreated;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
@@ -390,7 +389,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
             problemDetail, Map.of("invalidFields", Map.of("laaReference", mustNotBeNull))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.applicationContent(null)),
-            problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
+            problemDetail, Map.of("invalidFields", Map.of("applicationContent", mustNotBeNull))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.applicationContent(new HashMap<>())),
             problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
@@ -401,7 +400,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
             "submittedAt: must not be null"))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(null)),
-            problemDetail, Map.of("invalidFields", Map.of("individuals", "size must be between 1 and 2147483647"))),
+            problemDetail, Map.of("invalidFields", Map.of("individuals", mustNotBeNull))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(List.of())),
             problemDetail, Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))),
@@ -416,7 +415,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
                 DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
                     indBuilder -> indBuilder.details(null))
             ))),
-            problemDetail, Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
+            problemDetail, Map.of("invalidFields", Map.of("individuals[0].details", mustNotBeNull))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(List.of(
                 DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
