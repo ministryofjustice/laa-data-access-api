@@ -6,18 +6,5 @@ info:
 components:
   schemas:
     applyApplication:
-      type: object
-      required:
-        - objectType
-        - id
-        - submittedAt
-      properties:
-        objectType:
-          type: string
-        id:
-          type: string
-          format: uuid
-        submittedAt:
-          type: string
-          format: date-time
-      additionalProperties: true
+      allOf:
+        - $ref: '../common/open-api-application-content-common.yml#/components/schemas/ApplicationContentBase'
