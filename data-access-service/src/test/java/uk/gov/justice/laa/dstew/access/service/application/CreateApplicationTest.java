@@ -10,7 +10,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.IndividualAssert.assertIndividualCollectionsEqual;
+import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.
+        ApplicationCreateRequestIndividualAssert.assertIndividualCollectionsEqual;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.time.Instant;
@@ -39,6 +40,7 @@ import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -426,11 +428,12 @@ public class CreateApplicationTest extends BaseServiceTest {
     ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
     verify(domainEventRepository, times(timesCalled)).save(captor.capture());
     DomainEventEntity actualDomainEvent = captor.getValue();
-    assertThat(expectedDomainEvent)
+        assertThat(expectedDomainEvent)
         .usingRecursiveComparison()
-        .ignoringFields("createdAt", "data")
+        .ignoringFields("createdAt", "data", "serviceName")
         .isEqualTo(actualDomainEvent);
-    assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
+        assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
+        assertThat(actualDomainEvent.getServiceName()).isEqualTo(ServiceName.CIVIL_APPLY);
 
     Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
     Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);

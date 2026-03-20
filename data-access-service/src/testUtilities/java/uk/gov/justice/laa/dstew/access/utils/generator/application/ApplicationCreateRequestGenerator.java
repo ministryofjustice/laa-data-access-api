@@ -5,12 +5,13 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.individual.ApplicationCreateRequestIndividualGenerator;
 import java.util.List;
 import java.util.Map;
 
 public class ApplicationCreateRequestGenerator extends BaseGenerator<ApplicationCreateRequest, ApplicationCreateRequest.Builder> {
-    private final IndividualGenerator individualGenerator = new IndividualGenerator();
+    private final ApplicationCreateRequestIndividualGenerator individualGenerator =
+            new ApplicationCreateRequestIndividualGenerator();
     private final ApplicationContentGenerator applicationContentGenerator = new ApplicationContentGenerator();
 
     public ApplicationCreateRequestGenerator() {

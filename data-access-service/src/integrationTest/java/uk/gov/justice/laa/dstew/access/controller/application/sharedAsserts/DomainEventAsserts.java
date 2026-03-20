@@ -8,6 +8,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 
 import java.util.List;
@@ -29,6 +30,17 @@ public class DomainEventAsserts {
             DomainEventType expectedDomainEventType,
             EventHistory expectedEventHistory
     ) {
+        assertDomainEventsCreatedForApplications(
+                applications, caseWorkerId, expectedDomainEventType, expectedEventHistory, ServiceName.CIVIL_APPLY);
+    }
+
+    public void assertDomainEventsCreatedForApplications(
+            List<ApplicationEntity> applications,
+            UUID caseWorkerId,
+            DomainEventType expectedDomainEventType,
+            EventHistory expectedEventHistory,
+            ServiceName expectedServiceName
+    ) {
 
         List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
 
@@ -42,6 +54,7 @@ public class DomainEventAsserts {
             assertEquals(expectedDomainEventType, domainEvent.getType());
             assertTrue(applicationIds.contains(domainEvent.getApplicationId()));
             assertEquals(caseWorkerId, domainEvent.getCaseworkerId());
+            assertThat(domainEvent.getServiceName()).isEqualTo(expectedServiceName);
             if (expectedEventHistory.getEventDescription() != null) {
                 assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
             } else {
@@ -54,6 +67,14 @@ public class DomainEventAsserts {
             ApplicationEntity application,
             DomainEventType expectedType
     ) throws Exception {
+        assertDomainEventForApplication(application, expectedType, ServiceName.CIVIL_APPLY);
+    }
+
+    public void assertDomainEventForApplication(
+            ApplicationEntity application,
+            DomainEventType expectedType,
+            ServiceName expectedServiceName
+    ) throws Exception {
 
         List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
 
@@ -62,6 +83,7 @@ public class DomainEventAsserts {
         assertThat(event.getApplicationId()).isEqualTo(application.getId());
         assertThat(event.getType()).isEqualTo(expectedType);
         assertThat(event.getCreatedAt()).isNotNull();
+        assertThat(event.getServiceName()).isEqualTo(expectedServiceName);
 
         // ---- JSON payload assertions ----
         ObjectMapper mapper = new ObjectMapper();

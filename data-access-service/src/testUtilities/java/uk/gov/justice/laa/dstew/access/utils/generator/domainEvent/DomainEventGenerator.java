@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.helpers.SpringContext;
 
@@ -25,6 +26,7 @@ public class DomainEventGenerator extends BaseGenerator<DomainEventEntity, Domai
                 .createdBy("")
                 .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
                 .data("{\"eventDescription\": \"" + DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER.getValue() + "\"}")
+                .serviceName(ServiceName.CIVIL_APPLY)
                 .build();
     }
 }

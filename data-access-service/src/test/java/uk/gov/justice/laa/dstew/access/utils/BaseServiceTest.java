@@ -2,18 +2,23 @@ package uk.gov.justice.laa.dstew.access.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
@@ -78,8 +83,16 @@ public class BaseServiceTest {
     @MockitoBean
     protected IndividualRepository individualRepository;
 
+    @MockitoBean
+    protected ServiceNameContext serviceNameContext;
+
     @Autowired
     protected ObjectMapper objectMapper;
+
+    @BeforeEach
+    void setUp() {
+      Mockito.lenient().when(serviceNameContext.getServiceName()).thenReturn(ServiceName.CIVIL_APPLY);
+    }
 
     @AfterEach
     void tearDown() {

@@ -1,9 +1,15 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequestIndividual;
+import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
 import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
 /**
  * Mapper interface for Individuals.
@@ -37,6 +43,47 @@ public interface IndividualMapper {
   }
 
   /**
+   * Converts a {@link IndividualEntity} to an API-facing {@link Individual} model.
+   * Safely handles nulls: if the {@code entity} itself is null,
+   * the method returns {@code null}.
+   *
+   * @param entity the {@link IndividualEntity} to map (might be null)
+   * @return a new {@link Individual} object populated with first name, last name, date of birth,
+   *         and individual content, or {@code null} if the input or individual is null
+   */
+  default Individual toExtendedIndividual(IndividualEntity entity,
+                                          IndividualType individualType,
+                                          IncludedAdditionalData include,
+                                          ApplicationContent applicationContent) {
+
+    Individual dto = toIndividual(entity);
+
+    if (dto == null) {
+      return null;
+    }
+
+    dto.setClientId(null);
+    dto.setLastNameAtBirth(null);
+    dto.setPreviousApplicationReference(null);
+    dto.setRelationshipToChildren(null);
+    dto.setCorrespondenceAddressType(null);
+    dto.setCorrespondenceAddress(null);
+
+    // only populate fields if rules are set
+    if (individualType == IndividualType.CLIENT && include == IncludedAdditionalData.CLIENT_DETAILS) {
+      dto.setClientId(entity.getId());
+      dto.setLastNameAtBirth(applicationContent.getLastNameAtBirth());
+      dto.setPreviousApplicationReference(applicationContent.getPreviousApplicationReference());
+      dto.setRelationshipToChildren(applicationContent.getRelationshipToChildren());
+      dto.setCorrespondenceAddressType(applicationContent.getCorrespondenceAddressType());
+      if (applicationContent.getApplicant() != null) {
+        dto.setCorrespondenceAddress(applicationContent.getApplicant().getAddresses());
+      }
+    }
+    return dto;
+  }
+
+  /**
    * Converts API model {@link Individual} to an database entity {@link IndividualEntity} model.
    * Safely handles nulls: if the {@code individual} itself is null,
    * the method returns {@code null}.
@@ -57,4 +104,27 @@ public interface IndividualMapper {
                             .type(individual.getType())
                             .build();
   }
+
+  /**
+   * Converts API model {@link ApplicationCreateRequestIndividual} to an database entity {@link IndividualEntity} model.
+   * Safely handles nulls: if the {@code individual} itself is null,
+   * the method returns {@code null}.
+   *
+   * @param individual API model the {@link ApplicationCreateRequestIndividual} to map (might be null)
+   * @return a new {@link IndividualEntity} object populated with first name, last name, date of birth,
+   *         and individual content, or {@code null} if the input or individual is null
+   */
+  default IndividualEntity toIndividualEntity(ApplicationCreateRequestIndividual individual) {
+    return individual == null
+            ?
+            null :
+            IndividualEntity.builder()
+                    .firstName(individual.getFirstName())
+                    .lastName(individual.getLastName())
+                    .dateOfBirth(individual.getDateOfBirth())
+                    .individualContent(individual.getDetails())
+                    .type(individual.getType())
+                    .build();
+  }
+
 }

@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 
 import java.time.Instant;
@@ -27,6 +28,7 @@ public class DomainEventFactory extends BaseFactory<DomainEventEntity, DomainEve
                 .createdBy("")
                 .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
                 .data("")
+                .serviceName(ServiceName.CIVIL_APPLY)
                 .build();
 
         return entity;

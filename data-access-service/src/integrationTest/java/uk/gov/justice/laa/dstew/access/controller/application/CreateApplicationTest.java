@@ -40,6 +40,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCo
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCreateRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationOfficeGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.individual.ApplicationCreateRequestIndividualGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualGenerator;
 
 @ActiveProfiles("test")
@@ -67,6 +68,12 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenCreateNewApplication_whenCreateApplicationAndNoOffice_thenReturnCreatedWithLocationHeader() throws Exception {
     verifyCreateNewApplication(null, null);
+  }
+
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
+  public void givenCreateNewApplication_whenCreateApplicationWithCivilDecideServiceName_thenReturnCreatedAndPersistServiceName() throws Exception {
+    verifyCreateNewApplicationWithServiceName(ServiceName.CIVIL_DECIDE);
   }
 
   @Test
@@ -213,6 +220,24 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
     domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED);
     return createdApplication;
+  }
+
+  private void verifyCreateNewApplicationWithServiceName(ServiceName serviceName) throws Exception {
+    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class);
+    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
+        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
+    );
+
+    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest, ServiceNameHeader(serviceName.getValue()));
+
+    assertSecurityHeaders(result);
+    assertCreated(result);
+
+    UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
+      .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
+
+    domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED, serviceName);
   }
 
     @ParameterizedTest
@@ -377,25 +402,25 @@ public class CreateApplicationTest extends BaseIntegrationTest {
             problemDetail, Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(List.of(
-                DataGenerator.createDefault(IndividualGenerator.class,
+                DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
                     indBuilder -> indBuilder.dateOfBirth(null))
             ))),
             problemDetail, Map.of("invalidFields", Map.of("individuals[0].dateOfBirth", mustNotBeNull))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(List.of(
-                DataGenerator.createDefault(IndividualGenerator.class,
+                DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
                     indBuilder -> indBuilder.details(null))
             ))),
             problemDetail, Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(List.of(
-                DataGenerator.createDefault(IndividualGenerator.class,
+                DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
                     indBuilder -> indBuilder.details(new HashMap<>()))
             ))),
             problemDetail, Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(List.of(
-                DataGenerator.createDefault(IndividualGenerator.class,
+                DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
                     indBuilder -> indBuilder.dateOfBirth(null).firstName("").lastName("").type(null)
                         .details(new HashMap<>()))
             ))),
@@ -406,7 +431,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
                     "individuals[0].dateOfBirth", mustNotBeNull))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(List.of(
-                DataGenerator.createDefault(IndividualGenerator.class,
+                DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
                     indBuilder -> indBuilder.dateOfBirth(null).firstName(null).lastName(null).details(null))
             ))),
             problemDetail, Map.of("invalidFields",
