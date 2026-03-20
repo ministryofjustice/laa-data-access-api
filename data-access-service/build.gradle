@@ -54,6 +54,23 @@ test {
     finalizedBy jacocoTestReport
 }
 
+tasks.named('integrationTest') {
+    // Forward test.mode so HarnessExtension selects the correct TestContextProvider
+    systemProperty 'test.mode', System.getProperty('test.mode', 'integration')
+
+    // Forward infrastructure connection details into the test JVM environment
+    ['LAA_ACCESS_API_URL', 'LAA_ACCESS_DB_URL', 'LAA_ACCESS_DB_USERNAME', 'LAA_ACCESS_DB_PASSWORD'].each { key ->
+        def value = System.getenv(key)
+        if (value) environment key, value
+    }
+
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+        showStandardStreams = true
+        exceptionFormat = 'full'
+    }
+}
+
 jacoco {
     toolVersion = "0.8.13"
 }
@@ -136,6 +153,7 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
     testImplementation 'org.instancio:instancio-junit:5.5.1'
     testImplementation 'net.datafaker:datafaker:2.5.2'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

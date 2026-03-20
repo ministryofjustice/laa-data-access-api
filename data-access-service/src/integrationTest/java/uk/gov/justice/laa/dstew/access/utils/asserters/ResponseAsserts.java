@@ -11,6 +11,7 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.test.web.servlet.MvcResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 public class ResponseAsserts {
@@ -115,6 +116,29 @@ public class ResponseAsserts {
   }
 
   public static void assertUnauthorised(MvcResult response) {
+    assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getResponse().getStatus());
+  }
+
+  // ── HarnessResult overloads ───────────────────────────────────────────────
+
+  public static void assertSecurityHeaders(HarnessResult response) {
+    assertEquals("0", response.getResponse().getHeader("X-XSS-Protection"));
+    assertEquals("DENY", response.getResponse().getHeader("X-Frame-Options"));
+  }
+
+  public static void assertOK(HarnessResult response) {
+    assertEquals(HttpStatus.OK.value(), response.getResponse().getStatus());
+  }
+
+  public static void assertBadRequest(HarnessResult response) {
+    assertEquals(HttpStatus.BAD_REQUEST.value(), response.getResponse().getStatus());
+  }
+
+  public static void assertForbidden(HarnessResult response) {
+    assertEquals(HttpStatus.FORBIDDEN.value(), response.getResponse().getStatus());
+  }
+
+  public static void assertUnauthorised(HarnessResult response) {
     assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getResponse().getStatus());
   }
 }

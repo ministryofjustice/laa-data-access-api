@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -27,7 +28,9 @@ public class DevTokenConfig {
 
   private static final Map<String, List<String>> DEV_TOKENS = Map.of(
       "swagger-caseworker-token",
-      List.of("APPROLE_LAA_CASEWORKER")
+      List.of("APPROLE_LAA_CASEWORKER"),
+      "unknown-token",
+      List.of("APPROLE_UNKNOWN")
   );
 
   private static final Logger log = LoggerFactory.getLogger(DevTokenConfig.class);
