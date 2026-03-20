@@ -85,6 +85,19 @@ Execute
 
 `./gradlew integrationTest`
 
+### Run infrastructure smoke tests
+
+Infrastructure smoke tests run the built Docker image against a real Postgres database and
+verify the live HTTP API. See [`docs/infrastructure-smoke-tests.md`](docs/infrastructure-smoke-tests.md)
+for full details.
+
+The script is useful for testing the application locally. 
+The smoke tests will also run in CI eventually.
+
+```bash
+./scripts/run-infrastructure-smoke-tests.sh
+```
+
 ### Run application
 
 Ensure that the environment variables specified in the 
