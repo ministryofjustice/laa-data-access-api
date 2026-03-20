@@ -24,13 +24,14 @@ public class CaseworkerMapperTest extends BaseMapperTest {
 
     @Test
     void givenCaseworkerEntity_whenToCaseworker_thenMapsFieldsCorrectly() {
+        UUID caseworkerId = UUID.randomUUID();
         CaseworkerEntity entity = DataGenerator.createDefault(CaseworkerGenerator.class,
-                builder -> builder.id(UUID.fromString("11111111-1111-1111-1111-111111111111"))
+                builder -> builder.id(caseworkerId)
                                   .username("caseworker1"));
 
         var result = mapper.toCaseworker(entity);
 
-        assertThat(result.getId()).isEqualTo(UUID.fromString("11111111-1111-1111-1111-111111111111"));
+        assertThat(result.getId()).isEqualTo(caseworkerId);
         assertThat(result.getUsername()).isEqualTo("caseworker1");
     }
 

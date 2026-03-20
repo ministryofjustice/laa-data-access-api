@@ -160,12 +160,12 @@ public class ApplicationSummaryMapperTest extends BaseMapperTest {
         String laaReference = "ref1";
         boolean isLead = true;
 
-        var dto = DataGenerator.createDefault(LinkedApplicationSummaryDtoGenerator.class, builder -> builder
+        var expectedLinkSummary = DataGenerator.createDefault(LinkedApplicationSummaryDtoGenerator.class, builder -> builder
                 .applicationId(applicationId)
                 .laaReference(laaReference)
                 .isLead(isLead));
 
-        LinkedApplicationSummary result = applicationMapper.toLinkedApplicationSummary(dto);
+        LinkedApplicationSummary result = applicationMapper.toLinkedApplicationSummary(expectedLinkSummary);
 
         assertThat(result).isNotNull();
         assertThat(result.getApplicationId()).isEqualTo(applicationId);

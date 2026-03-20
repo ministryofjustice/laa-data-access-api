@@ -19,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationSummaryGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationSummaryDtoGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -350,9 +351,9 @@ public class GetApplicationsTest extends BaseServiceTest {
         ApplicationSummaryEntity secondAssociateApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class);
 
         List<LinkedApplicationSummaryDto> linkedApplicationSummaryDtos = List.of(
-            new LinkedApplicationSummaryDto(firstAssociateApplication.getId(), firstAssociateApplication.getLaaReference(), false, leadId),
-            new LinkedApplicationSummaryDto(secondAssociateApplication.getId(), secondAssociateApplication.getLaaReference(), false, leadId),
-            new LinkedApplicationSummaryDto(leadId, "LEAD-REF", true, leadId)
+            DataGenerator.createDefault(LinkedApplicationSummaryDtoGenerator.class, b -> b.applicationId(firstAssociateApplication.getId()).laaReference(firstAssociateApplication.getLaaReference()).isLead(false).leadApplicationId(leadId)),
+            DataGenerator.createDefault(LinkedApplicationSummaryDtoGenerator.class, b -> b.applicationId(secondAssociateApplication.getId()).laaReference(secondAssociateApplication.getLaaReference()).isLead(false).leadApplicationId(leadId)),
+            DataGenerator.createDefault(LinkedApplicationSummaryDtoGenerator.class, b -> b.applicationId(leadId).laaReference("LEAD-REF").isLead(true).leadApplicationId(leadId))
         );
 
         when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class)))

@@ -62,15 +62,15 @@ class ProceedingMapperTest extends BaseMapperTest {
 
     @Test
     void givenProceedingEntity_whenToApplicationProceeding_thenMapsFieldsCorrectly() {
+        UUID proceedingId = UUID.randomUUID();
         ProceedingEntity entity = DataGenerator.createDefault(ProceedingsEntityGenerator.class,
-                builder -> builder.id(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
-                                  .description("Test description"));
+                builder -> builder.id(proceedingId));
 
         ApplicationProceeding result = proceedingMapper.toApplicationProceeding(entity);
 
         assertThat(result).isNotNull();
-        assertThat(result.getProceedingId()).isEqualTo(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
-        assertThat(result.getProceedingDescription()).isEqualTo("Test description");
+        assertThat(result.getProceedingId()).isEqualTo(proceedingId);
+        assertThat(result.getProceedingDescription()).isEqualTo("description");
         assertThat(result.getProceedingType()).isEqualTo("hearing");
         assertThat(result.getCategoryOfLaw()).isEqualTo("Family");
         assertThat(result.getMatterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
