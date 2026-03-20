@@ -7,22 +7,16 @@ components:
   schemas:
     applyApplication:
       description: Application schema for v2 of the apply API, which includes proceedings information in the request body. This allows for creation of applications with multiple proceedings in a single request.
-      type: object
       allOf:
         - $ref: '../v1/open-api-apply-application.yml#/components/schemas/applyApplication'
+        - type: object
+          required:
+            - proceedings
+          properties:
+            proceedings:
+              type: array
+              items:
+                $ref: '../common/open-api-models-common.yml#/components/schemas/createProceedingRequest'
       required:
         - proceedings
-      properties:
-        objectType:
-          type: string
-        id:
-          type: string
-          format: uuid
-        submittedAt:
-          type: string
-          format: date-time
-        proceedings:
-          type: array
-          items:
-            $ref: '../open-api-application-specification.yml#/components/schemas/createProceedingRequest'
-        additionalProperties: true
+      additionalProperties: true

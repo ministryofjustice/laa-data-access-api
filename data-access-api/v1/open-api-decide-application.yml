@@ -7,25 +7,15 @@ components:
   schemas:
     decideApplication:
       description: Application schema for the decide phase, includes office information required for decision-making
-      type: object
-      required:
-        - objectType
-        - id
-        - submittedAt
-        - office
-      properties:
-        objectType:
-          type: string
-        id:
-          type: string
-          format: uuid
-        submittedAt:
-          type: string
-          format: date-time
-        office:
-          type: string
-          description: Office code or identifier required for decision making
-      additionalProperties: true
+      allOf:
+        - $ref: '../common/open-api-application-content-common.yml#/components/schemas/ApplicationContentBase'
+        - type: object
+          required:
+            - office
+          properties:
+            office:
+              type: string
+              description: Office code or identifier required for decision making
       example:
         objectType: decide
         id: 550e8400-e29b-41d4-a716-446655440002

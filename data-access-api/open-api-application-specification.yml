@@ -384,26 +384,12 @@ components:
       bearerFormat: JWT
   parameters:
     XServiceName:
-      in: header
-      name: X-Service-Name
-      required: true
-      schema:
-        $ref: "#/components/schemas/ServiceName"
+      $ref: "./common/open-api-core-common.yml#/components/parameters/XServiceName"
   schemas:
     ServiceName:
-      type: string
-      enum:
-        - CIVIL_APPLY
-        - CIVIL_DECIDE
-      description: Service name
-
+      $ref: "./common/open-api-core-common.yml#/components/schemas/ServiceName"
     ApplicationStatus:
-      type: string
-      enum:
-        - APPLICATION_IN_PROGRESS
-        - APPLICATION_SUBMITTED
-      description: Application statuses
-
+      $ref: "./common/open-api-core-common.yml#/components/schemas/ApplicationStatus"
     DomainEventType:
       type: string
       enum:
@@ -415,48 +401,24 @@ components:
         - APPLICATION_MAKE_DECISION_GRANTED
 
     CategoryOfLaw:
-      type: string
-      enum:
-        - FAMILY
+      $ref: "./common/open-api-core-common.yml#/components/schemas/CategoryOfLaw"
 
     MatterType:
-      type: string
-      enum:
-        - SPECIAL_CHILDREN_ACT
+      $ref: "./common/open-api-core-common.yml#/components/schemas/MatterType"
     ApplicationType:
-      type: string
-      enum:
-        - INITIAL
-      default: INITIAL
+      $ref: "./common/open-api-core-common.yml#/components/schemas/ApplicationType"
 
     IndividualType:
-      type: string
-      enum:
-        - CLIENT
+      $ref: "./common/open-api-core-common.yml#/components/schemas/IndividualType"
 
     ApplicationSortBy:
-      type: string
-      enum:
-        - LAST_UPDATED_DATE
-        - SUBMITTED_DATE
+      $ref: "./common/open-api-core-common.yml#/components/schemas/ApplicationSortBy"
 
     ApplicationOrderBy:
-      type: string
-      enum:
-        - ASC
-        - DESC
+      $ref: "./common/open-api-core-common.yml#/components/schemas/ApplicationOrderBy"
 
     Opponent:
-      type: object
-      properties:
-        opposableType:
-          type: string
-        firstName:
-          type: string
-        lastName:
-          type: string
-        organisationName:
-          type: string
+      $ref: "./common/open-api-models-common.yml#/components/schemas/Opponent"
 
     ApplicationCreateRequestIndividual:
       type: object
@@ -567,12 +529,7 @@ components:
           format: int64
 
     Provider:
-      type: object
-      properties:
-        officeCode:
-          type: string
-        contactEmail:
-          type: string
+      $ref: "./common/open-api-models-common.yml#/components/schemas/Provider"
 
     ApplicationCreateRequest:
       type: object
@@ -687,10 +644,7 @@ components:
           type: string
 
     EventHistory:
-      type: object
-      properties:
-        eventDescription:
-          type: string
+      $ref: "./common/open-api-models-common.yml#/components/schemas/EventHistory"
 
     CaseworkerResponse:
       type: array
@@ -757,16 +711,7 @@ components:
           type: string
 
     Paging:
-      type: object
-      properties:
-        page:
-          type: integer
-        pageSize:
-          type: integer
-        itemsReturned:
-          type: integer
-        totalRecords:
-          type: integer
+      $ref: "./common/open-api-models-common.yml#/components/schemas/Paging"
 
     IndividualsResponse:
       type: object
@@ -785,10 +730,7 @@ components:
         - REFUSED
 
     MeritsDecisionStatus:
-      type: string
-      enum:
-        - GRANTED
-        - REFUSED
+      $ref: "./common/open-api-core-common.yml#/components/schemas/MeritsDecisionStatus"
 
     MeritsDecisionDetails:
       type: object
@@ -897,15 +839,4 @@ components:
               decide: './v1/open-api-decide-application.yml#/components/schemas/decideApplication'
 
     createProceedingRequest:
-      type: object
-      required:
-        - id
-      properties:
-        id:
-          type: string
-          format: uuid
-        categoryOfLaw:
-          type: string
-        matterType:
-          type: string
-      additionalProperties: true
+      $ref: "./common/open-api-models-common.yml#/components/schemas/createProceedingRequest"
