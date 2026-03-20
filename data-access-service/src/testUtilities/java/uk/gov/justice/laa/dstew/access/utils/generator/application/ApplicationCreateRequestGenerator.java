@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
@@ -8,6 +9,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.ApplicationCreateRequestIndividualGenerator;
 import java.util.List;
 import java.util.Map;
+import uk.gov.justice.laa.dstew.access.utils.helpers.SpringContext;
 
 public class ApplicationCreateRequestGenerator extends BaseGenerator<ApplicationCreateRequest, ApplicationCreateRequest.Builder> {
     private final ApplicationCreateRequestIndividualGenerator individualGenerator =
@@ -20,12 +22,13 @@ public class ApplicationCreateRequestGenerator extends BaseGenerator<Application
 
     @Override
     public ApplicationCreateRequest createDefault() {
+        ObjectMapper mapper = SpringContext.getObjectMapper();
         ApplicationContent applicationContent = applicationContentGenerator.createDefault();
         return ApplicationCreateRequest.builder()
                 .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
                 .laaReference("REF7327")
                 .individuals(List.of(individualGenerator.createDefault()))
-                .applicationContent(MapperUtil.getObjectMapper().convertValue(applicationContent, Map.class))
+                .applicationContent(mapper.convertValue(applicationContent, Map.class))
                 .build();
     }
 }
