@@ -368,8 +368,7 @@ public class CreateApplicationTest extends BaseServiceTest {
 
     applicationContent.putAdditionalApplicationContent("testPropertyInTest", "testValue");
     return objectMapper.convertValue(applicationContent, Map.class);
-
-  }
+    }
 
   private Proceeding getProceeding(Boolean useDelegatedFunctions, boolean leadProceeding) {
     return DataGenerator.createDefault(ProceedingGenerator.class,

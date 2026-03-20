@@ -1,12 +1,13 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
+import java.util.List;
+import java.util.Map;
+import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplyApplication;
-import uk.gov.justice.laa.dstew.access.model.BaseApplicationContent;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.ApplicationCreateRequestIndividualGenerator;
 import java.util.List;
@@ -25,15 +26,12 @@ public class ApplicationCreateRequestGenerator extends BaseGenerator<Application
     @Override
     public ApplicationCreateRequest createDefault() {
       ApplicationContent applicationContent = applicationContentGenerator.createDefault();
-      ApplyApplication baseApplicationContent = new ApplyApplication();
-      baseApplicationContent.id(applicationContent.getId());
-      applicationContent.getAdditionalApplicationContent();
 
         return ApplicationCreateRequest.builder()
                 .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
                 .laaReference("REF7327")
                 .individuals(List.of(individualGenerator.createDefault()))
-                .applicationContent(baseApplicationContent)
+                .applicationContent(MapperUtil.getObjectMapper().convertValue(applicationContent, Map.class))
                 .build();
     }
 }

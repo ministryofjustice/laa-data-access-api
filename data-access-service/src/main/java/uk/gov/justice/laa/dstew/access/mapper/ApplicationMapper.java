@@ -56,7 +56,7 @@ public interface ApplicationMapper {
         .stream()
         .map(individualMapper::toIndividualEntity)
         .collect(Collectors.toSet());
-   entity.setApplicationContent(mapper.convertValue(req.getApplicationContent(), Map.class));
+    entity.setApplicationContent(mapper.convertValue(req.getApplicationContent(), Map.class));
     entity.setIndividuals(individuals);
     return entity;
   }
