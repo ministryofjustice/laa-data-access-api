@@ -398,10 +398,9 @@ DROP TABLE linked_merits_decisions;
 
 ---
 
-- **Source Code**: `/Users/david.stuart/Development/DataStewardship/laa-data-access-api/data-access-service/src/main/java/`
-- **Tests**: Same directory with `/test/` structure
+- **Source Code**: `data-access-service/src/main/java/`
+- **Tests**: `data-access-service/src/test/java/`
 - **Build**: `./gradlew test` (434/434 tests)
-- **Auto Memory**: `/Users/david.stuart/.claude/projects/-Users-.../memory/MEMORY.md`
 
 ---
 
