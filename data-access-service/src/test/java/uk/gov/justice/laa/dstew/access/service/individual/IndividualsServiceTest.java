@@ -155,7 +155,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
   @SuppressWarnings("unchecked")
   public void noFilters_whenGetIndividuals_thenRepositoryFindAllWithSpecificationAndPageable() {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
-    IndividualEntity entity = individualEntityFactory.createDefault();
+    IndividualEntity entity = DataGenerator.createDefault(IndividualEntityGenerator.class);
     Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
 
@@ -172,7 +172,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
   public void applicationIdProvided_whenGetIndividuals_thenRepositoryFindAllWithSpecificationAndPageable() {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
     UUID appId = UUID.randomUUID();
-    IndividualEntity entity = individualEntityFactory.createDefault();
+    IndividualEntity entity = DataGenerator.createDefault(IndividualEntityGenerator.class);
     Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
 
@@ -188,7 +188,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
   public void individualTypeProvided_whenGetIndividuals_thenRepositoryFindAllWithSpecificationAndPageable() {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
     IndividualType type = IndividualType.CLIENT;
-    IndividualEntity entity = individualEntityFactory.createDefault();
+    IndividualEntity entity = DataGenerator.createDefault(IndividualEntityGenerator.class);
     Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
 
@@ -205,7 +205,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
     UUID appId = UUID.randomUUID();
     IndividualType type = IndividualType.CLIENT;
-    IndividualEntity entity = individualEntityFactory.createDefault();
+    IndividualEntity entity = DataGenerator.createDefault(IndividualEntityGenerator.class);
     Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
 

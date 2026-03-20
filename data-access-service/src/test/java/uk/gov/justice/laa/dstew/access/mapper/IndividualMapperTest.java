@@ -5,76 +5,113 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.LocalDate;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import org.mapstruct.factory.Mappers;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualGenerator;
 
-class IndividualMapperTest {
+@ExtendWith(MockitoExtension.class)
+class IndividualMapperTest extends BaseMapperTest {
 
-    private final IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
+    @InjectMocks
+    private IndividualMapperImpl individualMapper;
 
     @Test
     void givenNullIndividualEntity_whenToIndividual_thenReturnNull() {
-        IndividualEntity entity = null;
-        assertThat(individualMapper.toIndividual(entity)).isNull();
+        assertThat(individualMapper.toIndividual(null)).isNull();
     }
 
     @Test
     void givenIndividualEntity_whenToIndividual_thenMapsFieldsCorrectly() {
-        String firstName = "John";
-        String lastName = "Doe";
         LocalDate dateOfBirth = LocalDate.of(1980, 5, 15);
         Map<String, Object> individualContent = Map.of("key", "value");
-        IndividualType type = IndividualType.CLIENT;
 
-        IndividualEntity expectedIndividualEntity = IndividualEntity.builder()
-                .firstName(firstName)
-                .lastName(lastName)
-                .dateOfBirth(dateOfBirth)
-                .individualContent(individualContent)
-                .type(type)
-                .build();
+        IndividualEntity entity = DataGenerator.createDefault(IndividualEntityGenerator.class,
+                builder -> builder
+                        .firstName("John")
+                        .lastName("Doe")
+                        .dateOfBirth(dateOfBirth)
+                        .individualContent(individualContent)
+                        .type(IndividualType.CLIENT));
 
-        Individual actualIndividual = individualMapper.toIndividual(expectedIndividualEntity);
+        Individual result = individualMapper.toIndividual(entity);
 
-        assertThat(actualIndividual).isNotNull();
-        assertThat(actualIndividual.getFirstName()).isEqualTo(firstName);
-        assertThat(actualIndividual.getLastName()).isEqualTo(lastName);
-        assertThat(actualIndividual.getDateOfBirth()).isEqualTo(dateOfBirth);
-        assertThat(actualIndividual.getDetails()).isEqualTo(individualContent);
-        assertThat(actualIndividual.getType()).isEqualTo(type);
+        assertThat(result).isNotNull();
+        assertThat(result.getFirstName()).isEqualTo("John");
+        assertThat(result.getLastName()).isEqualTo("Doe");
+        assertThat(result.getDateOfBirth()).isEqualTo(dateOfBirth);
+        assertThat(result.getDetails()).isEqualTo(individualContent);
+        assertThat(result.getType()).isEqualTo(IndividualType.CLIENT);
+    }
+
+    @Test
+    void givenIndividualEntityWithAllNullFields_whenToIndividual_thenAllFieldsAreNull() {
+        IndividualEntity entity = DataGenerator.createDefault(IndividualEntityGenerator.class,
+                builder -> builder
+                        .firstName(null)
+                        .lastName(null)
+                        .dateOfBirth(null)
+                        .individualContent(null)
+                        .type(null));
+
+        Individual result = individualMapper.toIndividual(entity);
+
+        assertThat(result.getFirstName()).isNull();
+        assertThat(result.getLastName()).isNull();
+        assertThat(result.getDateOfBirth()).isNull();
+        assertThat(result.getDetails()).isNull();
+        assertThat(result.getType()).isNull();
     }
 
     @Test
     void givenNullIndividual_whenToIndividualEntity_thenReturnNull() {
-        Individual individual = null;
-        assertThat(individualMapper.toIndividualEntity(individual)).isNull();
+        assertThat(individualMapper.toIndividualEntity(null)).isNull();
     }
 
     @Test
     void givenIndividual_whenToIndividualEntity_thenMapsFieldsCorrectly() {
-        String firstName = "John";
-        String lastName = "Doe";
         LocalDate dateOfBirth = LocalDate.of(2025, 11, 24);
         Map<String, Object> details = Map.of("key", "value");
-        IndividualType type = IndividualType.CLIENT;
 
-        Individual expectedIndividual = Individual.builder()
-                .firstName(firstName)
-                .lastName(lastName)
-                .dateOfBirth(dateOfBirth)
-                .details(details)
-                .type(type)
-                .build();
+        Individual individual = DataGenerator.createDefault(IndividualGenerator.class,
+                builder -> builder
+                        .firstName("John")
+                        .lastName("Doe")
+                        .dateOfBirth(dateOfBirth)
+                        .details(details)
+                        .type(IndividualType.CLIENT));
 
-        IndividualEntity actualIndividualEntity = individualMapper.toIndividualEntity(expectedIndividual);
+        IndividualEntity result = individualMapper.toIndividualEntity(individual);
 
-        assertThat(actualIndividualEntity).isNotNull();
-        assertThat(actualIndividualEntity.getFirstName()).isEqualTo(firstName);
-        assertThat(actualIndividualEntity.getLastName()).isEqualTo(lastName);
-        assertThat(actualIndividualEntity.getDateOfBirth()).isEqualTo(dateOfBirth);
-        assertThat(actualIndividualEntity.getIndividualContent()).isEqualTo(details);
-        assertThat(actualIndividualEntity.getType()).isEqualTo(type);
+        assertThat(result).isNotNull();
+        assertThat(result.getFirstName()).isEqualTo("John");
+        assertThat(result.getLastName()).isEqualTo("Doe");
+        assertThat(result.getDateOfBirth()).isEqualTo(dateOfBirth);
+        assertThat(result.getIndividualContent()).isEqualTo(details);
+        assertThat(result.getType()).isEqualTo(IndividualType.CLIENT);
+    }
+
+    @Test
+    void givenIndividualWithAllNullFields_whenToIndividualEntity_thenAllFieldsAreNull() {
+        Individual individual = DataGenerator.createDefault(IndividualGenerator.class,
+                builder -> builder
+                        .firstName(null)
+                        .lastName(null)
+                        .dateOfBirth(null)
+                        .details(null)
+                        .type(null));
+
+        IndividualEntity result = individualMapper.toIndividualEntity(individual);
+
+        assertThat(result.getFirstName()).isNull();
+        assertThat(result.getLastName()).isNull();
+        assertThat(result.getDateOfBirth()).isNull();
+        assertThat(result.getIndividualContent()).isNull();
+        assertThat(result.getType()).isNull();
     }
 }

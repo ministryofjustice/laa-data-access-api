@@ -20,6 +20,9 @@ public interface DomainEventMapper {
    * @return a new {@link ApplicationDomainEvent} object populated with mapped values 
    */
   default ApplicationDomainEvent toDomainEvent(DomainEventEntity entity) {
+    if (entity == null) {
+      return null;
+    }
     return ApplicationDomainEvent.builder()
                       .applicationId(entity.getApplicationId())
                       .caseworkerId(entity.getCaseworkerId())
