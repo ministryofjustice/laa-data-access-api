@@ -33,6 +33,7 @@ public class ApplicationContent implements Serializable {
 
   @Serial
   private static final long serialVersionUID = 1L;
+
   @NotNull
   @Valid
   @Schema(name = "id", requiredMode = Schema.RequiredMode.REQUIRED)

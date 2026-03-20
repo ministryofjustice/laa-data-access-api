@@ -8,3 +8,4 @@ components:
     applyApplication:
       allOf:
         - $ref: '../common/open-api-application-content-common.yml#/components/schemas/ApplicationContentBase'
+      additionalProperties: true
