@@ -51,6 +51,6 @@ public class IntegrationTestContextProvider implements TestContextProvider {
 
     @Override
     public void close() {
-        applicationContext.close();
+        //applicationContext.close();
     }
 }

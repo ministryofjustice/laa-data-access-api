@@ -85,7 +85,10 @@ public class InfrastructureTestContextProvider implements TestContextProvider {
     }
 
     @EnableJpaRepositories(basePackages = "uk.gov.justice.laa.dstew.access.repository")
-    @ComponentScan(basePackages = "uk.gov.justice.laa.dstew.access.utils.generator")
+    @ComponentScan(basePackages = {
+            "uk.gov.justice.laa.dstew.access.utils.generator",
+            "uk.gov.justice.laa.dstew.access.utils.helpers"
+    })
     static class InfrastructureJpaConfig {
 
         @Bean

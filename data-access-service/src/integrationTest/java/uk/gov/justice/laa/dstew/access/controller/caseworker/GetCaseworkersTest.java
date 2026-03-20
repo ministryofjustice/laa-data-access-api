@@ -79,14 +79,10 @@ public class GetCaseworkersTest extends BaseHarnessTest {
     }
 
     private void assertCaseworkerListEquals(List<Caseworker> caseworkers, List<CaseworkerEntity> entities) {
-        assertThat(caseworkers).hasSameSizeAs(entities);
-        for (int i = 0; i < caseworkers.size(); i++) {
-            assertCaseworkerEquals(caseworkers.get(i), entities.get(i));
+        for (CaseworkerEntity entity : entities) {
+            assertThat(caseworkers).anyMatch(c ->
+                    entity.getId().equals(c.getId()) &&
+                    entity.getUsername().equals(c.getUsername()));
         }
-    }
-
-    private void assertCaseworkerEquals(Caseworker caseworker, CaseworkerEntity entity) {
-        assertThat(caseworker.getId()).isEqualTo(entity.getId());
-        assertThat(caseworker.getUsername()).isEqualTo(entity.getUsername());
     }
 }

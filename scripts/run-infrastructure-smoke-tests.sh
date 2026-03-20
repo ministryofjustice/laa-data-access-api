@@ -77,7 +77,8 @@ LAA_ACCESS_DB_USERNAME="${LAA_ACCESS_DB_USERNAME:-laa_user}" \
 LAA_ACCESS_DB_PASSWORD="${LAA_ACCESS_DB_PASSWORD:-laa_password}" \
 ./gradlew :data-access-service:integrationTest \
   -Dtest.mode=infrastructure \
-  --tests "uk.gov.justice.laa.dstew.access.controller.caseworker.GetCaseworkersTest"
+  --tests "uk.gov.justice.laa.dstew.access.controller.caseworker.GetCaseworkersTest" \
+  --tests "uk.gov.justice.laa.dstew.access.controller.application.GetApplicationTest"
 TEST_EXIT_CODE=$?
 
 if [ "${TEST_EXIT_CODE}" -eq 0 ]; then

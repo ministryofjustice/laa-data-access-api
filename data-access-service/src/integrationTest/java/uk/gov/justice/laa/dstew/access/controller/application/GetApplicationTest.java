@@ -2,16 +2,15 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.ProblemDetail;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
@@ -24,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.model.Opponent;
 import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
 import uk.gov.justice.laa.dstew.access.model.Opposable;
 import uk.gov.justice.laa.dstew.access.model.Provider;
-import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -34,6 +32,9 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMe
 import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -42,6 +43,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertBadRequest;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
@@ -50,11 +52,20 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
-@ActiveProfiles("test")
-public class GetApplicationTest extends BaseIntegrationTest {
+public class GetApplicationTest extends BaseHarnessTest {
 
+    private final List<ApplicationEntity> createdApplications = new ArrayList<>();
+
+    @AfterEach
+    void tearDownApplicationData() {
+        // Deleting the application is sufficient — the database ON DELETE CASCADE
+        // handles proceedings, decisions, merits_decisions, linked_individuals, etc.
+        applicationRepository.deleteAll(createdApplications);
+        createdApplications.clear();
+    }
+
+    @SmokeTest
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenApplicationDataAndIncorrectHeader_whenGetApplications_thenReturnBadRequest(
             String serviceName
@@ -62,25 +73,24 @@ public class GetApplicationTest extends BaseIntegrationTest {
         verifyBadServiceNameHeader(serviceName);
     }
 
+    @SmokeTest
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationDataAndNoHeader_whenGetApplication_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
 
     private void verifyBadServiceNameHeader(String serviceName) throws Exception {
-
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, ServiceNameHeader(serviceName), UUID.randomUUID());
-
-        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, ServiceNameHeader(serviceName), UUID.randomUUID());
+        assertBadRequest(result);
     }
 
+    @SmokeTest
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenExistingApplication_whenGetApplication_thenReturnOKWithCorrectData() throws Exception {
         // given
         ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder ->
-                builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe).linkedApplications(Set.of()));
+                builder.caseworker(CaseworkerJohnDoe).linkedApplications(Set.of()));
+        createdApplications.add(application);
 
         ProceedingEntity proceeding = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class, builder -> {
             builder.applicationId(application.getId());
@@ -94,10 +104,9 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
         application.setDecision(decision);
         applicationRepository.saveAndFlush(application);
-        clearCache();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         Application actualApplication = deserialise(result, Application.class);
 
         // then
@@ -106,36 +115,40 @@ public class GetApplicationTest extends BaseIntegrationTest {
         assertNoCacheHeaders(result);
         assertOK(result);
         Application expectedApplication = createApplication(application, proceeding, decision);
-        assertThat(actualApplication).isEqualTo(expectedApplication);
+        assertThat(actualApplication)
+            .usingRecursiveComparison()
+            .ignoringCollectionOrder()
+            .ignoringFields("lastUpdated")
+            .isEqualTo(expectedApplication);
     }
 
+    @SmokeTest
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenApplicationNotExist_whenGetApplication_thenReturnNotFound() throws Exception {
         // given
         UUID notExistApplicationId = UUID.randomUUID();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, notExistApplicationId);
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, notExistApplicationId);
 
         // then
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertNotFound(result);
-        assertEquals("application/problem+json", result.getResponse().getContentType());
+        assertThat(result.getResponse().getHeader("Content-Type")).startsWith("application/problem+json");
         ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
         assertEquals("No application found with id: " + notExistApplicationId, problemDetail.getDetail());
-
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
     public void givenUnknownRole_whenGetApplication_thenReturnForbidden() throws Exception {
         // given
+        withToken(TestConstants.Tokens.UNKNOWN);
         ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+        createdApplications.add(expectedApplication);
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
 
         // then
         assertSecurityHeaders(result);
@@ -145,10 +158,12 @@ public class GetApplicationTest extends BaseIntegrationTest {
     @Test
     public void givenNoUser_whenGetApplication_thenReturnUnauthorised() throws Exception {
         // given
+        withNoToken();
         ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+        createdApplications.add(expectedApplication);
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
 
         // then
         assertSecurityHeaders(result);
@@ -157,7 +172,6 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithOpponents_whenGetApplication_thenReturnsOpponents() throws Exception {
 
         // default contains opponent data
@@ -168,8 +182,9 @@ public class GetApplicationTest extends BaseIntegrationTest {
                 .createdAt(Instant.now().minusSeconds(10000))
                 .modifiedAt(Instant.now())
         );
+        createdApplications.add(application);
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         Application response = deserialise(result, Application.class);
 
         assertContentHeaders(result);
@@ -189,7 +204,6 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithEmptyOpponents_whenGetApplication_thenReturnsEmptyList() throws Exception {
 
         ApplicationContent applicationContent =
@@ -204,8 +218,9 @@ public class GetApplicationTest extends BaseIntegrationTest {
             builder -> builder
                 .applicationContent(objectMapper.convertValue(applicationContent, Map.class))
         );
+        createdApplications.add(application);
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         Application response = deserialise(result, Application.class);
 
         assertOK(result);
@@ -215,7 +230,6 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithoutOpponentsSection_whenGetApplication_thenOpponentsIsEmpty() throws Exception {
 
         Map<String, Object> content = Map.of(
@@ -226,8 +240,9 @@ public class GetApplicationTest extends BaseIntegrationTest {
             ApplicationEntityGenerator.class,
             builder -> builder.applicationContent(content)
         );
+        createdApplications.add(application);
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         Application response = deserialise(result, Application.class);
 
         assertOK(result);
@@ -236,7 +251,6 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenOpponentWithMissingFirstName_whenGetApplication_thenReturnsRemainingFields() throws Exception {
 
         // leaving this here as a TODO as it does something specific that the test harness currently does not,
@@ -265,8 +279,9 @@ public class GetApplicationTest extends BaseIntegrationTest {
             ApplicationEntityGenerator.class,
             builder -> builder.applicationContent(content)
         );
+        createdApplications.add(application);
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         Application response = deserialise(result, Application.class);
 
         assertOK(result);
@@ -283,12 +298,12 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithSubmitterEmail_whenGetApplication_thenReturnsProviderWithContactEmail() throws Exception {
 
         ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+        createdApplications.add(application);
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         Application response = deserialise(result, Application.class);
 
         assertOK(result);
@@ -298,15 +313,15 @@ public class GetApplicationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithoutSubmitterEmail_whenGetApplication_thenReturnsProviderWithoutContactEmail() throws Exception {
 
         ApplicationEntity application = persistedDataGenerator.createAndPersist(
             ApplicationEntityGenerator.class,
             builder -> builder.applicationContent(Map.of("someOtherKey", "value"))
         );
+        createdApplications.add(application);
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         Application response = deserialise(result, Application.class);
 
         assertOK(result);

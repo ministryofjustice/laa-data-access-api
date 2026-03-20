@@ -141,4 +141,20 @@ public class ResponseAsserts {
   public static void assertUnauthorised(HarnessResult response) {
     assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getResponse().getStatus());
   }
+
+  public static void assertNotFound(HarnessResult response) {
+    assertEquals(HttpStatus.NOT_FOUND.value(), response.getResponse().getStatus());
+  }
+
+  public static void assertContentHeaders(HarnessResult response) {
+    String ct = response.getResponse().getHeader("Content-Type");
+    assertThat(ct).startsWith("application/json");
+  }
+
+  public static void assertNoCacheHeaders(HarnessResult response) {
+    assertEquals("no-cache, no-store, max-age=0, must-revalidate",
+            response.getResponse().getHeader("Cache-Control"));
+    assertEquals("no-cache", response.getResponse().getHeader("Pragma"));
+    assertEquals("0", response.getResponse().getHeader("Expires"));
+  }
 }
