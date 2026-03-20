@@ -850,12 +850,14 @@ components:
       description: "Test"
       oneOf:
           - $ref: './v1/open-api-apply-application.yml#/components/schemas/applyApplication'
+          - $ref: './v1/open-api-decide-application.yml#/components/schemas/decideApplication'
           - $ref: './v2/open-api-apply-application.yml#/components/schemas/applyApplication'
       discriminator:
           propertyName: objectType
           mapping:
               apply: './v1/open-api-apply-application.yml#/components/schemas/applyApplication'
               applyV2: './v2/open-api-apply-application.yml#/components/schemas/applyApplication'
+              decide: './v1/open-api-decide-application.yml#/components/schemas/decideApplication'
 
     createProceedingRequest:
       type: object
