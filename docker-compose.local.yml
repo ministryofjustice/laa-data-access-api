@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: laa-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: laa_data_access_api
+      POSTGRES_USER: laa_user
+      POSTGRES_PASSWORD: laa_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U laa_user -d laa_data_access_api"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laa-data-access-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Database
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/laa_data_access_api
+      SPRING_DATASOURCE_USERNAME: laa_user
+      SPRING_DATASOURCE_PASSWORD: laa_password
+      # Entra / OAuth2 — set these in your shell or a .env file before running
+      ENTRA_ISSUER_URI: ${ENTRA_ISSUER_URI:-}
+      ENTRA_JWK_SET_URI: ${ENTRA_JWK_SET_URI:-}
+      ENTRA_AUD: ${ENTRA_AUD:-}
+      # Optional feature flags
+      FEATURE_ENABLE_DEV_TOKEN: ${FEATURE_ENABLE_DEV_TOKEN:-false}
+      # Sentry (disabled locally by default)
+      SENTRY_ENABLED: ${SENTRY_ENABLED:-false}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-local}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+
