@@ -9,17 +9,17 @@ import java.util.function.Consumer;
 
 public class ApplicationUpdateFactoryImpl implements Factory<ApplicationUpdateRequest, ApplicationUpdateRequest.Builder> {
 
-    @Override
-    public ApplicationUpdateRequest create() {
-        return ApplicationUpdateRequest.builder()
-                .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
-                .applicationContent(new HashMap<>() {
-                    {
-                        put("test", "value");
-                    }
-                })
-                .build();
-    }
+  @Override
+  public ApplicationUpdateRequest create() {
+    return ApplicationUpdateRequest.builder()
+        .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+        .applicationContent(new HashMap<>() {
+          {
+            put("test", "value");
+          }
+        })
+        .build();
+  }
 
     public ApplicationUpdateRequest create(Consumer<ApplicationUpdateRequest.Builder> customiser) {
         ApplicationUpdateRequest entity = create();

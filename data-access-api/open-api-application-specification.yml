@@ -497,6 +497,7 @@ components:
         - laaReference
         - lastUpdated
         - proceedings
+        - version
       properties:
         applicationId:
           type: string
@@ -532,6 +533,9 @@ components:
           $ref: "#/components/schemas/ApplicationProceedings"
         provider:
           $ref: "#/components/schemas/Provider"
+        version:
+          type: integer
+          format: int64
 
     Provider:
       type: object
@@ -792,6 +796,7 @@ components:
         - proceedings
         - eventHistory
         - autoGranted
+        - version
       properties:
         overallDecision:
           $ref: "#/components/schemas/DecisionStatus"
@@ -808,6 +813,10 @@ components:
           type: object
           additionalProperties: true
           description: Certificate information (required when overallDecision is GRANTED)
+        version:
+          type: integer
+          format: int64
+          description: Version of application being decided, used for concurrency control
 
     ApplicationProceedings:
       type: array
