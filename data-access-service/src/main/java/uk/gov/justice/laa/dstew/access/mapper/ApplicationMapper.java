@@ -1,8 +1,8 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -13,6 +13,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.factory.Mappers;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Application;
@@ -35,7 +36,6 @@ import uk.gov.justice.laa.dstew.access.model.Provider;
 public interface ApplicationMapper {
 
   IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
-  ProceedingMapper proceedingMapper = Mappers.getMapper(ProceedingMapper.class);
 
   /**
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
@@ -154,18 +154,18 @@ public interface ApplicationMapper {
   private static List<Opponent> extractOpponents(Map<String, Object> content) {
 
     if (content == null) {
-      return null;
+      return Collections.emptyList();
     }
 
     ApplicationContent applicationContent = MapperUtil.getObjectMapper().convertValue(content, ApplicationContent.class);
     ApplicationMerits meritsObj = applicationContent.getApplicationMerits();
     if (meritsObj == null) {
-      return null;
+      return Collections.emptyList();
     }
 
     List<OpponentDetails> opponentsList = meritsObj.getOpponents();
     if (opponentsList == null) {
-      return null;
+      return Collections.emptyList();
     }
 
     return opponentsList.stream()

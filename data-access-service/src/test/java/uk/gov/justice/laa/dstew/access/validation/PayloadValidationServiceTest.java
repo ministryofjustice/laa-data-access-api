@@ -1,10 +1,15 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.stream.Stream;
@@ -13,17 +18,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DatabindException;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 class PayloadValidationServiceTest {
 
@@ -136,7 +136,8 @@ class PayloadValidationServiceTest {
     Validator validatorMock = mock(Validator.class);
     PayloadValidationService service = new PayloadValidationService(mapper, validatorMock);
 
-    JsonMappingException mappingException = JsonMappingException.fromUnexpectedIOE(new IOException("bad data"));
+    JsonParser jsonParser = mock(JsonParser.class);
+    DatabindException mappingException = DatabindException.from(jsonParser, "bad payload");
     when(mapper.convertValue(any(), eq(Proceeding.class)))
         .thenThrow(new IllegalArgumentException("boom", mappingException));
 

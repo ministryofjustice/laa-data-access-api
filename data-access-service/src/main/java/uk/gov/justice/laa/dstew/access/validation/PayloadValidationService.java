@@ -1,16 +1,15 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DatabindException;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Utility service to convert arbitrary payloads into typed POJOs and
@@ -42,11 +41,11 @@ public class PayloadValidationService {
       target = mapSource(source, targetType);
     } catch (IllegalArgumentException ex) {
       String message = "Invalid request payload";
-      if (ex.getCause() instanceof JsonMappingException jsonMappingException) {
+      if (ex.getCause() instanceof DatabindException jsonMappingException) {
         message = jsonMappingException.getOriginalMessage();
       }
       throw new ValidationException(List.of(message));
-    } catch (JsonProcessingException ex) {
+    } catch (JacksonException ex) {
       throw new ValidationException(List.of(ex.getOriginalMessage()));
     }
 
@@ -61,7 +60,7 @@ public class PayloadValidationService {
     return target;
   }
 
-  private <T> T mapSource(Object source, Class<T> targetType) throws JsonProcessingException {
+  private <T> T mapSource(Object source, Class<T> targetType) throws JacksonException {
     if (source instanceof String json) {
       return objectMapper.readValue(json, targetType);
     }

@@ -1,6 +1,23 @@
 package uk.gov.justice.laa.dstew.access.service.application;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.Application.verifyThatApplicationEntitySaved;
+import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.DomainEvent.verifyThatDomainEventSaved;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -8,6 +25,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import tools.jackson.core.JacksonException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
@@ -23,25 +41,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEn
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
-import java.util.UUID;
-import java.util.List;
-import java.util.Optional;
-import java.util.Collections;
-import java.util.Arrays;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.never;
-import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.Application.verifyThatApplicationEntitySaved;
-import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.DomainEvent.verifyThatDomainEventSaved;
-
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class AssignCaseworkerTest extends BaseServiceTest {
 
@@ -52,7 +51,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
     @MethodSource("validAssignEventDescriptionCases")
     void givenCaseworkerAndApplications_whenAssignCaseworker_thenAssignAndSave(
             String eventDescription
-    ) throws JsonProcessingException {
+    ) throws JacksonException {
         // given
         UUID applicationId = UUID.randomUUID();
 
@@ -188,7 +187,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
     }
 
     @Test
-    void givenDuplicateApplicationIds_whenAssignCaseworker_thenOnlyDistinctIdsUsed() throws JsonProcessingException {
+    void givenDuplicateApplicationIds_whenAssignCaseworker_thenOnlyDistinctIdsUsed() throws JacksonException {
         UUID existingApplicationId = UUID.randomUUID();
         ApplicationEntity existingApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
                 builder.id(existingApplicationId).caseworker(null)
@@ -236,7 +235,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
     }
 
     @Test
-    void givenApplicationIsAlreadyAssignedToCaseworker_whenAssignCaseworker_thenNotUpdateApplication_andCreateDomainEvent() throws JsonProcessingException {
+    void givenApplicationIsAlreadyAssignedToCaseworker_whenAssignCaseworker_thenNotUpdateApplication_andCreateDomainEvent() throws JacksonException {
 
         UUID existingApplicationId = UUID.randomUUID();
         CaseworkerEntity existingCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder -> builder.id(UUID.randomUUID()));

@@ -13,7 +13,6 @@ import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.
         ApplicationCreateRequestIndividualAssert.assertIndividualCollectionsEqual;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +27,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import tools.jackson.core.JacksonException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
@@ -59,7 +59,7 @@ public class CreateApplicationTest extends BaseServiceTest {
   private ApplicationService serviceUnderTest;
 
   @Test
-  public void givenNewApplication_whenCreateApplication_thenReturnNewId() throws JsonProcessingException {
+  public void givenNewApplication_whenCreateApplication_thenReturnNewId() throws JacksonException {
 
     // given
     UUID expectedId = UUID.randomUUID();
@@ -97,7 +97,7 @@ public class CreateApplicationTest extends BaseServiceTest {
   }
 
   @Test
-  public void givenNewApplicationWithLinkedApplication_whenCreateApplication_thenReturnNewId() throws JsonProcessingException {
+  public void givenNewApplicationWithLinkedApplication_whenCreateApplication_thenReturnNewId() throws JacksonException {
 
     // given
     UUID expectedId = UUID.randomUUID();
@@ -145,7 +145,7 @@ public class CreateApplicationTest extends BaseServiceTest {
 
   @Test
   public void givenNewApplicationWithLinkedApplication_throwExceptionWhenMissingLeadApplication()
-      throws JsonProcessingException {
+      throws JacksonException {
 
     // given
     UUID expectedId = UUID.randomUUID();
@@ -175,7 +175,7 @@ public class CreateApplicationTest extends BaseServiceTest {
 
   @Test
   public void givenNewApplicationWithLinkedApplication_throwExceptionWhenMissingAssociatedApplication()
-      throws JsonProcessingException {
+      throws JacksonException {
 
     // given
     UUID expectedId = UUID.randomUUID();
@@ -424,7 +424,7 @@ public class CreateApplicationTest extends BaseServiceTest {
 
 
   private void verifyThatCreateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled)
-      throws JsonProcessingException {
+      throws JacksonException {
     ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
     verify(domainEventRepository, times(timesCalled)).save(captor.capture());
     DomainEventEntity actualDomainEvent = captor.getValue();
