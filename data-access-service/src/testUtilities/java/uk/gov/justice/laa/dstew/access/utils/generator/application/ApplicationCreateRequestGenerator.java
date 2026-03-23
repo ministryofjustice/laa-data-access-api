@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
