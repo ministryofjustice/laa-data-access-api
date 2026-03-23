@@ -3,8 +3,6 @@ package uk.gov.justice.laa.dstew.access.mapper.deserializer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -12,6 +10,8 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
 import uk.gov.justice.laa.dstew.access.deserializer.CategoryOfLawTypeDeserializer;
 import uk.gov.justice.laa.dstew.access.deserializer.GenericEnumDeserializer;
 import uk.gov.justice.laa.dstew.access.deserializer.MatterTypeDeserializer;
@@ -35,9 +35,9 @@ class GenericEnumDeserializerTest {
 
   @ParameterizedTest
   @MethodSource("provideEnumValues")
-  void testGenericDeserialize(String input, TestEnum expected) throws Exception {
+  void testGenericDeserialize(String input, TestEnum expected) {
     GenericEnumDeserializer<TestEnum> deserializer = new GenericEnumDeserializer<>(TestEnum.class);
-    when(jsonParser.getText()).thenReturn(input);
+    when(jsonParser.getString()).thenReturn(input);
     TestEnum result = deserializer.deserialize(jsonParser, ctx);
     assertEquals(expected, result);
 
@@ -58,9 +58,9 @@ class GenericEnumDeserializerTest {
 
   @ParameterizedTest
   @MethodSource("provideMatterTypeEnumValues")
-  void testMatterTypeDeserialize(String input, MatterType expected) throws Exception {
+  void testMatterTypeDeserialize(String input, MatterType expected) {
     MatterTypeDeserializer matterTypeDeserializer = new MatterTypeDeserializer();
-    when(jsonParser.getText()).thenReturn(input);
+    when(jsonParser.getString()).thenReturn(input);
     MatterType result = matterTypeDeserializer.deserialize(jsonParser, ctx);
     assertEquals(expected, result);
   }
@@ -77,9 +77,9 @@ class GenericEnumDeserializerTest {
 
   @ParameterizedTest
   @MethodSource("provideCategoryOfLawTypeEnumValues")
-  void testCategoryOfLawTypeDeserialize(String input, CategoryOfLaw expected) throws Exception {
+  void testCategoryOfLawTypeDeserialize(String input, CategoryOfLaw expected) {
     CategoryOfLawTypeDeserializer categoryOfLawTypeDeserializer = new CategoryOfLawTypeDeserializer();
-    when(jsonParser.getText()).thenReturn(input);
+    when(jsonParser.getString()).thenReturn(input);
     CategoryOfLaw result = categoryOfLawTypeDeserializer.deserialize(jsonParser, ctx);
     assertEquals(expected, result);
   }

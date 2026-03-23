@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.caseworker;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -10,13 +11,11 @@ import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
 import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
 import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertBadRequest;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
 public class GetCaseworkersTest extends BaseHarnessTest {
@@ -50,8 +49,7 @@ public class GetCaseworkersTest extends BaseHarnessTest {
         // when
         HarnessResult result = getUri(TestConstants.URIs.GET_CASEWORKERS);
         List<Caseworker> actualCaseworkers = objectMapper.readValue(
-                result.getResponse().getContentAsString(),
-                new com.fasterxml.jackson.core.type.TypeReference<List<Caseworker>>() {}
+                result.getResponse().getContentAsString(), objectMapper.getTypeFactory().constructCollectionType(List.class, Caseworker.class)
         );
 
         // then

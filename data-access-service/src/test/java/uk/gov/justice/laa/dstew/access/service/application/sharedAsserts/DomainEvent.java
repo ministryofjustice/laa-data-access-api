@@ -1,8 +1,8 @@
 package uk.gov.justice.laa.dstew.access.service.application.sharedAsserts;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.mockito.ArgumentCaptor;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
@@ -13,9 +13,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+
+import tools.jackson.core.JacksonException;
+
+
 public class DomainEvent {
 
-    public static void verifyThatDomainEventSaved(DomainEventRepository domainEventRepository, ObjectMapper objectMapper, DomainEventEntity expectedDomainEvent, int timesCalled) throws JsonProcessingException {
+    public static void verifyThatDomainEventSaved(DomainEventRepository domainEventRepository, ObjectMapper objectMapper, DomainEventEntity expectedDomainEvent, int timesCalled) throws JacksonException {
         ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
         verify(domainEventRepository, times(timesCalled)).save(captor.capture());
         DomainEventEntity actualDomainEvent = captor.getValue();

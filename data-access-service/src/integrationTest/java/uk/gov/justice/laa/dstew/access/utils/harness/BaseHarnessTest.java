@@ -92,7 +92,7 @@ public abstract class BaseHarnessTest {
             spec = spec.header(HttpHeaders.AUTHORIZATION, "Bearer " + currentToken);
         }
         if (headers != null) {
-            for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
+            for (Map.Entry<String, List<String>> entry : headers.headerSet()) {
                 spec = spec.header(entry.getKey(), entry.getValue().toArray(String[]::new));
             }
         }

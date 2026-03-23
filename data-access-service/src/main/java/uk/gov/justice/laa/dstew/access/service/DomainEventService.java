@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.Comparator;
@@ -10,6 +8,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
@@ -161,7 +161,7 @@ public class DomainEventService {
   private String getEventDetailsAsJson(Object domainEventDetails, DomainEventType domainEventType) {
     try {
       return objectMapper.writeValueAsString(domainEventDetails);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new DomainEventPublishException(String.format("Unable to save Domain Event of type: %s",
           domainEventType.name()));
     }
