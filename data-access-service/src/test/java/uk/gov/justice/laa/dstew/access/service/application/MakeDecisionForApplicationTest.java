@@ -18,11 +18,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.OptimisticLockingFailureException;
 import tools.jackson.core.JacksonException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
@@ -419,7 +419,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     assertThat(thrown)
         .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessage("Caseworker not found for application id: " + applicationId.toString());
+        .hasMessage("Caseworker not found for application id: " + applicationId);
 
   }
 
@@ -440,7 +440,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     assertThat(thrown)
         .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessage("No application found with id: " + applicationId.toString());
+        .hasMessage("No application found with id: " + applicationId);
   }
 
   @Test
