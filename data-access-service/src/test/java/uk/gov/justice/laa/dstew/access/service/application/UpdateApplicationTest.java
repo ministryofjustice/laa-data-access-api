@@ -1,6 +1,20 @@
 package uk.gov.justice.laa.dstew.access.service.application;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -9,6 +23,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import tools.jackson.core.JacksonException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -20,23 +35,10 @@ import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationUpdateRequestGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
-
-import java.util.UUID;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.HashMap;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
-import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class UpdateApplicationTest extends BaseServiceTest {
@@ -61,10 +63,10 @@ public class UpdateApplicationTest extends BaseServiceTest {
     }
 
     @Test
-    void givenApplication_whenUpdateApplication_thenUpdateAndSave() throws JsonProcessingException {
+    void givenApplication_whenUpdateApplication_thenUpdateAndSave() throws JacksonException {
         // given
         UUID applicationId = UUID.randomUUID();
-        ApplicationEntity expectedEntity = applicationEntityFactory.createDefault(builder ->
+        ApplicationEntity expectedEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
                 builder.id(applicationId)
                         .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
         );
@@ -72,7 +74,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
                 .applicationContent(new HashMap<>(Map.of("test", "changed")))
                 .build();
 
-        ApplicationUpdateRequest updateRequest = applicationUpdateRequestFactory.createDefault();
+        ApplicationUpdateRequest updateRequest = DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
@@ -106,7 +108,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
             ValidationException validationException
     ) {
         // given
-        ApplicationEntity expectedEntity = applicationEntityFactory.createDefault(builder ->
+        ApplicationEntity expectedEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
                 builder.id(applicationId)
                         .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
         );
@@ -161,7 +163,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
     public final Stream<Arguments> invalidApplicationUpdateRequests() {
         return Stream.of(
                 Arguments.of(UUID.randomUUID(),
-                        applicationUpdateRequestFactory.createDefault(builder -> builder
+                        DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class, builder -> builder
                                 .applicationContent(new HashMap<>())),
                         new ValidationException(List.of(
                                 "Application content cannot be empty"
@@ -182,7 +184,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
                 .isEqualTo(applicationUpdateRequest.getApplicationContent());
     }
 
-    private void verifyThatUpdateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled) throws JsonProcessingException {
+    private void verifyThatUpdateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled) throws JacksonException {
         ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
         verify(domainEventRepository, times(timesCalled)).save(captor.capture());
         DomainEventEntity actualDomainEvent = captor.getValue();

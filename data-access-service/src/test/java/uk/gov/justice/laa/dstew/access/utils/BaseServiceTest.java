@@ -1,6 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -8,8 +8,8 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
+import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
+import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.TestingAuthenticationToken;
@@ -17,6 +17,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
@@ -44,8 +45,6 @@ import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionsEntity
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.MakeDecisionProceedingFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingsEntityFactory;
-
-import java.util.stream.Stream;
 
 @SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=false"})
 @ImportAutoConfiguration(exclude = {
@@ -89,57 +88,9 @@ public class BaseServiceTest {
     @Autowired
     protected ObjectMapper objectMapper;
 
-    @Autowired
-    protected ApplicationEntityFactory applicationEntityFactory;
-
-    @Autowired
-    protected ApplicationCreateRequestFactory applicationCreateRequestFactory;
-
-    @Autowired
-    protected ApplicationUpdateRequestFactory applicationUpdateRequestFactory;
-
-    @Autowired
-    protected ApplicationSummaryFactory applicationSummaryEntityFactory;
-
-    @Autowired
-    protected IndividualFactory individualFactory;
-
-    @Autowired
-    protected CaseworkerFactory caseworkerFactory;
-
-    @Autowired
-    protected DomainEventFactory domainEventFactory;
-
-    @Autowired
-    protected ApplicationContentFactory applicationContentFactory;
-
-    @Autowired
-    protected ApplicationMakeDecisionRequestFactory applicationMakeDecisionRequestFactory;
-
-    @Autowired
-    protected DecisionEntityFactory decisionEntityFactory;
-
-    @Autowired
-    protected MakeDecisionProceedingFactory makeDecisionProceedingFactory;
-
-    @Autowired
-    protected MeritsDecisionDetailsFactory meritsDecisionDetailsFactory;
-
-    @Autowired
-    protected MeritsDecisionsEntityFactory meritsDecisionsEntityFactory;
-
-    @Autowired
-    protected ProceedingsEntityFactory proceedingsEntityFactory;
-
-    @Autowired
-    protected ProceedingFactory proceedingFactory;
-
-    @Autowired
-    protected IndividualEntityFactory individualEntityFactory;
-
     @BeforeEach
     void setUp() {
-        Mockito.lenient().when(serviceNameContext.getServiceName()).thenReturn(ServiceName.CIVIL_APPLY);
+      Mockito.lenient().when(serviceNameContext.getServiceName()).thenReturn(ServiceName.CIVIL_APPLY);
     }
 
     @AfterEach

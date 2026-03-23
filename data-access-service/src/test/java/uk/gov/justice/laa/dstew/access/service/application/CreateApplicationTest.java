@@ -10,9 +10,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.IndividualAssert.assertIndividualCollectionsEqual;
+import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.
+        ApplicationCreateRequestIndividualAssert.assertIndividualCollectionsEqual;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +27,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import tools.jackson.core.JacksonException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
@@ -43,30 +44,30 @@ import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCreateRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationsGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CreateApplicationTest extends BaseServiceTest {
 
-  private final LinkedApplicationsGenerator linkedApplicationsGenerator = new LinkedApplicationsGenerator();
-  private final ApplicationContentGenerator applicationContentGenerator = new ApplicationContentGenerator();
-  private final ApplicationEntityGenerator applicationEntityGenerator = new ApplicationEntityGenerator();
   @Autowired
   private ApplicationService serviceUnderTest;
 
   @Test
-  public void givenNewApplication_whenCreateApplication_thenReturnNewId() throws JsonProcessingException {
+  public void givenNewApplication_whenCreateApplication_thenReturnNewId() throws JacksonException {
 
     // given
     UUID expectedId = UUID.randomUUID();
-    ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder ->
-        builder.id(expectedId).isAutoGranted(null)
+    ApplicationEntity withExpectedId = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
+        builder.id(expectedId)
     );
 
-    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault();
+    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
     ApplicationContent applicationContent = MapperUtil.getObjectMapper()
         .convertValue(applicationCreateRequest.getApplicationContent(), ApplicationContent.class);
     when(applicationRepository.save(any())).thenReturn(withExpectedId);
@@ -96,25 +97,25 @@ public class CreateApplicationTest extends BaseServiceTest {
   }
 
   @Test
-  public void givenNewApplicationWithLinkedApplication_whenCreateApplication_thenReturnNewId() throws JsonProcessingException {
+  public void givenNewApplicationWithLinkedApplication_whenCreateApplication_thenReturnNewId() throws JacksonException {
 
     // given
     UUID expectedId = UUID.randomUUID();
     UUID applyApplicationId = UUID.randomUUID();
     UUID associatedApplicationId = UUID.randomUUID();
 
-    ApplicationContent applicationContent = applicationContentGenerator.createDefault(appContentBuilder ->
+    ApplicationContent applicationContent = DataGenerator.createDefault(ApplicationContentGenerator.class, appContentBuilder ->
         appContentBuilder.id(associatedApplicationId)
             .allLinkedApplications(createLinkedApplications(applyApplicationId, List.of(associatedApplicationId))));
 
-    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault(builder ->
+    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder ->
         builder.applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
 
-    ApplicationEntity withExpectedId = applicationEntityGenerator.createDefault(builder ->
+    ApplicationEntity withExpectedId = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
         builder.id(expectedId).applicationContent(objectMapper.convertValue(applicationContent, Map.class)).isAutoGranted(null)
     );
-    ApplicationEntity leadApplication = applicationEntityGenerator
-        .createDefault(builder -> builder.applyApplicationId(applyApplicationId));
+    ApplicationEntity leadApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class,
+        builder -> builder.applyApplicationId(applyApplicationId));
     when(applicationRepository.findByApplyApplicationId(applyApplicationId))
         .thenReturn(leadApplication);
     when(applicationRepository.save(any())).thenReturn(withExpectedId);
@@ -144,21 +145,21 @@ public class CreateApplicationTest extends BaseServiceTest {
 
   @Test
   public void givenNewApplicationWithLinkedApplication_throwExceptionWhenMissingLeadApplication()
-      throws JsonProcessingException {
+      throws JacksonException {
 
     // given
     UUID expectedId = UUID.randomUUID();
     UUID applyApplicationId = UUID.randomUUID();
     UUID associatedApplicationId = UUID.randomUUID();
 
-    ApplicationContent applicationContent = applicationContentGenerator.createDefault(appContentBuilder ->
+    ApplicationContent applicationContent = DataGenerator.createDefault(ApplicationContentGenerator.class, appContentBuilder ->
         appContentBuilder.id(associatedApplicationId)
             .allLinkedApplications(createLinkedApplications(applyApplicationId, List.of(associatedApplicationId))));
 
-    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault(builder ->
+    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder ->
         builder.applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
 
-    ApplicationEntity withExpectedId = applicationEntityGenerator.createDefault(builder ->
+    ApplicationEntity withExpectedId = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
         builder.id(expectedId).applicationContent(objectMapper.convertValue(applicationContent, Map.class)).isAutoGranted(null)
     );
     when(applicationRepository.findByApplyApplicationId(applyApplicationId))
@@ -174,7 +175,7 @@ public class CreateApplicationTest extends BaseServiceTest {
 
   @Test
   public void givenNewApplicationWithLinkedApplication_throwExceptionWhenMissingAssociatedApplication()
-      throws JsonProcessingException {
+      throws JacksonException {
 
     // given
     UUID expectedId = UUID.randomUUID();
@@ -185,18 +186,18 @@ public class CreateApplicationTest extends BaseServiceTest {
     List<LinkedApplication> linkedApplications =
         createLinkedApplications(applyApplicationId, List.of(associatedApplicationId, otherAssociatedApplication));
 
-    ApplicationContent applicationContent = applicationContentGenerator.createDefault(appContentBuilder ->
+    ApplicationContent applicationContent = DataGenerator.createDefault(ApplicationContentGenerator.class, appContentBuilder ->
         appContentBuilder.id(associatedApplicationId).allLinkedApplications(linkedApplications));
 
-    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault(builder ->
+    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder ->
         builder.applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
 
-    ApplicationEntity withExpectedId = applicationEntityGenerator.createDefault(builder ->
+    ApplicationEntity withExpectedId = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
         builder.id(expectedId).applicationContent(objectMapper.convertValue(applicationContent, Map.class)).isAutoGranted(null)
     );
 
-    ApplicationEntity leadApplication = applicationEntityGenerator
-        .createDefault(builder -> builder.applyApplicationId(applyApplicationId));
+    ApplicationEntity leadApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class,
+        builder -> builder.applyApplicationId(applyApplicationId));
     when(applicationRepository.findByApplyApplicationId(applyApplicationId))
         .thenReturn(leadApplication);
 
@@ -214,7 +215,7 @@ public class CreateApplicationTest extends BaseServiceTest {
   private List<LinkedApplication> createLinkedApplications(UUID leadApplicationId, List<UUID> associatedApplicationIds) {
     List<LinkedApplication> linkedApplications = new ArrayList<>();
     for (UUID associatedApplicationId : associatedApplicationIds) {
-      linkedApplications.add(linkedApplicationsGenerator.createDefault(
+      linkedApplications.add(DataGenerator.createDefault(LinkedApplicationsGenerator.class,
           builder -> builder.leadApplicationId(leadApplicationId).associatedApplicationId(associatedApplicationId)));
     }
     return linkedApplications;
@@ -251,7 +252,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     UUID expectedId = UUID.randomUUID();
-    ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder -> builder.id(expectedId));
+    ApplicationEntity withExpectedId = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder -> builder.id(expectedId));
     when(applicationRepository.save(any())).thenReturn(withExpectedId);
 
     // When
@@ -277,7 +278,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     // when
     // then
     assertThatExceptionOfType(AuthorizationDeniedException.class)
-        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
+        .isThrownBy(() -> serviceUnderTest.createApplication(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class)))
         .withMessageContaining("Access Denied");
 
     verify(applicationRepository, times(0)).findById(any(UUID.class));
@@ -288,7 +289,7 @@ public class CreateApplicationTest extends BaseServiceTest {
   public void givenNewApplicationAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
 
     assertThatExceptionOfType(AuthorizationDeniedException.class)
-        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
+        .isThrownBy(() -> serviceUnderTest.createApplication(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class)))
         .withMessageContaining("Access Denied");
 
     verify(applicationRepository, times(0)).findById(any(UUID.class));
@@ -303,9 +304,9 @@ public class CreateApplicationTest extends BaseServiceTest {
     UUID applyApplicationId = UUID.randomUUID();
 
     ApplicationContent applicationContent =
-        applicationContentGenerator.createDefault(builder -> builder.id(applyApplicationId));
+        DataGenerator.createDefault(ApplicationContentGenerator.class, builder -> builder.id(applyApplicationId));
 
-    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault(builder ->
+    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder ->
         builder.applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
 
     ValidationException validationException = new ValidationException(
@@ -348,10 +349,10 @@ public class CreateApplicationTest extends BaseServiceTest {
         "No lead proceeding found in application content"
     ));
 
-    ApplicationContent applicationContent = applicationContentFactory.createDefault(appContentBuilder ->
-        appContentBuilder.proceedings(List.of(proceedingFactory.createDefault(proceedingBuilder ->
+    ApplicationContent applicationContent = DataGenerator.createDefault(ApplicationContentGenerator.class, appContentBuilder ->
+        appContentBuilder.proceedings(List.of(DataGenerator.createDefault(ProceedingGenerator.class, proceedingBuilder ->
             proceedingBuilder.leadProceeding(false)))));
-    ApplicationCreateRequest createRequest = applicationCreateRequestFactory.createDefault(builder -> builder
+    ApplicationCreateRequest createRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> builder
         .applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
     return Stream.of(
         Arguments.of(
@@ -362,8 +363,7 @@ public class CreateApplicationTest extends BaseServiceTest {
   private Map<String, Object> getAppContentParent(List<Proceeding> proceedings,
                                                   String appContentId) {
 
-
-    ApplicationContent applicationContent = applicationContentFactory.createDefault(appContentBuilder ->
+    ApplicationContent applicationContent = DataGenerator.createDefault(ApplicationContentGenerator.class, appContentBuilder ->
         appContentBuilder.submittedAt("2026-01-15T10:20:30Z").proceedings(proceedings).id(UUID.fromString(appContentId)));
 
     applicationContent.putAdditionalApplicationContent("testPropertyInTest", "testValue");
@@ -372,26 +372,25 @@ public class CreateApplicationTest extends BaseServiceTest {
   }
 
   private Proceeding getProceeding(Boolean useDelegatedFunctions, boolean leadProceeding) {
-
-    return proceedingFactory.createDefault(
+    return DataGenerator.createDefault(ProceedingGenerator.class,
         builder -> builder.leadProceeding(leadProceeding).usedDelegatedFunctions(useDelegatedFunctions));
   }
 
   private Stream<Arguments> provideProceedingsForMapping() {
     //App Content Map, expected usedDelegatedFunctions
     return Stream.of(
-        Arguments.of(applicationCreateRequestFactory.createDefault(
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.applicationContent(getAppContentParent(List.of(getProceeding(true, true)),
                 UUID.randomUUID().toString()))), true),
-        Arguments.of(applicationCreateRequestFactory.createDefault(
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
                 builder -> builder.applicationContent(getAppContentParent(List.of(getProceeding(false, true)),
                     UUID.randomUUID().toString()))), false,
             true), Arguments.of(
-            applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
+            DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> builder.applicationContent(
                 getAppContentParent(List.of(getProceeding(false, true), getProceeding(true, false)),
                     UUID.randomUUID().toString()))), true,
             true), Arguments.of(
-            applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
+            DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> builder.applicationContent(
                 getAppContentParent(List.of(getProceeding(false, true), getProceeding(false, false)),
                     UUID.randomUUID().toString()))), false,
             true));
@@ -425,7 +424,7 @@ public class CreateApplicationTest extends BaseServiceTest {
 
 
   private void verifyThatCreateDomainEventSaved(DomainEventEntity expectedDomainEvent, int timesCalled)
-      throws JsonProcessingException {
+      throws JacksonException {
     ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
     verify(domainEventRepository, times(timesCalled)).save(captor.capture());
     DomainEventEntity actualDomainEvent = captor.getValue();

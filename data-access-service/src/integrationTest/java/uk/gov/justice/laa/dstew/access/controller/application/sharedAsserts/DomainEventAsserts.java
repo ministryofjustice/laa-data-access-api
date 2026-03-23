@@ -1,22 +1,23 @@
 package uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
-
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 
 @Component
 public class DomainEventAsserts {
@@ -89,17 +90,17 @@ public class DomainEventAsserts {
         ObjectMapper mapper = new ObjectMapper();
         JsonNode json = mapper.readTree(event.getData());
 
-        assertThat(json.get("applicationId").asText())
+        assertThat(json.get("applicationId").asString())
                 .isEqualTo(application.getId().toString());
 
-        assertThat(json.get("applicationStatus").asText())
+        assertThat(json.get("applicationStatus").asString())
                 .isEqualTo(application.getStatus().name());
 
-        assertThat(json.get("request").asText())
+        assertThat(json.get("request").asString())
                 .contains("{"); // stored as stringified JSON
 
         assertThat(json.has("createdDate")).isTrue();
-        assertThat(json.get("createdDate").asText())
+        assertThat(json.get("createdDate").asString())
                 .isEqualTo(application.getCreatedAt().toString());
     }
 }

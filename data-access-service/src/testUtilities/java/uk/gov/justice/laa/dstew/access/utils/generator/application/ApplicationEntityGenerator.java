@@ -1,6 +1,10 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.UUID;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
@@ -8,12 +12,6 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.helpers.SpringContext;
-
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.UUID;
 
 public class ApplicationEntityGenerator extends BaseGenerator<ApplicationEntity, ApplicationEntity.ApplicationEntityBuilder> {
     private final IndividualEntityGenerator individualEntityGenerator = new IndividualEntityGenerator();

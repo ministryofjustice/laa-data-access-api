@@ -8,7 +8,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.service.IndividualsService;
@@ -16,9 +20,11 @@ import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,6 +36,36 @@ public class IndividualsServiceTest extends BaseServiceTest {
 
   @Autowired
   private IndividualsService serviceUnderTest;
+
+  @Test
+  public void givenIndividuals_whenGetIndividuals_thenReturnExtendedIndividuals() {
+    // given
+    IndividualEntity expectedIndividual = DataGenerator.createDefault(IndividualEntityGenerator.class,
+            builder -> builder.id(UUID.randomUUID()));
+    List<IndividualEntity> expectedIndividuals = List.of(expectedIndividual);
+    Page<IndividualEntity> pageResult = new PageImpl<>(expectedIndividuals);
+
+    ApplicationEntity application = DataGenerator.createDefault(ApplicationEntityGenerator.class,
+      builder -> builder.id(UUID.randomUUID()));
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+    when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+    when(applicationRepository.findById(application.getId())).thenReturn(Optional.of(application));
+
+    // when
+    List<Individual> actualIndividuals = serviceUnderTest.getIndividuals(
+            1, 10,
+                    application.getId(), IndividualType.CLIENT, IncludedAdditionalData.CLIENT_DETAILS)
+            .page().stream().toList();
+
+    // then
+    verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
+    assertExtendedIndividualEqual(expectedIndividuals.getFirst(),
+                                  actualIndividuals.getFirst(),
+                                  MapperUtil.getObjectMapper()
+                                    .convertValue(application.getApplicationContent(), ApplicationContent.class)
+                                  );
+  }
 
   @ParameterizedTest
   @ValueSource(ints = {0, 10})
@@ -43,7 +79,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
     // when
-    List<Individual> actualIndividuals = serviceUnderTest.getIndividuals(1, 10, null, null).page().stream().toList();
+    List<Individual> actualIndividuals = serviceUnderTest.getIndividuals(1, 10, null, null, null).page().stream().toList();
 
     // then
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
@@ -61,7 +97,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
     // when
-    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(null, null, null, null);
+    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(null, null, null, null, null);
 
     // then
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
@@ -82,7 +118,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
     // when
-    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(2, 10, null, null);
+    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(2, 10, null, null, null);
 
     // then
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
@@ -99,7 +135,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
 
     // when/then
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> serviceUnderTest.getIndividuals(0, 10, null, null))
+        .isThrownBy(() -> serviceUnderTest.getIndividuals(0, 10, null, null, null))
         .withMessageContaining("page must be greater than or equal to 1");
 
     verify(individualRepository, never()).findAll(any(Specification.class), any(Pageable.class));
@@ -112,7 +148,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
 
     // when/then
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> serviceUnderTest.getIndividuals(1, 0, null, null))
+        .isThrownBy(() -> serviceUnderTest.getIndividuals(1, 0, null, null, null))
         .withMessageContaining("pageSize must be greater than or equal to 1");
 
     verify(individualRepository, never()).findAll(any(Specification.class), any(Pageable.class));
@@ -125,7 +161,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
 
     // when/then
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> serviceUnderTest.getIndividuals(1, 101, null, null))
+        .isThrownBy(() -> serviceUnderTest.getIndividuals(1, 101, null, null, null))
         .withMessageContaining("pageSize cannot be more than 100");
 
     verify(individualRepository, never()).findAll(any(Specification.class), any(Pageable.class));
@@ -142,7 +178,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
     // when
-    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(1, 100, null, null);
+    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(1, 100, null, null, null);
 
     // then
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
@@ -155,11 +191,11 @@ public class IndividualsServiceTest extends BaseServiceTest {
   @SuppressWarnings("unchecked")
   public void noFilters_whenGetIndividuals_thenRepositoryFindAllWithSpecificationAndPageable() {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
-    IndividualEntity entity = individualEntityFactory.createDefault();
+    IndividualEntity entity = DataGenerator.createDefault(IndividualEntityGenerator.class);
     Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
 
-    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(1, 10, null, null);
+    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(1, 10, null, null, null);
 
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
     assertThat(result.page()).hasSize(1);
@@ -172,11 +208,11 @@ public class IndividualsServiceTest extends BaseServiceTest {
   public void applicationIdProvided_whenGetIndividuals_thenRepositoryFindAllWithSpecificationAndPageable() {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
     UUID appId = UUID.randomUUID();
-    IndividualEntity entity = individualEntityFactory.createDefault();
+    IndividualEntity entity = DataGenerator.createDefault(IndividualEntityGenerator.class);
     Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
 
-    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(1, 10, appId, null);
+    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(1, 10, appId, null, null);
 
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
     assertThat(result.page()).hasSize(1);
@@ -188,11 +224,11 @@ public class IndividualsServiceTest extends BaseServiceTest {
   public void individualTypeProvided_whenGetIndividuals_thenRepositoryFindAllWithSpecificationAndPageable() {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
     IndividualType type = IndividualType.CLIENT;
-    IndividualEntity entity = individualEntityFactory.createDefault();
+    IndividualEntity entity = DataGenerator.createDefault(IndividualEntityGenerator.class);
     Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
 
-    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(1, 10, null, type);
+    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(1, 10, null, type, null);
 
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
     assertThat(result.page()).hasSize(1);
@@ -205,11 +241,11 @@ public class IndividualsServiceTest extends BaseServiceTest {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
     UUID appId = UUID.randomUUID();
     IndividualType type = IndividualType.CLIENT;
-    IndividualEntity entity = individualEntityFactory.createDefault();
+    IndividualEntity entity = DataGenerator.createDefault(IndividualEntityGenerator.class);
     Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
 
-    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(1, 10, appId, type);
+    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(1, 10, appId, type, null);
 
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
     assertThat(result.page()).hasSize(1);
@@ -241,5 +277,16 @@ public class IndividualsServiceTest extends BaseServiceTest {
     assertThat(actual.getDateOfBirth()).isEqualTo(expected.getDateOfBirth());
     assertThat(actual.getType()).isEqualTo(expected.getType());
     assertThat(actual.getDetails()).isEqualTo(expected.getIndividualContent());
+  }
+
+  private void assertExtendedIndividualEqual(IndividualEntity expected,
+                                             Individual actual,
+                                             ApplicationContent applicationContent) {
+    assertIndividualEqual(expected, actual);
+    assertThat(actual.getClientId()).isEqualTo(expected.getId());
+    assertThat(actual.getLastNameAtBirth()).isEqualTo(applicationContent.getLastNameAtBirth());
+    assertThat(actual.getPreviousApplicationReference()).isEqualTo(applicationContent.getPreviousApplicationReference());
+    assertThat(actual.getRelationshipToChildren()).isEqualTo(applicationContent.getRelationshipToChildren());
+    assertThat(actual.getCorrespondenceAddressType()).isEqualTo(applicationContent.getCorrespondenceAddressType());
   }
 }

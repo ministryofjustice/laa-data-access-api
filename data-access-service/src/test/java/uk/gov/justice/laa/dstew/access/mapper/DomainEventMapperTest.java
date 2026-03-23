@@ -6,21 +6,33 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mapstruct.factory.Mappers;
+import org.mockito.InjectMocks;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
 
-public class DomainEventMapperTest {
+@ExtendWith(MockitoExtension.class)
+public class DomainEventMapperTest extends BaseMapperTest {
 
-    private final DomainEventMapper mapper = Mappers.getMapper(DomainEventMapper.class);
+    @InjectMocks
+    private DomainEventMapperImpl mapper;
+
+    @Test
+    void givenNullEntity_whenToDomainEvent_thenReturnNull() {
+        assertThat(mapper.toDomainEvent(null)).isNull();
+    }
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = { "377adde8-632f-43c6-b10b-0843433759d3" })
+    @ValueSource(strings = {"377adde8-632f-43c6-b10b-0843433759d3"})
     void givenDomainEntity_whenToDomainEvent_thenMapsFieldsCorrectly(String caseworkerIdStr) {
         UUID id = UUID.randomUUID();
         UUID applicationId = UUID.randomUUID();
@@ -31,7 +43,7 @@ public class DomainEventMapperTest {
         String eventDescription = "{ \"eventDescription\" : \"eventDescription\" }";
         DomainEventType eventType = DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER;
 
-        DomainEventEntity domainEventEntity = DomainEventEntity.builder()
+        DomainEventEntity entity = DomainEventEntity.builder()
                 .id(id)
                 .applicationId(applicationId)
                 .caseworkerId(caseworkerId)
@@ -41,13 +53,32 @@ public class DomainEventMapperTest {
                 .type(eventType)
                 .build();
 
-        ApplicationDomainEvent actualDomainEvent = mapper.toDomainEvent(domainEventEntity);
+        ApplicationDomainEvent result = mapper.toDomainEvent(entity);
 
-        assertThat(actualDomainEvent.getApplicationId()).isEqualTo(applicationId);
-        assertThat(actualDomainEvent.getCaseworkerId()).isEqualTo(caseworkerId);
-        assertThat(actualDomainEvent.getCreatedAt()).isEqualTo(expectedCreatedDateTime);
-        assertThat(actualDomainEvent.getCreatedBy()).isEqualTo(createdBy);
-        assertThat(actualDomainEvent.getDomainEventType()).isEqualTo(eventType);
-        assertThat(actualDomainEvent.getEventDescription()).isEqualTo(eventDescription);
+        assertThat(result.getApplicationId()).isEqualTo(applicationId);
+        assertThat(result.getCaseworkerId()).isEqualTo(caseworkerId);
+        assertThat(result.getCreatedAt()).isEqualTo(expectedCreatedDateTime);
+        assertThat(result.getCreatedBy()).isEqualTo(createdBy);
+        assertThat(result.getDomainEventType()).isEqualTo(eventType);
+        assertThat(result.getEventDescription()).isEqualTo(eventDescription);
+    }
+
+    @Test
+    void givenEntityWithAllNullFields_whenToDomainEvent_thenAllFieldsAreNull() {
+        DomainEventEntity entity = DataGenerator.createDefault(DomainEventGenerator.class,
+                builder -> builder
+                        .applicationId(null)
+                        .caseworkerId(null)
+                        .createdBy(null)
+                        .data(null)
+                        .type(null));
+
+        ApplicationDomainEvent result = mapper.toDomainEvent(entity);
+
+        assertThat(result.getApplicationId()).isNull();
+        assertThat(result.getCaseworkerId()).isNull();
+        assertThat(result.getCreatedBy()).isNull();
+        assertThat(result.getEventDescription()).isNull();
+        assertThat(result.getDomainEventType()).isNull();
     }
 }
