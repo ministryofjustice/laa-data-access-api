@@ -28,17 +28,12 @@ configurations.all {
     // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
     // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
     resolutionStrategy {
-        force "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
-        force "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
-        force "org.springframework.boot:spring-boot-actuator:$springBootVersion"
-        force "org.springframework.boot:spring-boot-actuator-autoconfigure:$springBootVersion"
-        force "org.springframework.boot:spring-boot-starter-actuator:$springBootVersion"
-        force "org.springframework.boot:spring-boot-starter:$springBootVersion"
-        force "org.springframework.boot:spring-boot-starter-web:$springBootVersion"
-        force "org.springframework.boot:spring-boot-starter-security:$springBootVersion"
-        force "org.springframework.boot:spring-boot-starter-oauth2-resource-server:$springBootVersion"
-        force "org.springframework.security:spring-security-web:$springSecurityVersion"
-        force "org.springframework:spring-webmvc:$springFrameworkVersion"
+        force 'com.fasterxml.jackson.core:jackson-core:2.21.1'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
+        force 'org.springframework.boot:spring-boot-actuator:3.5.12'
+        force 'org.springframework.boot:spring-boot-actuator-autoconfigure:3.5.12'
+        force 'org.springframework.security:spring-security-web:6.5.9'
+        force 'org.springframework:spring-webmvc:6.2.17'
     }
 }
 
