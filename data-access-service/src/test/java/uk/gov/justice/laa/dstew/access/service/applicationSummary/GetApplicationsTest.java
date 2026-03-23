@@ -16,6 +16,10 @@ import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationSummaryGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationSummaryDtoGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -39,7 +43,7 @@ public class GetApplicationsTest extends BaseServiceTest {
     @ValueSource(ints = {0, 10})
     public void givenPageZeroAndNoFilters_whenGetApplications_thenReturnApplications(int count) {
         // given
-        List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(count);
+        List<ApplicationSummaryEntity> expectedApplications = DataGenerator.createMultipleRandom(ApplicationSummaryGenerator.class, count);
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
         Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "submittedAt"));
 
@@ -76,7 +80,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         UUID caseworkerId = UUID.randomUUID();
         when(caseworkerRepository.countById(caseworkerId)).thenReturn(1L);
 
-        List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(count);
+        List<ApplicationSummaryEntity> expectedApplications = DataGenerator.createMultipleRandom(ApplicationSummaryGenerator.class, count);
         // ensure that at least one application has no caseworker assigned
         if (count > 0) { expectedApplications.getFirst().setCaseworker(null); }
 
@@ -195,7 +199,7 @@ public class GetApplicationsTest extends BaseServiceTest {
     @Test
     public void givenDefaultPagination_whenGetApplications_thenReturnApplications() {
         // given
-        List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(5);
+        List<ApplicationSummaryEntity> expectedApplications = DataGenerator.createMultipleRandom(ApplicationSummaryGenerator.class, 5);
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
@@ -217,7 +221,7 @@ public class GetApplicationsTest extends BaseServiceTest {
     @Test
     public void givenSecondPage_whenGetApplications_thenReturnApplications() {
         // given
-        List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(5);
+        List<ApplicationSummaryEntity> expectedApplications = DataGenerator.createMultipleRandom(ApplicationSummaryGenerator.class, 5);
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
@@ -281,7 +285,7 @@ public class GetApplicationsTest extends BaseServiceTest {
     @Test
     public void givenMaximumPageSize_whenGetApplications_thenReturnApplications() {
         // given
-        List<ApplicationSummaryEntity> expectedApplications = applicationSummaryEntityFactory.createMultipleRandom(5);
+        List<ApplicationSummaryEntity> expectedApplications = DataGenerator.createMultipleRandom(ApplicationSummaryGenerator.class, 5);
         Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
@@ -305,8 +309,8 @@ public class GetApplicationsTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         UUID associateId = UUID.randomUUID();
-        ApplicationSummaryEntity leadApplication = applicationSummaryEntityFactory.createDefault(
-            b -> b.linkedApplications(Set.of(applicationEntityFactory.createDefault()))
+        ApplicationSummaryEntity leadApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class,
+            b -> b.linkedApplications(Set.of(DataGenerator.createDefault(ApplicationEntityGenerator.class)))
         );
 
         List<ApplicationSummaryEntity> expectedApplications = List.of(leadApplication);
@@ -343,13 +347,13 @@ public class GetApplicationsTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         UUID leadId = UUID.randomUUID();
-        ApplicationSummaryEntity firstAssociateApplication = applicationSummaryEntityFactory.createDefault();
-        ApplicationSummaryEntity secondAssociateApplication = applicationSummaryEntityFactory.createDefault();
+        ApplicationSummaryEntity firstAssociateApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class);
+        ApplicationSummaryEntity secondAssociateApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class);
 
         List<LinkedApplicationSummaryDto> linkedApplicationSummaryDtos = List.of(
-            new LinkedApplicationSummaryDto(firstAssociateApplication.getId(), firstAssociateApplication.getLaaReference(), false, leadId),
-            new LinkedApplicationSummaryDto(secondAssociateApplication.getId(), secondAssociateApplication.getLaaReference(), false, leadId),
-            new LinkedApplicationSummaryDto(leadId, "LEAD-REF", true, leadId)
+            DataGenerator.createDefault(LinkedApplicationSummaryDtoGenerator.class, b -> b.applicationId(firstAssociateApplication.getId()).laaReference(firstAssociateApplication.getLaaReference()).isLead(false).leadApplicationId(leadId)),
+            DataGenerator.createDefault(LinkedApplicationSummaryDtoGenerator.class, b -> b.applicationId(secondAssociateApplication.getId()).laaReference(secondAssociateApplication.getLaaReference()).isLead(false).leadApplicationId(leadId)),
+            DataGenerator.createDefault(LinkedApplicationSummaryDtoGenerator.class, b -> b.applicationId(leadId).laaReference("LEAD-REF").isLead(true).leadApplicationId(leadId))
         );
 
         when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class)))
@@ -385,8 +389,8 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         UUID firstLeadId = UUID.randomUUID();
         UUID secondLeadId = UUID.randomUUID();
-        ApplicationSummaryEntity firstAssociateApplication = applicationSummaryEntityFactory.createDefault();
-        ApplicationSummaryEntity secondAssociateApplication = applicationSummaryEntityFactory.createDefault();
+        ApplicationSummaryEntity firstAssociateApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class);
+        ApplicationSummaryEntity secondAssociateApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class);
 
         List<LinkedApplicationSummaryDto> linkedDtos = List.of(
             new LinkedApplicationSummaryDto(firstAssociateApplication.getId(), firstAssociateApplication.getLaaReference(), false, firstLeadId),
@@ -426,7 +430,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         // given
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        ApplicationSummaryEntity standaloneApplication = applicationSummaryEntityFactory.createDefault();
+        ApplicationSummaryEntity standaloneApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class);
 
         when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class)))
             .thenReturn(new PageImpl<>(List.of(standaloneApplication)));
