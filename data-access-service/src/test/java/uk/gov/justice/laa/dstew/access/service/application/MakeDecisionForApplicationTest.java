@@ -18,14 +18,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import tools.jackson.core.JacksonException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
+import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
@@ -34,8 +33,8 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRefusedDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetails;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
@@ -117,7 +116,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   }
 
   @Test
-  void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved() throws JacksonException {
+  void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved() {
     UUID applicationId = UUID.randomUUID();
     UUID grantedProceedingId = UUID.randomUUID();
     UUID refusedProceedingId = UUID.randomUUID();
@@ -162,7 +161,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         .createdBy("")
         .type(DomainEventType.APPLICATION_MAKE_DECISION_REFUSED)
         .data(objectMapper.writeValueAsString(
-            MakeDecisionRefusedDomainEventDetails.builder()
+            MakeDecisionDomainEventDetails.builder()
                 .applicationId(applicationId)
                 .caseworkerId(caseworker.getId())
                 .eventDescription("event")
@@ -258,8 +257,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   }
 
   @Test
-  void givenApplicationAndExistingDecisionAndNewProceeding_whenAssignDecision_thenDecisionUpdated()
-      throws JacksonException {
+  void givenApplicationAndExistingDecisionAndNewProceeding_whenAssignDecisionGranted_thenDecisionUpdated() {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     UUID newProceedingId = UUID.randomUUID();
@@ -269,7 +267,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .overallDecision(DecisionStatus.REFUSED)
+            .overallDecision(DecisionStatus.GRANTED)
             .eventHistory(
                 EventHistory.builder()
                     .eventDescription(null)
@@ -278,9 +276,9 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             .proceedings(List.of(
                 createMakeDecisionProceedingDetails(newProceedingId,
                                                     MeritsDecisionStatus.GRANTED,
-                                                    "new refusal",
+                                                    "initial reason",
                                                     "new justification")
-            ))
+            )).certificate(Map.of("Test Certificate", "test value") )
     );
 
     // expected saved application entity
@@ -293,7 +291,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     final DecisionEntity currentSavedDecisionEntity = createDecisionEntityWithProceeding(
         proceedingId,
-        MeritsDecisionStatus.REFUSED,
+        MeritsDecisionStatus.GRANTED,
         "initial reason",
         "initial justification"
     );
@@ -304,9 +302,9 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         .applicationId(applicationId)
         .caseworkerId(caseworker.getId())
         .createdBy("")
-        .type(DomainEventType.APPLICATION_MAKE_DECISION_REFUSED)
+        .type(DomainEventType.APPLICATION_MAKE_DECISION_GRANTED)
         .data(objectMapper.writeValueAsString(
-            MakeDecisionRefusedDomainEventDetails.builder()
+            MakeDecisionDomainEventDetails.builder()
                 .applicationId(applicationId)
                 .caseworkerId(caseworker.getId())
                 .eventDescription(null)
@@ -316,10 +314,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         .build();
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
-
-    ProceedingEntity existingProceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
-                builder.id(proceedingId).applicationId(applicationId)
-                );
 
     ProceedingEntity newProceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
                 builder.id(newProceedingId).applicationId(applicationId)
@@ -427,7 +421,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     assertThat(thrown)
         .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessage("Caseworker not found for application id: " + applicationId.toString());
+        .hasMessage("Caseworker not found for application id: " + applicationId);
 
   }
 
@@ -452,7 +446,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     assertThat(thrown)
         .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessage("No application found with id: " + applicationId.toString());
+        .hasMessage("No application found with id: " + applicationId);
   }
 
   @Test
@@ -484,10 +478,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         );
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
-
-    ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
-        builder.id(proceedingId)
-    );
 
     // when
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
@@ -690,19 +680,26 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     serviceUnderTest.makeDecision(applicationId, makeDecisionRequest);
 
     // then
-    ArgumentCaptor<uk.gov.justice.laa.dstew.access.entity.CertificateEntity> certificateCaptor =
-        ArgumentCaptor.forClass(uk.gov.justice.laa.dstew.access.entity.CertificateEntity.class);
+    ArgumentCaptor<CertificateEntity> certificateCaptor =
+        ArgumentCaptor.forClass(CertificateEntity.class);
     verify(certificateRepository, times(1)).save(certificateCaptor.capture());
 
-    uk.gov.justice.laa.dstew.access.entity.CertificateEntity savedCertificate = certificateCaptor.getValue();
+    CertificateEntity savedCertificate = certificateCaptor.getValue();
     assertThat(savedCertificate.getApplicationId()).isEqualTo(applicationId);
     assertThat(savedCertificate.getCertificateContent()).isEqualTo(certificateData);
     assertThat(savedCertificate.getCreatedBy()).isEqualTo(caseworkerId.toString());
     assertThat(savedCertificate.getUpdatedBy()).isEqualTo(caseworkerId.toString());
 
+    ArgumentCaptor<DomainEventEntity> domainEventCaptor = ArgumentCaptor.forClass(DomainEventEntity.class);
+    verify(domainEventRepository, times(1)).save(domainEventCaptor.capture());
+    assertThat(domainEventCaptor.getValue()).isInstanceOf(DomainEventEntity.class);
+    DomainEventEntity domainEventEntityCaptured = domainEventCaptor.getValue();
+    assertThat(domainEventEntityCaptured.getApplicationId()).isEqualTo(applicationId);
+    assertThat(domainEventEntityCaptured.getCaseworkerId()).isEqualTo(caseworkerId);
+    assertThat(domainEventEntityCaptured.getType()).isEqualTo(DomainEventType.APPLICATION_MAKE_DECISION_GRANTED);
+
     verify(applicationRepository, times(1)).findById(applicationId);
     verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
-    verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
   }
 
   @Test
@@ -808,6 +805,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         .usingRecursiveComparison()
         .ignoringCollectionOrder()
         .ignoringFields("proceedings")
+        .ignoringFields("certificate")
         .isEqualTo(expectedMakeDecisionRequest);
 
     // Assert only on the set of proceedings that are updated or added via the request.
@@ -824,9 +822,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     assertThat(savedDecision.getModifiedAt()).isNotNull();
     assertThat(savedDecision.getMeritsDecisions())
-        .allSatisfy(merits -> {
-          assertThat(merits.getModifiedAt()).isNotNull();
-        });
+        .allSatisfy(merits -> assertThat(merits.getModifiedAt()).isNotNull());
   }
 
   // DecisionEntity -> MakeDecisionRequest
