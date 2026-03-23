@@ -1,8 +1,5 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -15,6 +12,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.NonNull;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
@@ -99,7 +98,6 @@ public class ApplicationService {
     this.proceedingRepository = proceedingRepository;
     this.proceedingsService = proceedingsService;
     this.payloadValidationService = payloadValidationService;
-    objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     this.objectMapper = objectMapper;
     this.caseworkerRepository = caseworkerRepository;
     this.domainEventService = domainEventService;
@@ -528,7 +526,7 @@ public class ApplicationService {
   }
 
   private static UUID getLeadApplicationId(List<LinkedApplication> linkedApplications) {
-    return (linkedApplications != null && linkedApplications.size() != 0)
+    return (linkedApplications != null && !linkedApplications.isEmpty())
         ? linkedApplications.getFirst().getLeadApplicationId()
         : null;
   }

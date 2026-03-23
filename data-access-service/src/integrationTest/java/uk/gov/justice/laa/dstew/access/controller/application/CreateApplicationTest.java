@@ -10,8 +10,6 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,9 +26,16 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationOffice;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -311,7 +316,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     );
 
     Map<String, String> invalidFields = new HashMap<>();
-    invalidFields.put("applicationContent", "size must be between 1 and 2147483647");
+    invalidFields.put("applicationContent", "must not be null");
 
     ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
     expectedProblemDetail.setProperty("invalidFields", invalidFields);
@@ -385,7 +390,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
             problemDetail, Map.of("invalidFields", Map.of("laaReference", mustNotBeNull))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.applicationContent(null)),
-            problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
+            problemDetail, Map.of("invalidFields", Map.of("applicationContent", mustNotBeNull))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.applicationContent(new HashMap<>())),
             problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
@@ -396,7 +401,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
             "submittedAt: must not be null"))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(null)),
-            problemDetail, Map.of("invalidFields", Map.of("individuals", "size must be between 1 and 2147483647"))),
+            problemDetail, Map.of("invalidFields", Map.of("individuals", mustNotBeNull))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(List.of())),
             problemDetail, Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))),
@@ -411,7 +416,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
                 DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
                     indBuilder -> indBuilder.details(null))
             ))),
-            problemDetail, Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
+            problemDetail, Map.of("invalidFields", Map.of("individuals[0].details", mustNotBeNull))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(List.of(
                 DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
@@ -435,7 +440,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
                     indBuilder -> indBuilder.dateOfBirth(null).firstName(null).lastName(null).details(null))
             ))),
             problemDetail, Map.of("invalidFields",
-                Map.of("individuals[0].details", minimumSizErrorMessage,
+                Map.of("individuals[0].details", mustNotBeNull,
                     "individuals[0].lastName", mustNotBeNull,
                     "individuals[0].firstName", mustNotBeNull,
                     "individuals[0].dateOfBirth", mustNotBeNull
@@ -445,7 +450,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
 
   private void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual)
-      throws JsonProcessingException {
+      throws JacksonException {
     assertNotNull(actual.getId());
 
     JsonNode expectedContentNode = objectMapper.readTree(objectMapper.writeValueAsString(expected.getApplicationContent()));

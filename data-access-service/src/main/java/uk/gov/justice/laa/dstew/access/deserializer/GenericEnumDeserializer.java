@@ -1,17 +1,16 @@
 package uk.gov.justice.laa.dstew.access.deserializer;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import java.io.IOException;
 import java.util.Arrays;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
 
 /**
  * Generic deserializer for Enum types.
  *
  * @param <E> the enum type
  */
-public class GenericEnumDeserializer<E extends Enum> extends JsonDeserializer<E> {
+public class GenericEnumDeserializer<E extends Enum> extends ValueDeserializer<E> {
 
   private final Class<E> enumType;
 
@@ -20,9 +19,9 @@ public class GenericEnumDeserializer<E extends Enum> extends JsonDeserializer<E>
   }
 
   @Override
-  public E deserialize(JsonParser parser, DeserializationContext ctxt) throws IOException {
+  public E deserialize(JsonParser parser, DeserializationContext ctxt) {
 
-    String value = parser.getText();
+    String value = parser.getString();
     if (value == null || value.isEmpty()) {
       return null;
     }

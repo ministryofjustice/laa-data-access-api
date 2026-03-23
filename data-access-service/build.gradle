@@ -3,7 +3,7 @@ plugins {
     id 'jacoco'
     id 'io.freefair.lombok' version '9.2.0'
     id "com.gorylenko.gradle-git-properties" version "2.4.2"
-    id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin' version '1.0.4'
+    id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin'
     id 'com.avast.gradle.docker-compose' version '0.17.12'
     id 'io.sentry.jvm.gradle' version '5.12.2'
 }
@@ -11,6 +11,24 @@ plugins {
 def versions = [
         sentry : '8.28.0'
 ]
+
+configurations.all {
+    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
+    // Fix for Spring Boot security vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-15701836, 15701840 (Authentication Bypass)
+    // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
+    // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
+    resolutionStrategy {
+        force 'com.fasterxml.jackson.core:jackson-core:2.21.1'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
+        force 'tools.jackson.core:jackson-core:3.1.0'
+        force 'tools.jackson.core:jackson-databind:3.1.0'
+        force 'tools.jackson:jackson-bom:3.1.0'
+        force 'org.springframework.boot:spring-boot-actuator:3.5.12'
+        force 'org.springframework.boot:spring-boot-actuator-autoconfigure:3.5.12'
+        force 'org.springframework.security:spring-security-web:6.5.9'
+        force 'org.springframework:spring-webmvc:6.2.17'
+    }
+}
 
 sourceSets {
     testUtilities {
@@ -79,6 +97,10 @@ jacocoTestReport {
 }
 
 dependencyManagement {
+    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
+    imports {
+        mavenBom 'tools.jackson:jackson-bom:3.1.0'
+    }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
             entry 'sentry-spring-boot-starter'
@@ -103,15 +125,16 @@ dependencies {
     implementation project(':data-access-api')
     implementation project(':data-access-shared')
 
-    implementation 'org.springframework.security:spring-security-core:6.5.5'
-    implementation 'org.springframework:spring-core:6.2.11'
+    // Remove explicit Spring Security and Spring Core versions - let Spring Boot 4 manage them
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation "com.vladmihalcea:hibernate-types-60:2.20.0"
     implementation('org.springframework.boot:spring-boot-starter-web') {
+        exclude group: 'com.google.code.gson', module: 'gson'
+    }
+    implementation('org.springframework.boot:spring-boot-starter-webmvc') {
         exclude group: 'com.google.code.gson', module: 'gson'
     }
 
@@ -121,17 +144,23 @@ dependencies {
     implementation 'io.netty:netty-codec-http2:4.1.125.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-15307781
     implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.52'
-    // fix https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924
+    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
     implementation 'com.fasterxml.jackson.core:jackson-core:2.21.1'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
+    implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2') {
+        exclude group: 'tools.jackson.core'
+    }
+    implementation("org.springframework.boot:spring-boot-starter-flyway:4.0.1")
+    implementation("org.flywaydb:flyway-database-postgresql")
 
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8'
-
-    implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:5.22.0'
+    // Source: https://mvnrepository.com/artifact/com.azure.spring/spring-cloud-azure-starter-active-directory
+    // Note: Version 7.0.0 may not be compatible with Spring Boot 4, check for updated version
+    implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.0.0'
     implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
 
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
-    implementation 'org.javers:javers-core:7.8.0'
+    implementation 'org.javers:javers-core:7.10.0'
 
     runtimeOnly 'org.postgresql:postgresql'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
@@ -143,6 +172,10 @@ dependencies {
     testImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.1"
     testImplementation 'org.testcontainers:postgresql:1.21.3'
     testImplementation 'org.springframework.boot:spring-boot-testcontainers:3.5.7'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    // https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide#test-code
+    testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
@@ -152,5 +185,5 @@ dependencies {
     // Sentry
     implementation platform("io.sentry:sentry-bom:$versions.sentry")
     implementation "io.sentry:sentry-logback:$versions.sentry"
-    implementation "io.sentry:sentry-spring-boot-starter-jakarta:$versions.sentry"
+    implementation "io.sentry:sentry-spring-boot-4:$versions.sentry"
 }
