@@ -109,6 +109,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     assertThat(validationException.errors())
             .isInstanceOf(List.class)
             .contains("The Make Decision request must contain a refusal justification for proceeding with id: " + refusedProceedingId);
+    verify(applicationRepository, never()).save(any());
   }
 
   @Test
@@ -299,9 +300,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    ProceedingEntity existingProceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
-                builder.id(proceedingId).applicationId(applicationId)
-                );
 
     ProceedingEntity newProceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
                 builder.id(newProceedingId).applicationId(applicationId)
@@ -421,6 +419,9 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("Caseworker not found for application id: " + applicationId);
 
+    verify(applicationRepository, never()).save(any());
+
+
   }
 
   @Test
@@ -441,6 +442,9 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     assertThat(thrown)
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("No application found with id: " + applicationId);
+
+    verify(applicationRepository, never()).save(any());
+
   }
 
   @Test
@@ -467,10 +471,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     ApplicationEntity expectedApplicationEntity = getApplicationEntity(applicationId, caseworker, "unmodified");
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
-
-    ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
-        builder.id(proceedingId)
-    );
 
     // when
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
