@@ -19,7 +19,7 @@ public class ApplicationMakeDecisionRequestGenerator extends BaseGenerator<MakeD
         return MakeDecisionRequest.builder()
                 .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
                 .proceedings(List.of(makeDecisionProceedingGenerator.createDefault()))
-                .version(0L)
+                .applicationVersion(0L)
                 .build();
     }
 }

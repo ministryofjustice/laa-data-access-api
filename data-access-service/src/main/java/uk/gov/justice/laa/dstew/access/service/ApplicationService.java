@@ -406,7 +406,7 @@ public class ApplicationService {
   @AllowApiCaseworker
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
-    VersionCheckHelper.checkEntityVersionLocking(applicationId, application.getVersion(), request.getVersion());
+    VersionCheckHelper.checkEntityVersionLocking(applicationId, application.getVersion(), request.getApplicationVersion());
     final CaseworkerEntity caseworker = application.getCaseworker();
     if (caseworker == null) {
       throw new ResourceNotFoundException(

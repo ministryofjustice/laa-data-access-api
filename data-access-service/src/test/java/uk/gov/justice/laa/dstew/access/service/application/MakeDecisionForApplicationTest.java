@@ -716,7 +716,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .version(1L) // version should be 0 for the first decision
+            .applicationVersion(1L) // version should be 0 for the first decision
     );
 
     ApplicationEntity applicationEntity = getApplicationEntity(applicationId, "content");
@@ -796,7 +796,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     assertThat(actual)
         .usingRecursiveComparison()
         .ignoringCollectionOrder()
-        .ignoringFields("proceedings", "version")
+        .ignoringFields("proceedings", "applicationVersion")
         .isEqualTo(expectedMakeDecisionRequest);
 
     // Assert only on the set of proceedings that are updated or added via the request.

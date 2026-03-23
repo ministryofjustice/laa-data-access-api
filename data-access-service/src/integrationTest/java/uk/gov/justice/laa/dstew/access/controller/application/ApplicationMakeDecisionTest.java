@@ -271,7 +271,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                             createMakeDecisionProceeding(proceedingEntityTwo.getId(), MeritsDecisionStatus.REFUSED, "justification new", "reason new"),
                             createMakeDecisionProceeding(proceedingEntityOne.getId(), MeritsDecisionStatus.GRANTED, "justification update", "reason update")
                     ))
-                    .version(currentVersion)
+                    .applicationVersion(currentVersion)
                     .autoGranted(true);
         });
 
@@ -453,7 +453,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         Assertions.assertThat(actual)
                 .usingRecursiveComparison()
                 .ignoringCollectionOrder()
-                .ignoringFields("certificate", "version")
+                .ignoringFields("certificate", "applicationVersion")
                 .isEqualTo(expectedMakeDecisionRequest);
 
         Assertions.assertThat(savedDecision.getModifiedAt()).isNotNull();
