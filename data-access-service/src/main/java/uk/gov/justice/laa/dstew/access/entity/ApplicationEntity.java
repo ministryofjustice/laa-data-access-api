@@ -16,6 +16,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Map;
@@ -52,6 +53,9 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class ApplicationEntity implements AuditableEntity {
+
+  @Version
+  private Long version;
 
   @Id
   @Column(columnDefinition = "UUID")
