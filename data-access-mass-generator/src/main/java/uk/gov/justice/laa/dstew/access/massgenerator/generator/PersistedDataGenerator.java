@@ -2,10 +2,15 @@ package uk.gov.justice.laa.dstew.access.massgenerator.generator;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
+import uk.gov.justice.laa.dstew.access.massgenerator.generator.application.FullCertificateGenerator;
+import uk.gov.justice.laa.dstew.access.massgenerator.generator.application.FullMeritsDecisionGenerator;
 import uk.gov.justice.laa.dstew.access.repository.*;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -50,6 +55,9 @@ public class PersistedDataGenerator extends DataGenerator {
         registerRepository(MeritsDecisionsEntityGenerator.class, MeritsDecisionRepository.class);
         registerRepository(CertificateEntityGenerator.class, CertificateRepository.class);
         registerRepository(IndividualEntityGenerator.class, IndividualRepository.class);
+        // Full* generator keys used directly in the mass-generator decision block
+        registerRepository(FullMeritsDecisionGenerator.class, MeritsDecisionRepository.class);
+        registerRepository(FullCertificateGenerator.class, CertificateRepository.class);
     }
 
     public <TGenerator, TRepository extends JpaRepository<?, ?>>
@@ -108,11 +116,13 @@ public class PersistedDataGenerator extends DataGenerator {
         return entities;
     }
 
+    @Transactional
     public void flushAndClear() {
+        entityManager.flush();
         entityManager.clear();
     }
 
-
+    @Transactional
     public <TEntity> List<TEntity> reattach(List<TEntity> entities) {
         return entities.stream()
                 .map(entityManager::merge)
@@ -126,6 +136,27 @@ public class PersistedDataGenerator extends DataGenerator {
             return entities;
         }
         return persist(generatorType, entities);
+    }
+
+    /**
+     * Save an already-modified ApplicationEntity (e.g. after attaching a DecisionEntity).
+     * Delegates to the ApplicationRepository without going through a generator.
+     */
+    @Transactional
+    public ApplicationEntity saveApplication(ApplicationEntity application) {
+        ApplicationRepository repo = (ApplicationRepository) applicationContext.getBean(ApplicationRepository.class);
+        return repo.saveAndFlush(application);
+    }
+
+    /**
+     * Merge a DecisionEntity that already has an ID (e.g. after setting meritsDecisions post-persist).
+     * Uses EntityManager.merge so that already-persisted MeritsDecisionEntity objects are treated
+     * as managed rather than triggering a duplicate CascadeType.PERSIST.
+     */
+    @Transactional
+    public DecisionEntity mergeDecision(DecisionEntity decision) {
+        DecisionRepository repo = (DecisionRepository) applicationContext.getBean(DecisionRepository.class);
+        return repo.saveAndFlush(entityManager.merge(decision));
     }
 }
 
