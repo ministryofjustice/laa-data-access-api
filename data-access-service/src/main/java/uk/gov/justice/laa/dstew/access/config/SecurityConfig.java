@@ -44,6 +44,7 @@ import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationPro
 @Configuration
 @EnableMethodSecurity
 @EnableWebSecurity
+@ConditionalOnProperty(prefix = "feature", name = "disable-security", havingValue = "false")
 public class SecurityConfig {
 
   @Value("${spring.security.oauth2.resourceserver.jwt.audience}")
