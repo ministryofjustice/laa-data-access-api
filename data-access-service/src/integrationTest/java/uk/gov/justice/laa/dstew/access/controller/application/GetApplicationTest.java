@@ -93,8 +93,8 @@ public class GetApplicationTest extends BaseIntegrationTest {
         });
 
         application.setDecision(decision);
-        applicationRepository.saveAndFlush(application);
-        clearCache();
+      ApplicationEntity savedApplication = applicationRepository.saveAndFlush(application);
+      clearCache();
 
         // when
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
@@ -105,7 +105,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        Application expectedApplication = createApplication(application, proceeding, decision);
+        Application expectedApplication = createApplication(savedApplication, proceeding, decision);
         assertThat(actualApplication).isEqualTo(expectedApplication);
     }
 
@@ -377,6 +377,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
             : List.of()
         );
 
+        application.setVersion(applicationEntity.getVersion());
         return application;
     }
 
