@@ -94,4 +94,9 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
     secretKeyRef:
       name: laa-data-access-api-secrets
       key: FEATURE_ENABLE_DEV_TOKEN
+- name: FEATURE_DISABLE_SECURITY
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: FEATURE_DISABLE_SECURITY
 {{- end }}

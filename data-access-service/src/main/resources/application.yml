@@ -41,6 +41,13 @@ logging:
         web: INFO
       hibernate: INFO
     com.azure.spring: INFO
+    uk:
+      gov:
+        justice:
+          laa:
+            dstew:
+              access:
+                config: INFO
 
 management:
   endpoints.web.exposure.include: health,info
@@ -63,6 +70,7 @@ sentry:
 
 feature:
   enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}
+  disable-security: ${FEATURE_DISABLE_SECURITY:false}
 
 server:
   forward-headers-strategy: framework
