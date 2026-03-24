@@ -30,7 +30,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
-import tools.jackson.core.JacksonException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
@@ -229,6 +228,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             .id(applicationId)
             .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
             .caseworker(caseworker)
+            .version(0L)
     );
 
     final DecisionEntity currentSavedDecisionEntity = createDecisionEntityWithProceeding(
