@@ -414,9 +414,7 @@ public class ApplicationService {
     //          String.format("Caseworker not found for application id: %s", applicationId)
     //      );
     //    }
-    final UUID caseworkerId = caseworker != null
-        ? caseworker.getId()
-        : UUID.fromString("00000000-0000-0000-0000-000000000000"); // Placeholder until security is implemented
+    //    final UUID caseworkerId = caseworker.getId();
 
     applicationValidations.checkApplicationMakeDecisionRequest(request);
 
@@ -468,8 +466,8 @@ public class ApplicationService {
       CertificateEntity certificate = CertificateEntity.builder()
           .applicationId(applicationId)
           .certificateContent(request.getCertificate())
-          .createdBy(String.valueOf(caseworkerId))
-          .updatedBy(String.valueOf(caseworkerId))
+          .createdBy(caseworker != null ? String.valueOf(caseworker.getId()) : "UNASSIGNED") // Temporary until we have security implemented to get actual caseworker details
+          .updatedBy(caseworker != null ? String.valueOf(caseworker.getId()) : "UNASSIGNED") // Temporary until we have security implemented to get actual caseworker details
           .build();
 
       certificateRepository.save(certificate);
@@ -479,7 +477,7 @@ public class ApplicationService {
       domainEventService.saveMakeDecisionRefusedDomainEvent(
           applicationId,
           request,
-          caseworkerId
+          caseworker != null ? caseworker.getId() : null
       );
     }
 
