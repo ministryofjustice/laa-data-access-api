@@ -610,8 +610,9 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         assertThat(certificate.getCertificateContent().get("certificateNumber")).isEqualTo("TESTCERT001");
         assertThat(certificate.getCertificateContent().get("issueDate")).isEqualTo("2026-03-03");
         assertThat(certificate.getCertificateContent().get("validUntil")).isEqualTo("2027-03-03");
-        assertThat(certificate.getCreatedBy()).isEqualTo(CaseworkerJohnDoe.getId().toString());
-        assertThat(certificate.getUpdatedBy()).isEqualTo(CaseworkerJohnDoe.getId().toString());
+        // createdBy and updatedBy logic will be reverted once security is in place
+        // assertThat(certificate.getCreatedBy()).isEqualTo(CaseworkerJohnDoe.getId().toString());
+        // assertThat(certificate.getUpdatedBy()).isEqualTo(CaseworkerJohnDoe.getId().toString());
         assertThat(certificate.getCreatedAt()).isNotNull();
         assertThat(certificate.getModifiedAt()).isNotNull();
     }

@@ -663,8 +663,9 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     uk.gov.justice.laa.dstew.access.entity.CertificateEntity savedCertificate = certificateCaptor.getValue();
     assertThat(savedCertificate.getApplicationId()).isEqualTo(applicationId);
     assertThat(savedCertificate.getCertificateContent()).isEqualTo(certificateData);
-    assertThat(savedCertificate.getCreatedBy()).isEqualTo(caseworkerId.toString());
-    assertThat(savedCertificate.getUpdatedBy()).isEqualTo(caseworkerId.toString());
+    // createdBy and updatedBy logic will be reverted once security is in place
+    // assertThat(savedCertificate.getCreatedBy()).isEqualTo(caseworkerId.toString());
+    // assertThat(savedCertificate.getUpdatedBy()).isEqualTo(caseworkerId.toString());
 
     verify(applicationRepository, times(1)).findById(applicationId);
     verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
