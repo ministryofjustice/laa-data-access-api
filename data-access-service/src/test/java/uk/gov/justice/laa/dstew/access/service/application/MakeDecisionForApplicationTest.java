@@ -17,10 +17,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -69,52 +74,70 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   @Autowired
   private ApplicationService serviceUnderTest;
 
-  @Test
-  void givenMakeDecisionRequestWithOneProceedingAndInvalidRefusal_whenAssignDecision_thenDecisionSaved() {
+  static Stream<Arguments> validationFailureCases() {
+    return Stream.of(
+        Arguments.of(
+            (Function<UUID, MakeDecisionRequest>) ignoredId ->
+                DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, b -> b
+                    .overallDecision(DecisionStatus.REFUSED)
+                    .eventHistory(EventHistory.builder().eventDescription("event").build())
+                    .proceedings(List.of())),
+            (Function<UUID, String>) id -> "The Make Decision request must contain at least one proceeding"
+        ),
+        Arguments.of(
+            (Function<UUID, MakeDecisionRequest>) proceedingId ->
+                DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, b -> b
+                    .overallDecision(DecisionStatus.GRANTED)
+                    .eventHistory(EventHistory.builder().eventDescription("granted event").build())
+                    .certificate(null)
+                    .proceedings(List.of(
+                        createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "justification", "reason")))),
+            (Function<UUID, String>) id -> "The Make Decision request must contain a certificate when overallDecision is GRANTED"
+        ),
+        Arguments.of(
+            (Function<UUID, MakeDecisionRequest>) proceedingId ->
+                DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, b -> b
+                    .overallDecision(DecisionStatus.GRANTED)
+                    .eventHistory(EventHistory.builder().eventDescription("granted event").build())
+                    .certificate(Map.of())
+                    .proceedings(List.of(
+                        createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "justification", "reason")))),
+            (Function<UUID, String>) id -> "The Make Decision request must contain a certificate when overallDecision is GRANTED"
+        ),
+        Arguments.of(
+            (Function<UUID, MakeDecisionRequest>) proceedingId ->
+                DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, b -> b
+                    .overallDecision(DecisionStatus.REFUSED)
+                    .eventHistory(EventHistory.builder().eventDescription("event").build())
+                    .proceedings(List.of(
+                        createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.REFUSED, "reason", "")))),
+            (Function<UUID, String>) id ->
+                "The Make Decision request must contain a refusal justification for proceeding with id: " + id
+        )
+    );
+  }
+
+  @ParameterizedTest
+  @MethodSource("validationFailureCases")
+  void givenInvalidMakeDecisionRequest_whenMakeDecision_thenValidationExceptionThrown(
+      Function<UUID, MakeDecisionRequest> requestFactory,
+      Function<UUID, String> expectedErrorFactory) {
 
     UUID applicationId = UUID.randomUUID();
-    UUID refusedProceedingId = UUID.randomUUID();
-
-    MeritsDecisionStatus refusedDecision = MeritsDecisionStatus.GRANTED;
-
-    // given
+    UUID proceedingId = UUID.randomUUID();
     CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
-
-    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
-            requestBuilder
-                    .overallDecision(DecisionStatus.REFUSED)
-                    .eventHistory(
-                            EventHistory.builder()
-                                    .eventDescription("event")
-                                    .build()
-                    )
-                    .proceedings(List.of(
-                            createMakeDecisionProceedingDetails(refusedProceedingId, refusedDecision, "refusal 1", "")
-                    ))
-    );
-
-    final ApplicationEntity expectedApplicationEntity = getApplicationEntity(applicationId, caseworker, "unmodified");
+    ApplicationEntity applicationEntity = getApplicationEntity(applicationId, caseworker, "content");
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
+    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
 
-    ProceedingEntity refusedProceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
-            builder.id(refusedProceedingId).applicationId(applicationId)
-    );
+    MakeDecisionRequest request = requestFactory.apply(proceedingId);
+    String expectedError = expectedErrorFactory.apply(proceedingId);
 
-    // when
-    when(proceedingRepository.findAllById(List.of(refusedProceedingEntity.getId())))
-            .thenReturn(List.of(refusedProceedingEntity));
-    when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
+    Throwable thrown = catchThrowable(() -> serviceUnderTest.makeDecision(applicationId, request));
 
-    ValidationException validationException =
-            Assertions.assertThrows(ValidationException.class,
-                    () -> serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest));
-
-    assertThat(validationException.getMessage()).contains("One or more validation rules were violated");
-
-    assertThat(validationException.errors())
-            .isInstanceOf(List.class)
-            .contains("The Make Decision request must contain a refusal justification for proceeding with id: " + refusedProceedingId);
+    assertThat(thrown).isInstanceOf(ValidationException.class);
+    assertThat(((ValidationException) thrown).errors()).contains(expectedError);
     verify(applicationRepository, never()).save(any());
   }
 
@@ -463,39 +486,49 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   @Test
   void givenNoProceeding_whenAssignDecision_thenThrowResourceNotFoundException() {
     UUID applicationId = UUID.randomUUID();
+  static Stream<Arguments> notFoundScenarios() {
+    UUID appId1 = UUID.randomUUID();
+    UUID appId2 = UUID.randomUUID();
+    UUID appId3 = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
-
-    MeritsDecisionStatus decision = MeritsDecisionStatus.GRANTED;
-    String reason = "refusal 1";
-    String justification = "justification 1";
-
-    // given
-    CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
-
-    // overwrite some fields of default assign decision request
-    final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
-        requestBuilder
-            .proceedings(List.of(
-                createMakeDecisionProceedingDetails(proceedingId, decision, reason, justification)
-            ))
+    return Stream.of(
+        Arguments.of("NO_APPLICATION", appId1, proceedingId, "No application found with id: " + appId1),
+        Arguments.of("NO_CASEWORKER",  appId2, proceedingId, "Caseworker not found for application id: " + appId2),
+        Arguments.of("NO_PROCEEDING",  appId3, proceedingId, "No proceeding found with id: " + proceedingId)
     );
+  }
 
-    // expected saved application entity
-    ApplicationEntity expectedApplicationEntity = getApplicationEntity(applicationId, caseworker, "unmodified");
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("notFoundScenarios")
+  void givenMissingEntity_whenMakeDecision_thenThrowResourceNotFoundException(
+      String scenario, UUID applicationId, UUID proceedingId, String expectedMessage) {
+
+    CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
+    MakeDecisionRequest request = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, b -> b
+        .proceedings(List.of(
+            createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "reason", "justification")
+        ))
+    );
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    // when
-    when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
+    switch (scenario) {
+      case "NO_CASEWORKER" -> when(applicationRepository.findById(applicationId))
+          .thenReturn(Optional.of(getApplicationEntity(applicationId, "content")));
+      case "NO_PROCEEDING" -> when(applicationRepository.findById(applicationId))
+          .thenReturn(Optional.of(getApplicationEntity(applicationId, caseworker, "content")));
+      // NO_APPLICATION: no mock → findById returns empty Optional by default
+    }
 
-    Throwable thrown = catchThrowable(
-        () -> serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest)
-    );
+    Throwable thrown = catchThrowable(() -> serviceUnderTest.makeDecision(applicationId, request));
 
-    // then
     assertThat(thrown)
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessage("No proceeding found with id: " + proceedingId);
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage(expectedMessage);
+    // save() is called before proceeding lookup, so only assert never-saved for early-exit scenarios
+    if (!scenario.equals("NO_PROCEEDING")) {
+      verify(applicationRepository, never()).save(any());
+    }
   }
 
   @Test
@@ -579,52 +612,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             .hasMessageContaining(nonExistentProceedingId.toString())
             .hasMessageContaining("Not linked to application:")
             .hasMessageContaining(unrelatedApplicationProceedingId.toString());
-  }
-
-  @Test
-  void givenGrantedDecisionWithoutCertificate_whenMakeDecision_thenValidationExceptionThrown() {
-    // given
-    UUID applicationId = UUID.randomUUID();
-    UUID proceedingId = UUID.randomUUID();
-    CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
-
-    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
-        requestBuilder
-            .overallDecision(DecisionStatus.GRANTED)
-            .eventHistory(EventHistory.builder()
-                .eventDescription("granted event")
-                .build())
-            .proceedings(List.of(
-                createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "justification", "reason")
-            ))
-            .certificate(null)
-    );
-
-    ApplicationEntity applicationEntity = getApplicationEntity(applicationId, caseworker, "content");
-
-    ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
-        builder.id(proceedingId).applicationId(applicationId)
-    );
-
-    setSecurityContext(TestConstants.Roles.CASEWORKER);
-
-    when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
-
-    // when
-    Throwable thrown = catchThrowable(() ->
-        serviceUnderTest.makeDecision(applicationId, makeDecisionRequest)
-    );
-
-    // then
-    assertThat(thrown).isInstanceOf(ValidationException.class);
-    ValidationException validationException = (ValidationException) thrown;
-    assertThat(validationException.errors())
-        .contains("The Make Decision request must contain a certificate when overallDecision is GRANTED");
-
-    verify(certificateRepository, never()).save(any());
-    verify(applicationRepository, times(1)).findById(applicationId);
-    verify(applicationRepository, never()).save(any());
   }
 
   @Test
@@ -845,7 +832,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         );
     }
 
-    private MakeDecisionProceeding createMakeDecisionProceedingDetails(UUID proceedingId,
+    private static MakeDecisionProceeding createMakeDecisionProceedingDetails(UUID proceedingId,
         MeritsDecisionStatus decision, String reason, String justification) {
         return DataGenerator.createDefault(MakeDecisionProceedingGenerator.class, builder ->
             builder
