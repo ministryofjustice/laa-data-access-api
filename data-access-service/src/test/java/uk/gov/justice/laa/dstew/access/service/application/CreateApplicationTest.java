@@ -14,6 +14,7 @@ import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.
         ApplicationCreateRequestIndividualAssert.assertIndividualCollectionsEqual;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.ApplyApplication;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
@@ -360,14 +362,19 @@ public class CreateApplicationTest extends BaseServiceTest {
         ));
   }
 
-  private Map<String, Object> getAppContentParent(List<Proceeding> proceedings,
+  private ApplyApplication getAppContentParent(List<Proceeding> proceedings,
                                                   String appContentId) {
 
-    ApplicationContent applicationContent = DataGenerator.createDefault(ApplicationContentGenerator.class, appContentBuilder ->
-        appContentBuilder.submittedAt("2026-01-15T10:20:30Z").proceedings(proceedings).id(UUID.fromString(appContentId)));
-
-    applicationContent.putAdditionalApplicationContent("testPropertyInTest", "testValue");
-    return objectMapper.convertValue(applicationContent, Map.class);
+    ApplyApplication applyApplication = new ApplyApplication();
+    applyApplication.submittedAt(OffsetDateTime.parse("2026-01-15T10:20:30Z"));
+    applyApplication.putAdditionalProperty("proceedings", proceedings);
+    applyApplication.id(UUID.fromString(appContentId));
+    return applyApplication;
+//    ApplicationContent applicationContent = DataGenerator.createDefault(ApplicationContentGenerator.class, appContentBuilder ->
+//        appContentBuilder.submittedAt("2026-01-15T10:20:30Z").proceedings(proceedings).id(UUID.fromString(appContentId)));
+//
+//    applicationContent.putAdditionalApplicationContent("testPropertyInTest", "testValue");
+//    return objectMapper.convertValue(applicationContent, Map.class);
     }
 
   private Proceeding getProceeding(Boolean useDelegatedFunctions, boolean leadProceeding) {

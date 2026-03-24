@@ -1,0 +1,25 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Apply Application V1
+
+components:
+  schemas:
+    applyApplication:
+      description: Application schema for v2 of the apply API, which includes proceedings information in the request body. This allows for creation of applications with multiple proceedings in a single request.
+      allOf:
+        - $ref: '../v1/open-api-apply-application.yml#/components/schemas/applyApplication'
+        - type: object
+          required:
+            - proceedings
+          properties:
+            proceedings:
+              type: array
+              items:
+                $ref: '../common/open-api-models-common.yml#/components/schemas/createProceedingRequest'
+            test:
+              type: string
+              description: An optional test field that can be used to store a test value for the application, such as a test identifier or a flag. This field is not used by the system and is intended for client use only.
+      required:
+        - proceedings
+      additionalProperties: true

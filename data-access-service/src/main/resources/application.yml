@@ -74,3 +74,12 @@ feature:
 
 server:
   forward-headers-strategy: framework
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    url: /open-api-specification2.yml
+  auto-tag-classes: false
+  default-flat-param-object: true

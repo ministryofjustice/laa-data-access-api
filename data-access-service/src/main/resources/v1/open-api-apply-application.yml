@@ -1,0 +1,19 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Apply Application V1
+
+components:
+  schemas:
+    applyApplication:
+      allOf:
+        - $ref: '../common/open-api-application-content-common.yml#/components/schemas/ApplicationContentBase'
+      additionalProperties: true
+      properties:
+        proceedings:
+          type: array
+          items:
+            $ref: '../common/open-api-models-common.yml#/components/schemas/createProceedingRequest'
+        reference:
+          type: string
+          description: An optional reference field that can be used to store a reference value for the application, such as an external system identifier or a case number. This field is not used by the system and is intended for client use only.

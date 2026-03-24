@@ -1,0 +1,23 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Application Content Common Schemas
+
+components:
+  schemas:
+    ApplicationContentBase:
+      type: object
+      required:
+        - objectType
+        - id
+        - submittedAt
+      properties:
+        objectType:
+          type: string
+        id:
+          type: string
+          format: uuid
+        submittedAt:
+          type: string
+          format: date-time
+      additionalProperties: true
