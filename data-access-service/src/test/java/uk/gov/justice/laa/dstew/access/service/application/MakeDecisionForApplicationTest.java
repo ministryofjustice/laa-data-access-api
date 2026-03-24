@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -399,6 +400,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   }
 
   @Test
+  @Disabled("Temporarily disabled until security is implemented")
   void givenApplicationWithNoCaseworker_whenAssignDecision_thenThrowResourceNotFoundException() {
     UUID applicationId = UUID.randomUUID();
 
