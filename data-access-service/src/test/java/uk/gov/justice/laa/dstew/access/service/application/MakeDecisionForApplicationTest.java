@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.DomainEvent.verifyThatDomainEventSaved;
 
-
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -235,7 +234,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         proceedingId,
         MeritsDecisionStatus.REFUSED,
         "initial reason",
-        "initial justification"
+        "initial justification", DecisionStatus.REFUSED
     );
 
     expectedApplicationEntity.setDecision(currentSavedDecisionEntity);
@@ -255,7 +254,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // then
     verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
     verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-    verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+    verify(domainEventRepository).save(any(DomainEventEntity.class));
 
     verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, 1);
   }
@@ -292,7 +291,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         proceedingId,
         MeritsDecisionStatus.GRANTED,
         "initial reason",
-        "initial justification"
+        "initial justification", DecisionStatus.GRANTED
     );
 
     expectedApplicationEntity.setDecision(currentSavedDecisionEntity);
@@ -363,7 +362,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         currentProceedingId,
         MeritsDecisionStatus.REFUSED,
         "current reason",
-        "current justification"
+        "current justification", DecisionStatus.REFUSED
     );
 
     expectedApplicationEntity.setDecision(currentSavedDecisionEntity);
@@ -388,7 +387,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // then
     verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
     verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
-    verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+    verify(domainEventRepository).save(any(DomainEventEntity.class));
     verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, 2);
   }
 
@@ -827,12 +826,12 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   }
 
   private DecisionEntity createDecisionEntityWithProceeding(
-          UUID proceedingId,
-          MeritsDecisionStatus decision,
-          String reason,
-          String justification) {
+      UUID proceedingId,
+      MeritsDecisionStatus decision,
+      String reason,
+      String justification, DecisionStatus decisionStatus) {
         return DataGenerator.createDefault(DecisionEntityGenerator.class, builder ->
-            builder.overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+            builder.overallDecision(decisionStatus)
                     .meritsDecisions(new HashSet<>(Set.of(
                             DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class, mBuilder ->
                                     mBuilder

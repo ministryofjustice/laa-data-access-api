@@ -207,45 +207,20 @@ public class DomainEventService {
     return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
   }
 
-  /**
-   * Posts a MAKE_DECISION_REFUSED domain event.
-   */
-  @AllowApiCaseworker
-  public void saveMakeDecisionRefusedDomainEvent(
-          UUID applicationId,
-          MakeDecisionRequest request,
-          UUID caseworkerId) {
-
-    String eventDescription = request.getEventHistory().getEventDescription();
-
-    MakeDecisionDomainEventDetails domainEventDetails =
-        MakeDecisionDomainEventDetails.builder()
-                    .applicationId(applicationId)
-                    .caseworkerId(caseworkerId)
-                    .createdAt(Instant.now())
-                    .request(getEventDetailsAsJson(request, DomainEventType.APPLICATION_MAKE_DECISION_REFUSED))
-                    .eventDescription(eventDescription)
-                    .build();
-
-    saveDomainEvent(
-            applicationId,
-            caseworkerId,
-            DomainEventType.APPLICATION_MAKE_DECISION_REFUSED,
-            domainEventDetails
-    );
-  }
 
   /**
-   * Posts a MAKE_DECISION_GRANTED domain event.
+   * Posts a make decision domain event.
    *
    * @param applicationId the id of the application for which the decision was made
    * @param request       the details of the decision that was made
    * @param caseworkerId  the id of the caseworker who made the decision
+   * @param domainEventType the type of the domain event to post,
+   *                        either APPLICATION_MAKE_DECISION_REFUSED or APPLICATION_MAKE_DECISION_GRANTED
    */
   @AllowApiCaseworker
-  public void saveMakeDecisionGrantedDomainEvent(
+  public void saveMakeDecisionDomainEvent(
       UUID applicationId,
-      MakeDecisionRequest request, UUID caseworkerId) {
+      MakeDecisionRequest request, UUID caseworkerId, DomainEventType domainEventType) {
 
     String eventDescription = request.getEventHistory().getEventDescription();
 
@@ -254,14 +229,14 @@ public class DomainEventService {
             .applicationId(applicationId)
             .caseworkerId(caseworkerId)
             .createdAt(Instant.now())
-            .request(getEventDetailsAsJson(request, DomainEventType.APPLICATION_MAKE_DECISION_GRANTED))
+            .request(getEventDetailsAsJson(request, domainEventType))
             .eventDescription(eventDescription)
             .build();
 
     saveDomainEvent(
         applicationId,
         caseworkerId,
-        DomainEventType.APPLICATION_MAKE_DECISION_GRANTED,
+        domainEventType,
         domainEventDetails
     );
   }

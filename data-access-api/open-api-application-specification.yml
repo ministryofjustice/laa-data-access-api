@@ -784,7 +784,6 @@ components:
       type: string
       enum:
         - GRANTED
-        - PARTIALLY_GRANTED
         - REFUSED
 
     MeritsDecisionStatus:
