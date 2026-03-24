@@ -471,6 +471,10 @@ public class ApplicationService {
     }
 
     if (decision.getOverallDecision() == DecisionStatus.REFUSED) {
+      if (certificateRepository.existsByApplicationId(applicationId)) {
+        certificateRepository.deleteByApplicationId(applicationId);
+      }
+
       domainEventService.saveMakeDecisionRefusedDomainEvent(
           applicationId,
           request,

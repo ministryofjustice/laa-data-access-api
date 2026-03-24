@@ -21,6 +21,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import tools.jackson.core.JacksonException;
@@ -116,8 +118,9 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             .contains("The Make Decision request must contain a refusal justification for proceeding with id: " + refusedProceedingId);
   }
 
-  @Test
-  void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved() throws JacksonException {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved(boolean certificateExists) throws JacksonException {
     UUID applicationId = UUID.randomUUID();
     UUID grantedProceedingId = UUID.randomUUID();
     UUID refusedProceedingId = UUID.randomUUID();
@@ -181,6 +184,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     );
 
     // when
+    when(certificateRepository.existsByApplicationId(applicationId)).thenReturn(certificateExists);
     when(proceedingRepository.findAllById(List.of(grantedProceedingEntity.getId(), refusedProceedingEntity.getId())))
             .thenReturn(List.of(grantedProceedingEntity, refusedProceedingEntity));
     when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
@@ -191,6 +195,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
     verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
+    verify(certificateRepository, times((certificateExists)?1:0)).deleteByApplicationId(applicationId);
     verifyThatDomainEventSaved(domainEventRepository, objectMapper, expectedDomainEvent, 1);
     verifyDecisionSavedCorrectly(makeDecisionRequest,
                     expectedApplicationEntity,
