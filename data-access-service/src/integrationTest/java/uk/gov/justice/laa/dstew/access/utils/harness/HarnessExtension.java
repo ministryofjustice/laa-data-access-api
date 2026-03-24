@@ -27,7 +27,6 @@ public class HarnessExtension implements BeforeAllCallback, AfterAllCallback, Te
         boolean isMethodLevel = ctx.getTestMethod().isPresent();
 
         if (isMethodLevel) {
-            // Method-level: enabled if the method itself OR the class carries @SmokeTest
             boolean smokeMethod = ctx.getTestMethod()
                     .map(m -> m.isAnnotationPresent(SmokeTest.class))
                     .orElse(false);
@@ -41,8 +40,6 @@ public class HarnessExtension implements BeforeAllCallback, AfterAllCallback, Te
             return ConditionEvaluationResult.disabled("Not annotated with @SmokeTest — skipped in infrastructure mode");
         }
 
-        // Class-level: only disable the whole class if neither the class nor any of its
-        // methods carry @SmokeTest — otherwise let method-level evaluation decide per test.
         boolean smokeClass = ctx.getTestClass()
                 .map(c -> c.isAnnotationPresent(SmokeTest.class))
                 .orElse(false);
@@ -58,22 +55,27 @@ public class HarnessExtension implements BeforeAllCallback, AfterAllCallback, Te
 
     @Override
     public void beforeAll(ExtensionContext ctx) {
-        var mode = System.getProperty("test.mode", "integration");
-        TestContextProvider provider = INFRASTRUCTURE_MODE.equals(mode)
-                ? new InfrastructureTestContextProvider()
-                : new IntegrationTestContextProvider();
-        getStore(ctx).put(STORE_KEY, provider);
+        // Use the root store so that a single TestContextProvider is shared across
+        // all test classes in the suite, rather than creating a new Spring context
+        // per class.
+        ExtensionContext.Store rootStore = getRootStore(ctx);
+        rootStore.getOrComputeIfAbsent(STORE_KEY, key -> {
+            var mode = System.getProperty("test.mode", "integration");
+            return INFRASTRUCTURE_MODE.equals(mode)
+                    ? new InfrastructureTestContextProvider()
+                    : new IntegrationTestContextProvider();
+        }, TestContextProvider.class);
     }
 
     @Override
-    public void afterAll(ExtensionContext ctx) throws Exception {
-        var provider = getStore(ctx).remove(STORE_KEY, TestContextProvider.class);
-        if (provider != null) provider.close();
+    public void afterAll(ExtensionContext ctx) {
+        // No-op: the provider is held in the root store and will be closed by
+        // JUnit when the root context itself is torn down at the end of the suite.
     }
 
     @Override
     public void postProcessTestInstance(Object instance, ExtensionContext ctx) {
-        var provider = getStore(ctx).get(STORE_KEY, TestContextProvider.class);
+        var provider = getRootStore(ctx).get(STORE_KEY, TestContextProvider.class);
         Class<?> clazz = instance.getClass();
         while (clazz != null && !clazz.equals(Object.class)) {
             for (var field : clazz.getDeclaredFields()) {
@@ -95,8 +97,7 @@ public class HarnessExtension implements BeforeAllCallback, AfterAllCallback, Te
         }
     }
 
-    private ExtensionContext.Store getStore(ExtensionContext ctx) {
-        return ctx.getStore(ExtensionContext.Namespace.create(
-                HarnessExtension.class, ctx.getRequiredTestClass()));
+    private ExtensionContext.Store getRootStore(ExtensionContext ctx) {
+        return ctx.getRoot().getStore(ExtensionContext.Namespace.create(HarnessExtension.class));
     }
 }

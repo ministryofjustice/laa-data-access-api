@@ -157,4 +157,59 @@ public class ResponseAsserts {
     assertEquals("no-cache", response.getResponse().getHeader("Pragma"));
     assertEquals("0", response.getResponse().getHeader("Expires"));
   }
+
+  public static void assertCreated(HarnessResult response) {
+    assertEquals(HttpStatus.CREATED.value(), response.getResponse().getStatus());
+    assertNotNull(response.getResponse().getHeader("Location"));
+  }
+
+  public static void assertProblemRecord(
+          HttpStatus expectedStatus,
+          ProblemDetail expectedDetail,
+          HarnessResult response,
+          ProblemDetail actualDetail) {
+    assertProblemRecord(expectedStatus, expectedDetail.getTitle(), expectedDetail.getDetail(),
+            response, actualDetail, expectedDetail.getProperties());
+  }
+
+  public static void assertProblemRecord(
+          HttpStatus expectedStatus,
+          String expectedShortCode,
+          String expectedDetail,
+          HarnessResult response,
+          ProblemDetail actualDetail,
+          Map<String, Object> expectedProblemDetailProperties) {
+    assertThat(response.getResponse().getHeader("Content-Type")).startsWith("application/problem+json");
+    assertEquals(expectedStatus.value(), response.getResponse().getStatus());
+    assertEquals(expectedShortCode, actualDetail.getTitle());
+    assertEquals(expectedDetail, actualDetail.getDetail());
+    Map<String, Object> actualProperties = actualDetail.getProperties();
+    if (expectedProblemDetailProperties == null) {
+      assertNull(actualProperties);
+      return;
+    }
+    assertNotNull(actualProperties);
+    assertThat(actualProperties.keySet())
+            .containsExactlyInAnyOrderElementsOf(expectedProblemDetailProperties.keySet());
+    for (Object value : expectedProblemDetailProperties.values()) {
+      if (value instanceof List<?> expectedList) {
+        Object actualValue = actualProperties.get(expectedProblemDetailProperties.entrySet().stream()
+                .filter(e -> e.getValue() == value)
+                .findFirst()
+                .get()
+                .getKey());
+        assertThat(actualValue).isInstanceOf(List.class);
+        List<Object> actualList = new ArrayList<>((List<?>) actualValue);
+        List<Object> expected = new ArrayList<>(expectedList);
+        assertThat(actualList).containsExactlyInAnyOrderElementsOf(expected);
+      } else {
+        String key = expectedProblemDetailProperties.entrySet().stream()
+                .filter(e -> e.getValue() == value)
+                .findFirst()
+                .get()
+                .getKey();
+        assertEquals(value, actualProperties.get(key));
+      }
+    }
+  }
 }
