@@ -408,12 +408,12 @@ public class ApplicationService {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     VersionCheckHelper.checkEntityVersionLocking(applicationId, application.getVersion(), request.getApplicationVersion());
     final CaseworkerEntity caseworker = application.getCaseworker();
-// This logic will be implemented in the next iteration when security is implemented in the service
-//    if (caseworker == null) {
-//      throw new ResourceNotFoundException(
-//          String.format("Caseworker not found for application id: %s", applicationId)
-//      );
-//    }
+    // This logic will be implemented in the next iteration when security is implemented in the service
+    //    if (caseworker == null) {
+    //      throw new ResourceNotFoundException(
+    //          String.format("Caseworker not found for application id: %s", applicationId)
+    //      );
+    //    }
     final UUID caseworkerId = caseworker != null
         ? caseworker.getId()
         : UUID.fromString("00000000-0000-0000-0000-000000000000"); // Placeholder until security is implemented
