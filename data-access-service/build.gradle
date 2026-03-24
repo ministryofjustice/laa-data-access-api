@@ -55,6 +55,15 @@ sourceSets {
 configurations {
     testUtilitiesImplementation.extendsFrom testImplementation
     testUtilitiesRuntimeOnly.extendsFrom testRuntimeOnly
+    testUtilitiesRuntimeElements {
+        canBeConsumed = true
+        canBeResolved = false
+        extendsFrom testUtilitiesImplementation
+    }
+}
+
+artifacts {
+    testUtilitiesRuntimeElements(tasks.named('compileTestUtilitiesJava').map { it.destinationDirectory })
 }
 
 dockerCompose {
