@@ -466,8 +466,8 @@ public class ApplicationService {
       CertificateEntity certificate = CertificateEntity.builder()
           .applicationId(applicationId)
           .certificateContent(request.getCertificate())
-          .createdBy(caseworker != null ? String.valueOf(caseworker.getId()) : "UNASSIGNED") // Temporary until we have security implemented to get actual caseworker details
-          .updatedBy(caseworker != null ? String.valueOf(caseworker.getId()) : "UNASSIGNED") // Temporary until we have security implemented to get actual caseworker details
+          .createdBy(caseworker != null ? String.valueOf(caseworker.getId()) : "UNASSIGNED") // Revert when security implemented
+          .updatedBy(caseworker != null ? String.valueOf(caseworker.getId()) : "UNASSIGNED") // Revert when security implemented
           .build();
 
       certificateRepository.save(certificate);
