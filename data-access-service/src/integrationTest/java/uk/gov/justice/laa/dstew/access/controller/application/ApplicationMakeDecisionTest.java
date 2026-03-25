@@ -598,6 +598,92 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         verifyCertificateSavedCorrectly(applicationEntity.getId());
     }
 
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
+    public void givenGrantedDecisionCalledTwice_whenAssignDecision_thenCertificateIsUpdatedNotDuplicated()
+            throws Exception {
+        // given
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
+            builder.applicationContent(new HashMap<>(Map.of(
+                    "test", "content"
+            )));
+            builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
+            builder.caseworker(CaseworkerJohnDoe);
+        });
+
+        ProceedingEntity proceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+                builder -> builder.applicationId(applicationEntity.getId()));
+
+        CertificateContent originalCertificateContent = DataGenerator.createDefault(CertificateContentGenerator.class);
+
+        MakeDecisionRequest firstMakeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
+            builder
+                    .eventHistory(EventHistory.builder()
+                            .eventDescription("granted event")
+                            .build())
+                    .overallDecision(DecisionStatus.GRANTED)
+                    .proceedings(List.of(
+                            createMakeDecisionProceeding(proceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1")
+                    ))
+                    .certificate(objectMapper.convertValue(originalCertificateContent, Map.class))
+                    .autoGranted(false);
+        });
+
+        // First call - creates the certificate
+        MvcResult firstResult = patchUri(TestConstants.URIs.ASSIGN_DECISION, firstMakeDecisionRequest, applicationEntity.getId());
+        assertNoContent(firstResult);
+
+        List<CertificateEntity> certificatesAfterFirst = certificateRepository.findAll();
+        assertThat(certificatesAfterFirst.size()).isEqualTo(1);
+        UUID originalCertificateId = certificatesAfterFirst.get(0).getId();
+
+        // Updated certificate content using generator with customised values
+        CertificateContent updatedCertificateContent = DataGenerator.createDefault(CertificateContentGenerator.class, builder ->
+                builder.certificateNumber("UPDATEDCERT002")
+                        .issueDate("2026-06-01")
+                        .validUntil("2027-06-01")
+        );
+        Map<String, Object> updatedCertificateData = objectMapper.convertValue(updatedCertificateContent, Map.class);
+
+        ApplicationEntity refreshedApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+        Long currentVersion = refreshedApplication.getVersion();
+
+        MakeDecisionRequest secondMakeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
+            builder
+                    .eventHistory(EventHistory.builder()
+                            .eventDescription("granted event updated")
+                            .build())
+                    .overallDecision(DecisionStatus.GRANTED)
+                    .proceedings(List.of(
+                            createMakeDecisionProceeding(proceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 2", "reason 2")
+                    ))
+                    .certificate(updatedCertificateData)
+                    .applicationVersion(currentVersion)
+                    .autoGranted(false);
+        });
+
+        // Second call - should update the existing certificate
+        MvcResult secondResult = patchUri(TestConstants.URIs.ASSIGN_DECISION, secondMakeDecisionRequest, applicationEntity.getId());
+
+        // then
+        assertNoContent(secondResult);
+
+        // Verify only one certificate exists (updated, not duplicated)
+        List<CertificateEntity> certificatesAfterSecond = certificateRepository.findAll();
+        assertThat(certificatesAfterSecond.size()).isEqualTo(1);
+
+        CertificateEntity updatedCertificate = certificatesAfterSecond.get(0);
+        assertThat(updatedCertificate.getId()).isEqualTo(originalCertificateId);
+        assertThat(updatedCertificate.getApplicationId()).isEqualTo(applicationEntity.getId());
+        assertThat(updatedCertificate.getCertificateContent().get("certificateNumber"))
+                .isEqualTo(updatedCertificateContent.getCertificateNumber());
+        assertThat(updatedCertificate.getCertificateContent().get("issueDate"))
+                .isEqualTo(updatedCertificateContent.getIssueDate());
+        assertThat(updatedCertificate.getCertificateContent().get("validUntil"))
+                .isEqualTo(updatedCertificateContent.getValidUntil());
+        assertThat(updatedCertificate.getUpdatedBy()).isEqualTo(CaseworkerJohnDoe.getId().toString());
+    }
+
     private void verifyCertificateSavedCorrectly(UUID applicationId) {
         List<CertificateEntity> certificates = certificateRepository.findAll();
         assertThat(certificates.size()).isEqualTo(1);
