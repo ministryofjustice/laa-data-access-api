@@ -17,7 +17,6 @@ import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
 
 import java.time.Instant;
@@ -992,7 +991,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
         ApplicationSummary applicationSummary = findApplicationSummaryById(actual.getApplications(), leadApplication.getId());
-        LinkedApplicationSummary linkedApplicationSummary = applicationSummary.getLinkedApplications().getFirst();
+        LinkedApplicationSummaryResponse linkedApplicationSummaryResponse = applicationSummary.getLinkedApplications().getFirst();
 
         // then
         assertContentHeaders(result);
@@ -1001,9 +1000,9 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertOK(result);
         assertPaging(actual, 2, 20, 1, 2);
         assertThat(applicationSummary.getLinkedApplications().size()).isEqualTo(1);
-        assertThat(linkedApplicationSummary.getApplicationId()).isEqualTo(associateApplication.getId());
-        assertThat(linkedApplicationSummary.getLaaReference()).isEqualTo(associateApplication.getLaaReference());
-        assertThat(linkedApplicationSummary.getIsLead()).isFalse();
+        assertThat(linkedApplicationSummaryResponse.getApplicationId()).isEqualTo(associateApplication.getId());
+        assertThat(linkedApplicationSummaryResponse.getLaaReference()).isEqualTo(associateApplication.getLaaReference());
+        assertThat(linkedApplicationSummaryResponse.getIsLead()).isFalse();
     }
 
     @Test
@@ -1073,7 +1072,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertThat(applicationSummary.getLinkedApplications().size()).isEqualTo(2);
 
         List<UUID> linkedIds = applicationSummary.getLinkedApplications().stream()
-            .map(LinkedApplicationSummary::getApplicationId)
+            .map(LinkedApplicationSummaryResponse::getApplicationId)
             .toList();
 
         // then

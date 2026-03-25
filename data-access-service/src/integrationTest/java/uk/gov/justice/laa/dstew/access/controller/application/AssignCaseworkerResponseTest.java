@@ -14,7 +14,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -45,7 +45,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class AssignCaseworkerTest extends BaseIntegrationTest {
+public class AssignCaseworkerResponseTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
@@ -67,7 +67,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
         CaseworkerAssignRequest caseworkerAssignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
                     .applicationIds(List.of(UUID.randomUUID()))
-                    .eventHistory(EventHistory.builder()
+                    .eventHistory(EventHistoryRequest.builder()
                             .eventDescription("Assigning caseworker")
                             .build());
         });
@@ -102,7 +102,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
         CaseworkerAssignRequest caseworkerAssignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
             builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
                     .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()).reversed())
-                    .eventHistory(EventHistory.builder()
+                    .eventHistory(EventHistoryRequest.builder()
                             .eventDescription("Assigning caseworker")
                             .build());
         });

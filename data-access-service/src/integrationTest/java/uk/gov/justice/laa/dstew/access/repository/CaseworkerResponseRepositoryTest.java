@@ -8,7 +8,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGene
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
-public class CaseworkerRepositoryTest extends BaseIntegrationTest {
+public class CaseworkerResponseRepositoryTest extends BaseIntegrationTest {
 
     @Test
     public void givenSaveOfExpectedCaseworker_whenGetCalled_expectedAndActualAreEqual() {

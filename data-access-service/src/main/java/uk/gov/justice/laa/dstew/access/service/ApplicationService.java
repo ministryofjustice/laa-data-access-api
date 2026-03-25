@@ -27,13 +27,13 @@ import uk.gov.justice.laa.dstew.access.mapper.ProceedingMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
-import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
@@ -124,16 +124,16 @@ public class ApplicationService {
 
       proceedings.forEach(
               proceeding -> {
-                ApplicationProceeding applicationProceeding =
+                ApplicationProceedingResponse applicationProceedingResponse =
                         proceedingMapper.toApplicationProceeding(proceeding);
 
                 List<Map<String, Object>> involvedChildren = getInvolvedChildren(entity);
                 if (involvedChildren != null) {
                   List<Object> children = new ArrayList<>();
                   involvedChildren.forEach(children::add);
-                  applicationProceeding.setInvolvedChildren(children);
+                  applicationProceedingResponse.setInvolvedChildren(children);
                 } else {
-                  applicationProceeding.setInvolvedChildren(null);
+                  applicationProceedingResponse.setInvolvedChildren(null);
                 }
 
                 if (entity.getDecision() != null) {
@@ -143,9 +143,9 @@ public class ApplicationService {
                                   .findFirst();
 
                   meritsDecision.ifPresent(meritsDecisionEntity ->
-                          applicationProceeding.setMeritsDecision(meritsDecisionEntity.getDecision()));
+                          applicationProceedingResponse.setMeritsDecision(meritsDecisionEntity.getDecision()));
                 }
-                application.getProceedings().add(applicationProceeding);
+                application.getProceedings().add(applicationProceedingResponse);
               }
       );
     }
@@ -339,7 +339,7 @@ public class ApplicationService {
   @AllowApiCaseworker
   public void assignCaseworker(@NonNull final UUID caseworkerId,
                                final List<UUID> applicationIds,
-                               final EventHistory eventHistory) {
+                               final EventHistoryRequest eventHistoryRequest) {
     final CaseworkerEntity caseworker = checkIfCaseworkerExists(caseworkerId);
 
     final List<ApplicationEntity> applications = checkIfAllApplicationsExist(applicationIds);
@@ -355,7 +355,7 @@ public class ApplicationService {
       domainEventService.saveAssignApplicationDomainEvent(
           app.getId(),
           caseworker.getId(),
-          eventHistory.getEventDescription());
+          eventHistoryRequest.getEventDescription());
     });
 
   }
@@ -367,7 +367,7 @@ public class ApplicationService {
    * @throws ResourceNotFoundException if the application does not exist
    */
   @AllowApiCaseworker
-  public void unassignCaseworker(final UUID applicationId, EventHistory history) {
+  public void unassignCaseworker(final UUID applicationId, EventHistoryRequest history) {
     final ApplicationEntity entity = checkIfApplicationExists(applicationId);
 
     if (entity.getCaseworker() == null) {
@@ -428,7 +428,7 @@ public class ApplicationService {
     Set<MeritsDecisionEntity> merits = new LinkedHashSet<>(decision.getMeritsDecisions());
 
     List<UUID> proceedingIds = request.getProceedings().stream()
-        .map(MakeDecisionProceeding::getProceedingId)
+        .map(MakeDecisionProceedingRequest::getProceedingId)
         .toList();
     List<ProceedingEntity> proceedingEntities = checkIfAllProceedingsExistForApplication(applicationId, proceedingIds);
     Map<UUID, ProceedingEntity> proceedingEntityMap = proceedingEntities.stream()

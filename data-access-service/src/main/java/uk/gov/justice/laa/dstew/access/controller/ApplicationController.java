@@ -28,7 +28,7 @@ import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
-import uk.gov.justice.laa.dstew.access.model.Paging;
+import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
@@ -109,15 +109,15 @@ public class ApplicationController implements ApplicationApi {
                     pageSize);
 
     List<ApplicationSummary> applications = result.page().stream().toList();
-    Paging paging = new Paging();
-    paging.setPage(result.requestedPage());
-    paging.pageSize(result.requestedPageSize());
-    paging.totalRecords((int) result.page().getTotalElements());
-    paging.itemsReturned(applications.size());
+    PagingResponse pagingResponse = new PagingResponse();
+    pagingResponse.setPage(result.requestedPage());
+    pagingResponse.pageSize(result.requestedPageSize());
+    pagingResponse.totalRecords((int) result.page().getTotalElements());
+    pagingResponse.itemsReturned(applications.size());
 
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
     response.setApplications(applications);
-    response.setPaging(paging);
+    response.setPaging(pagingResponse);
 
     return ResponseEntity.ok(response);
   }

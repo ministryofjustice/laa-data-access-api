@@ -10,7 +10,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
-import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
@@ -331,7 +331,7 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         // then
         assertThat(actualApplications).hasSize(1);
-        List<LinkedApplicationSummary> linked = actualApplications.getFirst().getLinkedApplications();
+        List<LinkedApplicationSummaryResponse> linked = actualApplications.getFirst().getLinkedApplications();
         UUID leadId = actualApplications.getFirst().getApplicationId();
 
         assertThat(linked).hasSize(1);
@@ -370,13 +370,13 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         // then
         assertThat(firstAssociate.getLinkedApplications())
-            .extracting(LinkedApplicationSummary::getApplicationId)
+            .extracting(LinkedApplicationSummaryResponse::getApplicationId)
             .containsExactlyInAnyOrder(secondAssociateApplication.getId(), leadId);
         assertThat(firstAssociate.getLinkedApplications())
             .noneMatch(la -> la.getApplicationId().equals(firstAssociateApplication.getId()));
 
         assertThat(secondAssociate.getLinkedApplications())
-            .extracting(LinkedApplicationSummary::getApplicationId)
+            .extracting(LinkedApplicationSummaryResponse::getApplicationId)
             .containsExactlyInAnyOrder(firstAssociateApplication.getId(), leadId);
         assertThat(secondAssociate.getLinkedApplications())
             .noneMatch(la -> la.getApplicationId().equals(secondAssociateApplication.getId()));
@@ -413,13 +413,13 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         // then
         assertThat(firstAssociate.getLinkedApplications())
-            .extracting(LinkedApplicationSummary::getApplicationId)
+            .extracting(LinkedApplicationSummaryResponse::getApplicationId)
             .containsExactlyInAnyOrder(firstLeadId);
         assertThat(firstAssociate.getLinkedApplications())
             .noneMatch(la -> la.getApplicationId().equals(secondAssociateApplication.getId()));
 
         assertThat(secondAssociate.getLinkedApplications())
-            .extracting(LinkedApplicationSummary::getApplicationId)
+            .extracting(LinkedApplicationSummaryResponse::getApplicationId)
             .containsExactlyInAnyOrder(secondLeadId);
         assertThat(secondAssociate.getLinkedApplications())
             .noneMatch(la -> la.getApplicationId().equals(firstAssociateApplication.getId()));

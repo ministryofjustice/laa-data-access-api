@@ -27,7 +27,7 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -36,7 +36,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEn
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class UnassignCaseworkerTest extends BaseServiceTest {
+public class UnassignCaseworkerResponseTest extends BaseServiceTest {
 
     @Autowired
     private ApplicationService serviceUnderTest;
@@ -57,7 +57,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
 
         ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(null).build();
 
-        EventHistory eventHistory = EventHistory.builder()
+        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
                 .eventDescription(eventDescription)
                 .build();
 
@@ -69,7 +69,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
                 .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
                         .applicationId(existingApplicationEntity.getId())
                         .caseWorkerId(null)
-                        .eventDescription(eventHistory.getEventDescription())
+                        .eventDescription(eventHistoryRequest.getEventDescription())
                         .createdBy("")
                         .build()))
                 .build();
@@ -79,7 +79,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        serviceUnderTest.unassignCaseworker(applicationId, eventHistory);
+        serviceUnderTest.unassignCaseworker(applicationId, eventHistoryRequest);
 
         // then
         verify(applicationRepository, times(1)).findById(applicationId);
@@ -95,7 +95,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
                 builder.id(applicationId).caseworker(null)
         );
 
-        EventHistory eventHistory = EventHistory.builder()
+        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
                 .eventDescription("Unassigned")
                 .build();
 
@@ -104,7 +104,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        serviceUnderTest.unassignCaseworker(applicationId, eventHistory);
+        serviceUnderTest.unassignCaseworker(applicationId, eventHistoryRequest);
 
         // then
         verify(applicationRepository, times(1)).findById(applicationId);
@@ -122,7 +122,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(applicationId, new EventHistory()));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(applicationId, new EventHistoryRequest()));
         assertThat(thrown)
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("No application found with id: " + applicationId);
@@ -139,7 +139,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.NO_ROLE);
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistory()));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistoryRequest()));
         assertThat(thrown)
                 .isInstanceOf(AuthorizationDeniedException.class)
                 .hasMessage("Access Denied");
@@ -156,7 +156,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
         // no security context set
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistory()));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistoryRequest()));
         assertThat(thrown)
                 .isInstanceOf(AuthorizationDeniedException.class)
                 .hasMessage("Access Denied");

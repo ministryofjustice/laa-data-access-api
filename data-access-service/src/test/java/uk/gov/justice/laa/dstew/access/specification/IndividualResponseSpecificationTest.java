@@ -17,7 +17,7 @@ import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
-class IndividualSpecificationTest {
+class IndividualResponseSpecificationTest {
 
   @Test
   @SuppressWarnings({"unchecked", "rawtypes"})

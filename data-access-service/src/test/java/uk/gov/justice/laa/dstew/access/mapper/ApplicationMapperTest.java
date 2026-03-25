@@ -18,11 +18,11 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequestIndividual;
+import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.Opponent;
-import uk.gov.justice.laa.dstew.access.model.Provider;
+import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
+import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCreateRequestGenerator;
@@ -103,9 +103,9 @@ public class ApplicationMapperTest extends BaseMapperTest {
   void givenApplicationCreateRequest_whenToApplicationEntity_thenMapsFieldsCorrectly() {
     ApplicationStatus status = ApplicationStatus.APPLICATION_SUBMITTED;
     String laaReference = "laa_reference";
-    List<ApplicationCreateRequestIndividual> expectedIndividuals = List.of(
-        ApplicationCreateRequestIndividual.builder().build(),
-        ApplicationCreateRequestIndividual.builder().build()
+    List<IndividualCreateRequest> expectedIndividuals = List.of(
+        IndividualCreateRequest.builder().build(),
+        IndividualCreateRequest.builder().build()
     );
 
     Map<String, Object> applicationContent = (Map<String, Object>) objectMapper
@@ -217,7 +217,7 @@ public class ApplicationMapperTest extends BaseMapperTest {
     assertThat(result.getOpponents()).isNotNull();
     assertThat(result.getOpponents()).hasSize(1);
 
-    Opponent mapped = result.getOpponents().getFirst();
+    OpponentResponse mapped = result.getOpponents().getFirst();
     assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
     assertThat(mapped.getFirstName()).isEqualTo("John");
     assertThat(mapped.getLastName()).isEqualTo("Smith");
@@ -307,7 +307,7 @@ public class ApplicationMapperTest extends BaseMapperTest {
     assertProviderEquals(result.getProvider(), null, null);
   }
 
-  private void assertProviderEquals(Provider actual, String expectedOfficeCode, String expectedContactEmail) {
+  private void assertProviderEquals(ProviderResponse actual, String expectedOfficeCode, String expectedContactEmail) {
     if (expectedOfficeCode == null && expectedContactEmail == null) {
       assertThat(actual).isNull();
     } else {

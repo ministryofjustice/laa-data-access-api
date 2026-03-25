@@ -32,7 +32,7 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -42,7 +42,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGene
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class AssignCaseworkerTest extends BaseServiceTest {
+public class AssignCaseworkerResponseTest extends BaseServiceTest {
 
     @Autowired
     private ApplicationService serviceUnderTest;
@@ -63,7 +63,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
 
         ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
 
-        EventHistory eventHistory = EventHistory.builder()
+        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
                 .eventDescription(eventDescription)
                 .build();
 
@@ -75,7 +75,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
                 .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
                         .applicationId(existingApplicationEntity.getId())
                         .caseWorkerId(expectedCaseworker.getId())
-                        .eventDescription(eventHistory.getEventDescription())
+                        .eventDescription(eventHistoryRequest.getEventDescription())
                         .createdBy("")
                         .build()))
                 .build();
@@ -89,7 +89,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), List.of(applicationId), eventHistory);
+        serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), List.of(applicationId), eventHistoryRequest);
 
         // then
         verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
@@ -129,7 +129,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         );
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIdsWithNull, new EventHistory()));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIdsWithNull, new EventHistoryRequest()));
         assertThat(thrown)
                 .isInstanceOf(ValidationException.class)
                 .usingRecursiveComparison()
@@ -151,7 +151,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(nonexistentCaseworkerId, List.of(UUID.randomUUID()), new EventHistory()));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(nonexistentCaseworkerId, List.of(UUID.randomUUID()), new EventHistoryRequest()));
         assertThat(thrown)
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("No caseworker found with id: " + nonexistentCaseworkerId);
@@ -177,7 +177,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         List<UUID> emptyApplicationIds = Collections.emptyList();
 
         // when
-        serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), emptyApplicationIds, new EventHistory());
+        serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), emptyApplicationIds, new EventHistoryRequest());
 
         // then
         verify(applicationRepository, times(1)).findAllById(emptyApplicationIds);
@@ -200,7 +200,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
 
         ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
 
-        EventHistory eventHistory = EventHistory.builder()
+        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
                 .eventDescription("Caseworker assigned.")
                 .build();
 
@@ -212,7 +212,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
                 .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
                         .applicationId(existingApplicationEntity.getId())
                         .caseWorkerId(expectedCaseworker.getId())
-                        .eventDescription(eventHistory.getEventDescription())
+                        .eventDescription(eventHistoryRequest.getEventDescription())
                         .createdBy("")
                         .build()))
                 .build();
@@ -224,7 +224,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds, eventHistory);
+        serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds, eventHistoryRequest);
 
         // then
         verify(applicationRepository, times(1)).findAllById(eq(distinctApplicationIds));
@@ -245,7 +245,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
 
         List<UUID> applicationIds = List.of(existingApplicationId);
 
-        EventHistory eventHistory = EventHistory.builder()
+        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
                 .eventDescription("Caseworker assigned.")
                 .build();
 
@@ -257,7 +257,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
                 .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
                         .applicationId(existingApplicationEntity.getId())
                         .caseWorkerId(existingCaseworker.getId())
-                        .eventDescription(eventHistory.getEventDescription())
+                        .eventDescription(eventHistoryRequest.getEventDescription())
                         .createdBy("")
                         .build()))
                 .build();
@@ -269,7 +269,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        serviceUnderTest.assignCaseworker(existingCaseworker.getId(), applicationIds, eventHistory);
+        serviceUnderTest.assignCaseworker(existingCaseworker.getId(), applicationIds, eventHistoryRequest);
 
         // then
         verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
@@ -289,7 +289,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
 
         List<UUID> applicationIds = List.of(UUID.randomUUID(), existingApplicationId, UUID.randomUUID());
 
-        EventHistory eventHistory = EventHistory.builder()
+        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
                 .eventDescription("Case assigned.")
                 .build();
 
@@ -300,7 +300,8 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds, eventHistory));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds,
+            eventHistoryRequest));
         assertThat(thrown)
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("No application found with ids: " + applicationIds.stream()
@@ -321,7 +322,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.NO_ROLE);
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(UUID.randomUUID(), List.of(UUID.randomUUID()), new EventHistory()));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(UUID.randomUUID(), List.of(UUID.randomUUID()), new EventHistoryRequest()));
         assertThat(thrown)
                 .isInstanceOf(AuthorizationDeniedException.class)
                 .hasMessage("Access Denied");
@@ -339,7 +340,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         // no security context set
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(UUID.randomUUID(), List.of(UUID.randomUUID()), new EventHistory()));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(UUID.randomUUID(), List.of(UUID.randomUUID()), new EventHistoryRequest()));
         assertThat(thrown)
                 .isInstanceOf(AuthorizationDeniedException.class)
                 .hasMessage("Access Denied");

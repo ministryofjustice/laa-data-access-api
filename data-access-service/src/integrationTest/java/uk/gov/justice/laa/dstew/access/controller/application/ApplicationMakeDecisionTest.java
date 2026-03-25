@@ -29,10 +29,10 @@ import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetails;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -69,7 +69,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
       MakeDecisionRequest makeDecisionRequest =
           DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> builder
-              .eventHistory(EventHistory.builder()
+              .eventHistory(EventHistoryRequest.builder()
                   .eventDescription("refusal event")
                   .build())
               .overallDecision(DecisionStatus.REFUSED)
@@ -104,7 +104,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
       MakeDecisionRequest makeDecisionRequest =
           DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> builder
-              .eventHistory(EventHistory.builder()
+              .eventHistory(EventHistoryRequest.builder()
                   .eventDescription("refusal event")
                   .build())
               .overallDecision(DecisionStatus.REFUSED)
@@ -146,7 +146,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
       MakeDecisionRequest makeDecisionRequest =
           DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> builder
-              .eventHistory(EventHistory.builder()
+              .eventHistory(EventHistoryRequest.builder()
                   .eventDescription("refusal event")
                   .build())
               .overallDecision(DecisionStatus.REFUSED)
@@ -186,7 +186,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         MakeDecisionRequest initialMakeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
-                    .eventHistory(EventHistory.builder()
+                    .eventHistory(EventHistoryRequest.builder()
                             .eventDescription("make decision event")
                             .build())
                     .overallDecision(DecisionStatus.GRANTED)
@@ -200,7 +200,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest secondMakeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .applicationVersion(1L)
-                    .eventHistory(EventHistory.builder()
+                    .eventHistory(EventHistoryRequest.builder()
                             .eventDescription("make decision event")
                             .build())
                     .overallDecision(DecisionStatus.REFUSED)
@@ -238,7 +238,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
       MakeDecisionRequest makeDecisionRequest =
           DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> builder
-              .eventHistory(EventHistory.builder()
+              .eventHistory(EventHistoryRequest.builder()
                   .eventDescription("refusal event")
                   .build())
               .overallDecision(DecisionStatus.REFUSED)
@@ -318,7 +318,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest assignDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .overallDecision(DecisionStatus.REFUSED)
-                    .eventHistory(EventHistory.builder()
+                    .eventHistory(EventHistoryRequest.builder()
                             .eventDescription("refusal event")
                             .build())
                     .proceedings(List.of(
@@ -381,7 +381,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                 .overallDecision(DecisionStatus.REFUSED)
-                .eventHistory(EventHistory.builder()
+                .eventHistory(EventHistoryRequest.builder()
                     .eventDescription("refusal event")
                     .build())
                 .proceedings(List.of(
@@ -419,7 +419,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                     .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
-                    .eventHistory(EventHistory.builder().build())
+                    .eventHistory(EventHistoryRequest.builder().build())
                     .proceedings(List.of(
                             createMakeDecisionProceeding(
                                     UUID.randomUUID(),
@@ -456,7 +456,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
                 .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
-                .eventHistory(EventHistory.builder().build())
+                .eventHistory(EventHistoryRequest.builder().build())
                 .proceedings(List.of(
                     createMakeDecisionProceeding(
                         UUID.randomUUID(),
@@ -480,11 +480,11 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         assertEquals("Caseworker not found for application id: " + applicationEntity.getId(), problemDetail.getDetail());
     }
 
-    private MakeDecisionProceeding createMakeDecisionProceeding(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
-        return MakeDecisionProceeding.builder()
+    private MakeDecisionProceedingRequest createMakeDecisionProceeding(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
+        return MakeDecisionProceedingRequest.builder()
                 .proceedingId(proceedingId)
                 .meritsDecision(
-                        MeritsDecisionDetails.builder()
+                        MeritsDecisionDetailsRequest.builder()
                             .decision(meritsDecisionStatus)
                             .justification(justification)
                             .reason(reason)
@@ -521,11 +521,11 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     private static MakeDecisionRequest mapToMakeDecisionRequest(
                                 DecisionEntity decisionEntity,
                                 ApplicationEntity applicationEntity,
-                                EventHistory eventHistory) {
+                                EventHistoryRequest eventHistoryRequest) {
         if (decisionEntity == null) return null;
         return MakeDecisionRequest.builder()
                 .overallDecision(decisionEntity.getOverallDecision())
-                .eventHistory(eventHistory)
+                .eventHistory(eventHistoryRequest)
                 .proceedings(decisionEntity.getMeritsDecisions().stream()
                         .map(ApplicationMakeDecisionTest::mapToProceedingDetails)
                         .toList())
@@ -534,18 +534,18 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     // MeritsDecisionEntity -> ProceedingDetails
-    private static MakeDecisionProceeding mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
+    private static MakeDecisionProceedingRequest mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
         if (meritsDecisionEntity == null) return null;
-        return MakeDecisionProceeding.builder()
+        return MakeDecisionProceedingRequest.builder()
                 .proceedingId(meritsDecisionEntity.getProceeding().getId())
                 .meritsDecision(mapToMeritsDecisionDetails(meritsDecisionEntity))
                 .build();
     }
 
     // MeritsDecisionEntity -> MeritsDecisionDetails
-    private static MeritsDecisionDetails mapToMeritsDecisionDetails(MeritsDecisionEntity entity) {
+    private static MeritsDecisionDetailsRequest mapToMeritsDecisionDetails(MeritsDecisionEntity entity) {
         if (entity == null) return null;
-        return MeritsDecisionDetails.builder()
+        return MeritsDecisionDetailsRequest.builder()
                 .decision(entity.getDecision())
                 .reason(entity.getReason())
                 .justification(entity.getJustification())
@@ -570,7 +570,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
-                    .eventHistory(EventHistory.builder()
+                    .eventHistory(EventHistoryRequest.builder()
                             .eventDescription("granted event")
                             .build())
                     .overallDecision(DecisionStatus.GRANTED)
@@ -620,7 +620,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
-                    .eventHistory(EventHistory.builder()
+                    .eventHistory(EventHistoryRequest.builder()
                             .eventDescription("granted event")
                             .build())
                     .overallDecision(DecisionStatus.GRANTED)
@@ -672,7 +672,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         MakeDecisionRequest firstMakeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
-                    .eventHistory(EventHistory.builder()
+                    .eventHistory(EventHistoryRequest.builder()
                             .eventDescription("granted event")
                             .build())
                     .overallDecision(DecisionStatus.GRANTED)
@@ -704,7 +704,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         MakeDecisionRequest secondMakeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
-                    .eventHistory(EventHistory.builder()
+                    .eventHistory(EventHistoryRequest.builder()
                             .eventDescription("granted event updated")
                             .build())
                     .overallDecision(DecisionStatus.GRANTED)
@@ -772,7 +772,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
-                    .eventHistory(EventHistory.builder()
+                    .eventHistory(EventHistoryRequest.builder()
                             .eventDescription("refusal event")
                             .build())
                     .overallDecision(DecisionStatus.REFUSED)
@@ -814,7 +814,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder
-                    .eventHistory(EventHistory.builder()
+                    .eventHistory(EventHistoryRequest.builder()
                             .eventDescription("partially granted event")
                             .build())
                     .overallDecision(DecisionStatus.PARTIALLY_GRANTED)

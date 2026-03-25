@@ -35,11 +35,11 @@ import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRefusedDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetails;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
@@ -80,7 +80,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
             requestBuilder
                     .overallDecision(DecisionStatus.REFUSED)
                     .eventHistory(
-                            EventHistory.builder()
+                            EventHistoryRequest.builder()
                                     .eventDescription("event")
                                     .build()
                     )
@@ -137,7 +137,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         requestBuilder
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(
-                EventHistory.builder()
+                EventHistoryRequest.builder()
                     .eventDescription("event")
                     .build()
             )
@@ -205,7 +205,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
             .eventHistory(
-                EventHistory.builder()
+                EventHistoryRequest.builder()
                     .eventDescription("event")
                     .build()
             )
@@ -264,7 +264,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         requestBuilder
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(
-                EventHistory.builder()
+                EventHistoryRequest.builder()
                     .eventDescription(null)
                     .build()
             )
@@ -335,7 +335,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
-            .eventHistory(EventHistory.builder().build())
+            .eventHistory(EventHistoryRequest.builder().build())
             .proceedings(List.of(
                 createMakeDecisionProceedingDetails(newProceedingId,
                                                     MeritsDecisionStatus.REFUSED,
@@ -583,7 +583,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
             .overallDecision(DecisionStatus.GRANTED)
-            .eventHistory(EventHistory.builder()
+            .eventHistory(EventHistoryRequest.builder()
                 .eventDescription("granted event")
                 .build())
             .proceedings(List.of(
@@ -635,7 +635,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
             .overallDecision(DecisionStatus.GRANTED)
-            .eventHistory(EventHistory.builder()
+            .eventHistory(EventHistoryRequest.builder()
                 .eventDescription("granted event")
                 .build())
             .proceedings(List.of(
@@ -692,7 +692,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
             .overallDecision(DecisionStatus.GRANTED)
-            .eventHistory(EventHistory.builder()
+            .eventHistory(EventHistoryRequest.builder()
                 .eventDescription("granted event")
                 .build())
             .proceedings(List.of(
@@ -748,7 +748,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
         requestBuilder
             .overallDecision(DecisionStatus.REFUSED)
-            .eventHistory(EventHistory.builder()
+            .eventHistory(EventHistoryRequest.builder()
                 .eventDescription("refusal event")
                 .build())
             .proceedings(List.of(
@@ -828,8 +828,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         );
     }
 
-    private MakeDecisionProceeding createMakeDecisionProceedingDetails(UUID proceedingId,
-        MeritsDecisionStatus decision, String reason, String justification) {
+    private MakeDecisionProceedingRequest createMakeDecisionProceedingDetails(UUID proceedingId,
+                                                                              MeritsDecisionStatus decision, String reason, String justification) {
         return DataGenerator.createDefault(MakeDecisionProceedingGenerator.class, builder ->
             builder
                 .proceedingId(proceedingId)
@@ -870,9 +870,9 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     // Assert only on the set of proceedings that are updated or added via the request.
     Set<UUID> expectedProceedingIds = expectedMakeDecisionRequest.getProceedings().stream()
-        .map(MakeDecisionProceeding::getProceedingId)
+        .map(MakeDecisionProceedingRequest::getProceedingId)
         .collect(Collectors.toSet());
-    List<MakeDecisionProceeding> actualProceedings = actual.getProceedings().stream()
+    List<MakeDecisionProceedingRequest> actualProceedings = actual.getProceedings().stream()
         .filter(p -> expectedProceedingIds.contains(p.getProceedingId()))
         .collect(Collectors.toList());
     assertThat(actualProceedings)
@@ -891,13 +891,13 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   private static MakeDecisionRequest mapToMakeDecisionRequest(
       DecisionEntity decisionEntity,
       ApplicationEntity applicationEntity,
-      EventHistory eventHistory) {
+      EventHistoryRequest eventHistoryRequest) {
     if (decisionEntity == null) {
       return null;
     }
     return MakeDecisionRequest.builder()
         .overallDecision(decisionEntity.getOverallDecision())
-        .eventHistory(eventHistory)
+        .eventHistory(eventHistoryRequest)
         .proceedings(decisionEntity.getMeritsDecisions().stream()
             .map(MakeDecisionForApplicationTest::mapToProceedingDetails)
             .toList())
@@ -905,22 +905,22 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   }
 
   // MeritsDecisionEntity -> ProceedingDetails
-  private static MakeDecisionProceeding mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
+  private static MakeDecisionProceedingRequest mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
     if (meritsDecisionEntity == null) {
       return null;
     }
-    return MakeDecisionProceeding.builder()
+    return MakeDecisionProceedingRequest.builder()
         .proceedingId(meritsDecisionEntity.getProceeding().getId())
         .meritsDecision(mapToMeritsDecisionDetails(meritsDecisionEntity))
         .build();
   }
 
   // MeritsDecisionEntity -> MeritsDecisionDetails
-  private static MeritsDecisionDetails mapToMeritsDecisionDetails(MeritsDecisionEntity entity) {
+  private static MeritsDecisionDetailsRequest mapToMeritsDecisionDetails(MeritsDecisionEntity entity) {
     if (entity == null) {
       return null;
     }
-    return MeritsDecisionDetails.builder()
+    return MeritsDecisionDetailsRequest.builder()
         .decision(entity.getDecision())
         .justification(entity.getJustification())
         .reason(entity.getReason())

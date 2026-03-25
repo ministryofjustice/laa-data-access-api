@@ -14,7 +14,7 @@ import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.mapper.IndividualMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
@@ -58,7 +58,7 @@ public class IndividualsService {
    * @return a {@link PaginatedResult} containing the page and validated pagination parameters
    */
   @AllowApiCaseworker
-  public PaginatedResult<Individual> getIndividuals(
+  public PaginatedResult<IndividualResponse> getIndividuals(
       Integer page,
       Integer pageSize,
       UUID applicationId,

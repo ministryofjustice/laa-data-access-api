@@ -24,7 +24,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
@@ -81,12 +81,12 @@ public class GetIndividualsTest extends BaseIntegrationTest {
 
     assertOK(result);
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
-    Individual actualIndividual = response.getIndividuals().getFirst();
-    assertThat(actualIndividual.getRelationshipToChildren()).isEqualTo("relationshipToChildren");
-    assertThat(actualIndividual.getLastNameAtBirth()).isEqualTo("Alberts");
-    assertThat(actualIndividual.getPreviousApplicationReference()).isEqualTo("ZZ999Z");
-    assertThat(actualIndividual.getCorrespondenceAddressType()).isEqualTo("Home");
-    assertThat(actualIndividual.getCorrespondenceAddress()).hasSize(2);
+    IndividualResponse actualIndividualResponse = response.getIndividuals().getFirst();
+    assertThat(actualIndividualResponse.getRelationshipToChildren()).isEqualTo("relationshipToChildren");
+    assertThat(actualIndividualResponse.getLastNameAtBirth()).isEqualTo("Alberts");
+    assertThat(actualIndividualResponse.getPreviousApplicationReference()).isEqualTo("ZZ999Z");
+    assertThat(actualIndividualResponse.getCorrespondenceAddressType()).isEqualTo("Home");
+    assertThat(actualIndividualResponse.getCorrespondenceAddress()).hasSize(2);
   }
 
   @ParameterizedTest
@@ -341,7 +341,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
     assertOK(result);
     assertThat(response.getIndividuals()).hasSize(3);
     assertThat(response.getIndividuals())
-        .extracting(Individual::getFirstName)
+        .extracting(IndividualResponse::getFirstName)
         .containsExactlyInAnyOrder(individual1.getFirstName(), individual2.getFirstName(), individual3.getFirstName());
   }
 

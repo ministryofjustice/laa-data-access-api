@@ -19,9 +19,9 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.Opponent;
 import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
-import uk.gov.justice.laa.dstew.access.model.Provider;
+import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
+import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 
 /**
  * Mapper interface.
@@ -115,7 +115,7 @@ public interface ApplicationMapper {
     return application;
   }
 
-  private static Provider extractProvider(ApplicationEntity entity) {
+  private static ProviderResponse extractProvider(ApplicationEntity entity) {
     String officeCode = entity.getOfficeCode();
     String contactEmail = extractContactEmail(entity.getApplicationContent());
 
@@ -123,10 +123,10 @@ public interface ApplicationMapper {
       return null;
     }
 
-    Provider provider = new Provider();
-    provider.setOfficeCode(officeCode);
-    provider.setContactEmail(contactEmail);
-    return provider;
+    ProviderResponse providerResponse = new ProviderResponse();
+    providerResponse.setOfficeCode(officeCode);
+    providerResponse.setContactEmail(contactEmail);
+    return providerResponse;
   }
 
   private static String extractContactEmail(Map<String, Object> content) {
@@ -140,7 +140,7 @@ public interface ApplicationMapper {
     return applicationContent.getSubmitterEmail();
   }
 
-  private static List<Opponent> extractOpponents(Map<String, Object> content) {
+  private static List<OpponentResponse> extractOpponents(Map<String, Object> content) {
 
     if (content == null) {
       return Collections.emptyList();
@@ -159,7 +159,7 @@ public interface ApplicationMapper {
 
     return opponentsList.stream()
         .map(OpponentDetails::getOpposable)
-        .map(opposableObj -> Opponent.builder()
+        .map(opposableObj -> OpponentResponse.builder()
             .opposableType(opposableObj.getOpposableType())
             .firstName(opposableObj.getFirstName())
             .lastName(opposableObj.getLastName())
