@@ -21,6 +21,8 @@ paths:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1history-search"
   /api/v0/applications/{id}/decision:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1decision"
+  /api/v0/applications/{id}/certificate:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1certificate"
   /api/v0/individuals:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1individuals"
   /api/v0/applications/{id}/notes:

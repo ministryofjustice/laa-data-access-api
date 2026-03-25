@@ -45,6 +45,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEnti
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.testDto.certificate.CertificateContent;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 @ActiveProfiles("test")
 public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
@@ -162,6 +163,59 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
         assertEquals(ApplicationStatus.APPLICATION_SUBMITTED, actualApplication.getStatus());
         assertEquals(true, actualApplication.getIsAutoGranted());
+    }
+
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
+    public void givenMakeDecisionRequestAndCertificateExists_whenAssignDecision_thenReturnNoContent_andCertificateDeleted()
+            throws Exception {
+
+        // given
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
+            builder.applicationContent(new HashMap<>(Map.of(
+                    "test", "content"
+            )));
+            builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS);
+            builder.caseworker(CaseworkerJohnDoe);
+        });
+
+        ProceedingEntity proceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+                builder -> builder.applicationId(applicationEntity.getId()));
+
+        CertificateContent expectedCertificateContent = DataGenerator.createDefault(CertificateContentGenerator.class);
+
+        MakeDecisionRequest initialMakeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
+            builder
+                    .eventHistory(EventHistory.builder()
+                            .eventDescription("make decision event")
+                            .build())
+                    .overallDecision(DecisionStatus.GRANTED)
+                    .proceedings(List.of(
+                            createMakeDecisionProceeding(proceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1", "reason 1")
+                    ))
+                    .certificate(objectMapper.convertValue(expectedCertificateContent, Map.class))
+                    .autoGranted(false);
+        });
+
+        MakeDecisionRequest secondMakeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
+            builder
+                    .applicationVersion(1L)
+                    .eventHistory(EventHistory.builder()
+                            .eventDescription("make decision event")
+                            .build())
+                    .overallDecision(DecisionStatus.REFUSED)
+                    .proceedings(initialMakeDecisionRequest.getProceedings())
+                    .autoGranted(false);
+        });
+
+        // when
+        patchUri(TestConstants.URIs.ASSIGN_DECISION, initialMakeDecisionRequest, applicationEntity.getId());
+        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, secondMakeDecisionRequest, applicationEntity.getId());
+
+        // then
+        assertNoContent(result);
+        assertFalse(certificateRepository.existsByApplicationId(applicationEntity.getId()));
+
     }
 
     @Test

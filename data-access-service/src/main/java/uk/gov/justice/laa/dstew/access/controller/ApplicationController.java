@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +33,7 @@ import uk.gov.justice.laa.dstew.access.model.Paging;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
+import uk.gov.justice.laa.dstew.access.service.CertificateService;
 import uk.gov.justice.laa.dstew.access.service.DomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
@@ -49,6 +51,7 @@ public class ApplicationController implements ApplicationApi {
   private final ApplicationService service;
   private final ApplicationSummaryService summaryService;
   private final DomainEventService domainService;
+  private final CertificateService certificateService;
 
   @LogMethodArguments
   @LogMethodResponse
@@ -185,5 +188,14 @@ public class ApplicationController implements ApplicationApi {
     //service.makeDecision(applicationId, request);
 
     return ResponseEntity.noContent().build();
+  }
+
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<Map<String, Object>> getCertificate(
+          @NotNull ServiceName serviceName,
+          UUID applicationId) {
+    return ResponseEntity.ok(certificateService.getCertificate(applicationId));
   }
 }
