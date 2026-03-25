@@ -17,9 +17,34 @@ components:
               type: array
               items:
                 $ref: '../common/open-api-models-common.yml#/components/schemas/createProceedingRequest'
-            test:
-              type: string
-              description: An optional test field that can be used to store a test value for the application, such as a test identifier or a flag. This field is not used by the system and is intended for client use only.
       required:
         - proceedings
       additionalProperties: true
+      examples:
+        v2_apply_single_proceeding:
+          summary: "V2 apply with single proceeding (required in v2)"
+          value:
+            objectType: "applyV2"
+            id: "550e8400-e29b-41d4-a716-446655440010"
+            submittedAt: "2024-03-20T10:30:00Z"
+            status: "DRAFT"
+            laaReference: "LAA87654321"
+            proceedings:
+              - id: "p1"
+                leadProceeding: true
+                proceedingType: "ASYLUM"
+        v2_apply_multiple_proceedings:
+          summary: "V2 apply with multiple proceedings (new in v2)"
+          value:
+            objectType: "applyV2"
+            id: "550e8400-e29b-41d4-a716-446655440011"
+            submittedAt: "2024-03-20T11:00:00Z"
+            status: "DRAFT"
+            laaReference: "LAA98765432"
+            proceedings:
+              - id: "p1"
+                leadProceeding: true
+                proceedingType: "ASYLUM"
+              - id: "p2"
+                leadProceeding: false
+                proceedingType: "HOUSING"

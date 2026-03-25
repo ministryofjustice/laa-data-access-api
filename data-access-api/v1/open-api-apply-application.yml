@@ -9,3 +9,26 @@ components:
       allOf:
         - $ref: '../common/open-api-application-content-common.yml#/components/schemas/ApplicationContentBase'
       additionalProperties: true
+      examples:
+        v1_apply_simple:
+          summary: "Simple V1 apply application"
+          value:
+            objectType: "apply"
+            id: "550e8400-e29b-41d4-a716-446655440000"
+            submittedAt: "2024-03-19T10:30:00Z"
+        v1_apply_full:
+          summary: "V1 apply with typical properties"
+          value:
+            objectType: "apply"
+            id: "550e8400-e29b-41d4-a716-446655440001"
+            submittedAt: "2024-03-19T11:00:00Z"
+            status: "DRAFT"
+            laaReference: "LAA12345678"
+            proceedings:
+              - id: "p1"
+                leadProceeding: true
+                proceedingType: "ASYLUM"
+            applicant:
+              firstName: "John"
+              lastName: "Doe"
+              dateOfBirth: "1985-06-15"

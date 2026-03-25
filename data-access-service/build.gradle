@@ -82,6 +82,17 @@ task copyFileFromRootProject(type: Copy) {
     into 'build/resources/main'
 }
 
+// Copy OpenAPI spec files from data-access-api to resources
+task copyOpenApiSpecs(type: Copy) {
+    description = 'Copy OpenAPI specification files from data-access-api module to resources'
+    from '../data-access-api'
+    include '*.yml'                // Root specs
+    include 'v1/**/*.yml'          // Versioned v1 specs
+    include 'v2/**/*.yml'          // Versioned v2 specs
+    include 'common/**/*.yml'      // Common specs
+    into 'src/main/resources'
+}
+
 jacocoTestReport {
     dependsOn test
     reports {
@@ -186,4 +197,9 @@ dependencies {
     implementation platform("io.sentry:sentry-bom:$versions.sentry")
     implementation "io.sentry:sentry-logback:$versions.sentry"
     implementation "io.sentry:sentry-spring-boot-4:$versions.sentry"
+}
+
+// Make processResources depend on copyOpenApiSpecs to ensure specs are copied before processing resources
+tasks.named('processResources').configure {
+    dependsOn copyOpenApiSpecs
 }

@@ -21,14 +21,13 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequestIndividual;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplyApplication;
 import uk.gov.justice.laa.dstew.access.model.Opponent;
 import uk.gov.justice.laa.dstew.access.model.Provider;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCreateRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationUpdateRequestGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
 @ExtendWith(MockitoExtension.class)
@@ -108,19 +107,17 @@ public class ApplicationMapperTest extends BaseMapperTest {
         ApplicationCreateRequestIndividual.builder().build()
     );
 
-    Map<String, Object> applicationContent = (Map<String, Object>) objectMapper
-        .convertValue(DataGenerator.createDefault(ApplicationContentGenerator.class, builder ->
-          builder.status(String.valueOf(ApplicationStatus.APPLICATION_IN_PROGRESS))
-              .laaReference(laaReference)
-              .allLinkedApplications(DataGenerator.createMultipleDefault(LinkedApplicationsGenerator.class, 2))
-        ), Map.class);
+    ApplyApplication applyApplication = new ApplyApplication();
+    applyApplication.setObjectType("apply");
+    applyApplication.setId(UUID.randomUUID());
+    applyApplication.setSubmittedAt(OffsetDateTime.now());
 
     ApplicationCreateRequest expectedApplicationCreateRequest = DataGenerator.createDefault(
         ApplicationCreateRequestGenerator.class, builder -> builder
             .status(status)
             .laaReference(laaReference)
             .individuals(expectedIndividuals)
-            .applicationContent(applicationContent));
+            .applicationContent(applyApplication));
 
     ApplicationEntity actualApplicationEntity = applicationMapper.toApplicationEntity(expectedApplicationCreateRequest);
 
@@ -135,7 +132,7 @@ public class ApplicationMapperTest extends BaseMapperTest {
     assertThat(actualApplicationEntity.getApplicationContent())
         .isNotNull()
         .usingRecursiveComparison()
-        .isEqualTo(applicationContent);
+        .isEqualTo(MapperUtil.getObjectMapper().convertValue(applyApplication, Map.class));
   }
 
   @Test

@@ -106,41 +106,52 @@ paths:
             schema:
               $ref: "#/components/schemas/ApplicationCreateRequest"
             examples:
-              example1:
-                summary: "Example application create request"
+              v1_apply_example:
+                summary: "V1 Apply - Simple application request"
                 value:
                   status: "DRAFT"
                   applicationContent:
                     objectType: "apply"
-                    clientDetails:
-                      firstName: "John"
-                      lastName: "Doe"
-                      dateOfBirth: "1990-01-01"
+                    id: "550e8400-e29b-41d4-a716-446655440100"
+                    submittedAt: "2024-03-19T10:30:00Z"
                   laaReference: "LAA12345678"
                   individuals:
                     - firstName: "John"
                       lastName: "Doe"
                       dateOfBirth: "1990-01-01"
-                      details:
-                        someKey: "someValue"
                       type: "CLIENT"
-              example2:
-                summary: "Example application create request"
+              v2_apply_example:
+                summary: "V2 Apply - With required proceedings field"
                 value:
                   status: "DRAFT"
                   applicationContent:
-                    objectType: "apply"
-                    clientDetails:
-                      firstName: "John"
-                      lastName: "Doe"
-                      dateOfBirth: "1990-01-01"
-                  laaReference: "LAA12345678"
+                    objectType: "applyV2"
+                    id: "550e8400-e29b-41d4-a716-446655440101"
+                    submittedAt: "2024-03-20T10:30:00Z"
+                    proceedings:
+                      - id: "p1"
+                        leadProceeding: true
+                        proceedingType: "ASYLUM"
+                  laaReference: "LAA87654321"
                   individuals:
-                    - firstName: "John"
-                      lastName: "Doe"
-                      dateOfBirth: "1990-01-01"
-                      details:
-                        someKey: "someValue"
+                    - firstName: "Jane"
+                      lastName: "Smith"
+                      dateOfBirth: "1992-05-15"
+                      type: "CLIENT"
+              decide_example:
+                summary: "Decide - With required office field"
+                value:
+                  status: "SUBMITTED"
+                  applicationContent:
+                    objectType: "decide"
+                    id: "550e8400-e29b-41d4-a716-446655440102"
+                    submittedAt: "2024-03-19T14:00:00Z"
+                    office: "LON001"
+                  laaReference: "LAA11111111"
+                  individuals:
+                    - firstName: "Robert"
+                      lastName: "Johnson"
+                      dateOfBirth: "1988-12-20"
                       type: "CLIENT"
 
       responses:

@@ -17,8 +17,18 @@ components:
               type: string
               description: Office code or identifier required for decision making
       additionalProperties: true
-      example:
-        objectType: decide
-        id: 550e8400-e29b-41d4-a716-446655440002
-        submittedAt: "2024-03-19T10:30:00Z"
-        office: LON001
+      examples:
+        decide_with_london_office:
+          summary: "Decide application with London office assignment"
+          value:
+            objectType: "decide"
+            id: "550e8400-e29b-41d4-a716-446655440002"
+            submittedAt: "2024-03-19T10:30:00Z"
+            office: "LON001"
+        decide_with_manchester_office:
+          summary: "Decide application with Manchester office assignment"
+          value:
+            objectType: "decide"
+            id: "550e8400-e29b-41d4-a716-446655440003"
+            submittedAt: "2024-03-19T11:00:00Z"
+            office: "MAN001"
