@@ -466,7 +466,6 @@ public class ApplicationService {
       CertificateEntity certificate = certificateRepository.findByApplicationId(applicationId)
           .map(existing -> {
             existing.setCertificateContent(request.getCertificate());
-            existing.setUpdatedBy(String.valueOf(caseworkerId));
             return existing;
           })
           .orElseGet(() -> CertificateEntity.builder()

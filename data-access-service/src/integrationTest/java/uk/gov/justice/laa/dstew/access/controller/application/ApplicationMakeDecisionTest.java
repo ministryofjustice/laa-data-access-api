@@ -795,7 +795,8 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
                 .isEqualTo(updatedCertificateContent.getIssueDate());
         assertThat(updatedCertificate.getCertificateContent().get("validUntil"))
                 .isEqualTo(updatedCertificateContent.getValidUntil());
-        assertThat(updatedCertificate.getUpdatedBy()).isEqualTo(CaseworkerJohnDoe.getId().toString());
+        // updatedBy logic will be reverted once security is in place
+        // assertThat(updatedCertificate.getUpdatedBy()).isEqualTo(CaseworkerJohnDoe.getId().toString());
     }
 
     private void verifyCertificateSavedCorrectly(UUID applicationId) {
