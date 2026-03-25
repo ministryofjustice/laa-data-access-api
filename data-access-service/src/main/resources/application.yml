@@ -80,6 +80,6 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
-    url: /open-api-specification2.yml
+    url: /open-api-specification.yml
   auto-tag-classes: false
   default-flat-param-object: true

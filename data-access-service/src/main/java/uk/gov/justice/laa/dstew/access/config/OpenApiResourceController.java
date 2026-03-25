@@ -18,9 +18,9 @@ public class OpenApiResourceController {
         return loadYamlFile("open-api-application-specification.yml");
     }
 
-  @GetMapping(value = "/open-api-specification2.yml", produces = "application/yaml")
+  @GetMapping(value = "/open-api-specification.yml", produces = "application/yaml")
   public String getOpenApiBaseSpec() throws IOException {
-    return loadYamlFile("open-api-specification2.yml");
+    return loadYamlFile("open-api-specification.yml");
   }
 
     @GetMapping(value = "/common/{filename:.+}", produces = "application/yaml")

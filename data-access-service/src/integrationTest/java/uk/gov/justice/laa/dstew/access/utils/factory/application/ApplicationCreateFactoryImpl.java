@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -14,12 +15,16 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
 
   @Override
   public ApplicationCreateRequest create() {
+    ApplicationContent content = applicationContentFactory.create();
+    ApplyApplication applyApp = new ApplyApplication();
+    applyApp.setObjectType("apply");
+    applyApp.setId(content.getId());
+    applyApp.setSubmittedAt(OffsetDateTime.parse(content.getSubmittedAt()));
 
     return ApplicationCreateRequest.builder()
         .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
         .laaReference("TestReference")
-        .applicationContent(MapperUtil.getObjectMapper()
-            .convertValue(applicationContentFactory.create(), Map.class))
+        .applicationContent(applyApp)
         .individuals(List.of(
             ApplicationCreateRequestIndividual.builder()
                 .firstName("John")
