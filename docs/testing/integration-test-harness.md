@@ -14,6 +14,12 @@ The same base class, test lifecycle, and teardown mechanism runs identically in 
 modes. The only thing that changes is which `TestContextProvider` implementation is
 wired in.
 
+This allows us to run a subset of critical smoke tests against the real infrastructure environment — 
+providing confidence that the deployed API behaves as expected with the real database and real deployed configuration. 
+
+In terms of end to end testing for **our** API, this covers what is necessary without needing more tests and more
+things to maintain. We can be confident that if the smoke tests pass in infrastructure mode, then the API is working correctly in that environment.
+
 ---
 
 ## Architecture
