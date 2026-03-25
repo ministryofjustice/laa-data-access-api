@@ -14,5 +14,6 @@ public interface CertificateRepository extends JpaRepository<CertificateEntity, 
   void deleteByApplicationId(UUID applicationId);
 
   boolean existsByApplicationId(UUID applicationId);
+
   Optional<CertificateEntity> findByApplicationId(UUID applicationId);
 }
