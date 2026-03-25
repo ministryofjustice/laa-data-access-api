@@ -40,13 +40,20 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.Event;
+import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.model.S3UploadResult;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.DynamoDbService;
 import uk.gov.justice.laa.dstew.access.service.S3Service;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCreateRequestGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @TestPropertySource(properties = {"event.history.service.type=aws", "aws.event.history.enabled=true"})
@@ -66,11 +73,12 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
 
     // given
     UUID expectedId = UUID.randomUUID();
-    ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder ->
+    ApplicationEntity withExpectedId = DataGenerator.createDefault(
+        ApplicationEntityGenerator.class, builder ->
         builder.id(expectedId).isAutoGranted(null)
     );
 
-    ApplicationCreateRequest applicationCreateRequest = applicationCreateRequestFactory.createDefault();
+    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
     ApplicationContent applicationContent = MapperUtil.getObjectMapper()
         .convertValue(applicationCreateRequest.getApplicationContent(), ApplicationContent.class);
     when(applicationRepository.save(any())).thenReturn(withExpectedId);
@@ -84,6 +92,7 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
     DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
         .applicationId(expectedId)
         .type(DomainEventType.APPLICATION_CREATED)
+        .serviceName(ServiceName.CIVIL_APPLY)
         .data(objectMapper.writeValueAsString(CreateApplicationDomainEventDetails.builder()
             .applicationId(expectedId)
             .laaReference(withExpectedId.getLaaReference())
@@ -92,7 +101,7 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
             .build()))
         .build();
 
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     // when
     UUID actualId = serviceUnderTest.createApplication(applicationCreateRequest);
@@ -135,10 +144,11 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
   void mapToApplicationEntity_SuccessfullyMapFromApplicationContentFields(ApplicationCreateRequest application,
                                                                           boolean expectedUseDelegatedFunctions) {
     // Given
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     UUID expectedId = UUID.randomUUID();
-    ApplicationEntity withExpectedId = applicationEntityFactory.createDefault(builder -> builder.id(expectedId));
+    ApplicationEntity withExpectedId =
+        DataGenerator.createDefault(ApplicationEntityGenerator.class, builder -> builder.id(expectedId));
     when(applicationRepository.save(any())).thenReturn(withExpectedId);
 
     // When
@@ -164,7 +174,8 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
     // when
     // then
     assertThatExceptionOfType(AuthorizationDeniedException.class)
-        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
+        .isThrownBy(
+            () -> serviceUnderTest.createApplication(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class)))
         .withMessageContaining("Access Denied");
 
     verify(applicationRepository, times(0)).findById(any(UUID.class));
@@ -175,7 +186,8 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
   public void givenNewApplicationAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
 
     assertThatExceptionOfType(AuthorizationDeniedException.class)
-        .isThrownBy(() -> serviceUnderTest.createApplication(applicationCreateRequestFactory.createDefault()))
+        .isThrownBy(
+            () -> serviceUnderTest.createApplication(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class)))
         .withMessageContaining("Access Denied");
 
     verify(applicationRepository, times(0)).findById(any(UUID.class));
@@ -184,11 +196,11 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
 
   @ParameterizedTest
   @MethodSource("invalidApplicationRequests")
-  public void GivenInvalidApplicationAndRoleWriter_whenCreateApplication_thenValidationExceptionWithCorrectMessage(
+  public void GivenInvalidApplicationAndRoleCASEWORKER_whenCreateApplication_thenValidationExceptionWithCorrectMessage(
       ApplicationCreateRequest applicationCreateRequest,
       ValidationException validationException
   ) {
-    setSecurityContext(TestConstants.Roles.WRITER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     Throwable thrown = catchThrowable(() -> serviceUnderTest.createApplication(applicationCreateRequest));
     assertThat(thrown)
@@ -207,10 +219,11 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
         "No lead proceeding found in application content"
     ));
 
-    ApplicationContent applicationContent = applicationContentFactory.createDefault(appContentBuilder ->
-        appContentBuilder.proceedings(List.of(proceedingFactory.createDefault(proceedingBuilder ->
+    ApplicationContent applicationContent = DataGenerator.createDefault(ApplicationContentGenerator.class, appContentBuilder ->
+        appContentBuilder.proceedings(List.of(DataGenerator.createDefault(ProceedingGenerator.class, proceedingBuilder ->
             proceedingBuilder.leadProceeding(false)))));
-    ApplicationCreateRequest createRequest = applicationCreateRequestFactory.createDefault(builder -> builder
+    ApplicationCreateRequest createRequest =
+        DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> builder
         .applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
     return Stream.of(
         Arguments.of(
@@ -222,7 +235,7 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
                                                   String appContentId) {
 
 
-    ApplicationContent applicationContent = applicationContentFactory.createDefault(appContentBuilder ->
+    ApplicationContent applicationContent = DataGenerator.createDefault(ApplicationContentGenerator.class, appContentBuilder ->
         appContentBuilder.submittedAt("2026-01-15T10:20:30Z").proceedings(proceedings).id(UUID.fromString(appContentId)));
 
     applicationContent.putAdditionalApplicationContent("testPropertyInTest", "testValue");
@@ -232,25 +245,25 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
 
   private Proceeding getProceeding(Boolean useDelegatedFunctions, boolean leadProceeding) {
 
-    return proceedingFactory.createDefault(
+    return DataGenerator.createDefault(ProceedingGenerator.class,
         builder -> builder.leadProceeding(leadProceeding).usedDelegatedFunctions(useDelegatedFunctions));
   }
 
   private Stream<Arguments> provideProceedingsForMapping() {
     //App Content Map, expected usedDelegatedFunctions
     return Stream.of(
-        Arguments.of(applicationCreateRequestFactory.createDefault(
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.applicationContent(getAppContentParent(List.of(getProceeding(true, true)),
                 UUID.randomUUID().toString()))), true),
-        Arguments.of(applicationCreateRequestFactory.createDefault(
+        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
                 builder -> builder.applicationContent(getAppContentParent(List.of(getProceeding(false, true)),
                     UUID.randomUUID().toString()))), false,
             true), Arguments.of(
-            applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
+            DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> builder.applicationContent(
                 getAppContentParent(List.of(getProceeding(false, true), getProceeding(true, false)),
                     UUID.randomUUID().toString()))), true,
             true), Arguments.of(
-            applicationCreateRequestFactory.createDefault(builder -> builder.applicationContent(
+            DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, builder -> builder.applicationContent(
                 getAppContentParent(List.of(getProceeding(false, true), getProceeding(false, false)),
                     UUID.randomUUID().toString()))), false,
             true));
@@ -276,8 +289,16 @@ public class CreateApplicationAwsTest extends BaseServiceTest {
         .ignoringCollectionOrder()
         .isEqualTo(objectMapper.convertValue(applicationContentDetails, Map.class));
 
-    assertIndividualCollectionsEqual(applicationCreateRequest.getIndividuals(),
-        actualApplicationEntity.getIndividuals());
+    List<Individual> expectedIndividuals = applicationCreateRequest.getIndividuals().stream()
+        .map(req -> Individual.builder()
+            .firstName(req.getFirstName())
+            .lastName(req.getLastName())
+            .dateOfBirth(req.getDateOfBirth())
+            .type(req.getType())
+            .details(req.getDetails())
+            .build())
+        .toList();
+    assertIndividualCollectionsEqual(expectedIndividuals, actualApplicationEntity.getIndividuals());
   }
 
 

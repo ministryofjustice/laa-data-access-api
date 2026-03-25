@@ -45,7 +45,7 @@ public class GetEventsAwsTest extends BaseServiceTest {
 
     UUID eventId = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
     // given
-    setSecurityContext(TestConstants.Roles.READER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
     List<DomainEventEntity> generatedDomainEvents = Collections.singletonList(DataGenerator.createDefault(
         DomainEventGenerator.class, e -> e.applicationId(eventId)));
 

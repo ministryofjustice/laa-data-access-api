@@ -22,8 +22,8 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.core.JacksonException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
@@ -84,12 +84,12 @@ public class UpdateApplicationTest extends BaseServiceTest {
                 .applicationContent(new HashMap<>(Map.of("test", "changed")))
                 .build();
 
-    ApplicationUpdateRequest updateRequest = applicationUpdateRequestFactory.createDefault();
+      ApplicationUpdateRequest updateRequest = DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
     when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
     when(s3Service.upload(any(), any(String.class), any(String.class)))
         .thenReturn(new S3UploadResult("bucket", "key", "etag", true, "s3://bucket/key"));
     when(dynamoDbService.saveDomainEvent(any(Event.class), any(String.class))).thenReturn(null);
-    setSecurityContext(TestConstants.Roles.WRITER);
+      setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
         .applicationId(applicationId)

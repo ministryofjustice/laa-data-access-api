@@ -16,7 +16,7 @@ public interface EventHistoryService {
   /**
    * Provides a list of events associated with an application in createdAt ascending order.
    */
-  @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
+  @PreAuthorize("@entra.hasAppRole('LAA_CASEWORKER')")
   List<ApplicationDomainEvent> getEvents(UUID applicationId,
                                          @Valid List<DomainEventType> eventType);
 

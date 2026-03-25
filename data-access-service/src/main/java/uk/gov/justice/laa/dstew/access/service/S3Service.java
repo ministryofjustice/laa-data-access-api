@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,6 +7,7 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -19,6 +19,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.S3UploadResult;
 
 
@@ -32,7 +33,7 @@ public class S3Service {
   private final S3Client s3Client;
   private final ObjectMapper objectMapper;
 
-  public S3Service(S3Client s3Client, ObjectMapper objectMapper) {
+  public S3Service(S3Client s3Client, tools.jackson.databind.@NonNull ObjectMapper objectMapper) {
     this.s3Client = s3Client;
     this.objectMapper = objectMapper;
   }

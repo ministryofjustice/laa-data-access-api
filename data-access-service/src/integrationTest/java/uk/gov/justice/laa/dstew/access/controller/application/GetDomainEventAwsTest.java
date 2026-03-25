@@ -50,9 +50,9 @@ public class GetDomainEventAwsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenApplicationWithAwsDomainEvents_whenApplicationHistorySearch_theReturnDomainEvents() throws Exception {
-    var appId = persistedApplicationFactory.createAndPersist().getId();
+    var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
     // given
     DomainEventDynamoDbGenerator dynamoDbGenerator = new DomainEventDynamoDbGenerator();
     PersistedDynamoDbFactory<DomainEventDynamoDBFactory, DomainEventDynamoDb, DomainEventDynamoDb.DomainEventDynamoDbBuilder>
@@ -76,12 +76,12 @@ public class GetDomainEventAwsTest extends BaseIntegrationTest {
     assertOK(result);
 
     assertThat(actualResponse).isNotNull();
-    assertEquals(5, actualResponse.getEvents().size());
+    assertEquals(DomainEventType.values().length, actualResponse.getEvents().size());
   }
 
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenApplicationWithDomainEvents_whenApplicationHistorySearchFilterSingleDomainEvent_thenOnlyFilteredDomainEventTypes()
       throws Exception {
     var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
@@ -110,7 +110,7 @@ public class GetDomainEventAwsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.READER)
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenApplicationWithDomainEvents_whenApplicationHistorySearchFilterMultipleDomainEvent_thenOnlyFilteredDomainEventTypes()
       throws Exception {
     var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();

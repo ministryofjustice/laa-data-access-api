@@ -29,7 +29,6 @@ public class ApplicationCreateRequestFactory extends BaseFactory<ApplicationCrea
 
   public ApplicationCreateRequestFactory(IndividualFactory individualFactory, ApplicationContentFactory requestApplicationContentFactory) {
     super(ApplicationCreateRequest::toBuilder, ApplicationCreateRequest.Builder::build);
-    this.individualFactory = individualFactory;
     this.applicationContentFactory = requestApplicationContentFactory;
   }
 
