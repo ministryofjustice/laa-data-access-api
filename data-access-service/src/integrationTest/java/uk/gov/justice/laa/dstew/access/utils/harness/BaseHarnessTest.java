@@ -14,6 +14,8 @@ import uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts.Doma
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
+import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
+import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
@@ -40,6 +42,8 @@ public abstract class BaseHarnessTest {
     protected ApplicationRepository applicationRepository;
     protected CaseworkerRepository caseworkerRepository;
     protected DomainEventRepository domainEventRepository;
+    protected CertificateRepository certificateRepository;
+    protected DecisionRepository decisionRepository;
     protected DomainEventAsserts domainEventAsserts;
     protected ApplicationAsserts applicationAsserts;
 
@@ -65,6 +69,8 @@ public abstract class BaseHarnessTest {
         applicationRepository  = harnessProvider.getBean(ApplicationRepository.class);
         caseworkerRepository   = harnessProvider.getBean(CaseworkerRepository.class);
         domainEventRepository  = harnessProvider.getBean(DomainEventRepository.class);
+        certificateRepository  = harnessProvider.getBean(CertificateRepository.class);
+        decisionRepository     = harnessProvider.getBean(DecisionRepository.class);
         domainEventAsserts     = harnessProvider.getBean(DomainEventAsserts.class);
         applicationAsserts     = harnessProvider.getBean(ApplicationAsserts.class);
 
@@ -209,6 +215,51 @@ public abstract class BaseHarnessTest {
 
     private HttpHeaders defaultServiceNameHeader() {
         return new HttpHeadersBuilder().withServiceName("CIVIL_APPLY").build();
+    }
+
+    /** PATCH with body serialised to JSON, default CIVIL_APPLY service-name header, and path-variable args. */
+    public <T> HarnessResult patchUri(String uri, T requestModel, Object... args) throws Exception {
+        return patchUri(uri, requestModel, defaultServiceNameHeader(), args);
+    }
+
+    /**
+     * PATCH with body serialised to JSON, the supplied headers, and path-variable args.
+     * Mirrors BaseIntegrationTest.patchUri(String, TRequestModel, HttpHeaders, Object...).
+     */
+    public <T> HarnessResult patchUri(String uri, T requestModel, HttpHeaders headers, Object... args) throws Exception {
+        String expandedUri = UriComponentsBuilder.fromUriString(uri)
+                .buildAndExpand(args)
+                .toUriString();
+
+        String body = objectMapper.writeValueAsString(requestModel);
+
+        WebTestClient.RequestBodySpec spec = webTestClient.patch()
+                .uri(expandedUri)
+                .contentType(MediaType.APPLICATION_JSON);
+
+        if (!omitToken) {
+            spec = spec.header(HttpHeaders.AUTHORIZATION, "Bearer " + currentToken);
+        }
+        if (headers != null) {
+            for (Map.Entry<String, List<String>> entry : headers.headerSet()) {
+                spec = spec.header(entry.getKey(), entry.getValue().toArray(String[]::new));
+            }
+        }
+
+        // Reset token state after each use
+        currentToken = TestConstants.Tokens.CASEWORKER;
+        omitToken = false;
+
+        EntityExchangeResult<byte[]> raw = spec.bodyValue(body)
+                .exchange()
+                .expectBody().returnResult();
+
+        int status = raw.getStatus().value();
+        Map<String, String> responseHeaders = raw.getResponseHeaders().toSingleValueMap();
+        String responseBody = raw.getResponseBody() == null
+                ? "" : new String(raw.getResponseBody(), StandardCharsets.UTF_8);
+
+        return new HarnessResult(status, responseHeaders, responseBody);
     }
 }
 

@@ -1,19 +1,14 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import java.util.*;
-import java.util.stream.Stream;
 
+import jakarta.persistence.EntityManager;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
@@ -27,7 +22,6 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetails;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
-import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
@@ -36,18 +30,23 @@ import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGe
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateContentGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessInject;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 import uk.gov.justice.laa.dstew.access.utils.testDto.certificate.CertificateContent;
-import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
-@ActiveProfiles("test")
-public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
+public class ApplicationMakeDecisionTest extends BaseHarnessTest {
 
+    @HarnessInject
+    private EntityManager entityManager;
+
+    @SmokeTest
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenMakeDecisionRequestAndInvalidHeader_whenAssignDecision_thenReturnBadRequest(
             String serviceName
@@ -55,8 +54,8 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         verifyBadServiceNameHeader(serviceName);
     }
 
+    @SmokeTest
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenMakeDecisionRequestAndNoHeader_whenAssignDecision_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
@@ -76,7 +75,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         // when
-        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION,
+        HarnessResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION,
                                     makeDecisionRequest,
                                     ServiceNameHeader(serviceName),
                                     UUID.randomUUID());
@@ -84,7 +83,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenMakeDecisionRequestWithMissingJustification_whenAssignDecision_thenReturnBadRequest() throws Exception {
 
         ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
@@ -112,21 +110,24 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         // when
-        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+        HarnessResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
 
         // then
         assertSecurityHeaders(result);
         assertEquals(400, result.getResponse().getStatus());
-        ValidationException validationException = (ValidationException) result.getResolvedException();
-        Assertions.assertThat(validationException.getMessage()).contains("One or more validation rules were violated");
+        assertEquals("application/problem+json", result.getResponse().getHeader("Content-Type"));
 
-        Assertions.assertThat(validationException.errors())
+        ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+        Assertions.assertThat(problemDetail.getDetail()).contains("Generic Validation Error");
+
+        @SuppressWarnings("unchecked")
+        List<String> errors = (List<String>) problemDetail.getProperties().get("errors");
+        Assertions.assertThat(errors)
                 .isInstanceOf(List.class)
                 .contains("The Make Decision request must contain a refusal justification for proceeding with id: " + grantedProceedingEntity.getId());
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenMakeDecisionRequest_whenAssignDecision_thenUpdateApplicationEntity() throws Exception {
         // given
         ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
@@ -154,7 +155,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         // when
-        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+        HarnessResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
 
         //then
         ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
@@ -163,7 +164,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenReturnNoContent_andDecisionSaved()
             throws Exception {
         // given
@@ -194,7 +194,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         // when
-        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+        HarnessResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
 
         // then
         assertSecurityHeaders(result);
@@ -208,7 +208,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         domainEventAsserts.assertDomainEventsCreatedForApplications(
                 List.of(applicationEntity),
-                BaseIntegrationTest.CaseworkerJohnDoe.getId(),
+                CaseworkerJohnDoe.getId(),
                 DomainEventType.APPLICATION_MAKE_DECISION_REFUSED,
                 makeDecisionRequest.getEventHistory()
         );
@@ -220,7 +220,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenMakeDecisionRequestWithExistingContentAndNewContent_whenAssignDecision_thenReturnNoContent_andDecisionUpdated()
             throws Exception {
         // given
@@ -235,12 +234,11 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         ProceedingEntity proceedingEntityOne = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
                 builder -> builder.applicationId(applicationEntity.getId()));
 
-        MeritsDecisionEntity meritsDecisionEntityOne = persistedDataGenerator.createAndPersist(
-            MeritsDecisionsEntityGenerator.class,
-            builder -> { builder
-                        .proceeding(proceedingEntityOne)
-                        .decision(MeritsDecisionStatus.REFUSED);
-                }
+        // Build a transient MeritsDecisionEntity (not yet saved) so that CascadeType.PERSIST
+        // on DecisionEntity.meritsDecisions can insert it — avoids "detached entity" errors.
+        MeritsDecisionEntity meritsDecisionEntityOne = DataGenerator.createDefault(
+                MeritsDecisionsEntityGenerator.class,
+                builder -> builder.proceeding(proceedingEntityOne).decision(MeritsDecisionStatus.REFUSED)
         );
 
         ProceedingEntity proceedingEntityTwo = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
@@ -248,10 +246,9 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         DecisionEntity decision = persistedDataGenerator.createAndPersist(
             DecisionEntityGenerator.class,
-                builder -> { builder
+                builder -> builder
                         .meritsDecisions(Set.of(meritsDecisionEntityOne))
-                        .overallDecision(DecisionStatus.REFUSED);
-                }
+                        .overallDecision(DecisionStatus.REFUSED)
         );
 
         applicationEntity.setDecision(decision);
@@ -271,7 +268,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         // when
-        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, assignDecisionRequest, applicationEntity.getId());
+        HarnessResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, assignDecisionRequest, applicationEntity.getId());
 
         // then
         assertSecurityHeaders(result);
@@ -285,7 +282,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
 
         domainEventAsserts.assertDomainEventsCreatedForApplications(
                 List.of(applicationEntity),
-                BaseIntegrationTest.CaseworkerJohnDoe.getId(),
+                CaseworkerJohnDoe.getId(),
                 DomainEventType.APPLICATION_MAKE_DECISION_REFUSED,
                 assignDecisionRequest.getEventHistory()
         );
@@ -297,7 +294,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenProceedingsNotFoundAndNotLinkedToApplication_whenMakeDecision_thenReturnNotFoundWithAllIds()
         throws Exception {
         // given
@@ -335,13 +331,13 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         // when
-        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+        HarnessResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
 
         // then
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertNotFound(result);
-        assertEquals("application/problem+json", result.getResponse().getContentType());
+        assertThat(result.getResponse().getHeader("Content-Type")).startsWith("application/problem+json");
 
         ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
         assertThat(problemDetail.getDetail())
@@ -351,8 +347,8 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
             .contains(proceedingNotLinkedToApplication.getId().toString());
     }
 
+    @SmokeTest
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenNoApplication_whenAssignDecisionApplication_thenReturnNotFoundAndMessage()
             throws Exception {
         // given
@@ -372,19 +368,18 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         // when
-        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationId);
+        HarnessResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationId);
 
         // then
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertNotFound(result);
-        assertEquals("application/problem+json", result.getResponse().getContentType());
+        assertThat(result.getResponse().getHeader("Content-Type")).startsWith("application/problem+json");
         ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
         assertEquals("No application found with id: " + applicationId, problemDetail.getDetail());
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenApplicationWithNoCaseworker_whenAssignDecisionApplication_thenReturnNotFoundAndMessage()
         throws Exception {
         // given
@@ -409,13 +404,13 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         // when
-        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+        HarnessResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
 
         // then
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertNotFound(result);
-        assertEquals("application/problem+json", result.getResponse().getContentType());
+        assertThat(result.getResponse().getHeader("Content-Type")).startsWith("application/problem+json");
         ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
         assertEquals("Caseworker not found for application id: " + applicationEntity.getId(), problemDetail.getDetail());
     }
@@ -436,7 +431,16 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     private void verifyDecisionSavedCorrectly(UUID applicationId, MakeDecisionRequest expectedMakeDecisionRequest) {
         ApplicationEntity updatedApplicationEntity = applicationRepository.findById(applicationId).orElseThrow();
 
-        DecisionEntity savedDecision = updatedApplicationEntity.getDecision();
+        // Use JOIN FETCH to eagerly load meritsDecisions and their proceeding associations
+        // within a single query, so the lazy collection is available after the session closes.
+        DecisionEntity savedDecision = entityManager.createQuery(
+                "SELECT d FROM DecisionEntity d "
+                        + "LEFT JOIN FETCH d.meritsDecisions m "
+                        + "LEFT JOIN FETCH m.proceeding "
+                        + "WHERE d.id = :id",
+                DecisionEntity.class)
+                .setParameter("id", updatedApplicationEntity.getDecision().getId())
+                .getSingleResult();
 
         MakeDecisionRequest actual = mapToMakeDecisionRequest(
                 savedDecision,
@@ -493,7 +497,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenGrantedDecisionWithNoCertificate_whenAssignDecision_thenReturnBadRequest()
             throws Exception {
         // given
@@ -522,13 +525,13 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         // when
-        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+        HarnessResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
 
         // then
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
-        assertEquals("application/problem+json", result.getResponse().getContentType());
+        assertThat(result.getResponse().getHeader("Content-Type")).startsWith("application/problem+json");
 
         ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
         @SuppressWarnings("unchecked")
@@ -541,7 +544,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenGrantedDecisionWithCertificate_whenAssignDecision_thenReturnNoContent_andDecisionAndCertificateSaved()
             throws Exception {
         // given
@@ -572,7 +574,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         // when
-        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+        HarnessResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
 
         // then
         assertSecurityHeaders(result);
@@ -609,7 +611,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenRefusedDecisionWithNoCertificate_whenAssignDecision_thenReturnNoContent()
             throws Exception {
         // given
@@ -638,7 +639,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         // when
-        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+        HarnessResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
 
         // then
         assertSecurityHeaders(result);
@@ -651,7 +652,6 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenPartiallyGrantedDecisionWithNoCertificate_whenAssignDecision_thenReturnNoContent()
             throws Exception {
         // given
@@ -680,7 +680,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         // when
-        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+        HarnessResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
 
         // then
         assertSecurityHeaders(result);

@@ -163,6 +163,10 @@ public class ResponseAsserts {
     assertNotNull(response.getResponse().getHeader("Location"));
   }
 
+  public static void assertNoContent(HarnessResult response) {
+    assertEquals(HttpStatus.NO_CONTENT.value(), response.getResponse().getStatus());
+  }
+
   public static void assertProblemRecord(
           HttpStatus expectedStatus,
           ProblemDetail expectedDetail,
