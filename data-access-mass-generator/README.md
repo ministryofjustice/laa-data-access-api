@@ -237,9 +237,9 @@ production service untouched and the mass generator removable without side effec
 ### Why JDBC batching is limited
 
 See [Batching and memory management](#batching-and-memory-management) above. The short version:
-`GenerationType.IDENTITY` with a UUID column forces a round-trip per insert. Changing the strategy
-to `SEQUENCE` would unlock true JDBC batching but requires modifying `data-access-service` entities
-and Flyway migrations, which is out of scope.
+`GenerationType.IDENTITY` with a UUID column forces a round-trip per insert. There is no way to use SEQUENCE
+for UUID generation in Postgres, so Hibernate's batching features cannot be leveraged for the main entities. 
+The generator instead focuses on batching at the application level (persisting all proceedings for an application in one call) and on memory management (flushing and clearing the session every 500 applications).
 
 ### `linked_individuals` join table
 
