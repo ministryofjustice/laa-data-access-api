@@ -31,6 +31,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
@@ -407,15 +408,7 @@ public class ApplicationService {
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     VersionCheckHelper.checkEntityVersionLocking(applicationId, application.getVersion(), request.getApplicationVersion());
-    final CaseworkerEntity caseworker = application.getCaseworker();
-    // This logic will be implemented in the next iteration when security is implemented in the service
-    //    if (caseworker == null) {
-    //      throw new ResourceNotFoundException(
-    //          String.format("Caseworker not found for application id: %s", applicationId)
-    //      );
-    //    }
-    //    final UUID caseworkerId = caseworker.getId();
-
+    final UUID caseworkerId = getCaseworkerId(applicationId, application);
     applicationValidations.checkApplicationMakeDecisionRequest(request);
 
     application.setModifiedAt(Instant.now());
@@ -428,32 +421,12 @@ public class ApplicationService {
 
     Set<MeritsDecisionEntity> merits = new LinkedHashSet<>(decision.getMeritsDecisions());
 
-    List<UUID> proceedingIds = request.getProceedings().stream()
-        .map(MakeDecisionProceeding::getProceedingId)
-        .toList();
-    List<ProceedingEntity> proceedingEntities = checkIfAllProceedingsExistForApplication(applicationId, proceedingIds);
-    Map<UUID, ProceedingEntity> proceedingEntityMap = proceedingEntities.stream()
-        .collect(Collectors.toMap(ProceedingEntity::getId, proceeding -> proceeding));
+    Map<UUID, ProceedingEntity> proceedingEntityMap =
+        getUuidProceedingEntityMap(applicationId, request);
 
     request.getProceedings().forEach(proceeding -> {
       ProceedingEntity proceedingEntity = proceedingEntityMap.get(proceeding.getProceedingId());
-
-      MeritsDecisionEntity meritDecisionEntity = decision.getMeritsDecisions().stream()
-          .filter(m -> m.getProceeding().getId().equals(proceeding.getProceedingId()))
-          .findFirst()
-          .orElseGet(() -> {
-            MeritsDecisionEntity newEntity = new MeritsDecisionEntity();
-            newEntity.setProceeding(proceedingEntity);
-            return newEntity;
-          });
-
-      meritDecisionEntity.setModifiedAt(Instant.now());
-      meritDecisionEntity.setDecision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()));
-      meritDecisionEntity.setReason(proceeding.getMeritsDecision().getReason());
-      meritDecisionEntity.setJustification(proceeding.getMeritsDecision().getJustification());
-      meritsDecisionRepository.save(meritDecisionEntity);
-      merits.add(meritDecisionEntity);
-
+      saveMeritsDecisionEntity(proceeding, decision, proceedingEntity, merits);
     });
 
     decision.setMeritsDecisions(merits);
@@ -480,18 +453,61 @@ public class ApplicationService {
       if (certificateRepository.existsByApplicationId(applicationId)) {
         certificateRepository.deleteByApplicationId(applicationId);
       }
+    }
 
-      domainEventService.saveMakeDecisionRefusedDomainEvent(
-          applicationId,
-          request,
-          caseworker != null ? caseworker.getId() : null
-      );
+    switch (decision.getOverallDecision()) {
+      case GRANTED -> domainEventService.saveMakeDecisionDomainEvent(applicationId, request, caseworkerId,
+          DomainEventType.APPLICATION_MAKE_DECISION_GRANTED);
+      case REFUSED -> domainEventService.saveMakeDecisionDomainEvent(applicationId, request, caseworkerId,
+          DomainEventType.APPLICATION_MAKE_DECISION_REFUSED);
+      default -> throw new IllegalStateException("Unexpected value: " + decision.getOverallDecision());
     }
 
     if (application.getDecision() == null) {
       application.setDecision(decision);
       applicationRepository.save(application);
     }
+  }
+
+  private void saveMeritsDecisionEntity(MakeDecisionProceeding proceeding, DecisionEntity decision,
+                                        ProceedingEntity proceedingEntity,
+                                        Set<MeritsDecisionEntity> merits) {
+    MeritsDecisionEntity meritDecisionEntity = decision.getMeritsDecisions().stream()
+        .filter(m -> m.getProceeding().getId().equals(proceeding.getProceedingId()))
+        .findFirst()
+        .orElseGet(() -> {
+          MeritsDecisionEntity newEntity = new MeritsDecisionEntity();
+          newEntity.setProceeding(proceedingEntity);
+          return newEntity;
+        });
+
+    meritDecisionEntity.setModifiedAt(Instant.now());
+    meritDecisionEntity.setDecision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()));
+    meritDecisionEntity.setReason(proceeding.getMeritsDecision().getReason());
+    meritDecisionEntity.setJustification(proceeding.getMeritsDecision().getJustification());
+    meritsDecisionRepository.save(meritDecisionEntity);
+    merits.add(meritDecisionEntity);
+  }
+
+  private @NonNull Map<UUID, ProceedingEntity> getUuidProceedingEntityMap(UUID applicationId,
+                                                                          MakeDecisionRequest request) {
+    List<UUID> proceedingIds = request.getProceedings().stream()
+        .map(MakeDecisionProceeding::getProceedingId)
+        .toList();
+    List<ProceedingEntity> proceedingEntities = checkIfAllProceedingsExistForApplication(applicationId, proceedingIds);
+    return proceedingEntities.stream()
+        .collect(Collectors.toMap(ProceedingEntity::getId, proceeding -> proceeding));
+  }
+
+  private static UUID getCaseworkerId(UUID applicationId, ApplicationEntity application) {
+    final CaseworkerEntity caseworker = application.getCaseworker();
+    // This logic will be implemented in the next iteration when security is implemented in the service
+    //    if (caseworker == null) {
+    //      throw new ResourceNotFoundException(
+    //          String.format("Caseworker not found for application id: %s", applicationId)
+    //      );
+    //    }
+    return caseworker != null ? caseworker.getId() : null;
   }
 
   /**
