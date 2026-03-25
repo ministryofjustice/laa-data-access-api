@@ -58,13 +58,7 @@ public class HarnessExtension implements BeforeAllCallback, AfterAllCallback, Te
         // Use the root store so that a single TestContextProvider is shared across
         // all test classes in the suite, rather than creating a new Spring context
         // per class.
-        ExtensionContext.Store rootStore = getRootStore(ctx);
-        rootStore.getOrComputeIfAbsent(STORE_KEY, key -> {
-            var mode = System.getProperty("test.mode", "integration");
-            return INFRASTRUCTURE_MODE.equals(mode)
-                    ? new InfrastructureTestContextProvider()
-                    : new IntegrationTestContextProvider();
-        }, TestContextProvider.class);
+        getOrCreateProvider(ctx);
     }
 
     @Override
@@ -75,7 +69,7 @@ public class HarnessExtension implements BeforeAllCallback, AfterAllCallback, Te
 
     @Override
     public void postProcessTestInstance(Object instance, ExtensionContext ctx) {
-        var provider = getRootStore(ctx).get(STORE_KEY, TestContextProvider.class);
+        var provider = getOrCreateProvider(ctx);
         Class<?> clazz = instance.getClass();
         while (clazz != null && !clazz.equals(Object.class)) {
             for (var field : clazz.getDeclaredFields()) {
@@ -95,6 +89,15 @@ public class HarnessExtension implements BeforeAllCallback, AfterAllCallback, Te
             }
             clazz = clazz.getSuperclass();
         }
+    }
+
+    private TestContextProvider getOrCreateProvider(ExtensionContext ctx) {
+        return getRootStore(ctx).getOrComputeIfAbsent(STORE_KEY, key -> {
+            var mode = System.getProperty("test.mode", "integration");
+            return INFRASTRUCTURE_MODE.equals(mode)
+                    ? new InfrastructureTestContextProvider()
+                    : new IntegrationTestContextProvider();
+        }, TestContextProvider.class);
     }
 
     private ExtensionContext.Store getRootStore(ExtensionContext ctx) {

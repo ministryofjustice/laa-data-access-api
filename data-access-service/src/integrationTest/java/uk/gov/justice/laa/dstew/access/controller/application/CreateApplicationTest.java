@@ -12,13 +12,11 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -52,17 +50,6 @@ import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 public class CreateApplicationTest extends BaseHarnessTest {
   private static final int applicationVersion = 1;
 
-  private final List<ApplicationEntity> createdApplications = new ArrayList<>();
-
-  @AfterEach
-  void tearDownApplicationData() {
-    domainEventRepository.deleteAll(domainEventRepository.findAll().stream()
-        .filter(e -> createdApplications.stream()
-            .anyMatch(a -> a.getId().equals(e.getApplicationId())))
-        .toList());
-    applicationRepository.deleteAll(createdApplications);
-    createdApplications.clear();
-  }
 
   private static Stream<Arguments> createApplicationTestParameters() {
       return Stream.of(
@@ -94,7 +81,6 @@ public class CreateApplicationTest extends BaseHarnessTest {
   @Test
   public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_thenReturnCreatedWithLocationHeader() throws Exception {
     final ApplicationEntity leadApplicationToLink = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-    createdApplications.add(leadApplicationToLink);
     final LinkedApplication linkedApplication = LinkedApplication.builder()
         .leadApplicationId(leadApplicationToLink.getApplyApplicationId())
         .associatedApplicationId(UUID.randomUUID())
@@ -146,7 +132,6 @@ public class CreateApplicationTest extends BaseHarnessTest {
         ApplicationEntityGenerator.class,
         applicationEntityBuilder -> applicationEntityBuilder.applyApplicationId(leadApplicationId)
     );
-    createdApplications.add(leadApp);
 
     LinkedApplication linkedApplication = LinkedApplication.builder()
         .leadApplicationId(leadApplicationId)
@@ -182,7 +167,6 @@ public class CreateApplicationTest extends BaseHarnessTest {
   public void givenDuplicateApplyApplicationId_whenCreateApplication_thenReturnBadRequest() throws Exception {
     // given
     ApplicationEntity existingApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-    createdApplications.add(existingApplication);
 
     ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class,
         builder -> builder.id(existingApplication.getApplyApplicationId())
@@ -229,9 +213,7 @@ public class CreateApplicationTest extends BaseHarnessTest {
     UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
     ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
       .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
-    createdApplications.add(createdApplication);
     assertApplicationEqual(applicationCreateRequest, createdApplication);
-    assertNotNull(createdApplicationId);
 
     domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED);
     return createdApplication;
@@ -251,7 +233,6 @@ public class CreateApplicationTest extends BaseHarnessTest {
     UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
     ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
       .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
-    createdApplications.add(createdApplication);
 
     domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED, serviceName);
   }
@@ -294,7 +275,7 @@ public class CreateApplicationTest extends BaseHarnessTest {
     expectedDetail.setProperties(problemDetailProperties);
     assertSecurityHeaders(result);
     assertProblemRecord(HttpStatus.BAD_REQUEST, expectedDetail, result, detail);
-    assertTrue(createdApplications.isEmpty(), "Expected no application to be persisted");
+    assertTrue(trackedApplicationIds().isEmpty(), "Expected no application to be persisted");
   }
 
   @Test
@@ -313,7 +294,7 @@ public class CreateApplicationTest extends BaseHarnessTest {
     // then
     assertSecurityHeaders(result);
     assertProblemRecord(HttpStatus.BAD_REQUEST, expectedProblemDetail, result, validationException);
-    assertTrue(createdApplications.isEmpty(), "Expected no application to be persisted");
+    assertTrue(trackedApplicationIds().isEmpty(), "Expected no application to be persisted");
   }
 
   @Test
@@ -334,7 +315,7 @@ public class CreateApplicationTest extends BaseHarnessTest {
     // then
     assertSecurityHeaders(result);
     assertProblemRecord(HttpStatus.BAD_REQUEST, expectedProblemDetail, result, validationException);
-    assertTrue(createdApplications.isEmpty(), "Expected no application to be persisted");
+    assertTrue(trackedApplicationIds().isEmpty(), "Expected no application to be persisted");
   }
 
   private static Stream<Arguments> noRequestBodyCases() {
@@ -354,7 +335,7 @@ public class CreateApplicationTest extends BaseHarnessTest {
     // then
     assertSecurityHeaders(result);
     assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request", expectedDetail, result, detail, null);
-    assertTrue(createdApplications.isEmpty(), "Expected no application to be persisted");
+    assertTrue(trackedApplicationIds().isEmpty(), "Expected no application to be persisted");
   }
 
   @Test

@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGene
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @ExtendWith(HarnessExtension.class)
 public abstract class BaseHarnessTest {
@@ -47,6 +48,13 @@ public abstract class BaseHarnessTest {
     protected CaseworkerEntity CaseworkerJaneDoe;
     protected List<CaseworkerEntity> Caseworkers;
 
+    /**
+     * Returns the IDs of applications tracked in the current test.
+     * Delegates to PersistedDataGenerator — useful for asserting that no
+     * application was persisted by a bad-request scenario.
+     */
+    protected List<UUID> trackedApplicationIds() { return persistedDataGenerator.trackedApplicationIds(); }
+
     private String currentToken = TestConstants.Tokens.CASEWORKER;
     private boolean omitToken = false;
 
@@ -63,6 +71,11 @@ public abstract class BaseHarnessTest {
         currentToken = TestConstants.Tokens.CASEWORKER;
         omitToken = false;
 
+        // Belt-and-braces: clear any IDs left over from a previous test's failed
+        // teardown.  deleteTrackedData() guarantees clearTrackedIds() via try/finally,
+        // so this should always be a no-op — but it is cheap and makes the invariant
+        // explicit: tracking lists are empty before every test starts.
+        persistedDataGenerator.clearTrackedIds();
 
         CaseworkerJohnDoe = persistedDataGenerator.createAndPersist(
                 CaseworkerGenerator.class, b -> b.username("JohnDoe").build());
@@ -72,9 +85,9 @@ public abstract class BaseHarnessTest {
     }
 
     @AfterEach
-    void tearDownCaseworkers() {
-        if (caseworkerRepository != null) {
-            caseworkerRepository.deleteAll(Caseworkers);
+    protected void tearDownTrackedData() {
+        if (persistedDataGenerator != null) {
+            persistedDataGenerator.deleteTrackedData();
         }
     }
 
@@ -198,3 +211,4 @@ public abstract class BaseHarnessTest {
         return new HttpHeadersBuilder().withServiceName("CIVIL_APPLY").build();
     }
 }
+

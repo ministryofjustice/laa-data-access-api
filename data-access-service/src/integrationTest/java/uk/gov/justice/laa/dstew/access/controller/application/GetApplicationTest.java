@@ -2,11 +2,9 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -54,15 +52,6 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 
 public class GetApplicationTest extends BaseHarnessTest {
 
-    private final List<ApplicationEntity> createdApplications = new ArrayList<>();
-
-    @AfterEach
-    void tearDownApplicationData() {
-        // Deleting the application is sufficient — the database ON DELETE CASCADE
-        // handles proceedings, decisions, merits_decisions, linked_individuals, etc.
-        applicationRepository.deleteAll(createdApplications);
-        createdApplications.clear();
-    }
 
     @SmokeTest
     @ParameterizedTest
@@ -90,7 +79,6 @@ public class GetApplicationTest extends BaseHarnessTest {
         // given
         ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder ->
                 builder.caseworker(CaseworkerJohnDoe).linkedApplications(Set.of()));
-        createdApplications.add(application);
 
         ProceedingEntity proceeding = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class, builder -> {
             builder.applicationId(application.getId());
@@ -145,7 +133,6 @@ public class GetApplicationTest extends BaseHarnessTest {
         // given
         withToken(TestConstants.Tokens.UNKNOWN);
         ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-        createdApplications.add(expectedApplication);
 
         // when
         HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
@@ -160,7 +147,6 @@ public class GetApplicationTest extends BaseHarnessTest {
         // given
         withNoToken();
         ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-        createdApplications.add(expectedApplication);
 
         // when
         HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
@@ -182,7 +168,6 @@ public class GetApplicationTest extends BaseHarnessTest {
                 .createdAt(Instant.now().minusSeconds(10000))
                 .modifiedAt(Instant.now())
         );
-        createdApplications.add(application);
 
         HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         Application response = deserialise(result, Application.class);
@@ -218,7 +203,6 @@ public class GetApplicationTest extends BaseHarnessTest {
             builder -> builder
                 .applicationContent(objectMapper.convertValue(applicationContent, Map.class))
         );
-        createdApplications.add(application);
 
         HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         Application response = deserialise(result, Application.class);
@@ -240,7 +224,6 @@ public class GetApplicationTest extends BaseHarnessTest {
             ApplicationEntityGenerator.class,
             builder -> builder.applicationContent(content)
         );
-        createdApplications.add(application);
 
         HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         Application response = deserialise(result, Application.class);
@@ -279,7 +262,6 @@ public class GetApplicationTest extends BaseHarnessTest {
             ApplicationEntityGenerator.class,
             builder -> builder.applicationContent(content)
         );
-        createdApplications.add(application);
 
         HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         Application response = deserialise(result, Application.class);
@@ -301,7 +283,6 @@ public class GetApplicationTest extends BaseHarnessTest {
     void givenApplicationWithSubmitterEmail_whenGetApplication_thenReturnsProviderWithContactEmail() throws Exception {
 
         ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-        createdApplications.add(application);
 
         HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         Application response = deserialise(result, Application.class);
@@ -319,7 +300,6 @@ public class GetApplicationTest extends BaseHarnessTest {
             ApplicationEntityGenerator.class,
             builder -> builder.applicationContent(Map.of("someOtherKey", "value"))
         );
-        createdApplications.add(application);
 
         HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         Application response = deserialise(result, Application.class);

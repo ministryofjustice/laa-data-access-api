@@ -106,6 +106,7 @@ public abstract class BaseIntegrationTest {
     @BeforeEach
     void setupCaseworkers() {
         caseworkerRepository.deleteAll();
+        applicationRepository.deleteAll();
         CaseworkerJohnDoe = persistedDataGenerator.createAndPersist(CaseworkerGenerator.class, builder ->
                 builder.username("JohnDoe").build());
         CaseworkerJaneDoe = persistedDataGenerator.createAndPersist(CaseworkerGenerator.class, builder ->
