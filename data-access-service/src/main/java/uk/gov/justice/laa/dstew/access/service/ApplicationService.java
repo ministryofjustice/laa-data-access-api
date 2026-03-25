@@ -24,11 +24,11 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.mapper.ProceedingMapper;
-import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistory;
@@ -114,9 +114,9 @@ public class ApplicationService {
    * @return application DTO
    */
   @AllowApiCaseworker
-  public Application getApplication(final UUID id) {
+  public ApplicationResponse getApplication(final UUID id) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
-    Application application = applicationMapper.toApplication(entity);
+    ApplicationResponse application = applicationMapper.toApplication(entity);
 
     Set<ProceedingEntity> proceedings = proceedingRepository.findAllByApplicationId(id);
 

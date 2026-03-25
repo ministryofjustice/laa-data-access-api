@@ -33,8 +33,8 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
-    Application:
-      $ref: "./open-api-application-specification.yml#/components/schemas/Application"
+    ApplicationResponse:
+      $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationResponse"
     ApplicationCreateRequest:
       $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationCreateRequest"
     ApplicationUpdateRequest:

@@ -14,10 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
-import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
@@ -125,7 +125,7 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodResponse
   @LogMethodArguments
-  public ResponseEntity<Application> getApplicationById(ServiceName serviceName, UUID id) {
+  public ResponseEntity<ApplicationResponse> getApplicationById(ServiceName serviceName, UUID id) {
     return ResponseEntity.ok(service.getApplication(id));
   }
 

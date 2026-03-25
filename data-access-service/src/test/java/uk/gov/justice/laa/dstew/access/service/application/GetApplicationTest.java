@@ -18,7 +18,7 @@ import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
@@ -57,7 +57,7 @@ public class GetApplicationTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        Application actualApplication = serviceUnderTest.getApplication(expectedApplication.getId());
+        ApplicationResponse actualApplication = serviceUnderTest.getApplication(expectedApplication.getId());
 
         // then
         assertApplicationEqual(expectedApplication, actualApplication);
@@ -120,7 +120,7 @@ public class GetApplicationTest extends BaseServiceTest {
         verify(applicationRepository, times(0)).findById(any(UUID.class));
     }
 
-    public void assertApplicationEqual(ApplicationEntity expectedApplication, Application actualApplication) {
+    public void assertApplicationEqual(ApplicationEntity expectedApplication, ApplicationResponse actualApplication) {
         assertThat(actualApplication.getStatus()).isEqualTo(expectedApplication.getStatus());
         assertThat(actualApplication.getLaaReference()).isEqualTo(expectedApplication.getLaaReference());
     }

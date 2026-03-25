@@ -132,7 +132,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Application"
+                $ref: "#/components/schemas/ApplicationResponse"
         '400': { description: Bad request }
         '401': { description: Unauthorized }
         '403': { description: Forbidden }
@@ -517,7 +517,7 @@ components:
         type:
           $ref: "#/components/schemas/IndividualType"
 
-    Application:
+    ApplicationResponse:
       type: object
       required:
         - applicationId

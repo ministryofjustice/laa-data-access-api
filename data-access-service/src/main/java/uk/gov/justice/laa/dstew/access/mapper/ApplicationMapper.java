@@ -5,8 +5,6 @@ import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -15,14 +13,12 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.factory.Mappers;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.Opponent;
 import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
 import uk.gov.justice.laa.dstew.access.model.Provider;
@@ -78,18 +74,18 @@ public interface ApplicationMapper {
   }
 
   /**
-   * Maps a {@link ApplicationEntity} to an API-facing {@link Application} model.
+   * Maps a {@link ApplicationEntity} to an API-facing {@link ApplicationResponse} model.
    *
    * @param entity the entity to map
-   * @return a new {@link Application} sobject, or {@code null} if the entity is null
+   * @return a new {@link ApplicationResponse} sobject, or {@code null} if the entity is null
    * @throws IllegalArgumentException if the {@code applicationContent} cannot be deserialized
    */
-  default Application toApplication(ApplicationEntity entity) {
+  default ApplicationResponse toApplication(ApplicationEntity entity) {
     if (entity == null) {
       return null;
     }
 
-    Application application = new Application();
+    ApplicationResponse application = new ApplicationResponse();
     application.setApplicationId(entity.getId());
     application.setStatus(entity.getStatus());
     application.setLaaReference(entity.getLaaReference());
