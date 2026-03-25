@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoContent;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
@@ -49,7 +50,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEnti
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.testDto.certificate.CertificateContent;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 @ActiveProfiles("test")
 public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
@@ -169,8 +169,8 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         // when
-        patchUri(TestConstants.URIs.ASSIGN_DECISION, initialMakeDecisionRequest, applicationEntity.getId());
-        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, secondMakeDecisionRequest, applicationEntity.getId());
+      patchUri(TestConstants.URIs.MAKE_DECISION, initialMakeDecisionRequest, applicationEntity.getId());
+      MvcResult result = patchUri(TestConstants.URIs.MAKE_DECISION, secondMakeDecisionRequest, applicationEntity.getId());
 
         // then
         assertNoContent(result);
@@ -434,69 +434,69 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         assertEquals("Caseworker not found for application id: " + applicationEntity.getId(), problemDetail.getDetail());
     }
 
+  // This Test will be removed once security is implemented within the service
+  @Test
+  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
+  public void givenApplicationWithNoCaseworker_whenAssignDecision_thenReturnNoContent_andDecisionSaved()
+      throws Exception {
+    // given
+    ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
+      builder.applicationContent(new HashMap<>(Map.of(
+          "test", "content"
+      )));
+    });
+
+    ProceedingEntity refusedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+        builder -> builder.applicationId(applicationEntity.getId()));
+
+    ProceedingEntity grantedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+        builder -> builder.applicationId(applicationEntity.getId()));
+
+    MakeDecisionRequest makeDecisionRequest =
+        DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> builder
+            .eventHistory(EventHistory.builder()
+                .eventDescription("refusal event")
+                .build())
+            .overallDecision(DecisionStatus.REFUSED)
+            .proceedings(List.of(
+                createMakeDecisionProceeding(grantedProceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1",
+                    "reason 1"),
+                createMakeDecisionProceeding(refusedProceedingEntity.getId(), MeritsDecisionStatus.REFUSED, "justification 2",
+                    "reason 2")
+            ))
+            .autoGranted(true));
+
+    // when
+    MvcResult result = patchUri(TestConstants.URIs.MAKE_DECISION, makeDecisionRequest, applicationEntity.getId());
+
+    // then
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertNoContent(result);
+
+    ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+    assertEquals(ApplicationStatus.APPLICATION_IN_PROGRESS, actualApplication.getStatus());
+    ApplicationEntity updatedApplicationEntity = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+    assertThat(decisionRepository.countById(updatedApplicationEntity.getDecision().getId())).isEqualTo(1);
+
+    domainEventAsserts.assertDomainEventsCreatedForApplications(
+        List.of(applicationEntity),
+        null,
+        DomainEventType.APPLICATION_MAKE_DECISION_REFUSED,
+        makeDecisionRequest.getEventHistory()
+    );
+
+    verifyDecisionSavedCorrectly(
+        applicationEntity.getId(),
+        makeDecisionRequest
+    );
+  }
+
   private static MakeDecisionProceeding createMakeDecisionProceeding(UUID proceedingId,
                                                                      MeritsDecisionStatus meritsDecisionStatus,
                                                                      String justification, String reason) {
-    // This Test will be removed once security is implemented within the service
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    public void givenApplicationWithNoCaseworker_whenAssignDecision_thenReturnNoContent_andDecisionSaved()
-        throws Exception {
-        // given
-        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
-            builder.applicationContent(new HashMap<>(Map.of(
-                "test", "content"
-            )));
-        });
 
-        ProceedingEntity refusedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(applicationEntity.getId()));
-
-        ProceedingEntity grantedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(applicationEntity.getId()));
-
-        MakeDecisionRequest makeDecisionRequest =
-            DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> builder
-                .eventHistory(EventHistory.builder()
-                    .eventDescription("refusal event")
-                    .build())
-                .overallDecision(DecisionStatus.REFUSED)
-                .proceedings(List.of(
-                    createMakeDecisionProceeding(grantedProceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1",
-                        "reason 1"),
-                    createMakeDecisionProceeding(refusedProceedingEntity.getId(), MeritsDecisionStatus.REFUSED, "justification 2",
-                        "reason 2")
-                ))
-                .autoGranted(true));
-
-        // when
-        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
-
-        // then
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertNoContent(result);
-
-        ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
-        assertEquals(ApplicationStatus.APPLICATION_IN_PROGRESS, actualApplication.getStatus());
-        ApplicationEntity updatedApplicationEntity = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
-        assertThat(decisionRepository.countById(updatedApplicationEntity.getDecision().getId())).isEqualTo(1);
-
-        domainEventAsserts.assertDomainEventsCreatedForApplications(
-            List.of(applicationEntity),
-            null,
-            DomainEventType.APPLICATION_MAKE_DECISION_REFUSED,
-            makeDecisionRequest.getEventHistory()
-        );
-
-        verifyDecisionSavedCorrectly(
-            applicationEntity.getId(),
-            makeDecisionRequest
-        );
-    }
-
-    private MakeDecisionProceeding createMakeDecisionProceeding(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
-        return MakeDecisionProceeding.builder()
+    return MakeDecisionProceeding.builder()
                 .proceedingId(proceedingId)
                 .meritsDecision(
                         MeritsDecisionDetails.builder()
@@ -755,7 +755,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         // First call - creates the certificate
-        MvcResult firstResult = patchUri(TestConstants.URIs.ASSIGN_DECISION, firstMakeDecisionRequest, applicationEntity.getId());
+        MvcResult firstResult = patchUri(TestConstants.URIs.MAKE_DECISION, firstMakeDecisionRequest, applicationEntity.getId());
         assertNoContent(firstResult);
 
         List<CertificateEntity> certificatesAfterFirst = certificateRepository.findAll();
@@ -788,7 +788,7 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         });
 
         // Second call - should update the existing certificate
-        MvcResult secondResult = patchUri(TestConstants.URIs.ASSIGN_DECISION, secondMakeDecisionRequest, applicationEntity.getId());
+      MvcResult secondResult = patchUri(TestConstants.URIs.MAKE_DECISION, secondMakeDecisionRequest, applicationEntity.getId());
 
         // then
         assertNoContent(secondResult);

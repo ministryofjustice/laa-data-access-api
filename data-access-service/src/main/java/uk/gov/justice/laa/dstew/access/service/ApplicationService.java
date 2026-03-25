@@ -408,15 +408,7 @@ public class ApplicationService {
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     VersionCheckHelper.checkEntityVersionLocking(applicationId, application.getVersion(), request.getApplicationVersion());
-    final CaseworkerEntity caseworker = application.getCaseworker();
-    // This logic will be implemented in the next iteration when security is implemented in the service
-    //    if (caseworker == null) {
-    //      throw new ResourceNotFoundException(
-    //          String.format("Caseworker not found for application id: %s", applicationId)
-    //      );
-    //    }
-    //    final UUID caseworkerId = caseworker.getId();
-
+    final UUID caseworkerId = getCaseworkerId(applicationId, application);
     applicationValidations.checkApplicationMakeDecisionRequest(request);
 
     application.setModifiedAt(Instant.now());
@@ -455,6 +447,12 @@ public class ApplicationService {
               .build());
 
       certificateRepository.save(certificate);
+    }
+
+    if (decision.getOverallDecision() == DecisionStatus.REFUSED) {
+      if (certificateRepository.existsByApplicationId(applicationId)) {
+        certificateRepository.deleteByApplicationId(applicationId);
+      }
     }
 
     switch (decision.getOverallDecision()) {
@@ -503,12 +501,13 @@ public class ApplicationService {
 
   private static UUID getCaseworkerId(UUID applicationId, ApplicationEntity application) {
     final CaseworkerEntity caseworker = application.getCaseworker();
-    if (caseworker == null) {
-      throw new ResourceNotFoundException(
-          String.format("Caseworker not found for application id: %s", applicationId)
-      );
-    }
-    return caseworker.getId();
+    // This logic will be implemented in the next iteration when security is implemented in the service
+    //    if (caseworker == null) {
+    //      throw new ResourceNotFoundException(
+    //          String.format("Caseworker not found for application id: %s", applicationId)
+    //      );
+    //    }
+    return caseworker != null ? caseworker.getId() : null;
   }
 
   /**

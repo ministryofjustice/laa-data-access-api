@@ -20,20 +20,16 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
+import tools.jackson.core.JacksonException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
@@ -143,7 +139,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved(boolean certificateExists) throws JacksonException {
+  void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved(boolean certificateExists) throws
+      JacksonException {
     UUID applicationId = UUID.randomUUID();
     UUID grantedProceedingId = UUID.randomUUID();
     UUID refusedProceedingId = UUID.randomUUID();
@@ -482,10 +479,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     verify(applicationRepository, never()).save(any());
 
   }
-
-  @Test
-  void givenNoProceeding_whenAssignDecision_thenThrowResourceNotFoundException() {
-    UUID applicationId = UUID.randomUUID();
   static Stream<Arguments> notFoundScenarios() {
     UUID appId1 = UUID.randomUUID();
     UUID appId2 = UUID.randomUUID();
@@ -493,10 +486,13 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     UUID proceedingId = UUID.randomUUID();
     return Stream.of(
         Arguments.of("NO_APPLICATION", appId1, proceedingId, "No application found with id: " + appId1),
-        Arguments.of("NO_CASEWORKER",  appId2, proceedingId, "Caseworker not found for application id: " + appId2),
+        // Note: the NO_CASEWORKER scenario is only relevant until security is implemented and can be removed afterwards,
+        // but it is currently a separate test to allow for clearer assertions on the exception message
+        // Arguments.of("NO_CASEWORKER",  appId2, proceedingId, "Caseworker not found for application id: " + appId2),
         Arguments.of("NO_PROCEEDING",  appId3, proceedingId, "No proceeding found with id: " + proceedingId)
     );
   }
+
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("notFoundScenarios")
