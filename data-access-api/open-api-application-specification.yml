@@ -441,6 +441,7 @@ components:
         - ASSIGN_APPLICATION_TO_CASEWORKER
         - UNASSIGN_APPLICATION_TO_CASEWORKER
         - APPLICATION_MAKE_DECISION_REFUSED
+        - APPLICATION_MAKE_DECISION_GRANTED
 
     CategoryOfLaw:
       type: string
@@ -812,7 +813,6 @@ components:
       type: string
       enum:
         - GRANTED
-        - PARTIALLY_GRANTED
         - REFUSED
 
     MeritsDecisionStatus:
