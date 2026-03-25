@@ -408,12 +408,13 @@ public class ApplicationService {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     VersionCheckHelper.checkEntityVersionLocking(applicationId, application.getVersion(), request.getApplicationVersion());
     final CaseworkerEntity caseworker = application.getCaseworker();
-    if (caseworker == null) {
-      throw new ResourceNotFoundException(
-          String.format("Caseworker not found for application id: %s", applicationId)
-      );
-    }
-    final UUID caseworkerId = caseworker.getId();
+    // This logic will be implemented in the next iteration when security is implemented in the service
+    //    if (caseworker == null) {
+    //      throw new ResourceNotFoundException(
+    //          String.format("Caseworker not found for application id: %s", applicationId)
+    //      );
+    //    }
+    //    final UUID caseworkerId = caseworker.getId();
 
     applicationValidations.checkApplicationMakeDecisionRequest(request);
 
@@ -465,14 +466,11 @@ public class ApplicationService {
       CertificateEntity certificate = certificateRepository.findByApplicationId(applicationId)
           .map(existing -> {
             existing.setCertificateContent(request.getCertificate());
-            existing.setUpdatedBy(String.valueOf(caseworkerId));
             return existing;
           })
           .orElseGet(() -> CertificateEntity.builder()
               .applicationId(applicationId)
               .certificateContent(request.getCertificate())
-              .createdBy(String.valueOf(caseworkerId))
-              .updatedBy(String.valueOf(caseworkerId))
               .build());
 
       certificateRepository.save(certificate);
@@ -486,7 +484,7 @@ public class ApplicationService {
       domainEventService.saveMakeDecisionRefusedDomainEvent(
           applicationId,
           request,
-          caseworkerId
+          caseworker != null ? caseworker.getId() : null
       );
     }
 

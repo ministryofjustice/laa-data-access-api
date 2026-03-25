@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -404,6 +405,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   }
 
   @Test
+  @Disabled("Temporarily disabled until security is implemented")
   void givenApplicationWithNoCaseworker_whenAssignDecision_thenThrowResourceNotFoundException() {
     UUID applicationId = UUID.randomUUID();
 
@@ -667,8 +669,9 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     uk.gov.justice.laa.dstew.access.entity.CertificateEntity savedCertificate = certificateCaptor.getValue();
     assertThat(savedCertificate.getApplicationId()).isEqualTo(applicationId);
     assertThat(savedCertificate.getCertificateContent()).isEqualTo(certificateData);
-    assertThat(savedCertificate.getCreatedBy()).isEqualTo(caseworkerId.toString());
-    assertThat(savedCertificate.getUpdatedBy()).isEqualTo(caseworkerId.toString());
+    // createdBy and updatedBy logic will be reverted once security is in place
+    // assertThat(savedCertificate.getCreatedBy()).isEqualTo(caseworkerId.toString());
+    // assertThat(savedCertificate.getUpdatedBy()).isEqualTo(caseworkerId.toString());
 
     verify(applicationRepository, times(1)).findById(applicationId);
     verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
@@ -735,7 +738,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     assertThat(savedCertificate.getApplicationId()).isEqualTo(applicationId);
     assertThat(savedCertificate.getCertificateContent()).isEqualTo(certificateData);
     assertThat(savedCertificate.getCreatedBy()).isEqualTo("original-caseworker");
-    assertThat(savedCertificate.getUpdatedBy()).isEqualTo(caseworkerId.toString());
+    // updatedBy logic will be reverted once security is in place
+    // assertThat(savedCertificate.getUpdatedBy()).isEqualTo(caseworkerId.toString());
   }
 
   @Test
