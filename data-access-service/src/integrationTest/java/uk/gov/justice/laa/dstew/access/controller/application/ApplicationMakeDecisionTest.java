@@ -428,6 +428,64 @@ public class ApplicationMakeDecisionTest extends BaseIntegrationTest {
         assertEquals("Caseworker not found for application id: " + applicationEntity.getId(), problemDetail.getDetail());
     }
 
+    // This Test will be removed once security is implemented within the service
+    @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
+    public void givenApplicationWithNoCaseworker_whenAssignDecision_thenReturnNoContent_andDecisionSaved()
+        throws Exception {
+        // given
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
+            builder.applicationContent(new HashMap<>(Map.of(
+                "test", "content"
+            )));
+        });
+
+        ProceedingEntity refusedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+            builder -> builder.applicationId(applicationEntity.getId()));
+
+        ProceedingEntity grantedProceedingEntity = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
+            builder -> builder.applicationId(applicationEntity.getId()));
+
+        MakeDecisionRequest makeDecisionRequest =
+            DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> builder
+                .eventHistory(EventHistory.builder()
+                    .eventDescription("refusal event")
+                    .build())
+                .overallDecision(DecisionStatus.REFUSED)
+                .proceedings(List.of(
+                    createMakeDecisionProceeding(grantedProceedingEntity.getId(), MeritsDecisionStatus.GRANTED, "justification 1",
+                        "reason 1"),
+                    createMakeDecisionProceeding(refusedProceedingEntity.getId(), MeritsDecisionStatus.REFUSED, "justification 2",
+                        "reason 2")
+                ))
+                .autoGranted(true));
+
+        // when
+        MvcResult result = patchUri(TestConstants.URIs.ASSIGN_DECISION, makeDecisionRequest, applicationEntity.getId());
+
+        // then
+        assertSecurityHeaders(result);
+        assertNoCacheHeaders(result);
+        assertNoContent(result);
+
+        ApplicationEntity actualApplication = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+        assertEquals(ApplicationStatus.APPLICATION_IN_PROGRESS, actualApplication.getStatus());
+        ApplicationEntity updatedApplicationEntity = applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+        assertThat(decisionRepository.countById(updatedApplicationEntity.getDecision().getId())).isEqualTo(1);
+
+        domainEventAsserts.assertDomainEventsCreatedForApplications(
+            List.of(applicationEntity),
+            null,
+            DomainEventType.APPLICATION_MAKE_DECISION_REFUSED,
+            makeDecisionRequest.getEventHistory()
+        );
+
+        verifyDecisionSavedCorrectly(
+            applicationEntity.getId(),
+            makeDecisionRequest
+        );
+    }
+
     private MakeDecisionProceeding createMakeDecisionProceeding(UUID proceedingId, MeritsDecisionStatus meritsDecisionStatus, String justification, String reason) {
         return MakeDecisionProceeding.builder()
                 .proceedingId(proceedingId)
