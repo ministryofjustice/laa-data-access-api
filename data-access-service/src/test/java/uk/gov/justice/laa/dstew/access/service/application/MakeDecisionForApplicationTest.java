@@ -656,6 +656,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
     when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+    when(certificateRepository.findByApplicationId(applicationId)).thenReturn(Optional.empty());
 
     // when
     serviceUnderTest.makeDecision(applicationId, makeDecisionRequest);
@@ -675,6 +676,69 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     verify(applicationRepository, times(1)).findById(applicationId);
     verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+  }
+
+  @Test
+  void givenGrantedDecisionWithExistingCertificate_whenMakeDecision_thenCertificateUpdated() {
+    // given
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    UUID existingCertificateId = UUID.randomUUID();
+    CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder ->
+        builder.id(caseworkerId)
+    );
+
+    CertificateContent certificateContent = DataGenerator.createDefault(CertificateContentGenerator.class);
+    Map<String, Object> certificateData = objectMapper.convertValue(certificateContent, Map.class);
+
+    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
+        requestBuilder
+            .overallDecision(DecisionStatus.GRANTED)
+            .eventHistory(EventHistory.builder()
+                .eventDescription("granted event")
+                .build())
+            .proceedings(List.of(
+                createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "justification", "reason")
+            ))
+            .certificate(certificateData)
+    );
+
+    ApplicationEntity applicationEntity = getApplicationEntity(applicationId, caseworker, "content");
+
+    ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
+        builder.id(proceedingId).applicationId(applicationId)
+    );
+
+    uk.gov.justice.laa.dstew.access.entity.CertificateEntity existingCertificate =
+        uk.gov.justice.laa.dstew.access.entity.CertificateEntity.builder()
+            .id(existingCertificateId)
+            .applicationId(applicationId)
+            .certificateContent(Map.of("old", "content"))
+            .createdBy("original-caseworker")
+            .updatedBy("original-caseworker")
+            .build();
+
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+    when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
+    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+    when(certificateRepository.findByApplicationId(applicationId)).thenReturn(Optional.of(existingCertificate));
+
+    // when
+    serviceUnderTest.makeDecision(applicationId, makeDecisionRequest);
+
+    // then
+    ArgumentCaptor<uk.gov.justice.laa.dstew.access.entity.CertificateEntity> certificateCaptor =
+        ArgumentCaptor.forClass(uk.gov.justice.laa.dstew.access.entity.CertificateEntity.class);
+    verify(certificateRepository, times(1)).save(certificateCaptor.capture());
+
+    uk.gov.justice.laa.dstew.access.entity.CertificateEntity savedCertificate = certificateCaptor.getValue();
+    assertThat(savedCertificate.getId()).isEqualTo(existingCertificateId);
+    assertThat(savedCertificate.getApplicationId()).isEqualTo(applicationId);
+    assertThat(savedCertificate.getCertificateContent()).isEqualTo(certificateData);
+    assertThat(savedCertificate.getCreatedBy()).isEqualTo("original-caseworker");
+    assertThat(savedCertificate.getUpdatedBy()).isEqualTo(caseworkerId.toString());
   }
 
   @Test

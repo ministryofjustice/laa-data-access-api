@@ -463,10 +463,16 @@ public class ApplicationService {
 
     // Persist certificate if overallDecision is GRANTED
     if (decision.getOverallDecision() == DecisionStatus.GRANTED && request.getCertificate() != null) {
-      CertificateEntity certificate = CertificateEntity.builder()
-          .applicationId(applicationId)
-          .certificateContent(request.getCertificate())
-          .build();
+      CertificateEntity certificate = certificateRepository.findByApplicationId(applicationId)
+          .map(existing -> {
+            existing.setCertificateContent(request.getCertificate());
+            existing.setUpdatedBy(String.valueOf(caseworkerId));
+            return existing;
+          })
+          .orElseGet(() -> CertificateEntity.builder()
+              .applicationId(applicationId)
+              .certificateContent(request.getCertificate())
+              .build());
 
       certificateRepository.save(certificate);
     }

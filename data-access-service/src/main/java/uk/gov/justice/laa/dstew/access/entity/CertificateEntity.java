@@ -44,7 +44,7 @@ public class CertificateEntity implements AuditableEntity {
   @Column(columnDefinition = "UUID")
   private UUID id;
 
-  @Column(name = "application_id", nullable = false)
+  @Column(name = "application_id", nullable = false, unique = true)
   private UUID applicationId;
 
   @JdbcTypeCode(SqlTypes.JSON)
