@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
+import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -170,6 +171,18 @@ public class ApplicationController implements ApplicationApi {
                                            @Valid MakeDecisionRequest request) {
 
     service.makeDecision(applicationId, request);
+
+    return ResponseEntity.noContent().build();
+  }
+
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<Void> createApplicationNotes(@NotNull ServiceName serviceName,
+                                           UUID applicationId,
+                                           @Valid CreateNoteRequest request) {
+
+    //service.makeDecision(applicationId, request);
 
     return ResponseEntity.noContent().build();
   }
