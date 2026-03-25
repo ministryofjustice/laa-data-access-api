@@ -20,7 +20,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRefusedDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
@@ -207,31 +207,37 @@ public class DomainEventService {
     return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
   }
 
+
   /**
-   * Posts a MAKE_DECISION_REFUSED domain event.
+   * Posts a make decision domain event.
+   *
+   * @param applicationId the id of the application for which the decision was made
+   * @param request       the details of the decision that was made
+   * @param caseworkerId  the id of the caseworker who made the decision
+   * @param domainEventType the type of the domain event to post,
+   *                        either APPLICATION_MAKE_DECISION_REFUSED or APPLICATION_MAKE_DECISION_GRANTED
    */
   @AllowApiCaseworker
-  public void saveMakeDecisionRefusedDomainEvent(
-          UUID applicationId,
-          MakeDecisionRequest request,
-          UUID caseworkerId) {
+  public void saveMakeDecisionDomainEvent(
+      UUID applicationId,
+      MakeDecisionRequest request, UUID caseworkerId, DomainEventType domainEventType) {
 
     String eventDescription = request.getEventHistory().getEventDescription();
 
-    MakeDecisionRefusedDomainEventDetails domainEventDetails =
-            MakeDecisionRefusedDomainEventDetails.builder()
-                    .applicationId(applicationId)
-                    .caseworkerId(caseworkerId)
-                    .createdAt(Instant.now())
-                    .request(getEventDetailsAsJson(request, DomainEventType.APPLICATION_MAKE_DECISION_REFUSED))
-                    .eventDescription(eventDescription)
-                    .build();
+    MakeDecisionDomainEventDetails domainEventDetails =
+        MakeDecisionDomainEventDetails.builder()
+            .applicationId(applicationId)
+            .caseworkerId(caseworkerId)
+            .createdAt(Instant.now())
+            .request(getEventDetailsAsJson(request, domainEventType))
+            .eventDescription(eventDescription)
+            .build();
 
     saveDomainEvent(
-            applicationId,
-            caseworkerId,
-            DomainEventType.APPLICATION_MAKE_DECISION_REFUSED,
-            domainEventDetails
+        applicationId,
+        caseworkerId,
+        domainEventType,
+        domainEventDetails
     );
   }
 }
