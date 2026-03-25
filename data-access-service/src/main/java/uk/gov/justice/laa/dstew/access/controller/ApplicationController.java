@@ -185,7 +185,7 @@ public class ApplicationController implements ApplicationApi {
                                            UUID applicationId,
                                            @Valid CreateNoteRequest request) {
 
-    //service.makeDecision(applicationId, request);
+    service.createApplicationNote(applicationId, request.getNotes());
 
     return ResponseEntity.noContent().build();
   }

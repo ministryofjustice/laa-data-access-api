@@ -251,6 +251,21 @@ public class ApplicationService {
   }
 
   /**
+   * Create a note for an application.
+   *
+   * @param id UUID of the application
+   * @param note note to be created
+   */
+  @AllowApiCaseworker
+  @Transactional
+  public void createApplicationNote(final UUID id, final String note) {
+
+    // check length of notes
+    //  check if application exists
+    // post notes
+  }
+
+  /**
    * Placeholder for historic/audit record creation.
    *
    * @param entity     application entity
