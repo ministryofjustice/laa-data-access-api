@@ -10,7 +10,7 @@ Our goal in testing is to **prove that the system works** . To do this we need m
 
 (and more coming soon!)
 
-We are conciously adopting a **classicist** approach to unit testing, where the "unit" is a behaviour (e.g. "create application") rather than a class (e.g. `ApplicationService`). Tests exercise the real collaborators of that behaviour, with mocks only at the external boundary (the repository). This means:
+We are consciously adopting a **classicist** approach to unit testing, where the "unit" is a behaviour (e.g. "create application") rather than a class (e.g. `ApplicationService`). Tests exercise the real collaborators of that behaviour, with mocks only at the external boundary (the repository). This means:
 - A passing test suite is a genuine signal that the system works.
 - Internal refactors do not require test changes as long as the behaviour is preserved.
 - The tests will still be valid and meaningful when the codebase looks different in six months.
