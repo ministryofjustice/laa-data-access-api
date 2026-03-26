@@ -42,6 +42,9 @@ public class NoteEntity implements AuditableEntity {
   @Column(name = "application_id", nullable = false, unique = true)
   private UUID applicationId;
 
+  @Column(name = "notes")
+  private String notes;
+
   @Column(name = "created_at", nullable = false)
   @CreationTimestamp
   private Instant createdAt;

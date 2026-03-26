@@ -921,3 +921,5 @@ components:
       properties:
         notes:
           type: string
+          minLength: 1
+          maxLength: 10000
