@@ -2,7 +2,18 @@
 
 ## Philosophy
 
-We are a small team without dedicated QA resource. Our goal is to **prove that the system works** — not to prove that the implementation is written in a particular way. This is an important distinction.
+Our goal in testing is to **prove that the system works** . To do this we need multiple layers of testing. These are:
+
+- Unit tests that check all business logic
+- Integration tests that check the full stack from HTTP request to database and back
+- End-to-end tests that run against a deployed environment.
+
+(and more coming soon!)
+
+We are conciously adopting a **classicist** approach to unit testing, where the "unit" is a behaviour (e.g. "create application") rather than a class (e.g. `ApplicationService`). Tests exercise the real collaborators of that behaviour, with mocks only at the external boundary (the repository). This means:
+- A passing test suite is a genuine signal that the system works.
+- Internal refactors do not require test changes as long as the behaviour is preserved.
+- The tests will still be valid and meaningful when the codebase looks different in six months.
 
 Implementation details change. Tests that are tightly coupled to implementation details change with them, which means:
 
@@ -11,10 +22,8 @@ Implementation details change. Tests that are tightly coupled to implementation 
 
 The test suite we write should be a **stable contract** — tests that pass when the system works and fail when it doesn't, regardless of how the internals change.
 
-We are conciously adopting a **classicist** approach to unit testing, where the "unit" is a behaviour (e.g. "create application") rather than a class (e.g. `ApplicationService`). Tests exercise the real collaborators of that behaviour, with mocks only at the external boundary (the repository). This means:
-- A passing test suite is a genuine signal that the system works.
-- Internal refactors do not require test changes as long as the behaviour is preserved.
-- The tests will still be valid and meaningful when the codebase looks different in six months.
+We are also using a dual-test harness for integration and end-to-end tests, where the same test class can be run in "integration mode" against a local Testcontainers database, or in "infrastructure mode" against a deployed environment. This allows us to write comprehensive integration tests that cover all combinations of input and output, and then select a subset of critical "smoke tests" to run against the deployed environment without needing to maintain a separate suite. 
+More details on that are in the [dual mode test harness documentation](./dual-mode-test-harness.md).
 
 A more detailed explanation of the classicist approach, and how it compares to the London school (mockist) approach, is provided at the bottom of the document.
 
@@ -185,7 +194,7 @@ Controller integration tests can be annotated with `@SmokeTest`. This annotation
 
 Smoke tests should cover the most critical happy paths and the most likely failure modes in a deployed environment (e.g. basic auth, a successful create, a successful get). They should not require test data setup that assumes a blank database, since the infrastructure database may already contain data.
 
-See [integration-test-harness.md](./integration-test-harness.md) for full details of the harness architecture.
+See [integration-test-harness.md](dual-mode-test-harness.md) for full details of the harness architecture.
 
 ---
 
