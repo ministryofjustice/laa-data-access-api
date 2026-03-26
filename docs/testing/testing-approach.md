@@ -22,7 +22,7 @@ Implementation details change. Tests that are tightly coupled to implementation 
 
 The test suite we write should be a **stable contract** — tests that pass when the system works and fail when it doesn't, regardless of how the internals change.
 
-We are also using a dual-test harness for integration and end-to-end tests, where the same test class can be run in "integration mode" against a local Testcontainers database, or in "infrastructure mode" against a deployed environment. This allows us to write comprehensive integration tests that cover all combinations of input and output, and then select a subset of critical "smoke tests" to run against the deployed environment without needing to maintain a separate suite. 
+We are also using a dual-test harness for integration and end-to-end tests, where the same test class can be run in "integration mode" against a local Testcontainers database, or in "infrastructure mode" against a deployed environment. This allows us to write comprehensive integration tests that cover all HTTP concerns and JPA correctness, and then select a subset of critical "smoke tests" to run against the deployed environment without needing to maintain a separate suite. 
 More details on that are in the [dual mode test harness documentation](./dual-mode-test-harness.md).
 
 A more detailed explanation of the classicist approach, and how it compares to the London school (mockist) approach, is provided at the bottom of the document.
