@@ -880,11 +880,3 @@ components:
             type: object
         meritsDecision:
           $ref: "#/components/schemas/MeritsDecisionStatus"
-        involvedChildren:
-          type: array
-          items:
-            type: object
-
-
-
-

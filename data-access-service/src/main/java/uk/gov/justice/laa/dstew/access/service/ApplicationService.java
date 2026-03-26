@@ -128,14 +128,16 @@ public class ApplicationService {
                 ApplicationProceedingResponse applicationProceedingResponse =
                         proceedingMapper.toApplicationProceeding(proceeding);
 
-                List<Map<String, Object>> involvedChildren = getInvolvedChildren(entity);
-                if (involvedChildren != null) {
-                  List<Object> children = new ArrayList<>();
-                  involvedChildren.forEach(children::add);
-                  applicationProceedingResponse.setInvolvedChildren(children);
-                } else {
-                  applicationProceedingResponse.setInvolvedChildren(null);
-                }
+
+                // List<Map<String, Object>> involvedChildren = getInvolvedChildren(entity);
+                // if (involvedChildren != null) {
+                //   List<Object> children = new ArrayList<>();
+                //   involvedChildren.forEach(children::add);
+                //   applicationProceeding.setInvolvedChildren(children);
+                // }
+                // else {
+                //   applicationProceeding.setInvolvedChildren(null);
+                //}
 
                 if (entity.getDecision() != null) {
                   Optional<MeritsDecisionEntity> meritsDecision =
