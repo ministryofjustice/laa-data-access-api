@@ -41,6 +41,12 @@ class IndividualMapperTest extends BaseMapperTest {
                     Map.of("k1", "v1"),
                     Map.of("k2", "v2")
                 )
+        ),
+        Arguments.of("smith", "home", "prevref2", "parent", false,
+                List.of(
+                    Map.of("k1", "v1"),
+                    Map.of("k2", "v2")
+                )
         )
       );
     }
