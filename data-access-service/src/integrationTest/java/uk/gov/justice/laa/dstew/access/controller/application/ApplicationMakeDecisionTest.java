@@ -252,7 +252,7 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
         );
 
         applicationEntity.setDecision(decision);
-        applicationRepository.save(applicationEntity);
+        persistedDataGenerator.updateAndFlush(applicationEntity);
 
         MakeDecisionRequest assignDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, builder -> {
             builder

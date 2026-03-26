@@ -91,7 +91,7 @@ public class GetApplicationTest extends BaseHarnessTest {
         });
 
         application.setDecision(decision);
-        applicationRepository.saveAndFlush(application);
+        persistedDataGenerator.updateAndFlush(application);
 
         // when
         HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());

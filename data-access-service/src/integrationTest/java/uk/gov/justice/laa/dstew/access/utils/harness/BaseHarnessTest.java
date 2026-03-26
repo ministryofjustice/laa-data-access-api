@@ -1,8 +1,10 @@
 package uk.gov.justice.laa.dstew.access.utils.harness;
 
+import org.junit.jupiter.api.BeforeAll;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -22,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +50,12 @@ public abstract class BaseHarnessTest {
     protected DomainEventAsserts domainEventAsserts;
     protected ApplicationAsserts applicationAsserts;
 
+    /**
+     * Asserts that all application-domain tables are empty after each test's teardown.
+     * Resolved lazily in @BeforeEach from the Spring context via harnessProvider.
+     */
+    protected DatabaseCleanlinessAssertion dbCleanliness;
+
     // Mirror BaseIntegrationTest field names so test code compiles unchanged.
     protected CaseworkerEntity CaseworkerJohnDoe;
     protected CaseworkerEntity CaseworkerJaneDoe;
@@ -62,6 +71,7 @@ public abstract class BaseHarnessTest {
     private String currentToken = TestConstants.Tokens.CASEWORKER;
     private boolean omitToken = false;
 
+    @Order(1)
     @BeforeEach
     void setupHarness() {
         objectMapper           = harnessProvider.getBean(ObjectMapper.class);
@@ -73,6 +83,7 @@ public abstract class BaseHarnessTest {
         decisionRepository     = harnessProvider.getBean(DecisionRepository.class);
         domainEventAsserts     = harnessProvider.getBean(DomainEventAsserts.class);
         applicationAsserts     = harnessProvider.getBean(ApplicationAsserts.class);
+        dbCleanliness          = harnessProvider.getBean(DatabaseCleanlinessAssertion.class);
 
         currentToken = TestConstants.Tokens.CASEWORKER;
         omitToken = false;
@@ -90,10 +101,31 @@ public abstract class BaseHarnessTest {
         Caseworkers = List.of(CaseworkerJohnDoe, CaseworkerJaneDoe);
     }
 
+    /**
+     * Step 1: delete all rows that were tracked via PersistedDataGenerator.
+     * Ordered first so that the cleanliness assertion (@Order(2)) always runs after
+     * tracked data has been removed.
+     */
+    @Order(1)
     @AfterEach
     protected void tearDownTrackedData() {
         if (persistedDataGenerator != null) {
             persistedDataGenerator.deleteTrackedData();
+        }
+    }
+
+    /**
+     * Step 2: assert that every application-domain table is empty.
+     * Runs after {@link #tearDownTrackedData()} thanks to {@link Order @Order(2)}.
+     *
+     * <p>Skipped if {@code dbCleanliness} was never initialised (e.g. if
+     * {@link #setupHarness()} threw before resolving the bean).
+     */
+    @Order(2)
+    @AfterEach
+    void assertDatabaseCleanAfterTest() {
+        if (dbCleanliness != null) {
+            dbCleanliness.assertAllTablesEmpty(getClass().getSimpleName());
         }
     }
 
@@ -165,7 +197,15 @@ public abstract class BaseHarnessTest {
         return objectMapper.readValue(result.getResponse().getContentAsString(), clazz);
     }
 
-    /** POST with body serialised to JSON and default CIVIL_APPLY service-name header. */
+    public HarnessResult getUri(URI uri) {
+        return getUri(uri.toString(), defaultServiceNameHeader());
+    }
+
+    public HarnessResult getUri(URI uri, HttpHeaders headers) {
+        return getUri(uri.toString(), headers);
+    }
+
+    /** POST with body serialised to JSON, default CIVIL_APPLY header, and path-variable args. */
     public <T> HarnessResult postUri(String uri, T requestModel) throws Exception {
         return postUri(uri, requestModel, defaultServiceNameHeader());
     }
@@ -206,6 +246,19 @@ public abstract class BaseHarnessTest {
                 ? "" : new String(raw.getResponseBody(), StandardCharsets.UTF_8);
 
         return new HarnessResult(status, responseHeaders, responseBody);
+    }
+
+    /** POST with body serialised to JSON, default CIVIL_APPLY header, and path-variable args. */
+    public <T> HarnessResult postUri(String uri, T requestModel, Object... args) throws Exception {
+        return postUri(uri, requestModel, defaultServiceNameHeader(), args);
+    }
+
+    /** POST with body serialised to JSON, the supplied headers, and path-variable args. */
+    public <T> HarnessResult postUri(String uri, T requestModel, HttpHeaders headers, Object... args) throws Exception {
+        String expandedUri = UriComponentsBuilder.fromUriString(uri)
+                .buildAndExpand(args)
+                .toUriString();
+        return postUri(expandedUri, requestModel, headers);
     }
 
     public HttpHeaders ServiceNameHeader(String serviceName) {

@@ -211,6 +211,7 @@ public class CreateApplicationTest extends BaseHarnessTest {
     assertCreated(result);
 
     UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    persistedDataGenerator.trackExistingApplication(createdApplicationId);
     ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
       .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
     assertApplicationEqual(applicationCreateRequest, createdApplication);
@@ -231,6 +232,7 @@ public class CreateApplicationTest extends BaseHarnessTest {
     assertCreated(result);
 
     UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    persistedDataGenerator.trackExistingApplication(createdApplicationId);
     ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
       .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
 
@@ -320,21 +322,27 @@ public class CreateApplicationTest extends BaseHarnessTest {
 
   private static Stream<Arguments> noRequestBodyCases() {
     return Stream.of(
-        Arguments.of("", "Invalid request payload"),
-        Arguments.of("{}", "Request validation failed")
+        Arguments.of("", "Invalid request payload", null),
+        Arguments.of("{}", "Request validation failed",
+            Map.of("invalidFields", Map.of(
+                "applicationContent", "must not be null",
+                "laaReference",        "must not be null",
+                "individuals",         "must not be null",
+                "status",              "must not be null")))
     );
   }
 
   @ParameterizedTest
   @MethodSource("noRequestBodyCases")
-  public void givenNoRequestBody_whenCreateApplication_thenReturnBadRequest(String request, String expectedDetail) throws Exception {
+  public void givenNoRequestBody_whenCreateApplication_thenReturnBadRequest(
+          String request, String expectedDetail, Map<String, Object> expectedProperties) throws Exception {
     // when
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
     ProblemDetail detail = deserialise(result, ProblemDetail.class);
 
     // then
     assertSecurityHeaders(result);
-    assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request", expectedDetail, result, detail, null);
+    assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request", expectedDetail, result, detail, expectedProperties);
     assertTrue(trackedApplicationIds().isEmpty(), "Expected no application to be persisted");
   }
 

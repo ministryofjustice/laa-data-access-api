@@ -38,9 +38,17 @@ import uk.gov.justice.laa.dstew.access.utils.factory.domainevents.DomainEventFac
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualEntityFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactoryImpl;
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingFactoryImpl;
+import uk.gov.justice.laa.dstew.access.utils.harness.DatabaseCleanlinessAssertion;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @Configuration
 public class TestConfiguration {
+
+    @Bean
+    public DatabaseCleanlinessAssertion databaseCleanlinessAssertion(JdbcTemplate jdbcTemplate) {
+        return new DatabaseCleanlinessAssertion(jdbcTemplate);
+    }
+
 
     @Bean
     public PersistedFactory<

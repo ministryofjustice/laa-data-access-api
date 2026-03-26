@@ -3,16 +3,16 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
+import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
 
 import java.time.ZoneOffset;
@@ -29,12 +29,12 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
-public class GetDomainEventTest extends BaseIntegrationTest {
+public class GetDomainEventTest extends BaseHarnessTest {
 
     private final String SEARCH_EVENT_TYPE_PARAM = "eventType=";
 
+    @SmokeTest
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenApplicationWithDomainEventsAndNoHeader_whenApplicationHistorySearch_thenReturnBadRequest(
             String serviceName
@@ -42,23 +42,20 @@ public class GetDomainEventTest extends BaseIntegrationTest {
         verifyBadServiceNameHeader(serviceName);
     }
 
+    @SmokeTest
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithDomainEventsAndInvalidHeader_whenApplicationHistorySearch_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
 
     private void verifyBadServiceNameHeader(String serviceName) throws Exception {
-
-        MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH,
+        HarnessResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH,
                                     ServiceNameHeader(serviceName),
                                     UUID.randomUUID());
-
         applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenApplicationWithDomainEvents_whenApplicationHistorySearch_theReturnDomainEvents() throws Exception {
         var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
         // given
@@ -66,7 +63,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
         var expectedDomainEvents = domainEvents.stream().map(GetDomainEventTest::toEvent).toList();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
+        HarnessResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
         ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
 
         // then
@@ -80,7 +77,6 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenApplicationWithDomainEvents_whenApplicationHistorySearchFilterSingleDomainEvent_thenOnlyFilteredDomainEventTypes() throws Exception {
         var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
         // given
@@ -91,7 +87,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
                 .toList();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH +
+        HarnessResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH +
                         "?" + SEARCH_EVENT_TYPE_PARAM + DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
                 appId);
         ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
@@ -107,7 +103,6 @@ public class GetDomainEventTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenApplicationWithDomainEvents_whenApplicationHistorySearchFilterMultipleDomainEvent_thenOnlyFilteredDomainEventTypes() throws Exception {
         var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
         // given
@@ -125,7 +120,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
                 "&" + SEARCH_EVENT_TYPE_PARAM +
                 DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER;
 
-        MvcResult result = getUri(address, appId);
+        HarnessResult result = getUri(address, appId);
         ApplicationHistoryResponse actualResponse = deserialise(result, ApplicationHistoryResponse.class);
 
         // then
@@ -138,23 +133,21 @@ public class GetDomainEventTest extends BaseIntegrationTest {
         assertTrue(actualResponse.getEvents().containsAll(expectedAssignDomainEvents));
     }
 
+    @SmokeTest
     @Test
     public void givenNoUser_whenApplicationHistorySearch_thenReturnUnauthorised() throws Exception {
-        // when
-        MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, UUID.randomUUID());
+        withNoToken();
+        HarnessResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, UUID.randomUUID());
 
-        // then
         assertSecurityHeaders(result);
         assertUnauthorised(result);
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
     public void givenNoRole_whenApplicationHistorySearch_thenReturnForbidden() throws Exception {
-        // when
-        MvcResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, UUID.randomUUID());
+        withToken(TestConstants.Tokens.UNKNOWN);
+        HarnessResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, UUID.randomUUID());
 
-        // then
         assertSecurityHeaders(result);
         assertForbidden(result);
     }
@@ -173,7 +166,7 @@ public class GetDomainEventTest extends BaseIntegrationTest {
         String eventDesc = "{\"eventDescription\": \"" + eventType.getValue() + "\"}";
         return persistedDataGenerator.createAndPersist(DomainEventGenerator.class, builder ->
                 builder.applicationId(appId)
-                       .caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
+                       .caseworkerId(CaseworkerJohnDoe.getId())
                        .createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds())
                        .data(eventDesc)
                        .type(eventType)

@@ -69,6 +69,23 @@ public class ApplicationAsserts {
         assertTrue(expectedApplications.containsAll(actualApplications));
     }
 
+    public void assertApplicationsMatchInRepositoryIgnoringLastUpdated(List<ApplicationEntity> expected) {
+        List<ApplicationEntity> actual = applicationRepository.findAllById(
+                expected.stream().map(ApplicationEntity::getId).collect(Collectors.toList()));
+
+        assertThat(expected.size()).isEqualTo(actual.size());
+
+        List<Application> actualApplications = actual.stream()
+                .map(this::createApplicationIgnoreLastUpdated)
+                .toList();
+
+        List<Application> expectedApplications = expected.stream()
+                .map(this::createApplicationIgnoreLastUpdated)
+                .toList();
+
+        assertTrue(expectedApplications.containsAll(actualApplications));
+    }
+
     public Application createApplication(ApplicationEntity applicationEntity) {
         Application application = new Application();
         application.setApplicationId(applicationEntity.getId());

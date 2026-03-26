@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.utils.harness;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -13,6 +14,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGene
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,6 +34,21 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class HarnessDataIsolationTest extends BaseHarnessTest {
+
+    /**
+     * Sentinel rows are intentionally alive across all test methods in this class —
+     * the whole point of these tests is to prove the harness never deletes pre-existing data.
+     * Suppress the per-test cleanliness assertion inherited from BaseHarnessTest so it does
+     * not fail while sentinels are still present.
+     *
+     * <p>Cleanliness is verified once, after @AfterAll has removed all sentinels, at the end
+     * of {@link #assertSentinelsSurvivedThenDelete()}.
+     */
+    @Order(2)
+    @Override
+    void assertDatabaseCleanAfterTest() {
+        // deliberately no-op: sentinels are present throughout all test methods
+    }
 
     // ── Sentinels — created outside the harness lifecycle ─────────────────────
 
@@ -91,8 +108,43 @@ public class HarnessDataIsolationTest extends BaseHarnessTest {
                 .isPresent();
 
         deRepo.findById(sentinelDomainEventId).ifPresent(deRepo::delete);
-        appRepo.findById(sentinelApplicationId).ifPresent(appRepo::delete);
+        deleteWithLinkedIndividuals(sentinelApplicationId);
         cwRepo.findById(sentinelCaseworkerId).ifPresent(cwRepo::delete);
+
+        // Now that all sentinels have been removed, every table must be empty.
+        if (dbCleanliness != null) {
+            dbCleanliness.assertAllTablesEmpty(getClass().getSimpleName() + "@AfterAll");
+        }
+    }
+
+    /**
+     * Deletes an application (looked up by ID) together with every individual row that
+     * was cascade-persisted alongside it.
+     *
+     * <p>Deleting an application CASCADE-deletes the {@code linked_individuals} join rows
+     * but NOT the {@code individuals} rows themselves (they are independent entities).
+     * This helper fetches the linked individual IDs via JDBC before deleting the application,
+     * then removes those individuals afterwards — exactly mirroring what
+     * {@link uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator#deleteTrackedData()}
+     * does for tracked applications.
+     *
+     * <p>Use this anywhere an application was saved directly via a repository (bypassing
+     * {@code PersistedDataGenerator}) and must be manually cleaned up.
+     */
+    private void deleteWithLinkedIndividuals(UUID applicationId) {
+        var appRepo    = harnessProvider.getBean(uk.gov.justice.laa.dstew.access.repository.ApplicationRepository.class);
+        var indivRepo  = harnessProvider.getBean(uk.gov.justice.laa.dstew.access.repository.IndividualRepository.class);
+        var jdbc       = harnessProvider.getBean(org.springframework.jdbc.core.JdbcTemplate.class);
+
+        // Collect linked individual IDs before the application row (and its join rows) are deleted.
+        List<UUID> linkedIndividualIds = jdbc.queryForList(
+                "SELECT individual_id FROM linked_individuals WHERE application_id = ?",
+                UUID.class, applicationId);
+
+        appRepo.findById(applicationId).ifPresent(appRepo::delete);
+
+        // Now delete the orphaned individuals rows.
+        linkedIndividualIds.forEach(id -> indivRepo.findById(id).ifPresent(indivRepo::delete));
     }
 
     // ── Test 1 ─────────────────────────────────────────────────────────────────
@@ -171,7 +223,9 @@ public class HarnessDataIsolationTest extends BaseHarnessTest {
      */
     @Test
     void givenUntrackedAndTrackedEntities_whenHarnessTeardownRuns_thenOnlyTrackedEntityIsRemoved() {
-        // entityA — saved directly via the repository, not tracked by PersistedDataGenerator
+        // entityA — saved directly via the repository, not tracked by PersistedDataGenerator.
+        // When deleted, its linked individuals must also be removed explicitly — deleting the
+        // application CASCADE-deletes linked_individuals join rows but not the individuals rows.
         ApplicationEntity entityA = DataGenerator.createDefault(ApplicationEntityGenerator.class,
                 b -> b.caseworker(CaseworkerJohnDoe).build());
         applicationRepository.saveAndFlush(entityA);
@@ -192,7 +246,7 @@ public class HarnessDataIsolationTest extends BaseHarnessTest {
         // so @AfterEach will never remove it.  It must also be deleted before teardown
         // because it FKs to CaseworkerJohnDoe, which teardown will delete.
         try {
-            applicationRepository.delete(entityA);
+            deleteWithLinkedIndividuals(entityA.getId());
             tearDownTrackedData();
 
             assertThat(applicationRepository.findById(entityB.getId()))
@@ -202,7 +256,7 @@ public class HarnessDataIsolationTest extends BaseHarnessTest {
                     .as("untracked entity was removed by our explicit cleanup")
                     .isEmpty();
         } finally {
-            // Safety net: if delete above threw, try again — idempotent.
+            // Safety net: if deleteWithLinkedIndividuals above threw, try again — idempotent.
             applicationRepository.findById(entityA.getId())
                     .ifPresent(applicationRepository::delete);
         }
