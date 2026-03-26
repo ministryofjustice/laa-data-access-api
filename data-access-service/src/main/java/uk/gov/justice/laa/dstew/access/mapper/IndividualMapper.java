@@ -63,6 +63,15 @@ public interface IndividualMapper {
       return null;
     }
 
+    dto.setClientId(null);
+    dto.setLastNameAtBirth(null);
+    dto.setPreviousApplicationId(null);
+    dto.setRelationshipToChildren(null);
+    dto.setCorrespondenceAddressType(null);
+    dto.setAppliedPreviously(null);
+    dto.setCorrespondenceAddress(null);
+
+    // only populate fields if rules are set
     if (individualType == IndividualType.CLIENT && include == IncludedAdditionalData.CLIENT_DETAILS) {
       dto.setClientId(entity.getId());
       dto.setLastNameAtBirth(applicationContent.getLastNameAtBirth());

@@ -102,6 +102,41 @@ class IndividualMapperTest extends BaseMapperTest {
         assertThat(actualAddresses.getLast().get("k2").toString()).isEqualTo("v2");
     }
 
+    @ParameterizedTest
+    @MethodSource("getExtendedIndividualsData")
+    void givenIndividualEntity_whenToExtendedIndividualWithNullInclude_thenExtendedFieldsAreNull(
+            String lastName,
+            String correspondenceAddressType,
+            String previousApplicationId,
+            String relationshipToChildren,
+            Boolean appliedPreviously,
+            List<Map<String, Object>> addresses
+    ) {
+        IndividualEntity expectedIndividualEntity = IndividualEntity.builder()
+                .type(IndividualType.CLIENT)
+                .build();
+
+        Individual actualIndividual = individualMapper.toExtendedIndividual(
+                expectedIndividualEntity,
+                IndividualType.CLIENT,
+                null,
+                getExtendedIndividualApplicationContent(lastName,
+                        correspondenceAddressType,
+                        previousApplicationId,
+                        relationshipToChildren,
+                        appliedPreviously,
+                        addresses));
+
+        assertThat(actualIndividual).isNotNull();
+        assertThat(actualIndividual.getClientId()).isNull();
+        assertThat(actualIndividual.getCorrespondenceAddressType()).isNull();
+        assertThat(actualIndividual.getLastNameAtBirth()).isNull();
+        assertThat(actualIndividual.getPreviousApplicationId()).isNull();
+        assertThat(actualIndividual.getRelationshipToChildren()).isNull();
+        assertThat(actualIndividual.getAppliedPreviously()).isNull();
+        assertThat(actualIndividual.getCorrespondenceAddress()).isNull();
+    }
+
 
     @Test
     void givenIndividualEntity_whenToIndividual_thenMapsFieldsCorrectly() {
