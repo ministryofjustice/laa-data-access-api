@@ -1,24 +1,27 @@
-# Integration Test Harness
+# Dual-mode Test Harness
 
 ## Overview
 
 The integration test suite uses a dual-harness design that can target two different
 execution environments without any change to the test code itself:
 
-| Mode                                                      | System property | Spring context | Database |
-|-----------------------------------------------------------|----------------|----------------|----------|
-| **Integration** (default)                                 | _(none)_ | Full `AccessApp` boot | Testcontainers Postgres — ephemeral, torn down after the suite |
-| **Infrastructure** (only tests annotated with @SmokeTest) | `-Dtest.mode=infrastructure` | Minimal JPA-only context | Real environment DB at `LAA_ACCESS_DB_URL` |
+| Mode | System property | Spring context | Database |
+|---|---|---|---|
+| **Integration** (default) | _(none)_ | Full `AccessApp` boot | Testcontainers Postgres — ephemeral, torn down after the suite |
+| **Infrastructure** (only tests annotated with `@SmokeTest`) | `-Dtest.mode=infrastructure` | Minimal JPA-only context | Real environment DB at `LAA_ACCESS_DB_URL` |
 
 The same base class, test lifecycle, and teardown mechanism runs identically in both
 modes. The only thing that changes is which `TestContextProvider` implementation is
 wired in.
 
-This allows us to run a subset of critical smoke tests against the real infrastructure environment — 
-providing confidence that the deployed API behaves as expected with the real database and real deployed configuration. 
+This allows us to run a subset of critical smoke tests against the real infrastructure
+environment — providing confidence that the deployed API behaves as expected with the
+real database and real deployed configuration.
 
-In terms of end to end testing for **our** API, this covers what is necessary without needing more tests and more
-things to maintain. We can be confident that if the smoke tests pass in infrastructure mode, then the API is working correctly in that environment.
+In terms of end-to-end testing for **our** API, this covers what is necessary without
+needing more tests and more things to maintain. We can be confident that if the smoke
+tests pass in infrastructure mode, then the API is working correctly in that
+environment.
 
 ---
 
@@ -28,26 +31,26 @@ things to maintain. We can be confident that if the smoke tests pass in infrastr
 
 ```
 TestContextProvider  (interface)
-├── IntegrationTestContextProvider   — integration mode
+├── IntegrationTestContextProvider    — integration mode
 └── InfrastructureTestContextProvider — infrastructure mode
 
 BaseHarnessTest  (abstract)
 └── <concrete test class>   e.g. GetApplicationTest, CreateApplicationTest
-    └── HarnessDataIsolationTest
 ```
 
 ### Key components
 
 | Component | Location | Responsibility |
-|-----------|----------|---------------|
+|---|---|---|
 | `HarnessExtension` | `utils/harness/` | JUnit 5 extension; selects the `TestContextProvider`, injects `@HarnessInject` fields, and conditionally skips non-`@SmokeTest` tests in infrastructure mode |
 | `TestContextProvider` | `utils/harness/` | Interface; exposes `webTestClient()` and `getBean(Class<T>)` |
 | `IntegrationTestContextProvider` | `utils/harness/` | Boots a full Spring application context with a Testcontainers Postgres; used for normal `./gradlew integrationTest` runs |
 | `InfrastructureTestContextProvider` | `utils/harness/` | Builds a minimal JPA-only context pointing at a real database; used when `test.mode=infrastructure` |
 | `BaseHarnessTest` | `utils/harness/` | Abstract base for all harness tests; owns the `@BeforeEach` / `@AfterEach` lifecycle and HTTP helper methods |
-| `PersistedDataGenerator` | `utils/generator/` | Persists entities and automatically tracks their IDs for teardown |
+| `PersistedDataGenerator` | `utils/generator/` | Single gateway for all database writes; tracks every entity ID for teardown |
+| `DatabaseCleanlinessAssertion` | `utils/harness/` | Queries every domain table and asserts each is empty; runs `@AfterEach @Order(2)` after tracked data is deleted |
 | `HarnessInject` | `utils/harness/` | Marker annotation; fields annotated with this are injected by `HarnessExtension.postProcessTestInstance` |
-| `HarnessResult` | `utils/harness/` | Thin wrapper around an HTTP response, mirroring the `MvcResult` surface used by shared assertion helpers |
+| `HarnessResult` | `utils/harness/` | Thin wrapper around an HTTP response |
 | `SmokeTest` | `utils/harness/` | Marker annotation; controls which tests run in infrastructure mode |
 
 ---
@@ -81,7 +84,7 @@ The `WebTestClient` is bound to `LAA_ACCESS_API_URL` — the live API endpoint.
 Required environment variables:
 
 | Variable | Purpose |
-|----------|---------|
+|---|---|
 | `LAA_ACCESS_API_URL` | Base URL of the live API under test |
 | `LAA_ACCESS_DB_URL` | JDBC URL of the live database |
 | `LAA_ACCESS_DB_USERNAME` | Database username |
@@ -89,7 +92,7 @@ Required environment variables:
 
 ---
 
-## Why two modes need the same teardown strategy
+## Why `@Transactional` rollback cannot be used
 
 `BaseHarnessTest` drives the application via `WebTestClient`. Requests execute in a
 separate thread inside the embedded (or real) server; they commit their own JPA
@@ -98,9 +101,57 @@ transactions independently of the test method. This means `@Transactional` rollb
 
 Instead, every entity that the test creates must be deleted explicitly after the test.
 Critically, **the same mechanism must work safely in infrastructure mode** where the
-database may contain real production data. A `deleteAll()` or any bulk-delete call
-would be catastrophic. The teardown must only ever touch rows that the current test
-itself created.
+database may contain real data. A `deleteAll()` or any bulk-delete call would be
+catastrophic. The teardown must only ever touch rows that the current test itself
+created.
+
+---
+
+## Per-test lifecycle
+
+```
+HarnessExtension.postProcessTestInstance
+  └── injects @HarnessInject fields (webTestClient, harnessProvider)
+
+@BeforeEach @Order(1) BaseHarnessTest.setupHarness()
+  ├── resolves beans from harnessProvider
+  │     (objectMapper, persistedDataGenerator, repositories, asserters, dbCleanliness)
+  ├── resets token state to CASEWORKER / omitToken = false
+  ├── clearTrackedIds()                          ← defensive reset
+  ├── createAndPersist(CaseworkerJohnDoe)        ← auto-tracked
+  ├── createAndPersist(CaseworkerJaneDoe)        ← auto-tracked
+  └── Caseworkers = List.of(JohnDoe, JaneDoe)
+
+@Test method body
+  └── createAndPersist(...)                      ← each persist auto-tracked
+      postUri / patchUri / getUri(...)           ← HTTP via WebTestClient
+      (token state reset automatically after each HTTP call)
+
+@AfterEach @Order(1) BaseHarnessTest.tearDownTrackedData()
+  └── persistedDataGenerator.deleteTrackedData()
+        ├── JDBC pre-fetch: collect decision_id for each tracked application
+        │     (needed because V14 reversed the FK: applications.decision_id → decisions,
+        │      so deleting an application does NOT cascade-delete its decision)
+        ├── delete tracked domain_events          (by ID, idempotent)
+        ├── delete tracked applications           (cascade removes proceedings,
+        │                                          merits_decisions, certificates,
+        │                                          linked_individuals join rows)
+        ├── delete tracked decisions              (after application; FK now clears first)
+        ├── delete tracked caseworkers            (by ID, idempotent)
+        ├── delete tracked individuals            (by ID, idempotent)
+        └── clearTrackedIds()                     ← always, even if a delete threw
+
+@AfterEach @Order(2) BaseHarnessTest.assertDatabaseCleanAfterTest()
+  └── DatabaseCleanlinessAssertion.assertAllTablesEmpty()
+        ├── queries every domain table (domain_events → caseworkers)
+        ├── subtracts FLYWAY_SEEDED_CASEWORKER_COUNT from the caseworkers count
+        │     (R__insert_test_data.sql seeds fixed rows that must not be treated as pollution)
+        └── throws AssertionError if anything remains — fails the test immediately
+```
+
+The `@Order` annotation ensures `tearDownTrackedData()` always runs before
+`assertDatabaseCleanAfterTest()`. Both `@AfterEach` methods are guaranteed to run
+even if the test method throws.
 
 ---
 
@@ -109,75 +160,80 @@ itself created.
 ### How tracking works
 
 `PersistedDataGenerator` is the single gateway through which tests persist entities.
-Every call to `createAndPersist(...)` or `createAndPersistMultiple(...)` does two
-things:
+Every call to `createAndPersist(...)` or `createAndPersistMultiple(...)` does two things:
 
-1. Calls `repository.saveAndFlush(entity)` to commit the row to the database.
-2. Calls `track(entity)` to add the entity's UUID to the appropriate in-memory list:
+1. Calls `repository.saveAndFlush(entity)` — commits the row immediately so it is visible to the HTTP server
+2. Calls `track(entity)` — adds the entity's UUID to the appropriate in-memory list
 
-```
-trackedCaseworkerIds   — populated for CaseworkerEntity
-trackedApplicationIds  — populated for ApplicationEntity
-trackedDomainEventIds  — populated for DomainEventEntity
-```
+The tracking lists maintained by `PersistedDataGenerator`:
 
-Because tracking happens immediately after the `saveAndFlush` returns — on the very
-same line, before any assertion or further logic that could throw — the ID is
-registered even if the test subsequently fails.
+| List | Populated by |
+|---|---|
+| `trackedCaseworkerIds` | `CaseworkerEntity` |
+| `trackedApplicationIds` | `ApplicationEntity` (also auto-tracks cascade-persisted `IndividualEntity` instances) |
+| `trackedDomainEventIds` | `DomainEventEntity` |
+| `trackedIndividualIds` | `IndividualEntity`; also populated by `trackExistingApplication()` via JDBC |
+| `trackedDecisionIds` | `DecisionEntity`; also populated by JDBC pre-fetch during `deleteTrackedData()` |
 
-### The `@BeforeEach` lifecycle
+Because tracking happens on the same line as `saveAndFlush`, before any assertion or
+subsequent logic that could throw, the ID is registered even if the test subsequently
+fails.
 
-`BaseHarnessTest.setupHarness()` runs before every test method:
+### API-created rows
 
-1. Resolves beans from the `TestContextProvider` (`PersistedDataGenerator`,
-   repositories, assertion helpers, etc.).
-2. Calls `persistedDataGenerator.clearTrackedIds()` as a defensive measure, ensuring
-   no stale IDs from a previous test's failed teardown can bleed in.
-3. Creates and persists `CaseworkerJohnDoe` and `CaseworkerJaneDoe` via
-   `persistedDataGenerator.createAndPersist(...)`. Because these go through
-   `PersistedDataGenerator`, their IDs are auto-tracked.
-
-### The `@AfterEach` teardown
-
-`BaseHarnessTest.tearDownTrackedData()` runs after every test method (and is also
-callable mid-test when a test needs manual control):
+When the production API creates rows (e.g. via `POST /applications`), those rows are
+not tracked automatically. The test must call:
 
 ```java
-persistedDataGenerator.deleteTrackedData();
+persistedDataGenerator.trackExistingApplication(createdId);
 ```
 
-`PersistedDataGenerator.deleteTrackedData()` deletes in leaf-to-root order to satisfy
-foreign-key constraints:
+This adds the application ID to the tracking list and also uses a JDBC query on
+`linked_individuals` to register any individual IDs that were cascade-persisted with
+the application, since the `individuals` table is not cascade-deleted when an
+application is removed.
 
-1. **Domain events** — `trackedDomainEventIds` deleted first
-2. **Applications** — `trackedApplicationIds` deleted next
-   (DB `ON DELETE CASCADE` handles proceedings, decisions, merits decisions, certificates)
-3. **Caseworkers** — `trackedCaseworkerIds` deleted last
+### The V14 FK reversal
 
-Each delete uses `findById(id).ifPresent(repo::delete)`, which is:
+Prior to migration `V14__change_decision_relationship.sql`, decisions were a child of
+applications and `ON DELETE CASCADE` removed them automatically. V14 reversed the FK
+so that `applications.decision_id → decisions`. This means deleting an application
+row no longer cascade-deletes its decision.
 
-- **Idempotent** — safe if the test already deleted the row
-- **Surgical** — only touches the specific rows whose IDs were registered
+`deleteTrackedData()` handles this explicitly:
 
-After deletion, `clearTrackedIds()` is always called in a `finally` block, so stale
-IDs are never carried into the next test even if a delete operation throws.
+1. Before deleting any application, a JDBC query fetches the `decision_id` for each
+   tracked application and adds it to `trackedDecisionIds`.
+2. Applications are deleted (clearing the FK column).
+3. Decisions are deleted afterwards, now that the FK reference is gone.
 
-@AfterEach teardown is guaranteed to run even if the test method throws an exception, 
-so any test failure will still trigger the cleanup of tracked data.
+### Updating already-tracked entities
 
-### Tracking list access
-
-`PersistedDataGenerator` also exposes:
+When a test needs to mutate an entity after its initial persist (e.g. setting a FK
+after both sides are saved), use:
 
 ```java
-List<UUID> trackedApplicationIds()  // read-only view — useful for "nothing persisted" assertions
+persistedDataGenerator.updateAndFlush(entity);
 ```
 
-`BaseHarnessTest` surfaces this as:
+This calls `saveAndFlush` without re-registering the ID in the tracking list.
+Supported entity types: `ApplicationEntity`, `CaseworkerEntity`, `IndividualEntity`.
+
+---
+
+## Auth and token helpers
+
+`BaseHarnessTest` manages a per-test token state. All HTTP helpers read from this
+state and reset it to the default caseworker token after each call.
 
 ```java
-protected List<UUID> trackedApplicationIds()
+// Default: every request uses TestConstants.Tokens.CASEWORKER
+withToken(TestConstants.Tokens.UNKNOWN);  // set a different token for the next call
+withNoToken();                             // omit the Authorization header entirely
 ```
+
+Because the state resets after each HTTP call, there is no need to restore the token
+between test steps.
 
 ---
 
@@ -198,16 +254,7 @@ In the default integration mode the annotation has no effect and all tests run.
 ## `@HarnessInject`
 
 Fields in `BaseHarnessTest` (and its subclasses) annotated with `@HarnessInject` are
-populated by `HarnessExtension.postProcessTestInstance` before any test method runs:
-
-```java
-@HarnessInject
-protected WebTestClient webTestClient;
-
-@HarnessInject
-protected TestContextProvider harnessProvider;
-```
-
+populated by `HarnessExtension.postProcessTestInstance` before any test method runs.
 `HarnessExtension` resolves `WebTestClient` directly from the `TestContextProvider`,
 and resolves any other annotated field type via `provider.getBean(field.getType())`.
 The annotation is processed up the full inheritance hierarchy, so subclasses can
@@ -223,92 +270,26 @@ declare their own `@HarnessInject` fields.
 was not created by the current test — the core safety guarantee needed for
 infrastructure mode.
 
-The class extends `BaseHarnessTest` and is annotated
-`@TestInstance(Lifecycle.PER_CLASS)` so that `@BeforeAll` / `@AfterAll` can manage
-**sentinel** entities that persist across all test methods.
-
 ### Sentinel strategy
 
-Before any test method runs, `@BeforeAll createSentinels()` persists three rows
-**directly via repositories**, bypassing `PersistedDataGenerator`. Because they
-bypass `createAndPersist`, they are never registered in the tracking lists:
-
-| Sentinel | Entity type | How created |
-|----------|-------------|-------------|
-| `sentinelCaseworker` | `CaseworkerEntity` | `cwRepo.saveAndFlush(...)` |
-| `sentinelApplication` | `ApplicationEntity` | `appRepo.saveAndFlush(...)` |
-| `sentinelDomainEvent` | `DomainEventEntity` | `deRepo.saveAndFlush(...)` |
+Before any test method runs, `@BeforeAll createSentinels()` persists entities
+**directly via repositories**, bypassing `PersistedDataGenerator`. Because they bypass
+`createAndPersist`, they are never registered in the tracking lists.
 
 After all test methods (and their `@AfterEach` teardowns) have completed,
 `@AfterAll assertSentinelsSurvivedThenDelete()` asserts that every sentinel is still
 present, then manually deletes them. If any sentinel is missing, the assertion fails —
 proving the harness deleted data it should not have.
 
-### Test descriptions
+### Test coverage
 
-#### Test 1 — Pre-existing caseworker survives harness teardown
-
-```
-Given: a sentinel caseworker was persisted before any test (not tracked)
-And:   @BeforeEach created CaseworkerJohnDoe (auto-tracked)
-When:  the test body completes and @AfterEach tearDownTrackedData() fires
-Then:  the sentinel caseworker is still present
-And:   CaseworkerJohnDoe is still present during the test body
-```
-
-Verified by `givenPreExistingCaseworker_whenHarnessTeardownRuns_thenSentinelIsUntouched`.
-
-#### Test 2 — Pre-existing application survives harness teardown
-
-```
-Given: a sentinel application was persisted before any test (not tracked)
-And:   the test body creates a second application via persistedDataGenerator (auto-tracked)
-When:  @AfterEach tearDownTrackedData() fires
-Then:  the sentinel application is still present
-```
-
-Verified by `givenPreExistingApplication_whenHarnessTeardownRuns_thenOnlyTrackedApplicationIsRemoved`.
-
-#### Test 3 — Pre-existing domain event survives harness teardown
-
-```
-Given: a sentinel domain event was persisted before any test (not tracked)
-And:   the test body creates a domain event via persistedDataGenerator (auto-tracked)
-When:  @AfterEach tearDownTrackedData() fires
-Then:  the sentinel domain event is still present
-```
-
-Verified by `givenPreExistingDomainEvent_whenHarnessTeardownRuns_thenOnlyTrackedDomainEventIsRemoved`.
-
-#### Test 4 — Only tracked entities are removed; untracked entities survive
-
-```
-Given: entityA is persisted directly via the repository (not tracked)
-And:   entityB is persisted via persistedDataGenerator (auto-tracked)
-When:  tearDownTrackedData() is called
-Then:  entityB is removed
-And:   entityA is still present (the test then explicitly deletes it)
-```
-
-This is the core invariant: the tracked teardown is purely surgical.
-
-Verified by `givenUntrackedAndTrackedEntities_whenHarnessTeardownRuns_thenOnlyTrackedEntityIsRemoved`.
-
-#### Test 5 — Partial setup failure does not leave orphaned rows
-
-```
-Given: setup partially runs — one caseworker is persisted and auto-tracked
-And:   teardown is invoked manually before setup completes
-When:  deleteTrackedData() runs
-Then:  the partially-created caseworker is removed
-And:   the test re-seeds JohnDoe and JaneDoe so the @AfterEach no-ops cleanly
-```
-
-This test simulates a scenario where `@BeforeEach` fails mid-way. It verifies that any
-entity that was already registered in the tracking lists before the failure is still
-cleaned up — no orphaned rows remain.
-
-Verified by `givenPartialSetupFailure_whenTeardownRuns_thenPartiallyCreatedDataIsRemoved`.
+| Test | What it proves |
+|---|---|
+| `givenPreExistingCaseworker_whenHarnessTeardownRuns_thenSentinelIsUntouched` | Pre-existing caseworkers survive `@AfterEach` teardown |
+| `givenPreExistingApplication_whenHarnessTeardownRuns_thenOnlyTrackedApplicationIsRemoved` | Only the tracked application is deleted; the sentinel application survives |
+| `givenPreExistingDomainEvent_whenHarnessTeardownRuns_thenOnlyTrackedDomainEventIsRemoved` | Only the tracked domain event is deleted; the sentinel survives |
+| `givenUntrackedAndTrackedEntities_whenHarnessTeardownRuns_thenOnlyTrackedEntityIsRemoved` | Core invariant: teardown is purely surgical |
+| `givenPartialSetupFailure_whenTeardownRuns_thenPartiallyCreatedDataIsRemoved` | Entities registered before a mid-setup failure are still cleaned up |
 
 ---
 
@@ -320,26 +301,45 @@ JUnit
   ├─ HarnessExtension.postProcessTestInstance
   │    └─ injects @HarnessInject fields (webTestClient, harnessProvider)
   │
-  ├─ @BeforeAll (if PER_CLASS) — e.g. createSentinels in HarnessDataIsolationTest
-  │
-  ├─ @BeforeEach BaseHarnessTest.setupHarness()
+  ├─ @BeforeEach @Order(1) setupHarness()
   │    ├─ resolves beans from harnessProvider
-  │    ├─ clearTrackedIds()                          ← defensive reset
-  │    ├─ createAndPersist(CaseworkerJohnDoe)        ← auto-tracked
-  │    └─ createAndPersist(CaseworkerJaneDoe)        ← auto-tracked
+  │    ├─ clearTrackedIds()
+  │    ├─ createAndPersist(CaseworkerJohnDoe)     ← auto-tracked
+  │    ├─ createAndPersist(CaseworkerJaneDoe     ← auto-tracked
+  │    └─ Caseworkers = List.of(JohnDoe, JaneDoe)
   │
   ├─ @Test method body
-  │    └─ createAndPersist(...)                      ← each persist auto-tracked
+  │    └─ createAndPersist(...)                   ← each persist auto-tracked
   │
-  ├─ @AfterEach BaseHarnessTest.tearDownTrackedData()
+  ├─ @AfterEach @Order(1) tearDownTrackedData()
   │    └─ persistedDataGenerator.deleteTrackedData()
-  │         ├─ delete tracked domain events   (by ID, idempotent)
-  │         ├─ delete tracked applications    (by ID, idempotent; cascade removes children)
-  │         ├─ delete tracked caseworkers     (by ID, idempotent)
-  │         └─ clearTrackedIds()              ← always, even if a delete threw
+  │         ├─ JDBC pre-fetch decision_ids
+  │         ├─ delete domain events     (by ID, idempotent)
+  │         ├─ delete applications      (cascade: proceedings, certificates, linked rows)
+  │         ├─ delete decisions         (after application FK clears)
+  │         ├─ delete caseworkers       (by ID, idempotent)
+  │         ├─ delete individuals       (by ID, idempotent)
+  │         └─ clearTrackedIds()        ← always, even if a delete threw
   │
-  └─ @AfterAll (if PER_CLASS) — e.g. assertSentinelsSurvivedThenDelete
+  └─ @AfterEach @Order(2) assertDatabaseCleanAfterTest()
+       └─ DatabaseCleanlinessAssertion.assertAllTablesEmpty()
 ```
+
+---
+
+## Known gaps in infrastructure mode
+
+The following issues are known and documented in [options-for-e2e.md](./options-for-e2e.md):
+
+| Gap | Summary |
+|---|---|
+| `DomainEventAsserts` uses `findAll()` | Unsafe in infrastructure mode; must be scoped to tracked application IDs |
+| Limited `@SmokeTest` write coverage | Most mutating endpoints lack a `@SmokeTest`; infrastructure mode only proves read paths and header validation |
+| `trackExistingApplication()` is a convention | Write-path smoke tests must call it manually; no compile-time or runtime guard exists |
+| Search tests cannot be safely annotated `@SmokeTest` | Exact-count assertions are invalidated by pre-existing data in the live database |
+| Assertion helpers not registered in `InfrastructureJpaConfig` | `ApplicationAsserts` and `DomainEventAsserts` will throw `NoSuchBeanDefinitionException` in infrastructure mode |
+| `assertDatabaseCleanAfterTest()` not guarded by mode | Will always fail in infrastructure mode against a non-empty real database |
+| Security headers may differ through a reverse proxy | Header assertions valid in integration mode may not hold in infrastructure mode |
 
 ---
 
@@ -349,16 +349,16 @@ JUnit
 data-access-service/src/integrationTest/java/uk/gov/justice/laa/dstew/access/
 ├── utils/
 │   ├── harness/
-│   │   ├── BaseHarnessTest.java                  — abstract base; lifecycle & HTTP helpers
-│   │   ├── HarnessDataIsolationTest.java         — proves teardown data isolation
-│   │   ├── HarnessExtension.java                 — JUnit 5 extension; mode selection & injection
-│   │   ├── HarnessInject.java                    — field injection marker annotation
-│   │   ├── HarnessResult.java                    — HTTP response wrapper
+│   │   ├── BaseHarnessTest.java                   — abstract base; lifecycle & HTTP helpers
+│   │   ├── DatabaseCleanlinessAssertion.java      — asserts all domain tables empty after each test
+│   │   ├── HarnessDataIsolationTest.java          — proves teardown data isolation
+│   │   ├── HarnessExtension.java                  — JUnit 5 extension; mode selection & injection
+│   │   ├── HarnessInject.java                     — field injection marker annotation
+│   │   ├── HarnessResult.java                     — HTTP response wrapper
 │   │   ├── InfrastructureTestContextProvider.java — JPA-only context for real infrastructure
-│   │   ├── IntegrationTestContextProvider.java   — full Spring Boot + Testcontainers context
-│   │   ├── SmokeTest.java                        — smoke-test marker annotation
-│   │   └── TestContextProvider.java              — interface implemented by both providers
+│   │   ├── IntegrationTestContextProvider.java    — full Spring Boot + Testcontainers context
+│   │   ├── SmokeTest.java                         — smoke-test marker annotation
+│   │   └── TestContextProvider.java               — interface implemented by both providers
 │   └── generator/
-│       └── PersistedDataGenerator.java           — persists entities and tracks IDs for teardown
+│       └── PersistedDataGenerator.java            — persists entities and tracks IDs for teardown
 ```
-
