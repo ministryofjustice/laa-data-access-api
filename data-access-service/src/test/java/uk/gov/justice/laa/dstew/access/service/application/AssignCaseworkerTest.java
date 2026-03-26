@@ -42,7 +42,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGene
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class AssignCaseworkerResponseTest extends BaseServiceTest {
+public class AssignCaseworkerTest extends BaseServiceTest {
 
     @Autowired
     private ApplicationService serviceUnderTest;

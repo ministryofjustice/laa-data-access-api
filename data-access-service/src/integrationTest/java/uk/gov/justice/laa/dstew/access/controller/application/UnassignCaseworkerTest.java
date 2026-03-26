@@ -30,7 +30,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
 @ActiveProfiles("test")
-public class UnassignCaseworkerResponseTest extends BaseIntegrationTest {
+public class UnassignCaseworkerTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)

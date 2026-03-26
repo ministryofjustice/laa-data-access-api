@@ -36,7 +36,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEn
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class UnassignCaseworkerResponseTest extends BaseServiceTest {
+public class UnassignCaseworkerTest extends BaseServiceTest {
 
     @Autowired
     private ApplicationService serviceUnderTest;

@@ -25,7 +25,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
 
 @ActiveProfiles("test")
-public class ReassignCaseworkerResponseTest extends BaseIntegrationTest {
+public class ReassignCaseworkerTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)

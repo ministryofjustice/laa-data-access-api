@@ -26,7 +26,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
-public class ReassignCaseworkerResponseTest extends BaseServiceTest {
+public class ReassignCaseworkerTest extends BaseServiceTest {
 
     @Autowired
     private ApplicationService serviceUnderTest;
