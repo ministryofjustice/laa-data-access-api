@@ -20,15 +20,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
-import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
-import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
-import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
-import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
-import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
-import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
-import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
+import uk.gov.justice.laa.dstew.access.repository.*;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateRequestFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEntityFactory;
@@ -81,6 +73,9 @@ public class BaseServiceTest {
 
     @MockitoBean
     protected IndividualRepository individualRepository;
+
+    @MockitoBean
+    protected NoteRepository noteRepository;
 
     @MockitoBean
     protected ServiceNameContext serviceNameContext;

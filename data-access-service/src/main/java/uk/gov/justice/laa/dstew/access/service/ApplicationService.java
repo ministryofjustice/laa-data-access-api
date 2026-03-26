@@ -14,7 +14,13 @@ import lombok.NonNull;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.entity.*;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
+import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
+import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.NoteEntity;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
@@ -32,7 +38,13 @@ import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
-import uk.gov.justice.laa.dstew.access.repository.*;
+import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
+import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
+import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
+import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
+import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
+import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.utils.VersionCheckHelper;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
@@ -82,7 +94,9 @@ public class ApplicationService {
                             final ProceedingRepository proceedingRepository,
                             final MeritsDecisionRepository meritsDecisionRepository,
                             final CertificateRepository certificateRepository,
-                            final ProceedingsService proceedingsService, PayloadValidationService payloadValidationService, NoteRepository noteRepository) {
+                            final ProceedingsService proceedingsService,
+                            final PayloadValidationService payloadValidationService,
+                            final NoteRepository noteRepository) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.proceedingMapper = proceedingMapper;
