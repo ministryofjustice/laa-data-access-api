@@ -19,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.NoteEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
@@ -42,6 +43,7 @@ import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
+import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.utils.VersionCheckHelper;
@@ -70,6 +72,7 @@ public class ApplicationService {
   private final CertificateRepository certificateRepository;
   private final ProceedingsService proceedingsService;
   private final PayloadValidationService payloadValidationService;
+  private final NoteRepository noteRepository;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -91,7 +94,9 @@ public class ApplicationService {
                             final ProceedingRepository proceedingRepository,
                             final MeritsDecisionRepository meritsDecisionRepository,
                             final CertificateRepository certificateRepository,
-                            final ProceedingsService proceedingsService, PayloadValidationService payloadValidationService) {
+                            final ProceedingsService proceedingsService,
+                            final PayloadValidationService payloadValidationService,
+                            final NoteRepository noteRepository) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.proceedingMapper = proceedingMapper;
@@ -106,6 +111,7 @@ public class ApplicationService {
     this.decisionRepository = decisionRepository;
     this.meritsDecisionRepository = meritsDecisionRepository;
     this.certificateRepository = certificateRepository;
+    this.noteRepository = noteRepository;
   }
 
   /**
@@ -251,6 +257,21 @@ public class ApplicationService {
         new TypeReference<Map<String, Object>>() {
         }
     );
+  }
+
+  /**
+   * Create a note for an application.
+   *
+   * @param id UUID of the application
+   * @param note note to be created
+   */
+  @AllowApiCaseworker
+  @Transactional
+  public void createApplicationNote(final UUID id, final String note) {
+
+    checkIfApplicationExists(id);
+    noteRepository.save(NoteEntity.builder().applicationId(id).notes(note).build());
+
   }
 
   /**

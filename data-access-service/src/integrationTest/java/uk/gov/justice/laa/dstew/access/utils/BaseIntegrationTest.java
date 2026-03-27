@@ -25,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts.ApplicationAsserts;
 import uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts.DomainEventAsserts;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
+import uk.gov.justice.laa.dstew.access.repository.*;
 import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
@@ -68,6 +69,9 @@ public abstract class BaseIntegrationTest {
 
     @Autowired
     protected CertificateRepository certificateRepository;
+
+    @Autowired
+    protected NoteRepository noteRepository;
 
     @Autowired
     protected ApplicationAsserts applicationAsserts;

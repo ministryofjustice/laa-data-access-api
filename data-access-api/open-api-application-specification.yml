@@ -273,6 +273,35 @@ paths:
         '404': { description: Not found }
         '500': { description: Internal server error }
 
+  /api/v0/applications/{id}/notes:
+    post:
+      tags:
+        - application
+      operationId: createApplicationNotes
+      summary: Create notes for an application
+      parameters:
+        - $ref: "#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        description: notes to add to application
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNoteRequest'
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
+
   /api/v0/applications/{id}/decision:
     patch:
       tags:
@@ -880,3 +909,13 @@ components:
             type: object
         meritsDecision:
           $ref: "#/components/schemas/MeritsDecisionStatus"
+
+    CreateNoteRequest:
+      type: object
+      required:
+        - notes
+      properties:
+        notes:
+          type: string
+          minLength: 1
+          maxLength: 10000
