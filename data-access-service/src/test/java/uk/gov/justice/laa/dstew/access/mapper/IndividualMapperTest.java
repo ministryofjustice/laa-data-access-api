@@ -14,7 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mapstruct.factory.Mappers;
+
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.Individual;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
@@ -36,7 +36,13 @@ class IndividualMapperTest extends BaseMapperTest {
 
     public static Stream<Arguments> getExtendedIndividualsData() {
       return Stream.of(
-        Arguments.of("wilson", "additional", "prevref", "relchildren",
+        Arguments.of("wilson", "additional", "prevref", "relchildren", true,
+                List.of(
+                    Map.of("k1", "v1"),
+                    Map.of("k2", "v2")
+                )
+        ),
+        Arguments.of("smith", "home", "prevref2", "parent", false,
                 List.of(
                     Map.of("k1", "v1"),
                     Map.of("k2", "v2")
@@ -47,16 +53,18 @@ class IndividualMapperTest extends BaseMapperTest {
     private ApplicationContent getExtendedIndividualApplicationContent(
             String lastName,
             String correspondenceAddressType,
-            String previousApplicationReference,
+            String previousApplicationId,
             String relationshipToChildren,
+            Boolean appliedPreviously,
             List<Map<String, Object>> addresses
     ) {
         return ApplicationContent.builder()
             .lastNameAtBirth(lastName)
             .correspondenceAddressType(correspondenceAddressType)
-            .previousApplicationReference(previousApplicationReference)
+            .previousApplicationId(previousApplicationId)
             .relationshipToChildren(relationshipToChildren)
             .applicant(ApplicationApplicant.builder()
+                .appliedPreviously(appliedPreviously)
                 .addresses(addresses)
                 .build())
             .build();
@@ -67,8 +75,9 @@ class IndividualMapperTest extends BaseMapperTest {
     void givenIndividualEntity_whenToExtendedIndividual_thenMapsFieldsCorrectly(
         String lastName,
         String correspondenceAddressType,
-        String previousApplicationReference,
+        String previousApplicationId,
         String relationshipToChildren,
+        Boolean appliedPreviously,
         List<Map<String, Object>> addresses
     ) {
         IndividualEntity expectedIndividualEntity = IndividualEntity.builder()
@@ -81,16 +90,18 @@ class IndividualMapperTest extends BaseMapperTest {
                 IncludedAdditionalData.CLIENT_DETAILS,
                 getExtendedIndividualApplicationContent(lastName,
                                                         correspondenceAddressType,
-                                                        previousApplicationReference,
+                                                        previousApplicationId,
                                                         relationshipToChildren,
+                                                        appliedPreviously,
                                                         addresses));
 
         assertThat(actualIndividual).isNotNull();
         assertThat(actualIndividual.getClientId()).isEqualTo(expectedIndividualEntity.getId());
         assertThat(actualIndividual.getCorrespondenceAddressType()).isEqualTo(correspondenceAddressType);
         assertThat(actualIndividual.getLastNameAtBirth()).isEqualTo(lastName);
-        assertThat(actualIndividual.getPreviousApplicationReference()).isEqualTo(previousApplicationReference);
+        assertThat(actualIndividual.getPreviousApplicationId()).isEqualTo(previousApplicationId);
         assertThat(actualIndividual.getRelationshipToChildren()).isEqualTo(relationshipToChildren);
+        assertThat(actualIndividual.getAppliedPreviously()).isEqualTo(appliedPreviously);
         List<Map<String, Object>> actualAddresses = actualIndividual.getCorrespondenceAddress();
         assertThat(actualAddresses).hasSize(addresses.size());
         assertThat(actualAddresses.getFirst().get("k1").toString()).isEqualTo("v1");
@@ -99,11 +110,12 @@ class IndividualMapperTest extends BaseMapperTest {
 
     @ParameterizedTest
     @MethodSource("getExtendedIndividualsData")
-    void givenIndividualEntity_whenToExtendedIndividualIncorrectly_thenMapsFieldsCorrectly(
+    void givenIndividualEntity_whenToExtendedIndividualWithNullInclude_thenExtendedFieldsAreNull(
             String lastName,
             String correspondenceAddressType,
-            String previousApplicationReference,
+            String previousApplicationId,
             String relationshipToChildren,
+            Boolean appliedPreviously,
             List<Map<String, Object>> addresses
     ) {
         IndividualEntity expectedIndividualEntity = IndividualEntity.builder()
@@ -116,18 +128,21 @@ class IndividualMapperTest extends BaseMapperTest {
                 null,
                 getExtendedIndividualApplicationContent(lastName,
                         correspondenceAddressType,
-                        previousApplicationReference,
+                        previousApplicationId,
                         relationshipToChildren,
+                        appliedPreviously,
                         addresses));
 
         assertThat(actualIndividual).isNotNull();
         assertThat(actualIndividual.getClientId()).isNull();
         assertThat(actualIndividual.getCorrespondenceAddressType()).isNull();
         assertThat(actualIndividual.getLastNameAtBirth()).isNull();
-        assertThat(actualIndividual.getPreviousApplicationReference()).isNull();
+        assertThat(actualIndividual.getPreviousApplicationId()).isNull();
         assertThat(actualIndividual.getRelationshipToChildren()).isNull();
+        assertThat(actualIndividual.getAppliedPreviously()).isNull();
         assertThat(actualIndividual.getCorrespondenceAddress()).isNull();
     }
+
 
     @Test
     void givenIndividualEntity_whenToIndividual_thenMapsFieldsCorrectly() {
