@@ -12,5 +12,5 @@ import uk.gov.justice.laa.dstew.access.entity.NoteEntity;
  */
 @Repository
 public interface NoteRepository extends JpaRepository<NoteEntity, UUID> {
-    List<NoteEntity> findByApplicationId(UUID applicationId);
+  List<NoteEntity> findByApplicationId(UUID applicationId);
 }
