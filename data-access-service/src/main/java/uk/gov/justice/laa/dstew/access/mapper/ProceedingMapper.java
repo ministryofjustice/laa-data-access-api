@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.apache.commons.lang3.BooleanUtils;
 import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 
 /**
@@ -45,28 +45,28 @@ public interface ProceedingMapper {
    * @param proceedingEntity    the proceeding entity
    * @return Proceeding or null
    */
-  default ApplicationProceeding toApplicationProceeding(ProceedingEntity proceedingEntity) {
+  default ApplicationProceedingResponse toApplicationProceeding(ProceedingEntity proceedingEntity) {
     if (proceedingEntity == null) {
       return null;
     }
     Proceeding proceeding = MapperUtil.getObjectMapper()
             .convertValue(proceedingEntity.getProceedingContent(), Proceeding.class);
 
-    ApplicationProceeding applicationProceeding = new ApplicationProceeding();
-    applicationProceeding.setProceedingId(proceedingEntity.getId());
-    applicationProceeding.setProceedingDescription(proceedingEntity.getDescription());
-    applicationProceeding.setProceedingType(proceeding.getMeaning());
-    applicationProceeding.setUsedDelegatedFunctionsOn(proceeding.getUsedDelegatedFunctionsOn());
-    applicationProceeding.setCategoryOfLaw(proceeding.getCategoryOfLaw());
-    applicationProceeding.setMatterType(proceeding.getMatterType());
-    applicationProceeding.setLevelOfService(proceeding.getSubstantiveLevelOfServiceName());
-    applicationProceeding.setSubstantiveCostLimitation(proceeding.getSubstantiveCostLimitation());
+    ApplicationProceedingResponse applicationProceedingResponse = new ApplicationProceedingResponse();
+    applicationProceedingResponse.setProceedingId(proceedingEntity.getId());
+    applicationProceedingResponse.setProceedingDescription(proceedingEntity.getDescription());
+    applicationProceedingResponse.setProceedingType(proceeding.getMeaning());
+    applicationProceedingResponse.setUsedDelegatedFunctionsOn(proceeding.getUsedDelegatedFunctionsOn());
+    applicationProceedingResponse.setCategoryOfLaw(proceeding.getCategoryOfLaw());
+    applicationProceedingResponse.setMatterType(proceeding.getMatterType());
+    applicationProceedingResponse.setLevelOfService(proceeding.getSubstantiveLevelOfServiceName());
+    applicationProceedingResponse.setSubstantiveCostLimitation(proceeding.getSubstantiveCostLimitation());
     if (proceeding.getScopeLimitations() != null) {
       List<Object> scopeLimitations = new ArrayList<>();
       proceeding.getScopeLimitations().forEach(s -> scopeLimitations.add(s));
-      applicationProceeding.setScopeLimitations(scopeLimitations);
+      applicationProceedingResponse.setScopeLimitations(scopeLimitations);
     }
 
-    return applicationProceeding;
+    return applicationProceedingResponse;
   }
 }

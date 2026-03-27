@@ -1,7 +1,7 @@
 package uk.gov.justice.laa.dstew.access.service.application.sharedAsserts;
 
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequestIndividual;
+import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 
 import java.util.List;
 import java.util.Set;
@@ -10,11 +10,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class ApplicationCreateRequestIndividualAssert {
     public static void assertIndividualCollectionsEqual(
-            List<ApplicationCreateRequestIndividual> expectedList, Set<IndividualEntity> actualList) {
+        List<IndividualCreateRequest> expectedList, Set<IndividualEntity> actualList) {
 
         assertThat(actualList).hasSameSizeAs(expectedList);
 
-        for (ApplicationCreateRequestIndividual expected : expectedList) {
+        for (IndividualCreateRequest expected : expectedList) {
             boolean match = actualList.stream()
                     .anyMatch(actual -> {
                         try {
@@ -30,7 +30,7 @@ public class ApplicationCreateRequestIndividualAssert {
         }
     }
 
-    public static void assertIndividualEqual(ApplicationCreateRequestIndividual expected, IndividualEntity actual) {
+    public static void assertIndividualEqual(IndividualCreateRequest expected, IndividualEntity actual) {
         assertThat(actual.getFirstName()).isEqualTo(expected.getFirstName());
         assertThat(actual.getLastName()).isEqualTo(expected.getLastName());
         assertThat(actual.getDateOfBirth()).isEqualTo(expected.getDateOfBirth());

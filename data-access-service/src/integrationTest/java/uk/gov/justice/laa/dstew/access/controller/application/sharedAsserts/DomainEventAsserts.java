@@ -15,7 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 
@@ -29,17 +29,17 @@ public class DomainEventAsserts {
             List<ApplicationEntity> applications,
             UUID caseWorkerId,
             DomainEventType expectedDomainEventType,
-            EventHistory expectedEventHistory
+            EventHistoryRequest expectedEventHistoryRequest
     ) {
         assertDomainEventsCreatedForApplications(
-                applications, caseWorkerId, expectedDomainEventType, expectedEventHistory, ServiceName.CIVIL_APPLY);
+                applications, caseWorkerId, expectedDomainEventType, expectedEventHistoryRequest, ServiceName.CIVIL_APPLY);
     }
 
     public void assertDomainEventsCreatedForApplications(
             List<ApplicationEntity> applications,
             UUID caseWorkerId,
             DomainEventType expectedDomainEventType,
-            EventHistory expectedEventHistory,
+            EventHistoryRequest expectedEventHistoryRequest,
             ServiceName expectedServiceName
     ) {
 
@@ -56,8 +56,8 @@ public class DomainEventAsserts {
             assertTrue(applicationIds.contains(domainEvent.getApplicationId()));
             assertEquals(caseWorkerId, domainEvent.getCaseworkerId());
             assertThat(domainEvent.getServiceName()).isEqualTo(expectedServiceName);
-            if (expectedEventHistory.getEventDescription() != null) {
-                assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
+            if (expectedEventHistoryRequest.getEventDescription() != null) {
+                assertTrue(domainEvent.getData().contains(expectedEventHistoryRequest.getEventDescription()));
             } else {
                 assertFalse(domainEvent.getData().contains("eventDescription"));
             }

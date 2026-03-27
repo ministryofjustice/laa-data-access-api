@@ -8,8 +8,8 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
-import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 
 /**
  * Mapper between ApplicationSummaryEntity and DTOs.
@@ -82,5 +82,5 @@ public interface ApplicationSummaryMapper {
    * @param dto the linked application summary DTO
    * @return the linked application summary
    */
-  LinkedApplicationSummary toLinkedApplicationSummary(LinkedApplicationSummaryDto dto);
+  LinkedApplicationSummaryResponse toLinkedApplicationSummary(LinkedApplicationSummaryDto dto);
 }

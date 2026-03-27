@@ -16,7 +16,7 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
@@ -196,14 +196,14 @@ public class DomainEventService {
    * Provides a list of events associated with an application in createdAt ascending order.
    */
   @AllowApiCaseworker
-  public List<ApplicationDomainEvent> getEvents(UUID applicationId,
-                                                @Valid List<DomainEventType> eventType) {
+  public List<ApplicationDomainEventResponse> getEvents(UUID applicationId,
+                                                        @Valid List<DomainEventType> eventType) {
 
     var filterEventType = DomainEventSpecification.filterEventTypes(eventType);
     Specification<DomainEventEntity> filter = DomainEventSpecification.filterApplicationId(applicationId)
         .and(filterEventType);
 
-    Comparator<ApplicationDomainEvent> comparer = Comparator.comparing(ApplicationDomainEvent::getCreatedAt);
+    Comparator<ApplicationDomainEventResponse> comparer = Comparator.comparing(ApplicationDomainEventResponse::getCreatedAt);
     return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
   }
 

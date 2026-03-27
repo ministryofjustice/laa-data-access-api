@@ -1,7 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.caseworker;
 
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
 public class CaseworkerUnassignRequestGenerator extends BaseGenerator<CaseworkerUnassignRequest, CaseworkerUnassignRequest.Builder> {
@@ -13,7 +13,7 @@ public class CaseworkerUnassignRequestGenerator extends BaseGenerator<Caseworker
     @Override
     public CaseworkerUnassignRequest createDefault() {
         return CaseworkerUnassignRequest.builder()
-                .eventHistory(EventHistory.builder()
+                .eventHistory(EventHistoryRequest.builder()
                         .eventDescription("Testing unassignment")
                         .build())
                 .build();

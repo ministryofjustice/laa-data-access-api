@@ -14,7 +14,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
@@ -53,7 +53,7 @@ public class DomainEventMapperTest extends BaseMapperTest {
                 .type(eventType)
                 .build();
 
-        ApplicationDomainEvent result = mapper.toDomainEvent(entity);
+        ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
 
         assertThat(result.getApplicationId()).isEqualTo(applicationId);
         assertThat(result.getCaseworkerId()).isEqualTo(caseworkerId);
@@ -73,7 +73,7 @@ public class DomainEventMapperTest extends BaseMapperTest {
                         .data(null)
                         .type(null));
 
-        ApplicationDomainEvent result = mapper.toDomainEvent(entity);
+        ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
 
         assertThat(result.getApplicationId()).isNull();
         assertThat(result.getCaseworkerId()).isNull();

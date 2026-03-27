@@ -6,7 +6,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
@@ -180,8 +180,8 @@ public class GetDomainEventTest extends BaseIntegrationTest {
         );
     }
 
-    private static ApplicationDomainEvent toEvent(DomainEventEntity entity) {
-        return ApplicationDomainEvent.builder()
+    private static ApplicationDomainEventResponse toEvent(DomainEventEntity entity) {
+        return ApplicationDomainEventResponse.builder()
                 .applicationId(entity.getApplicationId())
                 .createdAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC))
                 .domainEventType(entity.getType())

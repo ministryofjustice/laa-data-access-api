@@ -1,20 +1,20 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.proceeding;
 
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionDetailsGenerator;
 import java.util.UUID;
 
-public class MakeDecisionProceedingGenerator extends BaseGenerator<MakeDecisionProceeding, MakeDecisionProceeding.Builder> {
+public class MakeDecisionProceedingGenerator extends BaseGenerator<MakeDecisionProceedingRequest, MakeDecisionProceedingRequest.Builder> {
     private final MeritsDecisionDetailsGenerator meritsDecisionDetailsGenerator = new MeritsDecisionDetailsGenerator();
 
     public MakeDecisionProceedingGenerator() {
-        super(MakeDecisionProceeding::toBuilder, MakeDecisionProceeding.Builder::build);
+        super(MakeDecisionProceedingRequest::toBuilder, MakeDecisionProceedingRequest.Builder::build);
     }
 
     @Override
-    public MakeDecisionProceeding createDefault() {
-        return MakeDecisionProceeding.builder()
+    public MakeDecisionProceedingRequest createDefault() {
+        return MakeDecisionProceedingRequest.builder()
                 .proceedingId(UUID.randomUUID())
                 .meritsDecision(meritsDecisionDetailsGenerator.createDefault())
                 .build();

@@ -10,7 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
@@ -66,7 +66,7 @@ class ProceedingMapperTest extends BaseMapperTest {
         ProceedingEntity entity = DataGenerator.createDefault(ProceedingsEntityGenerator.class,
                 builder -> builder.id(proceedingId));
 
-        ApplicationProceeding result = proceedingMapper.toApplicationProceeding(entity);
+        ApplicationProceedingResponse result = proceedingMapper.toApplicationProceeding(entity);
 
         assertThat(result).isNotNull();
         assertThat(result.getProceedingId()).isEqualTo(proceedingId);
@@ -85,7 +85,7 @@ class ProceedingMapperTest extends BaseMapperTest {
         ProceedingEntity entity = DataGenerator.createDefault(ProceedingsEntityGenerator.class,
                 builder -> builder.id(null).description(null).proceedingContent(Map.of()));
 
-        ApplicationProceeding result = proceedingMapper.toApplicationProceeding(entity);
+        ApplicationProceedingResponse result = proceedingMapper.toApplicationProceeding(entity);
 
         assertThat(result.getProceedingId()).isNull();
         assertThat(result.getProceedingDescription()).isNull();
