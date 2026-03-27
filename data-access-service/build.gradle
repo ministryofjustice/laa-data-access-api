@@ -176,6 +176,9 @@ dependencies {
     // https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide#test-code
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+    testImplementation('org.wiremock:wiremock-standalone:3.13.0') {
+        exclude group: 'com.fasterxml.jackson.core'
+    }
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 

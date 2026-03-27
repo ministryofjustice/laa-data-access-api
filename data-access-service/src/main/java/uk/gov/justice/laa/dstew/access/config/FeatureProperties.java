@@ -29,10 +29,16 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
  * @param disableSecurity whether Spring Security is disabled (e.g. for development).
  *        Spring property: `feature.disable-security`.
  *        Environment variable: `FEATURE_DISABLE_SECURITY`.
+ * @param xAuthz whether roles are sourced from the X-Authorization header rather than the OBO token.
+ *        Spring property: `feature.x-authz`.
+ *        Environment variable: `FEATURE_X_AUTHZ`.
+ *        When false (default): LAA_APP_ROLES must be present on the OBO token.
+ *        When true: LAA_APP_ROLES is read from the X-Authorization header JWT.
  */
 @ExcludeFromGeneratedCodeCoverage
 @ConfigurationProperties(prefix = "feature")
 public record FeatureProperties(boolean enableDevToken,
                                 boolean disableJpaAuditing,
-                                boolean disableSecurity) {
+                                boolean disableSecurity,
+                                boolean xAuthz) {
 }

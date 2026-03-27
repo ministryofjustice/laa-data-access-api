@@ -76,6 +76,7 @@ sentry:
 feature:
   enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}
   disable-security: ${FEATURE_DISABLE_SECURITY:false}
+  x-authz: ${FEATURE_X_AUTHZ:false}
 
 server:
   forward-headers-strategy: framework

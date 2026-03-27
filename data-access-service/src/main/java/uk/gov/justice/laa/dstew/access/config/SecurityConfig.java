@@ -2,6 +2,8 @@ package uk.gov.justice.laa.dstew.access.config;
 
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -12,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -29,7 +32,6 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
@@ -70,10 +72,14 @@ public class SecurityConfig {
   @Bean
   SecurityFilterChain securityFilterChain(
       final HttpSecurity http,
-      @Autowired(required = false) @Qualifier("devTokenFilter") OncePerRequestFilter devTokenFilter) throws Exception {
+      @Autowired(required = false) @Qualifier("devTokenFilter") OncePerRequestFilter devTokenFilter,
+      @Autowired(required = false) @Qualifier("xAuthorizationFilter") OncePerRequestFilter xAuthorizationFilter) throws Exception {
 
     if (devTokenFilter != null) {
       http.addFilterBefore(devTokenFilter, BearerTokenAuthenticationFilter.class);
+    }
+    if (xAuthorizationFilter != null) {
+      http.addFilterAfter(xAuthorizationFilter, BearerTokenAuthenticationFilter.class);
     }
 
     http
@@ -100,20 +106,17 @@ public class SecurityConfig {
    */
   @Bean
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
-    JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-    grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
-    grantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
-
     JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
     jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
-      var authorities = grantedAuthoritiesConverter.convert(jwt);
-      if (authorities == null || authorities.isEmpty()) {
-        // Add default roles
-        return Set.of(
-            new SimpleGrantedAuthority("APPROLE_LAA_CASEWORKER")
-        );
+      List<String> appRoles = jwt.getClaimAsStringList(APP_ROLES_CLAIM);
+      if (appRoles == null || appRoles.isEmpty()) {
+        return Collections.emptySet();
       }
-      return authorities;
+      else {
+        return appRoles.stream()
+            .map(role -> new SimpleGrantedAuthority(AUTHORITY_PREFIX + role))
+            .collect(Collectors.toSet());
+      }
     });
     return jwtAuthenticationConverter;
   }
@@ -126,11 +129,12 @@ public class SecurityConfig {
    * @return a configured JwtDecoder bean
    */
   @Bean
+  @Primary
   public JwtDecoder jwtDecoder() {
     NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
 
     OAuth2TokenValidator<Jwt> audienceValidator = token -> {
-      if (token.getAudience().contains(audience) && token.getClaimAsString(APP_ROLES_CLAIM) != null) {
+      if (token.getAudience().contains(audience)) {
         return OAuth2TokenValidatorResult.success();
       }
       return OAuth2TokenValidatorResult.failure(
