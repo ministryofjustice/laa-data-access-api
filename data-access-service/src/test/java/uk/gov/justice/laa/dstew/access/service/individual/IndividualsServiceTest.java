@@ -11,6 +11,7 @@ import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
+import uk.gov.justice.laa.dstew.access.model.ApplicationApplicant;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
 import uk.gov.justice.laa.dstew.access.model.Individual;
@@ -24,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEn
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -65,6 +67,80 @@ public class IndividualsServiceTest extends BaseServiceTest {
                                   MapperUtil.getObjectMapper()
                                     .convertValue(application.getApplicationContent(), ApplicationContent.class)
                                   );
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void givenAppliedPreviouslyFalse_whenGetIndividuals_thenReturnAppliedPreviouslyFalse() {
+    // given
+    IndividualEntity expectedIndividual = DataGenerator.createDefault(IndividualEntityGenerator.class,
+            builder -> builder.id(UUID.randomUUID()));
+    Page<IndividualEntity> pageResult = new PageImpl<>(List.of(expectedIndividual));
+
+    ApplicationEntity application = createApplicationWithAppliedPreviously(false);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+    when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+    when(applicationRepository.findById(application.getId())).thenReturn(Optional.of(application));
+
+    // when
+    List<Individual> actualIndividuals = serviceUnderTest.getIndividuals(
+            1, 10, application.getId(), IndividualType.CLIENT, IncludedAdditionalData.CLIENT_DETAILS)
+            .page().stream().toList();
+
+    // then
+    assertThat(actualIndividuals.getFirst().getAppliedPreviously()).isFalse();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void givenNullApplicant_whenGetIndividuals_thenReturnAppliedPreviouslyNull() {
+    // given
+    IndividualEntity expectedIndividual = DataGenerator.createDefault(IndividualEntityGenerator.class,
+            builder -> builder.id(UUID.randomUUID()));
+    Page<IndividualEntity> pageResult = new PageImpl<>(List.of(expectedIndividual));
+
+    ApplicationEntity application = createApplicationWithAppliedPreviously(null);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+    when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+    when(applicationRepository.findById(application.getId())).thenReturn(Optional.of(application));
+
+    // when
+    List<Individual> actualIndividuals = serviceUnderTest.getIndividuals(
+            1, 10, application.getId(), IndividualType.CLIENT, IncludedAdditionalData.CLIENT_DETAILS)
+            .page().stream().toList();
+
+    // then
+    assertThat(actualIndividuals.getFirst().getAppliedPreviously()).isNull();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void givenApplicantWithAddresses_whenGetIndividuals_thenReturnCorrespondenceAddress() {
+    // given
+    IndividualEntity expectedIndividual = DataGenerator.createDefault(IndividualEntityGenerator.class,
+            builder -> builder.id(UUID.randomUUID()));
+    Page<IndividualEntity> pageResult = new PageImpl<>(List.of(expectedIndividual));
+
+    List<Map<String, Object>> addresses = List.of(
+        Map.of("line1", "address 1"),
+        Map.of("line1", "address 2")
+    );
+    ApplicationEntity application = createApplicationWithAddresses(addresses);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+    when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+    when(applicationRepository.findById(application.getId())).thenReturn(Optional.of(application));
+
+    // when
+    List<Individual> actualIndividuals = serviceUnderTest.getIndividuals(
+            1, 10, application.getId(), IndividualType.CLIENT, IncludedAdditionalData.CLIENT_DETAILS)
+            .page().stream().toList();
+
+    // then
+    assertThat(actualIndividuals.getFirst().getCorrespondenceAddress()).hasSize(2);
+    assertThat(actualIndividuals.getFirst().getCorrespondenceAddress()).isEqualTo(addresses);
   }
 
   @ParameterizedTest
@@ -285,8 +361,36 @@ public class IndividualsServiceTest extends BaseServiceTest {
     assertIndividualEqual(expected, actual);
     assertThat(actual.getClientId()).isEqualTo(expected.getId());
     assertThat(actual.getLastNameAtBirth()).isEqualTo(applicationContent.getLastNameAtBirth());
-    assertThat(actual.getPreviousApplicationReference()).isEqualTo(applicationContent.getPreviousApplicationReference());
+    assertThat(actual.getPreviousApplicationId()).isEqualTo(applicationContent.getPreviousApplicationId());
     assertThat(actual.getRelationshipToChildren()).isEqualTo(applicationContent.getRelationshipToChildren());
     assertThat(actual.getCorrespondenceAddressType()).isEqualTo(applicationContent.getCorrespondenceAddressType());
+    var expectedAppliedPreviously = Optional.ofNullable(applicationContent.getApplicant())
+        .map(ApplicationApplicant::getAppliedPreviously)
+        .orElse(null);
+    assertThat(actual.getAppliedPreviously()).isEqualTo(expectedAppliedPreviously);
+  }
+
+  @SuppressWarnings("unchecked")
+  private ApplicationEntity createApplicationWithAppliedPreviously(Boolean appliedPreviously) {
+    ApplicationApplicant applicant = appliedPreviously != null
+        ? ApplicationApplicant.builder().appliedPreviously(appliedPreviously).build()
+        : null;
+    return DataGenerator.createDefault(ApplicationEntityGenerator.class,
+        builder -> builder.id(UUID.randomUUID())
+            .applicationContent(MapperUtil.getObjectMapper().convertValue(
+                ApplicationContent.builder().applicant(applicant).build(),
+                Map.class)));
+  }
+
+  @SuppressWarnings("unchecked")
+  private ApplicationEntity createApplicationWithAddresses(List<Map<String, Object>> addresses) {
+    ApplicationApplicant applicant = ApplicationApplicant.builder()
+        .addresses(addresses)
+        .build();
+    return DataGenerator.createDefault(ApplicationEntityGenerator.class,
+        builder -> builder.id(UUID.randomUUID())
+            .applicationContent(MapperUtil.getObjectMapper().convertValue(
+                ApplicationContent.builder().applicant(applicant).build(),
+                Map.class)));
   }
 }

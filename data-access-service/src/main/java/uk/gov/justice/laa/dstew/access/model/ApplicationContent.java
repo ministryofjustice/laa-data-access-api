@@ -55,7 +55,7 @@ public class ApplicationContent implements Serializable {
 
   private @Nullable String lastNameAtBirth;
 
-  private @Nullable String previousApplicationReference;
+  private @Nullable String previousApplicationId;
 
   private @Nullable String relationshipToChildren;
 
