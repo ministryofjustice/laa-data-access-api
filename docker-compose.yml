@@ -12,5 +12,16 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  wiremock:
+    image: wiremock/wiremock:4.0.0-beta.29
+    container_name: laa-wiremock
+    restart: unless-stopped
+    ports:
+      - "8181:8080"
+    volumes:
+      - ./wiremock/mappings:/home/wiremock/mappings:ro
+      - ./wiremock/__files:/home/wiremock/__files:ro
+    command: --verbose
+
 volumes:
   pgdata:

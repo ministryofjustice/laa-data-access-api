@@ -1,0 +1,19 @@
+{
+  "mappings": [
+    {
+      "name": "OIDC discovery endpoint",
+      "request": {
+        "method": "GET",
+        "url": "/issuer/.well-known/openid-configuration"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "bodyFileName": "oidc-discovery.json"
+      }
+    }
+  ]
+}
+

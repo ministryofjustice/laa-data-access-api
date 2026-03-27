@@ -1,0 +1,13 @@
+# Spring profile for local development using the WireMock Entra stub (docker-compose wiremock service).
+# Activate with: SPRING_PROFILES_ACTIVE=wiremock (or --spring.profiles.active=wiremock)
+#
+# The ENTRA_AUD environment variable must still be set to match the audience
+# you include in your locally-signed JWTs (e.g. "local-dev-audience").
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8181/issuer
+          jwk-set-uri: http://localhost:8181/.well-known/jwks.json
+

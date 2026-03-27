@@ -52,6 +52,7 @@ export ENTRA_JWK_SET_URI=https://dummy-jwk-set-uri
 export ENTRA_AUD=dummy-aud
 export FEATURE_ENABLE_DEV_TOKEN=true
 export FEATURE_DISABLE_SECURITY=true
+export FEATURE_X_AUTHZ=false
 ```
 
 This will ensure that where-ever you run the application from locally (IntelliJ, any terminal window, etc)
@@ -86,22 +87,82 @@ Execute
 
 `./gradlew integrationTest`
 
+### Run application with WireMock Entra stub (recommended for local dev)
+
+Rather than pointing at a real Entra instance, you can run a local WireMock container that
+stubs the JWKS and OIDC discovery endpoints. This removes the need for `ENTRA_ISSUER_URI`,
+`ENTRA_JWK_SET_URI`, and `ENTRA_AUD` environment variables when running locally.
+
+**1. Generate the local dev RSA key pair (once per clone):**
+
+The private key and JWKS response body are git-ignored and must be generated locally.
+
+```bash
+pip3 install cryptography PyJWT   # one-time dependency install
+python3 scripts/gen_jwk.py
+```
+
+This writes two git-ignored files:
+- `wiremock/local-dev-private-key.pem` — private key used to sign local JWTs
+- `wiremock/__files/jwks.json` — public JWKS served by WireMock so the app can verify those JWTs
+
+**2. Start Postgres and WireMock together:**
+
+```bash
+docker compose up -d
+```
+
+WireMock will be available at `http://localhost:8181`. Verify with:
+
+```bash
+curl http://localhost:8181/.well-known/jwks.json
+curl http://localhost:8181/issuer/.well-known/openid-configuration
+```
+
+**3. Set the required environment variables:**
+
+```bash
+export ENTRA_AUD=local-dev-audience
+# ENTRA_ISSUER_URI and ENTRA_JWK_SET_URI are overridden by the wiremock profile below
+```
+
+Or keep `FEATURE_DISABLE_SECURITY=true` to skip JWT validation entirely (see [Set up environment variables](#set-up-environment-variables)).
+
+**4. Run the app with the `wiremock` Spring profile:**
+
+```bash
+./gradlew bootRun --args='--spring.profiles.active=wiremock'
+```
+
+The `wiremock` profile (`application-wiremock.yml`) overrides the JWT issuer and JWKS URIs to
+point at `http://localhost:8181`.
+
+**5. Generate a signed JWT for requests:**
+
+```bash
+# Default: sub=local-dev-user, aud=local-dev-audience, roles=LAA_CASEWORKER
+python3 scripts/gen_local_token.py
+
+# Custom options
+python3 scripts/gen_local_token.py --sub alice --aud local-dev-audience --roles LAA_CASEWORKER,LAA_ADMIN --ttl 7200
+```
+
+Use the printed token as the `Authorization: Bearer <token>` header.
+
+> **Key rotation:** re-run `python3 scripts/gen_jwk.py` then restart WireMock (`docker compose restart wiremock`)
+> to pick up the new JWKS.
+
+---
+
 ### Run application
 
 Ensure that the environment variables specified in the 
 [Set up environment variables](#set-up-environment-variables) section have been set.
 
-To start up Localstack and Postgres
+To start up Postgres (and WireMock)
 
 `docker compose up -d`
 
-Or if you want to use a different name or credentials
-
-`docker compose run -p 5432:5432 -e POSTGRES_DB={database name} POSTGRES_USER={username} POSTGRES_PASSWORD={password} postgres`
-
-followed by
-
-`docker compose run -p 4566:4566 localstack`
 
 Then execute
 
