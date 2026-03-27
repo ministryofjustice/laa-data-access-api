@@ -25,6 +25,8 @@ paths:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1certificate"
   /api/v0/individuals:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1individuals"
+  /api/v0/applications/{id}/notes:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1notes"
 
 components:
   securitySchemes:
@@ -59,3 +61,5 @@ components:
       $ref: "./open-api-application-specification.yml#/components/schemas/Individual"
     IndividualsResponse:
       $ref: "./open-api-application-specification.yml#/components/schemas/IndividualsResponse"
+    CreateNoteRequest:
+      $ref: "./open-api-application-specification.yml#/components/schemas/CreateNoteRequest"
