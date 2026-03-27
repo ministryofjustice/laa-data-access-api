@@ -102,7 +102,7 @@ class IndividualResponseMapperTest extends BaseMapperTest {
         assertThat(actualIndividualResponse.getPreviousApplicationId()).isEqualTo(previousApplicationId);
         assertThat(actualIndividualResponse.getRelationshipToChildren()).isEqualTo(relationshipToChildren);
         assertThat(actualIndividualResponse.getAppliedPreviously()).isEqualTo(appliedPreviously);
-        List<Map<String, Object>> actualAddresses = actualIndividual.getCorrespondenceAddress();
+        List<Map<String, Object>> actualAddresses = actualIndividualResponse.getCorrespondenceAddress();
         assertThat(actualAddresses).hasSize(addresses.size());
         assertThat(actualAddresses.getFirst().get("k1").toString()).isEqualTo("v1");
         assertThat(actualAddresses.getLast().get("k2").toString()).isEqualTo("v2");

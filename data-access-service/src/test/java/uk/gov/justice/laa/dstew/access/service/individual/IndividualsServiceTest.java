@@ -84,7 +84,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     when(applicationRepository.findById(application.getId())).thenReturn(Optional.of(application));
 
     // when
-    List<Individual> actualIndividuals = serviceUnderTest.getIndividuals(
+    List<IndividualResponse> actualIndividuals = serviceUnderTest.getIndividuals(
             1, 10, application.getId(), IndividualType.CLIENT, IncludedAdditionalData.CLIENT_DETAILS)
             .page().stream().toList();
 
@@ -107,7 +107,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     when(applicationRepository.findById(application.getId())).thenReturn(Optional.of(application));
 
     // when
-    List<Individual> actualIndividuals = serviceUnderTest.getIndividuals(
+    List<IndividualResponse> actualIndividuals = serviceUnderTest.getIndividuals(
             1, 10, application.getId(), IndividualType.CLIENT, IncludedAdditionalData.CLIENT_DETAILS)
             .page().stream().toList();
 
@@ -134,7 +134,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     when(applicationRepository.findById(application.getId())).thenReturn(Optional.of(application));
 
     // when
-    List<Individual> actualIndividuals = serviceUnderTest.getIndividuals(
+    List<IndividualResponse> actualIndividuals = serviceUnderTest.getIndividuals(
             1, 10, application.getId(), IndividualType.CLIENT, IncludedAdditionalData.CLIENT_DETAILS)
             .page().stream().toList();
 
