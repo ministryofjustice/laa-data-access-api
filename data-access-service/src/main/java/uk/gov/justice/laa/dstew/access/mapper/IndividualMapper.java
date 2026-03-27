@@ -40,11 +40,15 @@ public interface IndividualMapper {
   }
 
   /**
-   * Converts a {@link IndividualEntity} to an API-facing {@link IndividualResponse} model.
+   * Converts a {@link IndividualEntity} to an API-facing {@link IndividualResponse} model with extended
+   * client details from the application content.
    * Safely handles nulls: if the {@code entity} itself is null,
    * the method returns {@code null}.
    *
    * @param entity the {@link IndividualEntity} to map (might be null)
+   * @param individualType the type of individual
+   * @param include the additional data to include
+   * @param applicationContent the application content containing client details
    * @return a new {@link IndividualResponse} object populated with first name, last name, date of birth,
    *         and individual content, or {@code null} if the input or individual is null
    */
@@ -61,19 +65,21 @@ public interface IndividualMapper {
 
     dto.setClientId(null);
     dto.setLastNameAtBirth(null);
-    dto.setPreviousApplicationReference(null);
+    dto.setPreviousApplicationId(null);
     dto.setRelationshipToChildren(null);
     dto.setCorrespondenceAddressType(null);
+    dto.setAppliedPreviously(null);
     dto.setCorrespondenceAddress(null);
 
     // only populate fields if rules are set
     if (individualType == IndividualType.CLIENT && include == IncludedAdditionalData.CLIENT_DETAILS) {
       dto.setClientId(entity.getId());
       dto.setLastNameAtBirth(applicationContent.getLastNameAtBirth());
-      dto.setPreviousApplicationReference(applicationContent.getPreviousApplicationReference());
+      dto.setPreviousApplicationId(applicationContent.getPreviousApplicationId());
       dto.setRelationshipToChildren(applicationContent.getRelationshipToChildren());
       dto.setCorrespondenceAddressType(applicationContent.getCorrespondenceAddressType());
       if (applicationContent.getApplicant() != null) {
+        dto.setAppliedPreviously(applicationContent.getApplicant().getAppliedPreviously());
         dto.setCorrespondenceAddress(applicationContent.getApplicant().getAddresses());
       }
     }

@@ -81,12 +81,13 @@ public class GetIndividualsTest extends BaseIntegrationTest {
 
     assertOK(result);
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
-    IndividualResponse actualIndividualResponse = response.getIndividuals().getFirst();
-    assertThat(actualIndividualResponse.getRelationshipToChildren()).isEqualTo("relationshipToChildren");
-    assertThat(actualIndividualResponse.getLastNameAtBirth()).isEqualTo("Alberts");
-    assertThat(actualIndividualResponse.getPreviousApplicationReference()).isEqualTo("ZZ999Z");
-    assertThat(actualIndividualResponse.getCorrespondenceAddressType()).isEqualTo("Home");
-    assertThat(actualIndividualResponse.getCorrespondenceAddress()).hasSize(2);
+    IndividualResponse actualIndividual = response.getIndividuals().getFirst();
+    assertThat(actualIndividual.getRelationshipToChildren()).isEqualTo("relationshipToChildren");
+    assertThat(actualIndividual.getLastNameAtBirth()).isEqualTo("Alberts");
+    assertThat(actualIndividual.getPreviousApplicationId()).isEqualTo("ZZ999Z");
+    assertThat(actualIndividual.getCorrespondenceAddressType()).isEqualTo("Home");
+    assertThat(actualIndividual.getAppliedPreviously()).isTrue();
+    assertThat(actualIndividual.getCorrespondenceAddress()).hasSize(2);
   }
 
   @ParameterizedTest

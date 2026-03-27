@@ -67,16 +67,16 @@ public class IndividualsService {
     Specification<IndividualEntity> specification = buildSpecification(applicationId, individualType);
     Pageable pageable = createPageable(page, pageSize);
     Page<IndividualEntity> resultPage = individualRepository.findAll(specification, pageable);
-    if (include != null) {
+    if (individualType == IndividualType.CLIENT && include != null) {
       ApplicationEntity application = applicationRepository.findById(applicationId).orElseThrow();
 
-      return wrapResult(page, pageSize, resultPage.map(individual -> {
-        return individualMapper.toExtendedIndividual(
+      return wrapResult(page, pageSize, resultPage.map(individual ->
+        individualMapper.toExtendedIndividual(
           individual,
           individualType,
           include,
-          objectMapper.convertValue(application.getApplicationContent(), ApplicationContent.class));
-      }));
+          objectMapper.convertValue(application.getApplicationContent(), ApplicationContent.class))
+      ));
     }
     return wrapResult(page, pageSize, resultPage.map(individualMapper::toIndividual));
   }

@@ -523,12 +523,14 @@ components:
           format: uuid
         lastNameAtBirth:
           type: string
-        previousApplicationReference:
+        previousApplicationId:
           type: string
         relationshipToChildren:
           type: string
         correspondenceAddressType:
           type: string
+        appliedPreviously:
+          type: boolean
         firstName:
           type: string
         lastName:
