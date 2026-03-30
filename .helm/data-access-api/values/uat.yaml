@@ -53,3 +53,8 @@ sentry:
   enabled: true
   environment: uat
   tracesSampleRate: 1
+
+grafana:
+  enabled: true
+
+slowQueryThresholdMs: 300

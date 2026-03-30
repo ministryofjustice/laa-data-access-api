@@ -64,3 +64,5 @@ spec:
             {{ include "featureConfig" . | nindent 12 }}
             {{ include "oauth2Config" . | nindent 12 }}
             {{ include "sentryConfig" . | nindent 12 }}
+            - name: SLOW_QUERY_THRESHOLD_MS
+              value: "{{ .Values.slowQueryThresholdMs | default 100 }}"

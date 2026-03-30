@@ -18,7 +18,7 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate.ddl-auto: none  # Use Flyway for DB schema.
-    show-sql: true
+    show-sql: false
 
   sql.init.mode: never # Use Flyway for DB schema.
 
@@ -54,8 +54,12 @@ logging:
               access:
                 config: INFO
 
+datasource-proxy:
+  slow-query-threshold-ms: 100
+  enabled: true
+
 management:
-  endpoints.web.exposure.include: health,info
+  endpoints.web.exposure.include: health,info,prometheus,metrics
   endpoint.health.show-details: always
   info.env.enabled: true
 

@@ -24,12 +24,6 @@ spring:
           jwk-set-uri: ${ENTRA_JWK_SET_URI}
           audience: ${ENTRA_AUD}
 
-info:
-  app:
-    name: LAA Data Stewardship Access - Access Application Data
-    description: LAA Data Stewardship Access - Access Application Data that provides APIs to Legal Aid Application related data.
-    version: 1.0.0
-
 logging:
   level:
     com.azure.spring: INFO
@@ -43,6 +37,9 @@ logging:
                   SecurityConfig: WARN
 
 management:
-  endpoints.web.exposure.include: health,info
+  endpoints.web.exposure.include: health,info,prometheus,metrics
   endpoint.health.show-details: always
   info.env.enabled: true
+
+datasource-proxy:
+  slow-query-threshold-ms: 1000
