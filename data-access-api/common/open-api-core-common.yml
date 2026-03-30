@@ -1,0 +1,82 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: API Core Common Schemas
+
+components:
+  parameters:
+    XServiceName:
+      in: header
+      name: X-Service-Name
+      required: true
+      schema:
+        $ref: "#/components/schemas/ServiceName"
+  schemas:
+    ServiceName:
+      type: string
+      enum:
+        - CIVIL_APPLY
+        - CIVIL_DECIDE
+      description: Service name
+
+    ApplicationStatus:
+      type: string
+      enum:
+        - APPLICATION_IN_PROGRESS
+        - APPLICATION_SUBMITTED
+      description: Application statuses
+
+    DomainEventType:
+      type: string
+      enum:
+        - APPLICATION_CREATED
+        - APPLICATION_UPDATED
+        - ASSIGN_APPLICATION_TO_CASEWORKER
+        - UNASSIGN_APPLICATION_TO_CASEWORKER
+        - APPLICATION_MAKE_DECISION_REFUSED
+
+    CategoryOfLaw:
+      type: string
+      enum:
+        - FAMILY
+
+    MatterType:
+      type: string
+      enum:
+        - SPECIAL_CHILDREN_ACT
+
+    ApplicationType:
+      type: string
+      enum:
+        - INITIAL
+      default: INITIAL
+
+    IndividualType:
+      type: string
+      enum:
+        - CLIENT
+
+    ApplicationSortBy:
+      type: string
+      enum:
+        - LAST_UPDATED_DATE
+        - SUBMITTED_DATE
+
+    ApplicationOrderBy:
+      type: string
+      enum:
+        - ASC
+        - DESC
+
+    DecisionStatus:
+      type: string
+      enum:
+        - GRANTED
+        - PARTIALLY_GRANTED
+        - REFUSED
+
+    MeritsDecisionStatus:
+      type: string
+      enum:
+        - GRANTED
+        - REFUSED
