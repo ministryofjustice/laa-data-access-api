@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.NoteEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -38,7 +39,7 @@ public class CreateNoteTest extends BaseServiceTest {
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        serviceUnderTest.createApplicationNote(applicationId, applicationNote);
+        serviceUnderTest.createApplicationNote(applicationId, CreateNoteRequest.builder().notes(applicationNote).build());
 
         verify(noteRepository, times(1)).save(noteCaptor.capture());
         NoteEntity actualNoteEntity = noteCaptor.getValue();
@@ -51,11 +52,12 @@ public class CreateNoteTest extends BaseServiceTest {
         UUID applicationId = UUID.randomUUID();
         String applicationNote = "this is a test of notes";
 
+        CreateNoteRequest request = CreateNoteRequest.builder().notes(applicationNote).build();
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
         assertThatExceptionOfType(ResourceNotFoundException.class)
-                .isThrownBy(() -> serviceUnderTest.createApplicationNote(applicationId, applicationNote))
+                .isThrownBy(() -> serviceUnderTest.createApplicationNote(applicationId, request))
                 .withMessageContaining("No application found with id: " + applicationId);
 
         verify(noteRepository, never()).save(any(NoteEntity.class));

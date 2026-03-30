@@ -19,6 +19,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.CreateApplicationNoteDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
@@ -238,6 +240,32 @@ public class DomainEventService {
         caseworkerId,
         domainEventType,
         domainEventDetails
+    );
+  }
+
+  /**
+   * Posts an APPLICATION_CREATE_NOTE domain event.
+   */
+  @AllowApiCaseworker
+  public void saveCreateApplicationNoteDomainEvent(
+          ApplicationEntity applicationEntity,
+          UUID caseworkerId,
+          CreateNoteRequest request) {
+
+    DomainEventType domainEventType = DomainEventType.APPLICATION_CREATE_NOTE;
+
+    CreateApplicationNoteDomainEventDetails domainEventDetails =
+            CreateApplicationNoteDomainEventDetails.builder()
+                    .applicationId(applicationEntity.getId())
+                    .caseworkerId(caseworkerId)
+                    .request(getEventDetailsAsJson(request, domainEventType))
+                    .build();
+
+    saveDomainEvent(
+            applicationEntity.getId(),
+            caseworkerId,
+            domainEventType,
+            domainEventDetails
     );
   }
 }
