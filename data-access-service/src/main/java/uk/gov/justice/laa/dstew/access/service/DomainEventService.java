@@ -258,6 +258,7 @@ public class DomainEventService {
                     .applicationId(applicationEntity.getId())
                     .caseworkerId(applicationEntity.getCaseworker().getId())
                     .request(getEventDetailsAsJson(request, domainEventType))
+                    .createdDate(Instant.now())
                     .build();
 
     saveDomainEvent(
