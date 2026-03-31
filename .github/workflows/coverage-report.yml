@@ -33,15 +33,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish PR Coverage Comment
-        if: github.event_name == 'pull_request'
-        uses: madrapps/jacoco-report@v1.6.1
-        with:
-          paths: build/reports/jacoco/aggregated.xml
-          token: ${{ secrets.GITHUB_TOKEN }}
-          title: 'JaCoCo Code Coverage Report'
-          update-comment: true
-          pass-emoji: ':white_check_mark:'
-          fail-emoji: ':x:'
-          min-coverage-overall: 80
-          min-coverage-changed-files: 80
