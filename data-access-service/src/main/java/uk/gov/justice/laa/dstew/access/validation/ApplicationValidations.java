@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetails;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 /**
@@ -71,7 +71,7 @@ public class ApplicationValidations {
     }
 
     dto.getProceedings().forEach(proceeding -> {
-      MeritsDecisionDetails mdd = proceeding.getMeritsDecision();
+      MeritsDecisionDetailsRequest mdd = proceeding.getMeritsDecision();
       if (mdd.getJustification() == null || mdd.getJustification().isEmpty()) {
         throw new ValidationException(
                 List.of("The Make Decision request must contain a refusal justification for proceeding with id: "

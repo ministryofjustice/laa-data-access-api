@@ -15,18 +15,14 @@ import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
-import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
-import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.Opponent;
-import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
-import uk.gov.justice.laa.dstew.access.model.Opposable;
-import uk.gov.justice.laa.dstew.access.model.Provider;
+import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
+import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
@@ -98,14 +94,14 @@ public class GetApplicationTest extends BaseIntegrationTest {
 
         // when
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        Application actualApplication = deserialise(result, Application.class);
+        ApplicationResponse actualApplication = deserialise(result, ApplicationResponse.class);
 
         // then
         assertContentHeaders(result);
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertOK(result);
-        Application expectedApplication = createApplication(savedApplication, proceeding, decision);
+        ApplicationResponse expectedApplication = createApplication(savedApplication, proceeding, decision);
         assertThat(actualApplication).isEqualTo(expectedApplication);
     }
 
@@ -170,7 +166,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
         );
 
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        Application response = deserialise(result, Application.class);
+        ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
         assertContentHeaders(result);
         assertSecurityHeaders(result);
@@ -206,7 +202,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
         );
 
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        Application response = deserialise(result, Application.class);
+        ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
         assertOK(result);
         Assertions.assertThat(response.getOpponents()).isNotNull();
@@ -228,7 +224,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
         );
 
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        Application response = deserialise(result, Application.class);
+        ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
         assertOK(result);
         Assertions.assertThat(response.getOpponents()).isEmpty();
@@ -267,7 +263,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
         );
 
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        Application response = deserialise(result, Application.class);
+        ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
         assertOK(result);
 
@@ -289,7 +285,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
         ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        Application response = deserialise(result, Application.class);
+        ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
         assertOK(result);
         Assertions.assertThat(response.getProvider()).isNotNull();
@@ -307,7 +303,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
         );
 
         MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        Application response = deserialise(result, Application.class);
+        ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
         assertOK(result);
         Assertions.assertThat(response.getProvider()).isNotNull();
@@ -315,10 +311,10 @@ public class GetApplicationTest extends BaseIntegrationTest {
         Assertions.assertThat(response.getProvider().getContactEmail()).isNull();
     }
 
-    private Application createApplication(ApplicationEntity applicationEntity,
+    private ApplicationResponse createApplication(ApplicationEntity applicationEntity,
                                           ProceedingEntity proceeding,
                                           DecisionEntity decision) {
-        Application application = new Application();
+        ApplicationResponse application = new ApplicationResponse();
         application.setApplicationId(applicationEntity.getId());
         application.setStatus(applicationEntity.getStatus());
         application.setLaaReference(applicationEntity.getLaaReference());
@@ -344,10 +340,10 @@ public class GetApplicationTest extends BaseIntegrationTest {
         String contactEmail = extractContactEmail(applicationEntity.getApplicationContent());
 
         if (officeCode != null || contactEmail != null) {
-            Provider provider = new Provider();
-            provider.setOfficeCode(officeCode);
-            provider.setContactEmail(contactEmail);
-            application.setProvider(provider);
+            ProviderResponse providerResponse = new ProviderResponse();
+            providerResponse.setOfficeCode(officeCode);
+            providerResponse.setContactEmail(contactEmail);
+            application.setProvider(providerResponse);
         }
 
         Map<String, Object> applicationMerits = applicationEntity.getApplicationContent() != null
@@ -355,7 +351,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
             : null;
 
         application.setProceedings(List.of(
-                ApplicationProceeding.builder()
+                ApplicationProceedingResponse.builder()
                 .proceedingId(proceeding.getId())
                 .proceedingDescription(proceeding.getDescription())
                 .proceedingType(proceeding.getProceedingContent().get("meaning").toString())
@@ -381,13 +377,13 @@ public class GetApplicationTest extends BaseIntegrationTest {
         return application;
     }
 
-    private List<Opponent> extractOpponents(Map<String, Object> applicationContent) {
+    private List<OpponentResponse> extractOpponents(Map<String, Object> applicationContent) {
         Map<String, Object> merits = (Map<String, Object>) applicationContent.get("applicationMerits");
         List<Map<String, Object>> opponents = (List<Map<String, Object>>) merits.get("opponents");
 
         return opponents.stream().map(opponent -> {
             Map<String, Object> opposable = (Map<String, Object>) opponent.get("opposable");
-            return Opponent.builder()
+            return OpponentResponse.builder()
                     .opposableType(opposable.get("opposableType").toString())
                     .firstName(opposable.get("firstName") != null ? opposable.get("firstName").toString() : null)
                     .lastName(opposable.get("lastName") != null ? opposable.get("lastName").toString() : null)

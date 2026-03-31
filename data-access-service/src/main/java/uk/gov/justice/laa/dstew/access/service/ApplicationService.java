@@ -25,18 +25,18 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.mapper.ProceedingMapper;
-import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
-import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
@@ -122,9 +122,9 @@ public class ApplicationService {
    * @return application DTO
    */
   @AllowApiCaseworker
-  public Application getApplication(final UUID id) {
+  public ApplicationResponse getApplication(final UUID id) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
-    Application application = applicationMapper.toApplication(entity);
+    ApplicationResponse application = applicationMapper.toApplication(entity);
 
     Set<ProceedingEntity> proceedings = proceedingRepository.findAllByApplicationId(id);
 
@@ -132,7 +132,7 @@ public class ApplicationService {
 
       proceedings.forEach(
               proceeding -> {
-                ApplicationProceeding applicationProceeding =
+                ApplicationProceedingResponse applicationProceedingResponse =
                         proceedingMapper.toApplicationProceeding(proceeding);
 
 
@@ -153,9 +153,9 @@ public class ApplicationService {
                                   .findFirst();
 
                   meritsDecision.ifPresent(meritsDecisionEntity ->
-                          applicationProceeding.setMeritsDecision(meritsDecisionEntity.getDecision()));
+                          applicationProceedingResponse.setMeritsDecision(meritsDecisionEntity.getDecision()));
                 }
-                application.getProceedings().add(applicationProceeding);
+                application.getProceedings().add(applicationProceedingResponse);
               }
       );
     }
@@ -364,7 +364,7 @@ public class ApplicationService {
   @AllowApiCaseworker
   public void assignCaseworker(@NonNull final UUID caseworkerId,
                                final List<UUID> applicationIds,
-                               final EventHistory eventHistory) {
+                               final EventHistoryRequest eventHistoryRequest) {
     final CaseworkerEntity caseworker = checkIfCaseworkerExists(caseworkerId);
 
     final List<ApplicationEntity> applications = checkIfAllApplicationsExist(applicationIds);
@@ -380,7 +380,7 @@ public class ApplicationService {
       domainEventService.saveAssignApplicationDomainEvent(
           app.getId(),
           caseworker.getId(),
-          eventHistory.getEventDescription());
+          eventHistoryRequest.getEventDescription());
     });
 
   }
@@ -392,7 +392,7 @@ public class ApplicationService {
    * @throws ResourceNotFoundException if the application does not exist
    */
   @AllowApiCaseworker
-  public void unassignCaseworker(final UUID applicationId, EventHistory history) {
+  public void unassignCaseworker(final UUID applicationId, EventHistoryRequest history) {
     final ApplicationEntity entity = checkIfApplicationExists(applicationId);
 
     if (entity.getCaseworker() == null) {
@@ -493,7 +493,7 @@ public class ApplicationService {
     }
   }
 
-  private void saveMeritsDecisionEntity(MakeDecisionProceeding proceeding, DecisionEntity decision,
+  private void saveMeritsDecisionEntity(MakeDecisionProceedingRequest proceeding, DecisionEntity decision,
                                         ProceedingEntity proceedingEntity,
                                         Set<MeritsDecisionEntity> merits) {
     MeritsDecisionEntity meritDecisionEntity = decision.getMeritsDecisions().stream()
@@ -516,7 +516,7 @@ public class ApplicationService {
   private @NonNull Map<UUID, ProceedingEntity> getUuidProceedingEntityMap(UUID applicationId,
                                                                           MakeDecisionRequest request) {
     List<UUID> proceedingIds = request.getProceedings().stream()
-        .map(MakeDecisionProceeding::getProceedingId)
+        .map(MakeDecisionProceedingRequest::getProceedingId)
         .toList();
     List<ProceedingEntity> proceedingEntities = checkIfAllProceedingsExistForApplication(applicationId, proceedingIds);
     return proceedingEntities.stream()

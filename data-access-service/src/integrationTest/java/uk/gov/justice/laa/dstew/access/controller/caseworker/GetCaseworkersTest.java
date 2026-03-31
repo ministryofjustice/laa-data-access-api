@@ -14,7 +14,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
-import uk.gov.justice.laa.dstew.access.model.Caseworker;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerResponse;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 
@@ -50,7 +50,7 @@ public class GetCaseworkersTest extends BaseIntegrationTest {
 
         // when
         MvcResult result = getUri(TestConstants.URIs.GET_CASEWORKERS);
-        List<Caseworker> actualCaseworkers = objectMapper.readValue(
+        List<CaseworkerResponse> actualCaseworkerResponses = objectMapper.readValue(
                 result.getResponse().getContentAsString(),
             new tools.jackson.core.type.TypeReference<>() {
             }
@@ -59,7 +59,7 @@ public class GetCaseworkersTest extends BaseIntegrationTest {
         // then
         assertSecurityHeaders(result);
         assertOK(result);
-        assertCaseworkerListEquals(actualCaseworkers, Caseworkers);
+        assertCaseworkerListEquals(actualCaseworkerResponses, Caseworkers);
     }
 
     @Test
@@ -85,15 +85,15 @@ public class GetCaseworkersTest extends BaseIntegrationTest {
         assertUnauthorised(result);
     }
 
-    private void assertCaseworkerListEquals(List<Caseworker> caseworkers, List<CaseworkerEntity> entities) {
-        assertThat(caseworkers).hasSameSizeAs(entities);
-        for (int i = 0; i < caseworkers.size(); i++) {
-            assertCaseworkerEquals(caseworkers.get(i), entities.get(i));
+    private void assertCaseworkerListEquals(List<CaseworkerResponse> caseworkerResponses, List<CaseworkerEntity> entities) {
+        assertThat(caseworkerResponses).hasSameSizeAs(entities);
+        for (int i = 0; i < caseworkerResponses.size(); i++) {
+            assertCaseworkerEquals(caseworkerResponses.get(i), entities.get(i));
         }
     }
 
-    private void assertCaseworkerEquals(Caseworker caseworker, CaseworkerEntity entity) {
-        assertThat(caseworker.getId()).isEqualTo(entity.getId());
-        assertThat(caseworker.getUsername()).isEqualTo(entity.getUsername());
+    private void assertCaseworkerEquals(CaseworkerResponse caseworkerResponse, CaseworkerEntity entity) {
+        assertThat(caseworkerResponse.getId()).isEqualTo(entity.getId());
+        assertThat(caseworkerResponse.getUsername()).isEqualTo(entity.getUsername());
     }
 }

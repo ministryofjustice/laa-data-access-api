@@ -10,7 +10,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -53,7 +53,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
         });
 
         CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class, builder -> {
-            builder.eventHistory(EventHistory.builder()
+            builder.eventHistory(EventHistoryRequest.builder()
                     .eventDescription("Unassigned Caseworker")
                     .build());
         });
@@ -82,7 +82,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
                 .build();
 
         CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class, builder -> {
-            builder.eventHistory(EventHistory.builder()
+            builder.eventHistory(EventHistoryRequest.builder()
                     .eventDescription("Unassigned Caseworker")
                     .build());
         });
@@ -123,7 +123,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
                 .build();
 
         CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class, builder -> {
-            builder.eventHistory(EventHistory.builder()
+            builder.eventHistory(EventHistoryRequest.builder()
                     .eventDescription("")
                     .build());
         });
@@ -160,7 +160,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
         });
 
         CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class, builder -> {
-            builder.eventHistory(EventHistory.builder()
+            builder.eventHistory(EventHistoryRequest.builder()
                     .eventDescription(null)
                     .build());
         });
@@ -205,7 +205,7 @@ public class UnassignCaseworkerTest extends BaseIntegrationTest {
         });
 
         CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class, builder -> {
-            builder.eventHistory(EventHistory.builder()
+            builder.eventHistory(EventHistoryRequest.builder()
                     .eventDescription("Unassigned Caseworker")
                     .build());
         });
