@@ -272,7 +272,7 @@ public class ApplicationService {
 
     ApplicationEntity application = checkIfApplicationExists(id);
     noteRepository.save(NoteEntity.builder().applicationId(id).notes(request.getNotes()).build());
-    domainEventService.saveCreateApplicationNoteDomainEvent(application, null, request);
+    domainEventService.saveCreateApplicationNoteDomainEvent(application, request);
   }
 
   /**

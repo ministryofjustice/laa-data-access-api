@@ -249,7 +249,6 @@ public class DomainEventService {
   @AllowApiCaseworker
   public void saveCreateApplicationNoteDomainEvent(
           ApplicationEntity applicationEntity,
-          UUID caseworkerId,
           CreateNoteRequest request) {
 
     DomainEventType domainEventType = DomainEventType.APPLICATION_CREATE_NOTE;
@@ -257,13 +256,13 @@ public class DomainEventService {
     CreateApplicationNoteDomainEventDetails domainEventDetails =
             CreateApplicationNoteDomainEventDetails.builder()
                     .applicationId(applicationEntity.getId())
-                    .caseworkerId(caseworkerId)
+                    .caseworkerId(applicationEntity.getCaseworker().getId())
                     .request(getEventDetailsAsJson(request, domainEventType))
                     .build();
 
     saveDomainEvent(
             applicationEntity.getId(),
-            caseworkerId,
+            applicationEntity.getCaseworker().getId(),
             domainEventType,
             domainEventDetails
     );

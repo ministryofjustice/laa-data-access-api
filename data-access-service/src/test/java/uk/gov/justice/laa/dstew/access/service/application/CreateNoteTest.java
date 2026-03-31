@@ -5,6 +5,8 @@ import org.junit.jupiter.api.TestInstance;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
+import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.NoteEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
@@ -13,10 +15,10 @@ import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
-
 import java.util.Optional;
 import java.util.UUID;
 
+import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.DomainEvent.verifyThatDomainEventSaved;
 import static org.assertj.core.api.AssertionsForClassTypes.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
@@ -33,7 +35,9 @@ public class CreateNoteTest extends BaseServiceTest {
         ArgumentCaptor<NoteEntity> noteCaptor = ArgumentCaptor.forClass(NoteEntity.class);
 
         final ApplicationEntity entity = DataGenerator.createDefault(ApplicationEntityGenerator.class,
-                builder -> builder.id(applicationId));
+                builder -> builder
+                        .id(applicationId)
+                        .caseworker(CaseworkerEntity.builder().id(UUID.randomUUID()).build()));
 
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(entity));
 
@@ -42,6 +46,7 @@ public class CreateNoteTest extends BaseServiceTest {
         serviceUnderTest.createApplicationNote(applicationId, CreateNoteRequest.builder().notes(applicationNote).build());
 
         verify(noteRepository, times(1)).save(noteCaptor.capture());
+        verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
         NoteEntity actualNoteEntity = noteCaptor.getValue();
         assertEquals(applicationId, actualNoteEntity.getApplicationId());
         assertEquals(applicationNote, actualNoteEntity.getNotes());
@@ -61,6 +66,7 @@ public class CreateNoteTest extends BaseServiceTest {
                 .withMessageContaining("No application found with id: " + applicationId);
 
         verify(noteRepository, never()).save(any(NoteEntity.class));
+        verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
     }
 
 }
