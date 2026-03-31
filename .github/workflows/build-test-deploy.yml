@@ -92,7 +92,7 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Run Snyk to check app for vulnerabilities
-        uses: snyk/actions/gradle@master
+        uses: snyk/actions/gradle@9adf32b1121593767fc3c057af55b55db032dc04 #master
         with:
           command: code test
           args: --severity-threshold=high
@@ -125,7 +125,7 @@ jobs:
           docker save data-access-service-scan -o image.tar
 
       - name: Run Snyk to scan Docker image from tarball
-        uses: snyk/actions/docker@master
+        uses: snyk/actions/docker@9adf32b1121593767fc3c057af55b55db032dc04 #master
         with:
           image: image.tar
           args: --docker --severity-threshold=high
