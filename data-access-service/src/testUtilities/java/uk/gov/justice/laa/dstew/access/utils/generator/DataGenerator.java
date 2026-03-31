@@ -57,11 +57,16 @@ public class DataGenerator {
 
     public static <TEntity, TBuilder, TGenerator extends BaseGenerator<TEntity, TBuilder>>
     List<TEntity> createMultipleRandom(Class<TGenerator> generatorType, int count) {
-        List<TEntity> entities = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            entities.add(createRandom(generatorType));
+        try {
+            TGenerator generator = generatorType.getDeclaredConstructor().newInstance();
+            List<TEntity> entities = new ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                entities.add(generator.createRandom());
+            }
+            return  entities;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create multiple random entities", e);
         }
-        return entities;
     }
 
     public static <TEntity, TBuilder, TGenerator extends BaseGenerator<TEntity, TBuilder>>

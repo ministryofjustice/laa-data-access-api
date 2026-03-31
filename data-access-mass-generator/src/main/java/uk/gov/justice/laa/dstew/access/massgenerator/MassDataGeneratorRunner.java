@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.massgenerator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.UUID;
 import net.datafaker.Faker;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -57,6 +58,7 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
 
     private final FullMeritsDecisionGenerator meritsDecisionGenerator = new FullMeritsDecisionGenerator();
     private final FullCertificateGenerator certificateGenerator = new FullCertificateGenerator();
+    private final FullJsonGenerator jsonGenerator = new FullJsonGenerator();
 
     @Override
     public void run(String... args) {
@@ -83,10 +85,13 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
 
         int decidedCount = 0;
 
+        int linkedCount = 0;
+        List<UUID> persistedAppIds = new ArrayList<>();
+
         for (int i = 0; i < count; i++) {
 
             // 1. Generate full rich application content
-            ApplicationContent content = new FullJsonGenerator().createDefault();
+            ApplicationContent content = jsonGenerator.createDefault();
 
             // 2. Pick a random caseworker and individual from the pre-generated pools
             CaseworkerEntity cw = caseworkers.get(faker.number().numberBetween(0, caseworkers.size()));
@@ -111,7 +116,7 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
                             .laaReference(content.getLaaReference())
                             .submittedAt(Instant.parse(content.getSubmittedAt()))
                             .officeCode(content.getOffice() != null ? content.getOffice().getCode() : null)
-                            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+                            .status(faker.options().option(ApplicationStatus.APPLICATION_IN_PROGRESS, ApplicationStatus.APPLICATION_SUBMITTED))
                             .categoryOfLaw(col)
                             .matterType(mt)
                             .usedDelegatedFunctions(udf)
@@ -120,6 +125,7 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
                             // individuals intentionally omitted — set via native query below to
                             // avoid CascadeType.PERSIST attempting to re-persist pool entities
             );
+            persistedAppIds.add(app.getId());
 
             // 4a. Link individual via native INSERT to bypass CascadeType.PERSIST
             linkedIndividualWriter.link(app.getId(), indiv.getId());
@@ -199,6 +205,18 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
         // flush any remaining partial batch
         persistedDataGenerator.flushAndClear();
 
+        int i = 0;
+        while (i + 1 < persistedAppIds.size()) {
+            UUID leadId = persistedAppIds.get(i);
+            i++;
+            int associateCount = faker.number().numberBetween(1,4); // 1 or 3 associates
+            for (int j = 0; j < associateCount && i < persistedAppIds.size(); j++) {
+                persistedDataGenerator.linkApplications(leadId, persistedAppIds.get(i));
+                i++;
+                linkedCount++;
+            }
+        }
+
         long elapsedMs = System.currentTimeMillis() - startTime;
         long minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedMs);
         long seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedMs) % 60;
@@ -209,6 +227,7 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
         System.out.println("========================================");
         System.out.printf("  Records generated  : %d%n", count);
         System.out.printf("  Decided applications: %d (%.0f%%)%n", decidedCount, 100.0 * decidedCount / count);
+        System.out.println("  Linked applications : %d pairs%n" + linkedCount);
         System.out.printf("  Total time         : %d min %02d sec%n", minutes, seconds);
         System.out.printf("  Throughput         : %.1f records/sec%n", recordsPerSecond);
         System.out.println("========================================");
