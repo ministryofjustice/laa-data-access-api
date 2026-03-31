@@ -41,5 +41,7 @@ management:
   endpoint.health.show-details: always
   info.env.enabled: true
 
-datasource-proxy:
-  slow-query-threshold-ms: 1000
+jdbc:
+  datasource-proxy:
+    slow-query:
+      threshold: ${SLOW_QUERY_THRESHOLD_SECONDS:1}

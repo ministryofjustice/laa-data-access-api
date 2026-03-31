@@ -9,6 +9,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Configuration;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.metrics.EntityOperationMetricsListener;
 
 /**
@@ -20,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.metrics.EntityOperationMetricsListener;
  * <p>Uses ObjectProvider for safe resolution - gracefully skips if EntityManagerFactory
  * is not available (e.g., in tests without JPA).</p>
  */
+@ExcludeFromGeneratedCodeCoverage
 @Configuration
 @Slf4j
 public class HibernateMetricsConfig implements ApplicationListener<ApplicationReadyEvent> {

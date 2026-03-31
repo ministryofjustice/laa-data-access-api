@@ -50,4 +50,4 @@ sentry:
 grafana:
   enabled: true
 
-slowQueryThresholdMs: 1000
+slowQueryThresholdSeconds: 1

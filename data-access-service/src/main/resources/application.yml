@@ -54,14 +54,21 @@ logging:
               access:
                 config: INFO
 
-datasource-proxy:
-  slow-query-threshold-ms: 100
-  enabled: true
+jdbc:
+  datasource-proxy:
+    slow-query:
+      enable-logging: true
+      log-level: WARN
+      threshold: 0  # seconds; overridden per environment
 
 management:
   endpoints.web.exposure.include: health,info,prometheus,metrics
   endpoint.health.show-details: always
   info.env.enabled: true
+  metrics:
+    distribution:
+      percentile-histogram:
+        jdbc.query: true
 
 sentry:
   enabled: ${SENTRY_ENABLED:false}

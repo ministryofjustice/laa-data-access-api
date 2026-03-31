@@ -100,7 +100,7 @@
             "uid": "prometheus"
           },
           "editorMode": "builder",
-          "expr": "sum(kube_pod_container_info{namespace='{{ .Release.Namespace }}', container='$container'})",
+          "expr": "sum(kube_pod_container_info{namespace='{{ .Release.Namespace }}', container='$container', pod=~'{{ .Release.Name }}.*'})",
           "legendFormat": "Total",
           "range": true,
           "refId": "A"
@@ -111,7 +111,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum({namespace='{{ .Release.Namespace }}', container='$container', phase='Running',pod=~'.*deployment.*'} + 0)",
+          "expr": "sum({namespace='{{ .Release.Namespace }}', container='$container', phase='Running',pod=~'{{ .Release.Name }}.*deployment.*'} + 0)",
           "hide": false,
           "legendFormat": "Running",
           "range": true,
@@ -123,7 +123,7 @@
             "uid": "prometheus"
           },
           "editorMode": "builder",
-          "expr": "sum({namespace='{{ .Release.Namespace }}', container='$container',phase='Pending',pod=~'.*deployment.*'} + 0)",
+          "expr": "sum({namespace='{{ .Release.Namespace }}', container='$container',phase='Pending',pod=~'{{ .Release.Name }}.*deployment.*'} + 0)",
           "hide": false,
           "legendFormat": "Pending",
           "range": true,
@@ -135,7 +135,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum({namespace='{{ .Release.Namespace }}', container='$container',phase='Failed',pod=~'.*deployment.*'} + 0)",
+          "expr": "sum({namespace='{{ .Release.Namespace }}', container='$container',phase='Failed',pod=~'{{ .Release.Name }}.*deployment.*'} + 0)",
           "hide": false,
           "legendFormat": "Failed",
           "range": true,
@@ -232,7 +232,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by(instance) (increase(http_server_requests_seconds_count{namespace='{{ .Release.Namespace }}',container='$container'}[$__rate_interval])) ",
+          "expr": "sum by(instance) (increase(http_server_requests_seconds_count{namespace='{{ .Release.Namespace }}',container='$container',release='{{ .Release.Name }}'}[$__rate_interval])) ",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -328,7 +328,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by(application) (increase(http_server_requests_seconds_count{namespace='{{ .Release.Namespace }}', container='$container', status='401'}[$__rate_interval]))",
+          "expr": "sum by(application) (increase(http_server_requests_seconds_count{namespace='{{ .Release.Namespace }}', container='$container', release='{{ .Release.Name }}', status='401'}[$__rate_interval]))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -424,7 +424,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by(uri, method) (increase(http_server_requests_seconds_count{namespace='{{ .Release.Namespace }}',container='$container', uri!~'.*actuator.*|.*swagger.*|.*v3.*|.*providers.*'}[$__rate_interval])) ",
+          "expr": "sum by(uri, method) (increase(http_server_requests_seconds_count{namespace='{{ .Release.Namespace }}',container='$container', release='{{ .Release.Name }}', uri!~'.*actuator.*|.*swagger.*|.*v3.*|.*providers.*'}[$__rate_interval])) ",
           "legendFormat": "{{`{{app}}`}}",
           "range": true,
           "refId": "A"
@@ -521,7 +521,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by(uri, method) (rate(http_server_requests_seconds_sum{namespace='{{ .Release.Namespace }}',container='$container', uri!~'.*actuator.*|.*swagger.*|.*v3.*|.*providers.*'}[5m])) / sum by(uri, method) (rate(http_server_requests_seconds_count{namespace='{{ .Release.Namespace }}',container='$container', uri!~'.*actuator.*|.*swagger.*|.*v3.*|.*providers.*'}[5m]))",
+          "expr": "sum by(uri, method) (rate(http_server_requests_seconds_sum{namespace='{{ .Release.Namespace }}',container='$container', release='{{ .Release.Name }}', uri!~'.*actuator.*|.*swagger.*|.*v3.*|.*providers.*'}[5m])) / sum by(uri, method) (rate(http_server_requests_seconds_count{namespace='{{ .Release.Namespace }}',container='$container', release='{{ .Release.Name }}', uri!~'.*actuator.*|.*swagger.*|.*v3.*|.*providers.*'}[5m]))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -618,7 +618,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "max by(uri, method) (http_server_requests_seconds_max{namespace='{{ .Release.Namespace }}',container='$container', uri!~'.*actuator.*|.*swagger.*|.*v3.*|.*providers.*'}) ",
+          "expr": "max by(uri, method) (http_server_requests_seconds_max{namespace='{{ .Release.Namespace }}',container='$container', release='{{ .Release.Name }}', uri!~'.*actuator.*|.*swagger.*|.*v3.*|.*providers.*'}) ",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -693,7 +693,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_max_bytes{namespace='{{ .Release.Namespace }}',container='$container',area='heap',id='Eden Space'}/1000000",
+          "expr": "jvm_memory_max_bytes{namespace='{{ .Release.Namespace }}',container='$container',release='{{ .Release.Name }}',area='heap',id='Eden Space'}/1000000",
           "legendFormat": "{{`{{instance}}`}}",
           "range": true,
           "refId": "A"
@@ -757,7 +757,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_max_bytes{namespace='{{ .Release.Namespace }}',container='$container', area='heap', id='Survivor Space', namespace='{{ .Release.Namespace }}'} / 1000000",
+          "expr": "jvm_memory_max_bytes{namespace='{{ .Release.Namespace }}',container='$container', release='{{ .Release.Name }}', area='heap', id='Survivor Space', namespace='{{ .Release.Namespace }}'} / 1000000",
           "legendFormat": "{{`{{instance}}`}}",
           "range": true,
           "refId": "A"
@@ -820,7 +820,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_max_bytes{namespace='{{ .Release.Namespace }}',container='$container',area='heap',id='Tenured Gen',} /1000000",
+          "expr": "jvm_memory_max_bytes{namespace='{{ .Release.Namespace }}',container='$container',release='{{ .Release.Name }}',area='heap',id='Tenured Gen',} /1000000",
           "legendFormat": "{{`{{instance}}`}}",
           "range": true,
           "refId": "A"
@@ -912,7 +912,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_used_bytes{namespace='{{ .Release.Namespace }}',container='$container',area='heap',id='Eden Space'}/1000000",
+          "expr": "jvm_memory_used_bytes{namespace='{{ .Release.Namespace }}',container='$container',release='{{ .Release.Name }}',area='heap',id='Eden Space'}/1000000",
           "legendFormat": "{{`{{instance}}`}}",
           "range": true,
           "refId": "A"
@@ -1003,7 +1003,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_used_bytes{namespace='{{ .Release.Namespace }}',container='$container',area='heap',id='Survivor Space'}/1000000",
+          "expr": "jvm_memory_used_bytes{namespace='{{ .Release.Namespace }}',container='$container',release='{{ .Release.Name }}',area='heap',id='Survivor Space'}/1000000",
           "legendFormat": "{{`{{instance}}`}}",
           "range": true,
           "refId": "A"
@@ -1094,7 +1094,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_used_bytes{namespace='{{ .Release.Namespace }}',container='$container',area='heap',id='Tenured Gen',} /1000000",
+          "expr": "jvm_memory_used_bytes{namespace='{{ .Release.Namespace }}',container='$container',release='{{ .Release.Name }}',area='heap',id='Tenured Gen',} /1000000",
           "legendFormat": "{{`{{instance}}`}}",
           "range": true,
           "refId": "A"
@@ -1200,7 +1200,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(sql_queries_slow_total{namespace='{{ .Release.Namespace }}'}[5m])) by (instance)",
+          "expr": "sum(rate(jdbc_query_seconds_count{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[5m])) - sum(rate(jdbc_query_seconds_bucket{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}', le='1.0'}[5m]))",
           "legendFormat": "{{`{{instance}}`}}",
           "range": true,
           "refId": "A"
@@ -1289,7 +1289,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(sql_execution_time_seconds_bucket{namespace='{{ .Release.Namespace }}'}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(jdbc_query_seconds_bucket{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[5m])))",
           "legendFormat": "p95",
           "range": true,
           "refId": "A"
@@ -1300,7 +1300,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.5, sum by (le) (rate(sql_execution_time_seconds_bucket{namespace='{{ .Release.Namespace }}'}[5m])))",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(jdbc_query_seconds_bucket{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[5m])))",
           "legendFormat": "p50",
           "range": true,
           "refId": "B"
@@ -1368,7 +1368,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(increase(sql_queries_total{namespace='{{ .Release.Namespace }}'}[$__range])) by (operation_type)",
+          "expr": "sum(increase(jdbc_query_seconds_count{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[$__range])) by (operation_type)",
           "legendFormat": "{{`{{operation_type}}`}}",
           "range": true,
           "refId": "A"
@@ -1457,7 +1457,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(sql_execution_time_seconds_sum{namespace='{{ .Release.Namespace }}'}[5m]) / rate(sql_execution_time_seconds_count{namespace='{{ .Release.Namespace }}'}[5m]) * 1000",
+          "expr": "rate(jdbc_query_seconds_sum{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[5m]) / rate(jdbc_query_seconds_count{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[5m]) * 1000",
           "legendFormat": "{{`{{operation_type}}`}}",
           "range": true,
           "refId": "A"
@@ -1559,7 +1559,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(jpa_entities_total{namespace='{{ .Release.Namespace }}'}[5m])) by (operation)",
+          "expr": "sum(rate(jpa_entities_total{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[5m])) by (operation)",
           "legendFormat": "{{`{{operation}}`}}",
           "range": true,
           "refId": "A"
@@ -1627,7 +1627,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(jpa_entities_total{namespace='{{ .Release.Namespace }}'}) by (operation)",
+          "expr": "sum(jpa_entities_total{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}) by (operation)",
           "legendFormat": "{{`{{operation}}`}}",
           "range": true,
           "refId": "A"
@@ -1655,14 +1655,14 @@
           "text": "{{ .Chart.Name }}",
           "value": "{{ .Chart.Name }}"
         },
-        "definition": "label_values(kube_pod_container_info{namespace=\"{{ .Release.Namespace }}\"},container)",
+        "definition": "label_values(kube_pod_container_info{namespace=\"{{ .Release.Namespace }}\", pod=~\"{{ .Release.Name }}.*\"},container)",
         "description": "",
         "label": "Helm install",
         "name": "container",
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(kube_pod_container_info{namespace=\"{{ .Release.Namespace }}\"},container)",
+          "query": "label_values(kube_pod_container_info{namespace=\"{{ .Release.Namespace }}\", pod=~\"{{ .Release.Name }}.*\"},container)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
