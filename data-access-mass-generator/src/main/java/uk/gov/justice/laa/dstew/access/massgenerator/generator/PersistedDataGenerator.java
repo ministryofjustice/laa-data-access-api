@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.massgenerator.generator;
 import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -146,6 +147,26 @@ public class PersistedDataGenerator extends DataGenerator {
     public ApplicationEntity saveApplication(ApplicationEntity application) {
         ApplicationRepository repo = (ApplicationRepository) applicationContext.getBean(ApplicationRepository.class);
         return repo.saveAndFlush(application);
+    }
+
+    /**
+     * Links two existing applications together by establishing a relationship where one application
+     * is associated with another lead application.
+     * <p>
+     * This method retrieves both applications by their IDs, adds the associated application to the
+     * lead application's linked applications collection, and persists the relationship to the database.
+     *
+     * @param leadId the UUID of the lead application to which the associated application will be linked
+     * @param associatedId the UUID of the application to be linked as an associated application
+     * @throws IllegalArgumentException if either application ID is not found in the database
+     */
+    @Transactional
+    public void linkApplications(UUID leadId, UUID associatedId) {
+        ApplicationEntity lead = entityManager.find(ApplicationEntity.class, leadId);
+        ApplicationEntity associated = entityManager.find(ApplicationEntity.class, associatedId);
+        lead.addLinkedApplication(associated);
+        ApplicationRepository repo = applicationContext.getBean(ApplicationRepository.class);
+        repo.saveAndFlush(lead);
     }
 
     /**
