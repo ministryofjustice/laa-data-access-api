@@ -37,6 +37,10 @@ class SqlOperationTypeConventionTest {
         Arguments.of("UPDATE table SET col = 1 WHERE id = 1", "update"),
         Arguments.of("DELETE FROM table WHERE id = 1", "delete"),
         Arguments.of("  SELECT * FROM table", "select"),
+        Arguments.of("MERGE INTO table USING source ON condition", "merge"),
+        Arguments.of("BEGIN", "transaction control BEGIN"),
+        Arguments.of("COMMIT", "transaction control COMMIT"),
+        Arguments.of("ROLLBACK", "transaction control ROLLBACK"),
         Arguments.of("ALTER TABLE foo ADD col int", "other"),
         Arguments.of("", "other")
     );

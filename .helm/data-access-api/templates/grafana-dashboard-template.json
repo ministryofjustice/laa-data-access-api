@@ -1560,8 +1560,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(jpa_entities_total{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[5m])) by (operation)",
-          "legendFormat": "{{`{{operation}}`}}",
+          "expr": "sum(rate(jpa_entities_total{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[5m])) by (entity, operation)",
+          "legendFormat": "{{`{{entity}}`}} - {{`{{operation}}`}}",
           "range": true,
           "refId": "A"
         }
@@ -1628,8 +1628,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(jpa_entities_total{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}) by (operation)",
-          "legendFormat": "{{`{{operation}}`}}",
+          "expr": "sum(jpa_entities_total{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}) by (entity, operation)",
+          "legendFormat": "{{`{{entity}}`}} - {{`{{operation}}`}}",
           "range": true,
           "refId": "A"
         }

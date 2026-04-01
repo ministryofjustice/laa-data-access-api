@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.metrics;
 
 import io.micrometer.common.KeyValues;
+import java.util.List;
 import net.ttddyy.observation.tracing.QueryContext;
 import net.ttddyy.observation.tracing.QueryObservationConvention;
 import org.springframework.stereotype.Component;
@@ -29,6 +30,7 @@ public class SqlOperationTypeConvention implements QueryObservationConvention {
   }
 
   private String determineOperationType(String query) {
+    List<String> transactionPrefixes = List.of("BEGIN", "COMMIT", "ROLLBACK");
     if (query == null || query.isBlank()) {
       return "other";
     }
@@ -43,7 +45,13 @@ public class SqlOperationTypeConvention implements QueryObservationConvention {
       return "update";
     } else if (trimmed.startsWith("DELETE")) {
       return "delete";
+    } else if (trimmed.startsWith("MERGE")) {
+      return "merge";
+    } else if (transactionPrefixes.contains(trimmed)) {
+      return "transaction control " + trimmed;
     }
     return "other";
   }
+
+
 }
