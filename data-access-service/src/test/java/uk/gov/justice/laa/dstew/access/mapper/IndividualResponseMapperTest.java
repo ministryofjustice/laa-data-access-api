@@ -14,9 +14,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mapstruct.factory.Mappers;
+
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
@@ -24,7 +24,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualGene
 import uk.gov.justice.laa.dstew.access.model.*;
 
 @ExtendWith(MockitoExtension.class)
-class IndividualMapperTest extends BaseMapperTest {
+class IndividualResponseMapperTest extends BaseMapperTest {
 
     @InjectMocks
     private IndividualMapperImpl individualMapper;
@@ -36,7 +36,13 @@ class IndividualMapperTest extends BaseMapperTest {
 
     public static Stream<Arguments> getExtendedIndividualsData() {
       return Stream.of(
-        Arguments.of("wilson", "additional", "prevref", "relchildren",
+        Arguments.of("wilson", "additional", "prevref", "relchildren", true,
+                List.of(
+                    Map.of("k1", "v1"),
+                    Map.of("k2", "v2")
+                )
+        ),
+        Arguments.of("smith", "home", "prevref2", "parent", false,
                 List.of(
                     Map.of("k1", "v1"),
                     Map.of("k2", "v2")
@@ -47,16 +53,18 @@ class IndividualMapperTest extends BaseMapperTest {
     private ApplicationContent getExtendedIndividualApplicationContent(
             String lastName,
             String correspondenceAddressType,
-            String previousApplicationReference,
+            String previousApplicationId,
             String relationshipToChildren,
+            Boolean appliedPreviously,
             List<Map<String, Object>> addresses
     ) {
         return ApplicationContent.builder()
             .lastNameAtBirth(lastName)
             .correspondenceAddressType(correspondenceAddressType)
-            .previousApplicationReference(previousApplicationReference)
+            .previousApplicationId(previousApplicationId)
             .relationshipToChildren(relationshipToChildren)
             .applicant(ApplicationApplicant.builder()
+                .appliedPreviously(appliedPreviously)
                 .addresses(addresses)
                 .build())
             .build();
@@ -67,31 +75,34 @@ class IndividualMapperTest extends BaseMapperTest {
     void givenIndividualEntity_whenToExtendedIndividual_thenMapsFieldsCorrectly(
         String lastName,
         String correspondenceAddressType,
-        String previousApplicationReference,
+        String previousApplicationId,
         String relationshipToChildren,
+        Boolean appliedPreviously,
         List<Map<String, Object>> addresses
     ) {
         IndividualEntity expectedIndividualEntity = IndividualEntity.builder()
                 .type(IndividualType.CLIENT)
                 .build();
 
-        Individual actualIndividual = individualMapper.toExtendedIndividual(
+        IndividualResponse actualIndividualResponse = individualMapper.toExtendedIndividual(
                 expectedIndividualEntity,
                 IndividualType.CLIENT,
                 IncludedAdditionalData.CLIENT_DETAILS,
                 getExtendedIndividualApplicationContent(lastName,
                                                         correspondenceAddressType,
-                                                        previousApplicationReference,
+                                                        previousApplicationId,
                                                         relationshipToChildren,
+                                                        appliedPreviously,
                                                         addresses));
 
-        assertThat(actualIndividual).isNotNull();
-        assertThat(actualIndividual.getClientId()).isEqualTo(expectedIndividualEntity.getId());
-        assertThat(actualIndividual.getCorrespondenceAddressType()).isEqualTo(correspondenceAddressType);
-        assertThat(actualIndividual.getLastNameAtBirth()).isEqualTo(lastName);
-        assertThat(actualIndividual.getPreviousApplicationReference()).isEqualTo(previousApplicationReference);
-        assertThat(actualIndividual.getRelationshipToChildren()).isEqualTo(relationshipToChildren);
-        List<Map<String, Object>> actualAddresses = actualIndividual.getCorrespondenceAddress();
+        assertThat(actualIndividualResponse).isNotNull();
+        assertThat(actualIndividualResponse.getClientId()).isEqualTo(expectedIndividualEntity.getId());
+        assertThat(actualIndividualResponse.getCorrespondenceAddressType()).isEqualTo(correspondenceAddressType);
+        assertThat(actualIndividualResponse.getLastNameAtBirth()).isEqualTo(lastName);
+        assertThat(actualIndividualResponse.getPreviousApplicationId()).isEqualTo(previousApplicationId);
+        assertThat(actualIndividualResponse.getRelationshipToChildren()).isEqualTo(relationshipToChildren);
+        assertThat(actualIndividualResponse.getAppliedPreviously()).isEqualTo(appliedPreviously);
+        List<Map<String, Object>> actualAddresses = actualIndividualResponse.getCorrespondenceAddress();
         assertThat(actualAddresses).hasSize(addresses.size());
         assertThat(actualAddresses.getFirst().get("k1").toString()).isEqualTo("v1");
         assertThat(actualAddresses.getLast().get("k2").toString()).isEqualTo("v2");
@@ -99,35 +110,39 @@ class IndividualMapperTest extends BaseMapperTest {
 
     @ParameterizedTest
     @MethodSource("getExtendedIndividualsData")
-    void givenIndividualEntity_whenToExtendedIndividualIncorrectly_thenMapsFieldsCorrectly(
+    void givenIndividualEntity_whenToExtendedIndividualWithNullInclude_thenExtendedFieldsAreNull(
             String lastName,
             String correspondenceAddressType,
-            String previousApplicationReference,
+            String previousApplicationId,
             String relationshipToChildren,
+            Boolean appliedPreviously,
             List<Map<String, Object>> addresses
     ) {
         IndividualEntity expectedIndividualEntity = IndividualEntity.builder()
                 .type(IndividualType.CLIENT)
                 .build();
 
-        Individual actualIndividual = individualMapper.toExtendedIndividual(
+        IndividualResponse actualIndividualResponse = individualMapper.toExtendedIndividual(
                 expectedIndividualEntity,
                 IndividualType.CLIENT,
                 null,
                 getExtendedIndividualApplicationContent(lastName,
                         correspondenceAddressType,
-                        previousApplicationReference,
+                        previousApplicationId,
                         relationshipToChildren,
+                        appliedPreviously,
                         addresses));
 
-        assertThat(actualIndividual).isNotNull();
-        assertThat(actualIndividual.getClientId()).isNull();
-        assertThat(actualIndividual.getCorrespondenceAddressType()).isNull();
-        assertThat(actualIndividual.getLastNameAtBirth()).isNull();
-        assertThat(actualIndividual.getPreviousApplicationReference()).isNull();
-        assertThat(actualIndividual.getRelationshipToChildren()).isNull();
-        assertThat(actualIndividual.getCorrespondenceAddress()).isNull();
+        assertThat(actualIndividualResponse).isNotNull();
+        assertThat(actualIndividualResponse.getClientId()).isNull();
+        assertThat(actualIndividualResponse.getCorrespondenceAddressType()).isNull();
+        assertThat(actualIndividualResponse.getLastNameAtBirth()).isNull();
+        assertThat(actualIndividualResponse.getPreviousApplicationId()).isNull();
+        assertThat(actualIndividualResponse.getRelationshipToChildren()).isNull();
+        assertThat(actualIndividualResponse.getAppliedPreviously()).isNull();
+        assertThat(actualIndividualResponse.getCorrespondenceAddress()).isNull();
     }
+
 
     @Test
     void givenIndividualEntity_whenToIndividual_thenMapsFieldsCorrectly() {
@@ -142,7 +157,7 @@ class IndividualMapperTest extends BaseMapperTest {
                         .individualContent(individualContent)
                         .type(IndividualType.CLIENT));
 
-        Individual result = individualMapper.toIndividual(entity);
+        IndividualResponse result = individualMapper.toIndividual(entity);
 
         assertThat(result).isNotNull();
         assertThat(result.getFirstName()).isEqualTo("John");
@@ -162,7 +177,7 @@ class IndividualMapperTest extends BaseMapperTest {
                         .individualContent(null)
                         .type(null));
 
-        Individual result = individualMapper.toIndividual(entity);
+        IndividualResponse result = individualMapper.toIndividual(entity);
 
         assertThat(result.getFirstName()).isNull();
         assertThat(result.getLastName()).isNull();
@@ -173,7 +188,7 @@ class IndividualMapperTest extends BaseMapperTest {
 
     @Test
     void givenNullIndividual_whenToIndividualEntity_thenReturnNull() {
-        assertThat(individualMapper.toIndividualEntity((Individual) null)).isNull();
+        assertThat(individualMapper.toIndividualEntity((IndividualResponse) null)).isNull();
     }
 
     @Test
@@ -181,7 +196,7 @@ class IndividualMapperTest extends BaseMapperTest {
         LocalDate dateOfBirth = LocalDate.of(2025, 11, 24);
         Map<String, Object> details = Map.of("key", "value");
 
-        Individual individual = DataGenerator.createDefault(IndividualGenerator.class,
+        IndividualResponse individualResponse = DataGenerator.createDefault(IndividualGenerator.class,
                 builder -> builder
                         .firstName("John")
                         .lastName("Doe")
@@ -189,7 +204,7 @@ class IndividualMapperTest extends BaseMapperTest {
                         .details(details)
                         .type(IndividualType.CLIENT));
 
-        IndividualEntity result = individualMapper.toIndividualEntity(individual);
+        IndividualEntity result = individualMapper.toIndividualEntity(individualResponse);
 
         assertThat(result).isNotNull();
         assertThat(result.getFirstName()).isEqualTo("John");
@@ -201,7 +216,7 @@ class IndividualMapperTest extends BaseMapperTest {
 
     @Test
     void givenIndividualWithAllNullFields_whenToIndividualEntity_thenAllFieldsAreNull() {
-        Individual individual = DataGenerator.createDefault(IndividualGenerator.class,
+        IndividualResponse individualResponse = DataGenerator.createDefault(IndividualGenerator.class,
                 builder -> builder
                         .firstName(null)
                         .lastName(null)
@@ -209,7 +224,7 @@ class IndividualMapperTest extends BaseMapperTest {
                         .details(null)
                         .type(null));
 
-        IndividualEntity result = individualMapper.toIndividualEntity(individual);
+        IndividualEntity result = individualMapper.toIndividualEntity(individualResponse);
 
         assertThat(result.getFirstName()).isNull();
         assertThat(result.getLastName()).isNull();

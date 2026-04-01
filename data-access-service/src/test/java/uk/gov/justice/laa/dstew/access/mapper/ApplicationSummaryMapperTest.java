@@ -21,7 +21,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
-import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
@@ -165,7 +165,7 @@ public class ApplicationSummaryMapperTest extends BaseMapperTest {
                 .laaReference(laaReference)
                 .isLead(isLead));
 
-        LinkedApplicationSummary result = applicationMapper.toLinkedApplicationSummary(expectedLinkSummary);
+        LinkedApplicationSummaryResponse result = applicationMapper.toLinkedApplicationSummary(expectedLinkSummary);
 
         assertThat(result).isNotNull();
         assertThat(result.getApplicationId()).isEqualTo(applicationId);

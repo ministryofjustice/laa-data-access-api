@@ -87,7 +87,7 @@ class DomainEventRepositoryTest extends BaseIntegrationTest {
           "applicationStatus": "APPLICATION_SUBMITTED",
           "applicationContent": "{\\"bar\\":\\"baz\\"}",
           "updatedAt": "2025-02-01T12:30:00Z",
-          "updatedBy": "caseworker-123"
+          "updatedBy": "caseworkerResponse-123"
         }
         """;
 
@@ -133,6 +133,6 @@ class DomainEventRepositoryTest extends BaseIntegrationTest {
         .isEqualTo("2025-02-01T12:30:00Z");
 
     assertThat(jsonNode.get("updatedBy").asString())
-        .isEqualTo("caseworker-123");
+        .isEqualTo("caseworkerResponse-123");
   }
 }

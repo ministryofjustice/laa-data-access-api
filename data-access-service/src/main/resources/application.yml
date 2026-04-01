@@ -1,3 +1,10 @@
+info:
+  app:
+    name: LAA Data Stewardship Access - Access Application Data
+    description: LAA Data Stewardship Access - Access Application Data that provides APIs to Legal Aid Application related data.
+    version: 1.0.0
+
+
 spring:
   application.name: LAA Data Stewardship Access - Access Application Data
 
@@ -26,11 +33,9 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-info:
-  app:
-    name: LAA Data Stewardship Access - Access Application Data
-    description: LAA Data Stewardship Access - Access Application Data that provides APIs to Legal Aid Application related data.
-    version: 1.0.0
+
+  jackson:
+    default-property-inclusion: non_null
 
 logging:
   level:
@@ -41,6 +46,13 @@ logging:
         web: INFO
       hibernate: INFO
     com.azure.spring: INFO
+    uk:
+      gov:
+        justice:
+          laa:
+            dstew:
+              access:
+                config: INFO
 
 management:
   endpoints.web.exposure.include: health,info
@@ -63,6 +75,7 @@ sentry:
 
 feature:
   enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}
+  disable-security: ${FEATURE_DISABLE_SECURITY:false}
 
 server:
   forward-headers-strategy: framework

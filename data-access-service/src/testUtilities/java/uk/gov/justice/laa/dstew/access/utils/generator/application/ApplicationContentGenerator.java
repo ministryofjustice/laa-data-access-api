@@ -25,11 +25,12 @@ public class ApplicationContentGenerator extends BaseGenerator<ApplicationConten
                 .id(applicationId)
                 .office(officeGenerator.createDefault())
                 .submittedAt("2024-01-01T12:00:00Z")
-                .previousApplicationReference("ZZ999Z")
+                .previousApplicationId("ZZ999Z")
                 .lastNameAtBirth("Alberts")
                 .relationshipToChildren("relationshipToChildren")
                 .correspondenceAddressType("Home")
                 .applicant(ApplicationApplicant.builder()
+                        .appliedPreviously(true)
                         .addresses(List.of(
                             Map.of("k1", "v1"),
                             Map.of("k2", "v2")

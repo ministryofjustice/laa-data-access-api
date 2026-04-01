@@ -109,6 +109,7 @@ public class UpdateApplicationTest extends BaseHarnessTest {
         HarnessResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, applicationEntity.getId());
 
         // then
+        assertEquals(0L, applicationEntity.getVersion());
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertBadRequest(result);
@@ -117,7 +118,7 @@ public class UpdateApplicationTest extends BaseHarnessTest {
     @Test
     public void givenUpdateRequestWithWrongId_whenUpdateApplication_thenReturnNotFound() throws Exception {
         // given
-        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
         ApplicationUpdateRequest applicationUpdateRequest = DataGenerator.createDefault(
                 ApplicationUpdateRequestGenerator.class
@@ -127,6 +128,7 @@ public class UpdateApplicationTest extends BaseHarnessTest {
         HarnessResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, UUID.randomUUID());
 
         // then
+        assertEquals(0L, applicationEntity.getVersion());
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertNotFound(result);
@@ -137,6 +139,9 @@ public class UpdateApplicationTest extends BaseHarnessTest {
     public void givenUpdateRequestWithInvalidId_whenUpdateApplication_thenReturnNotFound(String uuid) throws Exception {
         // given
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+        ApplicationEntity applicationEntity = persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class
+        );
 
         ApplicationUpdateRequest applicationUpdateRequest = DataGenerator.createDefault(
                 ApplicationUpdateRequestGenerator.class
@@ -146,6 +151,7 @@ public class UpdateApplicationTest extends BaseHarnessTest {
         HarnessResult result = patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, uuid);
 
         // then
+        assertEquals(0L, applicationEntity.getVersion());
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertBadRequest(result);

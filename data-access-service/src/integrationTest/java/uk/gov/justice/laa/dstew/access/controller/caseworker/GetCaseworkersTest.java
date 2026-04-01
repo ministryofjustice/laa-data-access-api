@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
-import uk.gov.justice.laa.dstew.access.model.Caseworker;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerResponse;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
 import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
@@ -48,14 +48,13 @@ public class GetCaseworkersTest extends BaseHarnessTest {
 
         // when
         HarnessResult result = getUri(TestConstants.URIs.GET_CASEWORKERS);
-        List<Caseworker> actualCaseworkers = objectMapper.readValue(
-                result.getResponse().getContentAsString(), objectMapper.getTypeFactory().constructCollectionType(List.class, Caseworker.class)
-        );
+        List<CaseworkerResponse> actualCaseworkerResponses = objectMapper.readValue(
+                result.getResponse().getContentAsString(), objectMapper.getTypeFactory().constructCollectionType(List.class, CaseworkerResponse.class));
 
         // then
         assertSecurityHeaders(result);
         assertOK(result);
-        assertCaseworkerListEquals(actualCaseworkers, Caseworkers);
+        assertCaseworkerListEquals(actualCaseworkerResponses, Caseworkers);
     }
 
     @Test
@@ -76,7 +75,7 @@ public class GetCaseworkersTest extends BaseHarnessTest {
         assertUnauthorised(result);
     }
 
-    private void assertCaseworkerListEquals(List<Caseworker> caseworkers, List<CaseworkerEntity> entities) {
+    private void assertCaseworkerListEquals(List<CaseworkerResponse> caseworkers, List<CaseworkerEntity> entities) {
         for (CaseworkerEntity entity : entities) {
             assertThat(caseworkers).anyMatch(c ->
                     entity.getId().equals(c.getId()) &&

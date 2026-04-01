@@ -6,7 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.service.DomainEventService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
@@ -46,7 +46,7 @@ public class GetEventsTest extends BaseServiceTest {
         when(domainEventRepository.findAll(any(Specification.class))).thenReturn(expectedDomainEvents);
 
         // when
-        List<ApplicationDomainEvent> actualDomainEvents = serviceUnderTest.getEvents(
+        List<ApplicationDomainEventResponse> actualDomainEvents = serviceUnderTest.getEvents(
                 UUID.randomUUID(),
                 List.of(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
         );
@@ -86,14 +86,14 @@ public class GetEventsTest extends BaseServiceTest {
         verify(applicationSummaryRepository, never()).findAll();
     }
 
-    private void assertDomainEventsEqual(List<DomainEventEntity> expected, List<ApplicationDomainEvent> actual) {
+    private void assertDomainEventsEqual(List<DomainEventEntity> expected, List<ApplicationDomainEventResponse> actual) {
         assertThat(expected.size()).isEqualTo(actual.size());
         for (int i = 0; i < expected.size(); i++) {
             assertDomainEventEqual(expected.get(i), actual.get(i));
         }
     }
 
-    private void assertDomainEventEqual(DomainEventEntity expected, ApplicationDomainEvent actual) {
+    private void assertDomainEventEqual(DomainEventEntity expected, ApplicationDomainEventResponse actual) {
         assertThat(expected.getApplicationId()).isEqualTo(actual.getApplicationId());
         assertThat(expected.getCaseworkerId()).isEqualTo(actual.getCaseworkerId());
         assertThat(expected.getType().name()).isEqualTo(actual.getDomainEventType().name());

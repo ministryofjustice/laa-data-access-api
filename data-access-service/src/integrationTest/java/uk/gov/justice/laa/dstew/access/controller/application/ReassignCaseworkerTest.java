@@ -6,7 +6,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
@@ -45,7 +45,7 @@ public class ReassignCaseworkerTest extends BaseHarnessTest {
         CaseworkerAssignRequest caseworkerReassignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
             builder.caseworkerId(CaseworkerJaneDoe.getId())
                     .applicationIds(List.of(UUID.randomUUID()))
-                    .eventHistory(EventHistory.builder()
+                    .eventHistory(EventHistoryRequest.builder()
                             .eventDescription("Assigning caseworker")
                             .build());
         });
@@ -79,7 +79,7 @@ public class ReassignCaseworkerTest extends BaseHarnessTest {
         CaseworkerAssignRequest caseworkerReassignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
             builder.caseworkerId(CaseworkerJaneDoe.getId())
                     .applicationIds(toReassignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()))
-                    .eventHistory(EventHistory.builder()
+                    .eventHistory(EventHistoryRequest.builder()
                             .eventDescription("Assigning caseworker")
                             .build());
         });

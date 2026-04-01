@@ -11,9 +11,10 @@ import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
+import uk.gov.justice.laa.dstew.access.model.ApplicationApplicant;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.service.IndividualsService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
@@ -24,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEn
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -53,7 +55,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     when(applicationRepository.findById(application.getId())).thenReturn(Optional.of(application));
 
     // when
-    List<Individual> actualIndividuals = serviceUnderTest.getIndividuals(
+    List<IndividualResponse> actualIndividualResponses = serviceUnderTest.getIndividuals(
             1, 10,
                     application.getId(), IndividualType.CLIENT, IncludedAdditionalData.CLIENT_DETAILS)
             .page().stream().toList();
@@ -61,10 +63,84 @@ public class IndividualsServiceTest extends BaseServiceTest {
     // then
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
     assertExtendedIndividualEqual(expectedIndividuals.getFirst(),
-                                  actualIndividuals.getFirst(),
+                                  actualIndividualResponses.getFirst(),
                                   MapperUtil.getObjectMapper()
                                     .convertValue(application.getApplicationContent(), ApplicationContent.class)
                                   );
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void givenAppliedPreviouslyFalse_whenGetIndividuals_thenReturnAppliedPreviouslyFalse() {
+    // given
+    IndividualEntity expectedIndividual = DataGenerator.createDefault(IndividualEntityGenerator.class,
+            builder -> builder.id(UUID.randomUUID()));
+    Page<IndividualEntity> pageResult = new PageImpl<>(List.of(expectedIndividual));
+
+    ApplicationEntity application = createApplicationWithAppliedPreviously(false);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+    when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+    when(applicationRepository.findById(application.getId())).thenReturn(Optional.of(application));
+
+    // when
+    List<IndividualResponse> actualIndividuals = serviceUnderTest.getIndividuals(
+            1, 10, application.getId(), IndividualType.CLIENT, IncludedAdditionalData.CLIENT_DETAILS)
+            .page().stream().toList();
+
+    // then
+    assertThat(actualIndividuals.getFirst().getAppliedPreviously()).isFalse();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void givenNullApplicant_whenGetIndividuals_thenReturnAppliedPreviouslyNull() {
+    // given
+    IndividualEntity expectedIndividual = DataGenerator.createDefault(IndividualEntityGenerator.class,
+            builder -> builder.id(UUID.randomUUID()));
+    Page<IndividualEntity> pageResult = new PageImpl<>(List.of(expectedIndividual));
+
+    ApplicationEntity application = createApplicationWithAppliedPreviously(null);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+    when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+    when(applicationRepository.findById(application.getId())).thenReturn(Optional.of(application));
+
+    // when
+    List<IndividualResponse> actualIndividuals = serviceUnderTest.getIndividuals(
+            1, 10, application.getId(), IndividualType.CLIENT, IncludedAdditionalData.CLIENT_DETAILS)
+            .page().stream().toList();
+
+    // then
+    assertThat(actualIndividuals.getFirst().getAppliedPreviously()).isNull();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void givenApplicantWithAddresses_whenGetIndividuals_thenReturnCorrespondenceAddress() {
+    // given
+    IndividualEntity expectedIndividual = DataGenerator.createDefault(IndividualEntityGenerator.class,
+            builder -> builder.id(UUID.randomUUID()));
+    Page<IndividualEntity> pageResult = new PageImpl<>(List.of(expectedIndividual));
+
+    List<Map<String, Object>> addresses = List.of(
+        Map.of("line1", "address 1"),
+        Map.of("line1", "address 2")
+    );
+    ApplicationEntity application = createApplicationWithAddresses(addresses);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+    when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+    when(applicationRepository.findById(application.getId())).thenReturn(Optional.of(application));
+
+    // when
+    List<IndividualResponse> actualIndividuals = serviceUnderTest.getIndividuals(
+            1, 10, application.getId(), IndividualType.CLIENT, IncludedAdditionalData.CLIENT_DETAILS)
+            .page().stream().toList();
+
+    // then
+    assertThat(actualIndividuals.getFirst().getCorrespondenceAddress()).hasSize(2);
+    assertThat(actualIndividuals.getFirst().getCorrespondenceAddress()).isEqualTo(addresses);
   }
 
   @ParameterizedTest
@@ -79,11 +155,12 @@ public class IndividualsServiceTest extends BaseServiceTest {
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
     // when
-    List<Individual> actualIndividuals = serviceUnderTest.getIndividuals(1, 10, null, null, null).page().stream().toList();
+    List<IndividualResponse>
+        actualIndividualResponses = serviceUnderTest.getIndividuals(1, 10, null, null, null).page().stream().toList();
 
     // then
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
-    assertIndividualListsEqual(actualIndividuals, expectedIndividuals);
+    assertIndividualListsEqual(actualIndividualResponses, expectedIndividuals);
   }
 
   @Test
@@ -97,7 +174,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
     // when
-    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(null, null, null, null, null);
+    PaginatedResult<IndividualResponse> result = serviceUnderTest.getIndividuals(null, null, null, null, null);
 
     // then
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
@@ -118,7 +195,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
     // when
-    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(2, 10, null, null, null);
+    PaginatedResult<IndividualResponse> result = serviceUnderTest.getIndividuals(2, 10, null, null, null);
 
     // then
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
@@ -178,7 +255,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
 
     // when
-    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(1, 100, null, null, null);
+    PaginatedResult<IndividualResponse> result = serviceUnderTest.getIndividuals(1, 100, null, null, null);
 
     // then
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
@@ -195,7 +272,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
 
-    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(1, 10, null, null, null);
+    PaginatedResult<IndividualResponse> result = serviceUnderTest.getIndividuals(1, 10, null, null, null);
 
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
     assertThat(result.page()).hasSize(1);
@@ -212,7 +289,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
 
-    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(1, 10, appId, null, null);
+    PaginatedResult<IndividualResponse> result = serviceUnderTest.getIndividuals(1, 10, appId, null, null);
 
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
     assertThat(result.page()).hasSize(1);
@@ -228,7 +305,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
 
-    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(1, 10, null, type, null);
+    PaginatedResult<IndividualResponse> result = serviceUnderTest.getIndividuals(1, 10, null, type, null);
 
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
     assertThat(result.page()).hasSize(1);
@@ -245,14 +322,14 @@ public class IndividualsServiceTest extends BaseServiceTest {
     Page<IndividualEntity> entityPage = new PageImpl<>(List.of(entity));
     when(individualRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(entityPage);
 
-    PaginatedResult<Individual> result = serviceUnderTest.getIndividuals(1, 10, appId, type, null);
+    PaginatedResult<IndividualResponse> result = serviceUnderTest.getIndividuals(1, 10, appId, type, null);
 
     verify(individualRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
     assertThat(result.page()).hasSize(1);
     assertThat(result.page().getContent().getFirst().getFirstName()).isEqualTo(entity.getFirstName());
   }
 
-  private void assertIndividualListsEqual(List<Individual> actualList, List<IndividualEntity> expectedList) {
+  private void assertIndividualListsEqual(List<IndividualResponse> actualList, List<IndividualEntity> expectedList) {
     assertThat(actualList).hasSameSizeAs(expectedList);
 
     for (IndividualEntity expected : expectedList) {
@@ -271,7 +348,7 @@ public class IndividualsServiceTest extends BaseServiceTest {
     }
   }
 
-  private void assertIndividualEqual(IndividualEntity expected, Individual actual) {
+  private void assertIndividualEqual(IndividualEntity expected, IndividualResponse actual) {
     assertThat(actual.getFirstName()).isEqualTo(expected.getFirstName());
     assertThat(actual.getLastName()).isEqualTo(expected.getLastName());
     assertThat(actual.getDateOfBirth()).isEqualTo(expected.getDateOfBirth());
@@ -280,13 +357,41 @@ public class IndividualsServiceTest extends BaseServiceTest {
   }
 
   private void assertExtendedIndividualEqual(IndividualEntity expected,
-                                             Individual actual,
+                                             IndividualResponse actual,
                                              ApplicationContent applicationContent) {
     assertIndividualEqual(expected, actual);
     assertThat(actual.getClientId()).isEqualTo(expected.getId());
     assertThat(actual.getLastNameAtBirth()).isEqualTo(applicationContent.getLastNameAtBirth());
-    assertThat(actual.getPreviousApplicationReference()).isEqualTo(applicationContent.getPreviousApplicationReference());
+    assertThat(actual.getPreviousApplicationId()).isEqualTo(applicationContent.getPreviousApplicationId());
     assertThat(actual.getRelationshipToChildren()).isEqualTo(applicationContent.getRelationshipToChildren());
     assertThat(actual.getCorrespondenceAddressType()).isEqualTo(applicationContent.getCorrespondenceAddressType());
+    var expectedAppliedPreviously = Optional.ofNullable(applicationContent.getApplicant())
+        .map(ApplicationApplicant::getAppliedPreviously)
+        .orElse(null);
+    assertThat(actual.getAppliedPreviously()).isEqualTo(expectedAppliedPreviously);
+  }
+
+  @SuppressWarnings("unchecked")
+  private ApplicationEntity createApplicationWithAppliedPreviously(Boolean appliedPreviously) {
+    ApplicationApplicant applicant = appliedPreviously != null
+        ? ApplicationApplicant.builder().appliedPreviously(appliedPreviously).build()
+        : null;
+    return DataGenerator.createDefault(ApplicationEntityGenerator.class,
+        builder -> builder.id(UUID.randomUUID())
+            .applicationContent(MapperUtil.getObjectMapper().convertValue(
+                ApplicationContent.builder().applicant(applicant).build(),
+                Map.class)));
+  }
+
+  @SuppressWarnings("unchecked")
+  private ApplicationEntity createApplicationWithAddresses(List<Map<String, Object>> addresses) {
+    ApplicationApplicant applicant = ApplicationApplicant.builder()
+        .addresses(addresses)
+        .build();
+    return DataGenerator.createDefault(ApplicationEntityGenerator.class,
+        builder -> builder.id(UUID.randomUUID())
+            .applicationContent(MapperUtil.getObjectMapper().convertValue(
+                ApplicationContent.builder().applicant(applicant).build(),
+                Map.class)));
   }
 }

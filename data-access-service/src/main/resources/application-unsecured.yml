@@ -38,3 +38,7 @@ management:
   endpoints.web.exposure.include: health,info
   endpoint.health.show-details: always
   info.env.enabled: true
+
+feature:
+  disable-security: true
+

@@ -1,11 +1,10 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
+import java.util.List;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.MakeDecisionProceedingGenerator;
-import java.util.List;
-import java.util.UUID;
 
 public class ApplicationMakeDecisionRequestGenerator extends BaseGenerator<MakeDecisionRequest, MakeDecisionRequest.Builder> {
     private final MakeDecisionProceedingGenerator makeDecisionProceedingGenerator = new MakeDecisionProceedingGenerator();
@@ -17,8 +16,9 @@ public class ApplicationMakeDecisionRequestGenerator extends BaseGenerator<MakeD
     @Override
     public MakeDecisionRequest createDefault() {
         return MakeDecisionRequest.builder()
-                .overallDecision(DecisionStatus.PARTIALLY_GRANTED)
+            .overallDecision(DecisionStatus.REFUSED)
                 .proceedings(List.of(makeDecisionProceedingGenerator.createDefault()))
+                .applicationVersion(0L)
                 .build();
     }
 }

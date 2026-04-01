@@ -51,6 +51,7 @@ export ENTRA_ISSUER_URI=https://dummy-issuer
 export ENTRA_JWK_SET_URI=https://dummy-jwk-set-uri
 export ENTRA_AUD=dummy-aud
 export FEATURE_ENABLE_DEV_TOKEN=true
+export FEATURE_DISABLE_SECURITY=true
 ```
 
 This will ensure that where-ever you run the application from locally (IntelliJ, any terminal window, etc)

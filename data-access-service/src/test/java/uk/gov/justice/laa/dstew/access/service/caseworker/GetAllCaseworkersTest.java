@@ -6,7 +6,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
-import uk.gov.justice.laa.dstew.access.model.Caseworker;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerResponse;
 import uk.gov.justice.laa.dstew.access.service.CaseworkerService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -40,11 +40,11 @@ public class GetAllCaseworkersTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        List<Caseworker> actualCaseworkers = serviceUnderTest.getAllCaseworkers();
+        List<CaseworkerResponse> actualCaseworkerResponses = serviceUnderTest.getAllCaseworkers();
 
         // then
         verify(caseworkerRepository, times(1)).findAll();
-        assertCaseworkerListsEqual(actualCaseworkers, expectedCaseworkers);
+        assertCaseworkerListsEqual(actualCaseworkerResponses, expectedCaseworkers);
     }
 
     @Test
@@ -71,7 +71,7 @@ public class GetAllCaseworkersTest extends BaseServiceTest {
         verify(caseworkerRepository, never()).findAll();
     }
 
-    private void assertCaseworkerListsEqual(List<Caseworker> actualList, List<CaseworkerEntity> expectedList) {
+    private void assertCaseworkerListsEqual(List<CaseworkerResponse> actualList, List<CaseworkerEntity> expectedList) {
 
         assertThat(actualList).hasSameSizeAs(expectedList);
 
@@ -91,7 +91,7 @@ public class GetAllCaseworkersTest extends BaseServiceTest {
         }
     }
 
-    private void assertCaseworkerEqual(Caseworker actual, CaseworkerEntity expected) {
+    private void assertCaseworkerEqual(CaseworkerResponse actual, CaseworkerEntity expected) {
         assertThat(actual.getId()).isEqualTo(expected.getId());
         assertThat(actual.getUsername()).isEqualTo(expected.getUsername());
     }

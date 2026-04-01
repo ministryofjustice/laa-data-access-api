@@ -1,7 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.caseworker;
 
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
 import java.util.function.Consumer;
@@ -10,7 +10,7 @@ public class CaseworkerUnassignFactoryImpl implements Factory<CaseworkerUnassign
     @Override
     public CaseworkerUnassignRequest create() {
         return CaseworkerUnassignRequest.builder()
-                .eventHistory(EventHistory.builder()
+                .eventHistory(EventHistoryRequest.builder()
                     .eventDescription("Testing unassignment")
                     .build())
                 .build();

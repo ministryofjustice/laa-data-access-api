@@ -25,6 +25,9 @@ public class ApplicationApplicant {
   @Nullable
   private List<Map<String, Object>> addresses;
 
+  @Nullable
+  private Boolean appliedPreviously;
+
   @JsonAnyGetter
   private Map<String, Object> additionalContent;
 

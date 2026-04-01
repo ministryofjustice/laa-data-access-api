@@ -21,7 +21,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.ProblemDetail;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -77,11 +77,12 @@ public class GetIndividualsTest extends BaseHarnessTest {
 
     assertOK(result);
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
-    Individual actualIndividual = response.getIndividuals().getFirst();
+    IndividualResponse actualIndividual = response.getIndividuals().getFirst();
     assertThat(actualIndividual.getRelationshipToChildren()).isEqualTo("relationshipToChildren");
     assertThat(actualIndividual.getLastNameAtBirth()).isEqualTo("Alberts");
-    assertThat(actualIndividual.getPreviousApplicationReference()).isEqualTo("ZZ999Z");
+    assertThat(actualIndividual.getPreviousApplicationId()).isEqualTo("ZZ999Z");
     assertThat(actualIndividual.getCorrespondenceAddressType()).isEqualTo("Home");
+    assertThat(actualIndividual.getAppliedPreviously()).isTrue();
     assertThat(actualIndividual.getCorrespondenceAddress()).hasSize(2);
   }
 
@@ -313,7 +314,7 @@ public class GetIndividualsTest extends BaseHarnessTest {
     assertOK(result);
     assertThat(response.getIndividuals()).hasSize(3);
     assertThat(response.getIndividuals())
-        .extracting(Individual::getFirstName)
+        .extracting(IndividualResponse::getFirstName)
         .containsExactlyInAnyOrder(individual1.getFirstName(), individual2.getFirstName(), individual3.getFirstName());
   }
 

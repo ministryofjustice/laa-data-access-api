@@ -16,7 +16,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
@@ -158,7 +158,7 @@ public class TestConfiguration {
     }
 
     @Bean
-    public Factory<Individual, Individual.Builder> individualFactory() {
+    public Factory<IndividualResponse, IndividualResponse.Builder> individualFactory() {
         return new IndividualFactoryImpl();
     }
 

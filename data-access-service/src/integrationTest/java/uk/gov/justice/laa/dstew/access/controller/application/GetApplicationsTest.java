@@ -927,7 +927,7 @@ public class GetApplicationsTest extends BaseHarnessTest {
         HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
         ApplicationSummary applicationSummary = findApplicationSummaryById(actual.getApplications(), leadApplication.getId());
-        LinkedApplicationSummary linkedApplicationSummary = applicationSummary.getLinkedApplications().getFirst();
+        LinkedApplicationSummaryResponse linkedApplicationSummaryResponse = applicationSummary.getLinkedApplications().getFirst();
 
         // then
         assertContentHeaders(result);
@@ -936,9 +936,9 @@ public class GetApplicationsTest extends BaseHarnessTest {
         assertOK(result);
         assertPaging(actual, 2, 20, 1, 2);
         assertThat(applicationSummary.getLinkedApplications().size()).isEqualTo(1);
-        assertThat(linkedApplicationSummary.getApplicationId()).isEqualTo(associateApplication.getId());
-        assertThat(linkedApplicationSummary.getLaaReference()).isEqualTo(associateApplication.getLaaReference());
-        assertThat(linkedApplicationSummary.getIsLead()).isFalse();
+        assertThat(linkedApplicationSummaryResponse.getApplicationId()).isEqualTo(associateApplication.getId());
+        assertThat(linkedApplicationSummaryResponse.getLaaReference()).isEqualTo(associateApplication.getLaaReference());
+        assertThat(linkedApplicationSummaryResponse.getIsLead()).isFalse();
     }
 
     @Test
@@ -1006,7 +1006,7 @@ public class GetApplicationsTest extends BaseHarnessTest {
         assertThat(applicationSummary.getLinkedApplications().size()).isEqualTo(2);
 
         List<UUID> linkedIds = applicationSummary.getLinkedApplications().stream()
-            .map(LinkedApplicationSummary::getApplicationId)
+            .map(LinkedApplicationSummaryResponse::getApplicationId)
             .toList();
 
         // then

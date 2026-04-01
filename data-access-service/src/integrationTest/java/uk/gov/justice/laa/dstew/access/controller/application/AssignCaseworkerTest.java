@@ -10,7 +10,7 @@ import org.springframework.http.ProblemDetail;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
@@ -63,7 +63,7 @@ public class AssignCaseworkerTest extends BaseHarnessTest {
         CaseworkerAssignRequest caseworkerAssignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
             builder.caseworkerId(CaseworkerJohnDoe.getId())
                     .applicationIds(List.of(UUID.randomUUID()))
-                    .eventHistory(EventHistory.builder()
+                    .eventHistory(EventHistoryRequest.builder()
                             .eventDescription("Assigning caseworker")
                             .build());
         });
@@ -97,7 +97,7 @@ public class AssignCaseworkerTest extends BaseHarnessTest {
         CaseworkerAssignRequest caseworkerAssignRequest = DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class, builder -> {
             builder.caseworkerId(CaseworkerJohnDoe.getId())
                     .applicationIds(expectedAssignedApplications.stream().map(ApplicationEntity::getId).collect(Collectors.toList()).reversed())
-                    .eventHistory(EventHistory.builder()
+                    .eventHistory(EventHistoryRequest.builder()
                             .eventDescription("Assigning caseworker")
                             .build());
         });

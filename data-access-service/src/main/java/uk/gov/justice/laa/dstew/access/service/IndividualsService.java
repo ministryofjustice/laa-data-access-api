@@ -14,7 +14,7 @@ import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.mapper.IndividualMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
@@ -58,7 +58,7 @@ public class IndividualsService {
    * @return a {@link PaginatedResult} containing the page and validated pagination parameters
    */
   @AllowApiCaseworker
-  public PaginatedResult<Individual> getIndividuals(
+  public PaginatedResult<IndividualResponse> getIndividuals(
       Integer page,
       Integer pageSize,
       UUID applicationId,
@@ -67,16 +67,16 @@ public class IndividualsService {
     Specification<IndividualEntity> specification = buildSpecification(applicationId, individualType);
     Pageable pageable = createPageable(page, pageSize);
     Page<IndividualEntity> resultPage = individualRepository.findAll(specification, pageable);
-    if (include != null) {
+    if (individualType == IndividualType.CLIENT && include != null) {
       ApplicationEntity application = applicationRepository.findById(applicationId).orElseThrow();
 
-      return wrapResult(page, pageSize, resultPage.map(individual -> {
-        return individualMapper.toExtendedIndividual(
+      return wrapResult(page, pageSize, resultPage.map(individual ->
+        individualMapper.toExtendedIndividual(
           individual,
           individualType,
           include,
-          objectMapper.convertValue(application.getApplicationContent(), ApplicationContent.class));
-      }));
+          objectMapper.convertValue(application.getApplicationContent(), ApplicationContent.class))
+      ));
     }
     return wrapResult(page, pageSize, resultPage.map(individualMapper::toIndividual));
   }

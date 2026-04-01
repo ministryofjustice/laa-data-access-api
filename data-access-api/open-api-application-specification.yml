@@ -132,7 +132,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Application"
+                $ref: "#/components/schemas/ApplicationResponse"
         '400': { description: Bad request }
         '401': { description: Unauthorized }
         '403': { description: Forbidden }
@@ -181,7 +181,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CaseworkerResponse"
+                $ref: "#/components/schemas/CaseworkersResponse"
         '401': { description: Unauthorized }
         '403': { description: Forbidden }
         '500': { description: Internal server error }
@@ -273,6 +273,35 @@ paths:
         '404': { description: Not found }
         '500': { description: Internal server error }
 
+  /api/v0/applications/{id}/notes:
+    post:
+      tags:
+        - application
+      operationId: createApplicationNotes
+      summary: Create notes for an application
+      parameters:
+        - $ref: "#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        description: notes to add to application
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNoteRequest'
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
+
   /api/v0/applications/{id}/decision:
     patch:
       tags:
@@ -296,6 +325,34 @@ paths:
               $ref: '#/components/schemas/MakeDecisionRequest'
       responses:
         '200': { description: OK }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
+  /api/v0/applications/{id}/certificate:
+    get:
+      tags:
+        - application
+      operationId: getCertificate
+      summary: Get the certificate information for an application (if it exists)
+      parameters:
+        - $ref: "#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Certificate information
         '400': { description: Bad request }
         '401': { description: Unauthorized }
         '403': { description: Forbidden }
@@ -384,6 +441,7 @@ components:
         - ASSIGN_APPLICATION_TO_CASEWORKER
         - UNASSIGN_APPLICATION_TO_CASEWORKER
         - APPLICATION_MAKE_DECISION_REFUSED
+        - APPLICATION_MAKE_DECISION_GRANTED
 
     CategoryOfLaw:
       type: string
@@ -417,7 +475,7 @@ components:
         - ASC
         - DESC
 
-    Opponent:
+    OpponentResponse:
       type: object
       properties:
         opposableType:
@@ -429,7 +487,7 @@ components:
         organisationName:
           type: string
 
-    ApplicationCreateRequestIndividual:
+    IndividualCreateRequest:
       type: object
       required:
         - firstName
@@ -457,7 +515,7 @@ components:
       enum:
         - CLIENT_DETAILS
 
-    Individual:
+    IndividualResponse:
       type: object
       properties:
         clientId:
@@ -465,12 +523,14 @@ components:
           format: uuid
         lastNameAtBirth:
           type: string
-        previousApplicationReference:
+        previousApplicationId:
           type: string
         relationshipToChildren:
           type: string
         correspondenceAddressType:
           type: string
+        appliedPreviously:
+          type: boolean
         firstName:
           type: string
         lastName:
@@ -489,7 +549,7 @@ components:
         type:
           $ref: "#/components/schemas/IndividualType"
 
-    Application:
+    ApplicationResponse:
       type: object
       required:
         - applicationId
@@ -497,6 +557,7 @@ components:
         - laaReference
         - lastUpdated
         - proceedings
+        - applicationVersion
       properties:
         applicationId:
           type: string
@@ -527,13 +588,16 @@ components:
         opponents:
           type: array
           items:
-            $ref: "#/components/schemas/Opponent"
+            $ref: "#/components/schemas/OpponentResponse"
         proceedings:
-          $ref: "#/components/schemas/ApplicationProceedings"
+          $ref: "#/components/schemas/ApplicationProceedingsResponse"
         provider:
-          $ref: "#/components/schemas/Provider"
+          $ref: "#/components/schemas/ProviderResponse"
+        version:
+          type: integer
+          format: int64
 
-    Provider:
+    ProviderResponse:
       type: object
       properties:
         officeCode:
@@ -563,7 +627,7 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: "#/components/schemas/ApplicationCreateRequestIndividual"
+            $ref: "#/components/schemas/IndividualCreateRequest"
 
     ApplicationUpdateRequest:
       type: object
@@ -623,19 +687,19 @@ components:
         linkedApplications:
           type: array
           items:
-            $ref: "#/components/schemas/LinkedApplicationSummary"
+            $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
 
     ApplicationSummaryResponse:
       type: object
       properties:
         paging:
-          $ref: "#/components/schemas/Paging"
+          $ref: "#/components/schemas/PagingResponse"
         applications:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationSummary"
 
-    LinkedApplicationSummary:
+    LinkedApplicationSummaryResponse:
       type: object
       properties:
         applicationId:
@@ -646,7 +710,7 @@ components:
         isLead:
           type: boolean
 
-    Caseworker:
+    CaseworkerResponse:
       type: object
       properties:
         id:
@@ -655,16 +719,16 @@ components:
         username:
           type: string
 
-    EventHistory:
+    EventHistoryRequest:
       type: object
       properties:
         eventDescription:
           type: string
 
-    CaseworkerResponse:
+    CaseworkersResponse:
       type: array
       items:
-        $ref: "#/components/schemas/Caseworker"
+        $ref: "#/components/schemas/CaseworkerResponse"
 
     CaseworkerAssignRequest:
       type: object
@@ -682,7 +746,7 @@ components:
             type: string
             format: uuid
         eventHistory:
-          $ref: "#/components/schemas/EventHistory"
+          $ref: "#/components/schemas/EventHistoryRequest"
 
     CaseworkerUnassignRequest:
       type: object
@@ -690,7 +754,7 @@ components:
         - eventHistory
       properties:
         eventHistory:
-          $ref: "#/components/schemas/EventHistory"
+          $ref: "#/components/schemas/EventHistoryRequest"
 
     ApplicationHistoryResponse:
       type: object
@@ -698,9 +762,9 @@ components:
         events:
           type: array
           items:
-            $ref: "#/components/schemas/ApplicationDomainEvent"
+            $ref: "#/components/schemas/ApplicationDomainEventResponse"
 
-    ApplicationDomainEvent:
+    ApplicationDomainEventResponse:
       type: object
       required:
         - applicationId
@@ -725,7 +789,7 @@ components:
         eventDescription:
           type: string
 
-    Paging:
+    PagingResponse:
       type: object
       properties:
         page:
@@ -741,17 +805,16 @@ components:
       type: object
       properties:
         paging:
-          $ref: "#/components/schemas/Paging"
+          $ref: "#/components/schemas/PagingResponse"
         individuals:
           type: array
           items:
-            $ref: "#/components/schemas/Individual"
+            $ref: "#/components/schemas/IndividualResponse"
 
     DecisionStatus:
       type: string
       enum:
         - GRANTED
-        - PARTIALLY_GRANTED
         - REFUSED
 
     MeritsDecisionStatus:
@@ -760,7 +823,7 @@ components:
         - GRANTED
         - REFUSED
 
-    MeritsDecisionDetails:
+    MeritsDecisionDetailsRequest:
       type: object
       required:
         - decision
@@ -773,7 +836,7 @@ components:
         justification:
           type: string
 
-    MakeDecisionProceeding:
+    MakeDecisionProceedingRequest:
       type: object
       required:
         - proceedingId
@@ -783,7 +846,7 @@ components:
           type: string
           format: uuid
         meritsDecision:
-          $ref: "#/components/schemas/MeritsDecisionDetails"
+          $ref: "#/components/schemas/MeritsDecisionDetailsRequest"
 
     MakeDecisionRequest:
       type: object
@@ -792,6 +855,7 @@ components:
         - proceedings
         - eventHistory
         - autoGranted
+        - applicationVersion
       properties:
         overallDecision:
           $ref: "#/components/schemas/DecisionStatus"
@@ -799,22 +863,26 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: "#/components/schemas/MakeDecisionProceeding"
+            $ref: "#/components/schemas/MakeDecisionProceedingRequest"
         eventHistory:
-          $ref: "#/components/schemas/EventHistory"
+          $ref: "#/components/schemas/EventHistoryRequest"
         autoGranted:
           type: boolean
         certificate:
           type: object
           additionalProperties: true
           description: Certificate information (required when overallDecision is GRANTED)
+        applicationVersion:
+          type: integer
+          format: int64
+          description: Version of application being decided, used for concurrency control
 
-    ApplicationProceedings:
+    ApplicationProceedingsResponse:
       type: array
       items:
-        $ref: "#/components/schemas/ApplicationProceeding"
+        $ref: "#/components/schemas/ApplicationProceedingResponse"
 
-    ApplicationProceeding:
+    ApplicationProceedingResponse:
       type: object
       required:
         - proceedingId
@@ -843,7 +911,13 @@ components:
             type: object
         meritsDecision:
           $ref: "#/components/schemas/MeritsDecisionStatus"
-        involvedChildren:
-          type: array
-          items:
-            type: object
+
+    CreateNoteRequest:
+      type: object
+      required:
+        - notes
+      properties:
+        notes:
+          type: string
+          minLength: 1
+          maxLength: 10000

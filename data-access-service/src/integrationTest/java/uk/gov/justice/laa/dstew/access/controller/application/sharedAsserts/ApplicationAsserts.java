@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -58,11 +58,11 @@ public class ApplicationAsserts {
 
         assertThat(expected.size()).isEqualTo(actual.size());
 
-        List<Application> actualApplications = actual.stream()
+        List<ApplicationResponse> actualApplications = actual.stream()
                 .map(this::createApplication)
                 .toList();
 
-        List<Application> expectedApplications = expected.stream()
+        List<ApplicationResponse> expectedApplications = expected.stream()
                 .map(this::createApplication)
                 .toList();
 
@@ -75,19 +75,19 @@ public class ApplicationAsserts {
 
         assertThat(expected.size()).isEqualTo(actual.size());
 
-        List<Application> actualApplications = actual.stream()
+        List<ApplicationResponse> actualApplications = actual.stream()
                 .map(this::createApplicationIgnoreLastUpdated)
                 .toList();
 
-        List<Application> expectedApplications = expected.stream()
+        List<ApplicationResponse> expectedApplications = expected.stream()
                 .map(this::createApplicationIgnoreLastUpdated)
                 .toList();
 
         assertTrue(expectedApplications.containsAll(actualApplications));
     }
 
-    public Application createApplication(ApplicationEntity applicationEntity) {
-        Application application = new Application();
+    public ApplicationResponse createApplication(ApplicationEntity applicationEntity) {
+        ApplicationResponse application = new ApplicationResponse();
         application.setApplicationId(applicationEntity.getId());
         application.setStatus(applicationEntity.getStatus());
         if (applicationEntity.getCaseworker() != null) {
@@ -107,8 +107,8 @@ public class ApplicationAsserts {
         return application;
     }
 
-    public Application createApplicationIgnoreLastUpdated(ApplicationEntity applicationEntity) {
-        Application application = createApplication(applicationEntity);
+    public ApplicationResponse createApplicationIgnoreLastUpdated(ApplicationEntity applicationEntity) {
+        ApplicationResponse application = createApplication(applicationEntity);
         assertNotNull(applicationEntity.getModifiedAt());
         application.setLastUpdated(null);
         return application;
