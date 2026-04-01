@@ -923,9 +923,9 @@ components:
           type: string
           format: date
         categoryOfLaw:
-          type: string
+          $ref: "#/components/schemas/CategoryOfLaw"
         matterType:
-          type: string
+          $ref: "#/components/schemas/MatterType"
         levelOfService:
           type: string
         substantiveCostLimitation:

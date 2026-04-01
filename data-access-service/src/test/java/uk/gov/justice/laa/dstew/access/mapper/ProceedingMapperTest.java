@@ -75,8 +75,8 @@ class ProceedingMapperTest extends BaseMapperTest {
         assertThat(result.getProceedingId()).isEqualTo(proceedingId);
         assertThat(result.getProceedingDescription()).isEqualTo("description");
         assertThat(result.getProceedingType()).isEqualTo("hearing");
-        assertThat(result.getCategoryOfLaw()).isEqualTo("Family");
-        assertThat(result.getMatterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
+        assertThat(result.getCategoryOfLaw().getValue()).isEqualToIgnoringCase("Family");
+        assertThat(result.getMatterType().getValue()).isEqualToIgnoringCase("SPECIAL_CHILDREN_ACT");
         assertThat(result.getLevelOfService()).isEqualTo("service");
         assertThat(result.getSubstantiveCostLimitation()).isEqualTo("23.45");
         assertThat(result.getDelegatedFunctionsDate()).isEqualTo(LocalDate.parse("2025-05-06"));

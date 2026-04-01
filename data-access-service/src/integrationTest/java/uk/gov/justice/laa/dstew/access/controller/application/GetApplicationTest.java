@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
+import uk.gov.justice.laa.dstew.access.utils.EnumUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
@@ -367,8 +368,8 @@ public class GetApplicationTest extends BaseIntegrationTest {
                 .proceedingId(proceeding.getId())
                 .proceedingDescription(proceeding.getDescription())
                 .proceedingType(proceeding.getProceedingContent().get("meaning").toString())
-                .categoryOfLaw(proceeding.getProceedingContent().get("categoryOfLaw").toString())
-                .matterType(proceeding.getProceedingContent().get("matterType").toString())
+                .categoryOfLaw(EnumUtils.convertToCategoryOfLaw((String) proceeding.getProceedingContent().get("categoryOfLaw")))
+                .matterType(EnumUtils.convertToMatterType(proceeding.getProceedingContent().get("matterType").toString()))
                 .levelOfService(proceeding.getProceedingContent().get("substantiveLevelOfServiceName").toString())
                 .substantiveCostLimitation(proceeding.getProceedingContent().get("substantiveCostLimitation").toString())
                 .delegatedFunctionsDate(LocalDate.parse(proceeding.getProceedingContent().get("usedDelegatedFunctionsOn").toString()))

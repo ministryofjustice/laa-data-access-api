@@ -8,6 +8,7 @@ import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
+import uk.gov.justice.laa.dstew.access.utils.EnumUtils;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 
 /**
@@ -57,8 +58,8 @@ public interface ProceedingMapper {
     applicationProceedingResponse.setProceedingDescription(proceedingEntity.getDescription());
     applicationProceedingResponse.setProceedingType(proceeding.getMeaning());
     applicationProceedingResponse.setDelegatedFunctionsDate(proceeding.getUsedDelegatedFunctionsOn());
-    applicationProceedingResponse.setCategoryOfLaw(proceeding.getCategoryOfLaw());
-    applicationProceedingResponse.setMatterType(proceeding.getMatterType());
+    applicationProceedingResponse.setCategoryOfLaw(EnumUtils.convertToCategoryOfLaw(proceeding.getCategoryOfLaw()));
+    applicationProceedingResponse.setMatterType(EnumUtils.convertToMatterType(proceeding.getMatterType()));
     applicationProceedingResponse.setLevelOfService(proceeding.getSubstantiveLevelOfServiceName());
     applicationProceedingResponse.setSubstantiveCostLimitation(proceeding.getSubstantiveCostLimitation());
     if (proceeding.getScopeLimitations() != null) {
