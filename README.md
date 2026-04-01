@@ -27,6 +27,10 @@ Go back to Github to authorize MOJ for SSO
 
 See `docs/monitoring.md` for details on how application metrics are collected, scraped by Prometheus, and visualised in Grafana dashboards.
 
+### Network Policies
+
+See `docs/network-policies.md` for details on the Kubernetes network policies that control traffic to the API and PostgreSQL pods, including per-release isolation in shared namespaces.
+
 ### Pre-commit hooks
 
 See `docs/pre-commit-hooks.md` for information on setting up and using pre-commit hooks in this project.

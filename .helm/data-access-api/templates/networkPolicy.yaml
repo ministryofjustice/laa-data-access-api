@@ -14,9 +14,13 @@ spec:
         - namespaceSelector:
             matchLabels:
               component: monitoring
+      ports:
+        - protocol: TCP
+          port: 8080
     - from:
         - namespaceSelector:
             matchLabels:
               component: ingress-controllers
-    - from:
-        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080

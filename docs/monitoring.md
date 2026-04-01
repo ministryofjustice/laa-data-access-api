@@ -96,19 +96,9 @@ endpoints:
 
 The second relabeling exposes the Helm release name as a `release` label on all scraped metrics. This is essential for scoping dashboards in shared namespaces (see below).
 
-### NetworkPolicy (`networkPolicy.yaml`)
+### NetworkPolicies
 
-Allows ingress from the monitoring namespace so Prometheus can reach the pods:
-
-```yaml
-ingress:
-  - from:
-      - namespaceSelector:
-          matchLabels:
-            component: monitoring
-```
-
-Without this policy, Prometheus cannot scrape metrics and all dashboard panels will be blank.
+See [docs/network-policies.md](network-policies.md) for full details on the network policies that allow Prometheus scraping and restrict database access per release.
 
 ### Grafana dashboard (`grafana-dashboard.yaml` + `grafana-dashboard-template.json`)
 
@@ -147,7 +137,7 @@ The Grafana dashboard includes the following panel groups:
 
 | Problem | Likely cause | Fix |
 |---|---|---|
-| All panels blank | NetworkPolicy missing or misconfigured | Check `networkPolicy.yaml` exists and monitoring namespace has `component: monitoring` label |
+| All panels blank | NetworkPolicy missing or misconfigured | See [network-policies.md](network-policies.md) — check `networkPolicy.yaml` exists and monitoring namespace has `component: monitoring` label |
 | SQL histogram panels blank | `percentile-histogram` not enabled | Add `management.metrics.distribution.percentile-histogram.jdbc.query: true` |
 | Dashboard shows metrics from other releases | Missing release filter in PromQL | Add `release='{{ .Release.Name }}'` or `pod=~'{{ .Release.Name }}.*'` |
 | No `operation_type` breakdown | `SqlOperationTypeConvention` not loaded | Ensure the class is annotated `@Component` and on the component scan path |

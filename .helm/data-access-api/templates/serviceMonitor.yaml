@@ -4,9 +4,12 @@ metadata:
   name: {{ .Release.Name }}-{{ .Chart.Name }}-service-monitor
   namespace: {{ .Release.Namespace }}
 spec:
+  targetLabels:
+    - release
   selector:
     matchLabels:
       app: {{ include "data-access-api.name" . }}
+      release: {{ .Release.Name }}
   endpoints:
     - port: http
       interval: 15s
@@ -14,7 +17,4 @@ spec:
       relabelings:
         - sourceLabels: [ __meta_kubernetes_pod_label_app_kubernetes_io_name ]
           targetLabel: container
-          action: replace
-        - sourceLabels: [ __meta_kubernetes_pod_label_app_kubernetes_io_instance ]
-          targetLabel: release
           action: replace
