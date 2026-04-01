@@ -111,7 +111,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum({namespace='{{ .Release.Namespace }}', container='$container', phase='Running',pod=~'{{ .Release.Name }}.*deployment.*'} + 0)",
+          "expr": "sum(kube_pod_status_phase{namespace='{{ .Release.Namespace }}', phase='Running', pod=~'{{ .Release.Name }}.*deployment.*'})",
           "hide": false,
           "legendFormat": "Running",
           "range": true,
@@ -123,7 +123,7 @@
             "uid": "prometheus"
           },
           "editorMode": "builder",
-          "expr": "sum({namespace='{{ .Release.Namespace }}', container='$container',phase='Pending',pod=~'{{ .Release.Name }}.*deployment.*'} + 0)",
+          "expr": "sum(kube_pod_status_phase{namespace='{{ .Release.Namespace }}', phase='Pending', pod=~'{{ .Release.Name }}.*deployment.*'})",
           "hide": false,
           "legendFormat": "Pending",
           "range": true,
@@ -135,7 +135,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum({namespace='{{ .Release.Namespace }}', container='$container',phase='Failed',pod=~'{{ .Release.Name }}.*deployment.*'} + 0)",
+          "expr": "sum(kube_pod_status_phase{namespace='{{ .Release.Namespace }}', phase='Failed', pod=~'{{ .Release.Name }}.*deployment.*'})",
           "hide": false,
           "legendFormat": "Failed",
           "range": true,
@@ -757,7 +757,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_max_bytes{namespace='{{ .Release.Namespace }}',container='$container', release='{{ .Release.Name }}', area='heap', id='Survivor Space', namespace='{{ .Release.Namespace }}'} / 1000000",
+          "expr": "jvm_memory_max_bytes{namespace='{{ .Release.Namespace }}',container='$container', release='{{ .Release.Name }}', area='heap', id='Survivor Space'} / 1000000",
           "legendFormat": "{{`{{instance}}`}}",
           "range": true,
           "refId": "A"
@@ -820,7 +820,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_max_bytes{namespace='{{ .Release.Namespace }}',container='$container',release='{{ .Release.Name }}',area='heap',id='Tenured Gen',} /1000000",
+          "expr": "jvm_memory_max_bytes{namespace='{{ .Release.Namespace }}',container='$container',release='{{ .Release.Name }}',area='heap',id='Tenured Gen'} /1000000",
           "legendFormat": "{{`{{instance}}`}}",
           "range": true,
           "refId": "A"
@@ -1094,7 +1094,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "jvm_memory_used_bytes{namespace='{{ .Release.Namespace }}',container='$container',release='{{ .Release.Name }}',area='heap',id='Tenured Gen',} /1000000",
+          "expr": "jvm_memory_used_bytes{namespace='{{ .Release.Namespace }}',container='$container',release='{{ .Release.Name }}',area='heap',id='Tenured Gen'} /1000000",
           "legendFormat": "{{`{{instance}}`}}",
           "range": true,
           "refId": "A"
