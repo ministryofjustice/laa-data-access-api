@@ -1,6 +1,10 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.PersistenceUnit;
 import java.util.UUID;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -60,6 +64,9 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     public static final String SEARCH_SORTBY_LAST_UPDATED_PARAM = "LAST_UPDATED_DATE";
     public static final String SEARCH_ORDERBY_ASC_PARAM = "ASC";
     public static final String SEARCH_ORDERBY_DESC_PARAM = "DESC";
+
+    @PersistenceUnit
+    private EntityManagerFactory entityManagerFactory;
 
     private static Stream<Arguments> searchFieldAndOrderParameters() {
         return Stream.of(
@@ -1106,6 +1113,34 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         // then
         assertSecurityHeaders(result);
         assertForbidden(result);
+    }
+
+    @Test                                                                                                                                                                                                               @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
+    void givenPageOfResults_whenGetApplications_thenQueryCountIsFixed() throws Exception {                                                                                                                                  // given — create 20 applications each with an individual and caseworker
+        persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class, 20,
+            builder -> builder.individuals(Set.of(
+                DataGenerator.createDefault(IndividualEntityGenerator.class))));
+
+        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        statistics.setStatisticsEnabled(true);
+
+        // when — page 1 (20 results)
+        statistics.clear();
+        getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_PAGE_PARAM + "1");
+        long queriesForTwenty = statistics.getPrepareStatementCount();
+
+        // create 1 more (now 21 total, still 20 per page)
+        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class,
+            builder -> builder.individuals(Set.of(
+                DataGenerator.createDefault(IndividualEntityGenerator.class))));
+
+        // when — page 1 again (still 20 results)
+        statistics.clear();
+        getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_PAGE_PARAM + "1");
+        long queriesForTwentyAgain = statistics.getPrepareStatementCount();
+
+        // then — query count does not change when results change
+        assertThat(queriesForTwenty).isEqualTo(queriesForTwentyAgain);
     }
 
     private void assertPaging(

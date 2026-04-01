@@ -22,9 +22,11 @@ public interface ApplicationRepository extends JpaRepository<ApplicationEntity, 
   List<ApplicationEntity> findAllByApplyApplicationIdIn(List<UUID> applyApplicationIds);
 
   @Query(
-      value = "SELECT la.lead_application_id FROM linked_applications la WHERE la.associated_application_id IN :pageIds",
+      value = "SELECT DISTINCT la.lead_application_id "
+          + "FROM linked_applications la "
+          + "WHERE la.associated_application_id IN :pageIds OR la.lead_application_id IN :pageIds",
       nativeQuery = true)
-  List<UUID> findLeadIdsByAssociatedIds(@Param("pageIds") List<UUID> pageIds);
+  List<UUID> findLeadIdsByPageIds(@Param("pageIds") List<UUID> pageIds);
 
   @Query(
       value = "SELECT a.id, a.laa_reference, false AS is_lead, la.lead_application_id "

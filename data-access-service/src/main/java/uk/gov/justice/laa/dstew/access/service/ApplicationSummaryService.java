@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -26,7 +25,6 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
-import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -92,22 +90,31 @@ public class ApplicationSummaryService {
       throw new ValidationException(List.of("Caseworker not found"));
     }
 
+    String firstNameParam = clientFirstName != null ? "%" + clientFirstName.toLowerCase() + "%" : null;
+    String lastNameParam = clientLastName != null ? "%" + clientLastName.toLowerCase() + "%" : null;
+    String companyRefParam = laaReference != null && !laaReference.isBlank()
+        ? "%" + laaReference.toLowerCase() + "%" : null;
+
     Page<ApplicationSummaryEntity> resultPage = applicationSummaryRepository
-        .findAll(ApplicationSummarySpecification
-                .filterBy(applicationStatus,
-                    laaReference,
-                    clientFirstName,
-                    clientLastName,
-                    clientDateOfBirth,
-                    userId,
-                    matterType,
-                    isAutoGranted),
+        .findAllWithFilters(
+            applicationStatus,
+            companyRefParam,
+            firstNameParam,
+            lastNameParam,
+            clientDateOfBirth,
+            userId,
+            matterType,
+            isAutoGranted,
             pageDetails);
 
-    Map<UUID, List<LinkedApplicationSummaryDto>> linkedApplications = retrieveLinkedApplications(resultPage.getContent());
+    List<UUID> pageIds = resultPage.getContent().stream().map(ApplicationSummaryEntity::getId).toList();
+    List<UUID> allLeadIds = applicationRepository.findLeadIdsByPageIds(pageIds);
+    Map<UUID, List<LinkedApplicationSummaryDto>> linkedApplications =
+        retrieveLinkedApplications(resultPage.getContent(), allLeadIds);
 
     return wrapResult(page, pageSize, resultPage.map(entity -> {
       ApplicationSummary summary = mapper.toApplicationSummary(entity);
+      summary.setIsLead(allLeadIds.contains(entity.getId()));
       summary.setLinkedApplications(
           linkedApplications.getOrDefault(entity.getId(), List.of())
               .stream()
@@ -118,13 +125,8 @@ public class ApplicationSummaryService {
     }));
   }
 
-  private Map<UUID, List<LinkedApplicationSummaryDto>> retrieveLinkedApplications(List<ApplicationSummaryEntity> content) {
-    List<UUID> pageIds = content.stream().map(ApplicationSummaryEntity::getId).toList();
-    List<UUID> allLeadIds = Stream.concat(
-            content.stream().filter(ApplicationSummaryEntity::isLead).map(ApplicationSummaryEntity::getId),
-            applicationRepository.findLeadIdsByAssociatedIds(pageIds).stream())
-        .distinct()
-        .toList();
+  private Map<UUID, List<LinkedApplicationSummaryDto>> retrieveLinkedApplications(
+      List<ApplicationSummaryEntity> content, List<UUID> allLeadIds) {
 
     if (allLeadIds.isEmpty()) {
       return Map.of();

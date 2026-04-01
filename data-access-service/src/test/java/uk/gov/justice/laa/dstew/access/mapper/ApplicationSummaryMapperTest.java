@@ -123,26 +123,6 @@ public class ApplicationSummaryMapperTest extends BaseMapperTest {
     }
 
     @Test
-    void givenApplicationSummaryEntityWithLinkedApplications_whenToApplicationSummary_thenIsLeadIsTrue() {
-        var linkedApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class);
-
-        ApplicationSummaryEntity entity = DataGenerator.createDefault(ApplicationSummaryGenerator.class, builder -> builder
-                .individuals(Set.of())
-                .linkedApplications(Set.of(linkedApplication)));
-
-        assertThat(applicationMapper.toApplicationSummary(entity).getIsLead()).isTrue();
-    }
-
-    @Test
-    void givenApplicationSummaryEntityWithNoLinkedApplications_whenToApplicationSummary_thenIsLeadIsFalse() {
-        ApplicationSummaryEntity entity = DataGenerator.createDefault(ApplicationSummaryGenerator.class, builder -> builder
-                .individuals(Set.of())
-                .linkedApplications(null));
-
-        assertThat(applicationMapper.toApplicationSummary(entity).getIsLead()).isFalse();
-    }
-
-    @Test
     void givenApplicationSummaryEntityWithNoIndividuals_whenToApplicationSummary_thenClientFieldsAreNull() {
         ApplicationSummaryEntity entity = DataGenerator.createDefault(ApplicationSummaryGenerator.class, builder -> builder
                 .individuals(Set.of()));
