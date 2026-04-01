@@ -2,56 +2,15 @@ package uk.gov.justice.laa.dstew.access.utils.harness;
 
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
-import org.junit.jupiter.api.extension.ConditionEvaluationResult;
-import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestInstancePostProcessor;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
-import java.lang.reflect.Method;
-import java.util.Arrays;
-
-public class HarnessExtension implements BeforeAllCallback, AfterAllCallback, TestInstancePostProcessor, ExecutionCondition {
+public class HarnessExtension implements BeforeAllCallback, AfterAllCallback, TestInstancePostProcessor {
 
     private static final String STORE_KEY = "testContextProvider";
     private static final String INFRASTRUCTURE_MODE = "infrastructure";
 
-    // ── ExecutionCondition ────────────────────────────────────────────────────
-
-    @Override
-    public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext ctx) {
-        if (!INFRASTRUCTURE_MODE.equals(System.getProperty("test.mode"))) {
-            return ConditionEvaluationResult.enabled("Normal integration mode — all tests run");
-        }
-
-        boolean isMethodLevel = ctx.getTestMethod().isPresent();
-
-        if (isMethodLevel) {
-            boolean smokeMethod = ctx.getTestMethod()
-                    .map(m -> m.isAnnotationPresent(SmokeTest.class))
-                    .orElse(false);
-            boolean smokeClass = ctx.getTestClass()
-                    .map(c -> c.isAnnotationPresent(SmokeTest.class))
-                    .orElse(false);
-
-            if (smokeMethod || smokeClass) {
-                return ConditionEvaluationResult.enabled("@SmokeTest — included in infrastructure mode");
-            }
-            return ConditionEvaluationResult.disabled("Not annotated with @SmokeTest — skipped in infrastructure mode");
-        }
-
-        boolean smokeClass = ctx.getTestClass()
-                .map(c -> c.isAnnotationPresent(SmokeTest.class))
-                .orElse(false);
-        boolean anySmokeMethods = ctx.getTestClass()
-                .map(c -> Arrays.stream(c.getMethods()).anyMatch(m -> m.isAnnotationPresent(SmokeTest.class)))
-                .orElse(false);
-
-        if (smokeClass || anySmokeMethods) {
-            return ConditionEvaluationResult.enabled("Class contains @SmokeTest — evaluating per method");
-        }
-        return ConditionEvaluationResult.disabled("No @SmokeTest found on class or methods — skipped in infrastructure mode");
-    }
 
     @Override
     public void beforeAll(ExtensionContext ctx) {

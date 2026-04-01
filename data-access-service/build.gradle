@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
 plugins {
     id 'java'
     id 'jacoco'
@@ -73,8 +75,25 @@ test {
 }
 
 tasks.named('integrationTest') {
+    def testMode = findProperty('testMode') ?: 'integration'
+    def isInfrastructure = testMode == 'infrastructure'
+
     // Forward test.mode so HarnessExtension selects the correct TestContextProvider
-    systemProperty 'test.mode', System.getProperty('test.mode', 'integration')
+    systemProperty 'test.mode', testMode
+
+    // In infrastructure mode: restrict to controller classes AND only run @SmokeTest
+    // (@Tag("smoke")) methods. Using includeTags means non-smoke tests are never
+    // selected by the JUnit Platform engine — they produce no skipped output at all.
+    if (isInfrastructure) {
+        filter {
+            includeTestsMatching 'uk.gov.justice.laa.dstew.access.controller.*'
+        }
+        useJUnitPlatform {
+            includeTags 'smoke'
+        }
+    } else {
+        useJUnitPlatform()
+    }
 
     // Forward infrastructure connection details into the test JVM environment
     ['LAA_ACCESS_API_URL', 'LAA_ACCESS_DB_URL', 'LAA_ACCESS_DB_USERNAME', 'LAA_ACCESS_DB_PASSWORD'].each { key ->
@@ -83,9 +102,11 @@ tasks.named('integrationTest') {
     }
 
     testLogging {
-        events 'passed', 'skipped', 'failed'
-        showStandardStreams = true
+        events TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED
         exceptionFormat = 'full'
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
     }
 }
 

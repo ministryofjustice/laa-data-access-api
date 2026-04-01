@@ -35,7 +35,8 @@ services:
       ENTRA_JWK_SET_URI: ${ENTRA_JWK_SET_URI:-}
       ENTRA_AUD: ${ENTRA_AUD:-}
       # Optional feature flags
-      FEATURE_ENABLE_DEV_TOKEN: ${FEATURE_ENABLE_DEV_TOKEN:-false}
+      FEATURE_ENABLE_DEV_TOKEN: true
+      FEATURE_DISABLE_SECURITY: false
       # Sentry (disabled locally by default)
       SENTRY_ENABLED: ${SENTRY_ENABLED:-false}
       SENTRY_DSN: ${SENTRY_DSN:-}

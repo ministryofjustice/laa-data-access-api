@@ -1,12 +1,13 @@
 package uk.gov.justice.laa.dstew.access.utils.harness;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.orm.jpa.JpaTransactionManager;
@@ -46,6 +47,7 @@ public class InfrastructureTestContextProvider implements TestContextProvider {
             return ds;
         });
         applicationContext.register(InfrastructureJpaConfig.class);
+        applicationContext.register(uk.gov.justice.laa.dstew.access.TestConfiguration.class);
         log.info("InfrastructureTestContextProvider: refreshing JPA application context...");
         applicationContext.refresh();
         log.info("InfrastructureTestContextProvider: JPA application context ready");
@@ -87,13 +89,20 @@ public class InfrastructureTestContextProvider implements TestContextProvider {
     @EnableJpaRepositories(basePackages = "uk.gov.justice.laa.dstew.access.repository")
     @ComponentScan(basePackages = {
             "uk.gov.justice.laa.dstew.access.utils.generator",
-            "uk.gov.justice.laa.dstew.access.utils.helpers"
+            "uk.gov.justice.laa.dstew.access.utils.helpers",
+            "uk.gov.justice.laa.dstew.access.utils.harness",
+            "uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts"
     })
     static class InfrastructureJpaConfig {
 
         @Bean
         public ObjectMapper objectMapper() {
             return new ObjectMapper();
+        }
+
+        @Bean
+        public JdbcTemplate jdbcTemplate(DataSource dataSource) {
+            return new JdbcTemplate(dataSource);
         }
 
         @Bean
@@ -104,6 +113,12 @@ public class InfrastructureTestContextProvider implements TestContextProvider {
             factory.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
             var props = new Properties();
             props.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
+            // Match Spring Boot's default naming strategy so camelCase fields map to
+            // snake_case columns (e.g. applicationContent → application_content).
+            // SpringPhysicalNamingStrategy was removed in Spring Boot 3; its replacement
+            // is Hibernate's CamelCaseToUnderscoresNamingStrategy.
+            props.setProperty("hibernate.physical_naming_strategy",
+                    "org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy");
             factory.setJpaProperties(props);
             return factory;
         }
@@ -114,8 +129,8 @@ public class InfrastructureTestContextProvider implements TestContextProvider {
         }
 
         @Bean
-        public NamedParameterJdbcTemplate namedParameterJdbcTemplate(DataSource dataSource) {
-            return new NamedParameterJdbcTemplate(dataSource);
+        public NamedParameterJdbcTemplate namedParameterJdbcTemplate(JdbcTemplate jdbcTemplate) {
+            return new NamedParameterJdbcTemplate(jdbcTemplate);
         }
     }
 }

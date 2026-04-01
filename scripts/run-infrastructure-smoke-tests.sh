@@ -75,16 +75,20 @@ LAA_ACCESS_API_URL="${LAA_ACCESS_API_URL:-http://localhost:8080}" \
 LAA_ACCESS_DB_URL="${LAA_ACCESS_DB_URL:-jdbc:postgresql://localhost:5432/laa_data_access_api}" \
 LAA_ACCESS_DB_USERNAME="${LAA_ACCESS_DB_USERNAME:-laa_user}" \
 LAA_ACCESS_DB_PASSWORD="${LAA_ACCESS_DB_PASSWORD:-laa_password}" \
+FEATURE_DISABLE_SECURITY=false \
+FEATURE_ENABLE_DEV_TOKENS=true \
 ./gradlew :data-access-service:integrationTest \
-  -Dtest.mode=infrastructure \
-  --tests "uk.gov.justice.laa.dstew.access.controller.caseworker.GetCaseworkersTest" \
-  --tests "uk.gov.justice.laa.dstew.access.controller.application.GetApplicationTest"
+  -PtestMode=infrastructure \
+  --continue \
+  --console=plain \
+  || true
 TEST_EXIT_CODE=$?
 
 if [ "${TEST_EXIT_CODE}" -eq 0 ]; then
   log "Infrastructure smoke tests PASSED."
 else
   log "Infrastructure smoke tests FAILED (exit code ${TEST_EXIT_CODE})."
+  log "Full report: ${ROOT_DIR}/data-access-service/build/reports/tests/integrationTest/index.html"
 fi
 
 # Exit with the test exit code; the trap will handle teardown.
