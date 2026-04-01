@@ -1368,9 +1368,10 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(increase(jdbc_query_seconds_count{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[$__range])) by (operation_type)",
+          "expr": "sum by (operation_type) (jdbc_query_seconds_count{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'})",
           "legendFormat": "{{`{{operation_type}}`}}",
-          "range": true,
+          "instant": true,
+          "range": false,
           "refId": "A"
         }
       ],
@@ -1457,7 +1458,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(jdbc_query_seconds_sum{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[5m]) / rate(jdbc_query_seconds_count{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[5m]) * 1000",
+          "expr": "sum by (operation_type) (rate(jdbc_query_seconds_sum{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[5m])) / sum by (operation_type) (rate(jdbc_query_seconds_count{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[5m])) * 1000",
           "legendFormat": "{{`{{operation_type}}`}}",
           "range": true,
           "refId": "A"
