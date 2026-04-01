@@ -21,7 +21,8 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 public interface ApplicationSummaryRepository extends
     JpaRepository<ApplicationSummaryEntity, UUID>, JpaSpecificationExecutor<ApplicationSummaryEntity> {
 
-  @Query(                                                                                                                                                                                                                 value = """
+  @Query(
+      value = """
       SELECT ase FROM ApplicationSummaryEntity ase
       WHERE (:status IS NULL OR ase.status = :status)
       AND (:laaReference IS NULL OR LOWER(ase.laaReference) LIKE :laaReference)
