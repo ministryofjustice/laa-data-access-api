@@ -1,5 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.harness;
 
+import org.junit.jupiter.api.Tag;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
