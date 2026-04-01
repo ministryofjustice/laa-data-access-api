@@ -1628,7 +1628,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(jpa_entities_total{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}) by (entity, operation)",
+          "expr": "sum(increase(jpa_entities_total{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[$__range])) by (entity, operation)",
           "legendFormat": "{{`{{entity}}`}} - {{`{{operation}}`}}",
           "range": true,
           "refId": "A"

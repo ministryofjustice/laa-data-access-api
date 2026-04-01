@@ -7,12 +7,12 @@ import net.ttddyy.observation.tracing.QueryContext;
 import org.springframework.stereotype.Component;
 
 /**
- * Suppresses JDBC query observations for transaction control and SET statements.
+ * Suppresses JDBC query observations for non-CRUD statements.
  *
- * <p>Queries like {@code BEGIN}, {@code COMMIT}, {@code ROLLBACK}, and {@code SET} are
- * infrastructure noise that inflate the "other" bucket in Prometheus metrics. Returning
- * {@code false} causes the observation to become {@link Observation#NOOP}, so no timer
- * or histogram is recorded.</p>
+ * <p>Only allows observations for standard data operations (SELECT, INSERT, UPDATE, DELETE, MERGE).
+ * All other queries — transaction control, DDL, driver metadata, Flyway housekeeping — are
+ * suppressed by returning {@code false}, which causes the observation to become
+ * {@link Observation#NOOP} so no timer or histogram is recorded.</p>
  */
 @Component
 public class JdbcQueryObservationPredicate implements ObservationPredicate {
@@ -23,16 +23,18 @@ public class JdbcQueryObservationPredicate implements ObservationPredicate {
       List<String> queries = queryContext.getQueries();
       if (queries != null && !queries.isEmpty()) {
         String trimmed = queries.getFirst().trim().toUpperCase();
-        return !isIgnoredQuery(trimmed);
+        return isMeasuredQuery(trimmed);
       }
+      return false;
     }
     return true;
   }
 
-  private boolean isIgnoredQuery(String query) {
-    return query.startsWith("BEGIN")
-        || query.startsWith("COMMIT")
-        || query.startsWith("ROLLBACK")
-        || query.startsWith("SET");
+  private boolean isMeasuredQuery(String query) {
+    return query.startsWith("SELECT")
+        || query.startsWith("INSERT")
+        || query.startsWith("UPDATE")
+        || query.startsWith("DELETE")
+        || query.startsWith("MERGE");
   }
 }
