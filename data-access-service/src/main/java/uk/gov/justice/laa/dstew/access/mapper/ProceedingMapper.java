@@ -56,7 +56,7 @@ public interface ProceedingMapper {
     applicationProceedingResponse.setProceedingId(proceedingEntity.getId());
     applicationProceedingResponse.setProceedingDescription(proceedingEntity.getDescription());
     applicationProceedingResponse.setProceedingType(proceeding.getMeaning());
-    applicationProceedingResponse.setUsedDelegatedFunctionsOn(proceeding.getUsedDelegatedFunctionsOn());
+    applicationProceedingResponse.setDelegatedFunctionsDate(proceeding.getUsedDelegatedFunctionsOn());
     applicationProceedingResponse.setCategoryOfLaw(proceeding.getCategoryOfLaw());
     applicationProceedingResponse.setMatterType(proceeding.getMatterType());
     applicationProceedingResponse.setLevelOfService(proceeding.getSubstantiveLevelOfServiceName());

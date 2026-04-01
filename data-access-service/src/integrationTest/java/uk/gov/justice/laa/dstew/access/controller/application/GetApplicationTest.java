@@ -371,7 +371,7 @@ public class GetApplicationTest extends BaseIntegrationTest {
                 .matterType(proceeding.getProceedingContent().get("matterType").toString())
                 .levelOfService(proceeding.getProceedingContent().get("substantiveLevelOfServiceName").toString())
                 .substantiveCostLimitation(proceeding.getProceedingContent().get("substantiveCostLimitation").toString())
-                .usedDelegatedFunctionsOn(LocalDate.parse(proceeding.getProceedingContent().get("usedDelegatedFunctionsOn").toString()))
+                .delegatedFunctionsDate(LocalDate.parse(proceeding.getProceedingContent().get("usedDelegatedFunctionsOn").toString()))
                 .meritsDecision(decision.getMeritsDecisions().iterator().next().getDecision())
                 // .involvedChildren((List<Object>) applicationMerits.get("involvedChildren"))
                 .scopeLimitations(scopeLimitations)

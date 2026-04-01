@@ -919,7 +919,7 @@ components:
           type: string
         proceedingDescription:
           type: string
-        usedDelegatedFunctionsOn:
+        delegatedFunctionsDate:
           type: string
           format: date
         categoryOfLaw:

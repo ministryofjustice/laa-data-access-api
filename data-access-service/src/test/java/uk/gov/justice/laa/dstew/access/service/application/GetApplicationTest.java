@@ -145,7 +145,7 @@ public class GetApplicationTest extends BaseServiceTest {
                 .isEqualTo(actualApplicationProceedingResponse.getProceedingType());
         assertThat(expectedProceedingEntity.getDescription()).isEqualTo(actualApplicationProceedingResponse.getProceedingDescription());
         assertThat(getValueFromProceedingContent("usedDelegatedFunctionsOn", expectedProceedingEntity.getProceedingContent()))
-                .isEqualTo(actualApplicationProceedingResponse.getUsedDelegatedFunctionsOn().toString());
+                .isEqualTo(actualApplicationProceedingResponse.getDelegatedFunctionsDate().toString());
         assertThat(getValueFromProceedingContent("categoryOfLaw", expectedProceedingEntity.getProceedingContent()))
                 .isEqualTo(actualApplicationProceedingResponse.getCategoryOfLaw());
         assertThat(getValueFromProceedingContent("matterType", expectedProceedingEntity.getProceedingContent()))

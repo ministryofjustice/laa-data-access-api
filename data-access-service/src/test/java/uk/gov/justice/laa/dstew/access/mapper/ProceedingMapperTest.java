@@ -79,7 +79,7 @@ class ProceedingMapperTest extends BaseMapperTest {
         assertThat(result.getMatterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
         assertThat(result.getLevelOfService()).isEqualTo("service");
         assertThat(result.getSubstantiveCostLimitation()).isEqualTo("23.45");
-        assertThat(result.getUsedDelegatedFunctionsOn()).isEqualTo(LocalDate.parse("2025-05-06"));
+        assertThat(result.getDelegatedFunctionsDate()).isEqualTo(LocalDate.parse("2025-05-06"));
         assertThat(result.getScopeLimitations()).isNotNull().hasSize(1);
     }
 
@@ -97,7 +97,7 @@ class ProceedingMapperTest extends BaseMapperTest {
         assertThat(result.getMatterType()).isNull();
         assertThat(result.getLevelOfService()).isNull();
         assertThat(result.getSubstantiveCostLimitation()).isNull();
-        assertThat(result.getUsedDelegatedFunctionsOn()).isNull();
+        assertThat(result.getDelegatedFunctionsDate()).isNull();
         assertThat(result.getScopeLimitations()).isEmpty();
     }
 
