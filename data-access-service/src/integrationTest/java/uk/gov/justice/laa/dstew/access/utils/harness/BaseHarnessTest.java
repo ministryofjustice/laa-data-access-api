@@ -11,6 +11,7 @@ import org.springframework.test.web.reactive.server.EntityExchangeResult;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts.ApplicationAsserts;
+import uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts.DecisionAsserts;
 import uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts.DomainEventAsserts;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
@@ -50,6 +51,7 @@ public abstract class BaseHarnessTest {
     protected NoteRepository noteRepository;
     protected DomainEventAsserts domainEventAsserts;
     protected ApplicationAsserts applicationAsserts;
+    protected DecisionAsserts decisionAsserts;
 
     /**
      * Asserts that all application-domain tables are empty after each test's teardown.
@@ -85,6 +87,7 @@ public abstract class BaseHarnessTest {
         noteRepository         = harnessProvider.getBean(NoteRepository.class);
         domainEventAsserts     = harnessProvider.getBean(DomainEventAsserts.class);
         applicationAsserts     = harnessProvider.getBean(ApplicationAsserts.class);
+        decisionAsserts        = harnessProvider.getBean(DecisionAsserts.class);
         dbCleanliness          = harnessProvider.getBean(DatabaseCleanlinessAssertion.class);
 
         currentToken = TestConstants.Tokens.CASEWORKER;

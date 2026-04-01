@@ -41,7 +41,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMakeDecisionRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateContentGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
@@ -253,8 +252,7 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
         ProceedingEntity proceedingEntityTwo = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class,
                 builder -> builder.applicationId(initialApplicationEntity.getId()));
 
-        DecisionEntity decision = persistedDataGenerator.createAndPersist(
-            DecisionEntityGenerator.class,
+        DecisionEntity decision = persistedDataGenerator.createAndPersistWithPersistedMeritsDecisions(
             builder -> builder
                         .meritsDecisions(Set.of(meritsDecisionEntityOne))
                 .overallDecision(DecisionStatus.REFUSED)
@@ -496,63 +494,10 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
     }
 
     private void verifyDecisionSavedCorrectly(UUID applicationId, MakeDecisionRequest expectedMakeDecisionRequest) {
-        ApplicationEntity updatedApplicationEntity = applicationRepository.findById(applicationId).orElseThrow();
-
-        DecisionEntity savedDecision = updatedApplicationEntity.getDecision();
-
-        MakeDecisionRequest actual = mapToMakeDecisionRequest(
-                savedDecision,
-                updatedApplicationEntity,
-                expectedMakeDecisionRequest.getEventHistory()
-                );
-
-        Assertions.assertThat(actual)
-                .usingRecursiveComparison()
-                .ignoringCollectionOrder()
-                .ignoringFields("certificate", "applicationVersion")
-                .isEqualTo(expectedMakeDecisionRequest);
-
-        Assertions.assertThat(savedDecision.getModifiedAt()).isNotNull();
-        Assertions.assertThat(savedDecision.getMeritsDecisions())
-                .allSatisfy(merits -> {
-                    Assertions.assertThat(merits.getModifiedAt()).isNotNull();
-                });
+        decisionAsserts.verifyDecisionSavedCorrectly(applicationId, expectedMakeDecisionRequest);
     }
 
-    // DecisionEntity -> MakeDecisionRequest
-    private static MakeDecisionRequest mapToMakeDecisionRequest(
-                                DecisionEntity decisionEntity,
-                                ApplicationEntity applicationEntity,
-                                EventHistoryRequest eventHistoryRequest) {
-        if (decisionEntity == null) return null;
-        return MakeDecisionRequest.builder()
-                .overallDecision(decisionEntity.getOverallDecision())
-                .eventHistory(eventHistoryRequest)
-                .proceedings(decisionEntity.getMeritsDecisions().stream()
-                        .map(ApplicationMakeDecisionTest::mapToProceedingDetails)
-                        .toList())
-                .autoGranted(applicationEntity.getIsAutoGranted())
-                .build();
-    }
-
-    // MeritsDecisionEntity -> ProceedingDetails
-    private static MakeDecisionProceedingRequest mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
-        if (meritsDecisionEntity == null) return null;
-        return MakeDecisionProceedingRequest.builder()
-                .proceedingId(meritsDecisionEntity.getProceeding().getId())
-                .meritsDecision(mapToMeritsDecisionDetails(meritsDecisionEntity))
-                .build();
-    }
-
-    // MeritsDecisionEntity -> MeritsDecisionDetails
-    private static MeritsDecisionDetailsRequest mapToMeritsDecisionDetails(MeritsDecisionEntity entity) {
-        if (entity == null) return null;
-        return MeritsDecisionDetailsRequest.builder()
-                .decision(entity.getDecision())
-                .reason(entity.getReason())
-                .justification(entity.getJustification())
-                .build();
-    }
+    // DecisionEntity -> MakeDecisionRequest mapping logic lives in DecisionAsserts
 
   static Stream<Arguments> invalidRequestCases() {
     return Stream.of(

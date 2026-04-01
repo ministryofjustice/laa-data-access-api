@@ -251,6 +251,29 @@ public class PersistedDataGenerator extends DataGenerator {
     }
 
     /**
+     * Creates and persists a DecisionEntity where the meritsDecisions set contains already-persisted
+     * (detached) MeritsDecisionEntity instances.  Uses merge to re-attach them within the same
+     * transaction so that CascadeType.PERSIST does not throw DetachedEntityPassedToPersist.
+     */
+    @Transactional
+    public uk.gov.justice.laa.dstew.access.entity.DecisionEntity createAndPersistWithPersistedMeritsDecisions(
+            Consumer<uk.gov.justice.laa.dstew.access.entity.DecisionEntity.DecisionEntityBuilder> customiser) {
+        uk.gov.justice.laa.dstew.access.entity.DecisionEntity entity =
+                DataGenerator.createDefault(DecisionEntityGenerator.class, customiser);
+        if (entity.getMeritsDecisions() != null) {
+            java.util.Set<uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity> merged = new java.util.HashSet<>();
+            for (uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity md : entity.getMeritsDecisions()) {
+                merged.add(md.getId() != null ? entityManager.merge(md) : md);
+            }
+            entity.setMeritsDecisions(merged);
+        }
+        DecisionRepository decRepo = applicationContext.getBean(DecisionRepository.class);
+        uk.gov.justice.laa.dstew.access.entity.DecisionEntity saved = decRepo.saveAndFlush(entity);
+        track(saved);
+        return saved;
+    }
+
+    /**
      * Creates and persists an ApplicationEntity where the individuals set contains already-persisted
      * (detached) IndividualEntity instances.  Uses merge to re-attach them within the same transaction
      * so that CascadeType.PERSIST does not throw DetachedEntityPassedToPersist.

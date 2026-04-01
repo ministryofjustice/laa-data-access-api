@@ -99,7 +99,12 @@ public class GetApplicationTest extends BaseHarnessTest {
         assertNoCacheHeaders(result);
         assertOK(result);
         ApplicationResponse expectedApplication = createApplication(savedApplication, proceeding, decision);
-        assertThat(actualApplication).isEqualTo(expectedApplication);
+        assertThat(actualApplication)
+            .usingRecursiveComparison()
+            .ignoringFields("lastUpdated", "version")
+            .isEqualTo(expectedApplication);
+        assertThat(actualApplication.getLastUpdated()).isNotNull();
+        assertThat(actualApplication.getVersion()).isEqualTo(1L);
     }
 
     @SmokeTest
