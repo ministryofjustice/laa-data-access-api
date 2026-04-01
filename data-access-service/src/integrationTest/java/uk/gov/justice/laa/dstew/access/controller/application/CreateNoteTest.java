@@ -136,13 +136,13 @@ public class CreateNoteTest extends BaseIntegrationTest {
         assertCreateNoteDomainEvent(application);
     }
 
-    private void assertCreateNoteDomainEvent(ApplicationEntity application) {
+    private void assertCreateNoteDomainEvent(ApplicationEntity application) throws Exception {
         List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
 
         DomainEventEntity event = domainEvents.getFirst();
 
         assertThat(event.getApplicationId()).isEqualTo(application.getId());
-        assertThat(event.getType()).isEqualTo(DomainEventType.APPLICATION_CREATE_NOTE);
+        assertThat(event.getType()).isEqualTo(DomainEventType.APPLICATION_NOTES);
         assertThat(event.getCaseworkerId()).isEqualTo(application.getCaseworker().getId());
         assertThat(event.getCreatedAt()).isNotNull();
         ObjectMapper mapper = new ObjectMapper();
