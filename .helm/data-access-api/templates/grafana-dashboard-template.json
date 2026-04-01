@@ -1368,10 +1368,10 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (operation_type) (jdbc_query_seconds_count{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'})",
+          "expr": "sum by (operation_type) (increase(jdbc_query_seconds_count{namespace='{{ .Release.Namespace }}',release='{{ .Release.Name }}'}[$__range]))",
           "legendFormat": "{{`{{operation_type}}`}}",
-          "instant": true,
-          "range": false,
+          "instant": false,
+          "range": true,
           "refId": "A"
         }
       ],
