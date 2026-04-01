@@ -4,9 +4,7 @@ metadata:
   name: {{ .Release.Name }}-{{ .Chart.Name }}-allow-prometheus-scraping
   namespace: {{ .Release.Namespace }}
 spec:
-  podSelector:
-    matchLabels:
-      app: {{ include "data-access-api.name" . }}
+  podSelector: {}
   policyTypes:
     - Ingress
   ingress:
@@ -14,13 +12,3 @@ spec:
         - namespaceSelector:
             matchLabels:
               component: monitoring
-      ports:
-        - protocol: TCP
-          port: 8080
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              component: ingress-controllers
-      ports:
-        - protocol: TCP
-          port: 8080

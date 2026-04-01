@@ -29,7 +29,7 @@ See `docs/monitoring.md` for details on how application metrics are collected, s
 
 ### Network Policies
 
-See `docs/network-policies.md` for details on the Kubernetes network policies that control traffic to the API and PostgreSQL pods, including per-release isolation in shared namespaces.
+See `docs/network-policies.md` for details on the Kubernetes network policy that allows Prometheus to scrape metrics.
 
 ### Pre-commit hooks
 

@@ -98,7 +98,7 @@ The second relabeling exposes the Helm release name as a `release` label on all 
 
 ### NetworkPolicies
 
-See [docs/network-policies.md](network-policies.md) for full details on the network policies that allow Prometheus scraping and restrict database access per release.
+See [docs/network-policies.md](network-policies.md) for full details on the network policy that allows Prometheus to scrape metrics.
 
 ### Grafana dashboard (`grafana-dashboard.yaml` + `grafana-dashboard-template.json`)
 
