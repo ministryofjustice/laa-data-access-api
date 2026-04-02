@@ -323,7 +323,7 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         when(applicationRepository.findBy(any(Specification.class), any()))
             .thenReturn(new PageImpl<>(List.of(leadApplication)));
-        when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
+        when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of(leadApplication.getId()));
         when(applicationRepository.findAllLinkedApplicationsByLeadIds(any())).thenReturn(linkedDtos);
 
         // when

@@ -1176,7 +1176,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         applicationSummary.setClientFirstName(applicationEntity.getIndividuals().stream().findFirst().get().getFirstName());
         applicationSummary.setClientLastName(applicationEntity.getIndividuals().stream().findFirst().get().getLastName());
         applicationSummary.setClientDateOfBirth(applicationEntity.getIndividuals().stream().findFirst().get().getDateOfBirth());
-        applicationSummary.setIsLead(applicationEntity.getIsLead());
+        applicationSummary.setIsLead(Boolean.TRUE.equals(applicationEntity.getIsLead()));
         applicationSummary.setOfficeCode(applicationEntity.getOfficeCode());
         return applicationSummary;
     }

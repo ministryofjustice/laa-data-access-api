@@ -43,7 +43,7 @@ public interface ApplicationSummaryMapper {
     app.setCategoryOfLaw(result.getCategoryOfLaw());
     app.setMatterType(result.getMatterType());
     app.setAutoGrant(result.getIsAutoGranted());
-    app.setIsLead(result.getIsLead());
+    app.setIsLead(Boolean.TRUE.equals(result.getIsLead()));
     app.setAssignedTo(result.getCaseworkerId());
     IndividualEntity client = getClientIndividual(result.getIndividuals());
     if (client != null) {
