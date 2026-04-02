@@ -4,76 +4,52 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import org.mapstruct.Mapper;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryResult;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
-import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 
 /**
- * Mapper between ApplicationSummaryEntity and DTOs.
- * Handles JSONB content for applicationContent.
+ * Mapper between ApplicationSummaryResult and DTOs.
  */
 @Mapper(componentModel = "spring")
 public interface ApplicationSummaryMapper {
 
   /**
-   * Maps the given application summary entity to an application summary.
+   * Maps the given application summary result projection to an application summary.
    *
-   * @param applicationSummaryEntity the application summary entity
+   * @param result the application summary result projection
    * @return the application summary
    */
-  default ApplicationSummary toApplicationSummary(ApplicationSummaryEntity applicationSummaryEntity) {
-
-    if (applicationSummaryEntity == null) {
+  default ApplicationSummary toApplicationSummary(ApplicationSummaryResult result) {
+    if (result == null) {
       return null;
     }
     ApplicationSummary app = new ApplicationSummary();
-    app.setApplicationId(applicationSummaryEntity.getId());
-    app.setSubmittedAt(applicationSummaryEntity.getSubmittedAt() != null 
-                          ? applicationSummaryEntity.getSubmittedAt().atOffset(ZoneOffset.UTC) 
-                          : null);
-    app.setAutoGrant(applicationSummaryEntity.getIsAutoGranted());
-    app.setCategoryOfLaw(applicationSummaryEntity.getCategoryOfLaw());
-    app.setMatterType(applicationSummaryEntity.getMatterType());
-    app.setUsedDelegatedFunctions(applicationSummaryEntity.getUsedDelegatedFunctions());
-    app.setLaaReference(applicationSummaryEntity.getLaaReference());
-    app.setOfficeCode(applicationSummaryEntity.getOfficeCode());
-    app.setStatus(applicationSummaryEntity.getStatus());
-    app.setAssignedTo(applicationSummaryEntity.getCaseworker() != null 
-                        ? 
-                        applicationSummaryEntity.getCaseworker().getId() : 
-                        null);
-    var individual = getLeadIndividual(applicationSummaryEntity);
-    if (individual != null) {
-      app.setClientFirstName(individual.getFirstName());
-      app.setClientLastName(individual.getLastName());
-      app.setClientDateOfBirth(individual.getDateOfBirth());
-    }
-    app.setApplicationType(applicationSummaryEntity.getType());
-    app.setLastUpdated(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-    app.setIsLead(applicationSummaryEntity.isLead());
+    app.setApplicationId(result.getId());
+    app.setStatus(result.getStatus());
+    app.setLaaReference(result.getLaaReference());
+    app.setOfficeCode(result.getOfficeCode());
+    app.setSubmittedAt(result.getSubmittedAt() != null
+        ? result.getSubmittedAt().atOffset(ZoneOffset.UTC)
+        : null);
+    app.setLastUpdated(result.getModifiedAt() != null
+        ? result.getModifiedAt().atOffset(ZoneOffset.UTC)
+        : null);
+    app.setUsedDelegatedFunctions(result.getUsedDelegatedFunctions());
+    app.setCategoryOfLaw(result.getCategoryOfLaw());
+    app.setMatterType(result.getMatterType());
+    app.setAutoGrant(result.getIsAutoGranted());
+    app.setIsLead(result.getIsLead());
+    app.setAssignedTo(result.getCaseworkerId());
+    app.setClientFirstName(result.getClientFirstName());
+    app.setClientLastName(result.getClientLastName());
+    app.setClientDateOfBirth(result.getClientDateOfBirth());
     return app;
   }
 
   default OffsetDateTime map(Instant value) {
     return value != null ? value.atOffset(ZoneOffset.UTC) : null;
-  }
-
-  private static IndividualEntity getLeadIndividual(ApplicationSummaryEntity entity) {
-    var individuals = entity.getIndividuals();
-    if (individuals == null || individuals.isEmpty()) {
-      return null;
-    }
-    return individuals.stream()
-    .filter(ApplicationSummaryMapper::isClient)
-    .findFirst()
-    .orElse(null);
-  }
-
-  private static boolean isClient(IndividualEntity individual) {
-    return individual.getType() == IndividualType.CLIENT;
   }
 
   /**

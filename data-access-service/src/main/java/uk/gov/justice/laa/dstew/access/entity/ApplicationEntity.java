@@ -123,6 +123,9 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "is_auto_granted")
   private Boolean isAutoGranted;
 
+  @Column(name = "is_lead")
+  private Boolean isLead;
+
   @OneToMany
   @JoinTable(
       name = "linked_applications",

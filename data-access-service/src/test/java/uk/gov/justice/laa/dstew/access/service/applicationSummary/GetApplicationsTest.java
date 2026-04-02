@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.service.applicationSummary;
 
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -8,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authorization.AuthorizationDeniedException;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryResult;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
@@ -17,7 +16,6 @@ import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationSummaryGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationSummaryDtoGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -28,7 +26,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -43,13 +40,13 @@ public class GetApplicationsTest extends BaseServiceTest {
     @ValueSource(ints = {0, 10})
     public void givenPageZeroAndNoFilters_whenGetApplications_thenReturnApplications(int count) {
         // given
-        List<ApplicationSummaryEntity> expectedApplications = DataGenerator.createMultipleRandom(ApplicationSummaryGenerator.class, count);
-        Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
-        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "submittedAt"));
+        List<ApplicationSummaryResult> expectedApplications = DataGenerator.createMultipleRandom(ApplicationSummaryGenerator.class, count);
+        Page<ApplicationSummaryResult> pageResult = new PageImpl<>(expectedApplications);
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+        when(applicationRepository.findBy(any(Specification.class), any())).thenReturn(pageResult);
+        when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
 
         // when
         List<ApplicationSummary> actualApplications = serviceUnderTest.getAllApplications(
@@ -68,7 +65,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         ).page().stream().toList();
 
         // then
-        verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+        verify(applicationRepository, times(1)).findBy(any(Specification.class), any());
         assertApplicationSummaryListsEqual(actualApplications, expectedApplications);
     }
 
@@ -80,16 +77,19 @@ public class GetApplicationsTest extends BaseServiceTest {
         UUID caseworkerId = UUID.randomUUID();
         when(caseworkerRepository.countById(caseworkerId)).thenReturn(1L);
 
-        List<ApplicationSummaryEntity> expectedApplications = DataGenerator.createMultipleRandom(ApplicationSummaryGenerator.class, count);
+        List<ApplicationSummaryResult> expectedApplications = DataGenerator.createMultipleRandom(ApplicationSummaryGenerator.class, count);
         // ensure that at least one application has no caseworker assigned
-        if (count > 0) { expectedApplications.getFirst().setCaseworker(null); }
+        if (count > 0) {
+            expectedApplications.set(0, DataGenerator.createDefault(ApplicationSummaryGenerator.class,
+                b -> b.caseworkerId(null)));
+        }
 
-        Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
-        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "submittedAt"));
+        Page<ApplicationSummaryResult> pageResult = new PageImpl<>(expectedApplications);
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+        when(applicationRepository.findBy(any(Specification.class), any())).thenReturn(pageResult);
+        when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
 
         // when
         List<ApplicationSummary> actualApplications = serviceUnderTest.getAllApplications(
@@ -108,7 +108,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         ).page().stream().toList();
 
         // then
-        verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+        verify(applicationRepository, times(1)).findBy(any(Specification.class), any());
         assertApplicationSummaryListsEqual(actualApplications, expectedApplications);
     }
 
@@ -143,7 +143,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                 .usingRecursiveComparison()
                 .isEqualTo(validationException);
 
-        verify(applicationSummaryRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+        verify(applicationRepository, never()).findBy(any(Specification.class), any());
     }
 
     @Test
@@ -169,7 +169,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                         null
                 ))
                 .withMessageContaining("Access Denied");
-        verify(applicationSummaryRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+        verify(applicationRepository, never()).findBy(any(Specification.class), any());
     }
 
     @Test
@@ -193,25 +193,26 @@ public class GetApplicationsTest extends BaseServiceTest {
                         null
                 ))
                 .withMessageContaining("Access Denied");
-        verify(applicationSummaryRepository, never()).findAll();
+        verify(applicationRepository, never()).findBy(any(Specification.class), any());
     }
 
     @Test
     public void givenDefaultPagination_whenGetApplications_thenReturnApplications() {
         // given
-        List<ApplicationSummaryEntity> expectedApplications = DataGenerator.createMultipleRandom(ApplicationSummaryGenerator.class, 5);
-        Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
+        List<ApplicationSummaryResult> expectedApplications = DataGenerator.createMultipleRandom(ApplicationSummaryGenerator.class, 5);
+        Page<ApplicationSummaryResult> pageResult = new PageImpl<>(expectedApplications);
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+        when(applicationRepository.findBy(any(Specification.class), any())).thenReturn(pageResult);
+        when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
 
         // when
         PaginatedResult<ApplicationSummary> result = serviceUnderTest.getAllApplications(
                 null, null, null, null, null, null, null, null, null, null, null, null);
 
         // then
-        verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
+        verify(applicationRepository, times(1)).findBy(any(Specification.class), any());
 
         assertThat(result.requestedPage()).isEqualTo(1); // one-based
         assertThat(result.requestedPageSize()).isEqualTo(20); // default
@@ -221,19 +222,20 @@ public class GetApplicationsTest extends BaseServiceTest {
     @Test
     public void givenSecondPage_whenGetApplications_thenReturnApplications() {
         // given
-        List<ApplicationSummaryEntity> expectedApplications = DataGenerator.createMultipleRandom(ApplicationSummaryGenerator.class, 5);
-        Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
+        List<ApplicationSummaryResult> expectedApplications = DataGenerator.createMultipleRandom(ApplicationSummaryGenerator.class, 5);
+        Page<ApplicationSummaryResult> pageResult = new PageImpl<>(expectedApplications);
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+        when(applicationRepository.findBy(any(Specification.class), any())).thenReturn(pageResult);
+        when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
 
         // when
         PaginatedResult<ApplicationSummary> result = serviceUnderTest.getAllApplications(
                 null, null, null, null, null, null, null, null, null, null, 2, 10);
 
         // then
-        verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
+        verify(applicationRepository, times(1)).findBy(any(Specification.class), any());
 
         assertThat(result.requestedPage()).isEqualTo(2); // one-based
         assertThat(result.requestedPageSize()).isEqualTo(10);
@@ -251,7 +253,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                         null, null, null, null, null, null, null, null, null, null, 0, 10))
                 .withMessageContaining("page must be greater than or equal to 1");
 
-        verify(applicationSummaryRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+        verify(applicationRepository, never()).findBy(any(Specification.class), any());
     }
 
     @Test
@@ -265,7 +267,7 @@ public class GetApplicationsTest extends BaseServiceTest {
                         null, null, null, null, null, null, null, null, null, null, 1, 0))
                 .withMessageContaining("pageSize must be greater than or equal to 1");
 
-        verify(applicationSummaryRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+        verify(applicationRepository, never()).findBy(any(Specification.class), any());
     }
 
     @Test
@@ -279,25 +281,26 @@ public class GetApplicationsTest extends BaseServiceTest {
                         null, null, null, null, null, null, null, null, null, null, 1, 101))
                 .withMessageContaining("pageSize cannot be more than 100");
 
-        verify(applicationSummaryRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+        verify(applicationRepository, never()).findBy(any(Specification.class), any());
     }
 
     @Test
     public void givenMaximumPageSize_whenGetApplications_thenReturnApplications() {
         // given
-        List<ApplicationSummaryEntity> expectedApplications = DataGenerator.createMultipleRandom(ApplicationSummaryGenerator.class, 5);
-        Page<ApplicationSummaryEntity> pageResult = new PageImpl<>(expectedApplications);
+        List<ApplicationSummaryResult> expectedApplications = DataGenerator.createMultipleRandom(ApplicationSummaryGenerator.class, 5);
+        Page<ApplicationSummaryResult> pageResult = new PageImpl<>(expectedApplications);
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(pageResult);
+        when(applicationRepository.findBy(any(Specification.class), any())).thenReturn(pageResult);
+        when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
 
         // when
         PaginatedResult<ApplicationSummary> result = serviceUnderTest.getAllApplications(
                 null, null, null, null, null, null, null, null, null, null, 1, 100);
 
         // then
-        verify(applicationSummaryRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
+        verify(applicationRepository, times(1)).findBy(any(Specification.class), any());
 
         assertThat(result.requestedPageSize()).isEqualTo(100);
         assertThat(result.page().getContent()).hasSize(5);
@@ -309,18 +312,17 @@ public class GetApplicationsTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         UUID associateId = UUID.randomUUID();
-        ApplicationSummaryEntity leadApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class,
-            b -> b.linkedApplications(Set.of(DataGenerator.createDefault(ApplicationEntityGenerator.class)))
+        ApplicationSummaryResult leadApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class,
+            b -> b.isLead(true)
         );
 
-        List<ApplicationSummaryEntity> expectedApplications = List.of(leadApplication);
         List<LinkedApplicationSummaryDto> linkedDtos = List.of(
             new LinkedApplicationSummaryDto(associateId, "ASSOC-REF-0", false, leadApplication.getId()),
             new LinkedApplicationSummaryDto(leadApplication.getId(), leadApplication.getLaaReference(), true, leadApplication.getId())
         );
 
-        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class)))
-            .thenReturn(new PageImpl<>(expectedApplications));
+        when(applicationRepository.findBy(any(Specification.class), any()))
+            .thenReturn(new PageImpl<>(List.of(leadApplication)));
         when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
         when(applicationRepository.findAllLinkedApplicationsByLeadIds(any())).thenReturn(linkedDtos);
 
@@ -347,8 +349,8 @@ public class GetApplicationsTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         UUID leadId = UUID.randomUUID();
-        ApplicationSummaryEntity firstAssociateApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class);
-        ApplicationSummaryEntity secondAssociateApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class);
+        ApplicationSummaryResult firstAssociateApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class);
+        ApplicationSummaryResult secondAssociateApplication = DataGenerator.createRandom(ApplicationSummaryGenerator.class);
 
         List<LinkedApplicationSummaryDto> linkedApplicationSummaryDtos = List.of(
             DataGenerator.createDefault(LinkedApplicationSummaryDtoGenerator.class, b -> b.applicationId(firstAssociateApplication.getId()).laaReference(firstAssociateApplication.getLaaReference()).isLead(false).leadApplicationId(leadId)),
@@ -356,7 +358,7 @@ public class GetApplicationsTest extends BaseServiceTest {
             DataGenerator.createDefault(LinkedApplicationSummaryDtoGenerator.class, b -> b.applicationId(leadId).laaReference("LEAD-REF").isLead(true).leadApplicationId(leadId))
         );
 
-        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class)))
+        when(applicationRepository.findBy(any(Specification.class), any()))
             .thenReturn(new PageImpl<>(List.of(firstAssociateApplication, secondAssociateApplication)));
         when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of(leadId));
         when(applicationRepository.findAllLinkedApplicationsByLeadIds(any())).thenReturn(linkedApplicationSummaryDtos);
@@ -389,8 +391,8 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         UUID firstLeadId = UUID.randomUUID();
         UUID secondLeadId = UUID.randomUUID();
-        ApplicationSummaryEntity firstAssociateApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class);
-        ApplicationSummaryEntity secondAssociateApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class);
+        ApplicationSummaryResult firstAssociateApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class);
+        ApplicationSummaryResult secondAssociateApplication = DataGenerator.createRandom(ApplicationSummaryGenerator.class);
 
         List<LinkedApplicationSummaryDto> linkedDtos = List.of(
             new LinkedApplicationSummaryDto(firstAssociateApplication.getId(), firstAssociateApplication.getLaaReference(), false, firstLeadId),
@@ -399,7 +401,7 @@ public class GetApplicationsTest extends BaseServiceTest {
             new LinkedApplicationSummaryDto(secondLeadId, "LEAD-REF-2", true, secondLeadId)
         );
 
-        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class)))
+        when(applicationRepository.findBy(any(Specification.class), any()))
             .thenReturn(new PageImpl<>(List.of(firstAssociateApplication, secondAssociateApplication)));
         when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of(firstLeadId, secondLeadId));
         when(applicationRepository.findAllLinkedApplicationsByLeadIds(any())).thenReturn(linkedDtos);
@@ -430,9 +432,9 @@ public class GetApplicationsTest extends BaseServiceTest {
         // given
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        ApplicationSummaryEntity standaloneApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class);
+        ApplicationSummaryResult standaloneApplication = DataGenerator.createDefault(ApplicationSummaryGenerator.class);
 
-        when(applicationSummaryRepository.findAll(any(Specification.class), any(Pageable.class)))
+        when(applicationRepository.findBy(any(Specification.class), any()))
             .thenReturn(new PageImpl<>(List.of(standaloneApplication)));
         when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
 
@@ -447,10 +449,10 @@ public class GetApplicationsTest extends BaseServiceTest {
         verify(applicationRepository, never()).findAllLinkedApplicationsByLeadIds(any());
     }
 
-    private void assertApplicationSummaryListsEqual(List<ApplicationSummary> actualList, List<ApplicationSummaryEntity> expectedList) {
+    private void assertApplicationSummaryListsEqual(List<ApplicationSummary> actualList, List<ApplicationSummaryResult> expectedList) {
         assertThat(actualList).hasSameSizeAs(expectedList);
 
-        for (ApplicationSummaryEntity expected : expectedList) {
+        for (ApplicationSummaryResult expected : expectedList) {
             boolean match = actualList.stream()
                     .anyMatch(actual -> {
                         try {
@@ -466,14 +468,14 @@ public class GetApplicationsTest extends BaseServiceTest {
         }
     }
 
-    private void assertApplicationSummaryEqual(ApplicationSummaryEntity expected, ApplicationSummary actual) {
+    private void assertApplicationSummaryEqual(ApplicationSummaryResult expected, ApplicationSummary actual) {
         assertThat(expected.getId()).isEqualTo(actual.getApplicationId());
         assertThat(expected.getLaaReference()).isEqualTo(actual.getLaaReference());
         assertThat(expected.getStatus()).isEqualTo(actual.getStatus());
         assertThat(expected.getMatterType()).isEqualTo(actual.getMatterType());
         assertThat(expected.getModifiedAt().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(actual.getLastUpdated().toInstant().truncatedTo(ChronoUnit.SECONDS));
-        if (expected.getCaseworker() != null) {
-            assertThat(expected.getCaseworker().getId()).isEqualTo(actual.getAssignedTo());
+        if (expected.getCaseworkerId() != null) {
+            assertThat(expected.getCaseworkerId()).isEqualTo(actual.getAssignedTo());
         }
     }
 }
