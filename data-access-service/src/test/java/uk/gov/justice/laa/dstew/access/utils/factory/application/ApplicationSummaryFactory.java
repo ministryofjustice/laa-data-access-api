@@ -2,11 +2,13 @@ package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Set;
 import java.util.UUID;
 import net.datafaker.Faker;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryResult;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -44,9 +46,7 @@ public class ApplicationSummaryFactory {
       @Override public Boolean getIsAutoGranted() { return null; }
       @Override public Boolean getIsLead() { return isLead; }
       @Override public UUID getCaseworkerId() { return null; }
-      @Override public String getClientFirstName() { return null; }
-      @Override public String getClientLastName() { return null; }
-      @Override public LocalDate getClientDateOfBirth() { return null; }
+      @Override public Set<IndividualEntity> getIndividuals() { return null; }
     };
   }
 }

@@ -3,9 +3,12 @@ package uk.gov.justice.laa.dstew.access.mapper;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Set;
 import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryResult;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 
@@ -42,10 +45,22 @@ public interface ApplicationSummaryMapper {
     app.setAutoGrant(result.getIsAutoGranted());
     app.setIsLead(result.getIsLead());
     app.setAssignedTo(result.getCaseworkerId());
-    app.setClientFirstName(result.getClientFirstName());
-    app.setClientLastName(result.getClientLastName());
-    app.setClientDateOfBirth(result.getClientDateOfBirth());
+    IndividualEntity client = getClientIndividual(result.getIndividuals());
+    if (client != null) {
+        app.setClientFirstName(client.getFirstName());
+        app.setClientLastName(client.getLastName());
+        app.setClientDateOfBirth(client.getDateOfBirth());
+    }
     return app;
+  }
+
+  private static IndividualEntity getClientIndividual(Set<IndividualEntity> individuals) {
+    if (individuals == null || individuals.isEmpty()) {
+      return null;
+    }
+    return individuals.stream()
+        .filter(i -> i.getType() == IndividualType.CLIENT)
+        .findFirst().orElse(null);
   }
 
   default OffsetDateTime map(Instant value) {

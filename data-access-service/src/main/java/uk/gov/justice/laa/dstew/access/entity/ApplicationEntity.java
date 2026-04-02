@@ -99,6 +99,9 @@ public class ApplicationEntity implements AuditableEntity {
   @JoinColumn(name = "caseworker_id", referencedColumnName = "id")
   private CaseworkerEntity caseworker;
 
+  @Column(name = "caseworker_id", insertable = false, updatable = false)
+  private UUID caseworkerId;
+
   @Column(name = "apply_application_id")
   private UUID applyApplicationId;
 

@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.entity;
 import java.time.Instant;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Set;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
@@ -38,10 +39,6 @@ public interface ApplicationSummaryResult {
 
   UUID getCaseworkerId();
 
-  String getClientFirstName();
-
-  String getClientLastName();
-
-  LocalDate getClientDateOfBirth();
+  Set<IndividualEntity> getIndividuals();
 }
 

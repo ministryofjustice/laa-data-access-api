@@ -2,8 +2,10 @@ package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Set;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryResult;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -50,9 +52,7 @@ public class ApplicationSummaryGenerator extends BaseGenerator<ApplicationSummar
         private Boolean isAutoGranted;
         private Boolean isLead;
         private UUID caseworkerId;
-        private String clientFirstName;
-        private String clientLastName;
-        private LocalDate clientDateOfBirth;
+        private Set<IndividualEntity> individuals;
 
         public Builder() {}
 
@@ -69,9 +69,7 @@ public class ApplicationSummaryGenerator extends BaseGenerator<ApplicationSummar
             this.isAutoGranted = source.getIsAutoGranted();
             this.isLead = source.getIsLead();
             this.caseworkerId = source.getCaseworkerId();
-            this.clientFirstName = source.getClientFirstName();
-            this.clientLastName = source.getClientLastName();
-            this.clientDateOfBirth = source.getClientDateOfBirth();
+            this.individuals = source.getIndividuals();
         }
 
         public Builder id(UUID id) { this.id = id; return this; }
@@ -86,9 +84,7 @@ public class ApplicationSummaryGenerator extends BaseGenerator<ApplicationSummar
         public Builder isAutoGranted(Boolean v) { this.isAutoGranted = v; return this; }
         public Builder isLead(Boolean isLead) { this.isLead = isLead; return this; }
         public Builder caseworkerId(UUID caseworkerId) { this.caseworkerId = caseworkerId; return this; }
-        public Builder clientFirstName(String clientFirstName) { this.clientFirstName = clientFirstName; return this; }
-        public Builder clientLastName(String clientLastName) { this.clientLastName = clientLastName; return this; }
-        public Builder clientDateOfBirth(LocalDate clientDateOfBirth) { this.clientDateOfBirth = clientDateOfBirth; return this; }
+        public Builder individuals(Set<IndividualEntity> individuals) { this.individuals = individuals; return this; }
 
         public ApplicationSummaryResult build() {
             UUID _id = id; ApplicationStatus _status = status; String _laaReference = laaReference;
@@ -96,8 +92,7 @@ public class ApplicationSummaryGenerator extends BaseGenerator<ApplicationSummar
             Boolean _udf = usedDelegatedFunctions; CategoryOfLaw _col = categoryOfLaw;
             MatterType _mt = matterType; Boolean _iag = isAutoGranted; Boolean _isLead = isLead;
             UUID _caseworkerId = caseworkerId;
-            String _clientFirstName = clientFirstName; String _clientLastName = clientLastName;
-            LocalDate _clientDateOfBirth = clientDateOfBirth;
+            Set<IndividualEntity> _individuals = individuals;
             return new ApplicationSummaryResult() {
                 @Override public UUID getId() { return _id; }
                 @Override public ApplicationStatus getStatus() { return _status; }
@@ -111,9 +106,7 @@ public class ApplicationSummaryGenerator extends BaseGenerator<ApplicationSummar
                 @Override public Boolean getIsAutoGranted() { return _iag; }
                 @Override public Boolean getIsLead() { return _isLead; }
                 @Override public UUID getCaseworkerId() { return _caseworkerId; }
-                @Override public String getClientFirstName() { return _clientFirstName; }
-                @Override public String getClientLastName() { return _clientLastName; }
-                @Override public LocalDate getClientDateOfBirth() { return _clientDateOfBirth; }
+                @Override public Set<IndividualEntity> getIndividuals() { return _individuals;}
             };
         }
     }
