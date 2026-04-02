@@ -314,7 +314,7 @@ public class ApplicationService {
    * @return found entity
    */
   private ApplicationEntity checkIfApplicationExists(final UUID id) {
-    return applicationRepository.findById(id)
+    return applicationRepository.findByIdWithAssociations(id)
         .orElseThrow(() -> new ResourceNotFoundException(
             String.format("No application found with id: %s", id)
         ));
