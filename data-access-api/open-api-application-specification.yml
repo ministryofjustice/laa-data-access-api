@@ -550,7 +550,7 @@ components:
           type: string
         previousApplicationId:
           type: string
-        relationshipToChildren:
+        relationshipToInvolvedChildren:
           type: string
         correspondenceAddressType:
           type: string
