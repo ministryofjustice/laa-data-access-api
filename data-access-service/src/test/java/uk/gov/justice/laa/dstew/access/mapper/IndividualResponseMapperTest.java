@@ -62,10 +62,10 @@ class IndividualResponseMapperTest extends BaseMapperTest {
             .lastNameAtBirth(lastName)
             .correspondenceAddressType(correspondenceAddressType)
             .previousApplicationId(previousApplicationId)
-            .relationshipToChildren(relationshipToChildren)
             .applicant(ApplicationApplicant.builder()
                 .appliedPreviously(appliedPreviously)
                 .addresses(addresses)
+                .relationshipToInvolvedChildren(relationshipToChildren)
                 .build())
             .build();
     }
