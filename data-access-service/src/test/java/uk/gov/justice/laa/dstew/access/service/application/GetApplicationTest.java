@@ -22,7 +22,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.ScopeLimitation;
+import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -155,7 +155,7 @@ public class GetApplicationTest extends BaseServiceTest {
         assertThat(getValueFromProceedingContent("substantiveCostLimitation", expectedProceedingEntity.getProceedingContent()))
                 .isEqualTo(actualApplicationProceedingResponse.getSubstantiveCostLimitation());
         assertThat(actualApplicationProceedingResponse.getScopeLimitations()).isNotNull();
-        ScopeLimitation scopeLimitation = actualApplicationProceedingResponse.getScopeLimitations().getFirst();
+        ScopeLimitationResponse scopeLimitation = actualApplicationProceedingResponse.getScopeLimitations().getFirst();
         assertThat(getValueFromScopeLimitations(0, "meaning", expectedProceedingEntity.getProceedingContent()))
                 .isEqualTo(scopeLimitation.getScopeLimitation());
         assertThat(getValueFromScopeLimitations(0, "description", expectedProceedingEntity.getProceedingContent()))

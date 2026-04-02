@@ -908,11 +908,11 @@ components:
         scopeLimitations:
           type: array
           items:
-            $ref: "#/components/schemas/ScopeLimitation"
+            $ref: "#/components/schemas/ScopeLimitationResponse"
         meritsDecision:
           $ref: "#/components/schemas/MeritsDecisionStatus"
 
-    ScopeLimitation:
+    ScopeLimitationResponse:
       type: object
       properties:
         scopeLimitation:

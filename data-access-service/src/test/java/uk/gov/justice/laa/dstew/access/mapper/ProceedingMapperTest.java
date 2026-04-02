@@ -12,7 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
-import uk.gov.justice.laa.dstew.access.model.ScopeLimitation;
+import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
@@ -108,7 +108,7 @@ class ProceedingMapperTest extends BaseMapperTest {
         ApplicationProceedingResponse result = proceedingMapper.toApplicationProceeding(entity);
 
         assertThat(result.getScopeLimitations()).isNotNull().hasSize(1);
-        ScopeLimitation scopeLimitation = result.getScopeLimitations().get(0);
+        ScopeLimitationResponse scopeLimitation = result.getScopeLimitations().get(0);
         assertThat(scopeLimitation.getScopeLimitation()).isEqualTo("hearing");
         assertThat(scopeLimitation.getScopeDescription()).isEqualTo("Hearing scope limitation description");
     }
@@ -127,7 +127,7 @@ class ProceedingMapperTest extends BaseMapperTest {
         ApplicationProceedingResponse result = proceedingMapper.toApplicationProceeding(entity);
 
         assertThat(result.getScopeLimitations()).isNotNull().hasSize(1);
-        ScopeLimitation scopeLimitation = result.getScopeLimitations().get(0);
+        ScopeLimitationResponse scopeLimitation = result.getScopeLimitations().get(0);
         assertThat(scopeLimitation.getScopeLimitation()).isEqualTo("hearing only");
         assertThat(scopeLimitation.getScopeDescription()).isNull();
     }
@@ -146,7 +146,7 @@ class ProceedingMapperTest extends BaseMapperTest {
         ApplicationProceedingResponse result = proceedingMapper.toApplicationProceeding(entity);
 
         assertThat(result.getScopeLimitations()).isNotNull().hasSize(1);
-        ScopeLimitation scopeLimitation = result.getScopeLimitations().get(0);
+        ScopeLimitationResponse scopeLimitation = result.getScopeLimitations().get(0);
         assertThat(scopeLimitation.getScopeLimitation()).isNull();
         assertThat(scopeLimitation.getScopeDescription()).isEqualTo("Some description");
     }
