@@ -92,13 +92,13 @@ public class ApplicationSummaryService {
 
     String firstNameParam = clientFirstName != null ? "%" + clientFirstName.toLowerCase() + "%" : null;
     String lastNameParam = clientLastName != null ? "%" + clientLastName.toLowerCase() + "%" : null;
-    String companyRefParam = laaReference != null && !laaReference.isBlank()
+    String laaRefParam = laaReference != null && !laaReference.isBlank()
         ? "%" + laaReference.toLowerCase() + "%" : null;
 
     Page<ApplicationSummaryEntity> resultPage = applicationSummaryRepository
         .findAllWithFilters(
             applicationStatus,
-            companyRefParam,
+            laaRefParam,
             firstNameParam,
             lastNameParam,
             clientDateOfBirth,
