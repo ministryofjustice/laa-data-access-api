@@ -9,6 +9,7 @@ import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
+import uk.gov.justice.laa.dstew.access.model.ScopeLimitation;
 
 /**
  * Mapper interface.
@@ -62,8 +63,18 @@ public interface ProceedingMapper {
     applicationProceedingResponse.setLevelOfService(proceeding.getSubstantiveLevelOfServiceName());
     applicationProceedingResponse.setSubstantiveCostLimitation(proceeding.getSubstantiveCostLimitation());
     if (proceeding.getScopeLimitations() != null) {
-      List<Object> scopeLimitations = new ArrayList<>();
-      proceeding.getScopeLimitations().forEach(s -> scopeLimitations.add(s));
+      List<ScopeLimitation> scopeLimitations = new ArrayList<>();
+      proceeding.getScopeLimitations().forEach(scopeLimitationMap -> {
+        ScopeLimitation scopeLimitation = ScopeLimitation.builder()
+            .scopeLimitation(scopeLimitationMap.get("meaning") != null
+                ? scopeLimitationMap.get("meaning").toString()
+                : null)
+            .scopeDescription(scopeLimitationMap.get("description") != null
+                ? scopeLimitationMap.get("description").toString()
+                : null)
+            .build();
+        scopeLimitations.add(scopeLimitation);
+      });
       applicationProceedingResponse.setScopeLimitations(scopeLimitations);
     }
 

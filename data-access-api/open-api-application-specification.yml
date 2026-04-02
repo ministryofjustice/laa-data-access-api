@@ -908,9 +908,17 @@ components:
         scopeLimitations:
           type: array
           items:
-            type: object
+            $ref: "#/components/schemas/ScopeLimitation"
         meritsDecision:
           $ref: "#/components/schemas/MeritsDecisionStatus"
+
+    ScopeLimitation:
+      type: object
+      properties:
+        scopeLimitation:
+          type: string
+        scopeDescription:
+          type: string
 
     CreateNoteRequest:
       type: object
