@@ -91,7 +91,8 @@ public class ApplicationSummaryService {
     List<String> summaryProjection = Arrays.asList(
         "id", "status", "laaReference", "officeCode", "submittedAt", "modifiedAt",
         "usedDelegatedFunctions", "categoryOfLaw", "matterType", "isAutoGranted",
-        "isLead", "caseworker.id", "individuals"
+        "isLead", "caseworker.id",
+        "individuals.firstName", "individuals.lastName", "individuals.dateOfBirth"
     );
 
     Page<ApplicationSummaryResult> resultPage = applicationRepository
