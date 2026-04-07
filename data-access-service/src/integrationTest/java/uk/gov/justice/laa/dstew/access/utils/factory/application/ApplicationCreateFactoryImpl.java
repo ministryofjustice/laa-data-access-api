@@ -21,7 +21,7 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
         .applicationContent(MapperUtil.getObjectMapper()
             .convertValue(applicationContentFactory.create(), Map.class))
         .individuals(List.of(
-            ApplicationCreateRequestIndividual.builder()
+            IndividualCreateRequest.builder()
                 .firstName("John")
                 .lastName("Doe")
                 .dateOfBirth(LocalDate.now())

@@ -19,21 +19,26 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.NoteEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
+import uk.gov.justice.laa.dstew.access.mapper.NoteMapper;
 import uk.gov.justice.laa.dstew.access.mapper.ProceedingMapper;
-import uk.gov.justice.laa.dstew.access.model.Application;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
-import uk.gov.justice.laa.dstew.access.model.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.model.ApplicationNoteResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationNotesResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceeding;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
@@ -41,6 +46,7 @@ import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
+import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.utils.VersionCheckHelper;
@@ -69,6 +75,8 @@ public class ApplicationService {
   private final CertificateRepository certificateRepository;
   private final ProceedingsService proceedingsService;
   private final PayloadValidationService payloadValidationService;
+  private final NoteRepository noteRepository;
+  private final NoteMapper noteMapper;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -90,7 +98,10 @@ public class ApplicationService {
                             final ProceedingRepository proceedingRepository,
                             final MeritsDecisionRepository meritsDecisionRepository,
                             final CertificateRepository certificateRepository,
-                            final ProceedingsService proceedingsService, PayloadValidationService payloadValidationService) {
+                            final ProceedingsService proceedingsService,
+                            final PayloadValidationService payloadValidationService,
+                            final NoteRepository noteRepository,
+                            final NoteMapper noteMapper) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.proceedingMapper = proceedingMapper;
@@ -105,6 +116,8 @@ public class ApplicationService {
     this.decisionRepository = decisionRepository;
     this.meritsDecisionRepository = meritsDecisionRepository;
     this.certificateRepository = certificateRepository;
+    this.noteRepository = noteRepository;
+    this.noteMapper = noteMapper;
   }
 
   /**
@@ -114,9 +127,9 @@ public class ApplicationService {
    * @return application DTO
    */
   @AllowApiCaseworker
-  public Application getApplication(final UUID id) {
+  public ApplicationResponse getApplication(final UUID id) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
-    Application application = applicationMapper.toApplication(entity);
+    ApplicationResponse application = applicationMapper.toApplication(entity);
 
     Set<ProceedingEntity> proceedings = proceedingRepository.findAllByApplicationId(id);
 
@@ -124,17 +137,19 @@ public class ApplicationService {
 
       proceedings.forEach(
               proceeding -> {
-                ApplicationProceeding applicationProceeding =
+                ApplicationProceedingResponse applicationProceedingResponse =
                         proceedingMapper.toApplicationProceeding(proceeding);
 
-                List<Map<String, Object>> involvedChildren = getInvolvedChildren(entity);
-                if (involvedChildren != null) {
-                  List<Object> children = new ArrayList<>();
-                  involvedChildren.forEach(children::add);
-                  applicationProceeding.setInvolvedChildren(children);
-                } else {
-                  applicationProceeding.setInvolvedChildren(null);
-                }
+
+                // List<Map<String, Object>> involvedChildren = getInvolvedChildren(entity);
+                // if (involvedChildren != null) {
+                //   List<Object> children = new ArrayList<>();
+                //   involvedChildren.forEach(children::add);
+                //   applicationProceeding.setInvolvedChildren(children);
+                // }
+                // else {
+                //   applicationProceeding.setInvolvedChildren(null);
+                //}
 
                 if (entity.getDecision() != null) {
                   Optional<MeritsDecisionEntity> meritsDecision =
@@ -143,9 +158,9 @@ public class ApplicationService {
                                   .findFirst();
 
                   meritsDecision.ifPresent(meritsDecisionEntity ->
-                          applicationProceeding.setMeritsDecision(meritsDecisionEntity.getDecision()));
+                          applicationProceedingResponse.setMeritsDecision(meritsDecisionEntity.getDecision()));
                 }
-                application.getProceedings().add(applicationProceeding);
+                application.getProceedings().add(applicationProceedingResponse);
               }
       );
     }
@@ -251,6 +266,38 @@ public class ApplicationService {
   }
 
   /**
+   * Create a note for an application.
+   *
+   * @param id UUID of the application
+   * @param note note to be created
+   */
+  @AllowApiCaseworker
+  @Transactional
+  public void createApplicationNote(final UUID id, final String note) {
+
+    checkIfApplicationExists(id);
+    noteRepository.save(NoteEntity.builder().applicationId(id).notes(note).build());
+
+  }
+
+  /**
+   * Retrieve all notes for an application in ascending date order.
+   *
+   * @param id UUID of the application
+   * @return response containing list of notes in ascending createdAt order
+   */
+  @AllowApiCaseworker
+  public ApplicationNotesResponse getApplicationNotes(final UUID id) {
+    checkIfApplicationExists(id);
+    List<ApplicationNoteResponse> notes = noteRepository
+        .findByApplicationIdOrderByCreatedAtAsc(id)
+        .stream()
+        .map(noteMapper::toApplicationNoteResponse)
+        .toList();
+    return new ApplicationNotesResponse().notes(notes);
+  }
+
+  /**
    * Placeholder for historic/audit record creation.
    *
    * @param entity     application entity
@@ -339,7 +386,7 @@ public class ApplicationService {
   @AllowApiCaseworker
   public void assignCaseworker(@NonNull final UUID caseworkerId,
                                final List<UUID> applicationIds,
-                               final EventHistory eventHistory) {
+                               final EventHistoryRequest eventHistoryRequest) {
     final CaseworkerEntity caseworker = checkIfCaseworkerExists(caseworkerId);
 
     final List<ApplicationEntity> applications = checkIfAllApplicationsExist(applicationIds);
@@ -355,7 +402,7 @@ public class ApplicationService {
       domainEventService.saveAssignApplicationDomainEvent(
           app.getId(),
           caseworker.getId(),
-          eventHistory.getEventDescription());
+          eventHistoryRequest.getEventDescription());
     });
 
   }
@@ -367,7 +414,7 @@ public class ApplicationService {
    * @throws ResourceNotFoundException if the application does not exist
    */
   @AllowApiCaseworker
-  public void unassignCaseworker(final UUID applicationId, EventHistory history) {
+  public void unassignCaseworker(final UUID applicationId, EventHistoryRequest history) {
     final ApplicationEntity entity = checkIfApplicationExists(applicationId);
 
     if (entity.getCaseworker() == null) {
@@ -407,14 +454,7 @@ public class ApplicationService {
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     VersionCheckHelper.checkEntityVersionLocking(applicationId, application.getVersion(), request.getApplicationVersion());
-    final CaseworkerEntity caseworker = application.getCaseworker();
-    if (caseworker == null) {
-      throw new ResourceNotFoundException(
-          String.format("Caseworker not found for application id: %s", applicationId)
-      );
-    }
-    final UUID caseworkerId = caseworker.getId();
-
+    final UUID caseworkerId = getCaseworkerId(applicationId, application);
     applicationValidations.checkApplicationMakeDecisionRequest(request);
 
     application.setModifiedAt(Instant.now());
@@ -427,32 +467,12 @@ public class ApplicationService {
 
     Set<MeritsDecisionEntity> merits = new LinkedHashSet<>(decision.getMeritsDecisions());
 
-    List<UUID> proceedingIds = request.getProceedings().stream()
-        .map(MakeDecisionProceeding::getProceedingId)
-        .toList();
-    List<ProceedingEntity> proceedingEntities = checkIfAllProceedingsExistForApplication(applicationId, proceedingIds);
-    Map<UUID, ProceedingEntity> proceedingEntityMap = proceedingEntities.stream()
-        .collect(Collectors.toMap(ProceedingEntity::getId, proceeding -> proceeding));
+    Map<UUID, ProceedingEntity> proceedingEntityMap =
+        getUuidProceedingEntityMap(applicationId, request);
 
     request.getProceedings().forEach(proceeding -> {
       ProceedingEntity proceedingEntity = proceedingEntityMap.get(proceeding.getProceedingId());
-
-      MeritsDecisionEntity meritDecisionEntity = decision.getMeritsDecisions().stream()
-          .filter(m -> m.getProceeding().getId().equals(proceeding.getProceedingId()))
-          .findFirst()
-          .orElseGet(() -> {
-            MeritsDecisionEntity newEntity = new MeritsDecisionEntity();
-            newEntity.setProceeding(proceedingEntity);
-            return newEntity;
-          });
-
-      meritDecisionEntity.setModifiedAt(Instant.now());
-      meritDecisionEntity.setDecision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()));
-      meritDecisionEntity.setReason(proceeding.getMeritsDecision().getReason());
-      meritDecisionEntity.setJustification(proceeding.getMeritsDecision().getJustification());
-      meritsDecisionRepository.save(meritDecisionEntity);
-      merits.add(meritDecisionEntity);
-
+      saveMeritsDecisionEntity(proceeding, decision, proceedingEntity, merits);
     });
 
     decision.setMeritsDecisions(merits);
@@ -462,28 +482,78 @@ public class ApplicationService {
 
     // Persist certificate if overallDecision is GRANTED
     if (decision.getOverallDecision() == DecisionStatus.GRANTED && request.getCertificate() != null) {
-      CertificateEntity certificate = CertificateEntity.builder()
-          .applicationId(applicationId)
-          .certificateContent(request.getCertificate())
-          .createdBy(String.valueOf(caseworkerId))
-          .updatedBy(String.valueOf(caseworkerId))
-          .build();
+      CertificateEntity certificate = certificateRepository.findByApplicationId(applicationId)
+          .map(existing -> {
+            existing.setCertificateContent(request.getCertificate());
+            return existing;
+          })
+          .orElseGet(() -> CertificateEntity.builder()
+              .applicationId(applicationId)
+              .certificateContent(request.getCertificate())
+              .build());
 
       certificateRepository.save(certificate);
     }
 
     if (decision.getOverallDecision() == DecisionStatus.REFUSED) {
-      domainEventService.saveMakeDecisionRefusedDomainEvent(
-          applicationId,
-          request,
-          caseworkerId
-      );
+      if (certificateRepository.existsByApplicationId(applicationId)) {
+        certificateRepository.deleteByApplicationId(applicationId);
+      }
+    }
+
+    switch (decision.getOverallDecision()) {
+      case GRANTED -> domainEventService.saveMakeDecisionDomainEvent(applicationId, request, caseworkerId,
+          DomainEventType.APPLICATION_MAKE_DECISION_GRANTED);
+      case REFUSED -> domainEventService.saveMakeDecisionDomainEvent(applicationId, request, caseworkerId,
+          DomainEventType.APPLICATION_MAKE_DECISION_REFUSED);
+      default -> throw new IllegalStateException("Unexpected value: " + decision.getOverallDecision());
     }
 
     if (application.getDecision() == null) {
       application.setDecision(decision);
       applicationRepository.save(application);
     }
+  }
+
+  private void saveMeritsDecisionEntity(MakeDecisionProceedingRequest proceeding, DecisionEntity decision,
+                                        ProceedingEntity proceedingEntity,
+                                        Set<MeritsDecisionEntity> merits) {
+    MeritsDecisionEntity meritDecisionEntity = decision.getMeritsDecisions().stream()
+        .filter(m -> m.getProceeding().getId().equals(proceeding.getProceedingId()))
+        .findFirst()
+        .orElseGet(() -> {
+          MeritsDecisionEntity newEntity = new MeritsDecisionEntity();
+          newEntity.setProceeding(proceedingEntity);
+          return newEntity;
+        });
+
+    meritDecisionEntity.setModifiedAt(Instant.now());
+    meritDecisionEntity.setDecision(MeritsDecisionStatus.valueOf(proceeding.getMeritsDecision().getDecision().toString()));
+    meritDecisionEntity.setReason(proceeding.getMeritsDecision().getReason());
+    meritDecisionEntity.setJustification(proceeding.getMeritsDecision().getJustification());
+    meritsDecisionRepository.save(meritDecisionEntity);
+    merits.add(meritDecisionEntity);
+  }
+
+  private @NonNull Map<UUID, ProceedingEntity> getUuidProceedingEntityMap(UUID applicationId,
+                                                                          MakeDecisionRequest request) {
+    List<UUID> proceedingIds = request.getProceedings().stream()
+        .map(MakeDecisionProceedingRequest::getProceedingId)
+        .toList();
+    List<ProceedingEntity> proceedingEntities = checkIfAllProceedingsExistForApplication(applicationId, proceedingIds);
+    return proceedingEntities.stream()
+        .collect(Collectors.toMap(ProceedingEntity::getId, proceeding -> proceeding));
+  }
+
+  private static UUID getCaseworkerId(UUID applicationId, ApplicationEntity application) {
+    final CaseworkerEntity caseworker = application.getCaseworker();
+    // This logic will be implemented in the next iteration when security is implemented in the service
+    //    if (caseworker == null) {
+    //      throw new ResourceNotFoundException(
+    //          String.format("Caseworker not found for application id: %s", applicationId)
+    //      );
+    //    }
+    return caseworker != null ? caseworker.getId() : null;
   }
 
   /**

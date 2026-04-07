@@ -44,7 +44,7 @@ public class CertificateEntity implements AuditableEntity {
   @Column(columnDefinition = "UUID")
   private UUID id;
 
-  @Column(name = "application_id", nullable = false)
+  @Column(name = "application_id", nullable = false, unique = true)
   private UUID applicationId;
 
   @JdbcTypeCode(SqlTypes.JSON)
@@ -55,14 +55,14 @@ public class CertificateEntity implements AuditableEntity {
   @CreationTimestamp
   private Instant createdAt;
 
-  @Column(name = "created_by", nullable = false)
+  @Column(name = "created_by")
   private String createdBy;
 
   @Column(name = "modified_at", nullable = false)
   @UpdateTimestamp
   private Instant modifiedAt;
 
-  @Column(name = "updated_by", nullable = false)
+  @Column(name = "updated_by")
   private String updatedBy;
 
   @Override

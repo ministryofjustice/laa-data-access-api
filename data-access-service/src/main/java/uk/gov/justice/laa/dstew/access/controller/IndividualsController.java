@@ -8,10 +8,10 @@ import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.api.IndividualsApi;
 import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
-import uk.gov.justice.laa.dstew.access.model.Paging;
+import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.IndividualsService;
@@ -56,19 +56,19 @@ public class IndividualsController implements IndividualsApi {
   ) {
     validateRequest(applicationId, include);
 
-    PaginationHelper.PaginatedResult<Individual> result =
+    PaginationHelper.PaginatedResult<IndividualResponse> result =
         individualsService.getIndividuals(page, pageSize, applicationId, type, include);
 
-    List<Individual> individuals = result.page().stream().toList();
-    Paging paging = new Paging();
-    paging.setPage(result.requestedPage());
-    paging.pageSize(result.requestedPageSize());
-    paging.totalRecords((int) result.page().getTotalElements());
-    paging.itemsReturned(individuals.size());
+    List<IndividualResponse> individualResponses = result.page().stream().toList();
+    PagingResponse pagingResponse = new PagingResponse();
+    pagingResponse.setPage(result.requestedPage());
+    pagingResponse.pageSize(result.requestedPageSize());
+    pagingResponse.totalRecords((int) result.page().getTotalElements());
+    pagingResponse.itemsReturned(individualResponses.size());
 
     IndividualsResponse response = new IndividualsResponse();
-    response.setIndividuals(individuals);
-    response.setPaging(paging);
+    response.setIndividuals(individualResponses);
+    response.setPaging(pagingResponse);
 
     return ResponseEntity.ok(response);
   }

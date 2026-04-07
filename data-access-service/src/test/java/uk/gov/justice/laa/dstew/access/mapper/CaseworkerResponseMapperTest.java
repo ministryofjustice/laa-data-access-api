@@ -12,7 +12,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
 @ExtendWith(MockitoExtension.class)
-public class CaseworkerMapperTest extends BaseMapperTest {
+public class CaseworkerResponseMapperTest extends BaseMapperTest {
 
     @InjectMocks
     private CaseworkerMapperImpl mapper;

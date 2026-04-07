@@ -4,15 +4,15 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.function.Consumer;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
 @Component
-public class IndividualFactoryImpl implements Factory<Individual, Individual.Builder> {
+public class IndividualFactoryImpl implements Factory<IndividualResponse, IndividualResponse.Builder> {
   @Override
-  public Individual create() {
-    return Individual.builder()
+  public IndividualResponse create() {
+    return IndividualResponse.builder()
         .firstName("John")
         .lastName("Doe")
         .dateOfBirth(LocalDate.now())
@@ -24,9 +24,9 @@ public class IndividualFactoryImpl implements Factory<Individual, Individual.Bui
   }
 
   @Override
-  public Individual create(Consumer<Individual.Builder> customiser) {
-    Individual individual = create();
-    Individual.Builder builder = individual.toBuilder();
+  public IndividualResponse create(Consumer<IndividualResponse.Builder> customiser) {
+    IndividualResponse individualResponse = create();
+    IndividualResponse.Builder builder = individualResponse.toBuilder();
     customiser.accept(builder);
     return builder.build();
   }

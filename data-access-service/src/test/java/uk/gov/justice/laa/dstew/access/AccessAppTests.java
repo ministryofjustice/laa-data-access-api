@@ -6,15 +6,7 @@ import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfigur
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
-import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
-import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
-import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
-import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
-import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
-import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
-import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
+import uk.gov.justice.laa.dstew.access.repository.*;
 
 @SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=true"})
 @ImportAutoConfiguration(exclude = {
@@ -48,6 +40,9 @@ public class AccessAppTests {
 
   @MockitoBean
   private IndividualRepository individualRepository;
+
+  @MockitoBean
+  private NoteRepository noteRepository;
 
   @Test
   void contextLoads() {
