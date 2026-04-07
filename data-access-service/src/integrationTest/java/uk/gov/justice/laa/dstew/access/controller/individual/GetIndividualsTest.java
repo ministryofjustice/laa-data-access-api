@@ -82,7 +82,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
     assertOK(result);
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     IndividualResponse actualIndividual = response.getIndividuals().getFirst();
-    assertThat(actualIndividual.getRelationshipToChildren()).isEqualTo("relationshipToChildren");
+    assertThat(actualIndividual.getRelationshipToInvolvedChildren()).isEqualTo("relationshipToChildren");
     assertThat(actualIndividual.getLastNameAtBirth()).isEqualTo("Alberts");
     assertThat(actualIndividual.getPreviousApplicationId()).isEqualTo("ZZ999Z");
     assertThat(actualIndividual.getCorrespondenceAddressType()).isEqualTo("Home");
