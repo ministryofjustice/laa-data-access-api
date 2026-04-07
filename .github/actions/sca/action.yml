@@ -1,0 +1,26 @@
+name: "Run SCA"
+description: "Runs MoJ DevSecOps SCA action with repository-standard defaults."
+
+inputs:
+  token:
+    description: "GitHub token used by the SCA action"
+    required: true
+  renovate:
+    description: "Whether to enable Renovate updates (true/false)"
+    required: false
+    default: "false"
+  codeql-upload-findings:
+    description: "Whether to upload findings to GitHub code scanning (always/never)"
+    required: false
+    default: "always"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run SCA
+      uses: ministryofjustice/devsecops-actions/sca@f965eb1771ec66cfc41d7d57dc607fa6dfbc10ed # v1.4.0
+      with:
+        token: ${{ inputs.token }}
+        renovate: ${{ inputs.renovate }}
+        codeql-upload-findings: ${{ inputs.codeql-upload-findings }}
+
