@@ -13,16 +13,16 @@ def versions = [
 ]
 
 configurations.all {
-    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
+    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924, SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE)
     // Fix for Spring Boot security vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-15701836, 15701840 (Authentication Bypass)
     // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
     // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
     resolutionStrategy {
-        force 'com.fasterxml.jackson.core:jackson-core:2.21.1'
-        force 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
-        force 'tools.jackson.core:jackson-core:3.1.0'
-        force 'tools.jackson.core:jackson-databind:3.1.0'
-        force 'tools.jackson:jackson-bom:3.1.0'
+        force 'com.fasterxml.jackson.core:jackson-core:2.21.2'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
+        force 'tools.jackson.core:jackson-core:3.1.1'
+        force 'tools.jackson.core:jackson-databind:3.1.1'
+        force 'tools.jackson:jackson-bom:3.1.1'
         force 'org.springframework.boot:spring-boot-actuator:3.5.12'
         force 'org.springframework.boot:spring-boot-actuator-autoconfigure:3.5.12'
         force 'org.springframework.security:spring-security-web:6.5.9'
@@ -106,9 +106,9 @@ jacocoTestReport {
 }
 
 dependencyManagement {
-    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
+    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924, SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE)
     imports {
-        mavenBom 'tools.jackson:jackson-bom:3.1.0'
+        mavenBom 'tools.jackson:jackson-bom:3.1.1'
     }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
@@ -147,15 +147,15 @@ dependencies {
         exclude group: 'com.google.code.gson', module: 'gson'
     }
 
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-12485149
-    implementation 'io.netty:netty-codec-http:4.1.125.Final'
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-12485150
-    implementation 'io.netty:netty-codec-http2:4.1.125.Final'
+    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-12485149, SNYK-JAVA-IONETTY-15789756
+    implementation 'io.netty:netty-codec-http:4.1.132.Final'
+    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-12485150, SNYK-JAVA-IONETTY-15789758
+    implementation 'io.netty:netty-codec-http2:4.1.132.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-15307781
     implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.52'
-    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.1'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
+    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924, SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE)
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
     implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2') {
         exclude group: 'tools.jackson.core'
     }
