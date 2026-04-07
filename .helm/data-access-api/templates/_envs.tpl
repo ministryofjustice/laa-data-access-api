@@ -14,7 +14,7 @@ For the preview branches, set DB connection details to Bitnami Postgres specific
       name: {{ .Release.Name }}-postgresql
       key: postgres-password
 - name: DB_HOST
-  value: {{ .Release.Name }}-postgresql
+  value: feat-1466-data-postgresql
 {{- else if or (eq .Values.spring.profile "main") (eq .Values.spring.profile "unsecured") }}
 {{/*
 For the main branch, extract DB environment variables from rds-postgresql-instance-output secret
