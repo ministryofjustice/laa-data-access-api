@@ -98,9 +98,9 @@ jacocoTestReport {
 }
 
 dependencyManagement {
-    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
+    // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     imports {
-        mavenBom 'tools.jackson:jackson-bom:3.1.0'
+        mavenBom 'tools.jackson:jackson-bom:3.1.1'
     }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
