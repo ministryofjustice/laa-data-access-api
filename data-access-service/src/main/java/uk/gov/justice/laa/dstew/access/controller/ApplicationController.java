@@ -16,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationNotesResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
@@ -188,6 +189,15 @@ public class ApplicationController implements ApplicationApi {
     service.createApplicationNote(applicationId, request);
 
     return ResponseEntity.noContent().build();
+  }
+
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<ApplicationNotesResponse> getApplicationNotes(
+          @NotNull ServiceName serviceName,
+          UUID applicationId) {
+    return ResponseEntity.ok(service.getApplicationNotes(applicationId));
   }
 
   @Override

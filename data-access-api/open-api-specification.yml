@@ -63,3 +63,7 @@ components:
       $ref: "./open-api-application-specification.yml#/components/schemas/IndividualsResponse"
     CreateNoteRequest:
       $ref: "./open-api-application-specification.yml#/components/schemas/CreateNoteRequest"
+    ApplicationNoteResponse:
+      $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationNoteResponse"
+    ApplicationNotesResponse:
+      $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationNotesResponse"

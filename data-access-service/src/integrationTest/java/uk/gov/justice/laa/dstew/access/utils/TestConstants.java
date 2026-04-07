@@ -17,6 +17,7 @@ public class TestConstants {
         public static final String MAKE_DECISION = "/api/v0/applications/{id}/decision";
         public static final String GET_CERTIFICATE = "/api/v0/applications/{id}/certificate";
         public static final String CREATE_NOTES = "/api/v0/applications/{id}/notes";
+        public static final String GET_NOTES = "/api/v0/applications/{id}/notes";
 
         public static final String GET_CASEWORKERS = "/api/v0/caseworkers";
         public static final String GET_INDIVIDUALS = "/api/v0/individuals";
