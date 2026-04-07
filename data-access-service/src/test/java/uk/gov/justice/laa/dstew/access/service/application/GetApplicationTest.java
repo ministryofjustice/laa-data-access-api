@@ -53,7 +53,7 @@ public class GetApplicationTest extends BaseServiceTest {
                         builder -> builder.proceeding(proceeding))));
 
         when(proceedingRepository.findAllByApplicationId(expectedApplication.getId())).thenReturn(proceedings);
-        when(applicationRepository.findById(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
+        when(applicationRepository.findByIdWithAssociations(expectedApplication.getId())).thenReturn(Optional.of(expectedApplication));
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -74,7 +74,7 @@ public class GetApplicationTest extends BaseServiceTest {
 
         // assertThat(expectedApplicationContent.getApplicationMerits().getInvolvedChildren().getFirst())
         //        .isEqualTo(actualApplicationInvolvedChild);
-        verify(applicationRepository, times(1)).findById(expectedApplication.getId());
+        verify(applicationRepository, times(1)).findByIdWithAssociations(expectedApplication.getId());
     }
 
     @Test
@@ -82,7 +82,7 @@ public class GetApplicationTest extends BaseServiceTest {
 
         // given
         UUID applicationId = UUID.randomUUID();
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
+        when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.empty());
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -91,7 +91,7 @@ public class GetApplicationTest extends BaseServiceTest {
         assertThatExceptionOfType(ResourceNotFoundException.class)
                 .isThrownBy(() -> serviceUnderTest.getApplication(applicationId))
                 .withMessageContaining("No application found with id: " + applicationId);
-        verify(applicationRepository, times(1)).findById(applicationId);
+        verify(applicationRepository, times(1)).findByIdWithAssociations(applicationId);
     }
 
     @Test

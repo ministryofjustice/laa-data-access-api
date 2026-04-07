@@ -125,7 +125,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     ApplicationEntity applicationEntity = getApplicationEntity(applicationId, caseworker, "content");
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+    when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.of(applicationEntity));
 
     MakeDecisionRequest request = requestFactory.apply(proceedingId);
     String expectedError = expectedErrorFactory.apply(proceedingId);
@@ -203,12 +203,12 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     when(certificateRepository.existsByApplicationId(applicationId)).thenReturn(certificateExists);
     when(proceedingRepository.findAllById(List.of(grantedProceedingEntity.getId(), refusedProceedingEntity.getId())))
             .thenReturn(List.of(grantedProceedingEntity, refusedProceedingEntity));
-    when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
+    when(applicationRepository.findByIdWithAssociations(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
     // then
-    verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
+    verify(applicationRepository, times(1)).findByIdWithAssociations(expectedApplicationEntity.getId());
     verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
     verify(certificateRepository, times((certificateExists)?1:0)).deleteByApplicationId(applicationId);
@@ -267,12 +267,12 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     // when
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
-    when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
+    when(applicationRepository.findByIdWithAssociations(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
     // then
-    verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
+    verify(applicationRepository, times(1)).findByIdWithAssociations(expectedApplicationEntity.getId());
     verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
     verify(domainEventRepository).save(any(DomainEventEntity.class));
 
@@ -339,12 +339,12 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     // when
     when(proceedingRepository.findAllById(List.of(newProceedingId))).thenReturn(List.of(newProceedingEntity));
-    when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
+    when(applicationRepository.findByIdWithAssociations(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
     // then
-    verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
+    verify(applicationRepository, times(1)).findByIdWithAssociations(expectedApplicationEntity.getId());
     verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
     verifyThatDomainEventSaved(domainEventRepository, objectMapper, expectedDomainEvent, 1);
@@ -400,12 +400,12 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // when
     when(proceedingRepository.findAllById(List.of(newProceedingId, currentProceedingId)))
                 .thenReturn(List.of(newProceedingEntity, currentProceedingEntity));
-    when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
+    when(applicationRepository.findByIdWithAssociations(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
     // then
-    verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
+    verify(applicationRepository, times(1)).findByIdWithAssociations(expectedApplicationEntity.getId());
     verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
     verify(domainEventRepository).save(any(DomainEventEntity.class));
     verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, 2);
@@ -443,7 +443,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    when(applicationRepository.findById(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
+    when(applicationRepository.findByIdWithAssociations(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
     Throwable thrown = catchThrowable(() ->
         serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest));
@@ -509,9 +509,9 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     switch (scenario) {
-      case "NO_CASEWORKER" -> when(applicationRepository.findById(applicationId))
+      case "NO_CASEWORKER" -> when(applicationRepository.findByIdWithAssociations(applicationId))
           .thenReturn(Optional.of(getApplicationEntity(applicationId, "content")));
-      case "NO_PROCEEDING" -> when(applicationRepository.findById(applicationId))
+      case "NO_PROCEEDING" -> when(applicationRepository.findByIdWithAssociations(applicationId))
           .thenReturn(Optional.of(getApplicationEntity(applicationId, caseworker, "content")));
       // NO_APPLICATION: no mock → findById returns empty Optional by default
     }
@@ -550,7 +550,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder -> builder.id(proceedingId).applicationId(unrelatedApplicationId));
 
     // when
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedApplicationEntity));
+    when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.of(expectedApplicationEntity));
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
 
     Throwable thrown = catchThrowable(
@@ -593,7 +593,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     ProceedingEntity unrelatedApplicationProceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder -> builder.id(unrelatedApplicationProceedingId).applicationId(unrelatedApplicationId));
 
     // when
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedApplicationEntity));
+    when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.of(expectedApplicationEntity));
     when(proceedingRepository.findAllById(List.of(nonExistentProceedingId, unrelatedApplicationProceedingId)))
         .thenReturn(List.of(unrelatedApplicationProceeding));
 
@@ -644,7 +644,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+    when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.of(applicationEntity));
     when(certificateRepository.findByApplicationId(applicationId)).thenReturn(Optional.empty());
 
     // when
@@ -670,7 +670,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     assertThat(domainEventEntityCaptured.getCaseworkerId()).isEqualTo(caseworkerId);
     assertThat(domainEventEntityCaptured.getType()).isEqualTo(DomainEventType.APPLICATION_MAKE_DECISION_GRANTED);
 
-    verify(applicationRepository, times(1)).findById(applicationId);
+    verify(applicationRepository, times(1)).findByIdWithAssociations(applicationId);
     verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
   }
 
@@ -718,7 +718,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+    when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.of(applicationEntity));
     when(certificateRepository.findByApplicationId(applicationId)).thenReturn(Optional.of(existingCertificate));
 
     // when
@@ -766,14 +766,14 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+    when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.of(applicationEntity));
 
     // when
     serviceUnderTest.makeDecision(applicationId, makeDecisionRequest);
 
     // then
     verify(certificateRepository, never()).save(any());
-    verify(applicationRepository, times(1)).findById(applicationId);
+    verify(applicationRepository, times(1)).findByIdWithAssociations(applicationId);
     verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
   }
@@ -790,7 +790,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     ApplicationEntity applicationEntity = getApplicationEntity(applicationId, "content");
 
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+    when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.of(applicationEntity));
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -804,7 +804,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         .contains("version 1 not found");
 
     verify(meritsDecisionRepository, never()).save(any());
-    verify(applicationRepository, times(1)).findById(applicationId);
+    verify(applicationRepository, times(1)).findByIdWithAssociations(applicationId);
     verify(applicationRepository, never()).save(any());
   }
 

@@ -42,7 +42,8 @@ public interface ApplicationRepository extends JpaRepository<ApplicationEntity, 
   List<LinkedApplicationSummaryDto> findAllLinkedApplicationsByLeadIds(@Param("leadIds") List<UUID> leadIds);
 
   @Query("""
-      SELECT a FROM ApplicationEntity a                                                                                                                                                                                   LEFT JOIN FETCH a.caseworker
+      SELECT a FROM ApplicationEntity a
+      LEFT JOIN FETCH a.caseworker
       LEFT JOIN FETCH a.decision
       LEFT JOIN FETCH a.linkedApplications
       WHERE a.id = :id

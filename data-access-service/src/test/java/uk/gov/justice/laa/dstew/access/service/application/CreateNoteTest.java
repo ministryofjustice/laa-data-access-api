@@ -34,7 +34,7 @@ public class CreateNoteTest extends BaseServiceTest {
         final ApplicationEntity entity = DataGenerator.createDefault(ApplicationEntityGenerator.class,
                 builder -> builder.id(applicationId));
 
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(entity));
+        when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.of(entity));
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -51,7 +51,7 @@ public class CreateNoteTest extends BaseServiceTest {
         UUID applicationId = UUID.randomUUID();
         String applicationNote = "this is a test of notes";
 
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
+        when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.empty());
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
         assertThatExceptionOfType(ResourceNotFoundException.class)

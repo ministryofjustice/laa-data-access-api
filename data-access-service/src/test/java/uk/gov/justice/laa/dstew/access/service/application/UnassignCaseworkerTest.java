@@ -74,7 +74,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
                         .build()))
                 .build();
 
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
+        when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -82,7 +82,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
         serviceUnderTest.unassignCaseworker(applicationId, eventHistoryRequest);
 
         // then
-        verify(applicationRepository, times(1)).findById(applicationId);
+        verify(applicationRepository, times(1)).findByIdWithAssociations(applicationId);
 
         verifyThatApplicationEntitySaved(applicationRepository, expectedApplicationEntity, 1);
         verifyThatDomainEventSaved(domainEventRepository, objectMapper, expectedDomainEvent, 1);
@@ -99,7 +99,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
                 .eventDescription("Unassigned")
                 .build();
 
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
+        when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -107,7 +107,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
         serviceUnderTest.unassignCaseworker(applicationId, eventHistoryRequest);
 
         // then
-        verify(applicationRepository, times(1)).findById(applicationId);
+        verify(applicationRepository, times(1)).findByIdWithAssociations(applicationId);
         verify(applicationRepository, never()).save(any(ApplicationEntity.class));
         verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
     }
@@ -128,7 +128,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
                 .hasMessage("No application found with id: " + applicationId);
 
         // then
-        verify(applicationRepository, times(1)).findById(applicationId);
+        verify(applicationRepository, times(1)).findByIdWithAssociations(applicationId);
         verify(applicationRepository, never()).save(any(ApplicationEntity.class));
         verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
     }

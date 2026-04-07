@@ -51,7 +51,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
     void givenNoApplication_whenUpdateApplication_thenThrowResourceNotFoundException() {
         // given
         UUID applicationId = UUID.randomUUID();
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
+        when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.empty());
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -59,7 +59,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
         assertThatExceptionOfType(ResourceNotFoundException.class)
                 .isThrownBy(() -> serviceUnderTest.updateApplication(applicationId, new ApplicationUpdateRequest()))
                 .withMessageContaining("No application found with id: " + applicationId);
-        verify(applicationRepository, times(1)).findById(applicationId);
+        verify(applicationRepository, times(1)).findByIdWithAssociations(applicationId);
         verify(domainEventRepository, never()).save(any());
     }
 
@@ -76,7 +76,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
                 .build();
 
         ApplicationUpdateRequest updateRequest = DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
+        when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.of(expectedEntity));
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -95,7 +95,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
         serviceUnderTest.updateApplication(applicationId, updateRequest);
 
         // then
-        verify(applicationRepository, times(1)).findById(applicationId);
+        verify(applicationRepository, times(1)).findByIdWithAssociations(applicationId);
         verifyThatApplicationUpdated(updateRequest, 1);
         verifyThatUpdateDomainEventSaved(expectedDomainEvent, 1);
         assertThat(expectedEntity.getModifiedAt()).isNotNull();
@@ -113,7 +113,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
                 builder.id(applicationId)
                         .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
         );
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(expectedEntity));
+        when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.of(expectedEntity));
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -124,7 +124,7 @@ public class UpdateApplicationTest extends BaseServiceTest {
                 .isInstanceOf(ValidationException.class)
                 .usingRecursiveComparison()
                 .isEqualTo(validationException);
-        verify(applicationRepository, times(1)).findById(applicationId);
+        verify(applicationRepository, times(1)).findByIdWithAssociations(applicationId);
         verify(applicationRepository, never()).save(any());
         verify(domainEventRepository, never()).save(any());
     }

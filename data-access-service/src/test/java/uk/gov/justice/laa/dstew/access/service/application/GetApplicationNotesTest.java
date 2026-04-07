@@ -48,7 +48,7 @@ public class GetApplicationNotesTest extends BaseServiceTest {
         NoteEntity note2 = DataGenerator.createDefault(NoteEntityGenerator.class,
                 builder -> builder.applicationId(applicationId).notes("second note").createdBy("user-b").createdAt(later));
 
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(application));
+        when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.of(application));
         when(noteRepository.findByApplicationIdOrderByCreatedAtAsc(applicationId))
                 .thenReturn(List.of(note1, note2));
 
@@ -75,7 +75,7 @@ public class GetApplicationNotesTest extends BaseServiceTest {
         final ApplicationEntity application = DataGenerator.createDefault(ApplicationEntityGenerator.class,
                 builder -> builder.id(applicationId));
 
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(application));
+        when(applicationRepository.findByIdWithAssociations(applicationId)).thenReturn(Optional.of(application));
         when(noteRepository.findByApplicationIdOrderByCreatedAtAsc(applicationId)).thenReturn(List.of());
 
         setSecurityContext(TestConstants.Roles.CASEWORKER);
