@@ -13,16 +13,17 @@ def versions = [
 ]
 
 configurations.all {
-    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
+    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
+    // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     // Fix for Spring Boot security vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-15701836, 15701840 (Authentication Bypass)
     // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
     // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
     resolutionStrategy {
-        force 'com.fasterxml.jackson.core:jackson-core:2.21.1'
-        force 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
-        force 'tools.jackson.core:jackson-core:3.1.0'
-        force 'tools.jackson.core:jackson-databind:3.1.0'
-        force 'tools.jackson:jackson-bom:3.1.0'
+        force 'com.fasterxml.jackson.core:jackson-core:2.21.2'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
+        force 'tools.jackson.core:jackson-core:3.1.1'
+        force 'tools.jackson.core:jackson-databind:3.1.1'
+        force 'tools.jackson:jackson-bom:3.1.1'
         force 'org.springframework.boot:spring-boot-actuator:3.5.12'
         force 'org.springframework.boot:spring-boot-actuator-autoconfigure:3.5.12'
         force 'org.springframework.security:spring-security-web:6.5.9'
