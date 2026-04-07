@@ -18,10 +18,13 @@ jobs:
       contents: read
       pull-requests: write
       security-events: read
+      packages: read
 
     steps:
       - name: Run SCA
         uses: ministryofjustice/devsecops-actions/sca@559ec2408860d9237cc472a5710e61c1c2187ffa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           renovate: "false" # No automated updates on PRs
