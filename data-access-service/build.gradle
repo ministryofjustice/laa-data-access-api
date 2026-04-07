@@ -145,9 +145,9 @@ dependencies {
     implementation 'io.netty:netty-codec-http2:4.2.12.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-15307781
     implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.52'
-    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.1'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
+    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
     implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2') {
         exclude group: 'tools.jackson.core'
     }
