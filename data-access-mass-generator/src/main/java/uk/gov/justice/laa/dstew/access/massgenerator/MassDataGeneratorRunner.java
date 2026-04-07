@@ -156,8 +156,8 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
                         DecisionStatus.REFUSED,
                         DecisionStatus.REFUSED,
                         DecisionStatus.GRANTED,             // 30 %
-                        DecisionStatus.GRANTED,
-                        DecisionStatus.PARTIALLY_GRANTED    // 20 %
+                        DecisionStatus.GRANTED
+//                        DecisionStatus.PARTIALLY_GRANTED    // 20 %
                 );
 
                 // Re-attach proceedings and application in case the session was cleared mid-batch
