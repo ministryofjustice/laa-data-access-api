@@ -24,10 +24,13 @@ import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
+import uk.gov.justice.laa.dstew.access.mapper.NoteMapper;
 import uk.gov.justice.laa.dstew.access.mapper.ProceedingMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.model.ApplicationNoteResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationNotesResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
@@ -73,6 +76,7 @@ public class ApplicationService {
   private final ProceedingsService proceedingsService;
   private final PayloadValidationService payloadValidationService;
   private final NoteRepository noteRepository;
+  private final NoteMapper noteMapper;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -96,7 +100,8 @@ public class ApplicationService {
                             final CertificateRepository certificateRepository,
                             final ProceedingsService proceedingsService,
                             final PayloadValidationService payloadValidationService,
-                            final NoteRepository noteRepository) {
+                            final NoteRepository noteRepository,
+                            final NoteMapper noteMapper) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.proceedingMapper = proceedingMapper;
@@ -112,6 +117,7 @@ public class ApplicationService {
     this.meritsDecisionRepository = meritsDecisionRepository;
     this.certificateRepository = certificateRepository;
     this.noteRepository = noteRepository;
+    this.noteMapper = noteMapper;
   }
 
   /**
@@ -272,6 +278,23 @@ public class ApplicationService {
     checkIfApplicationExists(id);
     noteRepository.save(NoteEntity.builder().applicationId(id).notes(note).build());
 
+  }
+
+  /**
+   * Retrieve all notes for an application in ascending date order.
+   *
+   * @param id UUID of the application
+   * @return response containing list of notes in ascending createdAt order
+   */
+  @AllowApiCaseworker
+  public ApplicationNotesResponse getApplicationNotes(final UUID id) {
+    checkIfApplicationExists(id);
+    List<ApplicationNoteResponse> notes = noteRepository
+        .findByApplicationIdOrderByCreatedAtAsc(id)
+        .stream()
+        .map(noteMapper::toApplicationNoteResponse)
+        .toList();
+    return new ApplicationNotesResponse().notes(notes);
   }
 
   /**
