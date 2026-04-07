@@ -244,6 +244,7 @@ jobs:
       - infrastructure-smoke-test
       - vulnerability-scan-app
       - vulnerability-scan-docker
+      - sca
     environment: uat
     permissions:
       id-token: write
@@ -274,6 +275,7 @@ jobs:
       - build-push-docker
       - vulnerability-scan-app
       - vulnerability-scan-docker
+      - sca
     environment: staging
     permissions:
       id-token: write
