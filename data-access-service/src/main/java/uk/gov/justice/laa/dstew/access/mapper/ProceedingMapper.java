@@ -8,7 +8,6 @@ import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
-import uk.gov.justice.laa.dstew.access.utils.EnumUtils;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.utils.EnumParsingUtils;
 
