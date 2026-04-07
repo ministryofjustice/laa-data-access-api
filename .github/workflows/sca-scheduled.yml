@@ -1,9 +1,6 @@
 name: SCA - Scheduled Scan (main)
 
 on:
-  push:
-    branches:
-      - main
   schedule:
     # Nightly run at midnight (UTC). Adjust as needed.
     - cron: "0 0 * * *"
