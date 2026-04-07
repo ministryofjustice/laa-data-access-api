@@ -1,0 +1,38 @@
+name: SCA - Scheduled Scan (main)
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    # Nightly run at midnight (UTC). Adjust as needed.
+    - cron: "0 0 * * *"
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: sca-scheduled-main
+  cancel-in-progress: false
+
+jobs:
+  sca-main:
+    name: SCA Scheduled Scan (main)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+      packages: read
+
+    steps:
+      - name: Run SCA (with Renovate)
+        uses: ministryofjustice/devsecops-actions/sca@f965eb1771ec66cfc41d7d57dc607fa6dfbc10ed # v1.4.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          renovate: "true"
+          codeql-upload-findings: "always"
+
+
