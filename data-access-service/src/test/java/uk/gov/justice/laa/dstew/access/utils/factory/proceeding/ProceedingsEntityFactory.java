@@ -32,7 +32,8 @@ public class ProceedingsEntityFactory extends BaseFactory<ProceedingEntity, Proc
                                 Map.of(
                                         "id", "100",
                                         "code", "AB123D",
-                                        "meaning", "hearing"
+                                        "meaning", "hearing",
+                                        "description", "Hearing scope limitation description"
                                 )
                         )
                 ))
