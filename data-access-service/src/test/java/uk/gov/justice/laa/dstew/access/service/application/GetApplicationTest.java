@@ -145,11 +145,11 @@ public class GetApplicationTest extends BaseServiceTest {
                 .isEqualTo(actualApplicationProceedingResponse.getProceedingType());
         assertThat(expectedProceedingEntity.getDescription()).isEqualTo(actualApplicationProceedingResponse.getProceedingDescription());
         assertThat(getValueFromProceedingContent("usedDelegatedFunctionsOn", expectedProceedingEntity.getProceedingContent()))
-                .isEqualTo(actualApplicationProceedingResponse.getUsedDelegatedFunctionsOn().toString());
+                .isEqualTo(actualApplicationProceedingResponse.getDelegatedFunctionsDate().toString());
         assertThat(getValueFromProceedingContent("categoryOfLaw", expectedProceedingEntity.getProceedingContent()))
-                .isEqualTo(actualApplicationProceedingResponse.getCategoryOfLaw());
+                .isEqualToIgnoringCase(actualApplicationProceedingResponse.getCategoryOfLaw().getValue());
         assertThat(getValueFromProceedingContent("matterType", expectedProceedingEntity.getProceedingContent()))
-                .isEqualTo(actualApplicationProceedingResponse.getMatterType());
+                .isEqualToIgnoringCase(actualApplicationProceedingResponse.getMatterType().getValue());
         assertThat(getValueFromProceedingContent("substantiveLevelOfServiceName", expectedProceedingEntity.getProceedingContent()))
                 .isEqualTo(actualApplicationProceedingResponse.getLevelOfService());
         assertThat(getValueFromProceedingContent("substantiveCostLimitation", expectedProceedingEntity.getProceedingContent()))
