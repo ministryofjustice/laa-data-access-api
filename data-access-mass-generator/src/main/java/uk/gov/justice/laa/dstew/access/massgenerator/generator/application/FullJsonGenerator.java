@@ -38,7 +38,7 @@ public class FullJsonGenerator extends BaseGenerator<ApplicationContent, Applica
                 .laaReference(faker.regexify("L-[A-Z]{3}-[A-Z][0-9]{2}-[0-9]"))
                 .lastNameAtBirth(faker.name().lastName())
 //                .previousApplicationReference(faker.regexify("[A-Z]{2}[0-9]{3}[A-Z]"))
-                .relationshipToChildren(faker.options().option("father", "mother", "guardian"))
+//                .relationshipToChildren(faker.options().option("father", "mother", "guardian"))
                 .correspondenceAddressType(faker.options().option("Home", "office"))
                 .office(officeGenerator.createDefault())
                 .applicationMerits(applicationMeritsGenerator.createDefault())
