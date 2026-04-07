@@ -1,0 +1,28 @@
+name: SCA - PR Check
+run-name: SCA PR Check ⚡️
+
+on:
+  pull_request:
+    branches: ["**"]
+    types: [opened, synchronize]
+
+permissions: {}
+
+jobs:
+  sca-pr:
+    name: SCA Pull Request Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: read
+
+    steps:
+      - name: Run SCA
+        uses: ministryofjustice/devsecops-actions/sca@559ec2408860d9237cc472a5710e61c1c2187ffa
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          renovate: "false" # No automated updates on PRs
+          codeql-upload-findings: "always"
