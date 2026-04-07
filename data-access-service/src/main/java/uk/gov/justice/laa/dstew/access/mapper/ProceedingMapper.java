@@ -63,14 +63,15 @@ public interface ProceedingMapper {
     applicationProceedingResponse.setSubstantiveCostLimitation(proceeding.getSubstantiveCostLimitation());
     if (proceeding.getScopeLimitations() != null) {
       List<ScopeLimitationResponse> scopeLimitations = proceeding.getScopeLimitations().stream()
-          .map(scopeLimitationMap -> ScopeLimitationResponse.builder()
-              .scopeLimitation(scopeLimitationMap.get("meaning") != null
-                  ? scopeLimitationMap.get("meaning").toString()
-                  : null)
-              .scopeDescription(scopeLimitationMap.get("description") != null
-                  ? scopeLimitationMap.get("description").toString()
-                  : null)
-              .build())
+          .map(scopeLimitationMap -> {
+            Object meaningObj = scopeLimitationMap.getOrDefault("meaning", null);
+            Object descriptionObj = scopeLimitationMap.getOrDefault("description", null);
+
+            return ScopeLimitationResponse.builder()
+                .scopeLimitation(meaningObj != null ? meaningObj.toString() : null)
+                .scopeDescription(descriptionObj != null ? descriptionObj.toString() : null)
+                .build();
+          })
           .toList();
       applicationProceedingResponse.setScopeLimitations(scopeLimitations);
     }
