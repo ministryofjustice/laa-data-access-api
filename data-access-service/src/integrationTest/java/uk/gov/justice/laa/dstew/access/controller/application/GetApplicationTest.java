@@ -30,6 +30,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEnti
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
 import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -47,6 +48,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 
 public class GetApplicationTest extends BaseHarnessTest {
 
+    @SmokeTest
     @ParameterizedTest
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenApplicationDataAndIncorrectHeader_whenGetApplications_thenReturnBadRequest(
@@ -55,6 +57,7 @@ public class GetApplicationTest extends BaseHarnessTest {
         verifyBadServiceNameHeader(serviceName);
     }
 
+    @SmokeTest
     @Test
     void givenApplicationDataAndNoHeader_whenGetApplication_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
@@ -66,6 +69,7 @@ public class GetApplicationTest extends BaseHarnessTest {
         applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
     }
 
+    @SmokeTest
     @Test
     public void givenExistingApplication_whenGetApplication_thenReturnOKWithCorrectData() throws Exception {
         // given

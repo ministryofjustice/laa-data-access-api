@@ -66,6 +66,7 @@ public class GetCaseworkersTest extends BaseHarnessTest {
         assertForbidden(result);
     }
 
+    @SmokeTest
     @Test
     public void givenNoUser_whenGetCaseworkers_thenReturnUnauthorised() throws Exception {
         withNoToken();

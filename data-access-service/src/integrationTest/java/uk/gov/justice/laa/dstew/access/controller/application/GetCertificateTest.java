@@ -12,6 +12,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEn
 import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
 import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -25,6 +26,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 
 public class GetCertificateTest extends BaseHarnessTest {
 
+    @SmokeTest
     @ParameterizedTest
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenIncorrectHeader_whenGetCertificate_thenReturnBadRequest(
@@ -33,6 +35,7 @@ public class GetCertificateTest extends BaseHarnessTest {
         verifyBadServiceNameHeader(serviceName);
     }
 
+    @SmokeTest
     @Test
     void givenNoHeader_whenGetCertificate_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
@@ -115,6 +118,7 @@ public class GetCertificateTest extends BaseHarnessTest {
         assertForbidden(result);
     }
 
+    @SmokeTest
     @Test
     public void givenNoUser_whenGetCertificate_thenReturnUnauthorised() throws Exception {
         // given

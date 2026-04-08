@@ -57,6 +57,7 @@ public class ReassignCaseworkerTest extends BaseHarnessTest {
         applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
     }
 
+    @SmokeTest
     @Test
     public void givenValidReassignRequest_whenAssignCaseworker_thenReturnOK_andAssignCaseworker() throws Exception {
         // given
