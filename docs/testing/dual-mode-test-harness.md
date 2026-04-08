@@ -398,22 +398,6 @@ JUnit
 
 ---
 
-## Known gaps in infrastructure mode
-
-The following issues are known and documented in [options-for-e2e.md](./options-for-e2e.md):
-
-| Gap | Summary |
-|---|---|
-| `DomainEventAsserts` uses `findAll()` | Unsafe in infrastructure mode; must be scoped to tracked application IDs |
-| Limited `@SmokeTest` write coverage | Most mutating endpoints lack a `@SmokeTest`; infrastructure mode only proves read paths and header validation |
-| `trackExistingApplication()` is a convention | Write-path smoke tests must call it manually; no compile-time or runtime guard exists |
-| Search tests cannot be safely annotated `@SmokeTest` | Exact-count assertions are invalidated by pre-existing data in the live database |
-| Assertion helpers not registered in `InfrastructureJpaConfig` | `ApplicationAsserts` and `DomainEventAsserts` will throw `NoSuchBeanDefinitionException` in infrastructure mode |
-| `assertDatabaseCleanAfterTest()` not guarded by mode | Will always fail in infrastructure mode against a non-empty real database |
-| Security headers may differ through a reverse proxy | Header assertions valid in integration mode may not hold in infrastructure mode |
-
----
-
 ## File reference
 
 ```
