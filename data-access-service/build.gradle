@@ -76,28 +76,39 @@ test {
 }
 
 tasks.named('integrationTest') {
-    def testMode = findProperty('testMode') ?: 'integration'
-    def isInfrastructure = testMode == 'infrastructure'
+    useJUnitPlatform()
 
-    // Forward test.mode so HarnessExtension selects the correct TestContextProvider
-    systemProperty 'test.mode', testMode
+    testLogging {
+        events TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED
+        exceptionFormat = 'full'
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+    }
+}
 
-    // In infrastructure mode: restrict to controller classes AND only run @SmokeTest
-    // (@Tag("smoke")) methods. Using includeTags means non-smoke tests are never
-    // selected by the JUnit Platform engine — they produce no skipped output at all.
-    if (isInfrastructure) {
-        filter {
-            includeTestsMatching 'uk.gov.justice.laa.dstew.access.controller.*'
-        }
-        useJUnitPlatform {
-            includeTags 'smoke'
-        }
-    } else {
-        useJUnitPlatform()
+tasks.register('infrastructureTest', Test) {
+    description = 'Runs @SmokeTest-annotated tests against a live deployed environment'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    // Unconditionally use infrastructure mode — no flag needed
+    systemProperty 'test.mode', 'infrastructure'
+
+    filter {
+        includeTestsMatching 'uk.gov.justice.laa.dstew.access.controller.*'
+    }
+    useJUnitPlatform {
+        includeTags 'smoke'
     }
 
-    // Forward infrastructure connection details into the test JVM environment
-    ['LAA_ACCESS_API_URL', 'LAA_ACCESS_DB_URL', 'LAA_ACCESS_DB_USERNAME', 'LAA_ACCESS_DB_PASSWORD'].each { key ->
+    ['LAA_SMOKE_ACCESS_API_URL',
+     'LAA_SMOKE_ACCESS_DB_URL',
+     'LAA_SMOKE_ACCESS_DB_USERNAME',
+     'LAA_SMOKE_ACCESS_DB_PASSWORD',
+     'FEATURE_DISABLE_SECURITY',
+     'FEATURE_ENABLE_DEV_TOKENS'].each { key ->
         def value = System.getenv(key)
         if (value) environment key, value
     }

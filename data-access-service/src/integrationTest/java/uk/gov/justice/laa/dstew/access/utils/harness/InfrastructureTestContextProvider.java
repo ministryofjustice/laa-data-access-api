@@ -30,10 +30,10 @@ public class InfrastructureTestContextProvider implements TestContextProvider {
     public InfrastructureTestContextProvider() {
         log.info("InfrastructureTestContextProvider: initialising (infrastructure mode)");
 
-        var apiUrl = requireEnv("LAA_ACCESS_API_URL");
-        var dbUrl = requireEnv("LAA_ACCESS_DB_URL");
-        var dbUsername = requireEnv("LAA_ACCESS_DB_USERNAME");
-        var dbPassword = requireEnv("LAA_ACCESS_DB_PASSWORD");
+        var apiUrl = requireEnv("LAA_SMOKE_ACCESS_API_URL");
+        var dbUrl = requireEnv("LAA_SMOKE_ACCESS_DB_URL");
+        var dbUsername = requireEnv("LAA_SMOKE_ACCESS_DB_USERNAME");
+        var dbPassword = requireEnv("LAA_SMOKE_ACCESS_DB_PASSWORD");
 
         log.info("InfrastructureTestContextProvider: connecting to API at {}", apiUrl);
         log.info("InfrastructureTestContextProvider: connecting to database at {}", dbUrl);
@@ -80,8 +80,8 @@ public class InfrastructureTestContextProvider implements TestContextProvider {
         if (value == null || value.isBlank()) {
             throw new IllegalStateException(
                     "Required environment variable '" + name + "' is not set. " +
-                    "Infrastructure tests require: LAA_ACCESS_API_URL, LAA_ACCESS_DB_URL, " +
-                    "LAA_ACCESS_DB_USERNAME, LAA_ACCESS_DB_PASSWORD");
+                    "Infrastructure tests require: LAA_SMOKE_ACCESS_API_URL, LAA_SMOKE_ACCESS_DB_URL, " +
+                    "LAA_SMOKE_ACCESS_DB_USERNAME, LAA_SMOKE_ACCESS_DB_PASSWORD");
         }
         return value;
     }
