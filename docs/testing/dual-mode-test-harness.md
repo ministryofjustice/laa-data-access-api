@@ -42,13 +42,16 @@ BaseHarnessTest  (abstract)
 
 | Component | Location | Responsibility |
 |---|---|---|
-| `HarnessExtension` | `utils/harness/` | JUnit 5 extension; selects the `TestContextProvider`, injects `@HarnessInject` fields, and conditionally skips non-`@SmokeTest` tests in infrastructure mode |
+| `HarnessExtension` | `utils/harness/` | JUnit 5 extension; selects the `TestContextProvider`, injects `@HarnessInject` fields, captures the before-suite row-count snapshot (infrastructure mode only), and registers the end-of-suite parity asserter |
 | `TestContextProvider` | `utils/harness/` | Interface; exposes `webTestClient()` and `getBean(Class<T>)` |
 | `IntegrationTestContextProvider` | `utils/harness/` | Boots a full Spring application context with a Testcontainers Postgres; used for normal `./gradlew integrationTest` runs |
 | `InfrastructureTestContextProvider` | `utils/harness/` | Builds a minimal JPA-only context pointing at a real database; used when `test.mode=infrastructure` |
 | `BaseHarnessTest` | `utils/harness/` | Abstract base for all harness tests; owns the `@BeforeEach` / `@AfterEach` lifecycle and HTTP helper methods |
 | `PersistedDataGenerator` | `utils/generator/` | Single gateway for all database writes; tracks every entity ID for teardown |
-| `DatabaseCleanlinessAssertion` | `utils/harness/` | Queries every domain table and asserts each is empty; runs `@AfterEach @Order(2)` after tracked data is deleted |
+| `ApplicationDomainTables` | `utils/harness/` | Single source of truth for the ordered list of application-domain tables and the Flyway seed caseworker count; referenced by both assertion classes |
+| `DatabaseCleanlinessAssertion` | `utils/harness/` | Queries every domain table and asserts each is empty; runs `@AfterEach @Order(2)` after tracked data is deleted — **integration mode only** |
+| `TableRowCountAssertion` | `utils/harness/` | Captures a row-count snapshot and asserts parity between before/after snapshots; used by `HarnessExtension` at end-of-suite — **infrastructure mode only** |
+| `AllTablesEmptyAfterSuiteTest` | `utils/harness/` | End-of-suite sentinel; asserts all tables are empty after the full integration test suite — **integration mode only** (no `@SmokeTest`) |
 | `HarnessInject` | `utils/harness/` | Marker annotation; fields annotated with this are injected by `HarnessExtension.postProcessTestInstance` |
 | `HarnessResult` | `utils/harness/` | Thin wrapper around an HTTP response |
 | `SmokeTest` | `utils/harness/` | Marker annotation; controls which tests run in infrastructure mode |
@@ -152,6 +155,62 @@ HarnessExtension.postProcessTestInstance
 The `@Order` annotation ensures `tearDownTrackedData()` always runs before
 `assertDatabaseCleanAfterTest()`. Both `@AfterEach` methods are guaranteed to run
 even if the test method throws.
+
+> **Infrastructure mode note:** `assertDatabaseCleanAfterTest()` uses
+> `DatabaseCleanlinessAssertion`, which asserts tables are _empty_. This would
+> always fail against a live database with real data. In infrastructure mode the
+> per-test empty check is replaced by the end-of-suite row-count reconciliation
+> described in the next section.
+
+---
+
+## End-of-suite row-count reconciliation (infrastructure mode only)
+
+In infrastructure mode the live database legitimately contains data before the suite
+starts, so asserting tables are empty after each test is not appropriate. Instead,
+`HarnessExtension` performs a **row-count reconciliation** across the whole suite:
+
+1. **Before any test runs** — on the very first `beforeAll` call, `HarnessExtension`
+   captures a snapshot of the current row count for every application-domain table
+   (via `TableRowCountAssertion.captureRowCounts()`). This snapshot is stored in the
+   JUnit root `ExtensionContext.Store`.
+
+2. **After all tests have finished** — a `CloseableResource` registered in the same
+   root store fires when JUnit closes the store at the end of the suite. It calls
+   `TableRowCountAssertion.assertRowCountsMatch(snapshot, ...)`, which re-queries
+   every table and compares the current counts against the snapshot. Any delta
+   (rows inserted or deleted without cleanup) produces an `AssertionError` naming
+   the affected tables and the size of the change.
+
+This approach avoids all class-ordering concerns: the snapshot is captured inside
+`HarnessExtension.beforeAll` (which fires before any test in that class runs), and the
+assertion fires via `CloseableResource.close()` which is guaranteed to execute after
+every test class has torn down.
+
+The `CloseableResource` asserter is registered in the root store **after** the
+`TestContextProvider`, so JUnit closes it first (in reverse-registration order) —
+meaning the Spring context and `JdbcTemplate` are still alive when the final SQL
+queries run.
+
+### What the reconciliation catches
+
+| Scenario | Detected? |
+|---|---|
+| Test inserts a row and fails to delete it | ✅ Row count increased |
+| Test deletes a pre-existing row (data destruction) | ✅ Row count decreased |
+| Test inserts and deletes the same number of rows in different tables | ✅ Per-table deltas are checked independently |
+| Two tests each leave one row, but in different test runs | ✅ Caught within the same suite run |
+
+### What the reconciliation does not catch
+
+| Scenario | Not detected |
+|---|---|
+| Test inserts a row and deletes a different pre-existing row in the same table | ❌ Net delta is zero — counts match but content changed |
+
+This is an acceptable trade-off for infrastructure mode. The `PersistedDataGenerator`
+teardown mechanism and the per-test `@AfterEach` ordering already prevent accidental
+deletion of untracked rows (proven by `HarnessDataIsolationTest`). The reconciliation
+check is a safety net for cases where teardown fails silently.
 
 ---
 
@@ -298,6 +357,12 @@ proving the harness deleted data it should not have.
 ```
 JUnit
   │
+  ├─ HarnessExtension.beforeAll (first test class only)
+  │    ├─ creates TestContextProvider (integration or infrastructure)
+  │    └─ [infrastructure mode only]
+  │         ├─ captures before-suite row-count snapshot → root store
+  │         └─ registers CloseableResource parity asserter → root store
+  │
   ├─ HarnessExtension.postProcessTestInstance
   │    └─ injects @HarnessInject fields (webTestClient, harnessProvider)
   │
@@ -321,25 +386,15 @@ JUnit
   │         ├─ delete individuals       (by ID, idempotent)
   │         └─ clearTrackedIds()        ← always, even if a delete threw
   │
-  └─ @AfterEach @Order(2) assertDatabaseCleanAfterTest()
-       └─ DatabaseCleanlinessAssertion.assertAllTablesEmpty()
+  ├─ @AfterEach @Order(2) assertDatabaseCleanAfterTest()
+  │    └─ [integration mode only] DatabaseCleanlinessAssertion.assertAllTablesEmpty()
+  │
+  │   ... (repeated for every test class) ...
+  │
+  └─ JUnit root store closes (end of suite)
+       └─ [infrastructure mode only] CloseableResource asserter fires
+            └─ TableRowCountAssertion.assertRowCountsMatch(snapshot, "full-infrastructure-suite")
 ```
-
----
-
-## Known gaps in infrastructure mode
-
-The following issues are known and documented in [options-for-e2e.md](./options-for-e2e.md):
-
-| Gap | Summary |
-|---|---|
-| `DomainEventAsserts` uses `findAll()` | Unsafe in infrastructure mode; must be scoped to tracked application IDs |
-| Limited `@SmokeTest` write coverage | Most mutating endpoints lack a `@SmokeTest`; infrastructure mode only proves read paths and header validation |
-| `trackExistingApplication()` is a convention | Write-path smoke tests must call it manually; no compile-time or runtime guard exists |
-| Search tests cannot be safely annotated `@SmokeTest` | Exact-count assertions are invalidated by pre-existing data in the live database |
-| Assertion helpers not registered in `InfrastructureJpaConfig` | `ApplicationAsserts` and `DomainEventAsserts` will throw `NoSuchBeanDefinitionException` in infrastructure mode |
-| `assertDatabaseCleanAfterTest()` not guarded by mode | Will always fail in infrastructure mode against a non-empty real database |
-| Security headers may differ through a reverse proxy | Header assertions valid in integration mode may not hold in infrastructure mode |
 
 ---
 
@@ -349,15 +404,18 @@ The following issues are known and documented in [options-for-e2e.md](./options-
 data-access-service/src/integrationTest/java/uk/gov/justice/laa/dstew/access/
 ├── utils/
 │   ├── harness/
+│   │   ├── AllTablesEmptyAfterSuiteTest.java      — end-of-suite empty check (integration mode only)
+│   │   ├── ApplicationDomainTables.java           — canonical table list and Flyway seed count
 │   │   ├── BaseHarnessTest.java                   — abstract base; lifecycle & HTTP helpers
-│   │   ├── DatabaseCleanlinessAssertion.java      — asserts all domain tables empty after each test
+│   │   ├── DatabaseCleanlinessAssertion.java      — asserts all domain tables empty after each test (integration mode)
 │   │   ├── HarnessDataIsolationTest.java          — proves teardown data isolation
-│   │   ├── HarnessExtension.java                  — JUnit 5 extension; mode selection & injection
+│   │   ├── HarnessExtension.java                  — JUnit 5 extension; mode selection, injection, row-count reconciliation
 │   │   ├── HarnessInject.java                     — field injection marker annotation
 │   │   ├── HarnessResult.java                     — HTTP response wrapper
 │   │   ├── InfrastructureTestContextProvider.java — JPA-only context for real infrastructure
 │   │   ├── IntegrationTestContextProvider.java    — full Spring Boot + Testcontainers context
 │   │   ├── SmokeTest.java                         — smoke-test marker annotation
+│   │   ├── TableRowCountAssertion.java            — captures row-count snapshots and asserts parity (infrastructure mode)
 │   │   └── TestContextProvider.java               — interface implemented by both providers
 │   └── generator/
 │       └── PersistedDataGenerator.java            — persists entities and tracks IDs for teardown
