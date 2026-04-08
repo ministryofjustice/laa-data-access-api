@@ -13,6 +13,9 @@ import java.util.List;
  *
  * <p>Table order is child → parent to respect FK constraints should the assertion
  * ever need to be extended to also delete rows.
+ *
+ * <p>The canonical list of tables and the Flyway seed count are defined in
+ * {@link ApplicationDomainTables}.
  */
 @Component
 public class DatabaseCleanlinessAssertion {
@@ -23,45 +26,12 @@ public class DatabaseCleanlinessAssertion {
         this.jdbc = jdbc;
     }
 
-    /**
-     * Tables in child-to-parent order so that any future cleanup extension
-     * would not violate FK constraints.
-     *
-     * <p>Names verified against Flyway migration scripts:
-     * V1__initial_setup.sql, V4__add_decisions_table.sql, V5__add_merits_tables.sql,
-     * V8__add_proceedings_table.sql, V9__add_linked_applications_table.sql,
-     * V14__change_decision_relationship.sql, V16__add_certificates_table.sql.
-     *
-     * <p>Note: after V14 the FK runs {@code applications.decision_id → decisions}, so
-     * decisions are NOT cascade-deleted when their parent application is deleted —
-     * {@link uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator}
-     * handles this explicitly in {@code deleteTrackedData()}.
-     */
-    private static final List<String> TABLES = List.of(
-            "domain_events",
-            "linked_merits_decisions",   // join table: decisions ↔ merits_decisions
-            "merits_decisions",
-            "decisions",
-            "proceedings",
-            "certificates",
-            "linked_applications",
-            "linked_individuals",        // join table: applications ↔ individuals
-            "individuals",
-            "applications",
-            "caseworkers"
-    );
-
-    /**
-     * IDs of caseworkers inserted by R__insert_test_data.sql (Flyway repeatable migration).
-     * These rows are part of the baseline dataset and must not be counted as test pollution.
-     */
-    private static final int FLYWAY_SEEDED_CASEWORKER_COUNT = 11;
 
     /**
      * Asserts every table is empty, ignoring rows that were seeded by Flyway migrations.
      *
      * <p>The repeatable migration {@code R__insert_test_data.sql} inserts
-     * {@value #FLYWAY_SEEDED_CASEWORKER_COUNT} caseworkers with fixed IDs on every
+     * {@value ApplicationDomainTables#FLYWAY_SEEDED_CASEWORKER_COUNT} caseworkers with fixed IDs on every
      * Testcontainers startup.  Those rows are part of the baseline dataset, not test
      * pollution, so they are subtracted from the caseworkers count before asserting.
      *
@@ -69,12 +39,12 @@ public class DatabaseCleanlinessAssertion {
      */
     public void assertAllTablesEmpty(String context) {
         List<String> violations = new ArrayList<>();
-        for (String table : TABLES) {
+        for (String table : ApplicationDomainTables.TABLES) {
             Integer rawCount = jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class);
             int count = rawCount == null ? 0 : rawCount;
 
             if ("caseworkers".equals(table)) {
-                count = Math.max(0, count - FLYWAY_SEEDED_CASEWORKER_COUNT);
+                count = Math.max(0, count - ApplicationDomainTables.FLYWAY_SEEDED_CASEWORKER_COUNT);
             }
 
             if (count > 0) {

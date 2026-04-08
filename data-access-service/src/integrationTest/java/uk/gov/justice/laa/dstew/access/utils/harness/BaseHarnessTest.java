@@ -59,6 +59,13 @@ public abstract class BaseHarnessTest {
      */
     protected DatabaseCleanlinessAssertion dbCleanliness;
 
+    /**
+     * Captures row-count snapshots and asserts parity between before/after snapshots.
+     * Used by infrastructure-test sentinels to verify no data leaks across the suite.
+     * Resolved lazily in @BeforeEach from the Spring context via harnessProvider.
+     */
+    protected TableRowCountAssertion tableRowCountAssertion;
+
     // Mirror BaseIntegrationTest field names so test code compiles unchanged.
     protected CaseworkerEntity CaseworkerJohnDoe;
     protected CaseworkerEntity CaseworkerJaneDoe;
@@ -89,6 +96,7 @@ public abstract class BaseHarnessTest {
         applicationAsserts     = harnessProvider.getBean(ApplicationAsserts.class);
         decisionAsserts        = harnessProvider.getBean(DecisionAsserts.class);
         dbCleanliness          = harnessProvider.getBean(DatabaseCleanlinessAssertion.class);
+        tableRowCountAssertion = harnessProvider.getBean(TableRowCountAssertion.class);
 
         currentToken = TestConstants.Tokens.CASEWORKER;
         omitToken = false;
