@@ -1,11 +1,16 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
-import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.ApplyApplication;
+import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
 public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> {
@@ -14,12 +19,16 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
 
   @Override
   public ApplicationCreateRequest create() {
+    ApplicationContent content = applicationContentFactory.create();
+    ApplyApplication applyApp = new ApplyApplication();
+    applyApp.setObjectType("apply");
+    applyApp.setId(content.getId());
+    applyApp.setSubmittedAt(OffsetDateTime.parse(content.getSubmittedAt()));
 
     return ApplicationCreateRequest.builder()
         .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
         .laaReference("TestReference")
-        .applicationContent(MapperUtil.getObjectMapper()
-            .convertValue(applicationContentFactory.create(), Map.class))
+        .applicationContent(applyApp)
         .individuals(List.of(
             IndividualCreateRequest.builder()
                 .firstName("John")

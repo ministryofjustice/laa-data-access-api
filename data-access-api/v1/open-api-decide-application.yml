@@ -1,0 +1,37 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Decide Application
+
+components:
+  schemas:
+    decideApplication:
+      description: Application schema for the decide phase, includes office information required for decision-making
+      allOf:
+        - $ref: '../common/open-api-application-content-common.yml#/components/schemas/ApplicationContentBase'
+        - type: object
+          required:
+            - office
+          properties:
+            randomId:
+              type: string
+              description: Random ID for testing purposes, not used in production
+            office:
+              type: string
+              description: Office code or identifier required for decision making
+      additionalProperties: true
+      examples:
+        decide_with_london_office:
+          summary: "Decide application with London office assignment"
+          value:
+            objectType: "decide"
+            id: "550e8400-e29b-41d4-a716-446655440002"
+            submittedAt: "2024-03-19T10:30:00Z"
+            office: "LON001"
+        decide_with_manchester_office:
+          summary: "Decide application with Manchester office assignment"
+          value:
+            objectType: "decide"
+            id: "550e8400-e29b-41d4-a716-446655440003"
+            submittedAt: "2024-03-19T11:00:00Z"
+            office: "MAN001"

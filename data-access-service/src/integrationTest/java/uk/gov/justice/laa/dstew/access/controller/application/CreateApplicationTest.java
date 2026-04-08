@@ -10,6 +10,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,7 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOffice;
+import uk.gov.justice.laa.dstew.access.model.ApplyApplication;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
@@ -46,7 +48,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCr
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationOfficeGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.ApplicationCreateRequestIndividualGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualGenerator;
 
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -111,8 +112,16 @@ public class CreateApplicationTest extends BaseIntegrationTest {
                           .id(associatedApplicationId)
     );
 
+    ApplyApplication applyApp = new ApplyApplication();
+    applyApp.setObjectType("apply");
+    applyApp.setId(content.getId());
+    applyApp.setSubmittedAt(OffsetDateTime.parse(content.getSubmittedAt()));
+    if (content.getAllLinkedApplications() != null) {
+      applyApp.putAdditionalProperty("allLinkedApplications", content.getAllLinkedApplications());
+    }
+
     ApplicationCreateRequest request = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
+        builder -> builder.applicationContent(applyApp)
     );
 
     // when
@@ -154,8 +163,16 @@ public class CreateApplicationTest extends BaseIntegrationTest {
                           .id(associatedApplicationId)
     );
 
+    ApplyApplication applyApp = new ApplyApplication();
+    applyApp.setObjectType("apply");
+    applyApp.setId(content.getId());
+    applyApp.setSubmittedAt(OffsetDateTime.parse(content.getSubmittedAt()));
+    if (content.getAllLinkedApplications() != null) {
+      applyApp.putAdditionalProperty("allLinkedApplications", content.getAllLinkedApplications());
+    }
+
     ApplicationCreateRequest request = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
+        builder -> builder.applicationContent(applyApp)
     );
 
     // when
@@ -179,8 +196,13 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         builder -> builder.id(existingApplication.getApplyApplicationId())
     );
 
+    ApplyApplication applyApp = new ApplyApplication();
+    applyApp.setObjectType("apply");
+    applyApp.setId(content.getId());
+    applyApp.setSubmittedAt(OffsetDateTime.parse(content.getSubmittedAt()));
+
     ApplicationCreateRequest request = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
+        builder -> builder.applicationContent(applyApp)
     );
 
     ProblemDetail expectedProblemDetail = ProblemDetailBuilder.create()
@@ -208,8 +230,16 @@ public class CreateApplicationTest extends BaseIntegrationTest {
                           .id(linkedApplication == null ? UUID.randomUUID() : linkedApplication.getAssociatedApplicationId())
     );
 
+    ApplyApplication applyApp = new ApplyApplication();
+    applyApp.setObjectType("apply");
+    applyApp.setId(content.getId());
+    applyApp.setSubmittedAt(OffsetDateTime.parse(content.getSubmittedAt()));
+    if (content.getAllLinkedApplications() != null) {
+      applyApp.putAdditionalProperty("allLinkedApplications", content.getAllLinkedApplications());
+    }
+
     ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
+        builder -> builder.applicationContent(applyApp)
     );
 
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
@@ -229,8 +259,17 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
   private void verifyCreateNewApplicationWithServiceName(ServiceName serviceName) throws Exception {
     ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class);
+
+    ApplyApplication applyApp = new ApplyApplication();
+    applyApp.setObjectType("apply");
+    applyApp.setId(content.getId());
+    applyApp.setSubmittedAt(OffsetDateTime.parse(content.getSubmittedAt()));
+    if (content.getAllLinkedApplications() != null) {
+      applyApp.putAdditionalProperty("allLinkedApplications", content.getAllLinkedApplications());
+    }
+
     ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
+        builder -> builder.applicationContent(applyApp)
     );
 
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest, ServiceNameHeader(serviceName.getValue()));
@@ -290,13 +329,16 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   @Test
   @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenInvalidApplicationContent_EmptyMap_whenCreateApplication_thenReturnBadRequest() throws Exception {
+    ApplyApplication emptyApp = new ApplyApplication();
+    emptyApp.setObjectType("apply");
     ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-        builder -> builder.applicationContent(new HashMap<>())
+        builder -> builder.applicationContent(emptyApp)
     );
 
 
     ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
-    expectedProblemDetail.setProperty("invalidFields", Map.of("applicationContent","size must be between 1 and 2147483647"));
+    expectedProblemDetail.setProperty("invalidFields",
+        Map.of("applicationContent.id", "must not be null", "applicationContent.submittedAt", "must not be null"));
 
     // when
     MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
@@ -392,13 +434,22 @@ public class CreateApplicationTest extends BaseIntegrationTest {
             builder -> builder.applicationContent(null)),
             problemDetail, Map.of("invalidFields", Map.of("applicationContent", mustNotBeNull))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-            builder -> builder.applicationContent(new HashMap<>())),
-            problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
+                builder -> {
+                  ApplyApplication emptyApp = new ApplyApplication();
+                  emptyApp.setObjectType("apply");
+                  builder.applicationContent(emptyApp);
+                }),
+            problemDetail, Map.of("invalidFields",
+                Map.of("applicationContent.id", "must not be null", "applicationContent.submittedAt", "must not be null"))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-            builder -> builder.applicationContent(Map.of("applicationContent", Map.of("proceedings", List.of())))),
-            ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request").detail("Generic Validation Error")
-                .build(), Map.of("errors", List.of("id: must not be null",
-            "submittedAt: must not be null"))),
+                builder -> {
+                  ApplyApplication invalidApp = new ApplyApplication();
+                  invalidApp.setObjectType("apply");
+                  // Not setting id and submittedAt to trigger validation errors
+                  builder.applicationContent(invalidApp);
+                }),
+            problemDetail, Map.of("invalidFields",
+                Map.of("applicationContent.id", "must not be null", "applicationContent.submittedAt", "must not be null"))),
         Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
             builder -> builder.individuals(null)),
             problemDetail, Map.of("invalidFields", Map.of("individuals", mustNotBeNull))),

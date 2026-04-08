@@ -1,0 +1,58 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: API Models Common Schemas
+
+components:
+  schemas:
+    OpponentResponse:
+      type: object
+      properties:
+        opposableType:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        organisationName:
+          type: string
+
+    ProviderResponse:
+      type: object
+      properties:
+        officeCode:
+          type: string
+        contactEmail:
+          type: string
+
+    EventHistoryRequest:
+      type: object
+      properties:
+        eventDescription:
+          type: string
+
+    PagingResponse:
+      type: object
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        itemsReturned:
+          type: integer
+        totalRecords:
+          type: integer
+
+    createProceedingRequest:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+        categoryOfLaw:
+          type: string
+        matterType:
+          type: string
+      additionalProperties: true
