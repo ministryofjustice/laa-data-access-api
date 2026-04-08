@@ -25,6 +25,13 @@ services:
     restart: unless-stopped
     ports:
       - "9000:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
     environment:
       # Database
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-smoketest:5432/laa_data_access_api
