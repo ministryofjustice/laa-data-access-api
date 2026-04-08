@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
+import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
@@ -13,8 +14,8 @@ public class CaseworkerRepositoryTest extends BaseIntegrationTest {
     public void givenSaveOfExpectedCaseworker_whenGetCalled_expectedAndActualAreEqual() {
 
         // given
-        CaseworkerEntity expected = caseworkerFactory.create();
-        caseworkerRepository.save(expected);
+        CaseworkerEntity expected = persistedDataGenerator.createAndPersist(CaseworkerGenerator.class);
+        clearCache();
 
         // when
         CaseworkerEntity actual = caseworkerRepository.findById(expected.getId()).orElse(null);

@@ -1,28 +1,5 @@
 package uk.gov.justice.laa.dstew.access.service.application;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authorization.AuthorizationDeniedException;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
-import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
-import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
-import uk.gov.justice.laa.dstew.access.service.ApplicationService;
-import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
-import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Stream;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
@@ -32,6 +9,31 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.Application.verifyThatApplicationEntitySaved;
 import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.DomainEvent.verifyThatDomainEventSaved;
+
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authorization.AuthorizationDeniedException;
+import tools.jackson.core.JacksonException;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
+import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
+import uk.gov.justice.laa.dstew.access.service.ApplicationService;
+import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
+import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class UnassignCaseworkerTest extends BaseServiceTest {
@@ -43,19 +45,19 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
     @MethodSource("validUnassignEventDescriptionCases")
     void givenAssignedCaseworker_whenUnassignCaseworker_thenUnassignAndSave(
             String eventDescription
-    ) throws JsonProcessingException {
+    ) throws JacksonException {
         // given
         UUID applicationId = UUID.randomUUID();
 
-        CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+        CaseworkerEntity expectedCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
 
-        ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+        ApplicationEntity existingApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
                 builder.id(applicationId).caseworker(expectedCaseworker)
         );
 
         ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(null).build();
 
-        EventHistory eventHistory = EventHistory.builder()
+        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
                 .eventDescription(eventDescription)
                 .build();
 
@@ -67,17 +69,17 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
                 .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
                         .applicationId(existingApplicationEntity.getId())
                         .caseWorkerId(null)
-                        .eventDescription(eventHistory.getEventDescription())
+                        .eventDescription(eventHistoryRequest.getEventDescription())
                         .createdBy("")
                         .build()))
                 .build();
 
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        serviceUnderTest.unassignCaseworker(applicationId, eventHistory);
+        serviceUnderTest.unassignCaseworker(applicationId, eventHistoryRequest);
 
         // then
         verify(applicationRepository, times(1)).findById(applicationId);
@@ -87,22 +89,22 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
     }
 
     @Test
-    void givenAlreadyUnassigned_whenUnassignCaseworker_thenNotSave() throws JsonProcessingException {
+    void givenAlreadyUnassigned_whenUnassignCaseworker_thenNotSave() throws JacksonException {
         UUID applicationId = UUID.randomUUID();
-        ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+        ApplicationEntity existingApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
                 builder.id(applicationId).caseworker(null)
         );
 
-        EventHistory eventHistory = EventHistory.builder()
+        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
                 .eventDescription("Unassigned")
                 .build();
 
         when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        serviceUnderTest.unassignCaseworker(applicationId, eventHistory);
+        serviceUnderTest.unassignCaseworker(applicationId, eventHistoryRequest);
 
         // then
         verify(applicationRepository, times(1)).findById(applicationId);
@@ -117,10 +119,10 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
     ) {
 
         // given
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(applicationId, new EventHistory()));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(applicationId, new EventHistoryRequest()));
         assertThat(thrown)
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("No application found with id: " + applicationId);
@@ -134,10 +136,10 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
     @Test
     void givenRoleReader_whenUnassignCaseworker_thenThrowUnauthorizedException() {
         // given
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.NO_ROLE);
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistory()));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistoryRequest()));
         assertThat(thrown)
                 .isInstanceOf(AuthorizationDeniedException.class)
                 .hasMessage("Access Denied");
@@ -154,7 +156,7 @@ public class UnassignCaseworkerTest extends BaseServiceTest {
         // no security context set
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistory()));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistoryRequest()));
         assertThat(thrown)
                 .isInstanceOf(AuthorizationDeniedException.class)
                 .hasMessage("Access Denied");

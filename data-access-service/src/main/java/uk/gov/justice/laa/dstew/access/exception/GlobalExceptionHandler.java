@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.exception;
 
+import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static uk.gov.justice.laa.dstew.access.exception.ProblemDetailUtility.getCustomProblemDetail;
@@ -7,6 +8,7 @@ import static uk.gov.justice.laa.dstew.access.exception.ProblemDetailUtility.get
 import io.sentry.Sentry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -53,6 +55,20 @@ public class GlobalExceptionHandler {
     return ResponseEntity.badRequest().body(problemDetail);
   }
 
+  /**
+   * The handler for IllegalArgumentException.
+   * Used for parameter validation (e.g., invalid page, pageSize).
+   *
+   * @param exception the exception.
+   * @return the response with the exception message.
+   */
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<ProblemDetail> handleIllegalArgumentException(IllegalArgumentException exception) {
+    log.debug("Invalid argument: {}", exception.getMessage());
+    return ResponseEntity.badRequest().body(
+            getCustomProblemDetail(HttpStatus.BAD_REQUEST, exception.getMessage()));
+  }
+
 
   /**
    * The handler for ViolationException.
@@ -62,6 +78,17 @@ public class GlobalExceptionHandler {
   public void handleAuthorizationDeniedException(AuthorizationDeniedException exception) 
       throws AuthorizationDeniedException {
     throw exception; //rely on Spring ExceptionTranslationFilter to differ between 403 and 401 return codes
+  }
+
+  /**
+   * The handler for ViolationException.
+   *
+   */
+  @ExceptionHandler(OptimisticLockingFailureException.class)
+  public ResponseEntity<ProblemDetail> handleOptimisticLoggingException(OptimisticLockingFailureException exception) {
+    Sentry.captureException(exception);
+    return ResponseEntity.status(CONFLICT).body(
+        getCustomProblemDetail(HttpStatus.CONFLICT, exception.getMessage()));
   }
 
   /**

@@ -1,28 +1,30 @@
 package uk.gov.justice.laa.dstew.access.service.application;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.Application.verifyThatApplicationEntitySaved;
+import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.DomainEvent.verifyThatDomainEventSaved;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import tools.jackson.core.JacksonException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.Application.verifyThatApplicationEntitySaved;
-import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.DomainEvent.verifyThatDomainEventSaved;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
 public class ReassignCaseworkerTest extends BaseServiceTest {
 
@@ -30,28 +32,28 @@ public class ReassignCaseworkerTest extends BaseServiceTest {
     private ApplicationService serviceUnderTest;
 
     @Test
-    void givenApplicationWithCaseworker_whenReassignCaseworker_thenSaveAndCreateDomainEvent() throws JsonProcessingException {
+    void givenApplicationWithCaseworker_whenReassignCaseworker_thenSaveAndCreateDomainEvent() throws JacksonException {
 
         // given
         UUID applicationId = UUID.randomUUID();
 
-        CaseworkerEntity existingCaseworker = caseworkerFactory.createDefault(builder ->
+        CaseworkerEntity existingCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder ->
                 builder.id(UUID.randomUUID())
                         .username("John Doe")
         );
 
-        CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault(builder ->
+        CaseworkerEntity expectedCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder ->
                 builder.id(UUID.randomUUID())
                         .username("Jane Doe")
         );
 
-        ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+        ApplicationEntity existingApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
                 builder.id(applicationId).caseworker(existingCaseworker)
         );
 
         ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
 
-        EventHistory eventHistory = EventHistory.builder()
+        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
                 .eventDescription("Case reassigned.")
                 .build();
 
@@ -63,7 +65,7 @@ public class ReassignCaseworkerTest extends BaseServiceTest {
                 .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
                         .applicationId(existingApplicationEntity.getId())
                         .caseWorkerId(expectedCaseworker.getId())
-                        .eventDescription(eventHistory.getEventDescription())
+                        .eventDescription(eventHistoryRequest.getEventDescription())
                         .createdBy("")
                         .build()))
                 .build();
@@ -74,10 +76,10 @@ public class ReassignCaseworkerTest extends BaseServiceTest {
         when(caseworkerRepository.findById(expectedCaseworker.getId()))
                 .thenReturn(Optional.of(expectedCaseworker));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), List.of(applicationId), eventHistory);
+        serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), List.of(applicationId), eventHistoryRequest);
 
         // then
         verify(applicationRepository, times(1)).findAllById(eq(applicationIds));

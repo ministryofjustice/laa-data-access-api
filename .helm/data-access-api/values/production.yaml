@@ -46,3 +46,8 @@ sentry:
   enabled: true
   environment: production
   tracesSampleRate: 1
+
+grafana:
+  enabled: true
+
+slowQueryThresholdSeconds: 1

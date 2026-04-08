@@ -28,6 +28,9 @@ public class ProceedingsService {
    * @param id                 the associated application ID
    */
   public void saveProceedings(ApplicationContent applicationContent, UUID id) {
+    if (applicationContent.getProceedings() == null || applicationContent.getProceedings().isEmpty()) {
+      return;
+    }
     List<ProceedingEntity> proceedingEntities = applicationContent.getProceedings().stream()
         .map(proceeding -> proceedingMapper.toProceedingEntity(proceeding, id)).toList();
     proceedingRepository.saveAll(proceedingEntities);

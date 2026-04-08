@@ -1,25 +1,27 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.factory.Mappers;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
+import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
+import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 
 /**
  * Mapper interface.
@@ -72,18 +74,18 @@ public interface ApplicationMapper {
   }
 
   /**
-   * Maps a {@link ApplicationEntity} to an API-facing {@link Application} model.
+   * Maps a {@link ApplicationEntity} to an API-facing {@link ApplicationResponse} model.
    *
    * @param entity the entity to map
-   * @return a new {@link Application} sobject, or {@code null} if the entity is null
+   * @return a new {@link ApplicationResponse} sobject, or {@code null} if the entity is null
    * @throws IllegalArgumentException if the {@code applicationContent} cannot be deserialized
    */
-  default Application toApplication(ApplicationEntity entity) {
+  default ApplicationResponse toApplication(ApplicationEntity entity) {
     if (entity == null) {
       return null;
     }
 
-    Application application = new Application();
+    ApplicationResponse application = new ApplicationResponse();
     application.setApplicationId(entity.getId());
     application.setStatus(entity.getStatus());
     application.setLaaReference(entity.getLaaReference());
@@ -95,22 +97,74 @@ public interface ApplicationMapper {
             ? OffsetDateTime.ofInstant(entity.getSubmittedAt(), ZoneOffset.UTC)
             : null
     );
-    application.setIsLead(entity.getIsLead());
-    application.setUseDelegatedFunctions(entity.getUsedDelegatedFunctions());
+    application.setIsLead(entity.isLead());
+    application.setUsedDelegatedFunctions(entity.getUsedDelegatedFunctions());
     application.setAutoGrant(entity.getIsAutoGranted());
     if (entity.getDecision() != null) {
       application.setOverallDecision(entity.getDecision().getOverallDecision());
     }
     application.setApplicationType(ApplicationType.INITIAL);
+    application.setOpponents(
+        extractOpponents(entity.getApplicationContent())
+    );
+    application.setProvider(
+        extractProvider(entity)
+    );
+    application.setVersion(entity.getVersion());
 
     return application;
   }
 
-  private static List<Individual> getIndividuals(Set<IndividualEntity> individuals) {
-    return individuals
-        .stream()
-        .map(individualMapper::toIndividual)
-        .filter(Objects::nonNull)
+  private static ProviderResponse extractProvider(ApplicationEntity entity) {
+    String officeCode = entity.getOfficeCode();
+    String contactEmail = extractContactEmail(entity.getApplicationContent());
+
+    if (officeCode == null && contactEmail == null) {
+      return null;
+    }
+
+    ProviderResponse providerResponse = new ProviderResponse();
+    providerResponse.setOfficeCode(officeCode);
+    providerResponse.setContactEmail(contactEmail);
+    return providerResponse;
+  }
+
+  private static String extractContactEmail(Map<String, Object> content) {
+    if (content == null) {
+      return null;
+    }
+
+    ApplicationContent applicationContent = MapperUtil.getObjectMapper()
+        .convertValue(content, ApplicationContent.class);
+
+    return applicationContent.getSubmitterEmail();
+  }
+
+  private static List<OpponentResponse> extractOpponents(Map<String, Object> content) {
+
+    if (content == null) {
+      return Collections.emptyList();
+    }
+
+    ApplicationContent applicationContent = MapperUtil.getObjectMapper().convertValue(content, ApplicationContent.class);
+    ApplicationMerits meritsObj = applicationContent.getApplicationMerits();
+    if (meritsObj == null) {
+      return Collections.emptyList();
+    }
+
+    List<OpponentDetails> opponentsList = meritsObj.getOpponents();
+    if (opponentsList == null) {
+      return Collections.emptyList();
+    }
+
+    return opponentsList.stream()
+        .map(OpponentDetails::getOpposable)
+        .map(opposableObj -> OpponentResponse.builder()
+            .opposableType(opposableObj.getOpposableType())
+            .firstName(opposableObj.getFirstName())
+            .lastName(opposableObj.getLastName())
+            .organisationName(opposableObj.getName())
+            .build())
         .toList();
   }
 }

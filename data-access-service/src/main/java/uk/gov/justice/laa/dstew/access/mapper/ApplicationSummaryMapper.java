@@ -8,6 +8,8 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 
 /**
  * Mapper between ApplicationSummaryEntity and DTOs.
@@ -35,7 +37,7 @@ public interface ApplicationSummaryMapper {
     app.setAutoGrant(applicationSummaryEntity.getIsAutoGranted());
     app.setCategoryOfLaw(applicationSummaryEntity.getCategoryOfLaw());
     app.setMatterType(applicationSummaryEntity.getMatterType());
-    app.setUsedDelegatedFunctions(applicationSummaryEntity.isUsedDelegatedFunctions());
+    app.setUsedDelegatedFunctions(applicationSummaryEntity.getUsedDelegatedFunctions());
     app.setLaaReference(applicationSummaryEntity.getLaaReference());
     app.setOfficeCode(applicationSummaryEntity.getOfficeCode());
     app.setStatus(applicationSummaryEntity.getStatus());
@@ -51,6 +53,7 @@ public interface ApplicationSummaryMapper {
     }
     app.setApplicationType(applicationSummaryEntity.getType());
     app.setLastUpdated(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+    app.setIsLead(applicationSummaryEntity.isLead());
     return app;
   }
 
@@ -72,4 +75,12 @@ public interface ApplicationSummaryMapper {
   private static boolean isClient(IndividualEntity individual) {
     return individual.getType() == IndividualType.CLIENT;
   }
+
+  /**
+   * Maps the given linked application summary DTO to a linked application summary.
+   *
+   * @param dto the linked application summary DTO
+   * @return the linked application summary
+   */
+  LinkedApplicationSummaryResponse toLinkedApplicationSummary(LinkedApplicationSummaryDto dto);
 }

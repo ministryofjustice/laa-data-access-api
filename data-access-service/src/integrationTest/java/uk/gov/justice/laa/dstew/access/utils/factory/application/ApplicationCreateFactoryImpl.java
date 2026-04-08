@@ -5,11 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.Individual;
-import uk.gov.justice.laa.dstew.access.model.IndividualType;
-import uk.gov.justice.laa.dstew.access.model.RequestApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
 public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> {
@@ -19,16 +15,13 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
   @Override
   public ApplicationCreateRequest create() {
 
-    RequestApplicationContent requestApplicationContent = RequestApplicationContent.builder()
-        .applicationContent(applicationContentFactory.create())
-        .build();
-
     return ApplicationCreateRequest.builder()
         .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
         .laaReference("TestReference")
-        .applicationContent(MapperUtil.getObjectMapper().convertValue(requestApplicationContent, Map.class))
+        .applicationContent(MapperUtil.getObjectMapper()
+            .convertValue(applicationContentFactory.create(), Map.class))
         .individuals(List.of(
-            Individual.builder()
+            IndividualCreateRequest.builder()
                 .firstName("John")
                 .lastName("Doe")
                 .dateOfBirth(LocalDate.now())

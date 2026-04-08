@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.entity;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
@@ -22,6 +21,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.annotation.JsonNaming;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
@@ -67,7 +68,7 @@ public class ApplicationSummaryEntity {
   private Instant submittedAt;
 
   @Column(name = "used_delegated_functions")
-  private boolean usedDelegatedFunctions;
+  private Boolean usedDelegatedFunctions;
 
   @Column(name = "category_of_law")
   @Enumerated(EnumType.STRING)
@@ -79,6 +80,20 @@ public class ApplicationSummaryEntity {
 
   @Column(name = "is_auto_granted")
   private Boolean isAutoGranted;
+
+  @OneToMany
+  @JoinTable(
+      name = "linked_applications",
+      joinColumns = @JoinColumn(name = "lead_application_id"),
+      inverseJoinColumns = @JoinColumn(name = "associated_application_id")
+  )
+  private Set<ApplicationEntity> linkedApplications;
+
+
+  @Transient
+  public boolean isLead() {
+    return linkedApplications != null && !linkedApplications.isEmpty();
+  }
 
   @Transient
   private ApplicationType type = ApplicationType.INITIAL;

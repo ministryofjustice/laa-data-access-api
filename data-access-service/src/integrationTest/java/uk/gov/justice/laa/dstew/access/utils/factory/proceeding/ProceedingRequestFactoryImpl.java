@@ -14,7 +14,7 @@ public class ProceedingRequestFactoryImpl implements Factory<Proceeding, Proceed
         .leadProceeding(true)
         .usedDelegatedFunctions(true)
         .categoryOfLaw("FAMILY")
-        .matterType("SCA")
+        .matterType("SPECIAL_CHILDREN_ACT")
         .id(UUID.randomUUID())
         .build();
     proceeding.putAdditionalProperty("test", "additionalProceedingProperty");

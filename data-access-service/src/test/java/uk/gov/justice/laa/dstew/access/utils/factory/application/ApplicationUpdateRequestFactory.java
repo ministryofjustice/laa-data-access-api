@@ -17,11 +17,11 @@ public class ApplicationUpdateRequestFactory extends BaseFactory<ApplicationUpda
         super(ApplicationUpdateRequest::toBuilder, ApplicationUpdateRequest.Builder::build);
     }
 
-    @Override
-    public ApplicationUpdateRequest createDefault() {
-        return ApplicationUpdateRequest.builder()
-                .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
-                .applicationContent(new HashMap<>(Map.of("test", "changed")))
-                .build();
-    }
+  @Override
+  public ApplicationUpdateRequest createDefault() {
+    return ApplicationUpdateRequest.builder()
+        .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+        .applicationContent(new HashMap<>(Map.of("test", "changed")))
+        .build();
+  }
 }

@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,16 +31,16 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @ExcludeFromGeneratedCodeCoverage
 public class ApplicationContent implements Serializable {
 
+  @Serial
   private static final long serialVersionUID = 1L;
   @NotNull
   @Valid
   @Schema(name = "id", requiredMode = Schema.RequiredMode.REQUIRED)
   private UUID id;
 
-  @NotNull
+  @Nullable
   @Valid
-  @Size(min = 1)
-  @Schema(name = "proceedings", requiredMode = Schema.RequiredMode.REQUIRED)
+  @Schema(name = "proceedings", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   @JsonProperty("proceedings")
   private List<Proceeding> proceedings = new ArrayList<>();
 
@@ -48,12 +48,34 @@ public class ApplicationContent implements Serializable {
   @Schema(name = "submittedAt", requiredMode = Schema.RequiredMode.REQUIRED)
   private String submittedAt;
 
-  private @Nullable String applicationRef;
+
+  private @Nullable String status;
+
+  private @Nullable String laaReference;
+
+  private @Nullable String lastNameAtBirth;
+
+  private @Nullable String previousApplicationId;
+
+  private @Nullable String correspondenceAddressType;
+
+  private @Nullable ApplicationApplicant applicant;
 
   @Nullable
   @Valid
   @Schema(name = "office", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   private ApplicationOffice office;
+
+  @Nullable
+  @Schema(name = "allLinkedApplications", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+  private List<LinkedApplication> allLinkedApplications;
+
+  @Nullable
+  private ApplicationMerits applicationMerits;
+
+  @Nullable
+  @Schema(name = "submitterEmail", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+  private String submitterEmail;
 
   /**
    * A container for additional, undeclared properties.

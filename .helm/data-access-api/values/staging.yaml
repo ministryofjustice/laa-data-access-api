@@ -57,3 +57,8 @@ sentry:
   enabled: true
   environment: staging
   tracesSampleRate: 1
+
+grafana:
+  enabled: true
+
+slowQueryThresholdSeconds: 1

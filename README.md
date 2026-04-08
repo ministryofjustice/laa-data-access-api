@@ -23,6 +23,14 @@ project.ext.gitPackageKey = PAT_CREATED_ABOVE
 
 Go back to Github to authorize MOJ for SSO
 
+### Monitoring (Prometheus & Grafana)
+
+See `docs/monitoring.md` for details on how application metrics are collected, scraped by Prometheus, and visualised in Grafana dashboards.
+
+### Network Policies
+
+See `docs/network-policies.md` for details on the Kubernetes network policy that allows Prometheus to scrape metrics.
+
 ### Pre-commit hooks
 
 See `docs/pre-commit-hooks.md` for information on setting up and using pre-commit hooks in this project.
@@ -41,10 +49,37 @@ Includes the following subprojects:
 - Ensure the project has been added to the [Legal Aid Agency Snyk](https://app.snyk.io/org/legal-aid-agency) organisation.
 
 ## Build and run application
-### Developing application within Intellij
-Java version 21 is recommended
 
-Set the security environment variable `FEATURE_DISABLESECURITY=true`
+### Set up environment variables
+
+Create or modify your '~/.zshrc' file to include the following environment variables:
+
+```
+export ENTRA_ISSUER_URI=https://dummy-issuer
+export ENTRA_JWK_SET_URI=https://dummy-jwk-set-uri
+export ENTRA_AUD=dummy-aud
+export FEATURE_ENABLE_DEV_TOKEN=true
+export FEATURE_DISABLE_SECURITY=true
+```
+
+This will ensure that where-ever you run the application from locally (IntelliJ, any terminal window, etc)
+, these environment variables will be set. 
+
+You can verify that they have been set by running `printenv` in your terminal or 
+looking in the environment variable section in the run/debug configuration in IntelliJ 
+
+### Developing application within Intellij
+Java version 25 is required
+
+To update to Java 25:
+
+1. Download JDK 25 from https://www.oracle.com/uk/java/technologies/downloads/
+
+2. Configure IntelliJ IDEA:
+    - Go to **File** > **Project Structure** > **SDK**
+    - Select **Add JDK from disk** and choose your Java 25 installation
+    - Go to **IntelliJ IDEA** > **Settings** > **Build, Execution, Deployment** > **Build Tools** > **Gradle**
+    - Set **Gradle JVM** to Java 25
 
 ### Build application
 Execute
@@ -60,9 +95,9 @@ Execute
 `./gradlew integrationTest`
 
 ### Run application
-If the environment setting does not exist then set it
 
-`export FEATURE_DISABLESECURITY=true`
+Ensure that the environment variables specified in the 
+[Set up environment variables](#set-up-environment-variables) section have been set.
 
 To start up Localstack and Postgres
 
@@ -107,6 +142,23 @@ awslocal dynamodb scan --table-name EventIndexTable
 
 For detailed setup instructions, see [docs/localstack-setup.md](docs/localstack-setup.md).
 
+### Executing endpoints
+
+You can use a tool such as Postman or curl to execute endpoints. For example, to execute the `GET /applications` 
+endpoint using curl:
+
+```
+curl -X GET "http://localhost:8080/applications" -H "accept: application/json" -H "Authorization: Bearer {token}"
+```
+
+You can also use the Swagger UI to execute endpoints, which is described below in the 
+[API documentation](#api-documentation) section.
+
+If FEATURE_ENABLE_DEV_TOKEN is set to true, you can use the following token for testing purposes
+```
+Authorization: Bearer swagger-caseworker-token
+```
+
 ### Useful gradle commands
 
 Prior to pushing code, it's useful to run the following commands to check code style:
@@ -127,6 +179,17 @@ You may need to drop database tables manually prior to running app so Flyway can
 ### API documentation
 #### Swagger UI
 - http://localhost:8080/swagger-ui/index.html
+
+The "Authorize" button is available in the top right of the Swagger UI, which allows you to enter a Bearer token for 
+authentication when executing endpoints. 
+If you have set up the environment variables as specified in the 
+[Set up environment variables](#set-up-environment-variables) section, 
+you can use the "Authorize" button to enter the following token for testing purposes:
+
+```
+swagger-caseworker-token
+```
+
 #### API docs (JSON)
 - http://localhost:8080/v3/api-docs
 
@@ -164,3 +227,4 @@ sensible defaults for the following plugins:
 
 The plugin is provided by [laa-spring-boot-common](https://github.com/ministryofjustice/laa-spring-boot-common), where you can find
 more information regarding (required) setup and usage.
+

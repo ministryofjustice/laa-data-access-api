@@ -1,6 +1,23 @@
 package uk.gov.justice.laa.dstew.access.service.application;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.Application.verifyThatApplicationEntitySaved;
+import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.DomainEvent.verifyThatDomainEventSaved;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -8,36 +25,21 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import tools.jackson.core.JacksonException;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
-
-import java.util.UUID;
-import java.util.List;
-import java.util.Optional;
-import java.util.Collections;
-import java.util.Arrays;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.never;
-import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.Application.verifyThatApplicationEntitySaved;
-import static uk.gov.justice.laa.dstew.access.service.application.sharedAsserts.DomainEvent.verifyThatDomainEventSaved;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class AssignCaseworkerTest extends BaseServiceTest {
@@ -49,19 +51,19 @@ public class AssignCaseworkerTest extends BaseServiceTest {
     @MethodSource("validAssignEventDescriptionCases")
     void givenCaseworkerAndApplications_whenAssignCaseworker_thenAssignAndSave(
             String eventDescription
-    ) throws JsonProcessingException {
+    ) throws JacksonException {
         // given
         UUID applicationId = UUID.randomUUID();
 
-        CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+        CaseworkerEntity expectedCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder -> builder.id(UUID.randomUUID()));
 
-        ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+        ApplicationEntity existingApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
                 builder.id(applicationId).caseworker(null)
         );
 
         ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
 
-        EventHistory eventHistory = EventHistory.builder()
+        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
                 .eventDescription(eventDescription)
                 .build();
 
@@ -73,7 +75,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
                 .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
                         .applicationId(existingApplicationEntity.getId())
                         .caseWorkerId(expectedCaseworker.getId())
-                        .eventDescription(eventHistory.getEventDescription())
+                        .eventDescription(eventHistoryRequest.getEventDescription())
                         .createdBy("")
                         .build()))
                 .build();
@@ -84,10 +86,10 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         when(caseworkerRepository.findById(expectedCaseworker.getId()))
                 .thenReturn(Optional.of(expectedCaseworker));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), List.of(applicationId), eventHistory);
+        serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), List.of(applicationId), eventHistoryRequest);
 
         // then
         verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
@@ -99,7 +101,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
 
     @Test
     void givenNullCasworkerId_whenAsssignCaseworker_thenThrowNullPointerException() {
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
         Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(null, null, null));
@@ -116,9 +118,9 @@ public class AssignCaseworkerTest extends BaseServiceTest {
 
     @Test
     void givenNullApplicationIdInList_whenAsssignCaseworker_thenThrowValidationException() {
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
         List<UUID> applicationIdsWithNull = Arrays.asList(UUID.randomUUID(), null, UUID.randomUUID());
-        CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+        CaseworkerEntity expectedCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder -> builder.id(UUID.randomUUID()));
         when(caseworkerRepository.findById(expectedCaseworker.getId()))
                 .thenReturn(Optional.of(expectedCaseworker));
 
@@ -127,7 +129,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         );
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIdsWithNull, new EventHistory()));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIdsWithNull, new EventHistoryRequest()));
         assertThat(thrown)
                 .isInstanceOf(ValidationException.class)
                 .usingRecursiveComparison()
@@ -146,10 +148,10 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         when(caseworkerRepository.findById(nonexistentCaseworkerId))
                 .thenReturn(Optional.empty());
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(nonexistentCaseworkerId, List.of(UUID.randomUUID()), new EventHistory()));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(nonexistentCaseworkerId, List.of(UUID.randomUUID()), new EventHistoryRequest()));
         assertThat(thrown)
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("No caseworker found with id: " + nonexistentCaseworkerId);
@@ -165,17 +167,17 @@ public class AssignCaseworkerTest extends BaseServiceTest {
     void givenEmptyApplicationIds_whenAssignCaseworker_thenNoActionTaken() {
 
         // given
-        CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+        CaseworkerEntity expectedCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder -> builder.id(UUID.randomUUID()));
         when(caseworkerRepository.findById(expectedCaseworker.getId()))
                 .thenReturn(Optional.of(expectedCaseworker));
 
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         List<UUID> emptyApplicationIds = Collections.emptyList();
 
         // when
-        serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), emptyApplicationIds, new EventHistory());
+        serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), emptyApplicationIds, new EventHistoryRequest());
 
         // then
         verify(applicationRepository, times(1)).findAllById(emptyApplicationIds);
@@ -185,20 +187,20 @@ public class AssignCaseworkerTest extends BaseServiceTest {
     }
 
     @Test
-    void givenDuplicateApplicationIds_whenAssignCaseworker_thenOnlyDistinctIdsUsed() throws JsonProcessingException {
+    void givenDuplicateApplicationIds_whenAssignCaseworker_thenOnlyDistinctIdsUsed() throws JacksonException {
         UUID existingApplicationId = UUID.randomUUID();
-        ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+        ApplicationEntity existingApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
                 builder.id(existingApplicationId).caseworker(null)
         );
 
-        CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+        CaseworkerEntity expectedCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder -> builder.id(UUID.randomUUID()));
 
         List<UUID> applicationIds = List.of(existingApplicationId, existingApplicationId, existingApplicationId);
         List<UUID> distinctApplicationIds = Stream.of(existingApplicationId).toList();
 
         ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
 
-        EventHistory eventHistory = EventHistory.builder()
+        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
                 .eventDescription("Caseworker assigned.")
                 .build();
 
@@ -210,7 +212,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
                 .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
                         .applicationId(existingApplicationEntity.getId())
                         .caseWorkerId(expectedCaseworker.getId())
-                        .eventDescription(eventHistory.getEventDescription())
+                        .eventDescription(eventHistoryRequest.getEventDescription())
                         .createdBy("")
                         .build()))
                 .build();
@@ -219,10 +221,10 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         when(caseworkerRepository.findById(expectedCaseworker.getId()))
                 .thenReturn(Optional.of(expectedCaseworker));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds, eventHistory);
+        serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds, eventHistoryRequest);
 
         // then
         verify(applicationRepository, times(1)).findAllById(eq(distinctApplicationIds));
@@ -233,17 +235,17 @@ public class AssignCaseworkerTest extends BaseServiceTest {
     }
 
     @Test
-    void givenApplicationIsAlreadyAssignedToCaseworker_whenAssignCaseworker_thenNotUpdateApplication_andCreateDomainEvent() throws JsonProcessingException {
+    void givenApplicationIsAlreadyAssignedToCaseworker_whenAssignCaseworker_thenNotUpdateApplication_andCreateDomainEvent() throws JacksonException {
 
         UUID existingApplicationId = UUID.randomUUID();
-        CaseworkerEntity existingCaseworker = caseworkerFactory.createDefault();
-        ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+        CaseworkerEntity existingCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder -> builder.id(UUID.randomUUID()));
+        ApplicationEntity existingApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
                 builder.id(existingApplicationId).caseworker(existingCaseworker)
         );
 
         List<UUID> applicationIds = List.of(existingApplicationId);
 
-        EventHistory eventHistory = EventHistory.builder()
+        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
                 .eventDescription("Caseworker assigned.")
                 .build();
 
@@ -255,7 +257,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
                 .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
                         .applicationId(existingApplicationEntity.getId())
                         .caseWorkerId(existingCaseworker.getId())
-                        .eventDescription(eventHistory.getEventDescription())
+                        .eventDescription(eventHistoryRequest.getEventDescription())
                         .createdBy("")
                         .build()))
                 .build();
@@ -264,10 +266,10 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         when(caseworkerRepository.findById(existingCaseworker.getId()))
                 .thenReturn(Optional.of(existingCaseworker));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        serviceUnderTest.assignCaseworker(existingCaseworker.getId(), applicationIds, eventHistory);
+        serviceUnderTest.assignCaseworker(existingCaseworker.getId(), applicationIds, eventHistoryRequest);
 
         // then
         verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
@@ -279,15 +281,15 @@ public class AssignCaseworkerTest extends BaseServiceTest {
     @Test
     void givenMissingApplications_whenAssignCaseworker_thenThrowResourceNotFoundException() {
         UUID existingApplicationId = UUID.randomUUID();
-        ApplicationEntity existingApplicationEntity = applicationEntityFactory.createDefault(builder ->
+        ApplicationEntity existingApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
                 builder.id(existingApplicationId).caseworker(null)
         );
 
-        CaseworkerEntity expectedCaseworker = caseworkerFactory.createDefault();
+        CaseworkerEntity expectedCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder -> builder.id(UUID.randomUUID()));
 
         List<UUID> applicationIds = List.of(UUID.randomUUID(), existingApplicationId, UUID.randomUUID());
 
-        EventHistory eventHistory = EventHistory.builder()
+        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
                 .eventDescription("Case assigned.")
                 .build();
 
@@ -295,10 +297,11 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         when(caseworkerRepository.findById(expectedCaseworker.getId()))
                 .thenReturn(Optional.of(expectedCaseworker));
 
-        setSecurityContext(TestConstants.Roles.WRITER);
+        setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds, eventHistory));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), applicationIds,
+            eventHistoryRequest));
         assertThat(thrown)
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("No application found with ids: " + applicationIds.stream()
@@ -316,10 +319,10 @@ public class AssignCaseworkerTest extends BaseServiceTest {
     @Test
     void givenRoleReader_whenAssignCaseworker_thenThrowUnauthorizedException() {
         // given
-        setSecurityContext(TestConstants.Roles.READER);
+        setSecurityContext(TestConstants.Roles.NO_ROLE);
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(UUID.randomUUID(), List.of(UUID.randomUUID()), new EventHistory()));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(UUID.randomUUID(), List.of(UUID.randomUUID()), new EventHistoryRequest()));
         assertThat(thrown)
                 .isInstanceOf(AuthorizationDeniedException.class)
                 .hasMessage("Access Denied");
@@ -337,7 +340,7 @@ public class AssignCaseworkerTest extends BaseServiceTest {
         // no security context set
 
         // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(UUID.randomUUID(), List.of(UUID.randomUUID()), new EventHistory()));
+        Throwable thrown = catchThrowable(() -> serviceUnderTest.assignCaseworker(UUID.randomUUID(), List.of(UUID.randomUUID()), new EventHistoryRequest()));
         assertThat(thrown)
                 .isInstanceOf(AuthorizationDeniedException.class)
                 .hasMessage("Access Denied");

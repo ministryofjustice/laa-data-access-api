@@ -1,21 +1,23 @@
 package uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistory;
-import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 
 @Component
 public class DomainEventAsserts {
@@ -27,7 +29,18 @@ public class DomainEventAsserts {
             List<ApplicationEntity> applications,
             UUID caseWorkerId,
             DomainEventType expectedDomainEventType,
-            EventHistory expectedEventHistory
+            EventHistoryRequest expectedEventHistoryRequest
+    ) {
+        assertDomainEventsCreatedForApplications(
+                applications, caseWorkerId, expectedDomainEventType, expectedEventHistoryRequest, ServiceName.CIVIL_APPLY);
+    }
+
+    public void assertDomainEventsCreatedForApplications(
+            List<ApplicationEntity> applications,
+            UUID caseWorkerId,
+            DomainEventType expectedDomainEventType,
+            EventHistoryRequest expectedEventHistoryRequest,
+            ServiceName expectedServiceName
     ) {
 
         List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
@@ -42,8 +55,9 @@ public class DomainEventAsserts {
             assertEquals(expectedDomainEventType, domainEvent.getType());
             assertTrue(applicationIds.contains(domainEvent.getApplicationId()));
             assertEquals(caseWorkerId, domainEvent.getCaseworkerId());
-            if (expectedEventHistory.getEventDescription() != null) {
-                assertTrue(domainEvent.getData().contains(expectedEventHistory.getEventDescription()));
+            assertThat(domainEvent.getServiceName()).isEqualTo(expectedServiceName);
+            if (expectedEventHistoryRequest.getEventDescription() != null) {
+                assertTrue(domainEvent.getData().contains(expectedEventHistoryRequest.getEventDescription()));
             } else {
                 assertFalse(domainEvent.getData().contains("eventDescription"));
             }
@@ -54,39 +68,39 @@ public class DomainEventAsserts {
             ApplicationEntity application,
             DomainEventType expectedType
     ) throws Exception {
+        assertDomainEventForApplication(application, expectedType, ServiceName.CIVIL_APPLY);
+    }
+
+    public void assertDomainEventForApplication(
+            ApplicationEntity application,
+            DomainEventType expectedType,
+            ServiceName expectedServiceName
+    ) throws Exception {
 
         List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
 
-        DomainEventEntity event = domainEvents.get(0);
+        DomainEventEntity event = domainEvents.getFirst();
 
         assertThat(event.getApplicationId()).isEqualTo(application.getId());
         assertThat(event.getType()).isEqualTo(expectedType);
         assertThat(event.getCreatedAt()).isNotNull();
+        assertThat(event.getServiceName()).isEqualTo(expectedServiceName);
 
         // ---- JSON payload assertions ----
         ObjectMapper mapper = new ObjectMapper();
         JsonNode json = mapper.readTree(event.getData());
 
-        assertThat(json.get("applicationId").asText())
+        assertThat(json.get("applicationId").asString())
                 .isEqualTo(application.getId().toString());
 
-        assertThat(json.get("applicationStatus").asText())
+        assertThat(json.get("applicationStatus").asString())
                 .isEqualTo(application.getStatus().name());
 
-        assertThat(json.get("applicationContent").asText())
+        assertThat(json.get("request").asString())
                 .contains("{"); // stored as stringified JSON
 
-        if (expectedType == DomainEventType.APPLICATION_CREATED) {
-
-            assertThat(json.has("createdDate")).isTrue();
-            assertThat(json.get("createdDate").asText())
-                    .isEqualTo(application.getCreatedAt().toString());
-
-        } else if (expectedType == DomainEventType.APPLICATION_UPDATED) {
-
-            assertThat(json.has("updatedDate")).isTrue();
-            assertThat(json.get("updatedDate").asText())
-                    .isEqualTo(application.getModifiedAt().toString());
-        }
+        assertThat(json.has("createdDate")).isTrue();
+        assertThat(json.get("createdDate").asString())
+                .isEqualTo(application.getCreatedAt().toString());
     }
 }

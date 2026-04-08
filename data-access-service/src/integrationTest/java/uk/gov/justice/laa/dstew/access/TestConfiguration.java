@@ -16,12 +16,11 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
-import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
@@ -105,16 +104,14 @@ public class TestConfiguration {
 
     @Bean
     public PersistedFactory<
-        LinkedApplicationRepository,
-        Factory<LinkedApplicationEntity, LinkedApplicationEntity.LinkedApplicationEntityBuilder>,
-        LinkedApplicationEntity,
-        LinkedApplicationEntity.LinkedApplicationEntityBuilder,
-        UUID>
-    persistedLinkedApplicationFactory(
-        LinkedApplicationRepository repository,
-        Factory<LinkedApplicationEntity, LinkedApplicationEntity.LinkedApplicationEntityBuilder> factory
-    ) {
-        return new PersistedFactory<>(repository, factory);
+            uk.gov.justice.laa.dstew.access.repository.IndividualRepository,
+            Factory<uk.gov.justice.laa.dstew.access.entity.IndividualEntity, uk.gov.justice.laa.dstew.access.entity.IndividualEntity.IndividualEntityBuilder>,
+            uk.gov.justice.laa.dstew.access.entity.IndividualEntity,
+            uk.gov.justice.laa.dstew.access.entity.IndividualEntity.IndividualEntityBuilder,
+            UUID> persistedIndividualFactory(
+            uk.gov.justice.laa.dstew.access.repository.IndividualRepository repository,
+            Factory<uk.gov.justice.laa.dstew.access.entity.IndividualEntity, uk.gov.justice.laa.dstew.access.entity.IndividualEntity.IndividualEntityBuilder> individualEntityFactory) {
+        return new PersistedFactory<>(repository, individualEntityFactory);
     }
 
     @Bean
@@ -153,7 +150,7 @@ public class TestConfiguration {
     }
 
     @Bean
-    public Factory<Individual, Individual.Builder> individualFactory() {
+    public Factory<IndividualResponse, IndividualResponse.Builder> individualFactory() {
         return new IndividualFactoryImpl();
     }
 

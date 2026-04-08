@@ -26,7 +26,7 @@ public class ProceedingFactory
         .builder()
         .id(UUID.randomUUID())
         .categoryOfLaw(String.valueOf(CategoryOfLaw.FAMILY))
-        .matterType(String.valueOf(MatterType.SCA))
+        .matterType(String.valueOf(MatterType.SPECIAL_CHILDREN_ACT))
         .leadProceeding(true)
         .usedDelegatedFunctions(true)
         .description("The description")

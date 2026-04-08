@@ -9,7 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import uk.gov.justice.laa.dstew.access.model.Application;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,25 +23,25 @@ public class ApplicationTransformerTest {
 
   @Test
   void givenApplicationAndRoleProceedingsReader_whenTransform_thenOnlyCorrectFieldsArePresent() {
-    Application request = Application.builder()
+    ApplicationResponse request = ApplicationResponse.builder()
         .applicationId(UUID.randomUUID())
         .build();
 
     when(mockEntra.hasAppRole("ProceedingReader")).thenReturn(true);
 
-    Application response = classUnderTest.transform(request);
+    ApplicationResponse response = classUnderTest.transform(request);
     assertThat(response.getApplicationId()).isEqualTo(request.getApplicationId());
   }
 
   @Test
   void givenApplicationAndNoRole_whenTransform_thenNoFieldsAreTransformed() {
-    Application request = Application.builder()
+    ApplicationResponse request = ApplicationResponse.builder()
         .applicationId(UUID.randomUUID())
         .build();
 
     when(mockEntra.hasAppRole("ProceedingReader")).thenReturn(false);
 
-    Application response = classUnderTest.transform(request);
+    ApplicationResponse response = classUnderTest.transform(request);
 
     assertThat(response)
             .usingRecursiveComparison()
