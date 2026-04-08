@@ -9,6 +9,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
@@ -18,6 +21,9 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
+import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
+import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
+import uk.gov.justice.laa.dstew.access.utils.EnumParsingUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
@@ -26,9 +32,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMe
 import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
-import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
-import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -37,7 +40,6 @@ import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertBadRequest;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
@@ -46,11 +48,11 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
-public class GetApplicationTest extends BaseHarnessTest {
+@ActiveProfiles("test")
+public class GetApplicationTest extends BaseIntegrationTest {
 
-
-    @SmokeTest
     @ParameterizedTest
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenApplicationDataAndIncorrectHeader_whenGetApplications_thenReturnBadRequest(
             String serviceName
@@ -58,26 +60,28 @@ public class GetApplicationTest extends BaseHarnessTest {
         verifyBadServiceNameHeader(serviceName);
     }
 
-    @SmokeTest
     @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationDataAndNoHeader_whenGetApplication_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
 
     private void verifyBadServiceNameHeader(String serviceName) throws Exception {
-        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, ServiceNameHeader(serviceName), UUID.randomUUID());
-        assertBadRequest(result);
+
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, ServiceNameHeader(serviceName), UUID.randomUUID());
+
+        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
     }
 
-    @SmokeTest
     @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenExistingApplication_whenGetApplication_thenReturnOKWithCorrectData() throws Exception {
         // given
-        ApplicationEntity savedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder ->
-                builder.caseworker(CaseworkerJohnDoe).linkedApplications(Set.of()));
+        ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder ->
+                builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe).linkedApplications(Set.of()));
 
         ProceedingEntity proceeding = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class, builder -> {
-            builder.applicationId(savedApplication.getId());
+            builder.applicationId(application.getId());
         });
 
         DecisionEntity decision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
@@ -86,11 +90,12 @@ public class GetApplicationTest extends BaseHarnessTest {
             })));
         });
 
-        savedApplication.setDecision(decision);
-        persistedDataGenerator.updateAndFlush(savedApplication);
+        application.setDecision(decision);
+      ApplicationEntity savedApplication = applicationRepository.saveAndFlush(application);
+      clearCache();
 
         // when
-        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, savedApplication.getId());
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         ApplicationResponse actualApplication = deserialise(result, ApplicationResponse.class);
 
         // then
@@ -99,40 +104,36 @@ public class GetApplicationTest extends BaseHarnessTest {
         assertNoCacheHeaders(result);
         assertOK(result);
         ApplicationResponse expectedApplication = createApplication(savedApplication, proceeding, decision);
-        assertThat(actualApplication)
-            .usingRecursiveComparison()
-            .ignoringFields("lastUpdated", "version")
-            .isEqualTo(expectedApplication);
-        assertThat(actualApplication.getLastUpdated()).isNotNull();
-        assertThat(actualApplication.getVersion()).isEqualTo(1L);
+        assertThat(actualApplication).isEqualTo(expectedApplication);
     }
 
-    @SmokeTest
     @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenApplicationNotExist_whenGetApplication_thenReturnNotFound() throws Exception {
         // given
         UUID notExistApplicationId = UUID.randomUUID();
 
         // when
-        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, notExistApplicationId);
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, notExistApplicationId);
 
         // then
         assertSecurityHeaders(result);
         assertNoCacheHeaders(result);
         assertNotFound(result);
-        assertThat(result.getResponse().getHeader("Content-Type")).startsWith("application/problem+json");
+        assertEquals("application/problem+json", result.getResponse().getContentType());
         ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
         assertEquals("No application found with id: " + notExistApplicationId, problemDetail.getDetail());
+
     }
 
     @Test
+    @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
     public void givenUnknownRole_whenGetApplication_thenReturnForbidden() throws Exception {
         // given
-        withToken(TestConstants.Tokens.UNKNOWN);
         ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
         // when
-        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
 
         // then
         assertSecurityHeaders(result);
@@ -142,11 +143,10 @@ public class GetApplicationTest extends BaseHarnessTest {
     @Test
     public void givenNoUser_whenGetApplication_thenReturnUnauthorised() throws Exception {
         // given
-        withNoToken();
         ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
         // when
-        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
 
         // then
         assertSecurityHeaders(result);
@@ -155,6 +155,7 @@ public class GetApplicationTest extends BaseHarnessTest {
 
 
     @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithOpponents_whenGetApplication_thenReturnsOpponents() throws Exception {
 
         // default contains opponent data
@@ -166,7 +167,7 @@ public class GetApplicationTest extends BaseHarnessTest {
                 .modifiedAt(Instant.now())
         );
 
-        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
         assertContentHeaders(result);
@@ -186,6 +187,7 @@ public class GetApplicationTest extends BaseHarnessTest {
 
 
     @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithEmptyOpponents_whenGetApplication_thenReturnsEmptyList() throws Exception {
 
         ApplicationContent applicationContent =
@@ -201,7 +203,7 @@ public class GetApplicationTest extends BaseHarnessTest {
                 .applicationContent(objectMapper.convertValue(applicationContent, Map.class))
         );
 
-        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
         assertOK(result);
@@ -211,6 +213,7 @@ public class GetApplicationTest extends BaseHarnessTest {
 
 
     @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithoutOpponentsSection_whenGetApplication_thenOpponentsIsEmpty() throws Exception {
 
         Map<String, Object> content = Map.of(
@@ -222,7 +225,7 @@ public class GetApplicationTest extends BaseHarnessTest {
             builder -> builder.applicationContent(content)
         );
 
-        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
         assertOK(result);
@@ -231,6 +234,7 @@ public class GetApplicationTest extends BaseHarnessTest {
 
 
     @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenOpponentWithMissingFirstName_whenGetApplication_thenReturnsRemainingFields() throws Exception {
 
         // leaving this here as a TODO as it does something specific that the test harness currently does not,
@@ -260,7 +264,7 @@ public class GetApplicationTest extends BaseHarnessTest {
             builder -> builder.applicationContent(content)
         );
 
-        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
         assertOK(result);
@@ -277,11 +281,12 @@ public class GetApplicationTest extends BaseHarnessTest {
 
 
     @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithSubmitterEmail_whenGetApplication_thenReturnsProviderWithContactEmail() throws Exception {
 
         ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
-        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
         assertOK(result);
@@ -291,6 +296,7 @@ public class GetApplicationTest extends BaseHarnessTest {
     }
 
     @Test
+    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithoutSubmitterEmail_whenGetApplication_thenReturnsProviderWithoutContactEmail() throws Exception {
 
         ApplicationEntity application = persistedDataGenerator.createAndPersist(
@@ -298,7 +304,7 @@ public class GetApplicationTest extends BaseHarnessTest {
             builder -> builder.applicationContent(Map.of("someOtherKey", "value"))
         );
 
-        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
         ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
         assertOK(result);
@@ -346,19 +352,30 @@ public class GetApplicationTest extends BaseHarnessTest {
             ? (Map<String, Object>) applicationEntity.getApplicationContent().get("applicationMerits")
             : null;
 
+        List<ScopeLimitationResponse> scopeLimitations = null;
+        if (proceeding.getProceedingContent().get("scopeLimitations") != null) {
+            scopeLimitations = ((List<Map<String, Object>>) proceeding.getProceedingContent().get("scopeLimitations"))
+                .stream()
+                .map(sl -> ScopeLimitationResponse.builder()
+                    .scopeLimitation(sl.get("meaning") != null ? sl.get("meaning").toString() : null)
+                    .scopeDescription(sl.get("description") != null ? sl.get("description").toString() : null)
+                    .build())
+                .toList();
+        }
+
         application.setProceedings(List.of(
                 ApplicationProceedingResponse.builder()
                 .proceedingId(proceeding.getId())
                 .proceedingDescription(proceeding.getDescription())
                 .proceedingType(proceeding.getProceedingContent().get("meaning").toString())
-                .categoryOfLaw(proceeding.getProceedingContent().get("categoryOfLaw").toString())
-                .matterType(proceeding.getProceedingContent().get("matterType").toString())
+                .categoryOfLaw(EnumParsingUtils.convertToCategoryOfLaw((String) proceeding.getProceedingContent().get("categoryOfLaw")))
+                .matterType(EnumParsingUtils.convertToMatterType(proceeding.getProceedingContent().get("matterType").toString()))
                 .levelOfService(proceeding.getProceedingContent().get("substantiveLevelOfServiceName").toString())
                 .substantiveCostLimitation(proceeding.getProceedingContent().get("substantiveCostLimitation").toString())
-                .usedDelegatedFunctionsOn(LocalDate.parse(proceeding.getProceedingContent().get("usedDelegatedFunctionsOn").toString()))
+                .delegatedFunctionsDate(LocalDate.parse(proceeding.getProceedingContent().get("usedDelegatedFunctionsOn").toString()))
                 .meritsDecision(decision.getMeritsDecisions().iterator().next().getDecision())
                 // .involvedChildren((List<Object>) applicationMerits.get("involvedChildren"))
-                .scopeLimitations((List<Object>) proceeding.getProceedingContent().get("scopeLimitations"))
+                .scopeLimitations(scopeLimitations)
                 .build()
         ));
 
