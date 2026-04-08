@@ -64,11 +64,10 @@ log "All services are healthy."
 log "Waiting for app to accept traffic..."
 READINESS_URL="${LAA_SMOKE_ACCESS_API_URL:-http://localhost:9000}/api/v0/caseworkers"
 for i in $(seq 1 60); do
-  HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" \
+  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
     -H "X-Service-Name: CIVIL_APPLY" \
-    -H "Authorization: Bearer dev-smoke-readiness-probe" \
-    "${READINESS_URL}" 2>/dev/null || true)
-  if [ -n "${HTTP_CODE}" ] && [ "${HTTP_CODE}" -gt 0 ] 2>/dev/null; then
+    "${READINESS_URL}" 2>/dev/null) || true
+  if [ "${HTTP_CODE:-000}" != "000" ]; then
     log "App ready (HTTP ${HTTP_CODE})."
     break
   fi
