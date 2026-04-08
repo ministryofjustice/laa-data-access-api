@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.harness;
 
+import java.util.Set;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -76,7 +77,7 @@ public abstract class BaseHarnessTest {
      * Delegates to PersistedDataGenerator — useful for asserting that no
      * application was persisted by a bad-request scenario.
      */
-    protected List<UUID> trackedApplicationIds() { return persistedDataGenerator.trackedApplicationIds(); }
+    protected Set<UUID> trackedApplicationIds() { return persistedDataGenerator.trackedApplicationIds(); }
 
     private String currentToken = TestConstants.Tokens.CASEWORKER;
     private boolean omitToken = false;

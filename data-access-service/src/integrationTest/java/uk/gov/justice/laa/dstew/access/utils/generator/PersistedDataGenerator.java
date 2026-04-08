@@ -24,10 +24,11 @@ import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEnti
 import uk.gov.justice.laa.dstew.access.utils.generator.notes.NoteEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -47,13 +48,13 @@ public class PersistedDataGenerator extends DataGenerator {
     // Map generator class to repository class
     private final Map<Class<?>, Class<? extends JpaRepository<?, ?>>> generatorRepoMap = new HashMap<>();
 
-    // Tracking lists — populated automatically on every persist so that
+    // Tracking sets — populated automatically on every persist so that
     // deleteTrackedData() can clean up exactly what this generator created.
-    private final List<UUID> trackedCaseworkerIds  = new ArrayList<>();
-    private final List<UUID> trackedApplicationIds = new ArrayList<>();
-    private final List<UUID> trackedDomainEventIds = new ArrayList<>();
-    private final List<UUID> trackedIndividualIds  = new ArrayList<>();
-    private final List<UUID> trackedDecisionIds    = new ArrayList<>();
+    private final Set<UUID> trackedCaseworkerIds  = new LinkedHashSet<>();
+    private final Set<UUID> trackedApplicationIds = new LinkedHashSet<>();
+    private final Set<UUID> trackedDomainEventIds = new LinkedHashSet<>();
+    private final Set<UUID> trackedIndividualIds  = new LinkedHashSet<>();
+    private final Set<UUID> trackedDecisionIds    = new LinkedHashSet<>();
 
     @PostConstruct
     public void init() {
@@ -113,7 +114,7 @@ public class PersistedDataGenerator extends DataGenerator {
     }
 
     /** Returns the IDs of applications persisted in the current test (useful for "nothing persisted" assertions). */
-    public List<UUID> trackedApplicationIds() { return trackedApplicationIds; }
+    public Set<UUID> trackedApplicationIds() { return trackedApplicationIds; }
 
     /**
      * Registers an application ID that was created outside this generator (e.g. by the API
@@ -127,20 +128,14 @@ public class PersistedDataGenerator extends DataGenerator {
      * avoid triggering a lazy-collection load outside of a JPA session.
      */
     public void trackExistingApplication(UUID applicationId) {
-        if (!trackedApplicationIds.contains(applicationId)) {
-            trackedApplicationIds.add(applicationId);
-        }
+        trackedApplicationIds.add(applicationId);
         // Fetch linked individual IDs directly via JDBC — avoids LazyInitializationException
         // that would occur if we accessed ApplicationEntity.getIndividuals() outside a session.
         List<UUID> individualIds = jdbcTemplate.queryForList(
                 "SELECT individual_id FROM linked_individuals WHERE application_id = ?",
                 UUID.class,
                 applicationId);
-        for (UUID id : individualIds) {
-            if (!trackedIndividualIds.contains(id)) {
-                trackedIndividualIds.add(id);
-            }
-        }
+        trackedIndividualIds.addAll(individualIds);
     }
 
     /**
@@ -197,11 +192,7 @@ public class PersistedDataGenerator extends DataGenerator {
                 List<UUID> decisionIds = jdbcTemplate.queryForList(
                         "SELECT decision_id FROM applications WHERE id = ? AND decision_id IS NOT NULL",
                         UUID.class, appId);
-                for (UUID decId : decisionIds) {
-                    if (!trackedDecisionIds.contains(decId)) {
-                        trackedDecisionIds.add(decId);
-                    }
-                }
+                trackedDecisionIds.addAll(decisionIds);
             }
 
             // ON DELETE CASCADE covers proceedings, merits_decisions via linked_merits_decisions, certificates
@@ -233,11 +224,8 @@ public class PersistedDataGenerator extends DataGenerator {
             if (e.getIndividuals() != null) {
                 e.getIndividuals().stream()
                         .filter(ind -> ind.getId() != null)
-                        .forEach(ind -> {
-                            if (!trackedIndividualIds.contains(ind.getId())) {
-                                trackedIndividualIds.add(ind.getId());
-                            }
-                        });
+                        .map(IndividualEntity::getId)
+                        .forEach(trackedIndividualIds::add);
             }
         } else if (entity instanceof CaseworkerEntity e)   trackedCaseworkerIds.add(e.getId());
         else if (entity instanceof DomainEventEntity e)  trackedDomainEventIds.add(e.getId());
