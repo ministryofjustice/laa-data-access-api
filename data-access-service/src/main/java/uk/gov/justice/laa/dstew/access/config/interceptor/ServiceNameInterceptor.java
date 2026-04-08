@@ -1,11 +1,13 @@
-package uk.gov.justice.laa.dstew.access.config;
+package uk.gov.justice.laa.dstew.access.config.interceptor;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 
 /**
@@ -22,7 +24,7 @@ public class ServiceNameInterceptor implements HandlerInterceptor {
   private final ServiceNameContext serviceNameContext;
 
   @Override
-  public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+  public boolean preHandle(HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) {
     String serviceNameHeader = request.getHeader(SERVICE_NAME_HEADER);
 
     if (serviceNameHeader != null) {
