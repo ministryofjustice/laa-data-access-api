@@ -47,7 +47,6 @@ public class InfrastructureTestContextProvider implements TestContextProvider {
             return ds;
         });
         applicationContext.register(InfrastructureJpaConfig.class);
-        applicationContext.register(uk.gov.justice.laa.dstew.access.TestConfiguration.class);
         log.info("InfrastructureTestContextProvider: refreshing JPA application context...");
         applicationContext.refresh();
         log.info("InfrastructureTestContextProvider: JPA application context ready");
