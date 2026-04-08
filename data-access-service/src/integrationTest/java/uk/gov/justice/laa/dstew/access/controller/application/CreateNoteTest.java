@@ -13,6 +13,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEn
 import uk.gov.justice.laa.dstew.access.utils.generator.notes.CreateNoteRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
 import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +24,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
 public class CreateNoteTest extends BaseHarnessTest {
 
+    @SmokeTest
     @ParameterizedTest
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenValidCreateNoteRequestAndInvalidHeader_whenCreateNote_thenReturnBadRequest(
@@ -31,6 +33,7 @@ public class CreateNoteTest extends BaseHarnessTest {
         verifyBadServiceNameHeader(serviceName);
     }
 
+    @SmokeTest
     @Test
     void givenValidCreateNoteRequestAndNoHeader_whenCreateNote_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
@@ -44,6 +47,7 @@ public class CreateNoteTest extends BaseHarnessTest {
         applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
     }
 
+    @SmokeTest
     @Test
     public void givenApplicationExist_whenCreateNote_thenReturnOK() throws Exception {
 

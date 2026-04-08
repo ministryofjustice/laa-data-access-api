@@ -1020,6 +1020,7 @@ public class GetApplicationsTest extends BaseHarnessTest {
         assertTrue(linkedIds.contains(associateApplication2.getId()));
     }
 
+    @SmokeTest
     @Test
     public void givenNoUser_whenGetApplications_thenReturnUnauthorised() throws Exception {
         withNoToken();
