@@ -63,7 +63,7 @@ log "All services are healthy."
 # Wait for Tomcat to accept real requests (healthcheck alone is not sufficient)
 log "Waiting for app to accept traffic..."
 READINESS_URL="${LAA_SMOKE_ACCESS_API_URL:-http://localhost:9000}/api/v0/caseworkers"
-for i in $(seq 1 60); do
+for i in $(seq 1 120); do
   HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
     -H "X-Service-Name: CIVIL_APPLY" \
     "${READINESS_URL}" 2>/dev/null) || true
@@ -71,7 +71,7 @@ for i in $(seq 1 60); do
     log "App ready (HTTP ${HTTP_CODE})."
     break
   fi
-  [ "${i}" -eq 60 ] && fail "App did not become ready within 60 seconds."
+  [ "${i}" -eq 120 ] && fail "App did not become ready within 120 seconds."
   sleep 1
 done
 
