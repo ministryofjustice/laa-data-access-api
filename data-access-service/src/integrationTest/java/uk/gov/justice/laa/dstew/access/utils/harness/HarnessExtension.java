@@ -14,7 +14,6 @@ public class HarnessExtension implements BeforeAllCallback, AfterAllCallback, Te
 
     private static final String STORE_KEY = "testContextProvider";
     private static final String ROW_COUNT_SNAPSHOT_KEY = "rowCountSnapshot";
-    private static final String INFRASTRUCTURE_MODE = "infrastructure";
 
     @Override
     public void beforeAll(ExtensionContext ctx) {
@@ -22,7 +21,7 @@ public class HarnessExtension implements BeforeAllCallback, AfterAllCallback, Te
 
         var provider = getOrCreateProvider(ctx);
 
-        if (INFRASTRUCTURE_MODE.equals(System.getProperty("test.mode", "integration"))) {
+        if (HarnessMode.isInfrastructure()) {
             var store = getRootStore(ctx);
 
             store.getOrComputeIfAbsent(ROW_COUNT_SNAPSHOT_KEY, key -> {
@@ -87,9 +86,9 @@ public class HarnessExtension implements BeforeAllCallback, AfterAllCallback, Te
 
     private TestContextProvider getOrCreateProvider(ExtensionContext ctx) {
         return getRootStore(ctx).getOrComputeIfAbsent(STORE_KEY, key -> {
-            var mode = System.getProperty("test.mode", "integration");
-            log.info("[HarnessExtension] Creating TestContextProvider (mode={})", mode);
-            return INFRASTRUCTURE_MODE.equals(mode)
+            log.info("[HarnessExtension] Creating TestContextProvider (mode={})",
+                    System.getProperty(HarnessMode.PROPERTY, "integration (default)"));
+            return HarnessMode.isInfrastructure()
                     ? new InfrastructureTestContextProvider()
                     : new IntegrationTestContextProvider();
         }, TestContextProvider.class);

@@ -137,7 +137,7 @@ public abstract class BaseHarnessTest {
     @Order(2)
     @AfterEach
     void assertDatabaseCleanAfterTest() {
-        if (dbCleanliness != null) {
+        if (dbCleanliness != null && !HarnessMode.isInfrastructure()) {
             dbCleanliness.assertAllTablesEmpty(getClass().getSimpleName());
         }
     }
