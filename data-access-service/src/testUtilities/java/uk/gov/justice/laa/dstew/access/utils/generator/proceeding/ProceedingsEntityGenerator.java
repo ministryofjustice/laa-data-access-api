@@ -29,7 +29,8 @@ public class ProceedingsEntityGenerator extends BaseGenerator<ProceedingEntity, 
                                 Map.of(
                                         "id", "100",
                                         "code", "AB123D",
-                                        "meaning", "hearing"
+                                        "meaning", "hearing",
+                                        "description", "Hearing scope limitation description"
                                 )
                         )
                 ))
