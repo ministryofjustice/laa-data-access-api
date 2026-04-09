@@ -44,10 +44,10 @@ public interface ApplicationSummaryMapper {
     app.setMatterType(result.getMatterType());
     app.setAutoGrant(result.getIsAutoGranted());
     app.setIsLead(Boolean.TRUE.equals(result.getIsLead()));
-    app.setAssignedTo(result.getCaseworker_Id());
-    app.setClientFirstName(result.getIndividuals_FirstName());
-    app.setClientLastName(result.getIndividuals_LastName());
-    app.setClientDateOfBirth(result.getIndividuals_DateOfBirth());
+    app.setAssignedTo(result.getCaseworkerId());
+    app.setClientFirstName(result.getIndividualsFirstName());
+    app.setClientLastName(result.getIndividualsLastName());
+    app.setClientDateOfBirth(result.getIndividualsDateOfBirth());
     return app;
   }
 

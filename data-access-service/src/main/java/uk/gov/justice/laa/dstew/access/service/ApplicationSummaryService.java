@@ -111,7 +111,8 @@ public class ApplicationSummaryService {
 
     List<UUID> pageIds = resultPage.getContent().stream().map(ApplicationSummaryResult::getId).toList();
     List<UUID> allLeadIds = applicationRepository.findLeadIdsByAssociatedIds(pageIds);
-    Map<UUID, List<LinkedApplicationSummaryDto>> linkedApplications = retrieveLinkedApplications(resultPage.getContent(), allLeadIds);
+    Map<UUID, List<LinkedApplicationSummaryDto>> linkedApplications =
+        retrieveLinkedApplications(resultPage.getContent(), allLeadIds);
 
     return wrapResult(page, pageSize, resultPage.map(entity -> {
       ApplicationSummary summary = mapper.toApplicationSummary(entity);
@@ -126,7 +127,8 @@ public class ApplicationSummaryService {
     }));
   }
 
-  private Map<UUID, List<LinkedApplicationSummaryDto>> retrieveLinkedApplications(List<ApplicationSummaryResult> content, List<UUID> allLeadIds) {
+  private Map<UUID, List<LinkedApplicationSummaryDto>> retrieveLinkedApplications(List<ApplicationSummaryResult> content,
+                                                                                  List<UUID> allLeadIds) {
 
     if (allLeadIds.isEmpty()) {
       return Map.of();

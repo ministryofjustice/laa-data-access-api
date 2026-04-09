@@ -13,6 +13,11 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 
+/**
+ * Represents a summary of an application.
+ * This class is designed to hold a subset of application data that is relevant for summary views.
+ * It includes basic information about the application, its status, and related individual details.
+ */
 @ExcludeFromGeneratedCodeCoverage
 @Builder(toBuilder = true)
 @Getter
@@ -29,9 +34,9 @@ public class ApplicationSummaryResult {
   private MatterType matterType;
   private Boolean isAutoGranted;
   private Boolean isLead;
-  private UUID caseworker_Id;
-  private String individuals_FirstName;
-  private String individuals_LastName;
-  private LocalDate individuals_DateOfBirth;
+  private UUID caseworkerId;
+  private String individualsFirstName;
+  private String individualsLastName;
+  private LocalDate individualsDateOfBirth;
 }
 

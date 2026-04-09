@@ -2,10 +2,8 @@ package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Set;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryResult;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -14,7 +12,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 public class ApplicationSummaryGenerator extends BaseGenerator<ApplicationSummaryResult, ApplicationSummaryGenerator.Builder> {
 
     public ApplicationSummaryGenerator() {
-        super(r -> new Builder(r), Builder::build);
+        super(Builder::new, Builder::build);
     }
 
     @Override
@@ -52,7 +50,9 @@ public class ApplicationSummaryGenerator extends BaseGenerator<ApplicationSummar
         private Boolean isAutoGranted;
         private Boolean isLead;
         private UUID caseworkerId;
-        private Set<IndividualEntity> individuals;
+        private String individualsFirstName;
+        private String individualsLastName;
+        private LocalDate individualsDateOfBirth;
 
         public Builder() {}
 
@@ -69,7 +69,9 @@ public class ApplicationSummaryGenerator extends BaseGenerator<ApplicationSummar
             this.isAutoGranted = source.getIsAutoGranted();
             this.isLead = source.getIsLead();
             this.caseworkerId = source.getCaseworkerId();
-            this.individuals = source.getIndividuals();
+            this.individualsFirstName = source.getIndividualsFirstName();
+            this.individualsLastName = source.getIndividualsLastName();
+            this.individualsDateOfBirth = source.getIndividualsDateOfBirth();
         }
 
         public Builder id(UUID id) { this.id = id; return this; }
@@ -84,30 +86,28 @@ public class ApplicationSummaryGenerator extends BaseGenerator<ApplicationSummar
         public Builder isAutoGranted(Boolean v) { this.isAutoGranted = v; return this; }
         public Builder isLead(Boolean isLead) { this.isLead = isLead; return this; }
         public Builder caseworkerId(UUID caseworkerId) { this.caseworkerId = caseworkerId; return this; }
-        public Builder individuals(Set<IndividualEntity> individuals) { this.individuals = individuals; return this; }
+        public Builder individualsFirstName(String individualsFirstName) { this.individualsFirstName = individualsFirstName; return this; }
+        public Builder individualsLastName(String individualsLastName) { this.individualsLastName = individualsLastName; return this; }
+        public Builder individualsDateOfBirth(LocalDate individualsDateOfBirth) { this.individualsDateOfBirth = individualsDateOfBirth; return this; }
 
         public ApplicationSummaryResult build() {
-            UUID _id = id; ApplicationStatus _status = status; String _laaReference = laaReference;
-            String _officeCode = officeCode; Instant _submittedAt = submittedAt; Instant _modifiedAt = modifiedAt;
-            Boolean _udf = usedDelegatedFunctions; CategoryOfLaw _col = categoryOfLaw;
-            MatterType _mt = matterType; Boolean _iag = isAutoGranted; Boolean _isLead = isLead;
-            UUID _caseworkerId = caseworkerId;
-            Set<IndividualEntity> _individuals = individuals;
-            return new ApplicationSummaryResult() {
-                @Override public UUID getId() { return _id; }
-                @Override public ApplicationStatus getStatus() { return _status; }
-                @Override public String getLaaReference() { return _laaReference; }
-                @Override public String getOfficeCode() { return _officeCode; }
-                @Override public Instant getSubmittedAt() { return _submittedAt; }
-                @Override public Instant getModifiedAt() { return _modifiedAt; }
-                @Override public Boolean getUsedDelegatedFunctions() { return _udf; }
-                @Override public CategoryOfLaw getCategoryOfLaw() { return _col; }
-                @Override public MatterType getMatterType() { return _mt; }
-                @Override public Boolean getIsAutoGranted() { return _iag; }
-                @Override public Boolean getIsLead() { return _isLead; }
-                @Override public UUID getCaseworkerId() { return _caseworkerId; }
-                @Override public Set<IndividualEntity> getIndividuals() { return _individuals;}
-            };
+            return ApplicationSummaryResult.builder()
+                    .id(id)
+                    .status(status)
+                    .laaReference(laaReference)
+                    .officeCode(officeCode)
+                    .submittedAt(submittedAt)
+                    .modifiedAt(modifiedAt)
+                    .usedDelegatedFunctions(usedDelegatedFunctions)
+                    .categoryOfLaw(categoryOfLaw)
+                    .matterType(matterType)
+                    .isAutoGranted(isAutoGranted)
+                    .isLead(isLead)
+                    .caseworkerId(caseworkerId)
+                    .individualsFirstName(individualsFirstName)
+                    .individualsLastName(individualsLastName)
+                    .individualsDateOfBirth(individualsDateOfBirth)
+                    .build();
         }
     }
 }

@@ -1,17 +1,12 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
 import java.time.Instant;
-import java.time.LocalDate;
-import java.util.Set;
 import java.util.UUID;
 import net.datafaker.Faker;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryResult;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.model.MatterType;
 
 @Profile("unit-test")
 @Component
@@ -33,20 +28,13 @@ public class ApplicationSummaryFactory {
 
   private ApplicationSummaryResult create(UUID id, String laaReference, ApplicationStatus status, boolean isLead) {
     Instant now = Instant.now();
-    return new ApplicationSummaryResult() {
-      @Override public UUID getId() { return id; }
-      @Override public ApplicationStatus getStatus() { return status; }
-      @Override public String getLaaReference() { return laaReference; }
-      @Override public String getOfficeCode() { return null; }
-      @Override public Instant getSubmittedAt() { return now; }
-      @Override public Instant getModifiedAt() { return now; }
-      @Override public Boolean getUsedDelegatedFunctions() { return null; }
-      @Override public CategoryOfLaw getCategoryOfLaw() { return null; }
-      @Override public MatterType getMatterType() { return null; }
-      @Override public Boolean getIsAutoGranted() { return null; }
-      @Override public Boolean getIsLead() { return isLead; }
-      @Override public UUID getCaseworkerId() { return null; }
-      @Override public Set<IndividualEntity> getIndividuals() { return null; }
-    };
+    return ApplicationSummaryResult.builder()
+        .id(id)
+        .status(status)
+        .laaReference(laaReference)
+        .submittedAt(now)
+        .modifiedAt(now)
+        .isLead(isLead)
+        .build();
   }
 }
