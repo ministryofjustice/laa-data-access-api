@@ -15,7 +15,8 @@ import org.springframework.security.oauth2.server.resource.web.BearerTokenResolv
 public class DevBearerTokenResolverConfig {
 
   private static final Set<String> DEV_TOKENS = Set.of(
-      "swagger-caseworker-token"
+      "swagger-caseworker-token",
+      "unknown-token"
   );
 
   /**

@@ -1,23 +1,19 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.*;
-import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -27,7 +23,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
-import java.util.function.Supplier;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -41,9 +37,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
-@ActiveProfiles("test")
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class GetApplicationsTest extends BaseIntegrationTest {
+public class GetApplicationsTest extends BaseHarnessTest {
 
     public static final String SEARCH_PAGE_PARAM = "page=";
     public static final String SEARCH_PAGE_SIZE_PARAM = "pageSize=";
@@ -76,7 +70,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     @MethodSource("searchFieldAndOrderParameters")
     void givenApplicationWithoutFilteringAndOrderedBy_whenGetApplications_thenReturnApplication(
             String sortByParameter,
@@ -84,13 +77,9 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     ) throws Exception {
 
         boolean orderByDescending = orderByParameter.endsWith("DESC");
-        String sortByField = sortByParameter;
-        if (sortByField.isEmpty()) {
-            sortByField = SEARCH_SORTBY_SUBMITTED_PARAM;
-        }
+        String sortByField = sortByParameter.isEmpty() ? SEARCH_SORTBY_SUBMITTED_PARAM : sortByParameter;
 
         List<ApplicationEntity> expectedApplications = createRangeOfSortableApplications();
-        persistedDataGenerator.persist(ApplicationEntityGenerator.class, expectedApplications);
         List<ApplicationEntity> expectedSortedApplications =
                 sortApplications(orderByDescending, sortByField, expectedApplications);
 
@@ -99,8 +88,8 @@ public class GetApplicationsTest extends BaseIntegrationTest {
                 expectedSortedApplications);
     }
 
+    @SmokeTest
     @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
     void givenValidApplicationsDataAndIncorrectHeader_whenGetApplications_thenReturnBadRequest(
             String serviceName
@@ -108,25 +97,22 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         verifyBadServiceNameHeader(serviceName);
     }
 
+    @SmokeTest
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenValidApplicationsDataAndNoHeader_whenGetApplications_thenReturnBadRequest() throws Exception {
         verifyBadServiceNameHeader(null);
     }
 
     private void verifyBadServiceNameHeader(String serviceName) throws Exception {
-        MvcResult result = getUri(
+        HarnessResult result = getUri(
                 createUriForSorting(TestConstants.URIs.GET_APPLICATIONS,
                         SEARCH_SORTBY_SUBMITTED_PARAM,
                         SEARCH_ORDERBY_ASC_PARAM),
                 ServiceNameHeader(serviceName));
-
         applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
-
     }
 
     private String createUriForSorting(String uri, String sortBy, String orderBy) {
-
         String orderByQuery = SEARCH_ORDERBY_PARAM + orderBy;
         String sortByQuery = SEARCH_SORTBY_PARAM + sortBy;
 
@@ -153,6 +139,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
         for (ApplicationEntity applicationEntity : applications) {
             applicationEntity.setSubmittedAt(referenceDate.plus(submittedDayCount++, ChronoUnit.DAYS));
+            persistedDataGenerator.updateAndFlush(applicationEntity);
         }
 
         return applications;
@@ -181,8 +168,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     private void getAndConfirmSortedApplications(String uri,
                                         List<ApplicationEntity> expectedApplications) throws Exception {
-
-        MvcResult result = getUri(uri);
+        HarnessResult result = getUri(uri);
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
         assertOK(result);
         List<ApplicationSummary> actualApplications = actual.getApplications();
@@ -192,18 +178,16 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithoutFilteringAndNullAutoGranted_whenGetApplications_thenReturnApplication() throws Exception {
         // given
-        List<ApplicationEntity> expectedApplicationsWithNullAutoGrant =
-                persistedDataGenerator.createAndPersistMultiple(
-                    ApplicationEntityGenerator.class,
-                    1,
-                    builder -> builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS).isAutoGranted(null)
-                );
+        persistedDataGenerator.createAndPersistMultiple(
+            ApplicationEntityGenerator.class,
+            1,
+            builder -> builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS).isAutoGranted(null)
+        );
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
         // then
@@ -211,7 +195,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationsWithoutFiltering_whenGetApplications_thenReturnApplicationsWithPagingCorrectly() throws Exception {
         // given
         List<ApplicationEntity> expectedApplicationsWithCaseworker = persistedDataGenerator.createAndPersistMultiple(
@@ -240,7 +223,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
                 .toList();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
         // then
@@ -254,7 +237,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationsRequiringPageTwo_whenGetApplications_thenReturnSecondPageOfApplicationsCorrectly() throws Exception {
         // given
         List<ApplicationSummary> expectedApplicationsSummary = persistedDataGenerator.createAndPersistMultiple(
@@ -266,7 +248,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
                 .toList();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_PAGE_PARAM + "2");
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_PAGE_PARAM + "2");
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
         // then
@@ -280,7 +262,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationsAndPageSizeOfTwenty_whenGetApplications_thenReturnTwentyRecords() throws Exception {
         // given
         List<ApplicationEntity> inProgressApplications = persistedDataGenerator.createAndPersistMultiple(
@@ -302,7 +283,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
                 .toList();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_PAGE_SIZE_PARAM + "20");
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_PAGE_SIZE_PARAM + "20");
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
         // then
@@ -317,9 +298,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("invalidPagingParameters")
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenInvalidPagingParameters_whenGetApplications_thenReturnBadRequest(Integer page, Integer pageSize) throws Exception {
-        // when
         String uri = TestConstants.URIs.GET_APPLICATIONS + "?";
         if (page != null) {
             uri += SEARCH_PAGE_PARAM + page;
@@ -327,52 +306,27 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         if (pageSize != null) {
             uri += (page != null ? "&" : "") + SEARCH_PAGE_SIZE_PARAM + pageSize;
         }
-        MvcResult result = getUri(uri);
-
-        // then
+        HarnessResult result = getUri(uri);
         assertBadRequest(result);
     }
 
     static Stream<Arguments> invalidPagingParameters() {
         return Stream.of(
-                // page, pageSize
-                Arguments.of(0, 10),    // zero page
-                Arguments.of(-1, 10),   // negative page
-                Arguments.of(1, 0),    // zero pageSize
-                Arguments.of(1, -74),  // negative pageSize
-                Arguments.of(1, 200),   // pageSize greater than 100
-                Arguments.of(0, 0)     // zero page and pageSize
+                Arguments.of(0, 10),
+                Arguments.of(-1, 10),
+                Arguments.of(1, 0),
+                Arguments.of(1, -74),
+                Arguments.of(1, 200),
+                Arguments.of(0, 0)
         );
     }
 
-    @ParameterizedTest
-    @MethodSource("applicationsSummaryFilteredByStatusCases")
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    void givenApplicationsFilteredByStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly(
-            ApplicationStatus Status,
-            Supplier<List<ApplicationSummary>> expectedApplicationsSummarySupplier,
-            int numberOfApplications
-    ) throws Exception {
-        // given
-        List<ApplicationSummary> expectedApplicationsSummary = expectedApplicationsSummarySupplier.get();
+    // NOTE: givenApplicationsFilteredByStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly
+    // was replaced by _v2 below — the old version used a non-static @MethodSource (incompatible with
+    // default PER_METHOD lifecycle); _v2 uses a static source and persists data inside the test body.
 
-        // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + Status);
-        ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
-
-        // then
-        assertContentHeaders(result);
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertOK(result);
-        assertPaging(actual, numberOfApplications, 20, 1, numberOfApplications);
-        assertThat(actual.getApplications().size()).isEqualTo(numberOfApplications);
-        assertTrue((actual.getApplications()).containsAll(expectedApplicationsSummary));
-    }
-
-    // TODO: is this test superseded by parameterized test above?
+    // TODO: is this test superseded by _v2 above?
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationsFilteredByInProgressStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         List<ApplicationSummary> expectedApplicationsSummary = persistedDataGenerator
@@ -384,7 +338,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class, 10, builder -> builder.status(ApplicationStatus.APPLICATION_SUBMITTED));
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.APPLICATION_IN_PROGRESS);
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.APPLICATION_IN_PROGRESS);
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
         // then
@@ -399,7 +353,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     // TODO: is this test superseded by parameterized test above?
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationsFilteredBySubmittedStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         List<ApplicationSummary> expectedApplicationsSummary = persistedDataGenerator
@@ -407,10 +360,10 @@ public class GetApplicationsTest extends BaseIntegrationTest {
                 .stream()
                 .map(this::createApplicationSummary)
                 .toList();
-        persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class,10, builder -> builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS));
+        persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class, 10, builder -> builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS));
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.APPLICATION_SUBMITTED);
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.APPLICATION_SUBMITTED);
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
         // then
@@ -424,7 +377,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationsFilteredBySubmittedStatusWithPaging_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         List<ApplicationSummary> expectedApplicationsSummary = persistedDataGenerator
@@ -435,7 +387,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         persistedDataGenerator.createAndPersistMultiple(ApplicationEntityGenerator.class, 10, builder -> builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS));
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
                 + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.APPLICATION_SUBMITTED
                 + "&" + SEARCH_PAGE_PARAM + "2");
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
@@ -452,7 +404,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("firstNameSearchCases")
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationsFilteredByFirstName_whenGetApplications_thenReturnExpectedApplicationsCorrectly(
             String searchFirstName,
             String persistedFirstName,
@@ -478,7 +429,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
                 .toList();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_FIRSTNAME_PARAM + searchFirstName);
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_FIRSTNAME_PARAM + searchFirstName);
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
         // then
@@ -492,7 +443,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationsFilteredByFirstNameAndStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         persistedDataGenerator.createAndPersistMultiple(
@@ -512,7 +462,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
                 .toList();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
                 + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.APPLICATION_SUBMITTED
                 + "&" + SEARCH_FIRSTNAME_PARAM + "Jane");
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
@@ -529,7 +479,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("lastNameSearchCases")
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationsFilteredByLastName_whenGetApplications_thenReturnExpectedApplicationsCorrectly(
             String searchLastName,
             String persistedLastName,
@@ -554,7 +503,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
                 .toList();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_LASTNAME_PARAM + searchLastName);
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_LASTNAME_PARAM + searchLastName);
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
         // then
@@ -568,7 +517,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationsFilteredByLastNameAndStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         persistedDataGenerator.createAndPersistMultiple(
@@ -597,7 +545,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
                 .toList();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
                 + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.APPLICATION_SUBMITTED
                 + "&" + SEARCH_LASTNAME_PARAM + "David");
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
@@ -613,7 +561,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationsFilteredByFirstNameAndLastName_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         persistedDataGenerator.createAndPersistMultiple(
@@ -641,7 +588,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         );
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
                 + "?" + SEARCH_FIRSTNAME_PARAM + "Lucas"
                 + "&" + SEARCH_LASTNAME_PARAM + "Taylor");
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
@@ -657,7 +604,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationsFilteredByFirstNameAndLastNameAndStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         List<ApplicationEntity> expectedApplications = persistedDataGenerator.createAndPersistMultiple(
@@ -693,7 +639,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
                 .toList();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
                 + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.APPLICATION_IN_PROGRESS
                 + "&" + SEARCH_FIRSTNAME_PARAM + "George"
                 + "&" + SEARCH_LASTNAME_PARAM + "Theodore");
@@ -710,7 +656,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationsFilteredByFirstNameAndLastNameAndStatusWithPaging_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         List<ApplicationEntity> expectedApplications = persistedDataGenerator.createAndPersistMultiple(
@@ -746,7 +691,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
                 .toList();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
                 + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.APPLICATION_IN_PROGRESS
                 + "&" + SEARCH_FIRSTNAME_PARAM + "George"
                 + "&" + SEARCH_LASTNAME_PARAM + "Theodore"
@@ -764,7 +709,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationsFilteredByClientDateOfBirth_whenGetAllApplications_thenReturnExpectedApplication() throws Exception {
         //given
         LocalDate clientDOB = LocalDate.of(1942, 11, 27);
@@ -778,7 +722,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
         //when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
                 + "?" + SEARCH_CLIENTDOB_PARAM + "1942-11-27");
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
@@ -793,14 +737,12 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationFilteredByClientDateOfBirth_whenGetAllApplicationsAndInvalidFormat_thenReturnBadRequest() throws Exception {
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_CLIENTDOB_PARAM + "something");
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_CLIENTDOB_PARAM + "something");
         assertBadRequest(result);
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationsFilteredByStatusAndNoApplicationsMatch_whenGetApplications_thenReturnEmptyResult() throws Exception {
         // given
         persistedDataGenerator.createAndPersistMultiple(
@@ -832,7 +774,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         );
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS
                 + "?" + SEARCH_STATUS_PARAM + ApplicationStatus.APPLICATION_IN_PROGRESS
                 + "&" + SEARCH_FIRSTNAME_PARAM + "Lucas"
                 + "&" + SEARCH_LASTNAME_PARAM + "Jones");
@@ -848,19 +790,18 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenApplicationsFilteredByCaseworkerJohnDoe_whenGetApplications_thenReturnExpectedApplicationsCorrectly() throws Exception {
         // given
         List<ApplicationEntity> expectedApplications = persistedDataGenerator.createAndPersistMultiple(
             ApplicationEntityGenerator.class,
             4,
-            builder -> builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe)
+            builder -> builder.caseworker(CaseworkerJohnDoe)
         );
 
         persistedDataGenerator.createAndPersistMultiple(
             ApplicationEntityGenerator.class,
             6,
-            builder -> builder.caseworker(BaseIntegrationTest.CaseworkerJaneDoe)
+            builder -> builder.caseworker(CaseworkerJaneDoe)
         );
 
         List<ApplicationSummary> expectedApplicationsSummary = expectedApplications.stream()
@@ -868,7 +809,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
                 .toList();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_CASEWORKERID_PARAM + BaseIntegrationTest.CaseworkerJohnDoe.getId());
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_CASEWORKERID_PARAM + CaseworkerJohnDoe.getId());
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
         // then
@@ -883,7 +824,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenApplicationFilteredByAutoGrant_whenGetApplications_thenReturnExpectedApplicationsCorrectly(boolean isAutoGranted) throws Exception {
         // given
         List<ApplicationEntity> expectedApplications = persistedDataGenerator.createAndPersistMultiple(
@@ -901,7 +841,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
                 .toList();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_ISAUTOGRANTED_PARAM + isAutoGranted);
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_ISAUTOGRANTED_PARAM + isAutoGranted);
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
         // then
         assertContentHeaders(result);
@@ -914,19 +854,17 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenApplicationFilteredByAutoGrant_whenGetApplicationsAndInvalidFormat_thenReturnBadRequest() throws Exception {
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_ISAUTOGRANTED_PARAM + "something");
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_ISAUTOGRANTED_PARAM + "something");
         assertBadRequest(result);
     }
 
-    private Stream<Arguments> getApplicationSummaryQueryMatterTypes() {
+    private static Stream<Arguments> getApplicationSummaryQueryMatterTypes() {
         return Stream.of(Arguments.of(MatterType.SPECIAL_CHILDREN_ACT));
     }
 
     @ParameterizedTest
     @MethodSource("getApplicationSummaryQueryMatterTypes")
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     public void givenApplicationFilteredByMatterType_whenGetApplications_thenReturnExpectedApplicationsCorrectly(MatterType matterType) throws Exception {
         // given
         List<ApplicationEntity> expectedApplications = persistedDataGenerator.createAndPersistMultiple(
@@ -940,7 +878,7 @@ public class GetApplicationsTest extends BaseIntegrationTest {
                 .toList();
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_MATTERTYPE_PARAM + matterType);
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_MATTERTYPE_PARAM + matterType);
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
         // then
         assertContentHeaders(result);
@@ -953,13 +891,12 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenApplicationWithNoLinkedApplications_whenGetApplications_thenLinkedApplicationsIsEmpty() throws Exception {
         // given
         ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
         ApplicationSummary applicationSummary = findApplicationSummaryById(actual.getApplications(), application.getId());
 
@@ -974,7 +911,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenLeadApplicationOnPage_whenGetApplications_thenLinkedApplicationsContainsAssociatesWithCorrectFields() throws Exception {
         // given
         ApplicationEntity leadApplication = persistedDataGenerator.createAndPersist(
@@ -985,10 +921,10 @@ public class GetApplicationsTest extends BaseIntegrationTest {
             ApplicationEntityGenerator.class,
             builder -> builder.laaReference("ASSOC-REF-001")
         );
-        persistLink(leadApplication, associateApplication);
+        persistedDataGenerator.persistLink(leadApplication, associateApplication);
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
         ApplicationSummary applicationSummary = findApplicationSummaryById(actual.getApplications(), leadApplication.getId());
         LinkedApplicationSummaryResponse linkedApplicationSummaryResponse = applicationSummary.getLinkedApplications().getFirst();
@@ -1006,7 +942,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenAssociateOnPageAndLeadNotOnPage_whenGetApplications_thenLinkedApplicationsStillPopulated() throws Exception {
         // given
         ApplicationEntity associateApplication = persistedDataGenerator.createAndPersist(
@@ -1025,10 +960,10 @@ public class GetApplicationsTest extends BaseIntegrationTest {
             builder -> builder.laaReference("LEAD-REF-001")
         );
 
-        persistLink(leadApplication, associateApplication);
+        persistedDataGenerator.persistLink(leadApplication, associateApplication);
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_PAGE_PARAM + "1");
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_PAGE_PARAM + "1");
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
         ApplicationSummary applicationSummary = findApplicationSummaryById(actual.getApplications(), associateApplication.getId());
 
@@ -1043,7 +978,6 @@ public class GetApplicationsTest extends BaseIntegrationTest {
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
     void givenOnlyAssociateMatchesFilter_whenGetApplications_thenLinkedApplicationsContainsLeadAndSiblingNotInResults() throws Exception {
         // given
         ApplicationEntity associateApplication1 = persistedDataGenerator.createAndPersist(
@@ -1062,11 +996,11 @@ public class GetApplicationsTest extends BaseIntegrationTest {
                 .individuals(Set.of(DataGenerator.createDefault(IndividualEntityGenerator.class, i -> i.firstName("Charlie"))))
         );
 
-        persistLink(leadApplication, associateApplication1);
-        persistLink(leadApplication, associateApplication2);
+        persistedDataGenerator.persistLink(leadApplication, associateApplication1);
+        persistedDataGenerator.persistLink(leadApplication, associateApplication2);
 
         // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_FIRSTNAME_PARAM + "John");
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_FIRSTNAME_PARAM + "John");
         ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
         ApplicationSummary applicationSummary = findApplicationSummaryById(actual.getApplications(), associateApplication1.getId());
         assertThat(applicationSummary.getLinkedApplications().size()).isEqualTo(2);
@@ -1086,24 +1020,21 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         assertTrue(linkedIds.contains(associateApplication2.getId()));
     }
 
+    @SmokeTest
     @Test
-
     public void givenNoUser_whenGetApplications_thenReturnUnauthorised() throws Exception {
-        // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
+        withNoToken();
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
 
-        // then
         assertSecurityHeaders(result);
         assertUnauthorised(result);
     }
 
     @Test
-    @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
     public void givenNoRole_whenGetApplications_thenReturnForbidden() throws Exception {
-        // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
+        withToken(TestConstants.Tokens.UNKNOWN);
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
 
-        // then
         assertSecurityHeaders(result);
         assertForbidden(result);
     }
@@ -1141,16 +1072,38 @@ public class GetApplicationsTest extends BaseIntegrationTest {
         );
     }
 
-    private Stream<Arguments> applicationsSummaryFilteredByStatusCases() {
+    @ParameterizedTest
+    @MethodSource("applicationsSummaryFilteredByStatusCases")
+    void givenApplicationsFilteredByStatus_whenGetApplications_thenReturnExpectedApplicationsCorrectly(
+            ApplicationStatus status,
+            int numberOfApplications
+    ) throws Exception {
+        // given
+        List<ApplicationSummary> expectedApplicationsSummary = generateApplicationSummaries(status, numberOfApplications);
+
+        // when
+        HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_STATUS_PARAM + status);
+        ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+        // then
+        assertContentHeaders(result);
+        assertSecurityHeaders(result);
+        assertNoCacheHeaders(result);
+        assertOK(result);
+        assertPaging(actual, numberOfApplications, 20, 1, numberOfApplications);
+        assertThat(actual.getApplications().size()).isEqualTo(numberOfApplications);
+        assertTrue((actual.getApplications()).containsAll(expectedApplicationsSummary));
+    }
+
+    private static Stream<Arguments> applicationsSummaryFilteredByStatusCases() {
         return Stream.of(
-                Arguments.of(ApplicationStatus.APPLICATION_IN_PROGRESS, (Supplier<List<ApplicationSummary>>) () -> generateApplicationSummaries(ApplicationStatus.APPLICATION_IN_PROGRESS, 8), 8),
-                Arguments.of(ApplicationStatus.APPLICATION_SUBMITTED, (Supplier<List<ApplicationSummary>>) () -> generateApplicationSummaries(ApplicationStatus.APPLICATION_SUBMITTED, 5), 5)
+                Arguments.of(ApplicationStatus.APPLICATION_IN_PROGRESS, 8),
+                Arguments.of(ApplicationStatus.APPLICATION_SUBMITTED, 5)
         );
     }
 
     private List<ApplicationSummary> generateApplicationSummaries(ApplicationStatus status, int numberOfApplications) {
         Random random = new Random();
-
         return persistedDataGenerator.createAndPersistMultiple(
                         ApplicationEntityGenerator.class,
                         numberOfApplications,
@@ -1188,11 +1141,4 @@ public class GetApplicationsTest extends BaseIntegrationTest {
             .orElseThrow();
     }
 
-    private void persistLink(ApplicationEntity leadApplication, ApplicationEntity associateApplication) {
-        entityManager.persist(DataGenerator.createDefault(LinkedApplicationEntityGenerator.class, builder -> builder
-            .leadApplicationId(leadApplication.getId())
-            .associatedApplicationId(associateApplication.getId())
-        ));
-        clearCache();
-    }
 }

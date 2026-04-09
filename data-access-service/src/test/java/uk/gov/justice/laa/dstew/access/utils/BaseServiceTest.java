@@ -21,22 +21,6 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.*;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationContentFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationCreateRequestFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationEntityFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationMakeDecisionRequestFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationSummaryFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.application.ApplicationUpdateRequestFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.caseworker.CaseworkerFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.decision.DecisionEntityFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.domainEvent.DomainEventFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualEntityFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionDetailsFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.merit.MeritsDecisionsEntityFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.MakeDecisionProceedingFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingsEntityFactory;
 
 @SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=false"})
 @ImportAutoConfiguration(exclude = {

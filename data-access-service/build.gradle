@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
 plugins {
     id 'java'
     id 'jacoco'
@@ -71,6 +73,54 @@ dockerCompose {
 test {
     useJUnitPlatform()
     finalizedBy jacocoTestReport
+}
+
+tasks.named('integrationTest') {
+    useJUnitPlatform()
+
+    testLogging {
+        events TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED
+        exceptionFormat = 'full'
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+    }
+}
+
+tasks.register('infrastructureTest', Test) {
+    description = 'Runs @SmokeTest-annotated tests against a live deployed environment'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    // Unconditionally use infrastructure mode — no flag needed
+    systemProperty 'test.mode', 'infrastructure'
+
+    filter {
+        includeTestsMatching 'uk.gov.justice.laa.dstew.access.controller.*'
+    }
+    useJUnitPlatform {
+        includeTags 'smoke'
+    }
+
+    ['LAA_SMOKE_ACCESS_API_URL',
+     'LAA_SMOKE_ACCESS_DB_URL',
+     'LAA_SMOKE_ACCESS_DB_USERNAME',
+     'LAA_SMOKE_ACCESS_DB_PASSWORD',
+     'FEATURE_DISABLE_SECURITY',
+     'FEATURE_ENABLE_DEV_TOKENS'].each { key ->
+        def value = System.getenv(key)
+        if (value) environment key, value
+    }
+
+    testLogging {
+        events TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED
+        exceptionFormat = 'full'
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+        showStandardStreams = true
+    }
 }
 
 jacoco {
@@ -169,6 +219,7 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
     testImplementation 'org.instancio:instancio-junit:5.5.1'
     testImplementation 'net.datafaker:datafaker:2.5.2'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
