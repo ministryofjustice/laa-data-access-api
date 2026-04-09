@@ -15,11 +15,11 @@ import uk.gov.justice.laa.dstew.access.metrics.EntityOperationMetricsListener;
 /**
  * Configuration for registering Hibernate event listeners for entity metrics.
  *
- * <p>Registers the EntityOperationMetricsListener with Hibernate's EventListenerRegistry
- * to capture entity lifecycle events for monitoring and observability.</p>
+ * <p>Registers the EntityOperationMetricsListener with Hibernate's EventListenerRegistry to capture
+ * entity lifecycle events for monitoring and observability.
  *
- * <p>Uses ObjectProvider for safe resolution - gracefully skips if EntityManagerFactory
- * is not available (e.g., in tests without JPA).</p>
+ * <p>Uses ObjectProvider for safe resolution - gracefully skips if EntityManagerFactory is not
+ * available (e.g., in tests without JPA).
  */
 @ExcludeFromGeneratedCodeCoverage
 @Configuration
@@ -29,15 +29,14 @@ public class HibernateMetricsConfig implements ApplicationListener<ApplicationRe
   private final ObjectProvider<EntityManagerFactory> entityManagerFactoryProvider;
   private final EntityOperationMetricsListener entityOperationMetricsListener;
 
-  public HibernateMetricsConfig(ObjectProvider<EntityManagerFactory> entityManagerFactoryProvider,
+  public HibernateMetricsConfig(
+      ObjectProvider<EntityManagerFactory> entityManagerFactoryProvider,
       EntityOperationMetricsListener entityOperationMetricsListener) {
     this.entityManagerFactoryProvider = entityManagerFactoryProvider;
     this.entityOperationMetricsListener = entityOperationMetricsListener;
   }
 
-  /**
-   * Registers the EntityOperationMetricsListener with Hibernate's EventListenerRegistry.
-   */
+  /** Registers the EntityOperationMetricsListener with Hibernate's EventListenerRegistry. */
   public void registerListeners() {
     try {
       EntityManagerFactory entityManagerFactory = entityManagerFactoryProvider.getIfAvailable();
@@ -47,8 +46,7 @@ public class HibernateMetricsConfig implements ApplicationListener<ApplicationRe
         return;
       }
 
-      SessionFactoryImpl sessionFactory = entityManagerFactory
-          .unwrap(SessionFactoryImpl.class);
+      SessionFactoryImpl sessionFactory = entityManagerFactory.unwrap(SessionFactoryImpl.class);
 
       if (sessionFactory == null) {
         log.debug("SessionFactory not available, skipping listener registration");
@@ -65,12 +63,14 @@ public class HibernateMetricsConfig implements ApplicationListener<ApplicationRe
       log.info("Registered EntityOperationMetricsListener with Hibernate EventListenerRegistry");
     } catch (Exception e) {
       log.warn("Failed to register EntityOperationMetricsListener, metrics may be incomplete", e);
-      // Don't throw exception - allow application to continue even if metrics listener registration fails
+      // Don't throw exception - allow application to continue even if metrics listener registration
+      // fails
     }
   }
 
   /**
-   * Triggers listener registration after the application is ready to ensure all beans are initialized.
+   * Triggers listener registration after the application is ready to ensure all beans are
+   * initialized.
    *
    * @param event application ready event.
    */

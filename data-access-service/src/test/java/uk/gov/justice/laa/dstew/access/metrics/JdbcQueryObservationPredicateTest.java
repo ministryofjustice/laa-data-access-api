@@ -35,8 +35,7 @@ class JdbcQueryObservationPredicateTest {
         Arguments.of("SHOW TRANSACTION ISOLATION LEVEL"),
         Arguments.of("CREATE TABLE IF NOT EXISTS flyway_schema_history"),
         Arguments.of("ALTER TABLE foo ADD col int"),
-        Arguments.of("LOCK TABLE flyway_schema_history")
-    );
+        Arguments.of("LOCK TABLE flyway_schema_history"));
   }
 
   @ParameterizedTest
@@ -54,8 +53,7 @@ class JdbcQueryObservationPredicateTest {
         Arguments.of("UPDATE table SET col = 1"),
         Arguments.of("DELETE FROM table WHERE id = 1"),
         Arguments.of("MERGE INTO table USING source ON condition"),
-        Arguments.of("  SELECT * FROM table")
-    );
+        Arguments.of("  SELECT * FROM table"));
   }
 
   @ParameterizedTest
@@ -67,8 +65,7 @@ class JdbcQueryObservationPredicateTest {
   private static Stream<Arguments> nonJdbcContexts() {
     return Stream.of(
         Arguments.of("http.server.requests", new Observation.Context()),
-        Arguments.of("other.observation", new QueryContext())
-    );
+        Arguments.of("other.observation", new QueryContext()));
   }
 
   @ParameterizedTest
@@ -84,9 +81,6 @@ class JdbcQueryObservationPredicateTest {
     QueryContext emptyQueries = new QueryContext();
     emptyQueries.setQueries(Collections.emptyList());
 
-    return Stream.of(
-        Arguments.of(nullQueries),
-        Arguments.of(emptyQueries)
-    );
+    return Stream.of(Arguments.of(nullQueries), Arguments.of(emptyQueries));
   }
 }

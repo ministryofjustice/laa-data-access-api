@@ -38,8 +38,7 @@ public class GetIndividualsTest extends BaseHarnessTest {
   @ParameterizedTest
   @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
   void givenPagingParametersAndInvalidHeader_whenGetIndividuals_thenReturnBadRequest(
-          String serviceName
-  ) throws Exception {
+      String serviceName) throws Exception {
     verifyServiceNameHeader(serviceName);
   }
 
@@ -53,9 +52,10 @@ public class GetIndividualsTest extends BaseHarnessTest {
     int page = 1;
     int pageSize = 20;
 
-    HarnessResult result = getUri(
-        TestConstants.URIs.GET_INDIVIDUALS + "?page=" + page + "&pageSize=" + pageSize,
-        ServiceNameHeader(serviceName));
+    HarnessResult result =
+        getUri(
+            TestConstants.URIs.GET_INDIVIDUALS + "?page=" + page + "&pageSize=" + pageSize,
+            ServiceNameHeader(serviceName));
     applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
   }
 
@@ -65,20 +65,27 @@ public class GetIndividualsTest extends BaseHarnessTest {
     assertBadRequest(result);
     ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
     assertThat(problemDetail.getProperties())
-            .containsEntry("errors", List.of("Application ID is required when included data is CLIENT_DETAILS"));
+        .containsEntry(
+            "errors", List.of("Application ID is required when included data is CLIENT_DETAILS"));
   }
 
   @Test
   void givenIncludeParametersAndAppId_whenGetIndividuals_thenProcessCorrectly() throws Exception {
-    ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-    persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class,
-            builder -> builder.applications(Set.of(application)));
-    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?include=CLIENT_DETAILS&individualType=CLIENT&applicationId="+application.getId().toString());
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+    persistedDataGenerator.createAndPersist(
+        IndividualEntityGenerator.class, builder -> builder.applications(Set.of(application)));
+    HarnessResult result =
+        getUri(
+            TestConstants.URIs.GET_INDIVIDUALS
+                + "?include=CLIENT_DETAILS&individualType=CLIENT&applicationId="
+                + application.getId().toString());
 
     assertOK(result);
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     IndividualResponse actualIndividual = response.getIndividuals().getFirst();
-    assertThat(actualIndividual.getRelationshipToInvolvedChildren()).isEqualTo("relationshipToChildren");
+    assertThat(actualIndividual.getRelationshipToInvolvedChildren())
+        .isEqualTo("relationshipToChildren");
     assertThat(actualIndividual.getLastNameAtBirth()).isEqualTo("Alberts");
     assertThat(actualIndividual.getPreviousApplicationId()).isEqualTo("ZZ999Z");
     assertThat(actualIndividual.getCorrespondenceAddressType()).isEqualTo("Home");
@@ -95,13 +102,13 @@ public class GetIndividualsTest extends BaseHarnessTest {
       int expectedPageSize,
       int totalEntities,
       int expectedReturned,
-      int expectedTotalRecords
-  ) throws Exception {
+      int expectedTotalRecords)
+      throws Exception {
     // given
     persistedDataGenerator.createAndPersistMultiple(IndividualEntityGenerator.class, totalEntities);
     // when
-    HarnessResult result = getUri(
-        TestConstants.URIs.GET_INDIVIDUALS + "?page=" + page + "&pageSize=" + pageSize);
+    HarnessResult result =
+        getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=" + page + "&pageSize=" + pageSize);
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     // then
     assertOK(result);
@@ -113,39 +120,33 @@ public class GetIndividualsTest extends BaseHarnessTest {
 
   static Stream<org.junit.jupiter.params.provider.Arguments> pagingParameters() {
     return Stream.of(
-        // page, pageSize, expectedPage, expectedPageSize, totalEntities, expectedReturned, expectedTotalRecords
+        // page, pageSize, expectedPage, expectedPageSize, totalEntities, expectedReturned,
+        // expectedTotalRecords
         of(1, 10, 1, 10, 15, 10, 15), // first page, 10 of 15
         of(2, 10, 2, 10, 15, 5, 15), // second page, 5 of 15
         of(100, 10, 100, 10, 15, 0, 15) // page beyond data, empty
-    );
+        );
   }
 
   @ParameterizedTest
   @MethodSource("invalidPagingParameters")
   void givenInvalidPagingParameters_whenGetIndividuals_thenReturnBadRequest(
-      Integer page,
-      Integer pageSize
-  ) throws Exception {
-    HarnessResult result = getUri(
-        TestConstants.URIs.GET_INDIVIDUALS + "?page=" + page + "&pageSize=" + pageSize);
+      Integer page, Integer pageSize) throws Exception {
+    HarnessResult result =
+        getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=" + page + "&pageSize=" + pageSize);
     assertBadRequest(result);
   }
 
   static Stream<org.junit.jupiter.params.provider.Arguments> invalidPagingParameters() {
-    return Stream.of(
-        of(0, 10),
-        of(-1, 10),
-        of(1, 0),
-        of(1, -74),
-        of(1, 101),
-        of(0, 0)
-    );
+    return Stream.of(of(0, 10), of(-1, 10), of(1, 0), of(1, -74), of(1, 101), of(0, 0));
   }
 
   @Test
-  public void givenExistingIndividual_whenGetIndividuals_thenReturnOKWithCorrectData() throws Exception {
+  public void givenExistingIndividual_whenGetIndividuals_thenReturnOKWithCorrectData()
+      throws Exception {
     // given
-    IndividualEntity persisted = persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class);
+    IndividualEntity persisted =
+        persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class);
     // when
     HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
@@ -160,8 +161,10 @@ public class GetIndividualsTest extends BaseHarnessTest {
     assertThat(response.getPaging().getPage()).isEqualTo(1);
     assertThat(response.getPaging().getPageSize()).isEqualTo(20);
     assertThat(response.getIndividuals()).hasSize(1);
-    assertThat(response.getIndividuals().getFirst().getFirstName()).isEqualTo(persisted.getFirstName());
-    assertThat(response.getIndividuals().getFirst().getLastName()).isEqualTo(persisted.getLastName());
+    assertThat(response.getIndividuals().getFirst().getFirstName())
+        .isEqualTo(persisted.getFirstName());
+    assertThat(response.getIndividuals().getFirst().getLastName())
+        .isEqualTo(persisted.getLastName());
   }
 
   @Test
@@ -200,24 +203,29 @@ public class GetIndividualsTest extends BaseHarnessTest {
   void givenApplicationId_whenGetIndividuals_thenFiltersByApplicationId() throws Exception {
     // given
     IndividualEntity individual = DataGenerator.createDefault(IndividualEntityGenerator.class);
-    var application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class,
-        builder -> builder.individuals(Set.of(individual)));
-    persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class); // unrelated individual
+    var application =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class, builder -> builder.individuals(Set.of(individual)));
+    persistedDataGenerator.createAndPersist(
+        IndividualEntityGenerator.class); // unrelated individual
     // when
-    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + application.getId());
+    HarnessResult result =
+        getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + application.getId());
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     // then
     assertOK(result);
     assertThat(response.getIndividuals()).hasSize(1);
-    assertThat(response.getIndividuals().getFirst().getFirstName()).isEqualTo(individual.getFirstName());
-    assertThat(response.getIndividuals().getFirst().getLastName()).isEqualTo(individual.getLastName());
+    assertThat(response.getIndividuals().getFirst().getFirstName())
+        .isEqualTo(individual.getFirstName());
+    assertThat(response.getIndividuals().getFirst().getLastName())
+        .isEqualTo(individual.getLastName());
   }
 
   @Test
   void givenIndividualType_whenGetIndividuals_thenFiltersByIndividualType() throws Exception {
     // given
-    persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class,
-        builder -> builder.type(IndividualType.CLIENT));
+    persistedDataGenerator.createAndPersist(
+        IndividualEntityGenerator.class, builder -> builder.type(IndividualType.CLIENT));
     // when
     HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?individualType=CLIENT");
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
@@ -228,22 +236,30 @@ public class GetIndividualsTest extends BaseHarnessTest {
   }
 
   @Test
-  void givenBothFilters_whenGetIndividuals_thenFiltersByApplicationIdAndIndividualType() throws Exception {
+  void givenBothFilters_whenGetIndividuals_thenFiltersByApplicationIdAndIndividualType()
+      throws Exception {
     // given
-    IndividualEntity client = DataGenerator.createDefault(IndividualEntityGenerator.class,
-        builder -> builder.type(IndividualType.CLIENT));
-    var application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class,
-        builder -> builder.individuals(Set.of(client)));
-    persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class,
-        builder -> builder.type(IndividualType.CLIENT));
+    IndividualEntity client =
+        DataGenerator.createDefault(
+            IndividualEntityGenerator.class, builder -> builder.type(IndividualType.CLIENT));
+    var application =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class, builder -> builder.individuals(Set.of(client)));
+    persistedDataGenerator.createAndPersist(
+        IndividualEntityGenerator.class, builder -> builder.type(IndividualType.CLIENT));
     // when
-    HarnessResult result = getUri(
-        TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + application.getId() + "&individualType=CLIENT");
+    HarnessResult result =
+        getUri(
+            TestConstants.URIs.GET_INDIVIDUALS
+                + "?applicationId="
+                + application.getId()
+                + "&individualType=CLIENT");
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     // then
     assertOK(result);
     assertThat(response.getIndividuals()).hasSize(1);
-    assertThat(response.getIndividuals().getFirst().getFirstName()).isEqualTo(client.getFirstName());
+    assertThat(response.getIndividuals().getFirst().getFirstName())
+        .isEqualTo(client.getFirstName());
     assertThat(response.getIndividuals().getFirst().getLastName()).isEqualTo(client.getLastName());
     assertThat(response.getIndividuals().getFirst().getType()).isEqualTo(IndividualType.CLIENT);
   }
@@ -256,7 +272,8 @@ public class GetIndividualsTest extends BaseHarnessTest {
 
   @Test
   void givenInvalidIndividualType_whenGetIndividuals_thenReturnsBadRequest() throws Exception {
-    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?individualType=NOT_A_TYPE");
+    HarnessResult result =
+        getUri(TestConstants.URIs.GET_INDIVIDUALS + "?individualType=NOT_A_TYPE");
     assertBadRequest(result);
   }
 
@@ -269,13 +286,18 @@ public class GetIndividualsTest extends BaseHarnessTest {
   @Test
   void givenNoMatchingFilters_whenGetIndividuals_thenReturnsEmptyList() throws Exception {
     // given
-    IndividualEntity client = DataGenerator.createDefault(IndividualEntityGenerator.class,
-        builder -> builder.type(IndividualType.CLIENT));
-    persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class,
-        builder -> builder.individuals(Set.of(client)));
+    IndividualEntity client =
+        DataGenerator.createDefault(
+            IndividualEntityGenerator.class, builder -> builder.type(IndividualType.CLIENT));
+    persistedDataGenerator.createAndPersist(
+        ApplicationEntityGenerator.class, builder -> builder.individuals(Set.of(client)));
     // when
-    HarnessResult result = getUri(
-        TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + UUID.randomUUID() + "&individualType=CLIENT");
+    HarnessResult result =
+        getUri(
+            TestConstants.URIs.GET_INDIVIDUALS
+                + "?applicationId="
+                + UUID.randomUUID()
+                + "&individualType=CLIENT");
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     // then
     assertOK(result);
@@ -286,10 +308,11 @@ public class GetIndividualsTest extends BaseHarnessTest {
   @Test
   void givenNonExistentApplicationId_whenGetIndividuals_thenReturnsEmptyList() throws Exception {
     // given
-    persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class,
-        builder -> builder.type(IndividualType.CLIENT));
+    persistedDataGenerator.createAndPersist(
+        IndividualEntityGenerator.class, builder -> builder.type(IndividualType.CLIENT));
     // when
-    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + UUID.randomUUID());
+    HarnessResult result =
+        getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + UUID.randomUUID());
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     // then
     assertOK(result);
@@ -297,60 +320,77 @@ public class GetIndividualsTest extends BaseHarnessTest {
   }
 
   @Test
-  void givenMultipleIndividualsLinkedToApplication_whenGetIndividuals_thenReturnsAllLinked() throws Exception {
+  void givenMultipleIndividualsLinkedToApplication_whenGetIndividuals_thenReturnsAllLinked()
+      throws Exception {
     // given
     IndividualEntity individual1 = DataGenerator.createDefault(IndividualEntityGenerator.class);
     IndividualEntity individual2 = DataGenerator.createDefault(IndividualEntityGenerator.class);
     IndividualEntity individual3 = DataGenerator.createDefault(IndividualEntityGenerator.class);
-    var application = persistedDataGenerator.createAndPersist(
-        ApplicationEntityGenerator.class,
-        builder -> builder.individuals(Set.of(individual1, individual2, individual3))
-    );
-    persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class); // unrelated individual
+    var application =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder -> builder.individuals(Set.of(individual1, individual2, individual3)));
+    persistedDataGenerator.createAndPersist(
+        IndividualEntityGenerator.class); // unrelated individual
     // when
-    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + application.getId());
+    HarnessResult result =
+        getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + application.getId());
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     // then
     assertOK(result);
     assertThat(response.getIndividuals()).hasSize(3);
     assertThat(response.getIndividuals())
         .extracting(IndividualResponse::getFirstName)
-        .containsExactlyInAnyOrder(individual1.getFirstName(), individual2.getFirstName(), individual3.getFirstName());
+        .containsExactlyInAnyOrder(
+            individual1.getFirstName(), individual2.getFirstName(), individual3.getFirstName());
   }
 
   @Test
-  void givenIndividualLinkedToMultipleApplications_whenGetIndividuals_thenReturnsIndividual() throws Exception {
+  void givenIndividualLinkedToMultipleApplications_whenGetIndividuals_thenReturnsIndividual()
+      throws Exception {
     // given — persist the individual first so it has an ID, then link to both applications
-    IndividualEntity sharedIndividual = persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class);
-    var application1 = persistedDataGenerator.createAndPersistWithPersistedIndividuals(
-        builder -> builder.individuals(Set.of(sharedIndividual))
-    );
+    IndividualEntity sharedIndividual =
+        persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class);
+    var application1 =
+        persistedDataGenerator.createAndPersistWithPersistedIndividuals(
+            builder -> builder.individuals(Set.of(sharedIndividual)));
     persistedDataGenerator.createAndPersistWithPersistedIndividuals(
-        builder -> builder.individuals(Set.of(sharedIndividual))
-    );
+        builder -> builder.individuals(Set.of(sharedIndividual)));
     // when
-    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + application1.getId());
+    HarnessResult result =
+        getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + application1.getId());
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     // then
     assertOK(result);
     assertThat(response.getIndividuals()).hasSize(1);
-    assertThat(response.getIndividuals().getFirst().getFirstName()).isEqualTo(sharedIndividual.getFirstName());
+    assertThat(response.getIndividuals().getFirst().getFirstName())
+        .isEqualTo(sharedIndividual.getFirstName());
   }
 
   @Test
-  public void givenNoUser_whenGetIndividualsWithFilters_thenReturnUnauthorisedResponse() throws Exception {
+  public void givenNoUser_whenGetIndividualsWithFilters_thenReturnUnauthorisedResponse()
+      throws Exception {
     withNoToken();
-    HarnessResult result = getUri(
-        TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + UUID.randomUUID() + "&individualType=CLIENT");
+    HarnessResult result =
+        getUri(
+            TestConstants.URIs.GET_INDIVIDUALS
+                + "?applicationId="
+                + UUID.randomUUID()
+                + "&individualType=CLIENT");
     assertSecurityHeaders(result);
     assertUnauthorised(result);
   }
 
   @Test
-  public void givenUnknownRole_whenGetIndividualsWithFilters_thenReturnForbiddenResponse() throws Exception {
+  public void givenUnknownRole_whenGetIndividualsWithFilters_thenReturnForbiddenResponse()
+      throws Exception {
     withToken(TestConstants.Tokens.UNKNOWN);
-    HarnessResult result = getUri(
-        TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + UUID.randomUUID() + "&individualType=CLIENT");
+    HarnessResult result =
+        getUri(
+            TestConstants.URIs.GET_INDIVIDUALS
+                + "?applicationId="
+                + UUID.randomUUID()
+                + "&individualType=CLIENT");
     assertSecurityHeaders(result);
     assertForbidden(result);
   }
@@ -364,16 +404,22 @@ public class GetIndividualsTest extends BaseHarnessTest {
   }
 
   @Test
-  public void givenWriterRole_whenGetIndividualsWithFilters_thenReturnForbiddenResponse() throws Exception {
+  public void givenWriterRole_whenGetIndividualsWithFilters_thenReturnForbiddenResponse()
+      throws Exception {
     withToken(TestConstants.Tokens.UNKNOWN);
-    HarnessResult result = getUri(
-        TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + UUID.randomUUID() + "&individualType=CLIENT");
+    HarnessResult result =
+        getUri(
+            TestConstants.URIs.GET_INDIVIDUALS
+                + "?applicationId="
+                + UUID.randomUUID()
+                + "&individualType=CLIENT");
     assertSecurityHeaders(result);
     assertForbidden(result);
   }
 
   @Test
-  public void givenUserWithNoAuthorities_whenGetIndividuals_thenReturnForbiddenResponse() throws Exception {
+  public void givenUserWithNoAuthorities_whenGetIndividuals_thenReturnForbiddenResponse()
+      throws Exception {
     withToken(TestConstants.Tokens.UNKNOWN);
     HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     assertSecurityHeaders(result);
@@ -381,7 +427,8 @@ public class GetIndividualsTest extends BaseHarnessTest {
   }
 
   @Test
-  public void givenUserWithNoAuthorities_whenGetIndividualsWithPaging_thenReturnForbiddenResponse() throws Exception {
+  public void givenUserWithNoAuthorities_whenGetIndividualsWithPaging_thenReturnForbiddenResponse()
+      throws Exception {
     withToken(TestConstants.Tokens.UNKNOWN);
     HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=1&pageSize=10");
     assertSecurityHeaders(result);

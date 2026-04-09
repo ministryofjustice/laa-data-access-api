@@ -50,65 +50,80 @@ import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 public class CreateApplicationTest extends BaseHarnessTest {
   private static final int applicationVersion = 1;
 
-
   private static Stream<Arguments> createApplicationTestParameters() {
-      return Stream.of(
-              Arguments.of(new ApplicationOffice()),
-              Arguments.of(DataGenerator.createDefault(ApplicationOfficeGenerator.class))
-      );
+    return Stream.of(
+        Arguments.of(new ApplicationOffice()),
+        Arguments.of(DataGenerator.createDefault(ApplicationOfficeGenerator.class)));
   }
 
   @SmokeTest
   @ParameterizedTest
   @MethodSource("createApplicationTestParameters")
   public void givenCreateNewApplication_whenCreateApplication_thenReturnCreatedWithLocationHeader(
-          ApplicationOffice office
-  ) throws Exception {
-      verifyCreateNewApplication(office, null);
+      ApplicationOffice office) throws Exception {
+    verifyCreateNewApplication(office, null);
   }
 
   @SmokeTest
   @Test
-  public void givenCreateNewApplication_whenCreateApplicationAndNoOffice_thenReturnCreatedWithLocationHeader() throws Exception {
+  public void
+      givenCreateNewApplication_whenCreateApplicationAndNoOffice_thenReturnCreatedWithLocationHeader()
+          throws Exception {
     verifyCreateNewApplication(null, null);
   }
 
   @Test
-  public void givenCreateNewApplication_whenCreateApplicationWithCivilDecideServiceName_thenReturnCreatedAndPersistServiceName() throws Exception {
+  public void
+      givenCreateNewApplication_whenCreateApplicationWithCivilDecideServiceName_thenReturnCreatedAndPersistServiceName()
+          throws Exception {
     verifyCreateNewApplicationWithServiceName(ServiceName.CIVIL_DECIDE);
   }
 
   @Test
-  public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_thenReturnCreatedWithLocationHeader() throws Exception {
-    final ApplicationEntity leadApplicationToLink = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-    final LinkedApplication linkedApplication = LinkedApplication.builder()
-        .leadApplicationId(leadApplicationToLink.getApplyApplicationId())
-        .associatedApplicationId(UUID.randomUUID())
-        .build();
+  public void
+      givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_thenReturnCreatedWithLocationHeader()
+          throws Exception {
+    final ApplicationEntity leadApplicationToLink =
+        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+    final LinkedApplication linkedApplication =
+        LinkedApplication.builder()
+            .leadApplicationId(leadApplicationToLink.getApplyApplicationId())
+            .associatedApplicationId(UUID.randomUUID())
+            .build();
     final var createdEntity = verifyCreateNewApplication(null, linkedApplication);
-    final ApplicationEntity leadApplication = applicationRepository.findByIdWithLinkedApplications(leadApplicationToLink.getId()).orElseThrow();
+    final ApplicationEntity leadApplication =
+        applicationRepository
+            .findByIdWithLinkedApplications(leadApplicationToLink.getId())
+            .orElseThrow();
     assertLinkedApplicationCorrectlyApplied(leadApplication, createdEntity);
   }
 
   @Test
-  public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_raiseIfLeadNotFound() throws Exception {
+  public void
+      givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_raiseIfLeadNotFound()
+          throws Exception {
     // given
     UUID notFoundLeadId = UUID.randomUUID();
     UUID associatedApplicationId = UUID.randomUUID();
 
-    LinkedApplication linkedApplication = LinkedApplication.builder()
-        .leadApplicationId(notFoundLeadId)
-        .associatedApplicationId(associatedApplicationId)
-        .build();
+    LinkedApplication linkedApplication =
+        LinkedApplication.builder()
+            .leadApplicationId(notFoundLeadId)
+            .associatedApplicationId(associatedApplicationId)
+            .build();
 
-    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class,
-        builder -> builder.allLinkedApplications(List.of(linkedApplication))
-                          .id(associatedApplicationId)
-    );
+    ApplicationContent content =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            builder ->
+                builder
+                    .allLinkedApplications(List.of(linkedApplication))
+                    .id(associatedApplicationId));
 
-    ApplicationCreateRequest request = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
-    );
+    ApplicationCreateRequest request =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
 
     // when
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -118,39 +133,50 @@ public class CreateApplicationTest extends BaseHarnessTest {
     assertNotFound(result);
     assertEquals("application/problem+json", result.getResponse().getHeader("Content-Type"));
     ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
-    assertEquals("Linking failed > Lead application not found, ID: " + notFoundLeadId, problemDetail.getDetail());
+    assertEquals(
+        "Linking failed > Lead application not found, ID: " + notFoundLeadId,
+        problemDetail.getDetail());
   }
 
   @Test
-  public void givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_raiseIfAssociatedNotFound() throws Exception {
+  public void
+      givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_raiseIfAssociatedNotFound()
+          throws Exception {
     // given
     UUID leadApplicationId = UUID.randomUUID();
     UUID associatedApplicationId = UUID.randomUUID();
     UUID missingLinkedApplication = UUID.randomUUID();
 
-    ApplicationEntity leadApp = persistedDataGenerator.createAndPersist(
-        ApplicationEntityGenerator.class,
-        applicationEntityBuilder -> applicationEntityBuilder.applyApplicationId(leadApplicationId)
-    );
+    ApplicationEntity leadApp =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            applicationEntityBuilder ->
+                applicationEntityBuilder.applyApplicationId(leadApplicationId));
 
-    LinkedApplication linkedApplication = LinkedApplication.builder()
-        .leadApplicationId(leadApplicationId)
-        .associatedApplicationId(associatedApplicationId)
-        .build();
+    LinkedApplication linkedApplication =
+        LinkedApplication.builder()
+            .leadApplicationId(leadApplicationId)
+            .associatedApplicationId(associatedApplicationId)
+            .build();
 
-    LinkedApplication invalidLinkedApplication = LinkedApplication.builder()
-        .leadApplicationId(leadApplicationId)
-        .associatedApplicationId(missingLinkedApplication)
-        .build();
+    LinkedApplication invalidLinkedApplication =
+        LinkedApplication.builder()
+            .leadApplicationId(leadApplicationId)
+            .associatedApplicationId(missingLinkedApplication)
+            .build();
 
-    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class,
-        builder -> builder.allLinkedApplications(List.of(linkedApplication, invalidLinkedApplication))
-                          .id(associatedApplicationId)
-    );
+    ApplicationContent content =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            builder ->
+                builder
+                    .allLinkedApplications(List.of(linkedApplication, invalidLinkedApplication))
+                    .id(associatedApplicationId));
 
-    ApplicationCreateRequest request = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
-    );
+    ApplicationCreateRequest request =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
 
     // when
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -160,30 +186,41 @@ public class CreateApplicationTest extends BaseHarnessTest {
     assertNotFound(result);
     assertEquals("application/problem+json", result.getResponse().getHeader("Content-Type"));
     ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
-    assertEquals("No linked application found with associated apply ids: " + List.of(missingLinkedApplication), problemDetail.getDetail());
+    assertEquals(
+        "No linked application found with associated apply ids: "
+            + List.of(missingLinkedApplication),
+        problemDetail.getDetail());
   }
 
   @Test
-  public void givenDuplicateApplyApplicationId_whenCreateApplication_thenReturnBadRequest() throws Exception {
+  public void givenDuplicateApplyApplicationId_whenCreateApplication_thenReturnBadRequest()
+      throws Exception {
     // given
-    ApplicationEntity existingApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+    ApplicationEntity existingApplication =
+        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
-    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class,
-        builder -> builder.id(existingApplication.getApplyApplicationId())
-    );
+    ApplicationContent content =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            builder -> builder.id(existingApplication.getApplyApplicationId()));
 
-    ApplicationCreateRequest request = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
-    );
+    ApplicationCreateRequest request =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
 
-    ProblemDetail expectedProblemDetail = ProblemDetailBuilder.create()
-        .status(HttpStatus.BAD_REQUEST)
-        .title("Bad Request")
-        .detail("Generic Validation Error")
-        .build();
+    ProblemDetail expectedProblemDetail =
+        ProblemDetailBuilder.create()
+            .status(HttpStatus.BAD_REQUEST)
+            .title("Bad Request")
+            .detail("Generic Validation Error")
+            .build();
 
-    expectedProblemDetail.setProperty("errors",
-        List.of("Application already exists for Apply Application Id: " + existingApplication.getApplyApplicationId()));
+    expectedProblemDetail.setProperty(
+        "errors",
+        List.of(
+            "Application already exists for Apply Application Id: "
+                + existingApplication.getApplyApplicationId()));
 
     // when
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -194,80 +231,108 @@ public class CreateApplicationTest extends BaseHarnessTest {
     assertProblemRecord(HttpStatus.BAD_REQUEST, expectedProblemDetail, result, detail);
   }
 
-  private ApplicationEntity verifyCreateNewApplication(ApplicationOffice office, LinkedApplication linkedApplication) throws Exception {
-    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class,
-        builder -> builder.office(office)
-                          .allLinkedApplications(linkedApplication == null ? null : List.of(linkedApplication))
-                          .id(linkedApplication == null ? UUID.randomUUID() : linkedApplication.getAssociatedApplicationId())
-    );
+  private ApplicationEntity verifyCreateNewApplication(
+      ApplicationOffice office, LinkedApplication linkedApplication) throws Exception {
+    ApplicationContent content =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            builder ->
+                builder
+                    .office(office)
+                    .allLinkedApplications(
+                        linkedApplication == null ? null : List.of(linkedApplication))
+                    .id(
+                        linkedApplication == null
+                            ? UUID.randomUUID()
+                            : linkedApplication.getAssociatedApplicationId()));
 
-    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
-    );
+    ApplicationCreateRequest applicationCreateRequest =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
 
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
 
     assertSecurityHeaders(result);
     assertCreated(result);
 
-    UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    UUID createdApplicationId =
+        HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
     persistedDataGenerator.trackExistingApplication(createdApplicationId);
-    ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
-      .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
+    ApplicationEntity createdApplication =
+        applicationRepository
+            .findById(createdApplicationId)
+            .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
     assertApplicationEqual(applicationCreateRequest, createdApplication);
 
-    domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED);
+    domainEventAsserts.assertDomainEventForApplication(
+        createdApplication, DomainEventType.APPLICATION_CREATED);
     return createdApplication;
   }
 
   private void verifyCreateNewApplicationWithServiceName(ServiceName serviceName) throws Exception {
     ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class);
-    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-        builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class))
-    );
+    ApplicationCreateRequest applicationCreateRequest =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
 
-    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest, ServiceNameHeader(serviceName.getValue()));
+    HarnessResult result =
+        postUri(
+            TestConstants.URIs.CREATE_APPLICATION,
+            applicationCreateRequest,
+            ServiceNameHeader(serviceName.getValue()));
 
     assertSecurityHeaders(result);
     assertCreated(result);
 
-    UUID createdApplicationId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    UUID createdApplicationId =
+        HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
     persistedDataGenerator.trackExistingApplication(createdApplicationId);
-    ApplicationEntity createdApplication = applicationRepository.findById(createdApplicationId)
-      .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
+    ApplicationEntity createdApplication =
+        applicationRepository
+            .findById(createdApplicationId)
+            .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
 
-    domainEventAsserts.assertDomainEventForApplication(createdApplication, DomainEventType.APPLICATION_CREATED, serviceName);
+    domainEventAsserts.assertDomainEventForApplication(
+        createdApplication, DomainEventType.APPLICATION_CREATED, serviceName);
   }
 
   @SmokeTest
   @ParameterizedTest
   @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
-  public void givenCreateNewApplication_whenCreateApplicationAndInvalidServiceNameHeader_thenReturnBadRequest(
-          String serviceName
-  ) throws Exception {
+  public void
+      givenCreateNewApplication_whenCreateApplicationAndInvalidServiceNameHeader_thenReturnBadRequest(
+          String serviceName) throws Exception {
     verifyBadServiceNameHeader(serviceName);
   }
 
   @SmokeTest
   @Test
-  public void givenCreateNewApplication_whenCreateApplicationAndNoServiceNameHeader_thenReturnBadRequest() throws Exception {
+  public void
+      givenCreateNewApplication_whenCreateApplicationAndNoServiceNameHeader_thenReturnBadRequest()
+          throws Exception {
     verifyBadServiceNameHeader(null);
   }
 
   private void verifyBadServiceNameHeader(String serviceName) throws Exception {
-      ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
+    ApplicationCreateRequest applicationCreateRequest =
+        DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
 
-      HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION,
-              applicationCreateRequest,
-              ServiceNameHeader(serviceName));
-      assertBadRequest(result);
+    HarnessResult result =
+        postUri(
+            TestConstants.URIs.CREATE_APPLICATION,
+            applicationCreateRequest,
+            ServiceNameHeader(serviceName));
+    assertBadRequest(result);
   }
 
   @ParameterizedTest
   @MethodSource("applicationCreateRequestInvalidDataCases")
-  public void givenInvalidApplicationRequestData_whenCreateApplication_thenReturnBadRequest(ApplicationCreateRequest request,
-                                                                                            ProblemDetail expectedDetail,
-                                                                                            Map<String, Object> problemDetailProperties)
+  public void givenInvalidApplicationRequestData_whenCreateApplication_thenReturnBadRequest(
+      ApplicationCreateRequest request,
+      ProblemDetail expectedDetail,
+      Map<String, Object> problemDetailProperties)
       throws Exception {
     // when
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -281,13 +346,17 @@ public class CreateApplicationTest extends BaseHarnessTest {
   }
 
   @Test
-  public void givenInvalidApplicationContent_EmptyMap_whenCreateApplication_thenReturnBadRequest() throws Exception {
-    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-        builder -> builder.applicationContent(new HashMap<>())
-    );
+  public void givenInvalidApplicationContent_EmptyMap_whenCreateApplication_thenReturnBadRequest()
+      throws Exception {
+    ApplicationCreateRequest applicationCreateRequest =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(new HashMap<>()));
 
-    ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
-    expectedProblemDetail.setProperty("invalidFields", Map.of("applicationContent","size must be between 1 and 2147483647"));
+    ProblemDetail expectedProblemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
+    expectedProblemDetail.setProperty(
+        "invalidFields", Map.of("applicationContent", "size must be between 1 and 2147483647"));
 
     // when
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
@@ -300,15 +369,17 @@ public class CreateApplicationTest extends BaseHarnessTest {
   }
 
   @Test
-  public void givenInvalidApplicationContent_whenCreateApplication_thenReturnBadRequest() throws Exception {
-    ApplicationCreateRequest applicationCreateRequest = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-        builder -> builder.applicationContent(null)
-    );
+  public void givenInvalidApplicationContent_whenCreateApplication_thenReturnBadRequest()
+      throws Exception {
+    ApplicationCreateRequest applicationCreateRequest =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class, builder -> builder.applicationContent(null));
 
     Map<String, String> invalidFields = new HashMap<>();
     invalidFields.put("applicationContent", "must not be null");
 
-    ProblemDetail expectedProblemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
+    ProblemDetail expectedProblemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
     expectedProblemDetail.setProperty("invalidFields", invalidFields);
     // when
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
@@ -323,34 +394,41 @@ public class CreateApplicationTest extends BaseHarnessTest {
   private static Stream<Arguments> noRequestBodyCases() {
     return Stream.of(
         Arguments.of("", "Invalid request payload", null),
-        Arguments.of("{}", "Request validation failed",
-            Map.of("invalidFields", Map.of(
-                "applicationContent", "must not be null",
-                "laaReference",        "must not be null",
-                "individuals",         "must not be null",
-                "status",              "must not be null")))
-    );
+        Arguments.of(
+            "{}",
+            "Request validation failed",
+            Map.of(
+                "invalidFields",
+                Map.of(
+                    "applicationContent", "must not be null",
+                    "laaReference", "must not be null",
+                    "individuals", "must not be null",
+                    "status", "must not be null"))));
   }
 
   @ParameterizedTest
   @MethodSource("noRequestBodyCases")
   public void givenNoRequestBody_whenCreateApplication_thenReturnBadRequest(
-          String request, String expectedDetail, Map<String, Object> expectedProperties) throws Exception {
+      String request, String expectedDetail, Map<String, Object> expectedProperties)
+      throws Exception {
     // when
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
     ProblemDetail detail = deserialise(result, ProblemDetail.class);
 
     // then
     assertSecurityHeaders(result);
-    assertProblemRecord(HttpStatus.BAD_REQUEST, "Bad Request", expectedDetail, result, detail, expectedProperties);
+    assertProblemRecord(
+        HttpStatus.BAD_REQUEST, "Bad Request", expectedDetail, result, detail, expectedProperties);
     assertTrue(trackedApplicationIds().isEmpty(), "Expected no application to be persisted");
   }
 
   @Test
-  public void givenCorrectRequestBodyAndReaderRole_whenCreateApplication_thenReturnForbidden() throws Exception {
+  public void givenCorrectRequestBodyAndReaderRole_whenCreateApplication_thenReturnForbidden()
+      throws Exception {
     // given
     withToken(TestConstants.Tokens.UNKNOWN);
-    ApplicationCreateRequest request = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
+    ApplicationCreateRequest request =
+        DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
 
     // when
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -361,10 +439,13 @@ public class CreateApplicationTest extends BaseHarnessTest {
   }
 
   @Test
-  public void givenCorrectRequestBodyAndNoAuthentication_whenCreateApplication_thenReturnUnauthorised() throws Exception {
+  public void
+      givenCorrectRequestBodyAndNoAuthentication_whenCreateApplication_thenReturnUnauthorised()
+          throws Exception {
     // given
     withNoToken();
-    ApplicationCreateRequest request = DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
+    ApplicationCreateRequest request =
+        DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
 
     // when
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -376,87 +457,151 @@ public class CreateApplicationTest extends BaseHarnessTest {
 
   private static Stream<Arguments> applicationCreateRequestInvalidDataCases() {
     ProblemDetail problemDetail =
-        ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request").detail("Request validation failed")
+        ProblemDetailBuilder.create()
+            .status(HttpStatus.BAD_REQUEST)
+            .title("Bad Request")
+            .detail("Request validation failed")
             .build();
     problemDetail.setType(null);
     String minimumSizErrorMessage = "size must be between 1 and " + Integer.MAX_VALUE;
     String mustNotBeNull = "must not be null";
 
-
     return Stream.of(
-        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-            builder -> builder.status(null)),
-            problemDetail, Map.of("invalidFields", Map.of("status", mustNotBeNull))),
-        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-            builder -> builder.laaReference(null)),
-            problemDetail, Map.of("invalidFields", Map.of("laaReference", mustNotBeNull))),
-        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-            builder -> builder.applicationContent(null)),
-            problemDetail, Map.of("invalidFields", Map.of("applicationContent", mustNotBeNull))),
-        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-            builder -> builder.applicationContent(new HashMap<>())),
-            problemDetail, Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
-        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-            builder -> builder.applicationContent(Map.of("applicationContent", Map.of("proceedings", List.of())))),
-            ProblemDetailBuilder.create().status(HttpStatus.BAD_REQUEST).title("Bad Request").detail("Generic Validation Error")
-                .build(), Map.of("errors", List.of("id: must not be null",
-            "submittedAt: must not be null"))),
-        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-            builder -> builder.individuals(null)),
-            problemDetail, Map.of("invalidFields", Map.of("individuals", mustNotBeNull))),
-        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-            builder -> builder.individuals(List.of())),
-            problemDetail, Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))),
-        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-            builder -> builder.individuals(List.of(
-                DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
-                    indBuilder -> indBuilder.dateOfBirth(null))
-            ))),
-            problemDetail, Map.of("invalidFields", Map.of("individuals[0].dateOfBirth", mustNotBeNull))),
-        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-            builder -> builder.individuals(List.of(
-                DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
-                    indBuilder -> indBuilder.details(null))
-            ))),
-            problemDetail, Map.of("invalidFields", Map.of("individuals[0].details", mustNotBeNull))),
-        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-            builder -> builder.individuals(List.of(
-                DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
-                    indBuilder -> indBuilder.details(new HashMap<>()))
-            ))),
-            problemDetail, Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
-        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-            builder -> builder.individuals(List.of(
-                DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
-                    indBuilder -> indBuilder.dateOfBirth(null).firstName("").lastName("").type(null)
-                        .details(new HashMap<>()))
-            ))),
-            problemDetail, Map.of("invalidFields",
+        Arguments.of(
+            DataGenerator.createDefault(
+                ApplicationCreateRequestGenerator.class, builder -> builder.status(null)),
+            problemDetail,
+            Map.of("invalidFields", Map.of("status", mustNotBeNull))),
+        Arguments.of(
+            DataGenerator.createDefault(
+                ApplicationCreateRequestGenerator.class, builder -> builder.laaReference(null)),
+            problemDetail,
+            Map.of("invalidFields", Map.of("laaReference", mustNotBeNull))),
+        Arguments.of(
+            DataGenerator.createDefault(
+                ApplicationCreateRequestGenerator.class,
+                builder -> builder.applicationContent(null)),
+            problemDetail,
+            Map.of("invalidFields", Map.of("applicationContent", mustNotBeNull))),
+        Arguments.of(
+            DataGenerator.createDefault(
+                ApplicationCreateRequestGenerator.class,
+                builder -> builder.applicationContent(new HashMap<>())),
+            problemDetail,
+            Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
+        Arguments.of(
+            DataGenerator.createDefault(
+                ApplicationCreateRequestGenerator.class,
+                builder ->
+                    builder.applicationContent(
+                        Map.of("applicationContent", Map.of("proceedings", List.of())))),
+            ProblemDetailBuilder.create()
+                .status(HttpStatus.BAD_REQUEST)
+                .title("Bad Request")
+                .detail("Generic Validation Error")
+                .build(),
+            Map.of("errors", List.of("id: must not be null", "submittedAt: must not be null"))),
+        Arguments.of(
+            DataGenerator.createDefault(
+                ApplicationCreateRequestGenerator.class, builder -> builder.individuals(null)),
+            problemDetail,
+            Map.of("invalidFields", Map.of("individuals", mustNotBeNull))),
+        Arguments.of(
+            DataGenerator.createDefault(
+                ApplicationCreateRequestGenerator.class, builder -> builder.individuals(List.of())),
+            problemDetail,
+            Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))),
+        Arguments.of(
+            DataGenerator.createDefault(
+                ApplicationCreateRequestGenerator.class,
+                builder ->
+                    builder.individuals(
+                        List.of(
+                            DataGenerator.createDefault(
+                                ApplicationCreateRequestIndividualGenerator.class,
+                                indBuilder -> indBuilder.dateOfBirth(null))))),
+            problemDetail,
+            Map.of("invalidFields", Map.of("individuals[0].dateOfBirth", mustNotBeNull))),
+        Arguments.of(
+            DataGenerator.createDefault(
+                ApplicationCreateRequestGenerator.class,
+                builder ->
+                    builder.individuals(
+                        List.of(
+                            DataGenerator.createDefault(
+                                ApplicationCreateRequestIndividualGenerator.class,
+                                indBuilder -> indBuilder.details(null))))),
+            problemDetail,
+            Map.of("invalidFields", Map.of("individuals[0].details", mustNotBeNull))),
+        Arguments.of(
+            DataGenerator.createDefault(
+                ApplicationCreateRequestGenerator.class,
+                builder ->
+                    builder.individuals(
+                        List.of(
+                            DataGenerator.createDefault(
+                                ApplicationCreateRequestIndividualGenerator.class,
+                                indBuilder -> indBuilder.details(new HashMap<>()))))),
+            problemDetail,
+            Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
+        Arguments.of(
+            DataGenerator.createDefault(
+                ApplicationCreateRequestGenerator.class,
+                builder ->
+                    builder.individuals(
+                        List.of(
+                            DataGenerator.createDefault(
+                                ApplicationCreateRequestIndividualGenerator.class,
+                                indBuilder ->
+                                    indBuilder
+                                        .dateOfBirth(null)
+                                        .firstName("")
+                                        .lastName("")
+                                        .type(null)
+                                        .details(new HashMap<>()))))),
+            problemDetail,
+            Map.of(
+                "invalidFields",
                 Map.of(
                     "individuals[0].details", minimumSizErrorMessage,
                     "individuals[0].type", mustNotBeNull,
                     "individuals[0].dateOfBirth", mustNotBeNull))),
-        Arguments.of(DataGenerator.createDefault(ApplicationCreateRequestGenerator.class,
-            builder -> builder.individuals(List.of(
-                DataGenerator.createDefault(ApplicationCreateRequestIndividualGenerator.class,
-                    indBuilder -> indBuilder.dateOfBirth(null).firstName(null).lastName(null).details(null))
-            ))),
-            problemDetail, Map.of("invalidFields",
-                Map.of("individuals[0].details", mustNotBeNull,
-                    "individuals[0].lastName", mustNotBeNull,
-                    "individuals[0].firstName", mustNotBeNull,
-                    "individuals[0].dateOfBirth", mustNotBeNull
-                )
-            )));
+        Arguments.of(
+            DataGenerator.createDefault(
+                ApplicationCreateRequestGenerator.class,
+                builder ->
+                    builder.individuals(
+                        List.of(
+                            DataGenerator.createDefault(
+                                ApplicationCreateRequestIndividualGenerator.class,
+                                indBuilder ->
+                                    indBuilder
+                                        .dateOfBirth(null)
+                                        .firstName(null)
+                                        .lastName(null)
+                                        .details(null))))),
+            problemDetail,
+            Map.of(
+                "invalidFields",
+                Map.of(
+                    "individuals[0].details",
+                    mustNotBeNull,
+                    "individuals[0].lastName",
+                    mustNotBeNull,
+                    "individuals[0].firstName",
+                    mustNotBeNull,
+                    "individuals[0].dateOfBirth",
+                    mustNotBeNull))));
   }
-
 
   private void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual)
       throws JacksonException {
     assertNotNull(actual.getId());
 
-    JsonNode expectedContentNode = objectMapper.readTree(objectMapper.writeValueAsString(expected.getApplicationContent()));
-    JsonNode actualContentNode = objectMapper.readTree(objectMapper.writeValueAsString(actual.getApplicationContent()));
+    JsonNode expectedContentNode =
+        objectMapper.readTree(objectMapper.writeValueAsString(expected.getApplicationContent()));
+    JsonNode actualContentNode =
+        objectMapper.readTree(objectMapper.writeValueAsString(actual.getApplicationContent()));
 
     assertEquals(expectedContentNode, actualContentNode);
 
@@ -467,9 +612,12 @@ public class CreateApplicationTest extends BaseHarnessTest {
     assertNotNull(actual.getSubmittedAt());
   }
 
-  private void assertLinkedApplicationCorrectlyApplied(ApplicationEntity leadApplication, ApplicationEntity linkedApplication) {
-    assertEquals(1, leadApplication.getLinkedApplications().stream()
-        .filter(linkedApp -> linkedApp.getId().equals(linkedApplication.getId()))
-        .count());
+  private void assertLinkedApplicationCorrectlyApplied(
+      ApplicationEntity leadApplication, ApplicationEntity linkedApplication) {
+    assertEquals(
+        1,
+        leadApplication.getLinkedApplications().stream()
+            .filter(linkedApp -> linkedApp.getId().equals(linkedApplication.getId()))
+            .count());
   }
 }

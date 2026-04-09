@@ -22,9 +22,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 
-/**
- * Represents a domain events table.
- */
+/** Represents a domain events table. */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter

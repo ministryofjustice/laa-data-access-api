@@ -10,48 +10,49 @@ import uk.gov.justice.laa.dstew.access.Constants;
 
 public class IntegrationTestContextProvider implements TestContextProvider {
 
-    private static final PostgreSQLContainer<?> postgreSQLContainer = new PostgreSQLContainer<>(Constants.POSTGRES_INSTANCE);
+  private static final PostgreSQLContainer<?> postgreSQLContainer =
+      new PostgreSQLContainer<>(Constants.POSTGRES_INSTANCE);
 
-    static {
-      postgreSQLContainer.start();
-    }
+  static {
+    postgreSQLContainer.start();
+  }
 
-    private final ConfigurableApplicationContext applicationContext;
-    private final WebTestClient webTestClient;
+  private final ConfigurableApplicationContext applicationContext;
+  private final WebTestClient webTestClient;
 
-    public IntegrationTestContextProvider() {
+  public IntegrationTestContextProvider() {
 
-        applicationContext = new SpringApplicationBuilder(AccessApp.class)
-                .web(org.springframework.boot.WebApplicationType.SERVLET)
-                .run(
-                        "--server.port=0",
-                        "--spring.datasource.url=" + postgreSQLContainer.getJdbcUrl(),
-                        "--spring.datasource.username=" + postgreSQLContainer.getUsername(),
-                        "--spring.datasource.password=" + postgreSQLContainer.getPassword(),
-                        "--feature.enable-dev-token=true",
-                        "--feature.disable-security=false"
-                );
+    applicationContext =
+        new SpringApplicationBuilder(AccessApp.class)
+            .web(org.springframework.boot.WebApplicationType.SERVLET)
+            .run(
+                "--server.port=0",
+                "--spring.datasource.url=" + postgreSQLContainer.getJdbcUrl(),
+                "--spring.datasource.username=" + postgreSQLContainer.getUsername(),
+                "--spring.datasource.password=" + postgreSQLContainer.getPassword(),
+                "--feature.enable-dev-token=true",
+                "--feature.disable-security=false");
 
-        int port = applicationContext.getBean(Environment.class)
-                .getRequiredProperty("local.server.port", Integer.class);
+    int port =
+        applicationContext
+            .getBean(Environment.class)
+            .getRequiredProperty("local.server.port", Integer.class);
 
-        webTestClient = WebTestClient.bindToServer()
-                .baseUrl("http://localhost:" + port)
-                .build();
-    }
+    webTestClient = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
+  }
 
-    @Override
-    public WebTestClient webTestClient() {
-        return webTestClient;
-    }
+  @Override
+  public WebTestClient webTestClient() {
+    return webTestClient;
+  }
 
-    @Override
-    public <T> T getBean(Class<T> type) {
-        return applicationContext.getBean(type);
-    }
+  @Override
+  public <T> T getBean(Class<T> type) {
+    return applicationContext.getBean(type);
+  }
 
-    @Override
-    public void close() {
-        //applicationContext.close();
-    }
+  @Override
+  public void close() {
+    // applicationContext.close();
+  }
 }

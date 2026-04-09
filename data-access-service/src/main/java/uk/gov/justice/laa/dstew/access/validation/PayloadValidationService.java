@@ -12,10 +12,9 @@ import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Utility service to convert arbitrary payloads into typed POJOs and
- * validate them using Bean Validation. Any mapping or validation errors are
- * converted into {@link ValidationException} so they are handled consistently
- * by {@code GlobalExceptionHandler}.
+ * Utility service to convert arbitrary payloads into typed POJOs and validate them using Bean
+ * Validation. Any mapping or validation errors are converted into {@link ValidationException} so
+ * they are handled consistently by {@code GlobalExceptionHandler}.
  */
 @Service
 @RequiredArgsConstructor
@@ -24,14 +23,13 @@ public class PayloadValidationService {
   private final ObjectMapper objectMapper;
   private final Validator validator;
 
-
   /**
-   * Converts the given source object into an instance of the specified target type
-   * and validates it. If mapping or validation fails, a {@link ValidationException}
+   * Converts the given source object into an instance of the specified target type and validates
+   * it. If mapping or validation fails, a {@link ValidationException}
    *
-   * @param source     to be converted and validated
+   * @param source to be converted and validated
    * @param targetType the desired target type
-   * @param <T>        the target type
+   * @param <T> the target type
    * @return an instance of the target type
    * @throws ValidationException if mapping or validation fails
    */
@@ -51,9 +49,10 @@ public class PayloadValidationService {
 
     Set<ConstraintViolation<T>> violations = validator.validate(target);
     if (!violations.isEmpty()) {
-      List<String> messages = violations.stream()
-          .map(v -> v.getPropertyPath() + ": " + v.getMessage())
-          .collect(Collectors.toList());
+      List<String> messages =
+          violations.stream()
+              .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+              .collect(Collectors.toList());
       throw new ValidationException(messages);
     }
 

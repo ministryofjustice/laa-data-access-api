@@ -8,9 +8,7 @@ import uk.gov.justice.laa.dstew.access.model.CaseworkerResponse;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
-/**
- * Service for providing caseworkers.
- */
+/** Service for providing caseworkers. */
 @Service
 @RequiredArgsConstructor
 public class CaseworkerService {
@@ -18,14 +16,9 @@ public class CaseworkerService {
   private final CaseworkerRepository caseworkerRepository;
   private final CaseworkerMapper caseworkerMapper;
 
-  /**
-  * Provides a list of all caseworkers.
-  */
+  /** Provides a list of all caseworkers. */
   @AllowApiCaseworker
   public List<CaseworkerResponse> getAllCaseworkers() {
-    return caseworkerRepository.findAll()
-                                .stream()
-                                .map(caseworkerMapper::toCaseworker)
-                                .toList();
+    return caseworkerRepository.findAll().stream().map(caseworkerMapper::toCaseworker).toList();
   }
 }

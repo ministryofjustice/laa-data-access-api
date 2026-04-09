@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.metrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -13,13 +14,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.mockito.Mockito.when;
-
 @ExtendWith(MockitoExtension.class)
 class EntityOperationMetricsListenerTest {
 
   private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
-  private final EntityOperationMetricsListener listener = new EntityOperationMetricsListener(meterRegistry);
+  private final EntityOperationMetricsListener listener =
+      new EntityOperationMetricsListener(meterRegistry);
 
   @Mock private PostLoadEvent postLoadEvent;
   @Mock private PreInsertEvent preInsertEvent;
@@ -32,9 +32,11 @@ class EntityOperationMetricsListenerTest {
 
     listener.onPostLoad(postLoadEvent);
 
-    Counter counter = meterRegistry.find("jpa.entities")
-        .tags("entity", "DummyEntity", "operation", "read")
-        .counter();
+    Counter counter =
+        meterRegistry
+            .find("jpa.entities")
+            .tags("entity", "DummyEntity", "operation", "read")
+            .counter();
     assertThat(counter).isNotNull();
     assertThat(counter.count()).isEqualTo(1.0);
   }
@@ -46,9 +48,11 @@ class EntityOperationMetricsListenerTest {
     boolean result = listener.onPreInsert(preInsertEvent);
 
     assertThat(result).isFalse();
-    Counter counter = meterRegistry.find("jpa.entities")
-        .tags("entity", "DummyEntity", "operation", "create")
-        .counter();
+    Counter counter =
+        meterRegistry
+            .find("jpa.entities")
+            .tags("entity", "DummyEntity", "operation", "create")
+            .counter();
     assertThat(counter).isNotNull();
     assertThat(counter.count()).isEqualTo(1.0);
   }
@@ -60,9 +64,11 @@ class EntityOperationMetricsListenerTest {
     boolean result = listener.onPreUpdate(preUpdateEvent);
 
     assertThat(result).isFalse();
-    Counter counter = meterRegistry.find("jpa.entities")
-        .tags("entity", "DummyEntity", "operation", "update")
-        .counter();
+    Counter counter =
+        meterRegistry
+            .find("jpa.entities")
+            .tags("entity", "DummyEntity", "operation", "update")
+            .counter();
     assertThat(counter).isNotNull();
     assertThat(counter.count()).isEqualTo(1.0);
   }
@@ -74,9 +80,11 @@ class EntityOperationMetricsListenerTest {
     boolean result = listener.onPreDelete(preDeleteEvent);
 
     assertThat(result).isFalse();
-    Counter counter = meterRegistry.find("jpa.entities")
-        .tags("entity", "DummyEntity", "operation", "delete")
-        .counter();
+    Counter counter =
+        meterRegistry
+            .find("jpa.entities")
+            .tags("entity", "DummyEntity", "operation", "delete")
+            .counter();
     assertThat(counter).isNotNull();
     assertThat(counter.count()).isEqualTo(1.0);
   }
@@ -98,9 +106,11 @@ class EntityOperationMetricsListenerTest {
     listener.onPostLoad(postLoadEvent);
     listener.onPostLoad(postLoadEvent);
 
-    Counter counter = meterRegistry.find("jpa.entities")
-        .tags("entity", "DummyEntity", "operation", "read")
-        .counter();
+    Counter counter =
+        meterRegistry
+            .find("jpa.entities")
+            .tags("entity", "DummyEntity", "operation", "read")
+            .counter();
     assertThat(counter).isNotNull();
     assertThat(counter.count()).isEqualTo(2.0);
   }

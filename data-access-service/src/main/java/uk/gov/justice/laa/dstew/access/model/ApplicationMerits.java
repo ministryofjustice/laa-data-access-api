@@ -13,9 +13,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.lang.Nullable;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/**
- * ApplicationMerits pojo.
- */
+/** ApplicationMerits pojo. */
 @Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,19 +21,15 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @ExcludeFromGeneratedCodeCoverage
 public class ApplicationMerits {
 
-  @Nullable
-  private List<OpponentDetails> opponents = new ArrayList<>();
+  @Nullable private List<OpponentDetails> opponents = new ArrayList<>();
 
-  @Nullable
-  private List<Map<String, Object>> involvedChildren;
+  @Nullable private List<Map<String, Object>> involvedChildren;
 
-  @JsonAnyGetter
-  private Map<String, Object> additionalContent;
-
+  @JsonAnyGetter private Map<String, Object> additionalContent;
 
   /**
-   * Set the additional (undeclared) property with the specified name and value.
-   * If the property does not already exist, create it otherwise replace it.
+   * Set the additional (undeclared) property with the specified name and value. If the property
+   * does not already exist, create it otherwise replace it.
    */
   @JsonAnySetter
   public ApplicationMerits putAdditionalContent(String key, Object value) {

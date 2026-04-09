@@ -22,63 +22,67 @@ import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGe
 @ExtendWith(MockitoExtension.class)
 public class DomainEventMapperTest extends BaseMapperTest {
 
-    @InjectMocks
-    private DomainEventMapperImpl mapper;
+  @InjectMocks private DomainEventMapperImpl mapper;
 
-    @Test
-    void givenNullEntity_whenToDomainEvent_thenReturnNull() {
-        assertThat(mapper.toDomainEvent(null)).isNull();
-    }
+  @Test
+  void givenNullEntity_whenToDomainEvent_thenReturnNull() {
+    assertThat(mapper.toDomainEvent(null)).isNull();
+  }
 
-    @ParameterizedTest
-    @NullSource
-    @ValueSource(strings = {"377adde8-632f-43c6-b10b-0843433759d3"})
-    void givenDomainEntity_whenToDomainEvent_thenMapsFieldsCorrectly(String caseworkerIdStr) {
-        UUID id = UUID.randomUUID();
-        UUID applicationId = UUID.randomUUID();
-        UUID caseworkerId = caseworkerIdStr != null ? UUID.fromString(caseworkerIdStr) : null;
-        Instant createdAt = Instant.ofEpochMilli(999_999_000);
-        OffsetDateTime expectedCreatedDateTime = OffsetDateTime.of(1970, 1, 12, 13, 46, 39, 0, ZoneOffset.UTC);
-        String createdBy = "John.Doe";
-        String eventDescription = "{ \"eventDescription\" : \"eventDescription\" }";
-        DomainEventType eventType = DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER;
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"377adde8-632f-43c6-b10b-0843433759d3"})
+  void givenDomainEntity_whenToDomainEvent_thenMapsFieldsCorrectly(String caseworkerIdStr) {
+    UUID id = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = caseworkerIdStr != null ? UUID.fromString(caseworkerIdStr) : null;
+    Instant createdAt = Instant.ofEpochMilli(999_999_000);
+    OffsetDateTime expectedCreatedDateTime =
+        OffsetDateTime.of(1970, 1, 12, 13, 46, 39, 0, ZoneOffset.UTC);
+    String createdBy = "John.Doe";
+    String eventDescription = "{ \"eventDescription\" : \"eventDescription\" }";
+    DomainEventType eventType = DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER;
 
-        DomainEventEntity entity = DomainEventEntity.builder()
-                .id(id)
-                .applicationId(applicationId)
-                .caseworkerId(caseworkerId)
-                .createdAt(createdAt)
-                .createdBy(createdBy)
-                .data(eventDescription)
-                .type(eventType)
-                .build();
+    DomainEventEntity entity =
+        DomainEventEntity.builder()
+            .id(id)
+            .applicationId(applicationId)
+            .caseworkerId(caseworkerId)
+            .createdAt(createdAt)
+            .createdBy(createdBy)
+            .data(eventDescription)
+            .type(eventType)
+            .build();
 
-        ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
+    ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
 
-        assertThat(result.getApplicationId()).isEqualTo(applicationId);
-        assertThat(result.getCaseworkerId()).isEqualTo(caseworkerId);
-        assertThat(result.getCreatedAt()).isEqualTo(expectedCreatedDateTime);
-        assertThat(result.getCreatedBy()).isEqualTo(createdBy);
-        assertThat(result.getDomainEventType()).isEqualTo(eventType);
-        assertThat(result.getEventDescription()).isEqualTo(eventDescription);
-    }
+    assertThat(result.getApplicationId()).isEqualTo(applicationId);
+    assertThat(result.getCaseworkerId()).isEqualTo(caseworkerId);
+    assertThat(result.getCreatedAt()).isEqualTo(expectedCreatedDateTime);
+    assertThat(result.getCreatedBy()).isEqualTo(createdBy);
+    assertThat(result.getDomainEventType()).isEqualTo(eventType);
+    assertThat(result.getEventDescription()).isEqualTo(eventDescription);
+  }
 
-    @Test
-    void givenEntityWithAllNullFields_whenToDomainEvent_thenAllFieldsAreNull() {
-        DomainEventEntity entity = DataGenerator.createDefault(DomainEventGenerator.class,
-                builder -> builder
-                        .applicationId(null)
-                        .caseworkerId(null)
-                        .createdBy(null)
-                        .data(null)
-                        .type(null));
+  @Test
+  void givenEntityWithAllNullFields_whenToDomainEvent_thenAllFieldsAreNull() {
+    DomainEventEntity entity =
+        DataGenerator.createDefault(
+            DomainEventGenerator.class,
+            builder ->
+                builder
+                    .applicationId(null)
+                    .caseworkerId(null)
+                    .createdBy(null)
+                    .data(null)
+                    .type(null));
 
-        ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
+    ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
 
-        assertThat(result.getApplicationId()).isNull();
-        assertThat(result.getCaseworkerId()).isNull();
-        assertThat(result.getCreatedBy()).isNull();
-        assertThat(result.getEventDescription()).isNull();
-        assertThat(result.getDomainEventType()).isNull();
-    }
+    assertThat(result.getApplicationId()).isNull();
+    assertThat(result.getCaseworkerId()).isNull();
+    assertThat(result.getCreatedBy()).isNull();
+    assertThat(result.getEventDescription()).isNull();
+    assertThat(result.getDomainEventType()).isNull();
+  }
 }

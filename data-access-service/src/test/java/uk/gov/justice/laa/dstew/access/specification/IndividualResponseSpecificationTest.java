@@ -36,7 +36,8 @@ class IndividualResponseSpecificationTest {
     when(builder.equal(idPath, applicationId)).thenReturn(predicate);
 
     // when
-    Specification<IndividualEntity> result = IndividualSpecification.filterApplicationId(applicationId);
+    Specification<IndividualEntity> result =
+        IndividualSpecification.filterApplicationId(applicationId);
     Predicate actualPredicate = result.toPredicate(root, query, builder);
 
     // then
@@ -71,7 +72,8 @@ class IndividualResponseSpecificationTest {
     when(builder.equal(typePath, individualType)).thenReturn(predicate);
 
     // when
-    Specification<IndividualEntity> result = IndividualSpecification.filterIndividualType(individualType);
+    Specification<IndividualEntity> result =
+        IndividualSpecification.filterIndividualType(individualType);
     Predicate actualPredicate = result.toPredicate(root, query, builder);
 
     // then

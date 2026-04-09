@@ -16,11 +16,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -34,9 +34,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGene
 @ExtendWith(MockitoExtension.class)
 public class ApplicationMapperTest extends BaseMapperTest {
 
-  @InjectMocks
-  private ApplicationMapperImpl applicationMapper;
-
+  @InjectMocks private ApplicationMapperImpl applicationMapper;
 
   @Test
   void givenApplicationEntity_whenToApplication_thenMapsFieldsCorrectly() {
@@ -48,27 +46,32 @@ public class ApplicationMapperTest extends BaseMapperTest {
     Instant updatedAt = Instant.now();
     String officeCode = "officeCode";
 
-    ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder -> builder
-        .id(id)
-        .status(status)
-        .laaReference(laaReference)
-        .schemaVersion(schemaVersion)
-        .createdAt(createdAt)
-        .modifiedAt(updatedAt)
-        .individuals(Set.of())
-        .officeCode(officeCode)
-        .applicationContent(Map.of()));
+    ApplicationEntity expectedApplicationEntity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .id(id)
+                    .status(status)
+                    .laaReference(laaReference)
+                    .schemaVersion(schemaVersion)
+                    .createdAt(createdAt)
+                    .modifiedAt(updatedAt)
+                    .individuals(Set.of())
+                    .officeCode(officeCode)
+                    .applicationContent(Map.of()));
 
-    ApplicationResponse actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
+    ApplicationResponse actualApplication =
+        applicationMapper.toApplication(expectedApplicationEntity);
 
     assertThat(actualApplication).isNotNull();
     assertThat(actualApplication.getApplicationId()).isEqualTo(id);
     assertThat(actualApplication.getLaaReference()).isEqualTo(laaReference);
     assertThat(actualApplication.getStatus()).isEqualTo(status);
-    assertThat(actualApplication.getLastUpdated()).isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
+    assertThat(actualApplication.getLastUpdated())
+        .isEqualTo(OffsetDateTime.ofInstant(updatedAt, ZoneOffset.UTC));
     assertProviderEquals(actualApplication.getProvider(), officeCode, null);
   }
-
 
   @Test
   void givenNullApplicationEntity_whenToApplication_thenReturnsNull() {
@@ -77,11 +80,14 @@ public class ApplicationMapperTest extends BaseMapperTest {
   }
 
   @Test
-  void givenApplicationWithNullCaseworker_whenToApplication_thenMapsFieldsCorrectlyWithNullCaseworker() {
-    ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder -> builder
-        .caseworker(null));
+  void
+      givenApplicationWithNullCaseworker_whenToApplication_thenMapsFieldsCorrectlyWithNullCaseworker() {
+    ApplicationEntity expectedApplicationEntity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.caseworker(null));
 
-    ApplicationResponse actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
+    ApplicationResponse actualApplication =
+        applicationMapper.toApplication(expectedApplicationEntity);
     assertThat(actualApplication.getAssignedTo()).isNull();
   }
 
@@ -89,13 +95,15 @@ public class ApplicationMapperTest extends BaseMapperTest {
   void givenApplicationWithCaseworker_whenToApplication_thenMapsFieldsCorrectlyWithCaseworker() {
     UUID caseworkerId = UUID.randomUUID();
 
-    CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder -> builder
-        .id(caseworkerId));
+    CaseworkerEntity caseworker =
+        DataGenerator.createDefault(CaseworkerGenerator.class, builder -> builder.id(caseworkerId));
 
-    ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder -> builder
-        .caseworker(caseworker));
+    ApplicationEntity expectedApplicationEntity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.caseworker(caseworker));
 
-    ApplicationResponse actualApplication = applicationMapper.toApplication(expectedApplicationEntity);
+    ApplicationResponse actualApplication =
+        applicationMapper.toApplication(expectedApplicationEntity);
     assertThat(actualApplication.getAssignedTo()).isEqualTo(caseworkerId);
   }
 
@@ -103,26 +111,36 @@ public class ApplicationMapperTest extends BaseMapperTest {
   void givenApplicationCreateRequest_whenToApplicationEntity_thenMapsFieldsCorrectly() {
     ApplicationStatus status = ApplicationStatus.APPLICATION_SUBMITTED;
     String laaReference = "laa_reference";
-    List<IndividualCreateRequest> expectedIndividuals = List.of(
-        IndividualCreateRequest.builder().build(),
-        IndividualCreateRequest.builder().build()
-    );
+    List<IndividualCreateRequest> expectedIndividuals =
+        List.of(
+            IndividualCreateRequest.builder().build(), IndividualCreateRequest.builder().build());
 
-    Map<String, Object> applicationContent = (Map<String, Object>) objectMapper
-        .convertValue(DataGenerator.createDefault(ApplicationContentGenerator.class, builder ->
-          builder.status(String.valueOf(ApplicationStatus.APPLICATION_IN_PROGRESS))
-              .laaReference(laaReference)
-              .allLinkedApplications(DataGenerator.createMultipleDefault(LinkedApplicationsGenerator.class, 2))
-        ), Map.class);
+    Map<String, Object> applicationContent =
+        (Map<String, Object>)
+            objectMapper.convertValue(
+                DataGenerator.createDefault(
+                    ApplicationContentGenerator.class,
+                    builder ->
+                        builder
+                            .status(String.valueOf(ApplicationStatus.APPLICATION_IN_PROGRESS))
+                            .laaReference(laaReference)
+                            .allLinkedApplications(
+                                DataGenerator.createMultipleDefault(
+                                    LinkedApplicationsGenerator.class, 2))),
+                Map.class);
 
-    ApplicationCreateRequest expectedApplicationCreateRequest = DataGenerator.createDefault(
-        ApplicationCreateRequestGenerator.class, builder -> builder
-            .status(status)
-            .laaReference(laaReference)
-            .individuals(expectedIndividuals)
-            .applicationContent(applicationContent));
+    ApplicationCreateRequest expectedApplicationCreateRequest =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class,
+            builder ->
+                builder
+                    .status(status)
+                    .laaReference(laaReference)
+                    .individuals(expectedIndividuals)
+                    .applicationContent(applicationContent));
 
-    ApplicationEntity actualApplicationEntity = applicationMapper.toApplicationEntity(expectedApplicationCreateRequest);
+    ApplicationEntity actualApplicationEntity =
+        applicationMapper.toApplicationEntity(expectedApplicationCreateRequest);
 
     assertThat(actualApplicationEntity.getStatus()).isEqualTo(status);
     assertThat(actualApplicationEntity.getLaaReference()).isEqualTo(laaReference);
@@ -145,21 +163,27 @@ public class ApplicationMapperTest extends BaseMapperTest {
   }
 
   @Test
-  void givenEmptyApplicationUpdateRequest_whenUpdateApplicationEntity_thenMapperOnlyUpdatesMandatoryFields() {
+  void
+      givenEmptyApplicationUpdateRequest_whenUpdateApplicationEntity_thenMapperOnlyUpdatesMandatoryFields() {
     ApplicationStatus initialStatus = ApplicationStatus.APPLICATION_IN_PROGRESS;
     Map<String, Object> initialContent = Map.of("key", "value");
     Instant createdAt = Instant.now().minusSeconds(10000);
     Instant modifiedAt = Instant.now().minusSeconds(5000);
 
-    ApplicationEntity entityToAffect = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder -> builder
-        .status(initialStatus)
-        .applicationContent(initialContent)
-        .createdAt(createdAt)
-        .modifiedAt(modifiedAt));
+    ApplicationEntity entityToAffect =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .status(initialStatus)
+                    .applicationContent(initialContent)
+                    .createdAt(createdAt)
+                    .modifiedAt(modifiedAt));
 
-    ApplicationUpdateRequest req = DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class, builder -> builder
-        .status(null)
-        .applicationContent(null));
+    ApplicationUpdateRequest req =
+        DataGenerator.createDefault(
+            ApplicationUpdateRequestGenerator.class,
+            builder -> builder.status(null).applicationContent(null));
 
     applicationMapper.updateApplicationEntity(entityToAffect, req);
 
@@ -176,18 +200,23 @@ public class ApplicationMapperTest extends BaseMapperTest {
     Instant createdAt = Instant.now().minusSeconds(10000);
     Instant modifiedAt = Instant.now().minusSeconds(5000);
 
-    ApplicationEntity entityToAffect = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder -> builder
-        .status(initialStatus)
-        .applicationContent(initialContent)
-        .createdAt(createdAt)
-        .modifiedAt(modifiedAt));
+    ApplicationEntity entityToAffect =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .status(initialStatus)
+                    .applicationContent(initialContent)
+                    .createdAt(createdAt)
+                    .modifiedAt(modifiedAt));
 
     ApplicationStatus updatedStatus = ApplicationStatus.APPLICATION_SUBMITTED;
     Map<String, Object> updatedContent = Map.of("newKey", "newValue");
 
-    ApplicationUpdateRequest applicationUpdateRequest = DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class, builder -> builder
-        .status(updatedStatus)
-        .applicationContent(updatedContent));
+    ApplicationUpdateRequest applicationUpdateRequest =
+        DataGenerator.createDefault(
+            ApplicationUpdateRequestGenerator.class,
+            builder -> builder.status(updatedStatus).applicationContent(updatedContent));
 
     applicationMapper.updateApplicationEntity(entityToAffect, applicationUpdateRequest);
 
@@ -199,18 +228,18 @@ public class ApplicationMapperTest extends BaseMapperTest {
 
   @Test
   void givenApplicationWithOpponents_whenToApplication_thenMapsOpponentsCorrectly() {
-    Map<String, Object> opposable = Map.of(
-        "opposableType", "ApplicationMeritsTask::Individual",
-        "firstName", "John",
-        "lastName", "Smith",
-        "name", "Acme Ltd"
-    );
-    Map<String, Object> content = Map.of(
-        "applicationMerits", Map.of("opponents", List.of(Map.of("opposable", opposable)))
-    );
+    Map<String, Object> opposable =
+        Map.of(
+            "opposableType", "ApplicationMeritsTask::Individual",
+            "firstName", "John",
+            "lastName", "Smith",
+            "name", "Acme Ltd");
+    Map<String, Object> content =
+        Map.of("applicationMerits", Map.of("opponents", List.of(Map.of("opposable", opposable))));
 
-    ApplicationEntity entity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder -> builder
-        .applicationContent(content));
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.applicationContent(content));
 
     ApplicationResponse result = applicationMapper.toApplication(entity);
 
@@ -226,12 +255,11 @@ public class ApplicationMapperTest extends BaseMapperTest {
 
   @Test
   void givenApplicationWithEmptyOpponentsList_whenToApplication_thenReturnsEmptyList() {
-    Map<String, Object> content = Map.of(
-        "applicationMerits", Map.of("opponents", List.of())
-    );
+    Map<String, Object> content = Map.of("applicationMerits", Map.of("opponents", List.of()));
 
-    ApplicationEntity entity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder -> builder
-        .applicationContent(content));
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.applicationContent(content));
 
     ApplicationResponse result = applicationMapper.toApplication(entity);
 
@@ -241,17 +269,17 @@ public class ApplicationMapperTest extends BaseMapperTest {
 
   @Test
   void givenOpponentWithMissingFirstName_whenToApplication_thenMapsRemainingFields() {
-    Map<String, Object> opposable = Map.of(
-        "opposableType", "ApplicationMeritsTask::Individual",
-        "lastName", "Smith",
-        "name", "Acme Ltd"
-    );
-    Map<String, Object> content = Map.of(
-        "applicationMerits", Map.of("opponents", List.of(Map.of("opposable", opposable)))
-    );
+    Map<String, Object> opposable =
+        Map.of(
+            "opposableType", "ApplicationMeritsTask::Individual",
+            "lastName", "Smith",
+            "name", "Acme Ltd");
+    Map<String, Object> content =
+        Map.of("applicationMerits", Map.of("opponents", List.of(Map.of("opposable", opposable))));
 
-    ApplicationEntity entity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder -> builder
-        .applicationContent(content));
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.applicationContent(content));
 
     ApplicationResponse result = applicationMapper.toApplication(entity);
 
@@ -268,8 +296,9 @@ public class ApplicationMapperTest extends BaseMapperTest {
 
   @Test
   void givenApplicationWithContactEmailOnly_whenToApplication_thenMapsProviderWithContactEmail() {
-    ApplicationEntity entity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder -> builder
-        .officeCode(null));
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.officeCode(null));
 
     ApplicationResponse result = applicationMapper.toApplication(entity);
 
@@ -278,8 +307,10 @@ public class ApplicationMapperTest extends BaseMapperTest {
 
   @Test
   void givenApplicationWithoutContactEmail_whenToApplication_thenProviderHasNullContactEmail() {
-    ApplicationEntity entity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder -> builder
-        .applicationContent(Map.of("otherField", "value")));
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class,
+            builder -> builder.applicationContent(Map.of("otherField", "value")));
 
     ApplicationResponse result = applicationMapper.toApplication(entity);
 
@@ -287,9 +318,11 @@ public class ApplicationMapperTest extends BaseMapperTest {
   }
 
   @Test
-  void givenApplicationWithNullApplicationContent_whenToApplication_thenProviderHasOfficeCodeOnly() {
-    ApplicationEntity entity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder -> builder
-        .applicationContent(null));
+  void
+      givenApplicationWithNullApplicationContent_whenToApplication_thenProviderHasOfficeCodeOnly() {
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.applicationContent(null));
 
     ApplicationResponse result = applicationMapper.toApplication(entity);
 
@@ -298,16 +331,18 @@ public class ApplicationMapperTest extends BaseMapperTest {
 
   @Test
   void givenApplicationWithNoProviderData_whenToApplication_thenProviderIsNull() {
-    ApplicationEntity entity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder -> builder
-        .officeCode(null)
-        .applicationContent(Map.of()));
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class,
+            builder -> builder.officeCode(null).applicationContent(Map.of()));
 
     ApplicationResponse result = applicationMapper.toApplication(entity);
 
     assertProviderEquals(result.getProvider(), null, null);
   }
 
-  private void assertProviderEquals(ProviderResponse actual, String expectedOfficeCode, String expectedContactEmail) {
+  private void assertProviderEquals(
+      ProviderResponse actual, String expectedOfficeCode, String expectedContactEmail) {
     if (expectedOfficeCode == null && expectedContactEmail == null) {
       assertThat(actual).isNull();
     } else {

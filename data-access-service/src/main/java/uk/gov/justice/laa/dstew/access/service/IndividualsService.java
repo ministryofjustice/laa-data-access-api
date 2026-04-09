@@ -23,8 +23,8 @@ import uk.gov.justice.laa.dstew.access.specification.IndividualSpecification;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
 /**
- * Service for managing individual records.
- * Provides business logic for retrieving individuals with pagination support.
+ * Service for managing individual records. Provides business logic for retrieving individuals with
+ * pagination support.
  */
 @Service
 public class IndividualsService {
@@ -34,14 +34,12 @@ public class IndividualsService {
   private final ApplicationRepository applicationRepository;
   private final ObjectMapper objectMapper;
 
-  /**
-   * Constructor for managing individual records.
-   */
-  public IndividualsService(final IndividualRepository individualRepository,
-                            final IndividualMapper individualMapper,
-                            ApplicationRepository applicationRepository,
-                            final ObjectMapper objectMapper
-                            ) {
+  /** Constructor for managing individual records. */
+  public IndividualsService(
+      final IndividualRepository individualRepository,
+      final IndividualMapper individualMapper,
+      ApplicationRepository applicationRepository,
+      final ObjectMapper objectMapper) {
     this.individualRepository = individualRepository;
     this.individualMapper = individualMapper;
     this.applicationRepository = applicationRepository;
@@ -49,7 +47,8 @@ public class IndividualsService {
   }
 
   /**
-   * Retrieves a paginated and filtered list of individuals based on applicationId and individualType.
+   * Retrieves a paginated and filtered list of individuals based on applicationId and
+   * individualType.
    *
    * @param page the page number (one-based)
    * @param pageSize the number of items per page
@@ -64,27 +63,31 @@ public class IndividualsService {
       UUID applicationId,
       IndividualType individualType,
       IncludedAdditionalData include) {
-    Specification<IndividualEntity> specification = buildSpecification(applicationId, individualType);
+    Specification<IndividualEntity> specification =
+        buildSpecification(applicationId, individualType);
     Pageable pageable = createPageable(page, pageSize);
     Page<IndividualEntity> resultPage = individualRepository.findAll(specification, pageable);
     if (individualType == IndividualType.CLIENT && include != null) {
       ApplicationEntity application = applicationRepository.findById(applicationId).orElseThrow();
 
-      return wrapResult(page, pageSize, resultPage.map(individual ->
-        individualMapper.toExtendedIndividual(
-          individual,
-          individualType,
-          include,
-          objectMapper.convertValue(application.getApplicationContent(), ApplicationContent.class))
-      ));
+      return wrapResult(
+          page,
+          pageSize,
+          resultPage.map(
+              individual ->
+                  individualMapper.toExtendedIndividual(
+                      individual,
+                      individualType,
+                      include,
+                      objectMapper.convertValue(
+                          application.getApplicationContent(), ApplicationContent.class))));
     }
     return wrapResult(page, pageSize, resultPage.map(individualMapper::toIndividual));
   }
 
-  /**
-   * Builds a Specification for filtering individuals by applicationId and individualType.
-   */
-  private Specification<IndividualEntity> buildSpecification(UUID applicationId, IndividualType individualType) {
+  /** Builds a Specification for filtering individuals by applicationId and individualType. */
+  private Specification<IndividualEntity> buildSpecification(
+      UUID applicationId, IndividualType individualType) {
     return IndividualSpecification.filterApplicationId(applicationId)
         .and(IndividualSpecification.filterIndividualType(individualType));
   }

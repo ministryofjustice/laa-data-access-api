@@ -24,9 +24,7 @@ import tools.jackson.databind.PropertyNamingStrategies;
 import tools.jackson.databind.annotation.JsonNaming;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/**
- * Represents a certificate.
- */
+/** Represents a certificate. */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter

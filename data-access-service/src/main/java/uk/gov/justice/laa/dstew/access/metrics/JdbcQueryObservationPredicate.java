@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
  *
  * <p>Only allows observations for standard data operations (SELECT, INSERT, UPDATE, DELETE, MERGE).
  * All other queries — transaction control, DDL, driver metadata, Flyway housekeeping — are
- * suppressed by returning {@code false}, which causes the observation to become
- * {@link Observation#NOOP} so no timer or histogram is recorded.</p>
+ * suppressed by returning {@code false}, which causes the observation to become {@link
+ * Observation#NOOP} so no timer or histogram is recorded.
  */
 @Component
 public class JdbcQueryObservationPredicate implements ObservationPredicate {
