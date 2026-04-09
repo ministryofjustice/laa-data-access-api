@@ -62,89 +62,55 @@ import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEnt
 import uk.gov.justice.laa.dstew.access.utils.testDto.certificate.CertificateContent;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
-/** Unit tests for the make decision behaviour in the application service. */
+/**
+ * Unit tests for the make decision behaviour in the application service.
+ */
 public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
-  @Autowired private ApplicationService serviceUnderTest;
+  @Autowired
+  private ApplicationService serviceUnderTest;
 
   static Stream<Arguments> validationFailureCases() {
     return Stream.of(
         Arguments.of(
-            (Function<UUID, MakeDecisionRequest>)
-                ignoredId ->
-                    DataGenerator.createDefault(
-                        ApplicationMakeDecisionRequestGenerator.class,
-                        b ->
-                            b.overallDecision(DecisionStatus.REFUSED)
-                                .eventHistory(
-                                    EventHistoryRequest.builder().eventDescription("event").build())
-                                .proceedings(List.of())),
-            (Function<UUID, String>)
-                id -> "The Make Decision request must contain at least one proceeding"),
+            (Function<UUID, MakeDecisionRequest>) ignoredId ->
+                DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, b -> b
+                    .overallDecision(DecisionStatus.REFUSED)
+                    .eventHistory(EventHistoryRequest.builder().eventDescription("event").build())
+                    .proceedings(List.of())),
+            (Function<UUID, String>) id -> "The Make Decision request must contain at least one proceeding"
+        ),
         Arguments.of(
-            (Function<UUID, MakeDecisionRequest>)
-                proceedingId ->
-                    DataGenerator.createDefault(
-                        ApplicationMakeDecisionRequestGenerator.class,
-                        b ->
-                            b.overallDecision(DecisionStatus.GRANTED)
-                                .eventHistory(
-                                    EventHistoryRequest.builder()
-                                        .eventDescription("granted event")
-                                        .build())
-                                .certificate(null)
-                                .proceedings(
-                                    List.of(
-                                        createMakeDecisionProceedingDetails(
-                                            proceedingId,
-                                            MeritsDecisionStatus.GRANTED,
-                                            "justification",
-                                            "reason")))),
-            (Function<UUID, String>)
-                id ->
-                    "The Make Decision request must contain a certificate when overallDecision is GRANTED"),
+            (Function<UUID, MakeDecisionRequest>) proceedingId ->
+                DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, b -> b
+                    .overallDecision(DecisionStatus.GRANTED)
+                    .eventHistory(EventHistoryRequest.builder().eventDescription("granted event").build())
+                    .certificate(null)
+                    .proceedings(List.of(
+                        createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "justification", "reason")))),
+            (Function<UUID, String>) id -> "The Make Decision request must contain a certificate when overallDecision is GRANTED"
+        ),
         Arguments.of(
-            (Function<UUID, MakeDecisionRequest>)
-                proceedingId ->
-                    DataGenerator.createDefault(
-                        ApplicationMakeDecisionRequestGenerator.class,
-                        b ->
-                            b.overallDecision(DecisionStatus.GRANTED)
-                                .eventHistory(
-                                    EventHistoryRequest.builder()
-                                        .eventDescription("granted event")
-                                        .build())
-                                .certificate(Map.of())
-                                .proceedings(
-                                    List.of(
-                                        createMakeDecisionProceedingDetails(
-                                            proceedingId,
-                                            MeritsDecisionStatus.GRANTED,
-                                            "justification",
-                                            "reason")))),
-            (Function<UUID, String>)
-                id ->
-                    "The Make Decision request must contain a certificate when overallDecision is GRANTED"),
+            (Function<UUID, MakeDecisionRequest>) proceedingId ->
+                DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, b -> b
+                    .overallDecision(DecisionStatus.GRANTED)
+                    .eventHistory(EventHistoryRequest.builder().eventDescription("granted event").build())
+                    .certificate(Map.of())
+                    .proceedings(List.of(
+                        createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "justification", "reason")))),
+            (Function<UUID, String>) id -> "The Make Decision request must contain a certificate when overallDecision is GRANTED"
+        ),
         Arguments.of(
-            (Function<UUID, MakeDecisionRequest>)
-                proceedingId ->
-                    DataGenerator.createDefault(
-                        ApplicationMakeDecisionRequestGenerator.class,
-                        b ->
-                            b.overallDecision(DecisionStatus.REFUSED)
-                                .eventHistory(
-                                    EventHistoryRequest.builder().eventDescription("event").build())
-                                .proceedings(
-                                    List.of(
-                                        createMakeDecisionProceedingDetails(
-                                            proceedingId,
-                                            MeritsDecisionStatus.REFUSED,
-                                            "reason",
-                                            "")))),
-            (Function<UUID, String>)
-                id ->
-                    "The Make Decision request must contain a refusal justification for proceeding with id: "
-                        + id));
+            (Function<UUID, MakeDecisionRequest>) proceedingId ->
+                DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, b -> b
+                    .overallDecision(DecisionStatus.REFUSED)
+                    .eventHistory(EventHistoryRequest.builder().eventDescription("event").build())
+                    .proceedings(List.of(
+                        createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.REFUSED, "reason", "")))),
+            (Function<UUID, String>) id ->
+                "The Make Decision request must contain a refusal justification for proceeding with id: " + id
+        )
+    );
   }
 
   @ParameterizedTest
@@ -156,11 +122,10 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
-    ApplicationEntity applicationEntity =
-        getApplicationEntity(applicationId, caseworker, "content");
+    ApplicationEntity applicationEntity = getApplicationEntity(applicationId, caseworker, "content");
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+    when(applicationRepository.findByIdWithDecisionGraph(applicationId)).thenReturn(Optional.of(applicationEntity));
 
     MakeDecisionRequest request = requestFactory.apply(proceedingId);
     String expectedError = expectedErrorFactory.apply(proceedingId);
@@ -174,8 +139,8 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved(
-      boolean certificateExists) throws JacksonException {
+  void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved(boolean certificateExists) throws
+      JacksonException {
     UUID applicationId = UUID.randomUUID();
     UUID grantedProceedingId = UUID.randomUUID();
     UUID refusedProceedingId = UUID.randomUUID();
@@ -192,75 +157,65 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
 
     // overwrite some fields of default assign decision request
-    MakeDecisionRequest makeDecisionRequest =
-        DataGenerator.createDefault(
-            ApplicationMakeDecisionRequestGenerator.class,
-            requestBuilder ->
-                requestBuilder
-                    .overallDecision(DecisionStatus.REFUSED)
-                    .eventHistory(EventHistoryRequest.builder().eventDescription("event").build())
-                    .proceedings(
-                        List.of(
-                            createMakeDecisionProceedingDetails(
-                                grantedProceedingId,
-                                grantedDecision,
-                                grantedReason,
-                                grantedJustification),
-                            createMakeDecisionProceedingDetails(
-                                refusedProceedingId,
-                                refusedDecision,
-                                refusedReason,
-                                refusedJustification))));
+    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
+        requestBuilder
+            .overallDecision(DecisionStatus.REFUSED)
+            .eventHistory(
+                EventHistoryRequest.builder()
+                    .eventDescription("event")
+                    .build()
+            )
+            .proceedings(List.of(
+                createMakeDecisionProceedingDetails(grantedProceedingId, grantedDecision, grantedReason, grantedJustification),
+                createMakeDecisionProceedingDetails(refusedProceedingId, refusedDecision, refusedReason, refusedJustification)
+            ))
+    );
 
     // expected saved application entity
     final ApplicationEntity expectedApplicationEntity =
         getApplicationEntity(applicationId, caseworker, "unmodified");
 
-    final DomainEventEntity expectedDomainEvent =
-        DomainEventEntity.builder()
-            .applicationId(applicationId)
-            .caseworkerId(caseworker.getId())
-            .createdBy("")
-            .type(DomainEventType.APPLICATION_MAKE_DECISION_REFUSED)
-            .data(
-                objectMapper.writeValueAsString(
-                    MakeDecisionDomainEventDetails.builder()
-                        .applicationId(applicationId)
-                        .caseworkerId(caseworker.getId())
-                        .eventDescription("event")
-                        .request(objectMapper.writeValueAsString(makeDecisionRequest))
-                        .build()))
-            .build();
+    final DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+        .applicationId(applicationId)
+        .caseworkerId(caseworker.getId())
+        .createdBy("")
+        .type(DomainEventType.APPLICATION_MAKE_DECISION_REFUSED)
+        .data(objectMapper.writeValueAsString(
+            MakeDecisionDomainEventDetails.builder()
+                .applicationId(applicationId)
+                .caseworkerId(caseworker.getId())
+                .eventDescription("event")
+                .request(objectMapper.writeValueAsString(makeDecisionRequest))
+                .build()
+        ))
+        .build();
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    ProceedingEntity grantedProceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.id(grantedProceedingId).applicationId(applicationId));
-    ProceedingEntity refusedProceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.id(refusedProceedingId).applicationId(applicationId));
+    ProceedingEntity grantedProceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
+        builder.id(grantedProceedingId).application(ApplicationEntity.builder().id(applicationId).build())
+    );
+    ProceedingEntity refusedProceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
+        builder.id(refusedProceedingId).application(ApplicationEntity.builder().id(applicationId).build())
+    );
 
     // when
     when(certificateRepository.existsByApplicationId(applicationId)).thenReturn(certificateExists);
-    when(proceedingRepository.findAllById(
-            List.of(grantedProceedingEntity.getId(), refusedProceedingEntity.getId())))
-        .thenReturn(List.of(grantedProceedingEntity, refusedProceedingEntity));
-    when(applicationRepository.findById(expectedApplicationEntity.getId()))
-        .thenReturn(Optional.of(expectedApplicationEntity));
+    when(proceedingRepository.findAllById(List.of(grantedProceedingEntity.getId(), refusedProceedingEntity.getId())))
+            .thenReturn(List.of(grantedProceedingEntity, refusedProceedingEntity));
+    when(applicationRepository.findByIdWithDecisionGraph(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
     // then
-    verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
-    verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
+    verify(applicationRepository, times(1)).findByIdWithDecisionGraph(expectedApplicationEntity.getId());
+    verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
-    verify(certificateRepository, times((certificateExists) ? 1 : 0))
-        .deleteByApplicationId(applicationId);
+    verify(certificateRepository, times((certificateExists)?1:0)).deleteByApplicationId(applicationId);
     verifyThatDomainEventSaved(domainEventRepository, objectMapper, expectedDomainEvent, 1);
-    verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, 2);
+    verifyDecisionSavedCorrectly(makeDecisionRequest,
+                    expectedApplicationEntity,
+        2);
   }
 
   @Test
@@ -271,58 +226,53 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // given
     CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
 
-    final MakeDecisionRequest makeDecisionRequest =
-        DataGenerator.createDefault(
-            ApplicationMakeDecisionRequestGenerator.class,
-            requestBuilder ->
-                requestBuilder
-                    .eventHistory(EventHistoryRequest.builder().eventDescription("event").build())
-                    .proceedings(
-                        List.of(
-                            createMakeDecisionProceedingDetails(
-                                proceedingId,
-                                MeritsDecisionStatus.GRANTED,
-                                "refusal update",
-                                "justification update"))));
+    final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
+        requestBuilder
+            .eventHistory(
+                EventHistoryRequest.builder()
+                    .eventDescription("event")
+                    .build()
+            )
+            .proceedings(List.of(
+                createMakeDecisionProceedingDetails(proceedingId,
+                                                    MeritsDecisionStatus.GRANTED,
+                                                    "refusal update",
+                                                    "justification update")
+            ))
+    );
 
     // expected saved application entity
-    final ApplicationEntity expectedApplicationEntity =
-        DataGenerator.createDefault(
-            ApplicationEntityGenerator.class,
-            builder ->
-                builder
-                    .id(applicationId)
-                    .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
-                    .caseworker(caseworker)
-                    .version(0L));
+    final ApplicationEntity expectedApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
+        builder
+            .id(applicationId)
+            .applicationContent(new HashMap<>(Map.of("test", "unmodified")))
+            .caseworker(caseworker)
+            .version(0L)
+    );
 
-    final DecisionEntity currentSavedDecisionEntity =
-        createDecisionEntityWithProceeding(
-            proceedingId,
-            MeritsDecisionStatus.REFUSED,
-            "initial reason",
-            "initial justification",
-            DecisionStatus.REFUSED);
+    final DecisionEntity currentSavedDecisionEntity = createDecisionEntityWithProceeding(
+        proceedingId,
+        MeritsDecisionStatus.REFUSED,
+        "initial reason",
+        "initial justification", DecisionStatus.REFUSED
+    );
 
     expectedApplicationEntity.setDecision(currentSavedDecisionEntity);
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    ProceedingEntity proceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.id(proceedingId).applicationId(applicationId));
+    ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
+        builder.id(proceedingId).application(ApplicationEntity.builder().id(applicationId).build())
+    );
 
     // when
-    when(proceedingRepository.findAllById(List.of(proceedingId)))
-        .thenReturn(List.of(proceedingEntity));
-    when(applicationRepository.findById(expectedApplicationEntity.getId()))
-        .thenReturn(Optional.of(expectedApplicationEntity));
+    when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
+    when(applicationRepository.findByIdWithDecisionGraph(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
     // then
-    verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
+    verify(applicationRepository, times(1)).findByIdWithDecisionGraph(expectedApplicationEntity.getId());
     verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
     verify(domainEventRepository).save(any(DomainEventEntity.class));
 
@@ -330,8 +280,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   }
 
   @Test
-  void
-      givenApplicationAndExistingDecisionAndNewProceeding_whenAssignDecisionGranted_thenDecisionUpdated() {
+  void givenApplicationAndExistingDecisionAndNewProceeding_whenAssignDecisionGranted_thenDecisionUpdated() {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     UUID newProceedingId = UUID.randomUUID();
@@ -339,69 +288,63 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // given
     CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
 
-    MakeDecisionRequest makeDecisionRequest =
-        DataGenerator.createDefault(
-            ApplicationMakeDecisionRequestGenerator.class,
-            requestBuilder ->
-                requestBuilder
-                    .overallDecision(DecisionStatus.GRANTED)
-                    .eventHistory(EventHistoryRequest.builder().eventDescription(null).build())
-                    .proceedings(
-                        List.of(
-                            createMakeDecisionProceedingDetails(
-                                newProceedingId,
-                                MeritsDecisionStatus.GRANTED,
-                                "initial reason",
-                                "new justification")))
-                    .certificate(Map.of("Test Certificate", "test value")));
+    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
+        requestBuilder
+            .overallDecision(DecisionStatus.GRANTED)
+            .eventHistory(
+                EventHistoryRequest.builder()
+                    .eventDescription(null)
+                    .build()
+            )
+            .proceedings(List.of(
+                createMakeDecisionProceedingDetails(newProceedingId,
+                                                    MeritsDecisionStatus.GRANTED,
+                                                    "initial reason",
+                                                    "new justification")
+            )).certificate(Map.of("Test Certificate", "test value") )
+    );
 
     // expected saved application entity
-    final ApplicationEntity expectedApplicationEntity =
-        getApplicationEntity(applicationId, caseworker, "unmodified");
+    final ApplicationEntity expectedApplicationEntity = getApplicationEntity(applicationId, caseworker, "unmodified");
 
-    final DecisionEntity currentSavedDecisionEntity =
-        createDecisionEntityWithProceeding(
-            proceedingId,
-            MeritsDecisionStatus.GRANTED,
-            "initial reason",
-            "initial justification",
-            DecisionStatus.GRANTED);
+    final DecisionEntity currentSavedDecisionEntity = createDecisionEntityWithProceeding(
+        proceedingId,
+        MeritsDecisionStatus.GRANTED,
+        "initial reason",
+        "initial justification", DecisionStatus.GRANTED
+    );
 
     expectedApplicationEntity.setDecision(currentSavedDecisionEntity);
 
-    final DomainEventEntity expectedDomainEvent =
-        DomainEventEntity.builder()
-            .applicationId(applicationId)
-            .caseworkerId(caseworker.getId())
-            .createdBy("")
-            .type(DomainEventType.APPLICATION_MAKE_DECISION_GRANTED)
-            .data(
-                objectMapper.writeValueAsString(
-                    MakeDecisionDomainEventDetails.builder()
-                        .applicationId(applicationId)
-                        .caseworkerId(caseworker.getId())
-                        .eventDescription(null)
-                        .request(objectMapper.writeValueAsString(makeDecisionRequest))
-                        .build()))
-            .build();
+    final DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
+        .applicationId(applicationId)
+        .caseworkerId(caseworker.getId())
+        .createdBy("")
+        .type(DomainEventType.APPLICATION_MAKE_DECISION_GRANTED)
+        .data(objectMapper.writeValueAsString(
+            MakeDecisionDomainEventDetails.builder()
+                .applicationId(applicationId)
+                .caseworkerId(caseworker.getId())
+                .eventDescription(null)
+                .request(objectMapper.writeValueAsString(makeDecisionRequest))
+                .build()
+        ))
+        .build();
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    ProceedingEntity newProceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.id(newProceedingId).applicationId(applicationId));
+    ProceedingEntity newProceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
+                builder.id(newProceedingId).application(ApplicationEntity.builder().id(applicationId).build())
+                );
 
     // when
-    when(proceedingRepository.findAllById(List.of(newProceedingId)))
-        .thenReturn(List.of(newProceedingEntity));
-    when(applicationRepository.findById(expectedApplicationEntity.getId()))
-        .thenReturn(Optional.of(expectedApplicationEntity));
+    when(proceedingRepository.findAllById(List.of(newProceedingId))).thenReturn(List.of(newProceedingEntity));
+    when(applicationRepository.findByIdWithDecisionGraph(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
     // then
-    verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
+    verify(applicationRepository, times(1)).findByIdWithDecisionGraph(expectedApplicationEntity.getId());
     verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
     verifyThatDomainEventSaved(domainEventRepository, objectMapper, expectedDomainEvent, 1);
@@ -409,8 +352,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   }
 
   @Test
-  void
-      givenApplicationAndDecisionRequestWithMultipleProceedingsAndExistingDecision_whenAssignDecision_thenDecisionUpdated() {
+  void givenApplicationAndDecisionRequestWithMultipleProceedingsAndExistingDecision_whenAssignDecision_thenDecisionUpdated() {
     UUID applicationId = UUID.randomUUID();
     UUID currentProceedingId = UUID.randomUUID();
     UUID newProceedingId = UUID.randomUUID();
@@ -418,86 +360,74 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // given
     CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
 
-    final MakeDecisionRequest makeDecisionRequest =
-        DataGenerator.createDefault(
-            ApplicationMakeDecisionRequestGenerator.class,
-            requestBuilder ->
-                requestBuilder
-                    .eventHistory(EventHistoryRequest.builder().build())
-                    .proceedings(
-                        List.of(
-                            createMakeDecisionProceedingDetails(
-                                newProceedingId,
-                                MeritsDecisionStatus.REFUSED,
-                                "refusal new",
-                                "justification new"),
-                            createMakeDecisionProceedingDetails(
-                                currentProceedingId,
-                                MeritsDecisionStatus.GRANTED,
-                                "refusal update",
-                                "justification update"))));
+    final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
+        requestBuilder
+            .eventHistory(EventHistoryRequest.builder().build())
+            .proceedings(List.of(
+                createMakeDecisionProceedingDetails(newProceedingId,
+                                                    MeritsDecisionStatus.REFUSED,
+                                                    "refusal new",
+                                                    "justification new"),
+                createMakeDecisionProceedingDetails(currentProceedingId,
+                                                    MeritsDecisionStatus.GRANTED,
+                                                    "refusal update",
+                                                    "justification update")
+            ))
+    );
 
     // expected saved application entity
-    final ApplicationEntity expectedApplicationEntity =
-        getApplicationEntity(applicationId, caseworker, "unmodified");
+    final ApplicationEntity expectedApplicationEntity = getApplicationEntity(applicationId, caseworker, "unmodified");
 
-    final DecisionEntity currentSavedDecisionEntity =
-        createDecisionEntityWithProceeding(
-            currentProceedingId,
-            MeritsDecisionStatus.REFUSED,
-            "current reason",
-            "current justification",
-            DecisionStatus.REFUSED);
+    final DecisionEntity currentSavedDecisionEntity = createDecisionEntityWithProceeding(
+        currentProceedingId,
+        MeritsDecisionStatus.REFUSED,
+        "current reason",
+        "current justification", DecisionStatus.REFUSED
+    );
 
     expectedApplicationEntity.setDecision(currentSavedDecisionEntity);
 
-    ProceedingEntity currentProceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.id(currentProceedingId).applicationId(applicationId));
+    ProceedingEntity currentProceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
+                builder.id(currentProceedingId).application(ApplicationEntity.builder().id(applicationId).build())
+                );
 
-    ProceedingEntity newProceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.id(newProceedingId).applicationId(applicationId));
+    ProceedingEntity newProceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
+                builder.id(newProceedingId).application(ApplicationEntity.builder().id(applicationId).build())
+                );
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     // when
     when(proceedingRepository.findAllById(List.of(newProceedingId, currentProceedingId)))
-        .thenReturn(List.of(newProceedingEntity, currentProceedingEntity));
-    when(applicationRepository.findById(expectedApplicationEntity.getId()))
-        .thenReturn(Optional.of(expectedApplicationEntity));
+                .thenReturn(List.of(newProceedingEntity, currentProceedingEntity));
+    when(applicationRepository.findByIdWithDecisionGraph(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
     serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest);
 
     // then
-    verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
+    verify(applicationRepository, times(1)).findByIdWithDecisionGraph(expectedApplicationEntity.getId());
     verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
     verify(domainEventRepository).save(any(DomainEventEntity.class));
     verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, 2);
   }
 
-  private static ApplicationEntity getApplicationEntity(
-      UUID applicationId, CaseworkerEntity caseworker, String content) {
-    return DataGenerator.createDefault(
-        ApplicationEntityGenerator.class,
-        builder ->
-            builder
-                .id(applicationId)
-                .applicationContent(new HashMap<>(Map.of("test", content)))
-                .caseworker(caseworker)
-                .version(0L));
+  private static ApplicationEntity getApplicationEntity(UUID applicationId, CaseworkerEntity caseworker, String content) {
+    return DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
+        builder
+            .id(applicationId)
+            .applicationContent(new HashMap<>(Map.of("test", content)))
+            .caseworker(caseworker)
+            .version(0L)
+    );
   }
 
   private static ApplicationEntity getApplicationEntity(UUID applicationId, String content) {
-    return DataGenerator.createDefault(
-        ApplicationEntityGenerator.class,
-        builder ->
-            builder
-                .id(applicationId)
-                .applicationContent(new HashMap<>(Map.of("test", content)))
-                .version(0L));
+    return DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
+        builder
+            .id(applicationId)
+            .applicationContent(new HashMap<>(Map.of("test", content)))
+            .version(0L)
+    );
   }
 
   @Test
@@ -506,28 +436,25 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     UUID applicationId = UUID.randomUUID();
 
     // given
-    MakeDecisionRequest makeDecisionRequest =
-        DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class);
+    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class);
 
     // expected saved application entity
     ApplicationEntity expectedApplicationEntity = getApplicationEntity(applicationId, "unmodified");
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    when(applicationRepository.findById(expectedApplicationEntity.getId()))
-        .thenReturn(Optional.of(expectedApplicationEntity));
+    when(applicationRepository.findByIdWithDecisionGraph(expectedApplicationEntity.getId())).thenReturn(Optional.of(expectedApplicationEntity));
 
-    Throwable thrown =
-        catchThrowable(
-            () ->
-                serviceUnderTest.makeDecision(
-                    expectedApplicationEntity.getId(), makeDecisionRequest));
+    Throwable thrown = catchThrowable(() ->
+        serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest));
 
     assertThat(thrown)
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("Caseworker not found for application id: " + applicationId);
 
     verify(applicationRepository, never()).save(any());
+
+
   }
 
   @Test
@@ -535,44 +462,37 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     UUID applicationId = UUID.randomUUID();
 
     // given
-    MakeDecisionRequest makeDecisionRequest =
-        DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class);
+    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class);
 
     // expected saved application entity
     ApplicationEntity expectedApplicationEntity = getApplicationEntity(applicationId, "unmodified");
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    Throwable thrown =
-        catchThrowable(
-            () ->
-                serviceUnderTest.makeDecision(
-                    expectedApplicationEntity.getId(), makeDecisionRequest));
+    Throwable thrown = catchThrowable(() ->
+        serviceUnderTest.makeDecision(expectedApplicationEntity.getId(), makeDecisionRequest));
 
     assertThat(thrown)
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("No application found with id: " + applicationId);
 
     verify(applicationRepository, never()).save(any());
-  }
 
+  }
   static Stream<Arguments> notFoundScenarios() {
     UUID appId1 = UUID.randomUUID();
     UUID appId2 = UUID.randomUUID();
     UUID appId3 = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     return Stream.of(
-        Arguments.of(
-            "NO_APPLICATION", appId1, proceedingId, "No application found with id: " + appId1),
-        // Note: the NO_CASEWORKER scenario is only relevant until security is implemented and can
-        // be removed afterwards,
-        // but it is currently a separate test to allow for clearer assertions on the exception
-        // message
-        // Arguments.of("NO_CASEWORKER",  appId2, proceedingId, "Caseworker not found for
-        // application id: " + appId2),
-        Arguments.of(
-            "NO_PROCEEDING", appId3, proceedingId, "No proceeding found with id: " + proceedingId));
+        Arguments.of("NO_APPLICATION", appId1, proceedingId, "No application found with id: " + appId1),
+        // Note: the NO_CASEWORKER scenario is only relevant until security is implemented and can be removed afterwards,
+        // but it is currently a separate test to allow for clearer assertions on the exception message
+        // Arguments.of("NO_CASEWORKER",  appId2, proceedingId, "Caseworker not found for application id: " + appId2),
+        Arguments.of("NO_PROCEEDING",  appId3, proceedingId, "No proceeding found with id: " + proceedingId)
+    );
   }
+
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("notFoundScenarios")
@@ -580,38 +500,28 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
       String scenario, UUID applicationId, UUID proceedingId, String expectedMessage) {
 
     CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
-    MakeDecisionRequest request =
-        DataGenerator.createDefault(
-            ApplicationMakeDecisionRequestGenerator.class,
-            b ->
-                b.proceedings(
-                    List.of(
-                        createMakeDecisionProceedingDetails(
-                            proceedingId,
-                            MeritsDecisionStatus.GRANTED,
-                            "reason",
-                            "justification"))));
+    MakeDecisionRequest request = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, b -> b
+        .proceedings(List.of(
+            createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "reason", "justification")
+        ))
+    );
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     switch (scenario) {
-      case "NO_CASEWORKER" ->
-          when(applicationRepository.findById(applicationId))
-              .thenReturn(Optional.of(getApplicationEntity(applicationId, "content")));
-      case "NO_PROCEEDING" ->
-          when(applicationRepository.findById(applicationId))
-              .thenReturn(Optional.of(getApplicationEntity(applicationId, caseworker, "content")));
-        // NO_APPLICATION: no mock → findById returns empty Optional by default
+      case "NO_CASEWORKER" -> when(applicationRepository.findByIdWithDecisionGraph(applicationId))
+          .thenReturn(Optional.of(getApplicationEntity(applicationId, "content")));
+      case "NO_PROCEEDING" -> when(applicationRepository.findByIdWithDecisionGraph(applicationId))
+          .thenReturn(Optional.of(getApplicationEntity(applicationId, caseworker, "content")));
+      // NO_APPLICATION: no mock → findById returns empty Optional by default
     }
 
     Throwable thrown = catchThrowable(() -> serviceUnderTest.makeDecision(applicationId, request));
 
-    assertThat(thrown).isInstanceOf(ResourceNotFoundException.class).hasMessage(expectedMessage);
-    // save() is called before proceeding lookup, so only assert never-saved for early-exit
-    // scenarios
-    if (!scenario.equals("NO_PROCEEDING")) {
-      verify(applicationRepository, never()).save(any());
-    }
+    assertThat(thrown)
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage(expectedMessage);
+    verify(applicationRepository, never()).save(any());
   }
 
   @Test
@@ -623,46 +533,35 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // given
     CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
 
-    final MakeDecisionRequest makeDecisionRequest =
-        DataGenerator.createDefault(
-            ApplicationMakeDecisionRequestGenerator.class,
-            requestBuilder ->
-                requestBuilder.proceedings(
-                    List.of(
-                        createMakeDecisionProceedingDetails(
-                            proceedingId,
-                            MeritsDecisionStatus.GRANTED,
-                            "reason",
-                            "justification"))));
+    final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
+            requestBuilder
+                .proceedings(List.of(
+                    createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "reason", "justification")
+                ))
+        );
 
-    ApplicationEntity expectedApplicationEntity =
-        getApplicationEntity(applicationId, caseworker, "unmodified");
+    ApplicationEntity expectedApplicationEntity = getApplicationEntity(applicationId, caseworker, "unmodified");
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    ProceedingEntity proceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.id(proceedingId).applicationId(unrelatedApplicationId));
+    ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder -> builder.id(proceedingId).application(ApplicationEntity.builder().id(unrelatedApplicationId).build()));
 
     // when
-    when(applicationRepository.findById(applicationId))
-        .thenReturn(Optional.of(expectedApplicationEntity));
-    when(proceedingRepository.findAllById(List.of(proceedingId)))
-        .thenReturn(List.of(proceedingEntity));
+    when(applicationRepository.findByIdWithDecisionGraph(applicationId)).thenReturn(Optional.of(expectedApplicationEntity));
+    when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
 
-    Throwable thrown =
-        catchThrowable(() -> serviceUnderTest.makeDecision(applicationId, makeDecisionRequest));
+    Throwable thrown = catchThrowable(
+            () -> serviceUnderTest.makeDecision(applicationId, makeDecisionRequest)
+        );
 
     // then
     assertThat(thrown)
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessage("Not linked to application: " + proceedingId);
+            .isInstanceOf(ResourceNotFoundException.class)
+            .hasMessage("Not linked to application: " + proceedingId);
   }
 
   @Test
-  void
-      givenProceedingsNotFoundAndNotLinkedToApplication_whenMakeDecision_thenThrowResourceNotFoundExceptionWithAllIds() {
+  void givenProceedingsNotFoundAndNotLinkedToApplication_whenMakeDecision_thenThrowResourceNotFoundExceptionWithAllIds() {
     UUID applicationId = UUID.randomUUID();
     UUID unrelatedApplicationId = UUID.randomUUID();
     UUID nonExistentProceedingId = UUID.randomUUID();
@@ -671,51 +570,41 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // given
     CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
 
-    final MakeDecisionRequest makeDecisionRequest =
-        DataGenerator.createDefault(
-            ApplicationMakeDecisionRequestGenerator.class,
-            requestBuilder ->
-                requestBuilder.proceedings(
-                    List.of(
-                        createMakeDecisionProceedingDetails(
-                            nonExistentProceedingId,
-                            MeritsDecisionStatus.GRANTED,
-                            "reason1",
-                            "justification1"),
-                        createMakeDecisionProceedingDetails(
-                            unrelatedApplicationProceedingId,
-                            MeritsDecisionStatus.REFUSED,
-                            "reason2",
-                            "justification2"))));
+    final MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
+            requestBuilder
+                .proceedings(List.of(
+                    createMakeDecisionProceedingDetails(nonExistentProceedingId,
+                        MeritsDecisionStatus.GRANTED, "reason1",
+                        "justification1"),
+                    createMakeDecisionProceedingDetails(unrelatedApplicationProceedingId,
+                        MeritsDecisionStatus.REFUSED, "reason2",
+                        "justification2")
+                ))
+        );
 
     ApplicationEntity expectedApplicationEntity =
         getApplicationEntity(applicationId, caseworker, "unmodified");
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    ProceedingEntity unrelatedApplicationProceeding =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder ->
-                builder.id(unrelatedApplicationProceedingId).applicationId(unrelatedApplicationId));
+    ProceedingEntity unrelatedApplicationProceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder -> builder.id(unrelatedApplicationProceedingId).application(ApplicationEntity.builder().id(unrelatedApplicationId).build()));
 
     // when
-    when(applicationRepository.findById(applicationId))
-        .thenReturn(Optional.of(expectedApplicationEntity));
-    when(proceedingRepository.findAllById(
-            List.of(nonExistentProceedingId, unrelatedApplicationProceedingId)))
+    when(applicationRepository.findByIdWithDecisionGraph(applicationId)).thenReturn(Optional.of(expectedApplicationEntity));
+    when(proceedingRepository.findAllById(List.of(nonExistentProceedingId, unrelatedApplicationProceedingId)))
         .thenReturn(List.of(unrelatedApplicationProceeding));
 
-    Throwable thrown =
-        catchThrowable(() -> serviceUnderTest.makeDecision(applicationId, makeDecisionRequest));
+    Throwable thrown = catchThrowable(
+            () -> serviceUnderTest.makeDecision(applicationId, makeDecisionRequest)
+        );
 
     // then
     assertThat(thrown)
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessageContaining("No proceeding found with id:")
-        .hasMessageContaining(nonExistentProceedingId.toString())
-        .hasMessageContaining("Not linked to application:")
-        .hasMessageContaining(unrelatedApplicationProceedingId.toString());
+            .isInstanceOf(ResourceNotFoundException.class)
+            .hasMessageContaining("No proceeding found with id:")
+            .hasMessageContaining(nonExistentProceedingId.toString())
+            .hasMessageContaining("Not linked to application:")
+            .hasMessageContaining(unrelatedApplicationProceedingId.toString());
   }
 
   @Test
@@ -724,43 +613,35 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
-    CaseworkerEntity caseworker =
-        DataGenerator.createDefault(CaseworkerGenerator.class, builder -> builder.id(caseworkerId));
+    CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder ->
+        builder.id(caseworkerId)
+    );
 
-    CertificateContent certificateContent =
-        DataGenerator.createDefault(CertificateContentGenerator.class);
+    CertificateContent certificateContent = DataGenerator.createDefault(CertificateContentGenerator.class);
     Map<String, Object> certificateData = objectMapper.convertValue(certificateContent, Map.class);
 
-    MakeDecisionRequest makeDecisionRequest =
-        DataGenerator.createDefault(
-            ApplicationMakeDecisionRequestGenerator.class,
-            requestBuilder ->
-                requestBuilder
-                    .overallDecision(DecisionStatus.GRANTED)
-                    .eventHistory(
-                        EventHistoryRequest.builder().eventDescription("granted event").build())
-                    .proceedings(
-                        List.of(
-                            createMakeDecisionProceedingDetails(
-                                proceedingId,
-                                MeritsDecisionStatus.GRANTED,
-                                "justification",
-                                "reason")))
-                    .certificate(certificateData));
+    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
+        requestBuilder
+            .overallDecision(DecisionStatus.GRANTED)
+            .eventHistory(EventHistoryRequest.builder()
+                .eventDescription("granted event")
+                .build())
+            .proceedings(List.of(
+                createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "justification", "reason")
+            ))
+            .certificate(certificateData)
+    );
 
-    ApplicationEntity applicationEntity =
-        getApplicationEntity(applicationId, caseworker, "content");
+    ApplicationEntity applicationEntity = getApplicationEntity(applicationId, caseworker, "content");
 
-    ProceedingEntity proceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.id(proceedingId).applicationId(applicationId));
+    ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
+        builder.id(proceedingId).application(ApplicationEntity.builder().id(applicationId).build())
+    );
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    when(proceedingRepository.findAllById(List.of(proceedingId)))
-        .thenReturn(List.of(proceedingEntity));
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+    when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
+    when(applicationRepository.findByIdWithDecisionGraph(applicationId)).thenReturn(Optional.of(applicationEntity));
     when(certificateRepository.findByApplicationId(applicationId)).thenReturn(Optional.empty());
 
     // when
@@ -778,18 +659,16 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // assertThat(savedCertificate.getCreatedBy()).isEqualTo(caseworkerId.toString());
     // assertThat(savedCertificate.getUpdatedBy()).isEqualTo(caseworkerId.toString());
 
-    ArgumentCaptor<DomainEventEntity> domainEventCaptor =
-        ArgumentCaptor.forClass(DomainEventEntity.class);
+    ArgumentCaptor<DomainEventEntity> domainEventCaptor = ArgumentCaptor.forClass(DomainEventEntity.class);
     verify(domainEventRepository, times(1)).save(domainEventCaptor.capture());
     assertThat(domainEventCaptor.getValue()).isInstanceOf(DomainEventEntity.class);
     DomainEventEntity domainEventEntityCaptured = domainEventCaptor.getValue();
     assertThat(domainEventEntityCaptured.getApplicationId()).isEqualTo(applicationId);
     assertThat(domainEventEntityCaptured.getCaseworkerId()).isEqualTo(caseworkerId);
-    assertThat(domainEventEntityCaptured.getType())
-        .isEqualTo(DomainEventType.APPLICATION_MAKE_DECISION_GRANTED);
+    assertThat(domainEventEntityCaptured.getType()).isEqualTo(DomainEventType.APPLICATION_MAKE_DECISION_GRANTED);
 
-    verify(applicationRepository, times(1)).findById(applicationId);
-    verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
+    verify(applicationRepository, times(1)).findByIdWithDecisionGraph(applicationId);
+    verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
   }
 
   @Test
@@ -799,37 +678,30 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     UUID proceedingId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     UUID existingCertificateId = UUID.randomUUID();
-    CaseworkerEntity caseworker =
-        DataGenerator.createDefault(CaseworkerGenerator.class, builder -> builder.id(caseworkerId));
+    CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder ->
+        builder.id(caseworkerId)
+    );
 
-    CertificateContent certificateContent =
-        DataGenerator.createDefault(CertificateContentGenerator.class);
+    CertificateContent certificateContent = DataGenerator.createDefault(CertificateContentGenerator.class);
     Map<String, Object> certificateData = objectMapper.convertValue(certificateContent, Map.class);
 
-    MakeDecisionRequest makeDecisionRequest =
-        DataGenerator.createDefault(
-            ApplicationMakeDecisionRequestGenerator.class,
-            requestBuilder ->
-                requestBuilder
-                    .overallDecision(DecisionStatus.GRANTED)
-                    .eventHistory(
-                        EventHistoryRequest.builder().eventDescription("granted event").build())
-                    .proceedings(
-                        List.of(
-                            createMakeDecisionProceedingDetails(
-                                proceedingId,
-                                MeritsDecisionStatus.GRANTED,
-                                "justification",
-                                "reason")))
-                    .certificate(certificateData));
+    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
+        requestBuilder
+            .overallDecision(DecisionStatus.GRANTED)
+            .eventHistory(EventHistoryRequest.builder()
+                .eventDescription("granted event")
+                .build())
+            .proceedings(List.of(
+                createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.GRANTED, "justification", "reason")
+            ))
+            .certificate(certificateData)
+    );
 
-    ApplicationEntity applicationEntity =
-        getApplicationEntity(applicationId, caseworker, "content");
+    ApplicationEntity applicationEntity = getApplicationEntity(applicationId, caseworker, "content");
 
-    ProceedingEntity proceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.id(proceedingId).applicationId(applicationId));
+    ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
+        builder.id(proceedingId).application(ApplicationEntity.builder().id(applicationId).build())
+    );
 
     uk.gov.justice.laa.dstew.access.entity.CertificateEntity existingCertificate =
         uk.gov.justice.laa.dstew.access.entity.CertificateEntity.builder()
@@ -842,11 +714,9 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    when(proceedingRepository.findAllById(List.of(proceedingId)))
-        .thenReturn(List.of(proceedingEntity));
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
-    when(certificateRepository.findByApplicationId(applicationId))
-        .thenReturn(Optional.of(existingCertificate));
+    when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
+    when(applicationRepository.findByIdWithDecisionGraph(applicationId)).thenReturn(Optional.of(applicationEntity));
+    when(certificateRepository.findByApplicationId(applicationId)).thenReturn(Optional.of(existingCertificate));
 
     // when
     serviceUnderTest.makeDecision(applicationId, makeDecisionRequest);
@@ -856,8 +726,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         ArgumentCaptor.forClass(uk.gov.justice.laa.dstew.access.entity.CertificateEntity.class);
     verify(certificateRepository, times(1)).save(certificateCaptor.capture());
 
-    uk.gov.justice.laa.dstew.access.entity.CertificateEntity savedCertificate =
-        certificateCaptor.getValue();
+    uk.gov.justice.laa.dstew.access.entity.CertificateEntity savedCertificate = certificateCaptor.getValue();
     assertThat(savedCertificate.getId()).isEqualTo(existingCertificateId);
     assertThat(savedCertificate.getApplicationId()).isEqualTo(applicationId);
     assertThat(savedCertificate.getCertificateContent()).isEqualTo(certificateData);
@@ -873,44 +742,36 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     UUID proceedingId = UUID.randomUUID();
     CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
 
-    MakeDecisionRequest makeDecisionRequest =
-        DataGenerator.createDefault(
-            ApplicationMakeDecisionRequestGenerator.class,
-            requestBuilder ->
-                requestBuilder
-                    .overallDecision(DecisionStatus.REFUSED)
-                    .eventHistory(
-                        EventHistoryRequest.builder().eventDescription("refusal event").build())
-                    .proceedings(
-                        List.of(
-                            createMakeDecisionProceedingDetails(
-                                proceedingId,
-                                MeritsDecisionStatus.REFUSED,
-                                "justification",
-                                "reason")))
-                    .certificate(null));
+    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
+        requestBuilder
+            .overallDecision(DecisionStatus.REFUSED)
+            .eventHistory(EventHistoryRequest.builder()
+                .eventDescription("refusal event")
+                .build())
+            .proceedings(List.of(
+                createMakeDecisionProceedingDetails(proceedingId, MeritsDecisionStatus.REFUSED, "justification", "reason")
+            ))
+            .certificate(null)
+    );
 
-    ApplicationEntity applicationEntity =
-        getApplicationEntity(applicationId, caseworker, "content");
+    ApplicationEntity applicationEntity = getApplicationEntity(applicationId, caseworker, "content");
 
-    ProceedingEntity proceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.id(proceedingId).applicationId(applicationId));
+    ProceedingEntity proceedingEntity = DataGenerator.createDefault(ProceedingsEntityGenerator.class, builder ->
+        builder.id(proceedingId).application(ApplicationEntity.builder().id(applicationId).build())
+    );
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    when(proceedingRepository.findAllById(List.of(proceedingId)))
-        .thenReturn(List.of(proceedingEntity));
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+    when(proceedingRepository.findAllById(List.of(proceedingId))).thenReturn(List.of(proceedingEntity));
+    when(applicationRepository.findByIdWithDecisionGraph(applicationId)).thenReturn(Optional.of(applicationEntity));
 
     // when
     serviceUnderTest.makeDecision(applicationId, makeDecisionRequest);
 
     // then
     verify(certificateRepository, never()).save(any());
-    verify(applicationRepository, times(1)).findById(applicationId);
-    verify(applicationRepository, times(2)).save(any(ApplicationEntity.class));
+    verify(applicationRepository, times(1)).findByIdWithDecisionGraph(applicationId);
+    verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
   }
 
@@ -919,28 +780,28 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // given
     UUID applicationId = UUID.randomUUID();
 
-    MakeDecisionRequest makeDecisionRequest =
-        DataGenerator.createDefault(
-            ApplicationMakeDecisionRequestGenerator.class,
-            requestBuilder ->
-                requestBuilder.applicationVersion(1L) // version should be 0 for the first decision
-            );
+    MakeDecisionRequest makeDecisionRequest = DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class, requestBuilder ->
+        requestBuilder
+            .applicationVersion(1L) // version should be 0 for the first decision
+    );
 
     ApplicationEntity applicationEntity = getApplicationEntity(applicationId, "content");
 
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+    when(applicationRepository.findByIdWithDecisionGraph(applicationId)).thenReturn(Optional.of(applicationEntity));
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    Throwable thrown =
-        catchThrowable(() -> serviceUnderTest.makeDecision(applicationId, makeDecisionRequest));
+    Throwable thrown = catchThrowable(() ->
+        serviceUnderTest.makeDecision(applicationId, makeDecisionRequest)
+    );
 
     // then
     assertThat(thrown).isInstanceOf(OptimisticLockingFailureException.class);
-    assertThat(thrown.getMessage()).contains("version 1 not found");
+    assertThat(thrown.getMessage())
+        .contains("version 1 not found");
 
-    verify(meritsDecisionRepository, never()).save(any());
-    verify(applicationRepository, times(1)).findById(applicationId);
+    // No longer uses meritsDecisionRepository directly — saved via cascade through applicationRepository
+    verify(applicationRepository, times(1)).findByIdWithDecisionGraph(applicationId);
     verify(applicationRepository, never()).save(any());
   }
 
@@ -948,59 +809,51 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
       UUID proceedingId,
       MeritsDecisionStatus decision,
       String reason,
-      String justification,
-      DecisionStatus decisionStatus) {
-    return DataGenerator.createDefault(
-        DecisionEntityGenerator.class,
-        builder ->
-            builder
-                .overallDecision(decisionStatus)
-                .meritsDecisions(
-                    new HashSet<>(
-                        Set.of(
-                            DataGenerator.createDefault(
-                                MeritsDecisionsEntityGenerator.class,
-                                mBuilder ->
+      String justification, DecisionStatus decisionStatus) {
+        return DataGenerator.createDefault(DecisionEntityGenerator.class, builder ->
+            builder.overallDecision(decisionStatus)
+                    .meritsDecisions(new HashSet<>(Set.of(
+                            DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class, mBuilder ->
                                     mBuilder
-                                        .proceeding(
-                                            ProceedingEntity.builder().id(proceedingId).build())
-                                        .decision(decision)
-                                        .reason(reason)
-                                        .justification(justification)
-                                        .modifiedAt(Instant.now()))))));
-  }
+                                            .proceeding(ProceedingEntity.builder().id(proceedingId).build())
+                                            .decision(decision)
+                                            .reason(reason)
+                                            .justification(justification)
+                                            .modifiedAt(Instant.now())
+                            )
+                    )))
+        );
+    }
 
-  private static MakeDecisionProceedingRequest createMakeDecisionProceedingDetails(
-      UUID proceedingId, MeritsDecisionStatus decision, String reason, String justification) {
-    return DataGenerator.createDefault(
-        MakeDecisionProceedingGenerator.class,
-        builder ->
+    private static MakeDecisionProceedingRequest createMakeDecisionProceedingDetails(UUID proceedingId,
+        MeritsDecisionStatus decision, String reason, String justification) {
+        return DataGenerator.createDefault(MakeDecisionProceedingGenerator.class, builder ->
             builder
                 .proceedingId(proceedingId)
                 .meritsDecision(
-                    DataGenerator.createDefault(
-                        MeritsDecisionDetailsGenerator.class,
-                        meritsBuilder ->
-                            meritsBuilder
-                                .decision(decision)
-                                .justification(justification)
-                                .reason(reason))));
-  }
+                    DataGenerator.createDefault(MeritsDecisionDetailsGenerator.class, meritsBuilder ->
+                        meritsBuilder
+                            .decision(decision)
+                            .justification(justification)
+                            .reason(reason)
+                    )
+                )
+        );
+    }
 
   private void verifyDecisionSavedCorrectly(
       MakeDecisionRequest expectedMakeDecisionRequest,
       ApplicationEntity expectedApplicationEntity,
       int expectedNumberOfMeritsDecisions) {
 
-    ArgumentCaptor<DecisionEntity> decisionCaptor = ArgumentCaptor.forClass(DecisionEntity.class);
-    verify(decisionRepository, times(1)).save(decisionCaptor.capture());
-    DecisionEntity savedDecision = decisionCaptor.getValue();
+    ArgumentCaptor<ApplicationEntity> appCaptor = ArgumentCaptor.forClass(ApplicationEntity.class);
+    verify(applicationRepository, times(1)).save(appCaptor.capture());
+    DecisionEntity savedDecision = appCaptor.getValue().getDecision();
 
-    MakeDecisionRequest actual =
-        mapToMakeDecisionRequest(
-            savedDecision,
-            expectedApplicationEntity,
-            expectedMakeDecisionRequest.getEventHistory());
+    MakeDecisionRequest actual = mapToMakeDecisionRequest(
+                    savedDecision,
+                    expectedApplicationEntity,
+                    expectedMakeDecisionRequest.getEventHistory());
 
     assertThat(actual.getProceedings().size()).isEqualTo(expectedNumberOfMeritsDecisions);
 
@@ -1015,14 +868,12 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         .isEqualTo(expectedMakeDecisionRequest);
 
     // Assert only on the set of proceedings that are updated or added via the request.
-    Set<UUID> expectedProceedingIds =
-        expectedMakeDecisionRequest.getProceedings().stream()
-            .map(MakeDecisionProceedingRequest::getProceedingId)
-            .collect(Collectors.toSet());
-    List<MakeDecisionProceedingRequest> actualProceedings =
-        actual.getProceedings().stream()
-            .filter(p -> expectedProceedingIds.contains(p.getProceedingId()))
-            .collect(Collectors.toList());
+    Set<UUID> expectedProceedingIds = expectedMakeDecisionRequest.getProceedings().stream()
+        .map(MakeDecisionProceedingRequest::getProceedingId)
+        .collect(Collectors.toSet());
+    List<MakeDecisionProceedingRequest> actualProceedings = actual.getProceedings().stream()
+        .filter(p -> expectedProceedingIds.contains(p.getProceedingId()))
+        .collect(Collectors.toList());
     assertThat(actualProceedings)
         .usingRecursiveComparison()
         .ignoringCollectionOrder()
@@ -1044,16 +895,14 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     return MakeDecisionRequest.builder()
         .overallDecision(decisionEntity.getOverallDecision())
         .eventHistory(eventHistoryRequest)
-        .proceedings(
-            decisionEntity.getMeritsDecisions().stream()
-                .map(MakeDecisionForApplicationTest::mapToProceedingDetails)
-                .toList())
+        .proceedings(decisionEntity.getMeritsDecisions().stream()
+            .map(MakeDecisionForApplicationTest::mapToProceedingDetails)
+            .toList())
         .build();
   }
 
   // MeritsDecisionEntity -> ProceedingDetails
-  private static MakeDecisionProceedingRequest mapToProceedingDetails(
-      MeritsDecisionEntity meritsDecisionEntity) {
+  private static MakeDecisionProceedingRequest mapToProceedingDetails(MeritsDecisionEntity meritsDecisionEntity) {
     if (meritsDecisionEntity == null) {
       return null;
     }
@@ -1064,8 +913,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
   }
 
   // MeritsDecisionEntity -> MeritsDecisionDetails
-  private static MeritsDecisionDetailsRequest mapToMeritsDecisionDetails(
-      MeritsDecisionEntity entity) {
+  private static MeritsDecisionDetailsRequest mapToMeritsDecisionDetails(MeritsDecisionEntity entity) {
     if (entity == null) {
       return null;
     }

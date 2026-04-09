@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -72,6 +73,7 @@ public class IndividualEntity implements AuditableEntity {
   @UpdateTimestamp
   private Instant modifiedAt;
 
+  @JsonIgnore
   @ManyToMany(mappedBy = "individuals")
   private Set<ApplicationEntity> applications;
 

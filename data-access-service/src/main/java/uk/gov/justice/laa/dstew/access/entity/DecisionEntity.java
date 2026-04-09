@@ -51,7 +51,7 @@ public class DecisionEntity implements AuditableEntity {
   @UpdateTimestamp
   private Instant modifiedAt;
 
-  @ManyToMany(cascade = CascadeType.PERSIST)
+  @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
   @JoinTable(
       name = "linked_merits_decisions",
       joinColumns = @JoinColumn(name = "decisions_id"),
@@ -80,5 +80,12 @@ public class DecisionEntity implements AuditableEntity {
   @Override
   public String getUpdatedBy() {
     return null;
+  }
+
+  public void addMeritsDecision(MeritsDecisionEntity merit) {
+    if (meritsDecisions == null) {
+      meritsDecisions = new java.util.HashSet<>();
+    }
+    meritsDecisions.add(merit);
   }
 }

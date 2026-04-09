@@ -4,6 +4,7 @@ import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -17,6 +18,7 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import jakarta.persistence.Version;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Map;
@@ -28,6 +30,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
@@ -47,6 +50,7 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 @NoArgsConstructor
 @Builder(toBuilder = true)
 @Entity
+@DynamicUpdate
 @Table(name = "applications")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
@@ -101,9 +105,13 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "submitted_at")
   private Instant submittedAt;
 
-  @OneToOne()
+  @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
   @JoinColumn(name = "decision_id", referencedColumnName = "id")
   private DecisionEntity decision;
+
+  @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+  @Builder.Default
+  private Set<ProceedingEntity> proceedings = new HashSet<>();
 
   @Column(name = "used_delegated_functions")
   private Boolean usedDelegatedFunctions;
@@ -119,6 +127,7 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "is_auto_granted")
   private Boolean isAutoGranted;
 
+  @JsonIgnore
   @OneToMany
   @JoinTable(
       name = "linked_applications",
@@ -126,6 +135,7 @@ public class ApplicationEntity implements AuditableEntity {
       inverseJoinColumns = @JoinColumn(name = "associated_application_id"))
   private Set<ApplicationEntity> linkedApplications;
 
+  @JsonIgnore
   @Transient
   public boolean isLead() {
     return linkedApplications != null && !linkedApplications.isEmpty();

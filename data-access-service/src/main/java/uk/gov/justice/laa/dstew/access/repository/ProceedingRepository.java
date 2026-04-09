@@ -6,8 +6,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 
-/** Repository for managing domain events entities. */
+/**
+ * Repository for managing domain events entities.
+ */
 @Repository
-public interface ProceedingRepository extends JpaRepository<ProceedingEntity, UUID> {
-  Set<ProceedingEntity> findAllByApplicationId(UUID applicationId);
+public interface ProceedingRepository extends
+        JpaRepository<ProceedingEntity, UUID> {
+  Set<ProceedingEntity> findByApplication_Id(UUID applicationId);
 }

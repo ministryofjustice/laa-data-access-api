@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,6 +22,10 @@ public interface ApplicationRepository extends JpaRepository<ApplicationEntity, 
 
   @Query("SELECT a FROM ApplicationEntity a LEFT JOIN FETCH a.linkedApplications WHERE a.id = :id")
   Optional<ApplicationEntity> findByIdWithLinkedApplications(@Param("id") UUID id);
+
+  @EntityGraph(attributePaths = {"decision", "decision.meritsDecisions", "proceedings"})
+  @Query("SELECT a FROM ApplicationEntity a WHERE a.id = :id")
+  Optional<ApplicationEntity> findByIdWithDecisionGraph(@Param("id") UUID id);
 
   @Query(
       value =

@@ -4,11 +4,14 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -24,7 +27,9 @@ import tools.jackson.databind.annotation.JsonNaming;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 
-/** Represents a merits decision. */
+/**
+ * Represents a merits decision.
+ */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter
@@ -40,8 +45,11 @@ public class MeritsDecisionEntity implements AuditableEntity {
   @Column(columnDefinition = "UUID")
   private UUID id;
 
-  @OneToOne()
-  @JoinColumn(name = "proceeding_id", nullable = false)
+  @Column(name = "proceeding_id", nullable = false)
+  private UUID proceedingId;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "proceeding_id", nullable = false, insertable = false, updatable = false)
   private ProceedingEntity proceeding;
 
   @Column(name = "created_at")
@@ -80,5 +88,26 @@ public class MeritsDecisionEntity implements AuditableEntity {
   @Override
   public String getUpdatedBy() {
     return null;
+  }
+
+  public void setProceeding(ProceedingEntity proceeding) {
+    this.proceeding = proceeding;
+    if (proceeding != null && proceeding.getId() != null) {
+      this.proceedingId = proceeding.getId();
+    }
+  }
+
+  @PrePersist
+  protected void ensureProceedingIdBeforePersist() {
+    if (this.proceedingId == null && this.proceeding != null) {
+      this.proceedingId = this.proceeding.getId();
+    }
+  }
+
+  @PreUpdate
+  protected void ensureProceedingIdBeforeUpdate() {
+    if (this.proceedingId == null && this.proceeding != null) {
+      this.proceedingId = this.proceeding.getId();
+    }
   }
 }
