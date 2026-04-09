@@ -11,6 +11,7 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.test.web.servlet.MvcResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 public class ResponseAsserts {
@@ -116,5 +117,103 @@ public class ResponseAsserts {
 
   public static void assertUnauthorised(MvcResult response) {
     assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getResponse().getStatus());
+  }
+
+  // ── HarnessResult overloads ───────────────────────────────────────────────
+
+  public static void assertSecurityHeaders(HarnessResult response) {
+    assertEquals("0", response.getResponse().getHeader("X-XSS-Protection"));
+    assertEquals("DENY", response.getResponse().getHeader("X-Frame-Options"));
+  }
+
+  public static void assertOK(HarnessResult response) {
+    assertEquals(HttpStatus.OK.value(), response.getResponse().getStatus());
+  }
+
+  public static void assertBadRequest(HarnessResult response) {
+    assertEquals(HttpStatus.BAD_REQUEST.value(), response.getResponse().getStatus());
+  }
+
+  public static void assertForbidden(HarnessResult response) {
+    assertEquals(HttpStatus.FORBIDDEN.value(), response.getResponse().getStatus());
+  }
+
+  public static void assertUnauthorised(HarnessResult response) {
+    assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getResponse().getStatus());
+  }
+
+  public static void assertNotFound(HarnessResult response) {
+    assertEquals(HttpStatus.NOT_FOUND.value(), response.getResponse().getStatus());
+  }
+
+  public static void assertContentHeaders(HarnessResult response) {
+    String ct = response.getResponse().getHeader("Content-Type");
+    assertThat(ct).startsWith("application/json");
+  }
+
+  public static void assertNoCacheHeaders(HarnessResult response) {
+    assertEquals("no-cache, no-store, max-age=0, must-revalidate",
+            response.getResponse().getHeader("Cache-Control"));
+    assertEquals("no-cache", response.getResponse().getHeader("Pragma"));
+    assertEquals("0", response.getResponse().getHeader("Expires"));
+  }
+
+  public static void assertCreated(HarnessResult response) {
+    assertEquals(HttpStatus.CREATED.value(), response.getResponse().getStatus());
+    assertNotNull(response.getResponse().getHeader("Location"));
+  }
+
+  public static void assertNoContent(HarnessResult response) {
+    assertEquals(HttpStatus.NO_CONTENT.value(), response.getResponse().getStatus());
+  }
+
+  public static void assertProblemRecord(
+          HttpStatus expectedStatus,
+          ProblemDetail expectedDetail,
+          HarnessResult response,
+          ProblemDetail actualDetail) {
+    assertProblemRecord(expectedStatus, expectedDetail.getTitle(), expectedDetail.getDetail(),
+            response, actualDetail, expectedDetail.getProperties());
+  }
+
+  public static void assertProblemRecord(
+          HttpStatus expectedStatus,
+          String expectedShortCode,
+          String expectedDetail,
+          HarnessResult response,
+          ProblemDetail actualDetail,
+          Map<String, Object> expectedProblemDetailProperties) {
+    assertThat(response.getResponse().getHeader("Content-Type")).startsWith("application/problem+json");
+    assertEquals(expectedStatus.value(), response.getResponse().getStatus());
+    assertEquals(expectedShortCode, actualDetail.getTitle());
+    assertEquals(expectedDetail, actualDetail.getDetail());
+    Map<String, Object> actualProperties = actualDetail.getProperties();
+    if (expectedProblemDetailProperties == null) {
+      assertNull(actualProperties);
+      return;
+    }
+    assertNotNull(actualProperties);
+    assertThat(actualProperties.keySet())
+            .containsExactlyInAnyOrderElementsOf(expectedProblemDetailProperties.keySet());
+    for (Object value : expectedProblemDetailProperties.values()) {
+      if (value instanceof List<?> expectedList) {
+        Object actualValue = actualProperties.get(expectedProblemDetailProperties.entrySet().stream()
+                .filter(e -> e.getValue() == value)
+                .findFirst()
+                .get()
+                .getKey());
+        assertThat(actualValue).isInstanceOf(List.class);
+        List<Object> actualList = new ArrayList<>((List<?>) actualValue);
+        List<Object> expected = new ArrayList<>(expectedList);
+        assertThat(actualList).containsExactlyInAnyOrderElementsOf(expected);
+      } else {
+        String key = expectedProblemDetailProperties.entrySet().stream()
+                .filter(e -> e.getValue() == value)
+                .findFirst()
+                .get()
+                .getKey();
+        assertEquals(value, actualProperties.get(key));
+      }
+    }
   }
 }

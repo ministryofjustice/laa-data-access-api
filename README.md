@@ -23,6 +23,14 @@ project.ext.gitPackageKey = PAT_CREATED_ABOVE
 
 Go back to Github to authorize MOJ for SSO
 
+### Monitoring (Prometheus & Grafana)
+
+See `docs/monitoring.md` for details on how application metrics are collected, scraped by Prometheus, and visualised in Grafana dashboards.
+
+### Network Policies
+
+See `docs/network-policies.md` for details on the Kubernetes network policy that allows Prometheus to scrape metrics.
+
 ### Pre-commit hooks
 
 See `docs/pre-commit-hooks.md` for information on setting up and using pre-commit hooks in this project.
@@ -85,6 +93,19 @@ Note that completing the build and unit tests currently requires:
 Execute
 
 `./gradlew integrationTest`
+
+### Run infrastructure smoke tests
+
+Infrastructure smoke tests run the built Docker image against a real Postgres database and
+verify the live HTTP API. See [`docs/infrastructure-smoke-tests.md`](docs/infrastructure-smoke-tests.md)
+for full details.
+
+The script is useful for testing the application locally. 
+The smoke tests will also run in CI eventually.
+
+```bash
+./scripts/run-infrastructure-smoke-tests.sh
+```
 
 ### Run application
 

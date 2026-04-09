@@ -27,4 +27,9 @@ public class TestConstants {
         public static final String CASEWORKER = "APPROLE_LAA_CASEWORKER";
         public static final String UNKNOWN = "Unknown-DO-NOT-IMPLEMENT";
     }
+
+    public static class Tokens {
+        public static final String CASEWORKER = "swagger-caseworker-token";
+        public static final String UNKNOWN = "unknown-token";
+    }
 }

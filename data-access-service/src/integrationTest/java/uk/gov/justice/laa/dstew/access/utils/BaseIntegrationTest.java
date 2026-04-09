@@ -33,7 +33,6 @@ import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
-import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
 
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
@@ -87,6 +86,7 @@ public abstract class BaseIntegrationTest {
     @BeforeEach
     void setupCaseworkers() {
         caseworkerRepository.deleteAll();
+        applicationRepository.deleteAll();
         CaseworkerJohnDoe = persistedDataGenerator.createAndPersist(CaseworkerGenerator.class, builder ->
                 builder.username("JohnDoe").build());
         CaseworkerJaneDoe = persistedDataGenerator.createAndPersist(CaseworkerGenerator.class, builder ->
@@ -278,7 +278,4 @@ public abstract class BaseIntegrationTest {
         entityManager.flush();
         entityManager.clear();
     }
-
-    @Autowired
-    protected Factory<IndividualCreateRequest, IndividualCreateRequest.Builder> applicationCreateRequestIndividualFactory;
 }

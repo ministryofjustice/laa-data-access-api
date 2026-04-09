@@ -22,12 +22,11 @@ public class ApplicationCreateRequestGenerator extends BaseGenerator<Application
     @Override
     public ApplicationCreateRequest createDefault() {
         ObjectMapper mapper = SpringContext.getObjectMapper();
-        ApplicationContent applicationContent = applicationContentGenerator.createDefault();
         return ApplicationCreateRequest.builder()
                 .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
                 .laaReference("REF7327")
                 .individuals(List.of(individualGenerator.createDefault()))
-                .applicationContent(mapper.convertValue(applicationContent, Map.class))
+                .applicationContent(mapper.convertValue(applicationContentGenerator.createDefault(), Map.class))
                 .build();
     }
 }
