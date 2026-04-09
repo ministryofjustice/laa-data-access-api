@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -95,7 +96,7 @@ public class ApplicationEntity implements AuditableEntity {
   @UpdateTimestamp
   private Instant modifiedAt;
 
-  @OneToOne()
+  @OneToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "caseworker_id", referencedColumnName = "id")
   private CaseworkerEntity caseworker;
 
@@ -105,7 +106,7 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "submitted_at")
   private Instant submittedAt;
 
-  @OneToOne()
+  @OneToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "decision_id", referencedColumnName = "id")
   private DecisionEntity decision;
 
