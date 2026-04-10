@@ -9,9 +9,9 @@ import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
 /** Repository for managing Certificate entities. */
 @Repository
 public interface CertificateRepository extends JpaRepository<CertificateEntity, UUID> {
-  void deleteByApplicationId(UUID applicationId);
+  void deleteByApplication_Id(UUID applicationId);
 
-  boolean existsByApplicationId(UUID applicationId);
+  boolean existsByApplication_Id(UUID applicationId);
 
-  Optional<CertificateEntity> findByApplicationId(UUID applicationId);
+  Optional<CertificateEntity> findByApplication_Id(UUID applicationId);
 }

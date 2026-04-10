@@ -37,10 +37,11 @@ public class GetCertificateTest extends BaseServiceTest {
 
     CertificateEntity certificateEntity =
         DataGenerator.createDefault(
-            CertificateEntityGenerator.class, builder -> builder.applicationId(applicationId));
+            CertificateEntityGenerator.class,
+            builder -> builder.application(ApplicationEntity.builder().id(applicationId).build()));
 
     when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
-    when(certificateRepository.findByApplicationId(applicationId))
+    when(certificateRepository.findByApplication_Id(applicationId))
         .thenReturn(Optional.of(certificateEntity));
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
@@ -52,7 +53,7 @@ public class GetCertificateTest extends BaseServiceTest {
     assertThat(result).isNotNull();
     assertThat(result).isEqualTo(certificateEntity.getCertificateContent());
     verify(applicationRepository, times(1)).findById(applicationId);
-    verify(certificateRepository, times(1)).findByApplicationId(applicationId);
+    verify(certificateRepository, times(1)).findByApplication_Id(applicationId);
   }
 
   @Test
@@ -71,7 +72,7 @@ public class GetCertificateTest extends BaseServiceTest {
         .withMessageContaining("No application found with id: " + applicationId);
 
     verify(applicationRepository, times(1)).findById(applicationId);
-    verify(certificateRepository, never()).findByApplicationId(any(UUID.class));
+    verify(certificateRepository, never()).findByApplication_Id(any(UUID.class));
   }
 
   @Test
@@ -82,7 +83,7 @@ public class GetCertificateTest extends BaseServiceTest {
     UUID applicationId = applicationEntity.getId();
 
     when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
-    when(certificateRepository.findByApplicationId(applicationId)).thenReturn(Optional.empty());
+    when(certificateRepository.findByApplication_Id(applicationId)).thenReturn(Optional.empty());
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -107,6 +108,6 @@ public class GetCertificateTest extends BaseServiceTest {
         .withMessageContaining("Access Denied");
 
     verify(applicationRepository, times(0)).findById(any(UUID.class));
-    verify(certificateRepository, never()).findByApplicationId(any(UUID.class));
+    verify(certificateRepository, never()).findByApplication_Id(any(UUID.class));
   }
 }

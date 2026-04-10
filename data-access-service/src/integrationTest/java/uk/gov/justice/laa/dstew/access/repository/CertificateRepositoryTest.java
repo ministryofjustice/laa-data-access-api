@@ -19,8 +19,7 @@ public class CertificateRepositoryTest extends BaseIntegrationTest {
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
     CertificateEntity expected =
         persistedDataGenerator.createAndPersist(
-            CertificateEntityGenerator.class,
-            builder -> builder.applicationId(applicationEntity.getId()));
+            CertificateEntityGenerator.class, builder -> builder.application(applicationEntity));
     clearCache();
 
     // when
@@ -33,7 +32,7 @@ public class CertificateRepositoryTest extends BaseIntegrationTest {
   private void assertCertificateEqual(CertificateEntity expected, CertificateEntity actual) {
     assertThat(expected)
         .usingRecursiveComparison()
-        .ignoringFields("createdAt", "modifiedAt")
+        .ignoringFields("createdAt", "modifiedAt", "application")
         .isEqualTo(actual);
     assertThat(expected.getCreatedAt()).isNotNull();
     assertThat(expected.getModifiedAt()).isNotNull();

@@ -197,7 +197,7 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
 
     // then
     assertNoContent(result);
-    assertFalse(certificateRepository.existsByApplicationId(applicationEntity.getId()));
+    assertFalse(certificateRepository.existsByApplication_Id(applicationEntity.getId()));
   }
 
   @Test
@@ -913,7 +913,7 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
 
     CertificateEntity updatedCertificate = certificatesAfterSecond.get(0);
     assertThat(updatedCertificate.getId()).isEqualTo(originalCertificateId);
-    assertThat(updatedCertificate.getApplicationId()).isEqualTo(applicationEntity.getId());
+    assertThat(certificateRepository.existsByApplication_Id(applicationEntity.getId())).isTrue();
     assertThat(updatedCertificate.getCertificateContent().get("certificateNumber"))
         .isEqualTo(updatedCertificateContent.getCertificateNumber());
     assertThat(updatedCertificate.getCertificateContent().get("issueDate"))
@@ -929,7 +929,7 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
     assertThat(certificates.size()).isEqualTo(1);
 
     CertificateEntity certificate = certificates.get(0);
-    assertThat(certificate.getApplicationId()).isEqualTo(applicationId);
+    assertThat(certificateRepository.existsByApplication_Id(applicationId)).isTrue();
     assertThat(certificate.getCertificateContent()).isNotNull();
     assertThat(certificate.getCertificateContent().get("certificateNumber"))
         .isEqualTo("TESTCERT001");

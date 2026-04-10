@@ -42,7 +42,6 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
-import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
 import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
@@ -65,7 +64,6 @@ public class ApplicationService {
   private final DomainEventService domainEventService;
   private final ApplicationContentParserService applicationContentParser;
   private final ProceedingRepository proceedingRepository;
-  private final CertificateRepository certificateRepository;
   private final PayloadValidationService payloadValidationService;
   private final NoteRepository noteRepository;
   private final NoteMapper noteMapper;
@@ -88,7 +86,6 @@ public class ApplicationService {
       final DomainEventService domainEventService,
       final ApplicationContentParserService applicationContentParserService,
       final ProceedingRepository proceedingRepository,
-      final CertificateRepository certificateRepository,
       final PayloadValidationService payloadValidationService,
       final NoteRepository noteRepository,
       final NoteMapper noteMapper) {
@@ -102,7 +99,6 @@ public class ApplicationService {
     this.objectMapper = objectMapper;
     this.caseworkerRepository = caseworkerRepository;
     this.domainEventService = domainEventService;
-    this.certificateRepository = certificateRepository;
     this.noteRepository = noteRepository;
     this.noteMapper = noteMapper;
   }
@@ -490,27 +486,16 @@ public class ApplicationService {
     if (decision.getOverallDecision() == DecisionStatus.GRANTED
         && request.getCertificate() != null) {
       CertificateEntity certificate =
-          certificateRepository
-              .findByApplicationId(applicationId)
-              .map(
-                  existing -> {
-                    existing.setCertificateContent(request.getCertificate());
-                    return existing;
-                  })
-              .orElseGet(
-                  () ->
-                      CertificateEntity.builder()
-                          .applicationId(applicationId)
-                          .certificateContent(request.getCertificate())
-                          .build());
-
-      certificateRepository.save(certificate);
+          application.getCertificate() != null
+              ? application.getCertificate()
+              : CertificateEntity.builder().build();
+      certificate.setApplication(application);
+      certificate.setCertificateContent(request.getCertificate());
+      application.setCertificate(certificate);
     }
 
     if (decision.getOverallDecision() == DecisionStatus.REFUSED) {
-      if (certificateRepository.existsByApplicationId(applicationId)) {
-        certificateRepository.deleteByApplicationId(applicationId);
-      }
+      application.setCertificate(null);
     }
 
     if (application.getDecision() == null) {

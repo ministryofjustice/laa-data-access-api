@@ -28,7 +28,7 @@ public class CertificateService {
                     String.format("No application found with id: %s", applicationId)));
 
     return certificateRepository
-        .findByApplicationId(applicationId)
+        .findByApplication_Id(applicationId)
         .orElseThrow(
             () ->
                 new ResourceNotFoundException(

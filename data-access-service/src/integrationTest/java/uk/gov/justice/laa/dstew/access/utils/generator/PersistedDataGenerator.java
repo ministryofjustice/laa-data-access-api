@@ -211,8 +211,6 @@ public class PersistedDataGenerator extends DataGenerator {
       // Use JDBC directly to avoid Hibernate cascading REMOVE to merits_decisions rows, which are
       // already gone (cascade-deleted by DB: applications→proceedings→merits_decisions ON DELETE
       // CASCADE).
-      trackedDecisionIds.forEach(
-          id -> jdbcTemplate.update("DELETE FROM decisions WHERE id = ?", id));
       trackedCaseworkerIds.forEach(id -> cwRepo.findById(id).ifPresent(cwRepo::delete));
       trackedIndividualIds.forEach(id -> indivRepo.findById(id).ifPresent(indivRepo::delete));
     } finally {

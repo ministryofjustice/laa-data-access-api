@@ -251,7 +251,9 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                     .application(ApplicationEntity.builder().id(applicationId).build()));
 
     // when
-    when(certificateRepository.existsByApplicationId(applicationId)).thenReturn(certificateExists);
+    if (certificateExists) {
+      expectedApplicationEntity.setCertificate(CertificateEntity.builder().build());
+    }
     when(proceedingRepository.findAllById(
             List.of(grantedProceedingEntity.getId(), refusedProceedingEntity.getId())))
         .thenReturn(List.of(grantedProceedingEntity, refusedProceedingEntity));
@@ -265,8 +267,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         .findByIdWithDecisionGraph(expectedApplicationEntity.getId());
     verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
-    verify(certificateRepository, times((certificateExists) ? 1 : 0))
-        .deleteByApplicationId(applicationId);
     verifyThatDomainEventSaved(domainEventRepository, objectMapper, expectedDomainEvent, 1);
     verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, 2);
   }
@@ -789,18 +789,18 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         .thenReturn(List.of(proceedingEntity));
     when(applicationRepository.findByIdWithDecisionGraph(applicationId))
         .thenReturn(Optional.of(applicationEntity));
-    when(certificateRepository.findByApplicationId(applicationId)).thenReturn(Optional.empty());
 
     // when
     serviceUnderTest.makeDecision(applicationId, makeDecisionRequest);
 
     // then
-    ArgumentCaptor<CertificateEntity> certificateCaptor =
-        ArgumentCaptor.forClass(CertificateEntity.class);
-    verify(certificateRepository, times(1)).save(certificateCaptor.capture());
+    ArgumentCaptor<ApplicationEntity> appCaptor = ArgumentCaptor.forClass(ApplicationEntity.class);
+    verify(applicationRepository, times(1)).findByIdWithDecisionGraph(applicationId);
+    verify(applicationRepository, times(1)).save(appCaptor.capture());
 
-    CertificateEntity savedCertificate = certificateCaptor.getValue();
-    assertThat(savedCertificate.getApplicationId()).isEqualTo(applicationId);
+    CertificateEntity savedCertificate = appCaptor.getValue().getCertificate();
+    assertThat(savedCertificate).isNotNull();
+    assertThat(savedCertificate.getApplication()).isNotNull();
     assertThat(savedCertificate.getCertificateContent()).isEqualTo(certificateData);
     // createdBy and updatedBy logic will be reverted once security is in place
     // assertThat(savedCertificate.getCreatedBy()).isEqualTo(caseworkerId.toString());
@@ -815,9 +815,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     assertThat(domainEventEntityCaptured.getCaseworkerId()).isEqualTo(caseworkerId);
     assertThat(domainEventEntityCaptured.getType())
         .isEqualTo(DomainEventType.APPLICATION_MAKE_DECISION_GRANTED);
-
-    verify(applicationRepository, times(1)).findByIdWithDecisionGraph(applicationId);
-    verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
   }
 
   @Test
@@ -865,11 +862,12 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     uk.gov.justice.laa.dstew.access.entity.CertificateEntity existingCertificate =
         uk.gov.justice.laa.dstew.access.entity.CertificateEntity.builder()
             .id(existingCertificateId)
-            .applicationId(applicationId)
             .certificateContent(Map.of("old", "content"))
             .createdBy("original-caseworker")
             .updatedBy("original-caseworker")
             .build();
+
+    applicationEntity.setCertificate(existingCertificate);
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -877,21 +875,18 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         .thenReturn(List.of(proceedingEntity));
     when(applicationRepository.findByIdWithDecisionGraph(applicationId))
         .thenReturn(Optional.of(applicationEntity));
-    when(certificateRepository.findByApplicationId(applicationId))
-        .thenReturn(Optional.of(existingCertificate));
 
     // when
     serviceUnderTest.makeDecision(applicationId, makeDecisionRequest);
 
     // then
-    ArgumentCaptor<uk.gov.justice.laa.dstew.access.entity.CertificateEntity> certificateCaptor =
-        ArgumentCaptor.forClass(uk.gov.justice.laa.dstew.access.entity.CertificateEntity.class);
-    verify(certificateRepository, times(1)).save(certificateCaptor.capture());
+    ArgumentCaptor<ApplicationEntity> appCaptor = ArgumentCaptor.forClass(ApplicationEntity.class);
+    verify(applicationRepository, times(1)).save(appCaptor.capture());
 
     uk.gov.justice.laa.dstew.access.entity.CertificateEntity savedCertificate =
-        certificateCaptor.getValue();
+        appCaptor.getValue().getCertificate();
     assertThat(savedCertificate.getId()).isEqualTo(existingCertificateId);
-    assertThat(savedCertificate.getApplicationId()).isEqualTo(applicationId);
+    assertThat(savedCertificate.getApplication()).isNotNull();
     assertThat(savedCertificate.getCertificateContent()).isEqualTo(certificateData);
     assertThat(savedCertificate.getCreatedBy()).isEqualTo("original-caseworker");
     // updatedBy logic will be reverted once security is in place
@@ -944,7 +939,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     serviceUnderTest.makeDecision(applicationId, makeDecisionRequest);
 
     // then
-    verify(certificateRepository, never()).save(any());
     verify(applicationRepository, times(1)).findByIdWithDecisionGraph(applicationId);
     verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));

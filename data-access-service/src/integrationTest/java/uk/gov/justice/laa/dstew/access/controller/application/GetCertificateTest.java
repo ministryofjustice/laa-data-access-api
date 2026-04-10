@@ -55,7 +55,7 @@ public class GetCertificateTest extends BaseHarnessTest {
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
     persistedDataGenerator.createAndPersist(
-        CertificateEntityGenerator.class, builder -> builder.applicationId(application.getId()));
+        CertificateEntityGenerator.class, builder -> builder.application(application));
 
     // when
     HarnessResult result = getUri(TestConstants.URIs.GET_CERTIFICATE, application.getId());

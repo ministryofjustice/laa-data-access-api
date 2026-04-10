@@ -23,7 +23,8 @@ public interface ApplicationRepository extends JpaRepository<ApplicationEntity, 
   @Query("SELECT a FROM ApplicationEntity a LEFT JOIN FETCH a.linkedApplications WHERE a.id = :id")
   Optional<ApplicationEntity> findByIdWithLinkedApplications(@Param("id") UUID id);
 
-  @EntityGraph(attributePaths = {"decision", "decision.meritsDecisions", "proceedings"})
+  @EntityGraph(
+      attributePaths = {"decision", "decision.meritsDecisions", "proceedings", "certificate"})
   @Query("SELECT a FROM ApplicationEntity a WHERE a.id = :id")
   Optional<ApplicationEntity> findByIdWithDecisionGraph(@Param("id") UUID id);
 

@@ -109,6 +109,13 @@ public class ApplicationEntity implements AuditableEntity {
   @JoinColumn(name = "decision_id", referencedColumnName = "id")
   private DecisionEntity decision;
 
+  @OneToOne(
+      mappedBy = "application",
+      cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE},
+      orphanRemoval = true,
+      fetch = FetchType.LAZY)
+  private CertificateEntity certificate;
+
   @OneToMany(
       mappedBy = "application",
       cascade = CascadeType.ALL,
