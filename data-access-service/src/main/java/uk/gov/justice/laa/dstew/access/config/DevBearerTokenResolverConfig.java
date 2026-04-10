@@ -4,20 +4,17 @@ import java.util.Set;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 
 /**
- * Spring configuration to allow certain dev tokens to bypass the JWT filter and be handled by the DevTokenFilter instead.
+ * Spring configuration to allow certain dev tokens to bypass the JWT filter and be handled by the
+ * DevTokenFilter instead.
  */
 @Configuration
 @ConditionalOnProperty(prefix = "feature", name = "enable-dev-token", havingValue = "true")
 public class DevBearerTokenResolverConfig {
 
-  private static final Set<String> DEV_TOKENS = Set.of(
-      "swagger-caseworker-token",
-      "unknown-token"
-  );
+  private static final Set<String> DEV_TOKENS = Set.of("swagger-caseworker-token", "unknown-token");
 
   /**
    * Custom BearerTokenResolver that checks for dev tokens and returns null if a dev token is found,
@@ -28,7 +25,6 @@ public class DevBearerTokenResolverConfig {
   @Bean
   public BearerTokenResolver bearerTokenResolver() {
     return request -> {
-
       String authHeader = request.getHeader("Authorization");
 
       if (authHeader == null || !authHeader.startsWith("Bearer ")) {

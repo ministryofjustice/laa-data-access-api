@@ -9,7 +9,5 @@ import uk.gov.justice.laa.dstew.access.utils.helpers.SpringContext;
 @JsonTest
 @Import(SpringContext.class)
 public abstract class BaseMapperTest {
-    @Autowired
-    protected ObjectMapper objectMapper;
+  @Autowired protected ObjectMapper objectMapper;
 }
-

@@ -27,11 +27,8 @@ public class GenericEnumDeserializer<E extends Enum> extends ValueDeserializer<E
     }
 
     return Arrays.stream(enumType.getEnumConstants())
-        .filter(enumConstant -> enumConstant
-            .name()
-            .equalsIgnoreCase(value.trim()))
+        .filter(enumConstant -> enumConstant.name().equalsIgnoreCase(value.trim()))
         .findFirst()
         .orElse(null);
-
   }
 }

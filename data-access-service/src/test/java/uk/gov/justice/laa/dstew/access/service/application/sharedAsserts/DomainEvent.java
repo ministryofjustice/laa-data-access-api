@@ -1,42 +1,43 @@
 package uk.gov.justice.laa.dstew.access.service.application.sharedAsserts;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
+import java.util.Map;
 import org.mockito.ArgumentCaptor;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-
-
-import tools.jackson.core.JacksonException;
-
-
 public class DomainEvent {
 
-    public static void verifyThatDomainEventSaved(DomainEventRepository domainEventRepository, ObjectMapper objectMapper, DomainEventEntity expectedDomainEvent, int timesCalled) throws JacksonException {
-        ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
-        verify(domainEventRepository, times(timesCalled)).save(captor.capture());
-        DomainEventEntity actualDomainEvent = captor.getValue();
-        assertThat(expectedDomainEvent)
-                .usingRecursiveComparison()
-                .ignoringFields("createdAt", "data", "serviceName")
-                .isEqualTo(actualDomainEvent);
-        assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
-        assertThat(actualDomainEvent.getServiceName()).isEqualTo(ServiceName.CIVIL_APPLY);
+  public static void verifyThatDomainEventSaved(
+      DomainEventRepository domainEventRepository,
+      ObjectMapper objectMapper,
+      DomainEventEntity expectedDomainEvent,
+      int timesCalled)
+      throws JacksonException {
+    ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
+    verify(domainEventRepository, times(timesCalled)).save(captor.capture());
+    DomainEventEntity actualDomainEvent = captor.getValue();
+    assertThat(expectedDomainEvent)
+        .usingRecursiveComparison()
+        .ignoringFields("createdAt", "data", "serviceName")
+        .isEqualTo(actualDomainEvent);
+    assertThat(actualDomainEvent.getCreatedAt()).isNotNull();
+    assertThat(actualDomainEvent.getServiceName()).isEqualTo(ServiceName.CIVIL_APPLY);
 
-        Map<String, Object> expectedData = objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
-        Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
-        assertThat(expectedData)
-                .usingRecursiveComparison()
-                .ignoringCollectionOrder()
-                .ignoringFields("createdAt")
-                .isEqualTo(actualData);
-        assertThat(actualData.get("createdAt")).isNotNull();
-    }
+    Map<String, Object> expectedData =
+        objectMapper.readValue(expectedDomainEvent.getData(), Map.class);
+    Map<String, Object> actualData = objectMapper.readValue(actualDomainEvent.getData(), Map.class);
+    assertThat(expectedData)
+        .usingRecursiveComparison()
+        .ignoringCollectionOrder()
+        .ignoringFields("createdAt")
+        .isEqualTo(actualData);
+    assertThat(actualData.get("createdAt")).isNotNull();
+  }
 }

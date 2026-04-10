@@ -30,9 +30,7 @@ import tools.jackson.databind.annotation.JsonNaming;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
-/**
- * Represents an individual.
- */
+/** Represents an individual. */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter
@@ -43,7 +41,7 @@ import uk.gov.justice.laa.dstew.access.model.IndividualType;
 @Table(name = "individuals")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class IndividualEntity  implements AuditableEntity {
+public class IndividualEntity implements AuditableEntity {
   @Id
   @Column(columnDefinition = "UUID")
   @GeneratedValue(strategy = GenerationType.IDENTITY)

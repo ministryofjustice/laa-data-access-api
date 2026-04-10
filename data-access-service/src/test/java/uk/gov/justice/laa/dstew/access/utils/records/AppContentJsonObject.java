@@ -10,9 +10,6 @@ import lombok.Builder;
  * @param id
  * @param submittedAt
  */
-  @Builder
-  public record AppContentJsonObject(
-      List<ProceedingJsonObject> proceedings,
-      String id,
-      String submittedAt) {
-  }
+@Builder
+public record AppContentJsonObject(
+    List<ProceedingJsonObject> proceedings, String id, String submittedAt) {}

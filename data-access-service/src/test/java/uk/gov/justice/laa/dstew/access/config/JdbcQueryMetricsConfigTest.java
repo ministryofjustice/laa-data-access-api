@@ -21,9 +21,7 @@ class JdbcQueryMetricsConfigTest {
 
   @Test
   void jdbcQueryTimer_publishesHistogramBuckets() {
-    Timer timer = Timer.builder("jdbc.query")
-        .publishPercentileHistogram()
-        .register(meterRegistry);
+    Timer timer = Timer.builder("jdbc.query").publishPercentileHistogram().register(meterRegistry);
 
     timer.record(java.time.Duration.ofMillis(50));
 
@@ -33,8 +31,7 @@ class JdbcQueryMetricsConfigTest {
 
   @Test
   void jdbcQueryActiveTimer_alsoMatchesFilter() {
-    Timer timer = Timer.builder("jdbc.query.active")
-        .register(meterRegistry);
+    Timer timer = Timer.builder("jdbc.query.active").register(meterRegistry);
 
     timer.record(java.time.Duration.ofMillis(10));
 
@@ -43,8 +40,7 @@ class JdbcQueryMetricsConfigTest {
 
   @Test
   void unrelatedMeter_notAffectedByFilter() {
-    Timer timer = Timer.builder("http.server.requests")
-        .register(meterRegistry);
+    Timer timer = Timer.builder("http.server.requests").register(meterRegistry);
 
     timer.record(java.time.Duration.ofMillis(100));
 

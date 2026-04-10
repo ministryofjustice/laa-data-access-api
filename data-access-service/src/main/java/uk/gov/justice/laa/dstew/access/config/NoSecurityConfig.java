@@ -19,9 +19,7 @@ class NoSecurityConfig {
 
   private static final Logger log = LoggerFactory.getLogger(NoSecurityConfig.class);
 
-  /**
-   * Log no security config on startup to make it clear security is not enabled.
-   */
+  /** Log no security config on startup to make it clear security is not enabled. */
   public NoSecurityConfig() {
     log.info("NoSecurityConfig enabled: security filter chain disabled.");
   }

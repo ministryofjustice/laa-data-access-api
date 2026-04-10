@@ -12,9 +12,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.lang.Nullable;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/**
- * ApplicationApplicant pojo.
- */
+/** ApplicationApplicant pojo. */
 @Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -22,24 +20,21 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @ExcludeFromGeneratedCodeCoverage
 public class ApplicationApplicant {
 
-  @Nullable
-  private List<Map<String, Object>> addresses;
+  @Nullable private List<Map<String, Object>> addresses;
 
-  @Nullable
-  private Boolean appliedPreviously;
+  @Nullable private Boolean appliedPreviously;
 
-  @jakarta.annotation.Nullable
-  private String relationshipToInvolvedChildren;
+  @jakarta.annotation.Nullable private String relationshipToInvolvedChildren;
 
-  @JsonAnyGetter
-  private Map<String, Object> additionalContent;
+  @JsonAnyGetter private Map<String, Object> additionalContent;
 
   /**
-  * Set the additional (undeclared) property with the specified name and value.
-  * If the property does not already exist, create it otherwise replace it.
-  */
+   * Set the additional (undeclared) property with the specified name and value. If the property
+   * does not already exist, create it otherwise replace it.
+   */
   @JsonAnySetter
-  public uk.gov.justice.laa.dstew.access.model.ApplicationApplicant putAdditionalContent(String key, Object value) {
+  public uk.gov.justice.laa.dstew.access.model.ApplicationApplicant putAdditionalContent(
+      String key, Object value) {
     if (this.additionalContent == null) {
       this.additionalContent = new HashMap<>();
     }

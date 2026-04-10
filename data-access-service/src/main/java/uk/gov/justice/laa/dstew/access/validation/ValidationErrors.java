@@ -5,8 +5,8 @@ import java.util.List;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
- * Simple state of validation of an incoming DTO.
- * Contains list of validation errors. Consider it like a builder for a ValidationException.
+ * Simple state of validation of an incoming DTO. Contains list of validation errors. Consider it
+ * like a builder for a ValidationException.
  */
 @ExcludeFromGeneratedCodeCoverage
 class ValidationErrors {
@@ -24,7 +24,7 @@ class ValidationErrors {
     errors.add(error);
     return this;
   }
-  
+
   ValidationErrors addIf(boolean condition, String error) {
     return condition ? add(error) : this;
   }

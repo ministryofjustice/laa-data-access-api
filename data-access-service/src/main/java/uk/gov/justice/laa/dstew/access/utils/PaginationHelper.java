@@ -5,9 +5,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
-/**
- * Helper class for pagination validation.
- */
+/** Helper class for pagination validation. */
 public final class PaginationHelper {
 
   private static final int DEFAULT_PAGE = 1;
@@ -99,7 +97,8 @@ public final class PaginationHelper {
       return DEFAULT_PAGE_SIZE;
     }
     if (pageSize < MIN_PAGE_SIZE) {
-      throw new IllegalArgumentException("pageSize must be greater than or equal to " + MIN_PAGE_SIZE);
+      throw new IllegalArgumentException(
+          "pageSize must be greater than or equal to " + MIN_PAGE_SIZE);
     }
     if (pageSize > MAX_PAGE_SIZE) {
       throw new IllegalArgumentException("pageSize cannot be more than " + MAX_PAGE_SIZE);
