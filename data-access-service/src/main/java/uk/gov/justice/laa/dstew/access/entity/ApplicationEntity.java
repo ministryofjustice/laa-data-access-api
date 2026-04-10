@@ -1,12 +1,13 @@
 package uk.gov.justice.laa.dstew.access.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -18,7 +19,6 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import jakarta.persistence.Version;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Map;
@@ -109,7 +109,11 @@ public class ApplicationEntity implements AuditableEntity {
   @JoinColumn(name = "decision_id", referencedColumnName = "id")
   private DecisionEntity decision;
 
-  @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+  @OneToMany(
+      mappedBy = "application",
+      cascade = CascadeType.ALL,
+      orphanRemoval = true,
+      fetch = FetchType.LAZY)
   @Builder.Default
   private Set<ProceedingEntity> proceedings = new HashSet<>();
 

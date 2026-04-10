@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.mapper;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.apache.commons.lang3.BooleanUtils;
 import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -13,22 +12,21 @@ import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.utils.EnumParsingUtils;
 
 /**
- * Mapper interface.
- * All mapping operations are performed safely, throwing an
- * {@link IllegalArgumentException} if JSON conversion fails.
+ * Mapper interface. All mapping operations are performed safely, throwing an {@link
+ * IllegalArgumentException} if JSON conversion fails.
  */
 @Mapper(componentModel = "spring")
 public interface ProceedingMapper {
 
-
   /**
    * Converts a {@link Proceeding} model into a new {@link ProceedingEntity}.
    *
-   * @param proceeding    the proceeding
-   * @param application   the application entity
+   * @param proceeding the proceeding
+   * @param application the application entity
    * @return ProceedingEntity or null
    */
-  default ProceedingEntity toProceedingEntity(Proceeding proceeding, ApplicationEntity application) {
+  default ProceedingEntity toProceedingEntity(
+      Proceeding proceeding, ApplicationEntity application) {
     if (proceeding == null) {
       return null;
     }
@@ -37,44 +35,53 @@ public interface ProceedingMapper {
     proceedingEntity.setApplyProceedingId(proceeding.getId());
     proceedingEntity.setLead(BooleanUtils.isTrue(proceeding.getLeadProceeding()));
     proceedingEntity.setDescription(proceeding.getDescription());
-    proceedingEntity.setProceedingContent(MapperUtil.getObjectMapper().convertValue(proceeding, Map.class));
+    proceedingEntity.setProceedingContent(
+        MapperUtil.getObjectMapper().convertValue(proceeding, Map.class));
     return proceedingEntity;
   }
 
   /**
    * Converts a {@link Proceeding} model into a new {@link ProceedingEntity}.
    *
-   * @param proceedingEntity    the proceeding entity
+   * @param proceedingEntity the proceeding entity
    * @return Proceeding or null
    */
   default ApplicationProceedingResponse toApplicationProceeding(ProceedingEntity proceedingEntity) {
     if (proceedingEntity == null) {
       return null;
     }
-    Proceeding proceeding = MapperUtil.getObjectMapper()
+    Proceeding proceeding =
+        MapperUtil.getObjectMapper()
             .convertValue(proceedingEntity.getProceedingContent(), Proceeding.class);
 
-    ApplicationProceedingResponse applicationProceedingResponse = new ApplicationProceedingResponse();
+    ApplicationProceedingResponse applicationProceedingResponse =
+        new ApplicationProceedingResponse();
     applicationProceedingResponse.setProceedingId(proceedingEntity.getId());
     applicationProceedingResponse.setProceedingDescription(proceedingEntity.getDescription());
     applicationProceedingResponse.setProceedingType(proceeding.getMeaning());
-    applicationProceedingResponse.setDelegatedFunctionsDate(proceeding.getUsedDelegatedFunctionsOn());
-    applicationProceedingResponse.setCategoryOfLaw(EnumParsingUtils.convertToCategoryOfLaw(proceeding.getCategoryOfLaw()));
-    applicationProceedingResponse.setMatterType(EnumParsingUtils.convertToMatterType(proceeding.getMatterType()));
+    applicationProceedingResponse.setDelegatedFunctionsDate(
+        proceeding.getUsedDelegatedFunctionsOn());
+    applicationProceedingResponse.setCategoryOfLaw(
+        EnumParsingUtils.convertToCategoryOfLaw(proceeding.getCategoryOfLaw()));
+    applicationProceedingResponse.setMatterType(
+        EnumParsingUtils.convertToMatterType(proceeding.getMatterType()));
     applicationProceedingResponse.setLevelOfService(proceeding.getSubstantiveLevelOfServiceName());
-    applicationProceedingResponse.setSubstantiveCostLimitation(proceeding.getSubstantiveCostLimitation());
+    applicationProceedingResponse.setSubstantiveCostLimitation(
+        proceeding.getSubstantiveCostLimitation());
     if (proceeding.getScopeLimitations() != null) {
-      List<ScopeLimitationResponse> scopeLimitations = proceeding.getScopeLimitations().stream()
-          .map(scopeLimitationMap -> {
-            Object meaningObj = scopeLimitationMap.getOrDefault("meaning", null);
-            Object descriptionObj = scopeLimitationMap.getOrDefault("description", null);
+      List<ScopeLimitationResponse> scopeLimitations =
+          proceeding.getScopeLimitations().stream()
+              .map(
+                  scopeLimitationMap -> {
+                    Object meaningObj = scopeLimitationMap.getOrDefault("meaning", null);
+                    Object descriptionObj = scopeLimitationMap.getOrDefault("description", null);
 
-            return ScopeLimitationResponse.builder()
-                .scopeLimitation(meaningObj != null ? meaningObj.toString() : null)
-                .scopeDescription(descriptionObj != null ? descriptionObj.toString() : null)
-                .build();
-          })
-          .toList();
+                    return ScopeLimitationResponse.builder()
+                        .scopeLimitation(meaningObj != null ? meaningObj.toString() : null)
+                        .scopeDescription(descriptionObj != null ? descriptionObj.toString() : null)
+                        .build();
+                  })
+              .toList();
       applicationProceedingResponse.setScopeLimitations(scopeLimitations);
     }
 

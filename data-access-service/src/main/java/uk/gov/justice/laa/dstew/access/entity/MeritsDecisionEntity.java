@@ -27,9 +27,7 @@ import tools.jackson.databind.annotation.JsonNaming;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 
-/**
- * Represents a merits decision.
- */
+/** Represents a merits decision. */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter

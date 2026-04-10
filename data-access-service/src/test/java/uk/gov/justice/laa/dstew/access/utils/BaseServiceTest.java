@@ -11,7 +11,6 @@ import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,67 +21,57 @@ import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.*;
 
-@SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=false"})
-@ImportAutoConfiguration(exclude = {
-        DataSourceAutoConfiguration.class,
-        HibernateJpaAutoConfiguration.class,
-})
+@SpringBootTest(
+    properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=false"})
+@ImportAutoConfiguration(
+    exclude = {
+      DataSourceAutoConfiguration.class,
+      HibernateJpaAutoConfiguration.class,
+    })
 @ExtendWith(MockitoExtension.class)
 @ActiveProfiles("unit-test")
 public class BaseServiceTest {
 
-    @MockitoBean
-    protected ApplicationRepository applicationRepository;
+  @MockitoBean protected ApplicationRepository applicationRepository;
 
-    @MockitoBean
-    protected DomainEventRepository domainEventRepository;
+  @MockitoBean protected DomainEventRepository domainEventRepository;
 
-    @MockitoBean
-    protected CaseworkerRepository caseworkerRepository;
+  @MockitoBean protected CaseworkerRepository caseworkerRepository;
 
-    @MockitoBean
-    protected ApplicationSummaryRepository applicationSummaryRepository;
+  @MockitoBean protected ApplicationSummaryRepository applicationSummaryRepository;
 
-    @MockitoBean
-    protected ProceedingRepository proceedingRepository;
+  @MockitoBean protected ProceedingRepository proceedingRepository;
 
-    @MockitoBean
-    protected CertificateRepository certificateRepository;
+  @MockitoBean protected CertificateRepository certificateRepository;
 
-    @MockitoBean
-    protected IndividualRepository individualRepository;
+  @MockitoBean protected IndividualRepository individualRepository;
 
-    @MockitoBean
-    protected NoteRepository noteRepository;
+  @MockitoBean protected NoteRepository noteRepository;
 
-    @MockitoBean
-    protected ServiceNameContext serviceNameContext;
+  @MockitoBean protected ServiceNameContext serviceNameContext;
 
-    @Autowired
-    protected ObjectMapper objectMapper;
+  @Autowired protected ObjectMapper objectMapper;
 
-    @BeforeEach
-    void setUp() {
-      Mockito.lenient().when(serviceNameContext.getServiceName()).thenReturn(ServiceName.CIVIL_APPLY);
-    }
+  @BeforeEach
+  void setUp() {
+    Mockito.lenient().when(serviceNameContext.getServiceName()).thenReturn(ServiceName.CIVIL_APPLY);
+  }
 
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
-    }
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
 
-    protected void setSecurityContext(String[] roles) {
-        var authorities = Stream.of(roles)
-                .map(SimpleGrantedAuthority::new)
-                .toList();
+  protected void setSecurityContext(String[] roles) {
+    var authorities = Stream.of(roles).map(SimpleGrantedAuthority::new).toList();
 
-        var authentication = new TestingAuthenticationToken("user", "password", authorities);
-        authentication.setAuthenticated(true);
+    var authentication = new TestingAuthenticationToken("user", "password", authorities);
+    authentication.setAuthenticated(true);
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-    }
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+  }
 
-    protected void setSecurityContext(String role) {
-        setSecurityContext(new String[] {role});
-    }
+  protected void setSecurityContext(String role) {
+    setSecurityContext(new String[] {role});
+  }
 }
