@@ -32,16 +32,14 @@ class PayloadValidationServiceTest {
       new PayloadValidationService(MapperUtil.getObjectMapper(), validator);
 
   public static Stream<Arguments> payloadsForValidation() {
-    return Stream.of(
-        Arguments.of(ApplicationContent.class),
-        Arguments.of(Proceeding.class)
-    );
+    return Stream.of(Arguments.of(ApplicationContent.class), Arguments.of(Proceeding.class));
   }
 
   @Test
   public void validateProceedingPayloadFromJsonString() {
 
-    final String json = """
+    final String json =
+        """
         {"id": "",
         "leadProceeding": "",
         "description": "",
@@ -51,87 +49,92 @@ class PayloadValidationServiceTest {
         """;
 
     ValidationException validationException =
-        Assertions.assertThrows(ValidationException.class,
+        Assertions.assertThrows(
+            ValidationException.class,
             () -> serviceUnderTest.convertAndValidate(json, Proceeding.class));
 
     assertThat(validationException.errors())
         .isInstanceOf(List.class)
-        .contains("id: must not be null",
-            "leadProceeding: must not be null");
-
+        .contains("id: must not be null", "leadProceeding: must not be null");
   }
 
   @Test
   public void illegalArgumentExceptionOnInvalidPayload() {
 
-    final String json = """
+    final String json =
+        """
         {"id": null,
         """;
 
     ValidationException validationException =
-        Assertions.assertThrows(ValidationException.class,
+        Assertions.assertThrows(
+            ValidationException.class,
             () -> serviceUnderTest.convertAndValidate(json, Proceeding.class));
 
     assertThat(validationException.errors())
         .isInstanceOf(List.class)
         .contains("Unexpected end-of-input within/between Object entries");
-
   }
 
   @Test
   public void illegalArgumentExceptionOnInvalidPayload2() {
 
-    final String json = """
+    final String json =
+        """
         {"id": 2 }
         """;
 
     ValidationException validationException =
-        Assertions.assertThrows(ValidationException.class,
+        Assertions.assertThrows(
+            ValidationException.class,
             () -> serviceUnderTest.convertAndValidate(json, Proceeding.class));
 
     assertThat(validationException.errors())
         .isInstanceOf(List.class)
         .anyMatch(message -> message.contains("Cannot deserialize value of type `java.util.UUID`"));
-
   }
 
   @Test
   public void validateProceedingPayloadFromPojo() {
 
     ValidationException validationException =
-        Assertions.assertThrows(ValidationException.class,
+        Assertions.assertThrows(
+            ValidationException.class,
             () -> serviceUnderTest.convertAndValidate(new Proceeding(), Proceeding.class));
 
     assertThat(validationException.errors())
-        .contains("id: must not be null",
+        .contains(
+            "id: must not be null",
             "leadProceeding: must not be null",
             "description: must not be null");
-
   }
-
 
   @ParameterizedTest
   @MethodSource("payloadsForValidation")
   public <T> void validatePayloadsUsingSupplier(Class<T> clazz) {
 
     ValidationException validationException =
-        Assertions.assertThrows(ValidationException.class,
+        Assertions.assertThrows(
+            ValidationException.class,
             () -> serviceUnderTest.convertAndValidate(instantiate(clazz), clazz));
 
     assertThat(validationException.errors()).isNotEmpty();
-
   }
 
   private <T> T instantiate(Class<T> clazz) {
     try {
       return clazz.getDeclaredConstructor().newInstance();
-    } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+    } catch (InstantiationException
+        | IllegalAccessException
+        | InvocationTargetException
+        | NoSuchMethodException e) {
       throw new IllegalStateException("Unable to instantiate " + clazz.getName(), e);
     }
   }
 
   @Test
-  void convertAndValidate_whenMapperThrowsIllegalArgumentWithJsonMappingCause_returnsOriginalMessage() {
+  void
+      convertAndValidate_whenMapperThrowsIllegalArgumentWithJsonMappingCause_returnsOriginalMessage() {
     ObjectMapper mapper = mock(ObjectMapper.class);
     Validator validatorMock = mock(Validator.class);
     PayloadValidationService service = new PayloadValidationService(mapper, validatorMock);
@@ -142,7 +145,8 @@ class PayloadValidationServiceTest {
         .thenThrow(new IllegalArgumentException("boom", mappingException));
 
     ValidationException validationException =
-        Assertions.assertThrows(ValidationException.class,
+        Assertions.assertThrows(
+            ValidationException.class,
             () -> service.convertAndValidate(new Proceeding(), Proceeding.class));
 
     String expectedMessage = mappingException.getOriginalMessage();
@@ -160,7 +164,8 @@ class PayloadValidationServiceTest {
         .thenThrow(new IllegalArgumentException("boom"));
 
     ValidationException validationException =
-        Assertions.assertThrows(ValidationException.class,
+        Assertions.assertThrows(
+            ValidationException.class,
             () -> service.convertAndValidate(new Proceeding(), Proceeding.class));
 
     assertThat(validationException.errors()).contains("Invalid request payload");

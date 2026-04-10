@@ -11,20 +11,20 @@ import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.MakeDecisionProc
 
 @Profile("unit-test")
 @Component
-public class ApplicationMakeDecisionRequestFactory extends BaseFactory<MakeDecisionRequest, MakeDecisionRequest.Builder> {
+public class ApplicationMakeDecisionRequestFactory
+    extends BaseFactory<MakeDecisionRequest, MakeDecisionRequest.Builder> {
 
-    @Autowired
-    private MakeDecisionProceedingFactory makeDecisionProceedingFactory;
+  @Autowired private MakeDecisionProceedingFactory makeDecisionProceedingFactory;
 
-    public ApplicationMakeDecisionRequestFactory() {
-        super(MakeDecisionRequest::toBuilder, MakeDecisionRequest.Builder::build);
-    }
+  public ApplicationMakeDecisionRequestFactory() {
+    super(MakeDecisionRequest::toBuilder, MakeDecisionRequest.Builder::build);
+  }
 
-    @Override
-    public MakeDecisionRequest createDefault() {
-        return MakeDecisionRequest.builder()
-            .overallDecision(DecisionStatus.REFUSED)
-                .proceedings(List.of(makeDecisionProceedingFactory.createDefault()))
-                .build();
-    }
+  @Override
+  public MakeDecisionRequest createDefault() {
+    return MakeDecisionRequest.builder()
+        .overallDecision(DecisionStatus.REFUSED)
+        .proceedings(List.of(makeDecisionProceedingFactory.createDefault()))
+        .build();
+  }
 }

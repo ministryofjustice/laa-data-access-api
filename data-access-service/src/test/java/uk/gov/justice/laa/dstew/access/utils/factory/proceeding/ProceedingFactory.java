@@ -12,9 +12,7 @@ import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 
 @Profile("unit-test")
 @Component
-public class ProceedingFactory
-    extends BaseFactory<Proceeding, Proceeding.ProceedingBuilder> {
-
+public class ProceedingFactory extends BaseFactory<Proceeding, Proceeding.ProceedingBuilder> {
 
   public ProceedingFactory() {
     super(Proceeding::toBuilder, Proceeding.ProceedingBuilder::build);
@@ -22,8 +20,7 @@ public class ProceedingFactory
 
   @Override
   public Proceeding createDefault() {
-    return Proceeding
-        .builder()
+    return Proceeding.builder()
         .id(UUID.randomUUID())
         .categoryOfLaw(String.valueOf(CategoryOfLaw.FAMILY))
         .matterType(String.valueOf(MatterType.SPECIAL_CHILDREN_ACT))
@@ -33,13 +30,13 @@ public class ProceedingFactory
         .build();
   }
 
-
   @Override
   public List<Proceeding> createMultipleDefault(int count) {
     List<Proceeding> proceedings = new ArrayList<>();
     proceedings.add(createDefault());
     for (int i = 0; i < count - 1; i++) {
-      proceedings.add(createDefault().toBuilder().id(UUID.randomUUID()).leadProceeding(false).build());
+      proceedings.add(
+          createDefault().toBuilder().id(UUID.randomUUID()).leadProceeding(false).build());
     }
     return proceedings;
   }

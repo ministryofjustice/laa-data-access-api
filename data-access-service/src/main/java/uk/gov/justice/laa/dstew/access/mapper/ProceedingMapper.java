@@ -11,18 +11,16 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 
 /**
- * Mapper interface.
- * All mapping operations are performed safely, throwing an
- * {@link IllegalArgumentException} if JSON conversion fails.
+ * Mapper interface. All mapping operations are performed safely, throwing an {@link
+ * IllegalArgumentException} if JSON conversion fails.
  */
 @Mapper(componentModel = "spring")
 public interface ProceedingMapper {
 
-
   /**
    * Converts a {@link Proceeding} model into a new {@link ProceedingEntity}.
    *
-   * @param proceeding    the proceeding
+   * @param proceeding the proceeding
    * @param applicationId the application id
    * @return ProceedingEntity or null
    */
@@ -35,32 +33,37 @@ public interface ProceedingMapper {
     proceedingEntity.setApplyProceedingId(proceeding.getId());
     proceedingEntity.setLead(BooleanUtils.isTrue(proceeding.getLeadProceeding()));
     proceedingEntity.setDescription(proceeding.getDescription());
-    proceedingEntity.setProceedingContent(MapperUtil.getObjectMapper().convertValue(proceeding, Map.class));
+    proceedingEntity.setProceedingContent(
+        MapperUtil.getObjectMapper().convertValue(proceeding, Map.class));
     return proceedingEntity;
   }
 
   /**
    * Converts a {@link Proceeding} model into a new {@link ProceedingEntity}.
    *
-   * @param proceedingEntity    the proceeding entity
+   * @param proceedingEntity the proceeding entity
    * @return Proceeding or null
    */
   default ApplicationProceedingResponse toApplicationProceeding(ProceedingEntity proceedingEntity) {
     if (proceedingEntity == null) {
       return null;
     }
-    Proceeding proceeding = MapperUtil.getObjectMapper()
+    Proceeding proceeding =
+        MapperUtil.getObjectMapper()
             .convertValue(proceedingEntity.getProceedingContent(), Proceeding.class);
 
-    ApplicationProceedingResponse applicationProceedingResponse = new ApplicationProceedingResponse();
+    ApplicationProceedingResponse applicationProceedingResponse =
+        new ApplicationProceedingResponse();
     applicationProceedingResponse.setProceedingId(proceedingEntity.getId());
     applicationProceedingResponse.setProceedingDescription(proceedingEntity.getDescription());
     applicationProceedingResponse.setProceedingType(proceeding.getMeaning());
-    applicationProceedingResponse.setUsedDelegatedFunctionsOn(proceeding.getUsedDelegatedFunctionsOn());
+    applicationProceedingResponse.setUsedDelegatedFunctionsOn(
+        proceeding.getUsedDelegatedFunctionsOn());
     applicationProceedingResponse.setCategoryOfLaw(proceeding.getCategoryOfLaw());
     applicationProceedingResponse.setMatterType(proceeding.getMatterType());
     applicationProceedingResponse.setLevelOfService(proceeding.getSubstantiveLevelOfServiceName());
-    applicationProceedingResponse.setSubstantiveCostLimitation(proceeding.getSubstantiveCostLimitation());
+    applicationProceedingResponse.setSubstantiveCostLimitation(
+        proceeding.getSubstantiveCostLimitation());
     if (proceeding.getScopeLimitations() != null) {
       List<Object> scopeLimitations = new ArrayList<>();
       proceeding.getScopeLimitations().forEach(s -> scopeLimitations.add(s));

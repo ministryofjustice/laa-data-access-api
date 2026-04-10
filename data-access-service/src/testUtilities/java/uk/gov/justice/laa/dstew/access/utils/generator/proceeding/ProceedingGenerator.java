@@ -25,15 +25,12 @@ public class ProceedingGenerator extends BaseGenerator<Proceeding, Proceeding.Pr
         .usedDelegatedFunctionsOn(LocalDate.parse("2025-05-06"))
         .substantiveCostLimitation("23.45")
         .substantiveLevelOfServiceName("service")
-            .scopeLimitations(
-              List.of(
+        .scopeLimitations(
+            List.of(
                 Map.of(
-                  "id", "100",
-                  "code", "AB123D",
-                  "meaning", "hearing"
-                )
-              )
-            )
+                    "id", "100",
+                    "code", "AB123D",
+                    "meaning", "hearing")))
         .build();
   }
 }

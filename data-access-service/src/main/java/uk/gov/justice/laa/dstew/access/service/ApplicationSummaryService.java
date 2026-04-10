@@ -30,9 +30,7 @@ import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecifica
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
-/**
- * Service class responsible for retrieving and managing {@link ApplicationSummary} data.
- */
+/** Service class responsible for retrieving and managing {@link ApplicationSummary} data. */
 @Service
 public class ApplicationSummaryService {
   private final ApplicationSummaryRepository applicationSummaryRepository;
@@ -52,8 +50,7 @@ public class ApplicationSummaryService {
       final ApplicationSummaryRepository applicationSummaryRepository,
       final ApplicationRepository applicationRepository,
       final ApplicationSummaryMapper applicationSummaryMapper,
-      final CaseworkerRepository caseworkerRepository
-  ) {
+      final CaseworkerRepository caseworkerRepository) {
     this.applicationSummaryRepository = applicationSummaryRepository;
     this.applicationRepository = applicationRepository;
     this.mapper = applicationSummaryMapper;
@@ -61,30 +58,32 @@ public class ApplicationSummaryService {
   }
 
   /**
-   * Retrieves a paginated list of {@link ApplicationSummary} objects filtered by application status.
+   * Retrieves a paginated list of {@link ApplicationSummary} objects filtered by application
+   * status.
    *
-   * @param applicationStatus the {@link ApplicationStatus} used to filter results on application status
+   * @param applicationStatus the {@link ApplicationStatus} used to filter results on application
+   *     status
    * @param laaReference used to filter results on application reference
    * @param clientFirstName used to filter results on linked individuals first name
-   * @param clientLastName used to filter results on  linked individuals last name
+   * @param clientLastName used to filter results on linked individuals last name
    * @param page the page number (one-based)
    * @param pageSize the maximum number of results to return per page
    * @return a {@link PaginatedResult} containing the page and validated pagination parameters
    */
   @AllowApiCaseworker
   public PaginatedResult<ApplicationSummary> getAllApplications(
-          ApplicationStatus applicationStatus,
-          String laaReference,
-          String clientFirstName,
-          String clientLastName,
-          LocalDate clientDateOfBirth,
-          UUID userId,
-          Boolean isAutoGranted,
-          MatterType matterType,
-          ApplicationSortBy sortBy,
-          ApplicationOrderBy orderBy,
-          Integer page,
-          Integer pageSize) {
+      ApplicationStatus applicationStatus,
+      String laaReference,
+      String clientFirstName,
+      String clientLastName,
+      LocalDate clientDateOfBirth,
+      UUID userId,
+      Boolean isAutoGranted,
+      MatterType matterType,
+      ApplicationSortBy sortBy,
+      ApplicationOrderBy orderBy,
+      Integer page,
+      Integer pageSize) {
 
     Pageable pageDetails = createPageable(page, pageSize, createSortAndOrderBy(sortBy, orderBy));
 
@@ -92,74 +91,87 @@ public class ApplicationSummaryService {
       throw new ValidationException(List.of("Caseworker not found"));
     }
 
-    Page<ApplicationSummaryEntity> resultPage = applicationSummaryRepository
-        .findAll(ApplicationSummarySpecification
-                .filterBy(applicationStatus,
-                    laaReference,
-                    clientFirstName,
-                    clientLastName,
-                    clientDateOfBirth,
-                    userId,
-                    matterType,
-                    isAutoGranted),
+    Page<ApplicationSummaryEntity> resultPage =
+        applicationSummaryRepository.findAll(
+            ApplicationSummarySpecification.filterBy(
+                applicationStatus,
+                laaReference,
+                clientFirstName,
+                clientLastName,
+                clientDateOfBirth,
+                userId,
+                matterType,
+                isAutoGranted),
             pageDetails);
 
-    Map<UUID, List<LinkedApplicationSummaryDto>> linkedApplications = retrieveLinkedApplications(resultPage.getContent());
+    Map<UUID, List<LinkedApplicationSummaryDto>> linkedApplications =
+        retrieveLinkedApplications(resultPage.getContent());
 
-    return wrapResult(page, pageSize, resultPage.map(entity -> {
-      ApplicationSummary summary = mapper.toApplicationSummary(entity);
-      summary.setLinkedApplications(
-          linkedApplications.getOrDefault(entity.getId(), List.of())
-              .stream()
-              .map(mapper::toLinkedApplicationSummary)
-              .toList()
-      );
-      return summary;
-    }));
+    return wrapResult(
+        page,
+        pageSize,
+        resultPage.map(
+            entity -> {
+              ApplicationSummary summary = mapper.toApplicationSummary(entity);
+              summary.setLinkedApplications(
+                  linkedApplications.getOrDefault(entity.getId(), List.of()).stream()
+                      .map(mapper::toLinkedApplicationSummary)
+                      .toList());
+              return summary;
+            }));
   }
 
-  private Map<UUID, List<LinkedApplicationSummaryDto>> retrieveLinkedApplications(List<ApplicationSummaryEntity> content) {
+  private Map<UUID, List<LinkedApplicationSummaryDto>> retrieveLinkedApplications(
+      List<ApplicationSummaryEntity> content) {
     List<UUID> pageIds = content.stream().map(ApplicationSummaryEntity::getId).toList();
-    List<UUID> allLeadIds = Stream.concat(
-            content.stream().filter(ApplicationSummaryEntity::isLead).map(ApplicationSummaryEntity::getId),
-            applicationRepository.findLeadIdsByAssociatedIds(pageIds).stream())
-        .distinct()
-        .toList();
+    List<UUID> allLeadIds =
+        Stream.concat(
+                content.stream()
+                    .filter(ApplicationSummaryEntity::isLead)
+                    .map(ApplicationSummaryEntity::getId),
+                applicationRepository.findLeadIdsByAssociatedIds(pageIds).stream())
+            .distinct()
+            .toList();
 
     if (allLeadIds.isEmpty()) {
       return Map.of();
     }
 
-    Map<UUID, List<LinkedApplicationSummaryDto>> linkedAppsByLeadId = applicationRepository
-        .findAllLinkedApplicationsByLeadIds(allLeadIds)
-        .stream()
-        .collect(Collectors.groupingBy(LinkedApplicationSummaryDto::getLeadApplicationId));
+    Map<UUID, List<LinkedApplicationSummaryDto>> linkedAppsByLeadId =
+        applicationRepository.findAllLinkedApplicationsByLeadIds(allLeadIds).stream()
+            .collect(Collectors.groupingBy(LinkedApplicationSummaryDto::getLeadApplicationId));
 
-    return content.stream().collect(Collectors.toMap(
-        ApplicationSummaryEntity::getId,
-        entity -> resolveLinkedApplications(entity.getId(), linkedAppsByLeadId)
-    ));
+    return content.stream()
+        .collect(
+            Collectors.toMap(
+                ApplicationSummaryEntity::getId,
+                entity -> resolveLinkedApplications(entity.getId(), linkedAppsByLeadId)));
   }
 
   private List<LinkedApplicationSummaryDto> resolveLinkedApplications(
-      UUID applicationId,
-      Map<UUID, List<LinkedApplicationSummaryDto>> linkedAppsByLeadId) {
+      UUID applicationId, Map<UUID, List<LinkedApplicationSummaryDto>> linkedAppsByLeadId) {
 
-    List<LinkedApplicationSummaryDto> group = linkedAppsByLeadId.getOrDefault(applicationId,
-        linkedAppsByLeadId.values().stream()
-            .filter(linkedGroup -> linkedGroup.stream().anyMatch(dto -> dto.getApplicationId().equals(applicationId)))
-            .findFirst()
-            .orElse(List.of()));
+    List<LinkedApplicationSummaryDto> group =
+        linkedAppsByLeadId.getOrDefault(
+            applicationId,
+            linkedAppsByLeadId.values().stream()
+                .filter(
+                    linkedGroup ->
+                        linkedGroup.stream()
+                            .anyMatch(dto -> dto.getApplicationId().equals(applicationId)))
+                .findFirst()
+                .orElse(List.of()));
 
     return group.stream().filter(dto -> !dto.getApplicationId().equals(applicationId)).toList();
   }
 
-  private Sort createSortAndOrderBy(ApplicationSortBy sortBy,
-                          ApplicationOrderBy orderBy) {
-    ApplicationSortFields sortField = (sortBy == null)
-            ? ApplicationSortFields.SUBMITTED_DATE : ApplicationSortFields.valueOf(sortBy.getValue());
-    Sort.Direction direction = (orderBy == null)
-            ? Sort.Direction.ASC : Sort.Direction.fromString(orderBy.getValue());
+  private Sort createSortAndOrderBy(ApplicationSortBy sortBy, ApplicationOrderBy orderBy) {
+    ApplicationSortFields sortField =
+        (sortBy == null)
+            ? ApplicationSortFields.SUBMITTED_DATE
+            : ApplicationSortFields.valueOf(sortBy.getValue());
+    Sort.Direction direction =
+        (orderBy == null) ? Sort.Direction.ASC : Sort.Direction.fromString(orderBy.getValue());
 
     return Sort.by(direction, sortField.getValue());
   }

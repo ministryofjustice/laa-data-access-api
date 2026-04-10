@@ -20,9 +20,7 @@ import tools.jackson.databind.PropertyNamingStrategies;
 import tools.jackson.databind.annotation.JsonNaming;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/**
- * Represents a note.
- */
+/** Represents a note. */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter

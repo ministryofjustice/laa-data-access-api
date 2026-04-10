@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
@@ -40,10 +39,7 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
-
-/**
- * Controller for handling /api/v0/applications requests.
- */
+/** Controller for handling /api/v0/applications requests. */
 @RequiredArgsConstructor
 @RestController
 @ExcludeFromGeneratedCodeCoverage
@@ -58,11 +54,11 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @Override
   public ResponseEntity<Void> createApplication(
-          @NotNull ServiceName serviceName,
-          @Valid ApplicationCreateRequest applicationCreateReq) {
+      @NotNull ServiceName serviceName, @Valid ApplicationCreateRequest applicationCreateReq) {
     UUID id = service.createApplication(applicationCreateReq);
 
-    URI uri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
+    URI uri =
+        ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
     return ResponseEntity.created(uri).build();
   }
 
@@ -70,9 +66,9 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<Void> updateApplication(
-          @NotNull ServiceName serviceName,
-          UUID id,
-          @Valid ApplicationUpdateRequest applicationUpdateReq) {
+      @NotNull ServiceName serviceName,
+      UUID id,
+      @Valid ApplicationUpdateRequest applicationUpdateReq) {
     service.updateApplication(id, applicationUpdateReq);
     return ResponseEntity.noContent().build();
   }
@@ -81,34 +77,34 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<ApplicationSummaryResponse> getApplications(
-          ServiceName serviceName,
-          ApplicationStatus status,
-          String laaReference,
-          String clientFirstName,
-          String clientLastName,
-          LocalDate clientDateOfBirth,
-          UUID userId,
-          Boolean isAutoGranted,
-          MatterType matterType,
-          ApplicationSortBy sortBy,
-          ApplicationOrderBy orderBy,
-          Integer page,
-          Integer pageSize) {
+      ServiceName serviceName,
+      ApplicationStatus status,
+      String laaReference,
+      String clientFirstName,
+      String clientLastName,
+      LocalDate clientDateOfBirth,
+      UUID userId,
+      Boolean isAutoGranted,
+      MatterType matterType,
+      ApplicationSortBy sortBy,
+      ApplicationOrderBy orderBy,
+      Integer page,
+      Integer pageSize) {
 
     PaginatedResult<ApplicationSummary> result =
-            summaryService.getAllApplications(
-                    status,
-                    laaReference,
-                    clientFirstName,
-                    clientLastName,
-                    clientDateOfBirth,
-                    userId,
-                    isAutoGranted,
-                    matterType,
-                    sortBy,
-                    orderBy,
-                    page,
-                    pageSize);
+        summaryService.getAllApplications(
+            status,
+            laaReference,
+            clientFirstName,
+            clientLastName,
+            clientDateOfBirth,
+            userId,
+            isAutoGranted,
+            matterType,
+            sortBy,
+            orderBy,
+            page,
+            pageSize);
 
     List<ApplicationSummary> applications = result.page().stream().toList();
     PagingResponse pagingResponse = new PagingResponse();
@@ -134,10 +130,10 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> assignCaseworker(@NotNull ServiceName serviceName, @Valid CaseworkerAssignRequest request) {
-    service.assignCaseworker(request.getCaseworkerId(),
-                              request.getApplicationIds(),
-                              request.getEventHistory());
+  public ResponseEntity<Void> assignCaseworker(
+      @NotNull ServiceName serviceName, @Valid CaseworkerAssignRequest request) {
+    service.assignCaseworker(
+        request.getCaseworkerId(), request.getApplicationIds(), request.getEventHistory());
     return ResponseEntity.ok().build();
   }
 
@@ -145,9 +141,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<Void> unassignCaseworker(
-          @NotNull ServiceName serviceName,
-          UUID id,
-          @Valid CaseworkerUnassignRequest request) {
+      @NotNull ServiceName serviceName, UUID id, @Valid CaseworkerUnassignRequest request) {
 
     service.unassignCaseworker(id, request.getEventHistory());
 
@@ -158,21 +152,18 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(
-          @NotNull ServiceName serviceName,
-          UUID applicationId,
-          @Valid List<DomainEventType> eventType) {
+      @NotNull ServiceName serviceName,
+      UUID applicationId,
+      @Valid List<DomainEventType> eventType) {
     var events = domainService.getEvents(applicationId, eventType);
-    return ResponseEntity.ok(ApplicationHistoryResponse.builder()
-                                                 .events(events)
-                                                 .build());
+    return ResponseEntity.ok(ApplicationHistoryResponse.builder().events(events).build());
   }
 
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> makeDecision(@NotNull ServiceName serviceName,
-                                           UUID applicationId,
-                                           @Valid MakeDecisionRequest request) {
+  public ResponseEntity<Void> makeDecision(
+      @NotNull ServiceName serviceName, UUID applicationId, @Valid MakeDecisionRequest request) {
 
     service.makeDecision(applicationId, request);
 
@@ -182,9 +173,8 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<Void> createApplicationNotes(@NotNull ServiceName serviceName,
-                                           UUID applicationId,
-                                           @Valid CreateNoteRequest request) {
+  public ResponseEntity<Void> createApplicationNotes(
+      @NotNull ServiceName serviceName, UUID applicationId, @Valid CreateNoteRequest request) {
 
     service.createApplicationNote(applicationId, request);
 
@@ -195,8 +185,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<ApplicationNotesResponse> getApplicationNotes(
-          @NotNull ServiceName serviceName,
-          UUID applicationId) {
+      @NotNull ServiceName serviceName, UUID applicationId) {
     return ResponseEntity.ok(service.getApplicationNotes(applicationId));
   }
 
@@ -204,8 +193,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<Map<String, Object>> getCertificate(
-          @NotNull ServiceName serviceName,
-          UUID applicationId) {
+      @NotNull ServiceName serviceName, UUID applicationId) {
     return ResponseEntity.ok(certificateService.getCertificate(applicationId));
   }
 }

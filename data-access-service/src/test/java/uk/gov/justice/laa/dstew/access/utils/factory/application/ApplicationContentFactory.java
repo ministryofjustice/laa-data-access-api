@@ -26,11 +26,12 @@ public class ApplicationContentFactory
     UUID applicationId = UUID.randomUUID();
 
     // Build base content with required fields
-    ApplicationContent content = ApplicationContent.builder()
-        .id(applicationId)
-        .proceedings(List.of(proceedingFactory.createDefault()))
-        .submittedAt(java.time.Instant.now().toString())
-        .build();
+    ApplicationContent content =
+        ApplicationContent.builder()
+            .id(applicationId)
+            .proceedings(List.of(proceedingFactory.createDefault()))
+            .submittedAt(java.time.Instant.now().toString())
+            .build();
 
     // Force additional properties via the generated API so getAdditionalProperties() is non-null
     content.putAdditionalApplicationContent("applicationId", applicationId.toString());
@@ -40,17 +41,16 @@ public class ApplicationContentFactory
 
   public ApplicationContent createWithLinkedApplications(UUID leadID, UUID associatedID) {
     ApplicationContent content = createDefault();
-    content.putAdditionalApplicationContent("allLinkedApplications", generateLinkedApplications(leadID, associatedID));
+    content.putAdditionalApplicationContent(
+        "allLinkedApplications", generateLinkedApplications(leadID, associatedID));
     return content;
   }
 
   private List<Map<String, String>> generateLinkedApplications(UUID leadID, UUID associatedID) {
     return List.of(
-          Map.of(
-              "leadApplicationId", leadID.toString(),
-              "associatedApplicationId", associatedID.toString()
-          )
-      );
+        Map.of(
+            "leadApplicationId", leadID.toString(),
+            "associatedApplicationId", associatedID.toString()));
   }
 
   public Map<String, Object> createDefaultAsMapOfApplicationContent() {

@@ -34,78 +34,83 @@ import uk.gov.justice.laa.dstew.access.utils.generator.notes.CreateNoteRequestGe
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CreateNoteTest extends BaseServiceTest {
-    @Autowired
-    private ApplicationService serviceUnderTest;
+  @Autowired private ApplicationService serviceUnderTest;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+  @Autowired private ObjectMapper objectMapper;
 
-    @Test
-    void givenExistingApplication_whenCreateNote_thenCreateOkAndDomainEventPersisted() throws Exception {
-        // given
-        UUID applicationId = UUID.randomUUID();
-        UUID caseworkerId = UUID.randomUUID();
-        String applicationNote = "this is a test of notes";
-        ArgumentCaptor<NoteEntity> noteCaptor = ArgumentCaptor.forClass(NoteEntity.class);
-        ArgumentCaptor<DomainEventEntity> eventCaptor = ArgumentCaptor.forClass(DomainEventEntity.class);
+  @Test
+  void givenExistingApplication_whenCreateNote_thenCreateOkAndDomainEventPersisted()
+      throws Exception {
+    // given
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    String applicationNote = "this is a test of notes";
+    ArgumentCaptor<NoteEntity> noteCaptor = ArgumentCaptor.forClass(NoteEntity.class);
+    ArgumentCaptor<DomainEventEntity> eventCaptor =
+        ArgumentCaptor.forClass(DomainEventEntity.class);
 
-        final ApplicationEntity entity = DataGenerator.createDefault(ApplicationEntityGenerator.class,
-                builder -> builder.id(applicationId)
-                        .caseworker(CaseworkerEntity.builder().id(caseworkerId).build()));
+    final ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .id(applicationId)
+                    .caseworker(CaseworkerEntity.builder().id(caseworkerId).build()));
 
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(entity));
+    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(entity));
 
-        setSecurityContext(TestConstants.Roles.CASEWORKER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        CreateNoteRequest request = DataGenerator.createDefault(CreateNoteRequestGenerator.class,
-                builder -> builder.notes(applicationNote));
+    CreateNoteRequest request =
+        DataGenerator.createDefault(
+            CreateNoteRequestGenerator.class, builder -> builder.notes(applicationNote));
 
-        // when
-        serviceUnderTest.createApplicationNote(applicationId, request);
+    // when
+    serviceUnderTest.createApplicationNote(applicationId, request);
 
-        // then - verify note saved
-        verify(noteRepository, times(1)).save(noteCaptor.capture());
-        NoteEntity actualNoteEntity = noteCaptor.getValue();
-        assertEquals(applicationId, actualNoteEntity.getApplicationId());
-        assertEquals(applicationNote, actualNoteEntity.getNotes());
+    // then - verify note saved
+    verify(noteRepository, times(1)).save(noteCaptor.capture());
+    NoteEntity actualNoteEntity = noteCaptor.getValue();
+    assertEquals(applicationId, actualNoteEntity.getApplicationId());
+    assertEquals(applicationNote, actualNoteEntity.getNotes());
 
-        // then - verify domain event saved
-        verify(domainEventRepository, times(1)).save(eventCaptor.capture());
-        DomainEventEntity actualEvent = eventCaptor.getValue();
-        assertEquals(DomainEventType.APPLICATION_NOTES, actualEvent.getType());
-        assertEquals(applicationId, actualEvent.getApplicationId());
-        assertEquals(caseworkerId, actualEvent.getCaseworkerId());
-        assertNotNull(actualEvent.getData());
-        assertNotNull(actualEvent.getCreatedAt());
+    // then - verify domain event saved
+    verify(domainEventRepository, times(1)).save(eventCaptor.capture());
+    DomainEventEntity actualEvent = eventCaptor.getValue();
+    assertEquals(DomainEventType.APPLICATION_NOTES, actualEvent.getType());
+    assertEquals(applicationId, actualEvent.getApplicationId());
+    assertEquals(caseworkerId, actualEvent.getCaseworkerId());
+    assertNotNull(actualEvent.getData());
+    assertNotNull(actualEvent.getCreatedAt());
 
-        // Verify data JSON contains required fields
-        JsonNode eventData = objectMapper.readTree(actualEvent.getData());
-        assertEquals(applicationId.toString(), eventData.get("applicationId").asText());
-        assertEquals(caseworkerId.toString(), eventData.get("caseworkerId").asText());
-        assertNotNull(eventData.get("request"));
-        assertNotNull(eventData.get("createdDate"));
-        assertTrue(eventData.get("request").asText().contains(applicationNote));
-    }
+    // Verify data JSON contains required fields
+    JsonNode eventData = objectMapper.readTree(actualEvent.getData());
+    assertEquals(applicationId.toString(), eventData.get("applicationId").asText());
+    assertEquals(caseworkerId.toString(), eventData.get("caseworkerId").asText());
+    assertNotNull(eventData.get("request"));
+    assertNotNull(eventData.get("createdDate"));
+    assertTrue(eventData.get("request").asText().contains(applicationNote));
+  }
 
-    @Test
-    void givenApplicationDoesNotExist_whenCreateNote_thenThrowResourceNotFoundException() {
-        // given
-        UUID applicationId = UUID.randomUUID();
-        String applicationNote = "this is a test of notes";
+  @Test
+  void givenApplicationDoesNotExist_whenCreateNote_thenThrowResourceNotFoundException() {
+    // given
+    UUID applicationId = UUID.randomUUID();
+    String applicationNote = "this is a test of notes";
 
-        CreateNoteRequest request = DataGenerator.createDefault(CreateNoteRequestGenerator.class,
-                builder -> builder.notes(applicationNote));
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
+    CreateNoteRequest request =
+        DataGenerator.createDefault(
+            CreateNoteRequestGenerator.class, builder -> builder.notes(applicationNote));
+    when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
 
-        setSecurityContext(TestConstants.Roles.CASEWORKER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        // when / then
-        assertThatExceptionOfType(ResourceNotFoundException.class)
-                .isThrownBy(() -> serviceUnderTest.createApplicationNote(applicationId, request))
-                .withMessageContaining("No application found with id: " + applicationId);
+    // when / then
+    assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(() -> serviceUnderTest.createApplicationNote(applicationId, request))
+        .withMessageContaining("No application found with id: " + applicationId);
 
-        verify(noteRepository, never()).save(any(NoteEntity.class));
-        verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    }
-
+    verify(noteRepository, never()).save(any(NoteEntity.class));
+    verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+  }
 }

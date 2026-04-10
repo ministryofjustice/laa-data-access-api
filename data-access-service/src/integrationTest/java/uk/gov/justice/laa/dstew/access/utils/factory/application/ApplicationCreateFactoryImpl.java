@@ -8,7 +8,8 @@ import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
-public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> {
+public class ApplicationCreateFactoryImpl
+    implements Factory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> {
 
   ApplicationContentFactory applicationContentFactory = new ApplicationContentFactory();
 
@@ -18,19 +19,18 @@ public class ApplicationCreateFactoryImpl implements Factory<ApplicationCreateRe
     return ApplicationCreateRequest.builder()
         .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
         .laaReference("TestReference")
-        .applicationContent(MapperUtil.getObjectMapper()
-            .convertValue(applicationContentFactory.create(), Map.class))
-        .individuals(List.of(
-            IndividualCreateRequest.builder()
-                .firstName("John")
-                .lastName("Doe")
-                .dateOfBirth(LocalDate.now())
-                .details(Map.of(
-                    "test", "content"
-                ))
-                .type(IndividualType.CLIENT)
-                .build()
-        ))
+        .applicationContent(
+            MapperUtil.getObjectMapper()
+                .convertValue(applicationContentFactory.create(), Map.class))
+        .individuals(
+            List.of(
+                IndividualCreateRequest.builder()
+                    .firstName("John")
+                    .lastName("Doe")
+                    .dateOfBirth(LocalDate.now())
+                    .details(Map.of("test", "content"))
+                    .type(IndividualType.CLIENT)
+                    .build()))
         .build();
   }
 

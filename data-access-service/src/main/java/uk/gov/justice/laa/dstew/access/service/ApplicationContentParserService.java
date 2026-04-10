@@ -13,15 +13,13 @@ import uk.gov.justice.laa.dstew.access.model.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
-/**
- * Service class for parsing and normalising application content.
- */
+/** Service class for parsing and normalising application content. */
 @Service
 public class ApplicationContentParserService {
 
   private static final MatterTypeConvertor matterTypeDeserializer = new MatterTypeConvertor();
-  private static final CategoryOfLawTypeConvertor categoryOfLawTypeDeserializer = new CategoryOfLawTypeConvertor();
-
+  private static final CategoryOfLawTypeConvertor categoryOfLawTypeDeserializer =
+      new CategoryOfLawTypeConvertor();
 
   /**
    * Normalises application content details from the create request.
@@ -33,7 +31,6 @@ public class ApplicationContentParserService {
       ApplicationContent applicationContent) {
 
     return processingApplicationContent(applicationContent);
-
   }
 
   /**
@@ -51,29 +48,31 @@ public class ApplicationContentParserService {
     Boolean usedDelegatedFunction = null;
     if (applicationContent.getProceedings() != null
         && !applicationContent.getProceedings().isEmpty()) {
-      List<Proceeding> proceedingList = applicationContent.getProceedings().stream()
-          .filter(Objects::nonNull).toList();
-      leadProceeding = proceedingList
-          .stream()
-          .filter(proceeding -> proceeding.getLeadProceeding().equals(Boolean.TRUE))
-          .findFirst()
-          .orElseThrow(() -> new ValidationException(List.of("No lead proceeding found in application content")));
-      List<Boolean> usedDelegatedFunctionValues = proceedingList
-          .stream()
-          .map(Proceeding::getUsedDelegatedFunctions)
-          .filter(Objects::nonNull)
-          .toList();
+      List<Proceeding> proceedingList =
+          applicationContent.getProceedings().stream().filter(Objects::nonNull).toList();
+      leadProceeding =
+          proceedingList.stream()
+              .filter(proceeding -> proceeding.getLeadProceeding().equals(Boolean.TRUE))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new ValidationException(
+                          List.of("No lead proceeding found in application content")));
+      List<Boolean> usedDelegatedFunctionValues =
+          proceedingList.stream()
+              .map(Proceeding::getUsedDelegatedFunctions)
+              .filter(Objects::nonNull)
+              .toList();
       if (!usedDelegatedFunctionValues.isEmpty()) {
-        usedDelegatedFunction = usedDelegatedFunctionValues.stream()
-            .anyMatch(Boolean::booleanValue);
+        usedDelegatedFunction =
+            usedDelegatedFunctionValues.stream().anyMatch(Boolean::booleanValue);
       }
     }
 
+    String officeCode =
+        (applicationContent.getOffice() == null) ? null : applicationContent.getOffice().getCode();
 
-    String officeCode = (applicationContent.getOffice() == null) ? null : applicationContent.getOffice().getCode();
-
-    return ParsedAppContentDetails
-        .builder()
+    return ParsedAppContentDetails.builder()
         .applyApplicationId(applicationContent.getId())
         .categoryOfLaw(getCategoryOfLaw(leadProceeding))
         .matterType(getMatterType(leadProceeding))
@@ -96,6 +95,4 @@ public class ApplicationContentParserService {
     }
     return categoryOfLawTypeDeserializer.lenientEnumConversion(leadProceeding.getCategoryOfLaw());
   }
-
-
 }

@@ -9,22 +9,23 @@ import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.factory.proceeding.ProceedingRequestFactoryImpl;
 
 @Component
-public class ApplicationContentFactory implements Factory<ApplicationContent, ApplicationContent.ApplicationContentBuilder> {
+public class ApplicationContentFactory
+    implements Factory<ApplicationContent, ApplicationContent.ApplicationContentBuilder> {
 
-
-  private final ProceedingRequestFactoryImpl proceedingRequestFactory = new ProceedingRequestFactoryImpl();
-
+  private final ProceedingRequestFactoryImpl proceedingRequestFactory =
+      new ProceedingRequestFactoryImpl();
 
   @Override
   public ApplicationContent create() {
     UUID applicationId = UUID.randomUUID();
 
     // Build base content with required fields
-    ApplicationContent content = ApplicationContent.builder()
-        .id(applicationId)
-        .proceedings(List.of(proceedingRequestFactory.create()))
-        .submittedAt("2024-01-01T12:00:00Z")
-        .build();
+    ApplicationContent content =
+        ApplicationContent.builder()
+            .id(applicationId)
+            .proceedings(List.of(proceedingRequestFactory.create()))
+            .submittedAt("2024-01-01T12:00:00Z")
+            .build();
 
     // Force additional properties via the generated API so getAdditionalProperties() is non-null
     content.putAdditionalApplicationContent("test", "additionalApplicationProperty");
@@ -33,7 +34,8 @@ public class ApplicationContentFactory implements Factory<ApplicationContent, Ap
   }
 
   @Override
-  public ApplicationContent create(Consumer<ApplicationContent.ApplicationContentBuilder> customiser) {
+  public ApplicationContent create(
+      Consumer<ApplicationContent.ApplicationContentBuilder> customiser) {
     ApplicationContent.ApplicationContentBuilder builder = ApplicationContent.builder();
     customiser.accept(builder);
     return builder.build();

@@ -9,8 +9,8 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 
 /**
- * Interceptor to extract and store the X-Service-Name header from incoming requests.
- * The service name is stored in a request-scoped ServiceNameContext bean.
+ * Interceptor to extract and store the X-Service-Name header from incoming requests. The service
+ * name is stored in a request-scoped ServiceNameContext bean.
  */
 @Slf4j
 @Component
@@ -22,7 +22,8 @@ public class ServiceNameInterceptor implements HandlerInterceptor {
   private final ServiceNameContext serviceNameContext;
 
   @Override
-  public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+  public boolean preHandle(
+      HttpServletRequest request, HttpServletResponse response, Object handler) {
     String serviceNameHeader = request.getHeader(SERVICE_NAME_HEADER);
 
     if (serviceNameHeader != null) {

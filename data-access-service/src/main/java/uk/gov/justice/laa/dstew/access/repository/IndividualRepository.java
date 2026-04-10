@@ -6,11 +6,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 
-/**
- * Repository for accessing individual records.
- */
+/** Repository for accessing individual records. */
 @Repository
 public interface IndividualRepository
-    extends JpaRepository<IndividualEntity, UUID>,
-            JpaSpecificationExecutor<IndividualEntity> {
-}
+    extends JpaRepository<IndividualEntity, UUID>, JpaSpecificationExecutor<IndividualEntity> {}

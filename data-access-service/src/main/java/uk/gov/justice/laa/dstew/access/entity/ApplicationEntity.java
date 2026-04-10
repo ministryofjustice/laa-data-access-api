@@ -39,9 +39,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 
-/**
- * Represents an application.
- */
+/** Represents an application. */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter
@@ -54,8 +52,7 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class ApplicationEntity implements AuditableEntity {
 
-  @Version
-  private Long version;
+  @Version private Long version;
 
   @Id
   @Column(columnDefinition = "UUID")
@@ -80,8 +77,7 @@ public class ApplicationEntity implements AuditableEntity {
   @JoinTable(
       name = "linked_individuals",
       joinColumns = @JoinColumn(name = "application_id"),
-      inverseJoinColumns = @JoinColumn(name = "individual_id")
-  )
+      inverseJoinColumns = @JoinColumn(name = "individual_id"))
   private Set<IndividualEntity> individuals;
 
   @Column(name = "schema_version")
@@ -127,8 +123,7 @@ public class ApplicationEntity implements AuditableEntity {
   @JoinTable(
       name = "linked_applications",
       joinColumns = @JoinColumn(name = "lead_application_id"),
-      inverseJoinColumns = @JoinColumn(name = "associated_application_id")
-  )
+      inverseJoinColumns = @JoinColumn(name = "associated_application_id"))
   private Set<ApplicationEntity> linkedApplications;
 
   @Transient
@@ -145,9 +140,7 @@ public class ApplicationEntity implements AuditableEntity {
     this.applicationContent = applicationContent;
   }
 
-  /**
-  * adds an application to the set of linked applications.
-  */
+  /** adds an application to the set of linked applications. */
   public void addLinkedApplication(ApplicationEntity toAdd) {
     if (linkedApplications == null) {
       linkedApplications = new HashSet<>();

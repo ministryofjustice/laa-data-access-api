@@ -16,8 +16,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
 /**
- * Intercept controller responses and apply cross-cutting transformations,
- * such as redaction or anonymization (for GDPR or any other reason).
+ * Intercept controller responses and apply cross-cutting transformations, such as redaction or
+ * anonymization (for GDPR or any other reason).
  */
 @RequiredArgsConstructor
 @RestControllerAdvice
@@ -25,9 +25,11 @@ class TransformationAdvice implements ResponseBodyAdvice<Object> {
   private final TransformerRegistry transformerRegistry;
 
   @Override
-  public boolean supports(final MethodParameter returnType,
-                          final Class<? extends HttpMessageConverter<?>> converterType) {
-    return transformerRegistry.hasTransformer(returnType.getParameterType()) || supportsCollection(returnType);
+  public boolean supports(
+      final MethodParameter returnType,
+      final Class<? extends HttpMessageConverter<?>> converterType) {
+    return transformerRegistry.hasTransformer(returnType.getParameterType())
+        || supportsCollection(returnType);
   }
 
   private boolean supportsCollection(final MethodParameter returnType) {
@@ -40,25 +42,29 @@ class TransformationAdvice implements ResponseBodyAdvice<Object> {
   }
 
   @Override
-  public Object beforeBodyWrite(final Object responseDto, final MethodParameter returnType,
-                                final MediaType contentType, final Class<? extends HttpMessageConverter<?>> converterType,
-                                final ServerHttpRequest request, final ServerHttpResponse response) {
+  public Object beforeBodyWrite(
+      final Object responseDto,
+      final MethodParameter returnType,
+      final MediaType contentType,
+      final Class<? extends HttpMessageConverter<?>> converterType,
+      final ServerHttpRequest request,
+      final ServerHttpResponse response) {
     if (responseDto != null) {
       if (responseDto instanceof List<?> listDto) {
         if (!listDto.isEmpty()) {
-          final var maybeTransformer = transformerRegistry.getTransformer(listDto.getFirst().getClass());
+          final var maybeTransformer =
+              transformerRegistry.getTransformer(listDto.getFirst().getClass());
           if (maybeTransformer.isPresent()) {
-            @SuppressWarnings("unchecked") final var transformer = (ResponseTransformer<Object>) maybeTransformer.get();
-            return listDto.stream()
-                .map(transformer::transform)
-                .filter(Objects::nonNull)
-                .toList();
+            @SuppressWarnings("unchecked")
+            final var transformer = (ResponseTransformer<Object>) maybeTransformer.get();
+            return listDto.stream().map(transformer::transform).filter(Objects::nonNull).toList();
           }
         }
       } else {
         final var maybeTransformer = transformerRegistry.getTransformer(responseDto.getClass());
         if (maybeTransformer.isPresent()) {
-          @SuppressWarnings("unchecked") final var transformer = (ResponseTransformer<Object>) maybeTransformer.get();
+          @SuppressWarnings("unchecked")
+          final var transformer = (ResponseTransformer<Object>) maybeTransformer.get();
           final var transformed = transformer.transform(responseDto);
           if (transformed == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);

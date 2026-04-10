@@ -1,5 +1,13 @@
 package uk.gov.justice.laa.dstew.access.service.caseworker;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -13,86 +21,76 @@ import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-
-
 public class GetAllCaseworkersTest extends BaseServiceTest {
 
-    @Autowired
-    private CaseworkerService serviceUnderTest;
+  @Autowired private CaseworkerService serviceUnderTest;
 
-    @ParameterizedTest
-    @ValueSource(ints = {0, 10})
-    public void givenRoleReader_whenGetAllCaseworkers_thenReturnCaseworkers(int count) {
-        // given
-        List<CaseworkerEntity> expectedCaseworkers =
-                DataGenerator.createMultipleDefault(CaseworkerGenerator.class, count);
+  @ParameterizedTest
+  @ValueSource(ints = {0, 10})
+  public void givenRoleReader_whenGetAllCaseworkers_thenReturnCaseworkers(int count) {
+    // given
+    List<CaseworkerEntity> expectedCaseworkers =
+        DataGenerator.createMultipleDefault(CaseworkerGenerator.class, count);
 
-        when(caseworkerRepository.findAll()).thenReturn(expectedCaseworkers);
+    when(caseworkerRepository.findAll()).thenReturn(expectedCaseworkers);
 
-        setSecurityContext(TestConstants.Roles.CASEWORKER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        // when
-        List<CaseworkerResponse> actualCaseworkerResponses = serviceUnderTest.getAllCaseworkers();
+    // when
+    List<CaseworkerResponse> actualCaseworkerResponses = serviceUnderTest.getAllCaseworkers();
 
-        // then
-        verify(caseworkerRepository, times(1)).findAll();
-        assertCaseworkerListsEqual(actualCaseworkerResponses, expectedCaseworkers);
+    // then
+    verify(caseworkerRepository, times(1)).findAll();
+    assertCaseworkerListsEqual(actualCaseworkerResponses, expectedCaseworkers);
+  }
+
+  @Test
+  public void givenNotRoleReader_whenGetAllCaseworkers_thenThrowUnauthorizedException() {
+    // given
+    setSecurityContext(TestConstants.Roles.NO_ROLE);
+
+    // when
+    // then
+    assertThatExceptionOfType(AuthorizationDeniedException.class)
+        .isThrownBy(() -> serviceUnderTest.getAllCaseworkers())
+        .withMessageContaining("Access Denied");
+    verify(caseworkerRepository, never()).findAll();
+  }
+
+  @Test
+  public void givenNoRole_whenGetAllCaseworkers_thenThrowUnauthorizedException() {
+    // given
+    // when
+    // then
+    assertThatExceptionOfType(AuthorizationDeniedException.class)
+        .isThrownBy(() -> serviceUnderTest.getAllCaseworkers())
+        .withMessageContaining("Access Denied");
+    verify(caseworkerRepository, never()).findAll();
+  }
+
+  private void assertCaseworkerListsEqual(
+      List<CaseworkerResponse> actualList, List<CaseworkerEntity> expectedList) {
+
+    assertThat(actualList).hasSameSizeAs(expectedList);
+
+    for (CaseworkerEntity expected : expectedList) {
+      boolean match =
+          actualList.stream()
+              .anyMatch(
+                  actual -> {
+                    try {
+                      assertCaseworkerEqual(actual, expected);
+                      return true;
+                    } catch (AssertionError e) {
+                      return false;
+                    }
+                  });
+      assertThat(match).as("No matching CaseworkerEntity found for expected: " + expected).isTrue();
     }
+  }
 
-    @Test
-    public void givenNotRoleReader_whenGetAllCaseworkers_thenThrowUnauthorizedException() {
-        // given
-        setSecurityContext(TestConstants.Roles.NO_ROLE);
-
-        // when
-        // then
-        assertThatExceptionOfType(AuthorizationDeniedException.class)
-                .isThrownBy(() -> serviceUnderTest.getAllCaseworkers())
-                .withMessageContaining("Access Denied");
-        verify(caseworkerRepository, never()).findAll();
-    }
-
-    @Test
-    public void givenNoRole_whenGetAllCaseworkers_thenThrowUnauthorizedException() {
-        // given
-        // when
-        // then
-        assertThatExceptionOfType(AuthorizationDeniedException.class)
-                .isThrownBy(() -> serviceUnderTest.getAllCaseworkers())
-                .withMessageContaining("Access Denied");
-        verify(caseworkerRepository, never()).findAll();
-    }
-
-    private void assertCaseworkerListsEqual(List<CaseworkerResponse> actualList, List<CaseworkerEntity> expectedList) {
-
-        assertThat(actualList).hasSameSizeAs(expectedList);
-
-        for (CaseworkerEntity expected : expectedList) {
-            boolean match = actualList.stream()
-                    .anyMatch(actual -> {
-                        try {
-                            assertCaseworkerEqual(actual, expected);
-                            return true;
-                        } catch (AssertionError e) {
-                            return false;
-                        }
-                    });
-            assertThat(match)
-                    .as("No matching CaseworkerEntity found for expected: " + expected)
-                    .isTrue();
-        }
-    }
-
-    private void assertCaseworkerEqual(CaseworkerResponse actual, CaseworkerEntity expected) {
-        assertThat(actual.getId()).isEqualTo(expected.getId());
-        assertThat(actual.getUsername()).isEqualTo(expected.getUsername());
-    }
+  private void assertCaseworkerEqual(CaseworkerResponse actual, CaseworkerEntity expected) {
+    assertThat(actual.getId()).isEqualTo(expected.getId());
+    assertThat(actual.getUsername()).isEqualTo(expected.getUsername());
+  }
 }

@@ -19,82 +19,87 @@ import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEnt
 @ExtendWith(MockitoExtension.class)
 class ProceedingMapperTest extends BaseMapperTest {
 
-    @InjectMocks
-    private ProceedingMapperImpl proceedingMapper;
+  @InjectMocks private ProceedingMapperImpl proceedingMapper;
 
-    @Test
-    void givenNullProceeding_whenToProceedingEntity_thenReturnNull() {
-        assertThat(proceedingMapper.toProceedingEntity(null, UUID.randomUUID())).isNull();
-    }
+  @Test
+  void givenNullProceeding_whenToProceedingEntity_thenReturnNull() {
+    assertThat(proceedingMapper.toProceedingEntity(null, UUID.randomUUID())).isNull();
+  }
 
-    @Test
-    void givenProceedingAndApplicationId_whenToProceedingEntity_thenMapsFieldsCorrectly() {
-        UUID applicationId = UUID.randomUUID();
-        Proceeding proceeding = DataGenerator.createDefault(ProceedingGenerator.class);
+  @Test
+  void givenProceedingAndApplicationId_whenToProceedingEntity_thenMapsFieldsCorrectly() {
+    UUID applicationId = UUID.randomUUID();
+    Proceeding proceeding = DataGenerator.createDefault(ProceedingGenerator.class);
 
-        ProceedingEntity result = proceedingMapper.toProceedingEntity(proceeding, applicationId);
+    ProceedingEntity result = proceedingMapper.toProceedingEntity(proceeding, applicationId);
 
-        assertThat(result.getApplyProceedingId()).isEqualTo(proceeding.getId());
-        assertThat(result.getApplicationId()).isEqualTo(applicationId);
-        assertThat(result.getProceedingContent())
-                .isEqualTo(objectMapper.convertValue(proceeding, Map.class));
-        assertThat(result.isLead()).isEqualTo(proceeding.getLeadProceeding());
-        assertThat(result.getDescription()).isEqualTo(proceeding.getDescription());
-    }
+    assertThat(result.getApplyProceedingId()).isEqualTo(proceeding.getId());
+    assertThat(result.getApplicationId()).isEqualTo(applicationId);
+    assertThat(result.getProceedingContent())
+        .isEqualTo(objectMapper.convertValue(proceeding, Map.class));
+    assertThat(result.isLead()).isEqualTo(proceeding.getLeadProceeding());
+    assertThat(result.getDescription()).isEqualTo(proceeding.getDescription());
+  }
 
-    @Test
-    void givenProceedingWithAllNullFields_whenToProceedingEntity_thenNullableFieldsAreNull() {
-        Proceeding proceeding = DataGenerator.createDefault(ProceedingGenerator.class,
-                builder -> builder.id(null).leadProceeding(null).description(null));
+  @Test
+  void givenProceedingWithAllNullFields_whenToProceedingEntity_thenNullableFieldsAreNull() {
+    Proceeding proceeding =
+        DataGenerator.createDefault(
+            ProceedingGenerator.class,
+            builder -> builder.id(null).leadProceeding(null).description(null));
 
-        ProceedingEntity result = proceedingMapper.toProceedingEntity(proceeding, null);
+    ProceedingEntity result = proceedingMapper.toProceedingEntity(proceeding, null);
 
-        assertThat(result.getApplicationId()).isNull();
-        assertThat(result.getApplyProceedingId()).isNull();
-        assertThat(result.isLead()).isFalse();
-        assertThat(result.getDescription()).isNull();
-    }
+    assertThat(result.getApplicationId()).isNull();
+    assertThat(result.getApplyProceedingId()).isNull();
+    assertThat(result.isLead()).isFalse();
+    assertThat(result.getDescription()).isNull();
+  }
 
-    @Test
-    void givenNullProceedingEntity_whenToApplicationProceeding_thenReturnNull() {
-        assertThat(proceedingMapper.toApplicationProceeding(null)).isNull();
-    }
+  @Test
+  void givenNullProceedingEntity_whenToApplicationProceeding_thenReturnNull() {
+    assertThat(proceedingMapper.toApplicationProceeding(null)).isNull();
+  }
 
-    @Test
-    void givenProceedingEntity_whenToApplicationProceeding_thenMapsFieldsCorrectly() {
-        UUID proceedingId = UUID.randomUUID();
-        ProceedingEntity entity = DataGenerator.createDefault(ProceedingsEntityGenerator.class,
-                builder -> builder.id(proceedingId));
+  @Test
+  void givenProceedingEntity_whenToApplicationProceeding_thenMapsFieldsCorrectly() {
+    UUID proceedingId = UUID.randomUUID();
+    ProceedingEntity entity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class, builder -> builder.id(proceedingId));
 
-        ApplicationProceedingResponse result = proceedingMapper.toApplicationProceeding(entity);
+    ApplicationProceedingResponse result = proceedingMapper.toApplicationProceeding(entity);
 
-        assertThat(result).isNotNull();
-        assertThat(result.getProceedingId()).isEqualTo(proceedingId);
-        assertThat(result.getProceedingDescription()).isEqualTo("description");
-        assertThat(result.getProceedingType()).isEqualTo("hearing");
-        assertThat(result.getCategoryOfLaw()).isEqualTo("Family");
-        assertThat(result.getMatterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
-        assertThat(result.getLevelOfService()).isEqualTo("service");
-        assertThat(result.getSubstantiveCostLimitation()).isEqualTo("23.45");
-        assertThat(result.getUsedDelegatedFunctionsOn()).isEqualTo(LocalDate.parse("2025-05-06"));
-        assertThat(result.getScopeLimitations()).isNotNull().hasSize(1);
-    }
+    assertThat(result).isNotNull();
+    assertThat(result.getProceedingId()).isEqualTo(proceedingId);
+    assertThat(result.getProceedingDescription()).isEqualTo("description");
+    assertThat(result.getProceedingType()).isEqualTo("hearing");
+    assertThat(result.getCategoryOfLaw()).isEqualTo("Family");
+    assertThat(result.getMatterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
+    assertThat(result.getLevelOfService()).isEqualTo("service");
+    assertThat(result.getSubstantiveCostLimitation()).isEqualTo("23.45");
+    assertThat(result.getUsedDelegatedFunctionsOn()).isEqualTo(LocalDate.parse("2025-05-06"));
+    assertThat(result.getScopeLimitations()).isNotNull().hasSize(1);
+  }
 
-    @Test
-    void givenProceedingEntityWithAllNullContentFields_whenToApplicationProceeding_thenAllContentFieldsAreNull() {
-        ProceedingEntity entity = DataGenerator.createDefault(ProceedingsEntityGenerator.class,
-                builder -> builder.id(null).description(null).proceedingContent(Map.of()));
+  @Test
+  void
+      givenProceedingEntityWithAllNullContentFields_whenToApplicationProceeding_thenAllContentFieldsAreNull() {
+    ProceedingEntity entity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.id(null).description(null).proceedingContent(Map.of()));
 
-        ApplicationProceedingResponse result = proceedingMapper.toApplicationProceeding(entity);
+    ApplicationProceedingResponse result = proceedingMapper.toApplicationProceeding(entity);
 
-        assertThat(result.getProceedingId()).isNull();
-        assertThat(result.getProceedingDescription()).isNull();
-        assertThat(result.getProceedingType()).isNull();
-        assertThat(result.getCategoryOfLaw()).isNull();
-        assertThat(result.getMatterType()).isNull();
-        assertThat(result.getLevelOfService()).isNull();
-        assertThat(result.getSubstantiveCostLimitation()).isNull();
-        assertThat(result.getUsedDelegatedFunctionsOn()).isNull();
-        assertThat(result.getScopeLimitations()).isEmpty();
-    }
+    assertThat(result.getProceedingId()).isNull();
+    assertThat(result.getProceedingDescription()).isNull();
+    assertThat(result.getProceedingType()).isNull();
+    assertThat(result.getCategoryOfLaw()).isNull();
+    assertThat(result.getMatterType()).isNull();
+    assertThat(result.getLevelOfService()).isNull();
+    assertThat(result.getSubstantiveCostLimitation()).isNull();
+    assertThat(result.getUsedDelegatedFunctionsOn()).isNull();
+    assertThat(result.getScopeLimitations()).isEmpty();
+  }
 }

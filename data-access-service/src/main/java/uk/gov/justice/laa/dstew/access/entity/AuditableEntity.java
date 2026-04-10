@@ -4,8 +4,8 @@ import java.time.Instant;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
- * Interface for entities that are auditable.
- * Helps with mapping the created and updated timestamps and user information.
+ * Interface for entities that are auditable. Helps with mapping the created and updated timestamps
+ * and user information.
  */
 @ExcludeFromGeneratedCodeCoverage
 public interface AuditableEntity {

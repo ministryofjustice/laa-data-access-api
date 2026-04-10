@@ -5,7 +5,8 @@ import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
 
-public class LinkedApplicationsGenerator extends BaseGenerator<LinkedApplication, LinkedApplication.LinkedApplicationBuilder> {
+public class LinkedApplicationsGenerator
+    extends BaseGenerator<LinkedApplication, LinkedApplication.LinkedApplicationBuilder> {
   private final ProceedingGenerator proceedingDtoGenerator = new ProceedingGenerator();
 
   public LinkedApplicationsGenerator() {
@@ -18,6 +19,7 @@ public class LinkedApplicationsGenerator extends BaseGenerator<LinkedApplication
     UUID associatedApplicationId = UUID.randomUUID();
     return LinkedApplication.builder()
         .leadApplicationId(applicationId)
-        .associatedApplicationId(associatedApplicationId).build();
+        .associatedApplicationId(associatedApplicationId)
+        .build();
   }
 }

@@ -9,18 +9,14 @@ import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 @Profile("unit-test")
 @Component
 public class ApplicationOfficeFactory
-  extends BaseFactory<ApplicationOffice, ApplicationOffice.ApplicationOfficeBuilder> {
+    extends BaseFactory<ApplicationOffice, ApplicationOffice.ApplicationOfficeBuilder> {
 
-    public ApplicationOfficeFactory() {
-        super(ApplicationOffice::toBuilder, ApplicationOffice.ApplicationOfficeBuilder::build);
-    }
+  public ApplicationOfficeFactory() {
+    super(ApplicationOffice::toBuilder, ApplicationOffice.ApplicationOfficeBuilder::build);
+  }
 
-    @Override
-    public ApplicationOffice createDefault() {
-        return ApplicationOffice
-                .builder()
-                .code("AB123C")
-                .additionalOfficeData(Map.of())
-                .build();
-    }
+  @Override
+  public ApplicationOffice createDefault() {
+    return ApplicationOffice.builder().code("AB123C").additionalOfficeData(Map.of()).build();
+  }
 }

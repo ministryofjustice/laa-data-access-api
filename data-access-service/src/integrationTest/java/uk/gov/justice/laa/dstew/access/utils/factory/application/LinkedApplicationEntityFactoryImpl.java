@@ -1,14 +1,14 @@
 package uk.gov.justice.laa.dstew.access.utils.factory.application;
 
-import uk.gov.justice.laa.dstew.access.entity.LinkedApplicationEntity;
-import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
-
 import java.time.Instant;
 import java.util.UUID;
 import java.util.function.Consumer;
+import uk.gov.justice.laa.dstew.access.entity.LinkedApplicationEntity;
+import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 
 public class LinkedApplicationEntityFactoryImpl
-    implements Factory<LinkedApplicationEntity, LinkedApplicationEntity.LinkedApplicationEntityBuilder> {
+    implements Factory<
+        LinkedApplicationEntity, LinkedApplicationEntity.LinkedApplicationEntityBuilder> {
 
   @Override
   public LinkedApplicationEntity create() {

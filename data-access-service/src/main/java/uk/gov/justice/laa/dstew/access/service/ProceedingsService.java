@@ -8,15 +8,14 @@ import uk.gov.justice.laa.dstew.access.mapper.ProceedingMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 
-/**
- * Processor for handling proceedings related operations.
- */
+/** Processor for handling proceedings related operations. */
 @Component
 public class ProceedingsService {
   private final ProceedingMapper proceedingMapper;
   private final ProceedingRepository proceedingRepository;
 
-  public ProceedingsService(ProceedingMapper proceedingMapper, ProceedingRepository proceedingRepository) {
+  public ProceedingsService(
+      ProceedingMapper proceedingMapper, ProceedingRepository proceedingRepository) {
     this.proceedingMapper = proceedingMapper;
     this.proceedingRepository = proceedingRepository;
   }
@@ -25,15 +24,17 @@ public class ProceedingsService {
    * Saves proceedings from application content to the repository.
    *
    * @param applicationContent the application content containing proceedings
-   * @param id                 the associated application ID
+   * @param id the associated application ID
    */
   public void saveProceedings(ApplicationContent applicationContent, UUID id) {
-    if (applicationContent.getProceedings() == null || applicationContent.getProceedings().isEmpty()) {
+    if (applicationContent.getProceedings() == null
+        || applicationContent.getProceedings().isEmpty()) {
       return;
     }
-    List<ProceedingEntity> proceedingEntities = applicationContent.getProceedings().stream()
-        .map(proceeding -> proceedingMapper.toProceedingEntity(proceeding, id)).toList();
+    List<ProceedingEntity> proceedingEntities =
+        applicationContent.getProceedings().stream()
+            .map(proceeding -> proceedingMapper.toProceedingEntity(proceeding, id))
+            .toList();
     proceedingRepository.saveAll(proceedingEntities);
   }
-
 }

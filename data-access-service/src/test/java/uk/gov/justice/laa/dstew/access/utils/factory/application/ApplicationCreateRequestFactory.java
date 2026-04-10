@@ -11,17 +11,15 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.utils.factory.BaseFactory;
 import uk.gov.justice.laa.dstew.access.utils.factory.individual.ApplicationCreateRequestIndividualFactory;
-import uk.gov.justice.laa.dstew.access.utils.factory.individual.IndividualFactory;
 
 @Profile("unit-test")
 @Component
-public class ApplicationCreateRequestFactory extends BaseFactory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> {
+public class ApplicationCreateRequestFactory
+    extends BaseFactory<ApplicationCreateRequest, ApplicationCreateRequest.Builder> {
 
-  @Autowired
-  private ApplicationCreateRequestIndividualFactory individualFactory;
+  @Autowired private ApplicationCreateRequestIndividualFactory individualFactory;
 
-  @Autowired
-  private ApplicationContentFactory applicationContentFactory;
+  @Autowired private ApplicationContentFactory applicationContentFactory;
 
   public ApplicationCreateRequestFactory() {
     super(ApplicationCreateRequest::toBuilder, ApplicationCreateRequest.Builder::build);
@@ -36,7 +34,8 @@ public class ApplicationCreateRequestFactory extends BaseFactory<ApplicationCrea
         .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
         .laaReference("REF7327")
         .individuals(List.of(individualFactory.createDefault()))
-        .applicationContent(MapperUtil.getObjectMapper().convertValue(applicationContent, Map.class))
+        .applicationContent(
+            MapperUtil.getObjectMapper().convertValue(applicationContent, Map.class))
         .build();
   }
 }

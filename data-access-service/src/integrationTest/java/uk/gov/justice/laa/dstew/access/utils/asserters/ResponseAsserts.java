@@ -25,7 +25,9 @@ public class ResponseAsserts {
   }
 
   public static void assertNoCacheHeaders(MvcResult response) {
-    assertEquals("no-cache, no-store, max-age=0, must-revalidate", response.getResponse().getHeader("Cache-Control"));
+    assertEquals(
+        "no-cache, no-store, max-age=0, must-revalidate",
+        response.getResponse().getHeader("Cache-Control"));
     assertEquals("no-cache", response.getResponse().getHeader("Pragma"));
     assertEquals("0", response.getResponse().getHeader("Expires"));
   }
@@ -52,7 +54,8 @@ public class ResponseAsserts {
       String expectedShortCode,
       String expectedDetail,
       MvcResult response,
-      ProblemDetail actualDetail, Map<String, Object> expectedProblemDetailProperties) {
+      ProblemDetail actualDetail,
+      Map<String, Object> expectedProblemDetailProperties) {
 
     assertEquals("application/problem+json", response.getResponse().getContentType());
     assertEquals(expectedStatus.value(), response.getResponse().getStatus());
@@ -69,21 +72,24 @@ public class ResponseAsserts {
         .containsExactlyInAnyOrderElementsOf(expectedProblemDetailProperties.keySet());
     for (Object value : expectedProblemDetailProperties.values()) {
       if (value instanceof List<?> expectedList) {
-        Object actualValue = actualProperties.get(expectedProblemDetailProperties.entrySet().stream()
-            .filter(e -> e.getValue() == value)
-            .findFirst()
-            .get()
-            .getKey());
+        Object actualValue =
+            actualProperties.get(
+                expectedProblemDetailProperties.entrySet().stream()
+                    .filter(e -> e.getValue() == value)
+                    .findFirst()
+                    .get()
+                    .getKey());
         assertThat(actualValue).isInstanceOf(List.class);
         List<Object> actualList = new ArrayList<>((List<?>) actualValue);
         List<Object> expected = new ArrayList<>(expectedList);
         assertThat(actualList).containsExactlyInAnyOrderElementsOf(expected);
       } else {
-        String key = expectedProblemDetailProperties.entrySet().stream()
-            .filter(e -> e.getValue() == value)
-            .findFirst()
-            .get()
-            .getKey();
+        String key =
+            expectedProblemDetailProperties.entrySet().stream()
+                .filter(e -> e.getValue() == value)
+                .findFirst()
+                .get()
+                .getKey();
         assertEquals(value, actualProperties.get(key));
       }
     }
@@ -100,9 +106,17 @@ public class ResponseAsserts {
     assertEquals(expectedValidationExceptions, validationException.errors());
   }
 
-  public static void assertProblemRecord(HttpStatus status, ProblemDetail expectedDetail, MvcResult response,
-                                         ProblemDetail actualDetail) {
-    assertProblemRecord(status, expectedDetail.getTitle(), expectedDetail.getDetail(), response, actualDetail,
+  public static void assertProblemRecord(
+      HttpStatus status,
+      ProblemDetail expectedDetail,
+      MvcResult response,
+      ProblemDetail actualDetail) {
+    assertProblemRecord(
+        status,
+        expectedDetail.getTitle(),
+        expectedDetail.getDetail(),
+        response,
+        actualDetail,
         expectedDetail.getProperties());
   }
 

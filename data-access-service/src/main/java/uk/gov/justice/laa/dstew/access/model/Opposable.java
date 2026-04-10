@@ -7,9 +7,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.lang.Nullable;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/**
- * Opposable pojo.
- */
+/** Opposable pojo. */
 @Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor

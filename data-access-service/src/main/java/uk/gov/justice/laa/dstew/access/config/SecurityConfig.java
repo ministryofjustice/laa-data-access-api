@@ -37,9 +37,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
-/**
- * Spring Security configuration if security is not disabled.
- */
+/** Spring Security configuration if security is not disabled. */
 @ExcludeFromGeneratedCodeCoverage
 @Configuration
 @EnableMethodSecurity
@@ -70,58 +68,65 @@ public class SecurityConfig {
   @Bean
   SecurityFilterChain securityFilterChain(
       final HttpSecurity http,
-      @Autowired(required = false) @Qualifier("devTokenFilter") OncePerRequestFilter devTokenFilter) throws Exception {
+      @Autowired(required = false) @Qualifier("devTokenFilter") OncePerRequestFilter devTokenFilter)
+      throws Exception {
 
     if (devTokenFilter != null) {
       http.addFilterBefore(devTokenFilter, BearerTokenAuthenticationFilter.class);
     }
 
-    http
-        .authorizeHttpRequests(authorize -> authorize
-            .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-            .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-            .requestMatchers("/api/**").authenticated()
-            .anyRequest().authenticated())
-        .oauth2ResourceServer(oauth2 -> oauth2
-            .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
-            .authenticationEntryPoint(authenticationEntryPoint())
-        )
+    http.authorizeHttpRequests(
+            authorize ->
+                authorize
+                    .requestMatchers("/actuator/health", "/actuator/info")
+                    .permitAll()
+                    .requestMatchers("/swagger-ui/**", "/v3/api-docs/**")
+                    .permitAll()
+                    .requestMatchers("/api/**")
+                    .authenticated()
+                    .anyRequest()
+                    .authenticated())
+        .oauth2ResourceServer(
+            oauth2 ->
+                oauth2
+                    .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                    .authenticationEntryPoint(authenticationEntryPoint()))
         .csrf(AbstractHttpConfigurer::disable)
-        .exceptionHandling(exception -> exception
-            .authenticationEntryPoint(authenticationEntryPoint())
-        );
+        .exceptionHandling(
+            exception -> exception.authenticationEntryPoint(authenticationEntryPoint()));
     return http.build();
   }
 
   /**
-   * Configures a {@link JwtAuthenticationConverter} to extract authorities from the APP_ROLES_CLAIM.
+   * Configures a {@link JwtAuthenticationConverter} to extract authorities from the
+   * APP_ROLES_CLAIM.
    *
    * @return a configured JwtAuthenticationConverter bean
    */
   @Bean
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
-    JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+    JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter =
+        new JwtGrantedAuthoritiesConverter();
     grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
     grantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
 
     JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
-      var authorities = grantedAuthoritiesConverter.convert(jwt);
-      if (authorities == null || authorities.isEmpty()) {
-        // Add default roles
-        return Set.of(
-            new SimpleGrantedAuthority("APPROLE_LAA_CASEWORKER")
-        );
-      }
-      return authorities;
-    });
+    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(
+        jwt -> {
+          var authorities = grantedAuthoritiesConverter.convert(jwt);
+          if (authorities == null || authorities.isEmpty()) {
+            // Add default roles
+            return Set.of(new SimpleGrantedAuthority("APPROLE_LAA_CASEWORKER"));
+          }
+          return authorities;
+        });
     return jwtAuthenticationConverter;
   }
 
   /**
    * Configures a {@link JwtDecoder} bean that validates JWT tokens using the provided JWK set URI,
-   * issuer, and audience. The decoder ensures that the token contains the required audience and
-   * is issued by the expected issuer.
+   * issuer, and audience. The decoder ensures that the token contains the required audience and is
+   * issued by the expected issuer.
    *
    * @return a configured JwtDecoder bean
    */
@@ -129,22 +134,23 @@ public class SecurityConfig {
   public JwtDecoder jwtDecoder() {
     NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
 
-    OAuth2TokenValidator<Jwt> audienceValidator = token -> {
-      if (token.getAudience().contains(audience) && token.getClaimAsString(APP_ROLES_CLAIM) != null) {
-        return OAuth2TokenValidatorResult.success();
-      }
-      return OAuth2TokenValidatorResult.failure(
-          new OAuth2Error("invalid_token", "The required audience is missing", null)
-      );
-    };
+    OAuth2TokenValidator<Jwt> audienceValidator =
+        token -> {
+          if (token.getAudience().contains(audience)
+              && token.getClaimAsString(APP_ROLES_CLAIM) != null) {
+            return OAuth2TokenValidatorResult.success();
+          }
+          return OAuth2TokenValidatorResult.failure(
+              new OAuth2Error("invalid_token", "The required audience is missing", null));
+        };
     OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(issuerUri);
     jwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(withIssuer, audienceValidator));
     return jwtDecoder;
   }
 
   /**
-   * Configures an {@link AuthenticationEntryPoint} that handles authentication failures by logging the reason
-   * and sending a 401 Unauthorized response with an appropriate message.
+   * Configures an {@link AuthenticationEntryPoint} that handles authentication failures by logging
+   * the reason and sending a 401 Unauthorized response with an appropriate message.
    *
    * @return a configured AuthenticationEntryPoint bean
    */
@@ -174,8 +180,7 @@ public class SecurityConfig {
       @Override
       public boolean hasAnyAppRole(String... names) {
         final var authorities = getAuthorities();
-        return Arrays.stream(names)
-            .anyMatch(name -> authorities.contains(AUTHORITY_PREFIX + name));
+        return Arrays.stream(names).anyMatch(name -> authorities.contains(AUTHORITY_PREFIX + name));
       }
 
       @Override
@@ -186,9 +191,11 @@ public class SecurityConfig {
 
       private Set<String> getAuthorities() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return (auth != null && auth.isAuthenticated()) ? auth.getAuthorities().stream()
-            .map(GrantedAuthority::getAuthority)
-            .collect(Collectors.toUnmodifiableSet()) : Set.of();
+        return (auth != null && auth.isAuthenticated())
+            ? auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toUnmodifiableSet())
+            : Set.of();
       }
     };
   }
