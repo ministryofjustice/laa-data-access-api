@@ -56,8 +56,6 @@ public class BaseServiceTest {
     @MockitoBean
     protected CaseworkerRepository caseworkerRepository;
 
-    @MockitoBean
-    protected ApplicationSummaryRepository applicationSummaryRepository;
 
     @MockitoBean
     protected ProceedingRepository proceedingRepository;

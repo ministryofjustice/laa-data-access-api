@@ -4,15 +4,17 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import org.mapstruct.Mapper;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryDto;
+import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 
 /**
- * Mapper between ApplicationSummaryEntity and DTOs.
+ * Mapper between ApplicationEntity and DTOs.
  * Handles JSONB content for applicationContent.
  */
 @Mapper(componentModel = "spring")
@@ -21,38 +23,70 @@ public interface ApplicationSummaryMapper {
   /**
    * Maps the given application summary entity to an application summary.
    *
-   * @param applicationSummaryEntity the application summary entity
+   * @param applicationEntity the application summary entity
    * @return the application summary
    */
-  default ApplicationSummary toApplicationSummary(ApplicationSummaryEntity applicationSummaryEntity) {
+  default ApplicationSummary toApplicationSummary(ApplicationEntity applicationEntity) {
 
-    if (applicationSummaryEntity == null) {
+    if (applicationEntity == null) {
       return null;
     }
     ApplicationSummary app = new ApplicationSummary();
-    app.setApplicationId(applicationSummaryEntity.getId());
-    app.setSubmittedAt(applicationSummaryEntity.getSubmittedAt() != null 
-                          ? applicationSummaryEntity.getSubmittedAt().atOffset(ZoneOffset.UTC) 
+    app.setApplicationId(applicationEntity.getId());
+    app.setSubmittedAt(applicationEntity.getSubmittedAt() != null 
+                          ? applicationEntity.getSubmittedAt().atOffset(ZoneOffset.UTC) 
                           : null);
-    app.setAutoGrant(applicationSummaryEntity.getIsAutoGranted());
-    app.setCategoryOfLaw(applicationSummaryEntity.getCategoryOfLaw());
-    app.setMatterType(applicationSummaryEntity.getMatterType());
-    app.setUsedDelegatedFunctions(applicationSummaryEntity.getUsedDelegatedFunctions());
-    app.setLaaReference(applicationSummaryEntity.getLaaReference());
-    app.setOfficeCode(applicationSummaryEntity.getOfficeCode());
-    app.setStatus(applicationSummaryEntity.getStatus());
-    app.setAssignedTo(applicationSummaryEntity.getCaseworker() != null 
+    app.setAutoGrant(applicationEntity.getIsAutoGranted());
+    app.setCategoryOfLaw(applicationEntity.getCategoryOfLaw());
+    app.setMatterType(applicationEntity.getMatterType());
+    app.setUsedDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
+    app.setLaaReference(applicationEntity.getLaaReference());
+    app.setOfficeCode(applicationEntity.getOfficeCode());
+    app.setStatus(applicationEntity.getStatus());
+    app.setAssignedTo(applicationEntity.getCaseworker() != null 
                         ? 
-                        applicationSummaryEntity.getCaseworker().getId() : 
+                        applicationEntity.getCaseworker().getId() : 
                         null);
-    var individual = getLeadIndividual(applicationSummaryEntity);
+    var individual = getLeadIndividual(applicationEntity);
     if (individual != null) {
       app.setClientFirstName(individual.getFirstName());
       app.setClientLastName(individual.getLastName());
       app.setClientDateOfBirth(individual.getDateOfBirth());
     }
-    app.setApplicationType(applicationSummaryEntity.getType());
-    app.setLastUpdated(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+    app.setApplicationType(ApplicationType.INITIAL);
+    app.setLastUpdated(applicationEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
+    return app;
+  }
+
+  /**
+   * Maps the given application summary DTO to an application summary.
+   * This is used for efficient list queries without loading the applicationContent JSON blob.
+   *
+   * @param dto the application summary DTO
+   * @return the application summary
+   */
+  default ApplicationSummary toApplicationSummary(ApplicationSummaryDto dto) {
+    if (dto == null) {
+      return null;
+    }
+    ApplicationSummary app = new ApplicationSummary();
+    app.setApplicationId(dto.getId());
+    app.setSubmittedAt(dto.getSubmittedAt() != null
+        ? dto.getSubmittedAt().atOffset(ZoneOffset.UTC)
+        : null);
+    app.setAutoGrant(dto.getIsAutoGranted());
+    app.setCategoryOfLaw(dto.getCategoryOfLaw());
+    app.setMatterType(dto.getMatterType());
+    app.setUsedDelegatedFunctions(dto.getUsedDelegatedFunctions());
+    app.setLaaReference(dto.getLaaReference());
+    app.setOfficeCode(dto.getOfficeCode());
+    app.setStatus(dto.getStatus());
+    app.setAssignedTo(dto.getCaseworkerId());
+    app.setIsLead(dto.getIsLead());
+    app.setApplicationType(ApplicationType.INITIAL);
+    app.setLastUpdated(dto.getModifiedAt() != null
+        ? dto.getModifiedAt().atOffset(ZoneOffset.UTC)
+        : null);
     return app;
   }
 
@@ -60,7 +94,7 @@ public interface ApplicationSummaryMapper {
     return value != null ? value.atOffset(ZoneOffset.UTC) : null;
   }
 
-  private static IndividualEntity getLeadIndividual(ApplicationSummaryEntity entity) {
+  private static IndividualEntity getLeadIndividual(ApplicationEntity entity) {
     var individuals = entity.getIndividuals();
     if (individuals == null || individuals.isEmpty()) {
       return null;

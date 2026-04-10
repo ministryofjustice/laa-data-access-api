@@ -12,17 +12,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortFields;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryDto;
+import uk.gov.justice.laa.dstew.access.model.ClientIndividualDto;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
@@ -33,7 +33,6 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
  */
 @Service
 public class ApplicationSummaryService {
-  private final ApplicationSummaryRepository applicationSummaryRepository;
   private final ApplicationRepository applicationRepository;
   private final CaseworkerRepository caseworkerRepository;
   private final ApplicationSummaryMapper mapper;
@@ -41,18 +40,15 @@ public class ApplicationSummaryService {
   /**
    * Constructs a new {@link ApplicationSummaryService} with the required repositories and mapper.
    *
-   * @param applicationSummaryRepository the repository used to access application summary data
    * @param applicationRepository the repository used to access application entities
    * @param applicationSummaryMapper the mapper used to convert entities into API-facing models
    * @param caseworkerRepository the repository used to access caseworker data
    */
   public ApplicationSummaryService(
-      final ApplicationSummaryRepository applicationSummaryRepository,
       final ApplicationRepository applicationRepository,
       final ApplicationSummaryMapper applicationSummaryMapper,
       final CaseworkerRepository caseworkerRepository
   ) {
-    this.applicationSummaryRepository = applicationSummaryRepository;
     this.applicationRepository = applicationRepository;
     this.mapper = applicationSummaryMapper;
     this.caseworkerRepository = caseworkerRepository;
@@ -95,7 +91,7 @@ public class ApplicationSummaryService {
     String laaRefParam = laaReference != null && !laaReference.isBlank()
         ? "%" + laaReference.toLowerCase() + "%" : null;
 
-    Page<ApplicationSummaryEntity> resultPage = applicationSummaryRepository
+    Page<ApplicationSummaryDto> resultPage = applicationRepository
         .findAllWithFilters(
             applicationStatus,
             laaRefParam,
@@ -107,16 +103,34 @@ public class ApplicationSummaryService {
             isAutoGranted,
             pageDetails);
 
-    List<UUID> pageIds = resultPage.getContent().stream().map(ApplicationSummaryEntity::getId).toList();
+    List<UUID> pageIds = resultPage.getContent().stream().map(ApplicationSummaryDto::getId).toList();
     List<UUID> allLeadIds = applicationRepository.findLeadIdsByPageIds(pageIds);
-    Map<UUID, List<LinkedApplicationSummaryDto>> linkedApplications =
-        retrieveLinkedApplications(resultPage.getContent(), allLeadIds);
 
-    return wrapResult(page, pageSize, resultPage.map(entity -> {
-      ApplicationSummary summary = mapper.toApplicationSummary(entity);
-      summary.setIsLead(allLeadIds.contains(entity.getId()));
+    // Retrieve client individuals separately to avoid loading individualContent JSON blob
+
+    Map<UUID, List<ClientIndividualDto>> clientIndividualsByApp = applicationRepository
+        .findClientIndividualsByApplicationIds(pageIds)
+        .stream()
+        .collect(Collectors.groupingBy(ClientIndividualDto::getApplicationId));
+
+    Map<UUID, List<LinkedApplicationSummaryDto>> linkedApplications =
+        retrieveLinkedApplications(pageIds, allLeadIds);
+
+    return wrapResult(page, pageSize, resultPage.map(dto -> {
+      ApplicationSummary summary = mapper.toApplicationSummary(dto);
+
+      // Set client information from separately fetched data
+      // Take the first client if multiple exist
+      List<ClientIndividualDto> clients = clientIndividualsByApp.get(dto.getId());
+      if (clients != null && !clients.isEmpty()) {
+        ClientIndividualDto client = clients.getFirst();
+        summary.setClientFirstName(client.getFirstName());
+        summary.setClientLastName(client.getLastName());
+        summary.setClientDateOfBirth(client.getDateOfBirth());
+      }
+
       summary.setLinkedApplications(
-          linkedApplications.getOrDefault(entity.getId(), List.of())
+          linkedApplications.getOrDefault(dto.getId(), List.of())
               .stream()
               .map(mapper::toLinkedApplicationSummary)
               .toList()
@@ -126,7 +140,7 @@ public class ApplicationSummaryService {
   }
 
   private Map<UUID, List<LinkedApplicationSummaryDto>> retrieveLinkedApplications(
-      List<ApplicationSummaryEntity> content, List<UUID> allLeadIds) {
+      List<UUID> pageIds, List<UUID> allLeadIds) {
 
     if (allLeadIds.isEmpty()) {
       return Map.of();
@@ -137,9 +151,9 @@ public class ApplicationSummaryService {
         .stream()
         .collect(Collectors.groupingBy(LinkedApplicationSummaryDto::getLeadApplicationId));
 
-    return content.stream().collect(Collectors.toMap(
-        ApplicationSummaryEntity::getId,
-        entity -> resolveLinkedApplications(entity.getId(), linkedAppsByLeadId)
+    return pageIds.stream().collect(Collectors.toMap(
+        applicationId -> applicationId,
+        applicationId -> resolveLinkedApplications(applicationId, linkedAppsByLeadId)
     ));
   }
 

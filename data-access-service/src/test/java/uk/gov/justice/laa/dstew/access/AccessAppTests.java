@@ -18,9 +18,6 @@ public class AccessAppTests {
   private ApplicationRepository applicationRepository;
 
   @MockitoBean
-  private ApplicationSummaryRepository applicationSummaryRepository;
-
-  @MockitoBean
   private CaseworkerRepository caseworkerRepository;
 
   @MockitoBean

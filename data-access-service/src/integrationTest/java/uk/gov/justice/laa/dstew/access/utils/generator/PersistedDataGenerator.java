@@ -8,9 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.repository.*;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationSummaryGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
@@ -19,7 +16,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEnti
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.notes.NoteEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualGenerator;
 
 import java.util.HashMap;
 import java.util.List;
@@ -42,7 +38,6 @@ public class PersistedDataGenerator extends DataGenerator {
     public void init() {
         registerRepository(DomainEventGenerator.class, DomainEventRepository.class);
         registerRepository(ApplicationEntityGenerator.class, ApplicationRepository.class);
-        registerRepository(ApplicationSummaryGenerator.class, ApplicationSummaryRepository.class);
         registerRepository(CaseworkerGenerator.class, CaseworkerRepository.class);
         registerRepository(DecisionEntityGenerator.class, DecisionRepository.class);
         registerRepository(ProceedingsEntityGenerator.class, ProceedingRepository.class);
