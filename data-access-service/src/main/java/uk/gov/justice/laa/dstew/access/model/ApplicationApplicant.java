@@ -24,6 +24,8 @@ public class ApplicationApplicant {
 
   @Nullable private Boolean appliedPreviously;
 
+  @jakarta.annotation.Nullable private String relationshipToInvolvedChildren;
+
   @JsonAnyGetter private Map<String, Object> additionalContent;
 
   /**

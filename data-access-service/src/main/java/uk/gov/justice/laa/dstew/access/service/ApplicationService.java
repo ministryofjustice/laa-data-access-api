@@ -271,7 +271,6 @@ public class ApplicationService {
   @AllowApiCaseworker
   @Transactional
   public void createApplicationNote(final UUID id, final CreateNoteRequest request) {
-
     ApplicationEntity application = checkIfApplicationExists(id);
     noteRepository.save(NoteEntity.builder().applicationId(id).notes(request.getNotes()).build());
     domainEventService.saveCreateApplicationNoteDomainEvent(application, request);

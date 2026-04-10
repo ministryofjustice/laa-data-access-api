@@ -426,8 +426,8 @@ public class IndividualsServiceTest extends BaseServiceTest {
     assertThat(actual.getLastNameAtBirth()).isEqualTo(applicationContent.getLastNameAtBirth());
     assertThat(actual.getPreviousApplicationId())
         .isEqualTo(applicationContent.getPreviousApplicationId());
-    assertThat(actual.getRelationshipToChildren())
-        .isEqualTo(applicationContent.getRelationshipToChildren());
+    assertThat(actual.getRelationshipToInvolvedChildren())
+        .isEqualTo(applicationContent.getApplicant().getRelationshipToInvolvedChildren());
     assertThat(actual.getCorrespondenceAddressType())
         .isEqualTo(applicationContent.getCorrespondenceAddressType());
     var expectedAppliedPreviously =

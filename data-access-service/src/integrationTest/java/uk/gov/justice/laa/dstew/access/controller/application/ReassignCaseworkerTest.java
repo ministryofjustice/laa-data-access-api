@@ -10,32 +10,30 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
-import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerAssignRequestGenerator;
+import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
-@ActiveProfiles("test")
-public class ReassignCaseworkerTest extends BaseIntegrationTest {
+public class ReassignCaseworkerTest extends BaseHarnessTest {
 
+  @SmokeTest
   @ParameterizedTest
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
   void givenValidReassignRequestAndInvalidHeader_whenAssignCaseworker_thenReturnBadRequest(
       String serviceName) throws Exception {
     verifyBadServiceNameHeader(serviceName);
   }
 
+  @SmokeTest
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenValidReassignRequestAndNoHeader_whenAssignCaseworker_thenReturnBadRequest()
       throws Exception {
     verifyBadServiceNameHeader(null);
@@ -48,7 +46,7 @@ public class ReassignCaseworkerTest extends BaseIntegrationTest {
             CaseworkerAssignRequestGenerator.class,
             builder -> {
               builder
-                  .caseworkerId(BaseIntegrationTest.CaseworkerJaneDoe.getId())
+                  .caseworkerId(CaseworkerJaneDoe.getId())
                   .applicationIds(List.of(UUID.randomUUID()))
                   .eventHistory(
                       EventHistoryRequest.builder()
@@ -56,7 +54,7 @@ public class ReassignCaseworkerTest extends BaseIntegrationTest {
                           .build());
             });
 
-    MvcResult result =
+    HarnessResult result =
         postUri(
             TestConstants.URIs.ASSIGN_CASEWORKER,
             caseworkerReassignRequest,
@@ -65,27 +63,23 @@ public class ReassignCaseworkerTest extends BaseIntegrationTest {
     applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
   }
 
+  @SmokeTest
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenValidReassignRequest_whenAssignCaseworker_thenReturnOK_andAssignCaseworker()
       throws Exception {
     // given
     List<ApplicationEntity> toReassignedApplications =
         persistedDataGenerator.createAndPersistMultiple(
-            ApplicationEntityGenerator.class,
-            4,
-            builder -> builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe));
+            ApplicationEntityGenerator.class, 4, builder -> builder.caseworker(CaseworkerJohnDoe));
 
     List<ApplicationEntity> expectedReassignedApplications =
         toReassignedApplications.stream()
-            .peek(application -> application.setCaseworker(BaseIntegrationTest.CaseworkerJaneDoe))
+            .peek(application -> application.setCaseworker(CaseworkerJaneDoe))
             .toList();
 
     List<ApplicationEntity> expectedAlreadyAssignedApplications =
         persistedDataGenerator.createAndPersistMultiple(
-            ApplicationEntityGenerator.class,
-            5,
-            builder -> builder.caseworker(BaseIntegrationTest.CaseworkerJaneDoe));
+            ApplicationEntityGenerator.class, 5, builder -> builder.caseworker(CaseworkerJaneDoe));
 
     List<ApplicationEntity> expectedUnassignedApplications =
         persistedDataGenerator.createAndPersistMultiple(
@@ -96,7 +90,7 @@ public class ReassignCaseworkerTest extends BaseIntegrationTest {
             CaseworkerAssignRequestGenerator.class,
             builder -> {
               builder
-                  .caseworkerId(BaseIntegrationTest.CaseworkerJaneDoe.getId())
+                  .caseworkerId(CaseworkerJaneDoe.getId())
                   .applicationIds(
                       toReassignedApplications.stream()
                           .map(ApplicationEntity::getId)
@@ -108,19 +102,20 @@ public class ReassignCaseworkerTest extends BaseIntegrationTest {
             });
 
     // when
-    MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerReassignRequest);
+    HarnessResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerReassignRequest);
 
     // then
     assertSecurityHeaders(result);
     assertNoCacheHeaders(result);
     assertOK(result);
 
-    applicationAsserts.assertApplicationsMatchInRepository(expectedReassignedApplications);
+    applicationAsserts.assertApplicationsMatchInRepositoryIgnoringLastUpdated(
+        expectedReassignedApplications);
     applicationAsserts.assertApplicationsMatchInRepository(expectedAlreadyAssignedApplications);
     applicationAsserts.assertApplicationsMatchInRepository(expectedUnassignedApplications);
     domainEventAsserts.assertDomainEventsCreatedForApplications(
         toReassignedApplications,
-        BaseIntegrationTest.CaseworkerJaneDoe.getId(),
+        CaseworkerJaneDoe.getId(),
         DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
         caseworkerReassignRequest.getEventHistory());
   }

@@ -14,7 +14,7 @@ import org.springframework.security.oauth2.server.resource.web.BearerTokenResolv
 @ConditionalOnProperty(prefix = "feature", name = "enable-dev-token", havingValue = "true")
 public class DevBearerTokenResolverConfig {
 
-  private static final Set<String> DEV_TOKENS = Set.of("swagger-caseworker-token");
+  private static final Set<String> DEV_TOKENS = Set.of("swagger-caseworker-token", "unknown-token");
 
   /**
    * Custom BearerTokenResolver that checks for dev tokens and returns null if a dev token is found,

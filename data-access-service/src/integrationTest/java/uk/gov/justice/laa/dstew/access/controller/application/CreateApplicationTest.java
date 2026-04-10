@@ -3,6 +3,8 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertBadRequest;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertCreated;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
@@ -16,16 +18,12 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -36,7 +34,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationOffice;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
@@ -46,28 +43,29 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCr
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationOfficeGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.ApplicationCreateRequestIndividualGenerator;
+import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
-@ActiveProfiles("test")
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class CreateApplicationTest extends BaseIntegrationTest {
+public class CreateApplicationTest extends BaseHarnessTest {
   private static final int applicationVersion = 1;
 
-  private Stream<Arguments> createApplicationTestParameters() {
+  private static Stream<Arguments> createApplicationTestParameters() {
     return Stream.of(
         Arguments.of(new ApplicationOffice()),
         Arguments.of(DataGenerator.createDefault(ApplicationOfficeGenerator.class)));
   }
 
+  @SmokeTest
   @ParameterizedTest
   @MethodSource("createApplicationTestParameters")
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenCreateNewApplication_whenCreateApplication_thenReturnCreatedWithLocationHeader(
       ApplicationOffice office) throws Exception {
     verifyCreateNewApplication(office, null);
   }
 
+  @SmokeTest
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void
       givenCreateNewApplication_whenCreateApplicationAndNoOffice_thenReturnCreatedWithLocationHeader()
           throws Exception {
@@ -75,7 +73,6 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void
       givenCreateNewApplication_whenCreateApplicationWithCivilDecideServiceName_thenReturnCreatedAndPersistServiceName()
           throws Exception {
@@ -83,7 +80,6 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void
       givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_thenReturnCreatedWithLocationHeader()
           throws Exception {
@@ -96,12 +92,13 @@ public class CreateApplicationTest extends BaseIntegrationTest {
             .build();
     final var createdEntity = verifyCreateNewApplication(null, linkedApplication);
     final ApplicationEntity leadApplication =
-        applicationRepository.findById(leadApplicationToLink.getId()).orElseThrow();
+        applicationRepository
+            .findByIdWithLinkedApplications(leadApplicationToLink.getId())
+            .orElseThrow();
     assertLinkedApplicationCorrectlyApplied(leadApplication, createdEntity);
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void
       givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_raiseIfLeadNotFound()
           throws Exception {
@@ -129,12 +126,12 @@ public class CreateApplicationTest extends BaseIntegrationTest {
             builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
 
     // when
-    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
 
     // then
     assertSecurityHeaders(result);
     assertNotFound(result);
-    assertEquals("application/problem+json", result.getResponse().getContentType());
+    assertEquals("application/problem+json", result.getResponse().getHeader("Content-Type"));
     ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
     assertEquals(
         "Linking failed > Lead application not found, ID: " + notFoundLeadId,
@@ -142,7 +139,6 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void
       givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_raiseIfAssociatedNotFound()
           throws Exception {
@@ -151,9 +147,11 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     UUID associatedApplicationId = UUID.randomUUID();
     UUID missingLinkedApplication = UUID.randomUUID();
 
-    persistedDataGenerator.createAndPersist(
-        ApplicationEntityGenerator.class,
-        applicationEntityBuilder -> applicationEntityBuilder.applyApplicationId(leadApplicationId));
+    ApplicationEntity leadApp =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            applicationEntityBuilder ->
+                applicationEntityBuilder.applyApplicationId(leadApplicationId));
 
     LinkedApplication linkedApplication =
         LinkedApplication.builder()
@@ -181,12 +179,12 @@ public class CreateApplicationTest extends BaseIntegrationTest {
             builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
 
     // when
-    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
 
     // then
     assertSecurityHeaders(result);
     assertNotFound(result);
-    assertEquals("application/problem+json", result.getResponse().getContentType());
+    assertEquals("application/problem+json", result.getResponse().getHeader("Content-Type"));
     ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
     assertEquals(
         "No linked application found with associated apply ids: "
@@ -195,7 +193,6 @@ public class CreateApplicationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenDuplicateApplyApplicationId_whenCreateApplication_thenReturnBadRequest()
       throws Exception {
     // given
@@ -226,7 +223,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
                 + existingApplication.getApplyApplicationId()));
 
     // when
-    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
     ProblemDetail detail = deserialise(result, ProblemDetail.class);
 
     // then
@@ -254,19 +251,19 @@ public class CreateApplicationTest extends BaseIntegrationTest {
             ApplicationCreateRequestGenerator.class,
             builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
 
-    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
 
     assertSecurityHeaders(result);
     assertCreated(result);
 
     UUID createdApplicationId =
         HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    persistedDataGenerator.trackExistingApplication(createdApplicationId);
     ApplicationEntity createdApplication =
         applicationRepository
             .findById(createdApplicationId)
             .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
     assertApplicationEqual(applicationCreateRequest, createdApplication);
-    assertNotNull(createdApplicationId);
 
     domainEventAsserts.assertDomainEventForApplication(
         createdApplication, DomainEventType.APPLICATION_CREATED);
@@ -280,7 +277,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
             ApplicationCreateRequestGenerator.class,
             builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
 
-    MvcResult result =
+    HarnessResult result =
         postUri(
             TestConstants.URIs.CREATE_APPLICATION,
             applicationCreateRequest,
@@ -291,6 +288,7 @@ public class CreateApplicationTest extends BaseIntegrationTest {
 
     UUID createdApplicationId =
         HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    persistedDataGenerator.trackExistingApplication(createdApplicationId);
     ApplicationEntity createdApplication =
         applicationRepository
             .findById(createdApplicationId)
@@ -300,8 +298,8 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         createdApplication, DomainEventType.APPLICATION_CREATED, serviceName);
   }
 
+  @SmokeTest
   @ParameterizedTest
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
   public void
       givenCreateNewApplication_whenCreateApplicationAndInvalidServiceNameHeader_thenReturnBadRequest(
@@ -309,8 +307,8 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     verifyBadServiceNameHeader(serviceName);
   }
 
+  @SmokeTest
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void
       givenCreateNewApplication_whenCreateApplicationAndNoServiceNameHeader_thenReturnBadRequest()
           throws Exception {
@@ -321,35 +319,33 @@ public class CreateApplicationTest extends BaseIntegrationTest {
     ApplicationCreateRequest applicationCreateRequest =
         DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
 
-    MvcResult result =
+    HarnessResult result =
         postUri(
             TestConstants.URIs.CREATE_APPLICATION,
             applicationCreateRequest,
             ServiceNameHeader(serviceName));
-    applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+    assertBadRequest(result);
   }
 
   @ParameterizedTest
   @MethodSource("applicationCreateRequestInvalidDataCases")
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenInvalidApplicationRequestData_whenCreateApplication_thenReturnBadRequest(
       ApplicationCreateRequest request,
       ProblemDetail expectedDetail,
       Map<String, Object> problemDetailProperties)
       throws Exception {
     // when
-    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
     ProblemDetail detail = deserialise(result, ProblemDetail.class);
 
     // then
     expectedDetail.setProperties(problemDetailProperties);
     assertSecurityHeaders(result);
     assertProblemRecord(HttpStatus.BAD_REQUEST, expectedDetail, result, detail);
-    assertEquals(0, applicationRepository.count());
+    assertTrue(trackedApplicationIds().isEmpty(), "Expected no application to be persisted");
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenInvalidApplicationContent_EmptyMap_whenCreateApplication_thenReturnBadRequest()
       throws Exception {
     ApplicationCreateRequest applicationCreateRequest =
@@ -363,17 +359,16 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         "invalidFields", Map.of("applicationContent", "size must be between 1 and 2147483647"));
 
     // when
-    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
     ProblemDetail validationException = deserialise(result, ProblemDetail.class);
 
     // then
     assertSecurityHeaders(result);
     assertProblemRecord(HttpStatus.BAD_REQUEST, expectedProblemDetail, result, validationException);
-    assertEquals(0, applicationRepository.count());
+    assertTrue(trackedApplicationIds().isEmpty(), "Expected no application to be persisted");
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenInvalidApplicationContent_whenCreateApplication_thenReturnBadRequest()
       throws Exception {
     ApplicationCreateRequest applicationCreateRequest =
@@ -387,46 +382,56 @@ public class CreateApplicationTest extends BaseIntegrationTest {
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
     expectedProblemDetail.setProperty("invalidFields", invalidFields);
     // when
-    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
     ProblemDetail validationException = deserialise(result, ProblemDetail.class);
 
     // then
     assertSecurityHeaders(result);
     assertProblemRecord(HttpStatus.BAD_REQUEST, expectedProblemDetail, result, validationException);
-    assertEquals(0, applicationRepository.count());
+    assertTrue(trackedApplicationIds().isEmpty(), "Expected no application to be persisted");
+  }
+
+  private static Stream<Arguments> noRequestBodyCases() {
+    return Stream.of(
+        Arguments.of("", "Invalid request payload", null),
+        Arguments.of(
+            "{}",
+            "Request validation failed",
+            Map.of(
+                "invalidFields",
+                Map.of(
+                    "applicationContent", "must not be null",
+                    "laaReference", "must not be null",
+                    "individuals", "must not be null",
+                    "status", "must not be null"))));
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"", "{}"})
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-  public void givenNoRequestBody_whenCreateApplication_thenReturnBadRequest(String request)
+  @MethodSource("noRequestBodyCases")
+  public void givenNoRequestBody_whenCreateApplication_thenReturnBadRequest(
+      String request, String expectedDetail, Map<String, Object> expectedProperties)
       throws Exception {
     // when
-    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
     ProblemDetail detail = deserialise(result, ProblemDetail.class);
 
     // then
     assertSecurityHeaders(result);
     assertProblemRecord(
-        HttpStatus.BAD_REQUEST,
-        "Bad Request",
-        "Invalid data type for field 'unknown'. Expected: ApplicationCreateRequest.",
-        result,
-        detail,
-        null);
-    assertEquals(0, applicationRepository.count());
+        HttpStatus.BAD_REQUEST, "Bad Request", expectedDetail, result, detail, expectedProperties);
+    assertTrue(trackedApplicationIds().isEmpty(), "Expected no application to be persisted");
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenCorrectRequestBodyAndReaderRole_whenCreateApplication_thenReturnForbidden()
       throws Exception {
     // given
+    withToken(TestConstants.Tokens.UNKNOWN);
     ApplicationCreateRequest request =
         DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
 
     // when
-    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
 
     // then
     assertSecurityHeaders(result);
@@ -438,18 +443,19 @@ public class CreateApplicationTest extends BaseIntegrationTest {
       givenCorrectRequestBodyAndNoAuthentication_whenCreateApplication_thenReturnUnauthorised()
           throws Exception {
     // given
+    withNoToken();
     ApplicationCreateRequest request =
         DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
 
     // when
-    MvcResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
 
     // then
     assertSecurityHeaders(result);
     assertUnauthorised(result);
   }
 
-  private Stream<Arguments> applicationCreateRequestInvalidDataCases() {
+  private static Stream<Arguments> applicationCreateRequestInvalidDataCases() {
     ProblemDetail problemDetail =
         ProblemDetailBuilder.create()
             .status(HttpStatus.BAD_REQUEST)

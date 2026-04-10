@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
 plugins {
     id 'java'
     id 'jacoco'
@@ -13,16 +15,17 @@ def versions = [
 ]
 
 configurations.all {
-    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
+    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
+    // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     // Fix for Spring Boot security vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-15701836, 15701840 (Authentication Bypass)
     // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
     // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
     resolutionStrategy {
-        force 'com.fasterxml.jackson.core:jackson-core:2.21.1'
-        force 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
-        force 'tools.jackson.core:jackson-core:3.1.0'
-        force 'tools.jackson.core:jackson-databind:3.1.0'
-        force 'tools.jackson:jackson-bom:3.1.0'
+        force 'com.fasterxml.jackson.core:jackson-core:2.21.2'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
+        force 'tools.jackson.core:jackson-core:3.1.1'
+        force 'tools.jackson.core:jackson-databind:3.1.1'
+        force 'tools.jackson:jackson-bom:3.1.1'
         force 'org.springframework.boot:spring-boot-actuator:3.5.12'
         force 'org.springframework.boot:spring-boot-actuator-autoconfigure:3.5.12'
         force 'org.springframework.security:spring-security-web:6.5.9'
@@ -72,6 +75,54 @@ test {
     finalizedBy jacocoTestReport
 }
 
+tasks.named('integrationTest') {
+    useJUnitPlatform()
+
+    testLogging {
+        events TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED
+        exceptionFormat = 'full'
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+    }
+}
+
+tasks.register('infrastructureTest', Test) {
+    description = 'Runs @SmokeTest-annotated tests against a live deployed environment'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    // Unconditionally use infrastructure mode — no flag needed
+    systemProperty 'test.mode', 'infrastructure'
+
+    filter {
+        includeTestsMatching 'uk.gov.justice.laa.dstew.access.controller.*'
+    }
+    useJUnitPlatform {
+        includeTags 'smoke'
+    }
+
+    ['LAA_SMOKE_ACCESS_API_URL',
+     'LAA_SMOKE_ACCESS_DB_URL',
+     'LAA_SMOKE_ACCESS_DB_USERNAME',
+     'LAA_SMOKE_ACCESS_DB_PASSWORD',
+     'FEATURE_DISABLE_SECURITY',
+     'FEATURE_ENABLE_DEV_TOKENS'].each { key ->
+        def value = System.getenv(key)
+        if (value) environment key, value
+    }
+
+    testLogging {
+        events TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED
+        exceptionFormat = 'full'
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+        showStandardStreams = true
+    }
+}
+
 jacoco {
     toolVersion = "0.8.13"
 }
@@ -97,9 +148,9 @@ jacocoTestReport {
 }
 
 dependencyManagement {
-    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
+    // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     imports {
-        mavenBom 'tools.jackson:jackson-bom:3.1.0'
+        mavenBom 'tools.jackson:jackson-bom:3.1.1'
     }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
@@ -144,9 +195,9 @@ dependencies {
     implementation 'io.netty:netty-codec-http2:4.2.12.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-15307781
     implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.52'
-    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924 (CVE)
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.1'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
+    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
     implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2') {
         exclude group: 'tools.jackson.core'
     }
@@ -158,6 +209,9 @@ dependencies {
     implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.0.0'
     implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
 
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+    implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot:2.2.0'
+
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
     implementation 'org.javers:javers-core:7.10.0'
@@ -165,6 +219,7 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
     testImplementation 'org.instancio:instancio-junit:5.5.1'
     testImplementation 'net.datafaker:datafaker:2.5.2'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

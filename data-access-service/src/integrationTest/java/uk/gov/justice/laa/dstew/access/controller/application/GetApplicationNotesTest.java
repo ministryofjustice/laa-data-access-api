@@ -14,28 +14,26 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.ProblemDetail;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationNoteResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationNotesResponse;
-import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.notes.NoteEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
-@ActiveProfiles("test")
-public class GetApplicationNotesTest extends BaseIntegrationTest {
+public class GetApplicationNotesTest extends BaseHarnessTest {
 
+  @SmokeTest
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenNoHeader_whenGetApplicationNotes_thenReturnBadRequest() throws Exception {
     verifyServiceNameHeader(null);
   }
 
+  @SmokeTest
   @ParameterizedTest
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
   void givenInvalidHeader_whenGetApplicationNotes_thenReturnBadRequest(String serviceName)
       throws Exception {
@@ -43,13 +41,13 @@ public class GetApplicationNotesTest extends BaseIntegrationTest {
   }
 
   private void verifyServiceNameHeader(String serviceName) throws Exception {
-    MvcResult result =
+    HarnessResult result =
         getUri(TestConstants.URIs.GET_NOTES, ServiceNameHeader(serviceName), UUID.randomUUID());
     applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
   }
 
+  @SmokeTest
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenApplicationExistsWithNotes_whenGetApplicationNotes_thenReturnOk()
       throws Exception {
     // given
@@ -65,10 +63,8 @@ public class GetApplicationNotesTest extends BaseIntegrationTest {
         NoteEntityGenerator.class,
         builder -> builder.applicationId(applicationId).notes("second note").createdBy("user-b"));
 
-    clearCache();
-
     // when
-    MvcResult result = getUri(TestConstants.URIs.GET_NOTES, applicationId);
+    HarnessResult result = getUri(TestConstants.URIs.GET_NOTES, applicationId);
 
     // then
     assertSecurityHeaders(result);
@@ -90,7 +86,6 @@ public class GetApplicationNotesTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenApplicationExistsWithNoNotes_whenGetApplicationNotes_thenReturnOkWithEmptyList()
       throws Exception {
     // given
@@ -98,7 +93,7 @@ public class GetApplicationNotesTest extends BaseIntegrationTest {
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
     // when
-    MvcResult result = getUri(TestConstants.URIs.GET_NOTES, application.getId());
+    HarnessResult result = getUri(TestConstants.URIs.GET_NOTES, application.getId());
 
     // then
     assertSecurityHeaders(result);
@@ -110,14 +105,13 @@ public class GetApplicationNotesTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenApplicationDoesNotExist_whenGetApplicationNotes_thenReturnNotFound()
       throws Exception {
     // given
     UUID unknownId = UUID.randomUUID();
 
     // when
-    MvcResult result = getUri(TestConstants.URIs.GET_NOTES, unknownId);
+    HarnessResult result = getUri(TestConstants.URIs.GET_NOTES, unknownId);
 
     // then
     assertSecurityHeaders(result);
@@ -129,10 +123,12 @@ public class GetApplicationNotesTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenUnknownRole_whenGetApplicationNotes_thenReturnForbidden() throws Exception {
+    // given
+    withToken(TestConstants.Tokens.UNKNOWN);
+
     // when
-    MvcResult result = getUri(TestConstants.URIs.GET_NOTES, UUID.randomUUID());
+    HarnessResult result = getUri(TestConstants.URIs.GET_NOTES, UUID.randomUUID());
 
     // then
     assertSecurityHeaders(result);
@@ -141,8 +137,11 @@ public class GetApplicationNotesTest extends BaseIntegrationTest {
 
   @Test
   public void givenNoUser_whenGetApplicationNotes_thenReturnUnauthorised() throws Exception {
+    // given
+    withNoToken();
+
     // when
-    MvcResult result = getUri(TestConstants.URIs.GET_NOTES, UUID.randomUUID());
+    HarnessResult result = getUri(TestConstants.URIs.GET_NOTES, UUID.randomUUID());
 
     // then
     assertSecurityHeaders(result);

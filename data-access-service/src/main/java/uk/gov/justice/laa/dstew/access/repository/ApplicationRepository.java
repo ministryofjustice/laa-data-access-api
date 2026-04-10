@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -17,6 +18,9 @@ public interface ApplicationRepository extends JpaRepository<ApplicationEntity, 
   boolean existsByApplyApplicationId(UUID applyApplicationId);
 
   List<ApplicationEntity> findAllByApplyApplicationIdIn(List<UUID> applyApplicationIds);
+
+  @Query("SELECT a FROM ApplicationEntity a LEFT JOIN FETCH a.linkedApplications WHERE a.id = :id")
+  Optional<ApplicationEntity> findByIdWithLinkedApplications(@Param("id") UUID id);
 
   @Query(
       value =

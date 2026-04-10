@@ -64,7 +64,7 @@ public interface IndividualMapper {
     dto.setClientId(null);
     dto.setLastNameAtBirth(null);
     dto.setPreviousApplicationId(null);
-    dto.setRelationshipToChildren(null);
+    dto.setRelationshipToInvolvedChildren(null);
     dto.setCorrespondenceAddressType(null);
     dto.setAppliedPreviously(null);
     dto.setCorrespondenceAddress(null);
@@ -75,7 +75,11 @@ public interface IndividualMapper {
       dto.setClientId(entity.getId());
       dto.setLastNameAtBirth(applicationContent.getLastNameAtBirth());
       dto.setPreviousApplicationId(applicationContent.getPreviousApplicationId());
-      dto.setRelationshipToChildren(applicationContent.getRelationshipToChildren());
+      String relationshipToInvolvedChildren =
+          applicationContent.getApplicant() == null
+              ? null
+              : applicationContent.getApplicant().getRelationshipToInvolvedChildren();
+      dto.setRelationshipToInvolvedChildren(relationshipToInvolvedChildren);
       dto.setCorrespondenceAddressType(applicationContent.getCorrespondenceAddressType());
       if (applicationContent.getApplicant() != null) {
         dto.setAppliedPreviously(applicationContent.getApplicant().getAppliedPreviously());

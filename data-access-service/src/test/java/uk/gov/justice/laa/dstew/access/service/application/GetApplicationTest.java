@@ -22,6 +22,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -163,15 +164,15 @@ public class GetApplicationTest extends BaseServiceTest {
     assertThat(
             getValueFromProceedingContent(
                 "usedDelegatedFunctionsOn", expectedProceedingEntity.getProceedingContent()))
-        .isEqualTo(actualApplicationProceedingResponse.getUsedDelegatedFunctionsOn().toString());
+        .isEqualTo(actualApplicationProceedingResponse.getDelegatedFunctionsDate().toString());
     assertThat(
             getValueFromProceedingContent(
                 "categoryOfLaw", expectedProceedingEntity.getProceedingContent()))
-        .isEqualTo(actualApplicationProceedingResponse.getCategoryOfLaw());
+        .isEqualToIgnoringCase(actualApplicationProceedingResponse.getCategoryOfLaw().getValue());
     assertThat(
             getValueFromProceedingContent(
                 "matterType", expectedProceedingEntity.getProceedingContent()))
-        .isEqualTo(actualApplicationProceedingResponse.getMatterType());
+        .isEqualToIgnoringCase(actualApplicationProceedingResponse.getMatterType().getValue());
     assertThat(
             getValueFromProceedingContent(
                 "substantiveLevelOfServiceName", expectedProceedingEntity.getProceedingContent()))
@@ -181,19 +182,16 @@ public class GetApplicationTest extends BaseServiceTest {
                 "substantiveCostLimitation", expectedProceedingEntity.getProceedingContent()))
         .isEqualTo(actualApplicationProceedingResponse.getSubstantiveCostLimitation());
     assertThat(actualApplicationProceedingResponse.getScopeLimitations()).isNotNull();
-    Map<String, Object> scopeLimitation =
-        (Map<String, Object>) actualApplicationProceedingResponse.getScopeLimitations().getFirst();
-    assertThat(
-            getValueFromScopeLimitations(0, "id", expectedProceedingEntity.getProceedingContent()))
-        .isEqualTo(scopeLimitation.get("id").toString());
-    assertThat(
-            getValueFromScopeLimitations(
-                0, "code", expectedProceedingEntity.getProceedingContent()))
-        .isEqualTo(scopeLimitation.get("code").toString());
+    ScopeLimitationResponse scopeLimitation =
+        actualApplicationProceedingResponse.getScopeLimitations().getFirst();
     assertThat(
             getValueFromScopeLimitations(
                 0, "meaning", expectedProceedingEntity.getProceedingContent()))
-        .isEqualTo(scopeLimitation.get("meaning").toString());
+        .isEqualTo(scopeLimitation.getScopeLimitation());
+    assertThat(
+            getValueFromScopeLimitations(
+                0, "description", expectedProceedingEntity.getProceedingContent()))
+        .isEqualTo(scopeLimitation.getScopeDescription());
     assertThat(expectedStatus).isEqualTo(actualApplicationProceedingResponse.getMeritsDecision());
   }
 

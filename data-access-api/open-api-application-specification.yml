@@ -551,7 +551,7 @@ components:
           type: string
         previousApplicationId:
           type: string
-        relationshipToChildren:
+        relationshipToInvolvedChildren:
           type: string
         correspondenceAddressType:
           type: string
@@ -920,13 +920,13 @@ components:
           type: string
         proceedingDescription:
           type: string
-        usedDelegatedFunctionsOn:
+        delegatedFunctionsDate:
           type: string
           format: date
         categoryOfLaw:
-          type: string
+          $ref: "#/components/schemas/CategoryOfLaw"
         matterType:
-          type: string
+          $ref: "#/components/schemas/MatterType"
         levelOfService:
           type: string
         substantiveCostLimitation:
@@ -934,9 +934,17 @@ components:
         scopeLimitations:
           type: array
           items:
-            type: object
+            $ref: "#/components/schemas/ScopeLimitationResponse"
         meritsDecision:
           $ref: "#/components/schemas/MeritsDecisionStatus"
+
+    ScopeLimitationResponse:
+      type: object
+      properties:
+        scopeLimitation:
+          type: string
+        scopeDescription:
+          type: string
 
     CreateNoteRequest:
       type: object

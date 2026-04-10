@@ -60,11 +60,11 @@ class IndividualResponseMapperTest extends BaseMapperTest {
         .lastNameAtBirth(lastName)
         .correspondenceAddressType(correspondenceAddressType)
         .previousApplicationId(previousApplicationId)
-        .relationshipToChildren(relationshipToChildren)
         .applicant(
             ApplicationApplicant.builder()
                 .appliedPreviously(appliedPreviously)
                 .addresses(addresses)
+                .relationshipToInvolvedChildren(relationshipToChildren)
                 .build())
         .build();
   }
@@ -101,7 +101,7 @@ class IndividualResponseMapperTest extends BaseMapperTest {
     assertThat(actualIndividualResponse.getLastNameAtBirth()).isEqualTo(lastName);
     assertThat(actualIndividualResponse.getPreviousApplicationId())
         .isEqualTo(previousApplicationId);
-    assertThat(actualIndividualResponse.getRelationshipToChildren())
+    assertThat(actualIndividualResponse.getRelationshipToInvolvedChildren())
         .isEqualTo(relationshipToChildren);
     assertThat(actualIndividualResponse.getAppliedPreviously()).isEqualTo(appliedPreviously);
     List<Map<String, Object>> actualAddresses = actualIndividualResponse.getCorrespondenceAddress();
@@ -140,7 +140,7 @@ class IndividualResponseMapperTest extends BaseMapperTest {
     assertThat(actualIndividualResponse.getCorrespondenceAddressType()).isNull();
     assertThat(actualIndividualResponse.getLastNameAtBirth()).isNull();
     assertThat(actualIndividualResponse.getPreviousApplicationId()).isNull();
-    assertThat(actualIndividualResponse.getRelationshipToChildren()).isNull();
+    assertThat(actualIndividualResponse.getRelationshipToInvolvedChildren()).isNull();
     assertThat(actualIndividualResponse.getAppliedPreviously()).isNull();
     assertThat(actualIndividualResponse.getCorrespondenceAddress()).isNull();
   }

@@ -23,39 +23,35 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import lombok.Getter;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.ProblemDetail;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
-import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerAssignRequestGenerator;
+import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
-@ActiveProfiles("test")
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class AssignCaseworkerTest extends BaseIntegrationTest {
+public class AssignCaseworkerTest extends BaseHarnessTest {
 
+  @SmokeTest
   @ParameterizedTest
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
   void givenValidAssignRequestAndInvalidHeader_whenAssignCaseworker_thenReturnBadRequest(
       String serviceName) throws Exception {
     verifyBadServiceNameHeader(serviceName);
   }
 
+  @SmokeTest
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenValidAssignRequestAndNoHeader_whenAssignCaseworker_thenReturnBadRequest()
       throws Exception {
     verifyBadServiceNameHeader(null);
@@ -68,7 +64,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
             CaseworkerAssignRequestGenerator.class,
             builder -> {
               builder
-                  .caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
+                  .caseworkerId(CaseworkerJohnDoe.getId())
                   .applicationIds(List.of(UUID.randomUUID()))
                   .eventHistory(
                       EventHistoryRequest.builder()
@@ -76,7 +72,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
                           .build());
             });
 
-    MvcResult result =
+    HarnessResult result =
         postUri(
             TestConstants.URIs.ASSIGN_CASEWORKER,
             caseworkerAssignRequest,
@@ -86,7 +82,6 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("validAssignCaseworkerRequestCases")
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenValidAssignRequest_whenAssignCaseworker_thenReturnOK_andAssignCaseworker(
       AssignCaseworkerCase assignCaseworkerCase) throws Exception {
     // given
@@ -98,14 +93,14 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
     List<ApplicationEntity> expectedAssignedApplications =
         toAssignApplications.stream()
-            .peek(application -> application.setCaseworker(BaseIntegrationTest.CaseworkerJohnDoe))
+            .peek(application -> application.setCaseworker(CaseworkerJohnDoe))
             .toList();
 
     List<ApplicationEntity> expectedAlreadyAssignedApplications =
         persistedDataGenerator.createAndPersistMultiple(
             ApplicationEntityGenerator.class,
             assignCaseworkerCase.numberOfApplicationsAlreadyAssigned,
-            builder -> builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe));
+            builder -> builder.caseworker(CaseworkerJohnDoe));
 
     List<ApplicationEntity> expectedUnassignedApplications =
         persistedDataGenerator.createAndPersistMultiple(
@@ -118,7 +113,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
             CaseworkerAssignRequestGenerator.class,
             builder -> {
               builder
-                  .caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
+                  .caseworkerId(CaseworkerJohnDoe.getId())
                   .applicationIds(
                       expectedAssignedApplications.stream()
                           .map(ApplicationEntity::getId)
@@ -131,26 +126,26 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
             });
 
     // when
-    MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
+    HarnessResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
 
     // then
     assertSecurityHeaders(result);
     assertNoCacheHeaders(result);
     assertOK(result);
 
-    applicationAsserts.assertApplicationsMatchInRepository(expectedAssignedApplications);
+    applicationAsserts.assertApplicationsMatchInRepositoryIgnoringLastUpdated(
+        expectedAssignedApplications);
     applicationAsserts.assertApplicationsMatchInRepository(expectedAlreadyAssignedApplications);
     applicationAsserts.assertApplicationsMatchInRepository(expectedUnassignedApplications);
     domainEventAsserts.assertDomainEventsCreatedForApplications(
         expectedAssignedApplications,
-        BaseIntegrationTest.CaseworkerJohnDoe.getId(),
+        CaseworkerJohnDoe.getId(),
         DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
         caseworkerAssignRequest.getEventHistory());
   }
 
   @ParameterizedTest
   @MethodSource("invalidAssignCaseworkerRequestCases")
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void
       givenInvalidAssignRequestBecauseApplicationDoesNotExist_whenAssignCaseworker_thenReturnNotFound_andGiveMissingIds(
           AssignCaseworkerCase assignCaseworkerCase) throws Exception {
@@ -159,7 +154,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
         persistedDataGenerator.createAndPersistMultiple(
             ApplicationEntityGenerator.class,
             assignCaseworkerCase.numberOfApplicationsAlreadyAssigned,
-            builder -> builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe));
+            builder -> builder.caseworker(CaseworkerJohnDoe));
 
     List<ApplicationEntity> expectedUnassignedApplications =
         persistedDataGenerator.createAndPersistMultiple(
@@ -172,18 +167,15 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
             .mapToObj(i -> UUID.randomUUID())
             .toList();
 
-    // generate random UUIDs so simulate records that do not exist..
     CaseworkerAssignRequest caseworkerAssignRequest =
         DataGenerator.createDefault(
             CaseworkerAssignRequestGenerator.class,
             builder -> {
-              builder
-                  .caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
-                  .applicationIds(invalidApplicationIds);
+              builder.caseworkerId(CaseworkerJohnDoe.getId()).applicationIds(invalidApplicationIds);
             });
 
     // when
-    MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
+    HarnessResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
 
     // then
     assertSecurityHeaders(result);
@@ -191,7 +183,6 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     assertNotFound(result);
 
     ProblemDetail problemResult = deserialise(result, ProblemDetail.class);
-    // Extract UUIDs from the detail string
     Pattern uuidPattern = Pattern.compile("[0-9a-fA-F\\-]{36}");
     Set<UUID> actualIds =
         uuidPattern
@@ -208,7 +199,6 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void
       givenInvalidAssignRequestBecauseSomeApplicationsDoNotExist_whenAssignCaseworker_thenReturnNotFound_andAssignAvailableApplications_andGiveMissingIds()
           throws Exception {
@@ -227,18 +217,15 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
             .flatMap(s -> s)
             .collect(Collectors.toList());
 
-    // generate random UUIDs so simulate records that do not exist..
     CaseworkerAssignRequest caseworkerAssignRequest =
         DataGenerator.createDefault(
             CaseworkerAssignRequestGenerator.class,
             builder -> {
-              builder
-                  .caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId())
-                  .applicationIds(allApplicationIds);
+              builder.caseworkerId(CaseworkerJohnDoe.getId()).applicationIds(allApplicationIds);
             });
 
     // when
-    MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
+    HarnessResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
 
     // then
     assertSecurityHeaders(result);
@@ -246,7 +233,6 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     assertNotFound(result);
 
     ProblemDetail problemResult = deserialise(result, ProblemDetail.class);
-    // Extract UUIDs from the detail string
     Pattern uuidPattern = Pattern.compile("[0-9a-fA-F\\-]{36}");
     Set<UUID> actualIds =
         uuidPattern
@@ -263,7 +249,6 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("invalidApplicationIdListsCases")
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void
       givenInvalidAssignmentRequestBecauseInvalidApplicationIds_whenAssignCaseworker_thenReturnBadRequest(
           List<UUID> invalidApplicationIdList) throws Exception {
@@ -276,12 +261,12 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
         DataGenerator.createDefault(
             CaseworkerAssignRequestGenerator.class,
             builder -> {
-              builder.caseworkerId(BaseIntegrationTest.CaseworkerJohnDoe.getId());
+              builder.caseworkerId(CaseworkerJohnDoe.getId());
               builder.applicationIds(invalidApplicationIdList);
             });
 
     // when
-    MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
+    HarnessResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
 
     // then
     assertSecurityHeaders(result);
@@ -296,7 +281,6 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void
       givenInvalidAssignmentRequestBecauseCaseworkerDoesNotExist_whenAssignCaseworker_thenReturnBadRequest()
           throws Exception {
@@ -313,7 +297,7 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
             });
 
     // when
-    MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
+    HarnessResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
 
     // then
     assertSecurityHeaders(result);
@@ -328,51 +312,44 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenReaderRole_whenAssignCaseworker_thenReturnForbidden() throws Exception {
-    // given
+    withToken(TestConstants.Tokens.UNKNOWN);
     CaseworkerAssignRequest caseworkerAssignRequest =
         DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class);
 
-    // when
-    MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
+    HarnessResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
 
-    // then
     assertSecurityHeaders(result);
     assertForbidden(result);
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenUnknownRole_whenAssignCaseworker_thenReturnForbidden() throws Exception {
-    // given
+    withToken(TestConstants.Tokens.UNKNOWN);
     CaseworkerAssignRequest caseworkerAssignRequest =
         DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class);
 
-    // when
-    MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
+    HarnessResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
 
-    // then
     assertSecurityHeaders(result);
     assertForbidden(result);
   }
 
+  @SmokeTest
   @Test
   public void givenNoUser_whenAssignCaseworker_thenReturnUnauthorised() throws Exception {
-    // given
+    withNoToken();
     CaseworkerAssignRequest caseworkerAssignRequest =
         DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class);
 
-    // when
-    MvcResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
+    HarnessResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
 
-    // then
     assertSecurityHeaders(result);
     assertUnauthorised(result);
   }
 
   @Getter
-  private class AssignCaseworkerCase {
+  private static class AssignCaseworkerCase {
     Integer numberOfApplicationsToAssign;
     Integer numberOfApplicationsAlreadyAssigned;
     Integer numberOfApplicationsNotAssigned;
@@ -387,21 +364,21 @@ public class AssignCaseworkerTest extends BaseIntegrationTest {
     }
   }
 
-  private Stream<Arguments> validAssignCaseworkerRequestCases() {
+  private static Stream<Arguments> validAssignCaseworkerRequestCases() {
     return Stream.of(
         Arguments.of(new AssignCaseworkerCase(3, 3, 2)),
         Arguments.of(new AssignCaseworkerCase(5, 0, 4)),
         Arguments.of(new AssignCaseworkerCase(2, 4, 0)));
   }
 
-  private Stream<Arguments> invalidAssignCaseworkerRequestCases() {
+  private static Stream<Arguments> invalidAssignCaseworkerRequestCases() {
     return Stream.of(
         Arguments.of(new AssignCaseworkerCase(5, 3, 2)),
         Arguments.of(new AssignCaseworkerCase(2, 0, 4)),
         Arguments.of(new AssignCaseworkerCase(4, 4, 0)));
   }
 
-  private Stream<Arguments> invalidApplicationIdListsCases() {
+  private static Stream<Arguments> invalidApplicationIdListsCases() {
     return Stream.of(
         Arguments.of(Collections.emptyList()),
         Arguments.of((Object) null),

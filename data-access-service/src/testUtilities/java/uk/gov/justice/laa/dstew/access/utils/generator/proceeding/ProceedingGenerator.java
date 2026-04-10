@@ -30,7 +30,8 @@ public class ProceedingGenerator extends BaseGenerator<Proceeding, Proceeding.Pr
                 Map.of(
                     "id", "100",
                     "code", "AB123D",
-                    "meaning", "hearing")))
+                    "meaning", "hearing",
+                    "description", "Hearing scope limitation description")))
         .build();
   }
 }

@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
 
 @Component
 public class ApplicationAsserts {
@@ -43,6 +44,10 @@ public class ApplicationAsserts {
     Assertions.assertThat(exception.getMessage()).contains(errorMessage);
   }
 
+  public void assertErrorGeneratedByBadHeader(HarnessResult result, String serviceName) {
+    assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+  }
+
   public void assertApplicationsMatchInRepository(List<ApplicationEntity> expected) {
     List<ApplicationEntity> actual =
         applicationRepository.findAllById(
@@ -55,6 +60,23 @@ public class ApplicationAsserts {
 
     List<ApplicationResponse> expectedApplications =
         expected.stream().map(this::createApplication).toList();
+
+    assertTrue(expectedApplications.containsAll(actualApplications));
+  }
+
+  public void assertApplicationsMatchInRepositoryIgnoringLastUpdated(
+      List<ApplicationEntity> expected) {
+    List<ApplicationEntity> actual =
+        applicationRepository.findAllById(
+            expected.stream().map(ApplicationEntity::getId).collect(Collectors.toList()));
+
+    assertThat(expected.size()).isEqualTo(actual.size());
+
+    List<ApplicationResponse> actualApplications =
+        actual.stream().map(this::createApplicationIgnoreLastUpdated).toList();
+
+    List<ApplicationResponse> expectedApplications =
+        expected.stream().map(this::createApplicationIgnoreLastUpdated).toList();
 
     assertTrue(expectedApplications.containsAll(actualApplications));
   }

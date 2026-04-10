@@ -14,52 +14,46 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationUpdateRequestGenerator;
+import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
-@ActiveProfiles("test")
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class UpdateApplicationTest extends BaseIntegrationTest {
+public class UpdateApplicationTest extends BaseHarnessTest {
 
+  @SmokeTest
   @ParameterizedTest
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
   void givenValidApplicationDataAndIncorrectHeader_whenUpdateApplication_thenReturnBadRequest(
       String serviceName) throws Exception {
     verifyBadServiceNameHeader(serviceName);
   }
 
+  @SmokeTest
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenValidApplicationDataAndIncorrectHeader_whenUpdateApplication_thenReturnBadRequest()
       throws Exception {
     verifyBadServiceNameHeader(null);
   }
 
   private void verifyBadServiceNameHeader(String serviceName) throws Exception {
-
-    // use DataGenerator to create the request object
     ApplicationUpdateRequest applicationUpdateRequest =
         DataGenerator.createDefault(
             ApplicationUpdateRequestGenerator.class,
             builder -> builder.status(ApplicationStatus.APPLICATION_SUBMITTED));
 
-    MvcResult result =
+    HarnessResult result =
         patchUri(
             TestConstants.URIs.UPDATE_APPLICATION,
             applicationUpdateRequest,
@@ -69,7 +63,6 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void
       givenUpdateRequestWithNewContentAndStatus_whenUpdateApplication_thenReturnOK_andUpdateApplication()
           throws Exception {
@@ -90,7 +83,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
                     .status(ApplicationStatus.APPLICATION_SUBMITTED));
 
     // when
-    MvcResult result =
+    HarnessResult result =
         patchUri(
             TestConstants.URIs.UPDATE_APPLICATION,
             applicationUpdateRequest,
@@ -112,7 +105,6 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("invalidApplicationUpdateRequestCases")
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenUpdateRequestWithInvalidContent_whenUpdateApplication_thenReturnBadRequest(
       ApplicationUpdateRequest applicationUpdateRequest) throws Exception {
     // given
@@ -120,7 +112,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
     // when
-    MvcResult result =
+    HarnessResult result =
         patchUri(
             TestConstants.URIs.UPDATE_APPLICATION,
             applicationUpdateRequest,
@@ -134,7 +126,6 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenUpdateRequestWithWrongId_whenUpdateApplication_thenReturnNotFound()
       throws Exception {
     // given
@@ -145,7 +136,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
         DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
 
     // when
-    MvcResult result =
+    HarnessResult result =
         patchUri(
             TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, UUID.randomUUID());
 
@@ -158,10 +149,10 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"f8c3de3d-1fea-4d7c-a8b0", "not a UUID"})
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenUpdateRequestWithInvalidId_whenUpdateApplication_thenReturnNotFound(String uuid)
       throws Exception {
     // given
+    persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
     ApplicationEntity applicationEntity =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
@@ -169,7 +160,7 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
         DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
 
     // when
-    MvcResult result =
+    HarnessResult result =
         patchUri(TestConstants.URIs.UPDATE_APPLICATION, applicationUpdateRequest, uuid);
 
     // then
@@ -180,62 +171,55 @@ public class UpdateApplicationTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenReaderRole_whenUpdateApplication_thenReturnForbidden() throws Exception {
-    // given
+    withToken(TestConstants.Tokens.UNKNOWN);
     ApplicationUpdateRequest applicationUpdateRequest =
         DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
 
-    // when
-    MvcResult result =
+    HarnessResult result =
         patchUri(
             TestConstants.URIs.UPDATE_APPLICATION,
             applicationUpdateRequest,
             UUID.randomUUID().toString());
 
-    // then
     assertSecurityHeaders(result);
     assertForbidden(result);
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenUnknownRole_whenUpdateApplication_thenReturnForbidden() throws Exception {
-    // given
+    withToken(TestConstants.Tokens.UNKNOWN);
     ApplicationUpdateRequest applicationUpdateRequest =
         DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
 
-    // when
-    MvcResult result =
+    HarnessResult result =
         patchUri(
             TestConstants.URIs.UPDATE_APPLICATION,
             applicationUpdateRequest,
             UUID.randomUUID().toString());
 
-    // then
     assertSecurityHeaders(result);
     assertForbidden(result);
   }
 
+  @SmokeTest
   @Test
   public void givenNoUser_whenUpdateApplication_thenReturnUnauthorised() throws Exception {
-    // given
+    withNoToken();
     ApplicationUpdateRequest applicationUpdateRequest =
         DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
 
-    // when
-    MvcResult result =
+    HarnessResult result =
         patchUri(
             TestConstants.URIs.UPDATE_APPLICATION,
             applicationUpdateRequest,
             UUID.randomUUID().toString());
 
-    // then
     assertSecurityHeaders(result);
     assertUnauthorised(result);
   }
 
-  private Stream<Arguments> invalidApplicationUpdateRequestCases() {
+  private static Stream<Arguments> invalidApplicationUpdateRequestCases() {
     return Stream.of(
         Arguments.of(
             DataGenerator.createDefault(

@@ -16,43 +16,38 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.ProblemDetail;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
-@ActiveProfiles("test")
-public class GetCertificateTest extends BaseIntegrationTest {
+public class GetCertificateTest extends BaseHarnessTest {
 
+  @SmokeTest
   @ParameterizedTest
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
   void givenIncorrectHeader_whenGetCertificate_thenReturnBadRequest(String serviceName)
       throws Exception {
     verifyBadServiceNameHeader(serviceName);
   }
 
+  @SmokeTest
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenNoHeader_whenGetCertificate_thenReturnBadRequest() throws Exception {
     verifyBadServiceNameHeader(null);
   }
 
   private void verifyBadServiceNameHeader(String serviceName) throws Exception {
-
-    MvcResult result =
+    HarnessResult result =
         getUri(
             TestConstants.URIs.GET_CERTIFICATE, ServiceNameHeader(serviceName), UUID.randomUUID());
-
     applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenExistingCertificate_whenGetCertificate_thenReturnOkWithContent()
       throws Exception {
     // given
@@ -62,10 +57,8 @@ public class GetCertificateTest extends BaseIntegrationTest {
     persistedDataGenerator.createAndPersist(
         CertificateEntityGenerator.class, builder -> builder.applicationId(application.getId()));
 
-    clearCache();
-
     // when
-    MvcResult result = getUri(TestConstants.URIs.GET_CERTIFICATE, application.getId());
+    HarnessResult result = getUri(TestConstants.URIs.GET_CERTIFICATE, application.getId());
 
     // then
     assertContentHeaders(result);
@@ -81,41 +74,39 @@ public class GetCertificateTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenApplicationNotExist_whenGetCertificate_thenReturnNotFound() throws Exception {
     // given
     UUID notExistApplicationId = UUID.randomUUID();
 
     // when
-    MvcResult result = getUri(TestConstants.URIs.GET_CERTIFICATE, notExistApplicationId);
+    HarnessResult result = getUri(TestConstants.URIs.GET_CERTIFICATE, notExistApplicationId);
 
     // then
     assertSecurityHeaders(result);
     assertNoCacheHeaders(result);
     assertNotFound(result);
-    assertEquals("application/problem+json", result.getResponse().getContentType());
+    assertThat(result.getResponse().getHeader("Content-Type"))
+        .startsWith("application/problem+json");
     ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
     assertEquals(
         "No application found with id: " + notExistApplicationId, problemDetail.getDetail());
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenNoCertificateExists_whenGetCertificate_thenReturnNotFound() throws Exception {
     // given
     ApplicationEntity application =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
-    clearCache();
-
     // when
-    MvcResult result = getUri(TestConstants.URIs.GET_CERTIFICATE, application.getId());
+    HarnessResult result = getUri(TestConstants.URIs.GET_CERTIFICATE, application.getId());
 
     // then
     assertSecurityHeaders(result);
     assertNoCacheHeaders(result);
     assertNotFound(result);
-    assertEquals("application/problem+json", result.getResponse().getContentType());
+    assertThat(result.getResponse().getHeader("Content-Type"))
+        .startsWith("application/problem+json");
     ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
     assertEquals(
         "No certificate found for application id: " + application.getId(),
@@ -123,28 +114,30 @@ public class GetCertificateTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenUnknownRole_whenGetCertificate_thenReturnForbidden() throws Exception {
     // given
+    withToken(TestConstants.Tokens.UNKNOWN);
     ApplicationEntity application =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
     // when
-    MvcResult result = getUri(TestConstants.URIs.GET_CERTIFICATE, application.getId());
+    HarnessResult result = getUri(TestConstants.URIs.GET_CERTIFICATE, application.getId());
 
     // then
     assertSecurityHeaders(result);
     assertForbidden(result);
   }
 
+  @SmokeTest
   @Test
   public void givenNoUser_whenGetCertificate_thenReturnUnauthorised() throws Exception {
     // given
+    withNoToken();
     ApplicationEntity application =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
     // when
-    MvcResult result = getUri(TestConstants.URIs.GET_CERTIFICATE, application.getId());
+    HarnessResult result = getUri(TestConstants.URIs.GET_CERTIFICATE, application.getId());
 
     // then
     assertSecurityHeaders(result);

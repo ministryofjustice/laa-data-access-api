@@ -19,33 +19,31 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.ProblemDetail;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
-import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
-@ActiveProfiles("test")
-public class GetIndividualsTest extends BaseIntegrationTest {
+public class GetIndividualsTest extends BaseHarnessTest {
 
+  @SmokeTest
   @ParameterizedTest
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
   void givenPagingParametersAndInvalidHeader_whenGetIndividuals_thenReturnBadRequest(
       String serviceName) throws Exception {
     verifyServiceNameHeader(serviceName);
   }
 
+  @SmokeTest
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenPagingParametersAndNoHeader_whenGetIndividuals_thenReturnBadRequest() throws Exception {
     verifyServiceNameHeader(null);
   }
@@ -54,7 +52,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
     int page = 1;
     int pageSize = 20;
 
-    MvcResult result =
+    HarnessResult result =
         getUri(
             TestConstants.URIs.GET_INDIVIDUALS + "?page=" + page + "&pageSize=" + pageSize,
             ServiceNameHeader(serviceName));
@@ -62,9 +60,8 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenIncludeParametersAndNoAppId_whenGetIndividuals_thenReturnBadRequest() throws Exception {
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?include=CLIENT_DETAILS");
+    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?include=CLIENT_DETAILS");
     assertBadRequest(result);
     ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
     assertThat(problemDetail.getProperties())
@@ -73,13 +70,12 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenIncludeParametersAndAppId_whenGetIndividuals_thenProcessCorrectly() throws Exception {
     ApplicationEntity application =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
     persistedDataGenerator.createAndPersist(
         IndividualEntityGenerator.class, builder -> builder.applications(Set.of(application)));
-    MvcResult result =
+    HarnessResult result =
         getUri(
             TestConstants.URIs.GET_INDIVIDUALS
                 + "?include=CLIENT_DETAILS&individualType=CLIENT&applicationId="
@@ -88,7 +84,8 @@ public class GetIndividualsTest extends BaseIntegrationTest {
     assertOK(result);
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     IndividualResponse actualIndividual = response.getIndividuals().getFirst();
-    assertThat(actualIndividual.getRelationshipToChildren()).isEqualTo("relationshipToChildren");
+    assertThat(actualIndividual.getRelationshipToInvolvedChildren())
+        .isEqualTo("relationshipToChildren");
     assertThat(actualIndividual.getLastNameAtBirth()).isEqualTo("Alberts");
     assertThat(actualIndividual.getPreviousApplicationId()).isEqualTo("ZZ999Z");
     assertThat(actualIndividual.getCorrespondenceAddressType()).isEqualTo("Home");
@@ -98,7 +95,6 @@ public class GetIndividualsTest extends BaseIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("pagingParameters")
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenPagingParameters_whenGetIndividuals_thenCorrectPagingInResponse(
       Integer page,
       Integer pageSize,
@@ -111,7 +107,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
     // given
     persistedDataGenerator.createAndPersistMultiple(IndividualEntityGenerator.class, totalEntities);
     // when
-    MvcResult result =
+    HarnessResult result =
         getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=" + page + "&pageSize=" + pageSize);
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     // then
@@ -134,37 +130,25 @@ public class GetIndividualsTest extends BaseIntegrationTest {
 
   @ParameterizedTest
   @MethodSource("invalidPagingParameters")
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenInvalidPagingParameters_whenGetIndividuals_thenReturnBadRequest(
       Integer page, Integer pageSize) throws Exception {
-    // when
-    MvcResult result =
+    HarnessResult result =
         getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=" + page + "&pageSize=" + pageSize);
-    // then
     assertBadRequest(result);
   }
 
   static Stream<org.junit.jupiter.params.provider.Arguments> invalidPagingParameters() {
-    return Stream.of(
-        // page, pageSize
-        of(0, 10), // zero page
-        of(-1, 10), // negative page
-        of(1, 0), // zero pageSize
-        of(1, -74), // negative pageSize
-        of(1, 101), // pageSize greater than 100
-        of(0, 0) // zero page and pageSize
-        );
+    return Stream.of(of(0, 10), of(-1, 10), of(1, 0), of(1, -74), of(1, 101), of(0, 0));
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   public void givenExistingIndividual_whenGetIndividuals_thenReturnOKWithCorrectData()
       throws Exception {
     // given
     IndividualEntity persisted =
         persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class);
     // when
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
+    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     // then
     assertContentHeaders(result);
@@ -184,31 +168,28 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenUnknownRole_whenGetIndividuals_thenReturnForbiddenResponse() throws Exception {
-    // when
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
-    // then
+    withToken(TestConstants.Tokens.UNKNOWN);
+    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     assertSecurityHeaders(result);
     assertForbidden(result);
   }
 
+  @SmokeTest
   @Test
   public void givenNoUser_whenGetIndividuals_thenReturnUnauthorisedResponse() throws Exception {
-    // when
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
-    // then
+    withNoToken();
+    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     assertSecurityHeaders(result);
     assertUnauthorised(result);
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenNullPageAndPageSize_whenGetIndividuals_thenDefaultsAreApplied() throws Exception {
     // given
     persistedDataGenerator.createAndPersistMultiple(IndividualEntityGenerator.class, 5);
     // when
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
+    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     // then
     assertOK(result);
@@ -219,7 +200,6 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenApplicationId_whenGetIndividuals_thenFiltersByApplicationId() throws Exception {
     // given
     IndividualEntity individual = DataGenerator.createDefault(IndividualEntityGenerator.class);
@@ -229,7 +209,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
     persistedDataGenerator.createAndPersist(
         IndividualEntityGenerator.class); // unrelated individual
     // when
-    MvcResult result =
+    HarnessResult result =
         getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + application.getId());
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     // then
@@ -242,13 +222,12 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenIndividualType_whenGetIndividuals_thenFiltersByIndividualType() throws Exception {
     // given
     persistedDataGenerator.createAndPersist(
         IndividualEntityGenerator.class, builder -> builder.type(IndividualType.CLIENT));
     // when
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?individualType=CLIENT");
+    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?individualType=CLIENT");
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     // then
     assertOK(result);
@@ -257,7 +236,6 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenBothFilters_whenGetIndividuals_thenFiltersByApplicationIdAndIndividualType()
       throws Exception {
     // given
@@ -270,7 +248,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
     persistedDataGenerator.createAndPersist(
         IndividualEntityGenerator.class, builder -> builder.type(IndividualType.CLIENT));
     // when
-    MvcResult result =
+    HarnessResult result =
         getUri(
             TestConstants.URIs.GET_INDIVIDUALS
                 + "?applicationId="
@@ -287,34 +265,25 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenInvalidApplicationId_whenGetIndividuals_thenReturnsBadRequest() throws Exception {
-    // when
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=not-a-uuid");
-    // then
+    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=not-a-uuid");
     assertBadRequest(result);
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenInvalidIndividualType_whenGetIndividuals_thenReturnsBadRequest() throws Exception {
-    // when
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?individualType=NOT_A_TYPE");
-    // then
+    HarnessResult result =
+        getUri(TestConstants.URIs.GET_INDIVIDUALS + "?individualType=NOT_A_TYPE");
     assertBadRequest(result);
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenLowercaseIndividualType_whenGetIndividuals_thenReturnsBadRequest() throws Exception {
-    // when
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?individualType=client");
-    // then
+    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?individualType=client");
     assertBadRequest(result);
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenNoMatchingFilters_whenGetIndividuals_thenReturnsEmptyList() throws Exception {
     // given
     IndividualEntity client =
@@ -323,7 +292,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
     persistedDataGenerator.createAndPersist(
         ApplicationEntityGenerator.class, builder -> builder.individuals(Set.of(client)));
     // when
-    MvcResult result =
+    HarnessResult result =
         getUri(
             TestConstants.URIs.GET_INDIVIDUALS
                 + "?applicationId="
@@ -337,13 +306,12 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenNonExistentApplicationId_whenGetIndividuals_thenReturnsEmptyList() throws Exception {
     // given
     persistedDataGenerator.createAndPersist(
         IndividualEntityGenerator.class, builder -> builder.type(IndividualType.CLIENT));
     // when
-    MvcResult result =
+    HarnessResult result =
         getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + UUID.randomUUID());
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     // then
@@ -352,7 +320,6 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenMultipleIndividualsLinkedToApplication_whenGetIndividuals_thenReturnsAllLinked()
       throws Exception {
     // given
@@ -366,7 +333,7 @@ public class GetIndividualsTest extends BaseIntegrationTest {
     persistedDataGenerator.createAndPersist(
         IndividualEntityGenerator.class); // unrelated individual
     // when
-    MvcResult result =
+    HarnessResult result =
         getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + application.getId());
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     // then
@@ -379,20 +346,18 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
   void givenIndividualLinkedToMultipleApplications_whenGetIndividuals_thenReturnsIndividual()
       throws Exception {
-    // given
+    // given — persist the individual first so it has an ID, then link to both applications
     IndividualEntity sharedIndividual =
-        DataGenerator.createDefault(IndividualEntityGenerator.class);
+        persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class);
     var application1 =
-        persistedDataGenerator.createAndPersist(
-            ApplicationEntityGenerator.class,
+        persistedDataGenerator.createAndPersistWithPersistedIndividuals(
             builder -> builder.individuals(Set.of(sharedIndividual)));
-    persistedDataGenerator.createAndPersist(
-        ApplicationEntityGenerator.class, builder -> builder.individuals(Set.of(sharedIndividual)));
+    persistedDataGenerator.createAndPersistWithPersistedIndividuals(
+        builder -> builder.individuals(Set.of(sharedIndividual)));
     // when
-    MvcResult result =
+    HarnessResult result =
         getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + application1.getId());
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
     // then
@@ -405,78 +370,67 @@ public class GetIndividualsTest extends BaseIntegrationTest {
   @Test
   public void givenNoUser_whenGetIndividualsWithFilters_thenReturnUnauthorisedResponse()
       throws Exception {
-    // when
-    MvcResult result =
+    withNoToken();
+    HarnessResult result =
         getUri(
             TestConstants.URIs.GET_INDIVIDUALS
                 + "?applicationId="
                 + UUID.randomUUID()
                 + "&individualType=CLIENT");
-    // then
     assertSecurityHeaders(result);
     assertUnauthorised(result);
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenUnknownRole_whenGetIndividualsWithFilters_thenReturnForbiddenResponse()
       throws Exception {
-    // when
-    MvcResult result =
+    withToken(TestConstants.Tokens.UNKNOWN);
+    HarnessResult result =
         getUri(
             TestConstants.URIs.GET_INDIVIDUALS
                 + "?applicationId="
                 + UUID.randomUUID()
                 + "&individualType=CLIENT");
-    // then
     assertSecurityHeaders(result);
     assertForbidden(result);
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenWriterRole_whenGetIndividuals_thenReturnForbiddenResponse() throws Exception {
-    // when
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
-    // then
+    withToken(TestConstants.Tokens.UNKNOWN);
+    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     assertSecurityHeaders(result);
     assertForbidden(result);
   }
 
   @Test
-  @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
   public void givenWriterRole_whenGetIndividualsWithFilters_thenReturnForbiddenResponse()
       throws Exception {
-    // when
-    MvcResult result =
+    withToken(TestConstants.Tokens.UNKNOWN);
+    HarnessResult result =
         getUri(
             TestConstants.URIs.GET_INDIVIDUALS
                 + "?applicationId="
                 + UUID.randomUUID()
                 + "&individualType=CLIENT");
-    // then
     assertSecurityHeaders(result);
     assertForbidden(result);
   }
 
   @Test
-  @WithMockUser
   public void givenUserWithNoAuthorities_whenGetIndividuals_thenReturnForbiddenResponse()
       throws Exception {
-    // when
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
-    // then
+    withToken(TestConstants.Tokens.UNKNOWN);
+    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     assertSecurityHeaders(result);
     assertForbidden(result);
   }
 
   @Test
-  @WithMockUser
   public void givenUserWithNoAuthorities_whenGetIndividualsWithPaging_thenReturnForbiddenResponse()
       throws Exception {
-    // when
-    MvcResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=1&pageSize=10");
-    // then
+    withToken(TestConstants.Tokens.UNKNOWN);
+    HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=1&pageSize=10");
     assertSecurityHeaders(result);
     assertForbidden(result);
   }

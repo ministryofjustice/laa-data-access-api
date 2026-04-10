@@ -24,7 +24,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class DevTokenConfig {
 
   private static final Map<String, List<String>> DEV_TOKENS =
-      Map.of("swagger-caseworker-token", List.of("APPROLE_LAA_CASEWORKER"));
+      Map.of(
+          "swagger-caseworker-token",
+          List.of("APPROLE_LAA_CASEWORKER"),
+          "unknown-token",
+          List.of("APPROLE_UNKNOWN"));
 
   private static final Logger log = LoggerFactory.getLogger(DevTokenConfig.class);
 
