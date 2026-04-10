@@ -1,9 +1,6 @@
 package uk.gov.justice.laa.dstew.access.entity;
 
 import java.time.Instant;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.Set;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,7 +13,7 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 /**
  * Represents a summary of an application.
  * This class is designed to hold a subset of application data that is relevant for summary views.
- * It includes basic information about the application, its status, and related individual details.
+ * It includes basic information about the application and its status.
  */
 @ExcludeFromGeneratedCodeCoverage
 @Builder(toBuilder = true)
@@ -35,8 +32,5 @@ public class ApplicationSummaryResult {
   private Boolean isAutoGranted;
   private Boolean isLead;
   private UUID caseworkerId;
-  private String individualsFirstName;
-  private String individualsLastName;
-  private LocalDate individualsDateOfBirth;
 }
 

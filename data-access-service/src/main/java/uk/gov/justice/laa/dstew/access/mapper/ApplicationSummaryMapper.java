@@ -8,6 +8,7 @@ import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryResult;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.ClientIndividualDto;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
@@ -45,10 +46,21 @@ public interface ApplicationSummaryMapper {
     app.setAutoGrant(result.getIsAutoGranted());
     app.setIsLead(Boolean.TRUE.equals(result.getIsLead()));
     app.setAssignedTo(result.getCaseworkerId());
-    app.setClientFirstName(result.getIndividualsFirstName());
-    app.setClientLastName(result.getIndividualsLastName());
-    app.setClientDateOfBirth(result.getIndividualsDateOfBirth());
     return app;
+  }
+
+  /**
+   * Sets client individual data on the application summary.
+   *
+   * @param summary the application summary to update
+   * @param clientIndividual the client individual data
+   */
+  default void setClientIndividual(ApplicationSummary summary, ClientIndividualDto clientIndividual) {
+    if (summary != null && clientIndividual != null) {
+      summary.setClientFirstName(clientIndividual.getFirstName());
+      summary.setClientLastName(clientIndividual.getLastName());
+      summary.setClientDateOfBirth(clientIndividual.getDateOfBirth());
+    }
   }
 
   private static IndividualEntity getClientIndividual(Set<IndividualEntity> individuals) {

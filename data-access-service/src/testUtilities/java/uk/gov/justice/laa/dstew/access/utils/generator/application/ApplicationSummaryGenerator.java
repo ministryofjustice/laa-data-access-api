@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryResult;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -50,9 +49,6 @@ public class ApplicationSummaryGenerator extends BaseGenerator<ApplicationSummar
         private Boolean isAutoGranted;
         private Boolean isLead;
         private UUID caseworkerId;
-        private String individualsFirstName;
-        private String individualsLastName;
-        private LocalDate individualsDateOfBirth;
 
         public Builder() {}
 
@@ -69,9 +65,6 @@ public class ApplicationSummaryGenerator extends BaseGenerator<ApplicationSummar
             this.isAutoGranted = source.getIsAutoGranted();
             this.isLead = source.getIsLead();
             this.caseworkerId = source.getCaseworkerId();
-            this.individualsFirstName = source.getIndividualsFirstName();
-            this.individualsLastName = source.getIndividualsLastName();
-            this.individualsDateOfBirth = source.getIndividualsDateOfBirth();
         }
 
         public Builder id(UUID id) { this.id = id; return this; }
@@ -86,9 +79,6 @@ public class ApplicationSummaryGenerator extends BaseGenerator<ApplicationSummar
         public Builder isAutoGranted(Boolean v) { this.isAutoGranted = v; return this; }
         public Builder isLead(Boolean isLead) { this.isLead = isLead; return this; }
         public Builder caseworkerId(UUID caseworkerId) { this.caseworkerId = caseworkerId; return this; }
-        public Builder individualsFirstName(String individualsFirstName) { this.individualsFirstName = individualsFirstName; return this; }
-        public Builder individualsLastName(String individualsLastName) { this.individualsLastName = individualsLastName; return this; }
-        public Builder individualsDateOfBirth(LocalDate individualsDateOfBirth) { this.individualsDateOfBirth = individualsDateOfBirth; return this; }
 
         public ApplicationSummaryResult build() {
             return ApplicationSummaryResult.builder()
@@ -104,9 +94,6 @@ public class ApplicationSummaryGenerator extends BaseGenerator<ApplicationSummar
                     .isAutoGranted(isAutoGranted)
                     .isLead(isLead)
                     .caseworkerId(caseworkerId)
-                    .individualsFirstName(individualsFirstName)
-                    .individualsLastName(individualsLastName)
-                    .individualsDateOfBirth(individualsDateOfBirth)
                     .build();
         }
     }

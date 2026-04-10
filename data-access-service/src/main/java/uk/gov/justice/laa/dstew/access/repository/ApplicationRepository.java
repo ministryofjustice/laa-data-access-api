@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.model.ClientIndividualDto;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 
 
@@ -41,5 +42,17 @@ public interface ApplicationRepository extends JpaRepository<ApplicationEntity, 
           + "WHERE a.id IN :leadIds",
       nativeQuery = true)
   List<LinkedApplicationSummaryDto> findAllLinkedApplicationsByLeadIds(@Param("leadIds") List<UUID> leadIds);
+
+  @Query(
+      value = "SELECT li.application_id AS applicationId, "
+          + "i.first_name AS firstName, "
+          + "i.last_name AS lastName, "
+          + "i.date_of_birth AS dateOfBirth "
+          + "FROM linked_individuals li "
+          + "JOIN individuals i ON li.individual_id = i.id "
+          + "WHERE li.application_id IN :applicationIds "
+          + "AND i.individual_type = 'CLIENT'",
+      nativeQuery = true)
+  List<ClientIndividualDto> findClientIndividualsByApplicationIds(@Param("applicationIds") List<UUID> applicationIds);
 }
 

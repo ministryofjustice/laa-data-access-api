@@ -46,6 +46,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         when(applicationRepository.findBy(any(Specification.class), any())).thenReturn(pageResult);
+        when(applicationRepository.findClientIndividualsByApplicationIds(any())).thenReturn(List.of());
         when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
 
         // when
@@ -89,6 +90,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         when(applicationRepository.findBy(any(Specification.class), any())).thenReturn(pageResult);
+        when(applicationRepository.findClientIndividualsByApplicationIds(any())).thenReturn(List.of());
         when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
 
         // when
@@ -205,6 +207,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         when(applicationRepository.findBy(any(Specification.class), any())).thenReturn(pageResult);
+        when(applicationRepository.findClientIndividualsByApplicationIds(any())).thenReturn(List.of());
         when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
 
         // when
@@ -228,6 +231,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         when(applicationRepository.findBy(any(Specification.class), any())).thenReturn(pageResult);
+        when(applicationRepository.findClientIndividualsByApplicationIds(any())).thenReturn(List.of());
         when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
 
         // when
@@ -293,6 +297,7 @@ public class GetApplicationsTest extends BaseServiceTest {
         setSecurityContext(TestConstants.Roles.CASEWORKER);
 
         when(applicationRepository.findBy(any(Specification.class), any())).thenReturn(pageResult);
+        when(applicationRepository.findClientIndividualsByApplicationIds(any())).thenReturn(List.of());
         when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
 
         // when
@@ -323,6 +328,7 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         when(applicationRepository.findBy(any(Specification.class), any()))
             .thenReturn(new PageImpl<>(List.of(leadApplication)));
+        when(applicationRepository.findClientIndividualsByApplicationIds(any())).thenReturn(List.of());
         when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of(leadApplication.getId()));
         when(applicationRepository.findAllLinkedApplicationsByLeadIds(any())).thenReturn(linkedDtos);
 
@@ -360,6 +366,7 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         when(applicationRepository.findBy(any(Specification.class), any()))
             .thenReturn(new PageImpl<>(List.of(firstAssociateApplication, secondAssociateApplication)));
+        when(applicationRepository.findClientIndividualsByApplicationIds(any())).thenReturn(List.of());
         when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of(leadId));
         when(applicationRepository.findAllLinkedApplicationsByLeadIds(any())).thenReturn(linkedApplicationSummaryDtos);
 
@@ -403,6 +410,7 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         when(applicationRepository.findBy(any(Specification.class), any()))
             .thenReturn(new PageImpl<>(List.of(firstAssociateApplication, secondAssociateApplication)));
+        when(applicationRepository.findClientIndividualsByApplicationIds(any())).thenReturn(List.of());
         when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of(firstLeadId, secondLeadId));
         when(applicationRepository.findAllLinkedApplicationsByLeadIds(any())).thenReturn(linkedDtos);
 
@@ -436,6 +444,7 @@ public class GetApplicationsTest extends BaseServiceTest {
 
         when(applicationRepository.findBy(any(Specification.class), any()))
             .thenReturn(new PageImpl<>(List.of(standaloneApplication)));
+        when(applicationRepository.findClientIndividualsByApplicationIds(any())).thenReturn(List.of());
         when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
 
         // when

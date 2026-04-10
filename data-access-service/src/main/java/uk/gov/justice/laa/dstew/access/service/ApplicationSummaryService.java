@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -21,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortFields;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.ClientIndividualDto;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
@@ -91,8 +91,7 @@ public class ApplicationSummaryService {
     List<String> summaryProjection = Arrays.asList(
         "id", "status", "laaReference", "officeCode", "submittedAt", "modifiedAt",
         "usedDelegatedFunctions", "categoryOfLaw", "matterType", "isAutoGranted",
-        "isLead", "caseworker.id",
-        "individuals.firstName", "individuals.lastName", "individuals.dateOfBirth"
+        "isLead", "caseworker.id"
     );
 
     Page<ApplicationSummaryResult> resultPage = applicationRepository
@@ -110,6 +109,18 @@ public class ApplicationSummaryService {
                 .page(pageDetails));
 
     List<UUID> pageIds = resultPage.getContent().stream().map(ApplicationSummaryResult::getId).toList();
+
+    // Fetch client individuals in a separate query to avoid cartesian product
+    Map<UUID, ClientIndividualDto> clientIndividuals = pageIds.isEmpty()
+        ? Map.of()
+        : applicationRepository.findClientIndividualsByApplicationIds(pageIds)
+            .stream()
+            .collect(Collectors.toMap(
+                ClientIndividualDto::getApplicationId,
+                dto -> dto,
+                (existing, duplicate) -> existing
+            ));
+
     List<UUID> allLeadIds = applicationRepository.findLeadIdsByAssociatedIds(pageIds);
     Map<UUID, List<LinkedApplicationSummaryDto>> linkedApplications =
         retrieveLinkedApplications(resultPage.getContent(), allLeadIds);
@@ -117,6 +128,13 @@ public class ApplicationSummaryService {
     return wrapResult(page, pageSize, resultPage.map(entity -> {
       ApplicationSummary summary = mapper.toApplicationSummary(entity);
       summary.setIsLead(allLeadIds.contains(entity.getId()));
+
+      // Set client individual data from separate query
+      ClientIndividualDto clientIndividual = clientIndividuals.get(entity.getId());
+      if (clientIndividual != null) {
+        mapper.setClientIndividual(summary, clientIndividual);
+      }
+
       summary.setLinkedApplications(
           linkedApplications.getOrDefault(entity.getId(), List.of())
               .stream()
