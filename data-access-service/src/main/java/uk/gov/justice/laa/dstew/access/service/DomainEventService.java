@@ -252,6 +252,9 @@ public class DomainEventService {
           CreateNoteRequest request) {
 
     DomainEventType domainEventType = DomainEventType.APPLICATION_NOTES;
+    // TODO: caseworkerId currently sourced from the assigned caseworker on the application.
+    //  Once authentication is in place, all domain events should use the logged-in user
+    //  from the auth token instead.
     UUID caseworkerId = applicationEntity.getCaseworker() != null
         ? applicationEntity.getCaseworker().getId() : null;
 
