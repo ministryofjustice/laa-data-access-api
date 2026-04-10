@@ -277,5 +277,96 @@ DROP TABLE linked_merits_decisions;
 | `integrationTest/.../ApplicationMakeDecisionTest.java` | Builder pattern updates; refactored "existing decision" setup |
 | `integrationTest/.../ApplicationRepositoryTest.java` | `ignoringFields` for back-refs; `proceedings.add` before save |
 | `integrationTest/.../GetApplicationTest.java` | `application` builder pattern |
-| `integrationTest/.../generator/PersistedDataGenerator.java` | JDBC delete for decisions |
+| `integrationTest/.../generator/PersistedDataGenerator.java` | JDBC delete for decisions; JDBC delete for applications |
 | `integrationTest/.../harness/ApplicationDomainTables.java` | Removed `linked_merits_decisions` |
+
+---
+
+## Phase Extra — Certificate into Aggregate Boundary
+
+### Why
+`CertificateEntity` held a bare `@Column UUID applicationId` and was managed exclusively via `CertificateRepository` in `ApplicationService`. Moving it inside the aggregate boundary allows the application to own its certificate the same way it owns its decision and proceedings: the root entity is the single point of write, and cascade handles persistence.
+
+### Migration (`V24__remove_cascade_delete_from_certificates.sql`)
+
+The DB had `ON DELETE CASCADE` on `certificates.application_id → applications`. That constraint prevented `orphanRemoval = true` on the JPA side: when an application is deleted, the DB cascade fires before Hibernate can issue its own `DELETE`, causing `StaleStateException`. The migration drops the cascade from the DB so JPA can own deletion entirely.
+
+```sql
+ALTER TABLE certificates DROP CONSTRAINT fk_certificates_applications_id;
+
+ALTER TABLE certificates
+    ADD CONSTRAINT fk_certificates_applications_id
+        FOREIGN KEY (application_id) REFERENCES applications (id);
+```
+
+### `CertificateEntity`
+- Removed `@Column UUID applicationId`.
+- Added `@OneToOne(fetch = FetchType.LAZY) @JoinColumn(name = "application_id", nullable = false, unique = true) private ApplicationEntity application` as the FK owner.
+
+### `ApplicationEntity`
+- Added `@OneToOne(mappedBy = "application", cascade = {PERSIST, MERGE, REMOVE}, orphanRemoval = true, fetch = LAZY) private CertificateEntity certificate`.
+- With `orphanRemoval = true`, setting `certificate = null` and saving the application causes Hibernate to delete the orphaned row cleanly.
+
+### `ApplicationRepository`
+- Entity graph updated to include `"certificate"`:
+  ```java
+  @EntityGraph(attributePaths = {"decision", "decision.meritsDecisions", "proceedings", "certificate"})
+  ```
+
+### `CertificateRepository`
+- Renamed all three derived-query methods to use Spring Data FK traversal syntax:
+  - `findByApplicationId` → `findByApplication_Id`
+  - `existsByApplicationId` → `existsByApplication_Id`
+  - `deleteByApplicationId` → `deleteByApplication_Id`
+
+### `CertificateService`
+- Updated `findByApplicationId` call → `findByApplication_Id`.
+
+### `ApplicationService.makeDecision()`
+- **GRANTED path**: reads `application.getCertificate()` (loaded via entity graph). Creates a new `CertificateEntity` if null. Sets `certificate.setApplication(application)` and `application.setCertificate(certificate)`. The trailing `applicationRepository.save(application)` cascades PERSIST/MERGE to the certificate.
+- **REFUSED path**: `application.setCertificate(null)`. `orphanRemoval = true` causes Hibernate to delete the row on flush.
+- `CertificateRepository` dependency removed from `ApplicationService` entirely — no longer needed.
+
+### `CertificateEntityGenerator`
+- Removed `.applicationId(UUID.randomUUID())` from `createDefault()`.
+
+### `PersistedDataGenerator`
+- Application teardown switched from JPA `appRepo.delete()` to JDBC:
+  ```java
+  trackedApplicationIds.forEach(id ->
+      jdbcTemplate.update("DELETE FROM applications WHERE id = ?", id));
+  ```
+  This avoids Hibernate attempting to cascade-MERGE the `certificate.application` back-reference (which is a detached proxy after the session closes) when loading the application entity for deletion.
+
+### Test fixes
+
+**Unit tests**
+- `GetCertificateTest`: `builder.applicationId(...)` → `.application(ApplicationEntity.builder().id(applicationId).build())`; `findByApplicationId` → `findByApplication_Id` throughout.
+- `MakeDecisionForApplicationTest`:
+  - REFUSED test: removed `when(certificateRepository.existsByApplicationId(...))` stub; pre-set `applicationEntity.setCertificate(cert)` instead. Removed `verify(certificateRepository, times(...)).delete(...)`.
+  - GRANTED (new cert) test: removed `when(certificateRepository.findByApplicationId(...))` stub and `verify(certificateRepository.save(...))`. Now captures via `ApplicationEntity` captor on `applicationRepository.save()` and asserts `appCaptor.getValue().getCertificate()`.
+  - GRANTED (existing cert) test: same pattern; pre-sets `applicationEntity.setCertificate(existingCertificate)` and asserts updated cert via app captor.
+
+**Integration tests**
+- `CertificateRepositoryTest`: `builder.applicationId(applicationEntity.getId())` → `builder.application(applicationEntity)`. Added `"application"` to `ignoringFields` in `assertCertificateEqual`.
+- `GetCertificateTest` (integration): same builder fix.
+- `ApplicationMakeDecisionTest`: `existsByApplicationId` → `existsByApplication_Id`; replaced `certificate.getApplicationId()` assertions with `existsByApplication_Id(applicationId)`.
+
+### Summary of files changed
+
+| File | Change |
+|------|--------|
+| `db/migration/V24__remove_cascade_delete_from_certificates.sql` | **New** — removes `ON DELETE CASCADE` from certificates FK |
+| `entity/CertificateEntity.java` | `UUID applicationId` → `@OneToOne ApplicationEntity application` |
+| `entity/ApplicationEntity.java` | Added `@OneToOne(orphanRemoval=true) CertificateEntity certificate` |
+| `repository/CertificateRepository.java` | Methods renamed to `findByApplication_Id` etc. |
+| `repository/ApplicationRepository.java` | Entity graph includes `"certificate"` |
+| `service/CertificateService.java` | `findByApplicationId` → `findByApplication_Id` |
+| `service/ApplicationService.java` | Certificate written via aggregate; `CertificateRepository` dependency removed |
+| `testUtilities/.../CertificateEntityGenerator.java` | Removed `applicationId` from builder |
+| `test/.../GetCertificateTest.java` | Builder + method rename fixes |
+| `test/.../MakeDecisionForApplicationTest.java` | Stubs/verifies rewritten to use app captor |
+| `integrationTest/.../CertificateRepositoryTest.java` | Builder fix; `ignoringFields` |
+| `integrationTest/.../GetCertificateTest.java` | Builder fix |
+| `integrationTest/.../ApplicationMakeDecisionTest.java` | Method renames; assertion style updates |
+| `integrationTest/.../generator/PersistedDataGenerator.java` | Application teardown via JDBC |
