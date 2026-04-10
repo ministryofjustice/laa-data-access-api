@@ -23,7 +23,6 @@ public final class ApplicationDomainTables {
   public static final List<String> TABLES =
       List.of(
           "domain_events",
-          "linked_merits_decisions", // join table: decisions ↔ merits_decisions
           "merits_decisions",
           "decisions",
           "proceedings",

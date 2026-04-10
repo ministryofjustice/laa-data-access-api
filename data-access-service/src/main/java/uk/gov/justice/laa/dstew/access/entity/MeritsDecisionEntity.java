@@ -50,6 +50,10 @@ public class MeritsDecisionEntity implements AuditableEntity {
   @JoinColumn(name = "proceeding_id", nullable = false, insertable = false, updatable = false)
   private ProceedingEntity proceeding;
 
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "decisions_id", nullable = false)
+  private DecisionEntity decisionEntity;
+
   @Column(name = "created_at")
   @CreationTimestamp
   private Instant createdAt;
@@ -88,6 +92,12 @@ public class MeritsDecisionEntity implements AuditableEntity {
     return null;
   }
 
+  /**
+   * Adds a proceeding to the merits decision and sets the proceeding ID based on the proceeding's
+   * ID. If the proceeding is null or has a null ID, the proceeding ID will not be set.
+   *
+   * @param proceeding proceeding entity
+   */
   public void setProceeding(ProceedingEntity proceeding) {
     this.proceeding = proceeding;
     if (proceeding != null && proceeding.getId() != null) {

@@ -548,11 +548,11 @@ public class ApplicationService {
         merits.stream()
             .filter(
                 m -> {
-                  UUID mProceedingId = m.getProceedingId();
-                  if (mProceedingId == null && m.getProceeding() != null) {
-                    mProceedingId = m.getProceeding().getId();
+                  UUID meritProceedingId = m.getProceedingId();
+                  if (meritProceedingId == null && m.getProceeding() != null) {
+                    meritProceedingId = m.getProceeding().getId();
                   }
-                  return mProceedingId != null && mProceedingId.equals(proceedingId);
+                  return meritProceedingId != null && meritProceedingId.equals(proceedingId);
                 })
             .findFirst()
             .orElse(null);

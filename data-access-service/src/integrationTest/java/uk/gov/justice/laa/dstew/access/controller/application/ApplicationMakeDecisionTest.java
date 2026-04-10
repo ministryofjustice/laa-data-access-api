@@ -26,7 +26,6 @@ import org.springframework.http.ProblemDetail;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
-import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
@@ -41,6 +40,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMakeDecisionRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateContentGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
@@ -288,22 +288,24 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
             ProceedingsEntityGenerator.class,
             builder -> builder.application(initialApplicationEntity));
 
-    MeritsDecisionEntity meritsDecisionEntityOne =
-        persistedDataGenerator.createAndPersist(
-            MeritsDecisionsEntityGenerator.class,
-            builder ->
-                builder.proceeding(proceedingEntityOne).decision(MeritsDecisionStatus.REFUSED));
-
     ProceedingEntity proceedingEntityTwo =
         persistedDataGenerator.createAndPersist(
             ProceedingsEntityGenerator.class,
             builder -> builder.application(initialApplicationEntity));
 
     DecisionEntity decision =
-        persistedDataGenerator.createAndPersistWithPersistedMeritsDecisions(
+        persistedDataGenerator.createAndPersist(
+            DecisionEntityGenerator.class,
             builder ->
                 builder
-                    .meritsDecisions(Set.of(meritsDecisionEntityOne))
+                    .meritsDecisions(
+                        Set.of(
+                            DataGenerator.createDefault(
+                                MeritsDecisionsEntityGenerator.class,
+                                mBuilder ->
+                                    mBuilder
+                                        .proceeding(proceedingEntityOne)
+                                        .decision(MeritsDecisionStatus.REFUSED))))
                     .overallDecision(DecisionStatus.REFUSED));
 
     initialApplicationEntity.setDecision(decision);

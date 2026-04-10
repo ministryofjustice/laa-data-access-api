@@ -5,12 +5,13 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Set;
@@ -51,11 +52,11 @@ public class DecisionEntity implements AuditableEntity {
   @UpdateTimestamp
   private Instant modifiedAt;
 
-  @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-  @JoinTable(
-      name = "linked_merits_decisions",
-      joinColumns = @JoinColumn(name = "decisions_id"),
-      inverseJoinColumns = @JoinColumn(name = "merits_decisions_id"))
+  @OneToMany(
+      mappedBy = "decisionEntity",
+      cascade = {CascadeType.PERSIST, CascadeType.MERGE},
+      fetch = FetchType.LAZY)
+  @lombok.Setter(lombok.AccessLevel.NONE)
   private Set<MeritsDecisionEntity> meritsDecisions;
 
   @Column(name = "overall_decision", nullable = false)
@@ -82,10 +83,37 @@ public class DecisionEntity implements AuditableEntity {
     return null;
   }
 
+  /**
+   * Adds a merits decision to the set of linked merits decisions. Initializes the set if it is
+   * null.
+   *
+   * @param merit merit decision
+   */
   public void addMeritsDecision(MeritsDecisionEntity merit) {
     if (meritsDecisions == null) {
       meritsDecisions = new java.util.HashSet<>();
     }
+    merit.setDecisionEntity(this);
     meritsDecisions.add(merit);
+  }
+
+  /**
+   * Sets the merits decisions collection and syncs the back-reference on each element.
+   *
+   * @param meritsDecisions the new set of merits decisions
+   */
+  public void setMeritsDecisions(Set<MeritsDecisionEntity> meritsDecisions) {
+    this.meritsDecisions = meritsDecisions;
+    if (meritsDecisions != null) {
+      meritsDecisions.forEach(m -> m.setDecisionEntity(this));
+    }
+  }
+
+  @PrePersist
+  @PreUpdate
+  protected void syncMeritsDecisionBackRefs() {
+    if (meritsDecisions != null) {
+      meritsDecisions.forEach(m -> m.setDecisionEntity(this));
+    }
   }
 }
