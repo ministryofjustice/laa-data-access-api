@@ -4,10 +4,9 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import org.mapstruct.Mapper;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
-import uk.gov.justice.laa.dstew.access.model.IndividualType;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryView;
+import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 
@@ -21,59 +20,40 @@ public interface ApplicationSummaryMapper {
   /**
    * Maps the given application summary entity to an application summary.
    *
-   * @param applicationSummaryEntity the application summary entity
+   * @param applicationSummaryView the application summary view
    * @return the application summary
    */
-  default ApplicationSummary toApplicationSummary(ApplicationSummaryEntity applicationSummaryEntity) {
+  default ApplicationSummary toApplicationSummary(ApplicationSummaryView applicationSummaryView) {
 
-    if (applicationSummaryEntity == null) {
+    if (applicationSummaryView == null) {
       return null;
     }
-    ApplicationSummary app = new ApplicationSummary();
-    app.setApplicationId(applicationSummaryEntity.getId());
-    app.setSubmittedAt(applicationSummaryEntity.getSubmittedAt() != null 
-                          ? applicationSummaryEntity.getSubmittedAt().atOffset(ZoneOffset.UTC) 
-                          : null);
-    app.setAutoGrant(applicationSummaryEntity.getIsAutoGranted());
-    app.setCategoryOfLaw(applicationSummaryEntity.getCategoryOfLaw());
-    app.setMatterType(applicationSummaryEntity.getMatterType());
-    app.setUsedDelegatedFunctions(applicationSummaryEntity.getUsedDelegatedFunctions());
-    app.setLaaReference(applicationSummaryEntity.getLaaReference());
-    app.setOfficeCode(applicationSummaryEntity.getOfficeCode());
-    app.setStatus(applicationSummaryEntity.getStatus());
-    app.setAssignedTo(applicationSummaryEntity.getCaseworker() != null 
-                        ? 
-                        applicationSummaryEntity.getCaseworker().getId() : 
-                        null);
-    var individual = getLeadIndividual(applicationSummaryEntity);
-    if (individual != null) {
-      app.setClientFirstName(individual.getFirstName());
-      app.setClientLastName(individual.getLastName());
-      app.setClientDateOfBirth(individual.getDateOfBirth());
-    }
-    app.setApplicationType(applicationSummaryEntity.getType());
-    app.setLastUpdated(applicationSummaryEntity.getModifiedAt().atOffset(ZoneOffset.UTC));
-    app.setIsLead(applicationSummaryEntity.isLead());
-    return app;
+    ApplicationSummary applicationSummary = new ApplicationSummary();
+    applicationSummary.setApplicationId(applicationSummaryView.getId());
+    applicationSummary.setSubmittedAt(
+        applicationSummaryView.getSubmittedAt() != null ? applicationSummaryView.getSubmittedAt().atOffset(ZoneOffset.UTC) :
+            null);
+    applicationSummary.setAutoGrant(applicationSummaryView.getIsAutoGranted());
+    applicationSummary.setCategoryOfLaw(applicationSummaryView.getCategoryOfLaw());
+    applicationSummary.setMatterType(applicationSummaryView.getMatterType());
+    applicationSummary.setUsedDelegatedFunctions(applicationSummaryView.getUsedDelegatedFunctions());
+    applicationSummary.setLaaReference(applicationSummaryView.getLaaReference());
+    applicationSummary.setOfficeCode(applicationSummaryView.getOfficeCode());
+    applicationSummary.setStatus(applicationSummaryView.getStatus());
+    applicationSummary.setAssignedTo(
+        applicationSummaryView.getCaseworker() != null ? applicationSummaryView.getCaseworker().getId() : null);
+    applicationSummary.setClientFirstName(applicationSummaryView.getIndividualsFirstName());
+    applicationSummary.setClientLastName(applicationSummaryView.getIndividualsLastName());
+    applicationSummary.setClientDateOfBirth(applicationSummaryView.getIndividualsDateOfBirth());
+    applicationSummary.setApplicationType(ApplicationType.INITIAL);
+    applicationSummary.setLastUpdated(
+        applicationSummaryView.getModifiedAt() != null ? applicationSummaryView.getModifiedAt().atOffset(ZoneOffset.UTC) :
+            null);
+    return applicationSummary;
   }
 
   default OffsetDateTime map(Instant value) {
     return value != null ? value.atOffset(ZoneOffset.UTC) : null;
-  }
-
-  private static IndividualEntity getLeadIndividual(ApplicationSummaryEntity entity) {
-    var individuals = entity.getIndividuals();
-    if (individuals == null || individuals.isEmpty()) {
-      return null;
-    }
-    return individuals.stream()
-    .filter(ApplicationSummaryMapper::isClient)
-    .findFirst()
-    .orElse(null);
-  }
-
-  private static boolean isClient(IndividualEntity individual) {
-    return individual.getType() == IndividualType.CLIENT;
   }
 
   /**
