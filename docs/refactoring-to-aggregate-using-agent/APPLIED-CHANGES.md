@@ -331,12 +331,8 @@ ALTER TABLE certificates
 - Removed `.applicationId(UUID.randomUUID())` from `createDefault()`.
 
 ### `PersistedDataGenerator`
-- Application teardown switched from JPA `appRepo.delete()` to JDBC:
-  ```java
-  trackedApplicationIds.forEach(id ->
-      jdbcTemplate.update("DELETE FROM applications WHERE id = ?", id));
-  ```
-  This avoids Hibernate attempting to cascade-MERGE the `certificate.application` back-reference (which is a detached proxy after the session closes) when loading the application entity for deletion.
+- No change required. Application teardown continues to use JPA `appRepo.findById(id).ifPresent(appRepo::delete)`.
+- With `orphanRemoval = true` and `cascade = REMOVE` now on `ApplicationEntity.certificate`, JPA cascades the certificate delete automatically before removing the application row. This works cleanly because V24 removed the DB `ON DELETE CASCADE` from certificates — Hibernate is now the sole owner of certificate deletion and there is no conflict.
 
 ### Test fixes
 
@@ -369,4 +365,4 @@ ALTER TABLE certificates
 | `integrationTest/.../CertificateRepositoryTest.java` | Builder fix; `ignoringFields` |
 | `integrationTest/.../GetCertificateTest.java` | Builder fix |
 | `integrationTest/.../ApplicationMakeDecisionTest.java` | Method renames; assertion style updates |
-| `integrationTest/.../generator/PersistedDataGenerator.java` | Application teardown via JDBC |
+| `integrationTest/.../generator/PersistedDataGenerator.java` | No change — JPA teardown works via `orphanRemoval` cascade |
