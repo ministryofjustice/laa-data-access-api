@@ -350,4 +350,5 @@ public class ApplicationMapperTest extends BaseMapperTest {
       assertThat(actual.getOfficeCode()).isEqualTo(expectedOfficeCode);
       assertThat(actual.getContactEmail()).isEqualTo(expectedContactEmail);
     }
+  }
 }

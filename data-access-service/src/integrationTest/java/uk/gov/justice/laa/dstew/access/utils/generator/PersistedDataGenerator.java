@@ -31,7 +31,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEnti
 import uk.gov.justice.laa.dstew.access.utils.generator.notes.NoteEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
-
 @Component
 public class PersistedDataGenerator extends DataGenerator {
 
