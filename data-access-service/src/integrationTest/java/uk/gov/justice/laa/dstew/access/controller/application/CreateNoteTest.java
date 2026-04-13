@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.*;
 
 import java.util.List;
@@ -10,9 +9,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.ProblemDetail;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.NoteEntity;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
@@ -53,7 +57,8 @@ public class CreateNoteTest extends BaseHarnessTest {
   public void givenApplicationExist_whenCreateNote_thenReturnOK() throws Exception {
 
     ApplicationEntity application =
-        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class, builder -> builder.caseworker(CaseworkerJohnDoe));
 
     CreateNoteRequest request = DataGenerator.createDefault(CreateNoteRequestGenerator.class);
 
@@ -64,9 +69,31 @@ public class CreateNoteTest extends BaseHarnessTest {
     assertSecurityHeaders(result);
     assertNoCacheHeaders(result);
     assertNoContent(result);
+
     List<NoteEntity> createdNotes = noteRepository.findByApplicationId(application.getId());
-    assertEquals(1, createdNotes.size());
-    assertEquals(request.getNotes(), createdNotes.getFirst().getNotes());
+    assertThat(createdNotes.size()).isEqualTo(1);
+    assertThat(createdNotes.getFirst().getNotes()).isEqualTo(request.getNotes());
+
+    // then — verify domain event was persisted
+    List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
+    assertThat(domainEvents.size()).isEqualTo(1);
+
+    DomainEventEntity event = domainEvents.getFirst();
+    assertThat(event.getType()).isEqualTo(DomainEventType.APPLICATION_NOTES);
+    assertThat(event.getApplicationId()).isEqualTo(application.getId());
+    assertThat(event.getCaseworkerId()).isEqualTo(CaseworkerJohnDoe.getId());
+    assertThat(event.getCreatedAt()).isNotNull();
+    assertThat(event.getServiceName()).isEqualTo(ServiceName.CIVIL_APPLY);
+    assertThat(event.getData()).isNotNull();
+
+    // Verify data JSON contains required fields
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode eventData = mapper.readTree(event.getData());
+    assertThat(eventData.get("applicationId").asString()).isEqualTo(application.getId().toString());
+    assertThat(eventData.get("caseworkerId").asString())
+        .isEqualTo(CaseworkerJohnDoe.getId().toString());
+    assertThat(eventData.get("request").asString()).contains(request.getNotes());
+    assertThat(eventData.has("createdDate")).isTrue();
   }
 
   @Test
@@ -111,7 +138,8 @@ public class CreateNoteTest extends BaseHarnessTest {
   public void givenApplicationExistAndNotesAtEndsOfRange_whenCreateNote_thenReturnOk(int total)
       throws Exception {
     ApplicationEntity application =
-        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class, builder -> builder.caseworker(CaseworkerJohnDoe));
 
     CreateNoteRequest request =
         DataGenerator.createDefault(
@@ -125,7 +153,41 @@ public class CreateNoteTest extends BaseHarnessTest {
     assertNoCacheHeaders(result);
     assertNoContent(result);
     List<NoteEntity> createdNotes = noteRepository.findByApplicationId(application.getId());
-    assertEquals(1, createdNotes.size());
-    assertEquals(request.getNotes(), createdNotes.getFirst().getNotes());
+    assertThat(createdNotes.size()).isEqualTo(1);
+    assertThat(createdNotes.getFirst().getNotes()).isEqualTo(request.getNotes());
+  }
+
+  @Test
+  public void givenUnknownRole_whenCreateNote_thenReturnForbidden() throws Exception {
+    // given
+    withToken(TestConstants.Tokens.UNKNOWN);
+
+    // when
+    HarnessResult result =
+        postUri(
+            TestConstants.URIs.CREATE_NOTES,
+            DataGenerator.createDefault(CreateNoteRequestGenerator.class),
+            UUID.randomUUID());
+
+    // then
+    assertSecurityHeaders(result);
+    assertForbidden(result);
+  }
+
+  @Test
+  public void givenNoUser_whenCreateNote_thenReturnUnauthorised() throws Exception {
+    // given
+    withNoToken();
+
+    // when
+    HarnessResult result =
+        postUri(
+            TestConstants.URIs.CREATE_NOTES,
+            DataGenerator.createDefault(CreateNoteRequestGenerator.class),
+            UUID.randomUUID());
+
+    // then
+    assertSecurityHeaders(result);
+    assertUnauthorised(result);
   }
 }
