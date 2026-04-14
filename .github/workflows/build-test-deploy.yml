@@ -42,9 +42,7 @@ jobs:
         run: ./gradlew jacocoTestCoverageVerification
 
       - name: Integration test
-        run: ./scripts/run-infrastructure-smoke-tests.sh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew integrationTest
 
       - name: Publish api models package
         run: |
