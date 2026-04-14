@@ -34,6 +34,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationNotesResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
@@ -265,14 +266,14 @@ public class ApplicationService {
    * Create a note for an application.
    *
    * @param id UUID of the application
-   * @param note note to be created
+   * @param request note to be created
    */
   @AllowApiCaseworker
   @Transactional
-  public void createApplicationNote(final UUID id, final String note) {
-
-    checkIfApplicationExists(id);
-    noteRepository.save(NoteEntity.builder().applicationId(id).notes(note).build());
+  public void createApplicationNote(final UUID id, final CreateNoteRequest request) {
+    ApplicationEntity application = checkIfApplicationExists(id);
+    noteRepository.save(NoteEntity.builder().applicationId(id).notes(request.getNotes()).build());
+    domainEventService.saveCreateApplicationNoteDomainEvent(application, request);
   }
 
   /**

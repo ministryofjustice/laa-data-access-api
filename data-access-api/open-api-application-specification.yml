@@ -467,6 +467,7 @@ components:
         - UNASSIGN_APPLICATION_TO_CASEWORKER
         - APPLICATION_MAKE_DECISION_REFUSED
         - APPLICATION_MAKE_DECISION_GRANTED
+        - APPLICATION_NOTES
 
     CategoryOfLaw:
       type: string

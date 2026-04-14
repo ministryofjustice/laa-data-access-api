@@ -1,4 +1,4 @@
-# Prek configuration for Java project
+# Pre-commit configuration for Java project
 repos:
   - repo: local
     hooks:
@@ -29,4 +29,3 @@ repos:
             .idea/|
             .git/|
           )
-

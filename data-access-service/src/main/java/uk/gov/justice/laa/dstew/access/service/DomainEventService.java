@@ -19,6 +19,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.CreateApplicationNoteDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
@@ -216,5 +218,30 @@ public class DomainEventService {
             .build();
 
     saveDomainEvent(applicationId, caseworkerId, domainEventType, domainEventDetails);
+  }
+
+  /** Posts an APPLICATION_NOTES domain event. */
+  @AllowApiCaseworker
+  public void saveCreateApplicationNoteDomainEvent(
+      ApplicationEntity applicationEntity, CreateNoteRequest request) {
+
+    DomainEventType domainEventType = DomainEventType.APPLICATION_NOTES;
+    // TODO: caseworkerId currently sourced from the assigned caseworker on the application.
+    //  Once authentication is in place, all domain events should use the logged-in user
+    //  from the auth token instead.
+    UUID caseworkerId =
+        applicationEntity.getCaseworker() != null
+            ? applicationEntity.getCaseworker().getId()
+            : null;
+
+    CreateApplicationNoteDomainEventDetails domainEventDetails =
+        CreateApplicationNoteDomainEventDetails.builder()
+            .applicationId(applicationEntity.getId())
+            .caseworkerId(caseworkerId)
+            .request(getEventDetailsAsJson(request, domainEventType))
+            .createdDate(Instant.now())
+            .build();
+
+    saveDomainEvent(applicationEntity.getId(), caseworkerId, domainEventType, domainEventDetails);
   }
 }
