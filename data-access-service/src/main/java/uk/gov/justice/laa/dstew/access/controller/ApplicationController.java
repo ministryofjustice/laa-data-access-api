@@ -35,6 +35,8 @@ import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.service.CertificateService;
 import uk.gov.justice.laa.dstew.access.service.DomainEventService;
+import uk.gov.justice.laa.dstew.access.service.usecase.CreateApplicationService;
+import uk.gov.justice.laa.dstew.access.service.usecase.MakeDecisionService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
@@ -49,13 +51,15 @@ public class ApplicationController implements ApplicationApi {
   private final ApplicationSummaryService summaryService;
   private final DomainEventService domainService;
   private final CertificateService certificateService;
+  private final CreateApplicationService createApplicationService;
+  private final MakeDecisionService makeDecisionService;
 
   @LogMethodArguments
   @LogMethodResponse
   @Override
   public ResponseEntity<Void> createApplication(
       @NotNull ServiceName serviceName, @Valid ApplicationCreateRequest applicationCreateReq) {
-    UUID id = service.createApplication(applicationCreateReq);
+    UUID id = createApplicationService.createApplication(applicationCreateReq);
 
     URI uri =
         ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
@@ -165,7 +169,7 @@ public class ApplicationController implements ApplicationApi {
   public ResponseEntity<Void> makeDecision(
       @NotNull ServiceName serviceName, UUID applicationId, @Valid MakeDecisionRequest request) {
 
-    service.makeDecision(applicationId, request);
+    makeDecisionService.makeDecision(applicationId, request);
 
     return ResponseEntity.noContent().build();
   }

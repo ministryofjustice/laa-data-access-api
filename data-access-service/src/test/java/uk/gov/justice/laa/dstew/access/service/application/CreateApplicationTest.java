@@ -40,7 +40,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.service.ApplicationService;
+import uk.gov.justice.laa.dstew.access.service.usecase.CreateApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -54,7 +54,7 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CreateApplicationTest extends BaseServiceTest {
 
-  @Autowired private ApplicationService serviceUnderTest;
+  @Autowired private CreateApplicationService serviceUnderTest;
 
   @Test
   public void givenNewApplication_whenCreateApplication_thenReturnNewId() throws JacksonException {

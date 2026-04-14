@@ -46,7 +46,7 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
-import uk.gov.justice.laa.dstew.access.service.ApplicationService;
+import uk.gov.justice.laa.dstew.access.service.usecase.MakeDecisionService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -65,7 +65,7 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 /** Unit tests for the make decision behaviour in the application service. */
 public class MakeDecisionForApplicationTest extends BaseServiceTest {
 
-  @Autowired private ApplicationService serviceUnderTest;
+  @Autowired private MakeDecisionService serviceUnderTest;
 
   static Stream<Arguments> validationFailureCases() {
     return Stream.of(
