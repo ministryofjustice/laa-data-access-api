@@ -4,28 +4,22 @@ import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.adapter.inbound.rest.CreateApplicationCommandFactory;
 import uk.gov.justice.laa.dstew.access.domain.model.Application;
-import uk.gov.justice.laa.dstew.access.domain.model.Individual;
 import uk.gov.justice.laa.dstew.access.domain.port.inbound.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.domain.port.inbound.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.domain.port.outbound.ApplicationPersistencePort;
 import uk.gov.justice.laa.dstew.access.domain.port.outbound.DomainEventPort;
 import uk.gov.justice.laa.dstew.access.domain.port.outbound.ProceedingsPersistencePort;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.model.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
-import uk.gov.justice.laa.dstew.access.service.ApplicationContentParserService;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
-import uk.gov.justice.laa.dstew.access.validation.PayloadValidationService;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Service class for CreateApplication Use Case. */
@@ -39,11 +33,7 @@ public class CreateApplicationService implements CreateApplicationUseCase {
   private final DomainEventPort domainEvents;
   private final ProceedingsPersistencePort proceedingsPersistence;
   private final ApplicationValidations applicationValidations;
-
-  // ── Legacy dependencies kept for the bridge method used by existing tests ──
-  private final PayloadValidationService payloadValidationService;
-  private final ApplicationContentParserService applicationContentParser;
-  private final ObjectMapper objectMapper;
+  private final CreateApplicationCommandFactory commandFactory;
 
   /**
    * Legacy entry point retained so that existing tests (which call with an {@link
@@ -58,39 +48,7 @@ public class CreateApplicationService implements CreateApplicationUseCase {
   @AllowApiCaseworker
   @Transactional
   public UUID createApplication(final ApplicationCreateRequest req) {
-    ApplicationContent applicationContent =
-        payloadValidationService.convertAndValidate(
-            req.getApplicationContent(), ApplicationContent.class);
-
-    ParsedAppContentDetails parsedContent =
-        applicationContentParser.normaliseApplicationContentDetails(applicationContent);
-
-    Set<Individual> individuals =
-        req.getIndividuals() == null
-            ? Set.of()
-            : req.getIndividuals().stream()
-                .map(
-                    ind ->
-                        Individual.builder()
-                            .firstName(ind.getFirstName())
-                            .lastName(ind.getLastName())
-                            .dateOfBirth(ind.getDateOfBirth())
-                            .individualContent(ind.getDetails())
-                            .type(ind.getType())
-                            .build())
-                .collect(Collectors.toSet());
-
-    CreateApplicationCommand command =
-        CreateApplicationCommand.builder()
-            .status(req.getStatus())
-            .laaReference(req.getLaaReference())
-            .applicationContent(req.getApplicationContent())
-            .individuals(individuals)
-            .parsedContent(parsedContent)
-            .linkedApplications(applicationContent.getAllLinkedApplications())
-            .build();
-
-    return createApplication(command);
+    return createApplication(commandFactory.toCommand(req));
   }
 
   /**

@@ -71,17 +71,29 @@ Create the following new files under `data-access-service/src/main/java/uk/gov/j
 
 3. **`event/DomainEventAdapter.java`** — A `@Component` that implements `DomainEventPort`. Inject `DomainEventService`. In `publishApplicationCreated()`, map the domain `Application` back to `ApplicationEntity` (for the existing `DomainEventService` API) and map the `CreateApplicationCommand` back to `ApplicationCreateRequest`. This is a pragmatic bridge — the adapter translates domain types to the types `DomainEventService` currently expects. Add a TODO comment noting that `DomainEventService` should be refactored to accept domain types in a future ticket.
 
+### Task 3b: Create Inbound Adapter
+
+Create a new file under `data-access-service/src/main/java/uk/gov/justice/laa/dstew/access/adapter/inbound/rest/`:
+
+1. **`CreateApplicationCommandFactory.java`** — A `@Component` that converts an `ApplicationCreateRequest` (API DTO) into a `CreateApplicationCommand` (domain command). Inject `PayloadValidationService` and `ApplicationContentParserService`. The single public method `toCommand(ApplicationCreateRequest)` should:
+   - Call `payloadValidationService.convertAndValidate(req.getApplicationContent(), ApplicationContent.class)` to validate and parse the raw content.
+   - Call `applicationContentParserService.normaliseApplicationContentDetails(applicationContent)` to get `ParsedAppContentDetails`.
+   - Map each `IndividualCreateRequest` to a domain `Individual`.
+   - Build and return a `CreateApplicationCommand` with all fields populated.
+
+This keeps the controller free of mapping/validation logic — it belongs in the driving adapter layer but not in the controller itself.
+
 ### Task 4: Update the Controller
 
 Edit `ApplicationController.java`:
 
 1. Replace the `CreateApplicationService` field with `CreateApplicationUseCase`.
-2. In the `createApplication()` method:
+2. Add a `CreateApplicationCommandFactory` field.
+3. In the `createApplication()` method:
    - Add `@AllowApiCaseworker` to this method.
-   - Call `payloadValidationService.convertAndValidate(req.getApplicationContent(), ApplicationContent.class)` here (inject `PayloadValidationService` into the controller if not already present).
-   - Build a `CreateApplicationCommand` from the request and validated content.
+   - Call `createApplicationCommandFactory.toCommand(applicationCreateReq)` to build the command.
    - Call `createApplicationUseCase.createApplication(command)`.
-3. Add a private helper method `mapToCommand(ApplicationCreateRequest, ApplicationContent)` that constructs the command. Use the `ApplicationContentParserService` to get `ParsedAppContentDetails` and include it in the command. Inject `ApplicationContentParserService` into the controller.
+4. The controller method should be minimal — just delegation, no mapping or validation logic.
 
 ### Task 5: Refactor `CreateApplicationService`
 
@@ -93,9 +105,10 @@ Edit `CreateApplicationService.java`:
    - `ApplicationMapper` → remove (no longer needed — the persistence adapter handles mapping)
    - `DomainEventService` → `DomainEventPort`
    - `ProceedingsService` → `ProceedingsPersistencePort`
-   - `PayloadValidationService` → remove (moved to controller)
-   - `ApplicationContentParserService` → remove (moved to controller, or keep if needed for domain logic)
+   - `PayloadValidationService` → remove (moved to `CreateApplicationCommandFactory`)
+   - `ApplicationContentParserService` → remove (moved to `CreateApplicationCommandFactory`)
    - `ApplicationValidations` → keep (it's domain validation)
+   - Add `CreateApplicationCommandFactory` → needed only for the legacy bridge method
 3. Change the method signature: `public UUID createApplication(final CreateApplicationCommand command)`.
 4. Remove `@AllowApiCaseworker` (now on the controller).
 5. Keep `@Transactional`.

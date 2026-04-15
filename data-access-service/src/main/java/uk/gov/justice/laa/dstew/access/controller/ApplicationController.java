@@ -6,19 +6,16 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
+import uk.gov.justice.laa.dstew.access.adapter.inbound.rest.CreateApplicationCommandFactory;
 import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
-import uk.gov.justice.laa.dstew.access.domain.model.Individual;
 import uk.gov.justice.laa.dstew.access.domain.port.inbound.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.domain.port.inbound.CreateApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationNotesResponse;
@@ -33,13 +30,11 @@ import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
-import uk.gov.justice.laa.dstew.access.service.ApplicationContentParserService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.service.CertificateService;
@@ -48,7 +43,6 @@ import uk.gov.justice.laa.dstew.access.service.usecase.MakeDecisionService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
-import uk.gov.justice.laa.dstew.access.validation.PayloadValidationService;
 
 /** Controller for handling /api/v0/applications requests. */
 @RequiredArgsConstructor
@@ -62,8 +56,7 @@ public class ApplicationController implements ApplicationApi {
   private final CertificateService certificateService;
   private final CreateApplicationUseCase createApplicationUseCase;
   private final MakeDecisionService makeDecisionService;
-  private final PayloadValidationService payloadValidationService;
-  private final ApplicationContentParserService applicationContentParserService;
+  private final CreateApplicationCommandFactory createApplicationCommandFactory;
 
   @AllowApiCaseworker
   @LogMethodArguments
@@ -71,46 +64,13 @@ public class ApplicationController implements ApplicationApi {
   @Override
   public ResponseEntity<Void> createApplication(
       @NotNull ServiceName serviceName, @Valid ApplicationCreateRequest applicationCreateReq) {
-    ApplicationContent applicationContent =
-        payloadValidationService.convertAndValidate(
-            applicationCreateReq.getApplicationContent(), ApplicationContent.class);
-
-    CreateApplicationCommand command = mapToCommand(applicationCreateReq, applicationContent);
+    CreateApplicationCommand command =
+        createApplicationCommandFactory.toCommand(applicationCreateReq);
     UUID id = createApplicationUseCase.createApplication(command);
 
     URI uri =
         ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
     return ResponseEntity.created(uri).build();
-  }
-
-  private CreateApplicationCommand mapToCommand(
-      ApplicationCreateRequest req, ApplicationContent applicationContent) {
-    var parsedContent =
-        applicationContentParserService.normaliseApplicationContentDetails(applicationContent);
-
-    Set<Individual> individuals =
-        req.getIndividuals() == null
-            ? Set.of()
-            : req.getIndividuals().stream().map(this::toIndividual).collect(Collectors.toSet());
-
-    return CreateApplicationCommand.builder()
-        .status(req.getStatus())
-        .laaReference(req.getLaaReference())
-        .applicationContent(req.getApplicationContent())
-        .individuals(individuals)
-        .parsedContent(parsedContent)
-        .linkedApplications(applicationContent.getAllLinkedApplications())
-        .build();
-  }
-
-  private Individual toIndividual(IndividualCreateRequest req) {
-    return Individual.builder()
-        .firstName(req.getFirstName())
-        .lastName(req.getLastName())
-        .dateOfBirth(req.getDateOfBirth())
-        .individualContent(req.getDetails())
-        .type(req.getType())
-        .build();
   }
 
   @Override
