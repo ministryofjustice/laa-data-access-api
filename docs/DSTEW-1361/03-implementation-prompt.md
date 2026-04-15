@@ -2,7 +2,7 @@
 
 ## Context
 
-You are working on `laa-data-access-api`, a Spring Boot 3 / Gradle multi-module project (Java 21, Lombok, MapStruct, Spring Data JPA, Jackson). The module `data-access-service` contains the application logic.
+You are working on `laa-data-access-api`, a Spring Boot 4 / Gradle multi-module project (Java 25, Lombok, MapStruct, Spring Data JPA, Jackson). The module `data-access-service` contains the application logic.
 
 The task is to migrate `CreateApplicationService` to follow hexagonal (ports & adapters) architecture. **No API behaviour may change.** All existing tests must continue to pass.
 

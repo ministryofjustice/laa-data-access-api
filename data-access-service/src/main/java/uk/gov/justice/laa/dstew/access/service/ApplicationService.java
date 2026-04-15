@@ -294,5 +294,4 @@ public class ApplicationService {
       ApplicationEntity application, CaseworkerEntity caseworker) {
     return application.getCaseworker() != null && application.getCaseworker().equals(caseworker);
   }
-
 }
