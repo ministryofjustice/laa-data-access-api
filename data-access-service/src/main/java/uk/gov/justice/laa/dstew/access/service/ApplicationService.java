@@ -32,14 +32,11 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
-import uk.gov.justice.laa.dstew.access.service.usecase.CreateApplicationService;
-import uk.gov.justice.laa.dstew.access.service.usecase.MakeDecisionService;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
 /** Service class for managing Applications. */
@@ -57,7 +54,6 @@ public class ApplicationService {
   private final ProceedingRepository proceedingRepository;
   private final NoteRepository noteRepository;
   private final NoteMapper noteMapper;
-  private final MakeDecisionService makeDecisionService;
 
   /**
    * Retrieve a single application by ID.
@@ -299,15 +295,4 @@ public class ApplicationService {
     return application.getCaseworker() != null && application.getCaseworker().equals(caseworker);
   }
 
-  /**
-   * Update an existing application to add the decision details.
-   *
-   * @param applicationId application UUID
-   * @param request DTO with update fields
-   */
-  @Transactional
-  @AllowApiCaseworker
-  public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
-    makeDecisionService.makeDecision(applicationId, request);
-  }
 }
