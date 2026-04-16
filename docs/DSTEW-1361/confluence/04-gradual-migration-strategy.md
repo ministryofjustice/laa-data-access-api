@@ -43,7 +43,7 @@ Each can be its own PR, migrated independently within the `ApplicationService`.
 
 `ApplicationSummaryService`, `DomainEventService`, `IndividualsService` — these are read-heavy services with fewer entity dependencies. By this phase, most domain models and persistence adapters already exist.
 
-**Note on `DomainEventService`:** On the POC branch, this service is already consumed via `DomainEventPort` by `CreateApplicationService`. Its full migration would mean refactoring it to accept domain types instead of entities — making the `DomainEventAdapter` trivial or unnecessary.
+**Note on `DomainEventService`:** On the POC branch, `CreateApplicationService` calls `DomainEventService` *via* the `DomainEventPort` interface — so `CreateApplicationService` is already decoupled from the concrete class. However, `DomainEventService` itself still accepts JPA entity types and OpenAPI-generated request types in its own method signatures (e.g., `saveMakeDecisionDomainEvent(UUID, MakeDecisionRequest, UUID, DomainEventType)`). Its Phase 4 migration means rewriting those method signatures to accept domain types instead (e.g., `MakeDecisionCommand`), and updating the `DomainEventAdapter` to perform any remaining translation before delegating to `DomainEventService`. This is what the effort estimate of ~1 day in the effort estimation document covers. It is not automatically trivial — each event-publishing method signature must be updated, and the adapter must correctly map from domain types to the `DomainEventDetails` records used internally.
 
 ### Phase 5: Small Services
 

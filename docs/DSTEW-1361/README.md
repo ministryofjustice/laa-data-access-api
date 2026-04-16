@@ -4,7 +4,7 @@ This folder has been reorganized to clarify the hexagonal architecture migration
 
 **Status:** Index and navigation note  
 **Baseline:** `main`  
-**Validated against:** POC branch context  
+**Validated against:** POC branch `DSTEW-1361-Hexagonal-Create-Application-POC`  
 **Last reviewed:** 2026-04-16
 
 How to read this folder: some documents describe the `main` baseline, some capture findings from the POC branch, and some describe the intended target state. Prefer the master plan for the current agreed direction.

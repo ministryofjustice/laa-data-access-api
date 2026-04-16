@@ -1,8 +1,8 @@
-# Ticket Sequencing and Dependencies (00-09)
+# Ticket Sequencing and Dependencies (00-11)
 
 **Status:** Sequencing draft  
 **Baseline:** `main`  
-**Validated against:** POC branch patterns where noted  
+**Validated against:** POC branch `DSTEW-1361-Hexagonal-Create-Application-POC` where noted  
 **Last reviewed:** 2026-04-16
 
 Assumption: sequence is written relative to `main`. If validated POC work is reused, re-check ticket order and scope before implementation.
@@ -22,21 +22,23 @@ This planning note defines a recommended implementation sequence for the DSTEW-1
 8. Ticket 04: Align Make Decision with Outbound Ports
 9. Ticket 05: Introduce Domain Model for Application Aggregate
 10. Ticket 06: Transaction Boundary and Cross-Cutting Hardening
+11. Ticket 11: Reorganise Packages to Hexagonal Structure and Enable ArchUnit
 
 ## Dependency Matrix
 
 | Ticket | Depends On | Dependency Type | Reason |
 |---|---|---|---|
 | 00 | None | — | Establishes how validated POC work will be reconciled to `main` before delivery starts |
-| 01 | 00, 04-use-case-interface-with-command-factory baseline implementation | Hard | Reconciles any existing POC make-decision work and establishes the create-flow pattern/naming conventions it should mirror |
+| 01 | 00 | Hard | Ticket 00 must land the `CreateApplicationService` hexagonal pattern on `main` first — Ticket 01 mirrors those conventions for `MakeDecisionService` |
 | 02 | 00, 01 | Soft | Boundary standardization is easier after POC reconciliation and both create/make-decision use case splits are in place |
 | 07 | 00, 02 | Soft | Update flow can be migrated earlier, but POC cleanup and controller boundary conventions reduce rework |
 | 08 | 00, 02 | Soft | Same as update flow: preferred to align boundary conventions first |
 | 09 | 00, 02 | Soft | Caseworker flow migration benefits from consistent controller/use case boundary patterns |
-| 03 | 00, 04-use-case-interface-with-command-factory baseline implementation | Hard | Create outbound ports should be applied to the reconciled create use case |
+| 03 | 00 | Hard | Outbound ports for the create flow should be applied to the `CreateApplicationService` use case boundary reconciled from the POC branch in Ticket 00 |
 | 04 | 00, 01, 03 | Hard | Make-decision port migration should follow make-decision split and reuse create port/adaptor pattern |
 | 05 | 00, 03, 04 | Hard | Domain model introduction is safer after both major write flows already depend on outbound ports |
 | 06 | 00, 03, 04, 05 | Hard | Hardening transaction/cross-cutting placement requires stable architectural boundaries |
+| 11 | 06 (or 09 minimum) | Hard | Package moves and ArchUnit rules should only be introduced once use case and port migrations are stable; moving classes in parallel with ongoing migrations creates excessive merge conflicts |
 
 ## Parallelization Guidance
 
@@ -87,6 +89,12 @@ Outcome:
 - Domain model starts to become the primary use case language.
 - Transaction and cross-cutting placement is intentionally hardened.
 
+### Milestone 5: Package Realignment & ArchUnit Enforcement
+Includes: 11
+Outcome:
+- All migrated classes are relocated into the end-state hexagonal package structure (`application.port.in`, `infra.persistence`, etc.).
+- ArchUnit rules are active in CI, enforcing dependency direction on every build.
+
 ## Blockers and Decision Points
 
 These decisions should be resolved before the corresponding tickets are treated as implementation-ready on `main`.
@@ -115,7 +123,7 @@ These decisions should be resolved before the corresponding tickets are treated 
 - Inconsistent exception mapping when moving validation/parsing logic out of services.
 - Divergent conventions if Wave A tickets are worked in parallel without a short architecture checklist.
 
-## Lightweight Governance Checklist for Every Ticket (00-09)
+## Lightweight Governance Checklist for Every Ticket (00-11)
 
 - Makes explicit whether work is net-new on `main` or adapted from the POC branch.
 - Uses interface-based use case boundary in controller.

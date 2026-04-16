@@ -142,6 +142,25 @@ public interface DomainEventPort {
 4. Keeps `@Transactional`
 5. Retains a legacy bridge `makeDecision(UUID, MakeDecisionRequest)` for existing tests
 
+The bridge method delegates immediately to the command-based signature without adding any logic of its own:
+
+```java
+/**
+ * Legacy entry point retained so that existing tests (which call with a {@link MakeDecisionRequest})
+ * continue to pass without modification.
+ *
+ * @deprecated Use {@link #makeDecision(MakeDecisionCommand)} via the controller instead.
+ */
+@Deprecated
+@AllowApiCaseworker
+@Transactional
+public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
+    makeDecision(makeDecisionCommandFactory.toCommand(applicationId, request));
+}
+```
+
+The canonical example of this pattern is `CreateApplicationService.createApplication(ApplicationCreateRequest)` on branch `DSTEW-1361-Hexagonal-Create-Application-POC`.
+
 ### Step 6: Update controller
 
 ```java

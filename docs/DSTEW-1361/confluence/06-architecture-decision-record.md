@@ -49,7 +49,7 @@ Adopt hexagonal architecture (ports & adapters) for the use case layer, migrated
 ### Compliance
 
 The migration is validated by:
-1. **Automated import checks** — grep for forbidden imports in `domain/` (can be added to CI)
+1. **ArchUnit tests** — once Ticket 11 lands, ArchUnit rules enforce forbidden import directions in CI on every build (e.g., `domain` cannot import from `infra`, `application` cannot import from `api`). Before Ticket 11, a lightweight stopgap is to grep for forbidden imports in `domain/` as part of PR review or a pre-commit hook — but this is not a substitute for automated enforcement.
 2. **Existing test suite** — 565 tests (290 unit + 275 integration) must pass after each migration
-3. **Code review** — each migration PR is reviewed against the conventions established by the CreateApplicationService worked example
+3. **Code review** — each migration PR is reviewed against the conventions established by the `CreateApplicationService` hexagonal migration on branch `DSTEW-1361-Hexagonal-Create-Application-POC`
 

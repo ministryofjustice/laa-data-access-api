@@ -2,7 +2,7 @@
 
 **Status:** Agreed migration plan  
 **Baseline:** `main`  
-**Validated against:** POC branch findings  
+**Validated against:** POC branch `DSTEW-1361-Hexagonal-Create-Application-POC`  
 **Last reviewed:** 2026-04-16
 
 This document provides a consolidated, pragmatic roadmap for migrating the `laa-data-access-api` to a hexagonal architecture. It synthesizes the key design decisions from the exploratory documents in `archive/` into a single, actionable plan.
@@ -80,6 +80,8 @@ With the application logic now fully isolated, we can introduce a pure domain mo
 
 ### Phase 4: Package Realignment & ArchUnit Enforcement
 As the refactoring of each flow completes, we will physically move the classes into the target package structure and enforce the boundaries.
+
+> **Package naming note:** Tickets 00–09 use the **interim package structure** established on the POC branch (`domain/port/inbound/`, `domain/port/outbound/`, `adapter/inbound/rest/`, `adapter/outbound/persistence/`). This is the naming validated by `DSTEW-1361-Hexagonal-Create-Application-POC` and reflected in all future ticket drafts. Phase 4 (Ticket 11) is the explicit step where those interim packages are renamed to the end-state names shown in the Target Architecture section above. Do not apply end-state naming in earlier tickets; doing so would conflict with the tested POC conventions and cause merge churn.
 
 1.  **Move Classes:** Relocate the refactored classes into the packages defined in the "Target Architecture" section.
 2.  **Introduce ArchUnit Tests:** Add tests to the build pipeline that enforce the dependency rules (e.g., `domain` cannot access `infra`, `application` cannot access `api`, etc.).
