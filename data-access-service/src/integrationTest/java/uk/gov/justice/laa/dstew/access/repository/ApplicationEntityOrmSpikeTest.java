@@ -172,4 +172,35 @@ public class ApplicationEntityOrmSpikeTest extends BaseIntegrationTest {
                 .as("Lombok @Builder must not initialise caseworker to a new CaseworkerEntity instance")
                 .isNull();
     }
+
+    // AC7: Loading a managed ApplicationEntity and explicitly setting decision to null
+    // documents whether the DecisionEntity row is deleted or only the FK is nullified.
+    @Test
+    void managedEntity_setDecisionToNull_decisionRowPreservedFkNullified() {
+        // Arrange: persist an application with a decision
+        var application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class,
+                builder -> builder.caseworker(CaseworkerJohnDoe).linkedApplications(Set.of()));
+        var decision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, b -> {});
+        application.setDecision(decision);
+        applicationRepository.saveAndFlush(application);
+        var decisionId = decision.getId();
+        clearCache();
+
+        // Act: load the entity and set decision to null
+        var loaded = applicationRepository.findById(application.getId()).orElseThrow();
+        loaded.setDecision(null);
+        applicationRepository.saveAndFlush(loaded);
+        clearCache();
+
+        // Assert: the FK on application should be nullified
+        var reloaded = applicationRepository.findById(application.getId()).orElseThrow();
+        assertThat(reloaded.getDecision())
+                .as("decision FK must be nullified after explicitly setting decision to null")
+                .isNull();
+
+        // Assert: the DecisionEntity row itself should still exist (no orphan removal expected)
+        assertThat(decisionRepository.findById(decisionId))
+                .as("DecisionEntity row must not be deleted — no orphanRemoval configured")
+                .isPresent();
+    }
 }
