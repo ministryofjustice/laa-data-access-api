@@ -142,7 +142,7 @@ public class GetApplicationTest extends BaseHarnessTest {
   @Test
   public void givenUnknownRole_whenGetApplication_thenReturnForbidden() throws Exception {
     // given
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     ApplicationEntity expectedApplication =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 

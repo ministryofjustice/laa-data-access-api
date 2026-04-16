@@ -1276,7 +1276,7 @@ public class GetApplicationsTest extends BaseHarnessTest {
 
   @Test
   public void givenNoRole_whenGetApplications_thenReturnForbidden() throws Exception {
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATIONS);
 
     assertSecurityHeaders(result);

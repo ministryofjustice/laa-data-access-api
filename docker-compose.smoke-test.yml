@@ -42,7 +42,6 @@ services:
       ENTRA_JWK_SET_URI: ${ENTRA_JWK_SET_URI:-https://dummy-jwk-set-uri}
       ENTRA_AUD: ${ENTRA_AUD:-dummy-aud}
       # Optional feature flags
-      FEATURE_ENABLE_DEV_TOKEN: ${FEATURE_ENABLE_DEV_TOKEN:-true}
       FEATURE_DISABLE_SECURITY: ${FEATURE_DISABLE_SECURITY:-false}
       # Sentry (disabled locally by default)
       SENTRY_ENABLED: ${SENTRY_ENABLED:-false}

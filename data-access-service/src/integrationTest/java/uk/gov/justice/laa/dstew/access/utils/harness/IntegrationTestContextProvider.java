@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.harness;
 
+import no.nav.security.mock.oauth2.MockOAuth2Server;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.Environment;
@@ -13,14 +14,20 @@ public class IntegrationTestContextProvider implements TestContextProvider {
   private static final PostgreSQLContainer<?> postgreSQLContainer =
       new PostgreSQLContainer<>(Constants.POSTGRES_INSTANCE);
 
+  private static final MockOAuth2Server mockOAuth2Server = new MockOAuth2Server();
+
   static {
     postgreSQLContainer.start();
+    mockOAuth2Server.start();
   }
 
   private final ConfigurableApplicationContext applicationContext;
   private final WebTestClient webTestClient;
 
   public IntegrationTestContextProvider() {
+
+    String issuerUrl = mockOAuth2Server.issuerUrl("entra").toString();
+    String jwksUrl = mockOAuth2Server.jwksUrl("entra").toString();
 
     applicationContext =
         new SpringApplicationBuilder(AccessApp.class)
@@ -30,7 +37,9 @@ public class IntegrationTestContextProvider implements TestContextProvider {
                 "--spring.datasource.url=" + postgreSQLContainer.getJdbcUrl(),
                 "--spring.datasource.username=" + postgreSQLContainer.getUsername(),
                 "--spring.datasource.password=" + postgreSQLContainer.getPassword(),
-                "--feature.enable-dev-token=true",
+                "--spring.security.oauth2.resourceserver.jwt.issuer-uri=" + issuerUrl,
+                "--spring.security.oauth2.resourceserver.jwt.jwk-set-uri=" + jwksUrl,
+                "--spring.security.oauth2.resourceserver.jwt.audience=laa-data-access-api",
                 "--feature.disable-security=false");
 
     int port =
@@ -39,6 +48,11 @@ public class IntegrationTestContextProvider implements TestContextProvider {
             .getRequiredProperty("local.server.port", Integer.class);
 
     webTestClient = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
+  }
+
+  /** Expose the mock server so TestTokenFactory can use it. */
+  public static MockOAuth2Server mockOAuth2Server() {
+    return mockOAuth2Server;
   }
 
   @Override
@@ -53,6 +67,6 @@ public class IntegrationTestContextProvider implements TestContextProvider {
 
   @Override
   public void close() {
-    // applicationContext.close();
+    mockOAuth2Server.shutdown();
   }
 }

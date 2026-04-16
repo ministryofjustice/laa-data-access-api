@@ -26,7 +26,7 @@ import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
-import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.TestTokenFactory;
 import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
@@ -78,7 +78,10 @@ public abstract class BaseHarnessTest {
     return persistedDataGenerator.trackedApplicationIds();
   }
 
-  private String currentToken = TestConstants.Tokens.CASEWORKER;
+  /** Token factory for minting real signed JWTs from the mock OAuth2 server. */
+  protected TestTokenFactory tokenFactory;
+
+  private String currentToken;
   private boolean omitToken = false;
 
   @Order(1)
@@ -98,7 +101,8 @@ public abstract class BaseHarnessTest {
     dbCleanliness = harnessProvider.getBean(DatabaseCleanlinessAssertion.class);
     tableRowCountAssertion = harnessProvider.getBean(TableRowCountAssertion.class);
 
-    currentToken = TestConstants.Tokens.CASEWORKER;
+    tokenFactory = new TestTokenFactory(IntegrationTestContextProvider.mockOAuth2Server());
+    currentToken = tokenFactory.caseworkerToken();
     omitToken = false;
 
     // Belt-and-braces: clear any IDs left over from a previous test's failed
@@ -150,6 +154,11 @@ public abstract class BaseHarnessTest {
     this.omitToken = false;
   }
 
+  /** Use a properly-signed JWT with an unknown role (produces 403 Forbidden). */
+  protected void withUnknownToken() {
+    withToken(tokenFactory.unknownRoleToken());
+  }
+
   protected void withNoToken() {
     this.omitToken = true;
   }
@@ -173,7 +182,7 @@ public abstract class BaseHarnessTest {
     }
 
     // Reset token state after each use
-    currentToken = TestConstants.Tokens.CASEWORKER;
+    currentToken = tokenFactory.caseworkerToken();
     omitToken = false;
 
     EntityExchangeResult<byte[]> raw = spec.exchange().expectBody().returnResult();
@@ -245,7 +254,7 @@ public abstract class BaseHarnessTest {
     }
 
     // Reset token state after each use
-    currentToken = TestConstants.Tokens.CASEWORKER;
+    currentToken = tokenFactory.caseworkerToken();
     omitToken = false;
 
     EntityExchangeResult<byte[]> raw = spec.bodyValue(body).exchange().expectBody().returnResult();
@@ -312,7 +321,7 @@ public abstract class BaseHarnessTest {
     }
 
     // Reset token state after each use
-    currentToken = TestConstants.Tokens.CASEWORKER;
+    currentToken = tokenFactory.caseworkerToken();
     omitToken = false;
 
     EntityExchangeResult<byte[]> raw = spec.bodyValue(body).exchange().expectBody().returnResult();

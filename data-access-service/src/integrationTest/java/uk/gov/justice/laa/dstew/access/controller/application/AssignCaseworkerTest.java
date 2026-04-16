@@ -313,7 +313,7 @@ public class AssignCaseworkerTest extends BaseHarnessTest {
 
   @Test
   public void givenReaderRole_whenAssignCaseworker_thenReturnForbidden() throws Exception {
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     CaseworkerAssignRequest caseworkerAssignRequest =
         DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class);
 
@@ -325,7 +325,7 @@ public class AssignCaseworkerTest extends BaseHarnessTest {
 
   @Test
   public void givenUnknownRole_whenAssignCaseworker_thenReturnForbidden() throws Exception {
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     CaseworkerAssignRequest caseworkerAssignRequest =
         DataGenerator.createDefault(CaseworkerAssignRequestGenerator.class);
 

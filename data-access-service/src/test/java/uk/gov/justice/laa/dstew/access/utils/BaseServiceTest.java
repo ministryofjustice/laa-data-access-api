@@ -54,6 +54,8 @@ public class BaseServiceTest {
 
   @MockitoBean protected ServiceNameContext serviceNameContext;
 
+  @MockitoBean protected org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder;
+
   @Autowired protected ObjectMapper objectMapper;
 
   @BeforeEach

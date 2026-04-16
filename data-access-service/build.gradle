@@ -107,8 +107,7 @@ tasks.register('infrastructureTest', Test) {
      'LAA_SMOKE_ACCESS_DB_URL',
      'LAA_SMOKE_ACCESS_DB_USERNAME',
      'LAA_SMOKE_ACCESS_DB_PASSWORD',
-     'FEATURE_DISABLE_SECURITY',
-     'FEATURE_ENABLE_DEV_TOKENS'].each { key ->
+     'FEATURE_DISABLE_SECURITY'].each { key ->
         def value = System.getenv(key)
         if (value) environment key, value
     }
@@ -231,6 +230,8 @@ dependencies {
     // https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide#test-code
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+
+    testImplementation 'no.nav.security:mock-oauth2-server:2.1.10'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
