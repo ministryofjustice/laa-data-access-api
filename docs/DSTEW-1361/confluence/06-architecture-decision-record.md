@@ -1,8 +1,10 @@
 # Hexagonal Architecture Migration — Architecture Decision Record
 
-**Status:** ADR supporting note  
+> **Archived:** This document is an informal supporting note produced during the DSTEW-1361 design phase. It has been superseded by the formal ADR at `master-plan/01-adr-016-adopt-hexagonal-architecture.md` and is retained here for historical context only.
+
+**Status:** Archived  
 **Baseline:** `main`  
-**Validated against:** POC branch findings  
+**Validated against:** POC branch `DSTEW-1361-Hexagonal-Create-Application-POC`  
 **Last reviewed:** 2026-04-16
 
 ## ADR-001: Adopt Hexagonal Architecture for Use Case Layer
