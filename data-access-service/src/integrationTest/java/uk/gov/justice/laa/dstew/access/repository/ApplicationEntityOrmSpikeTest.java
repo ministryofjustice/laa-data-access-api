@@ -41,6 +41,10 @@ public class ApplicationEntityOrmSpikeTest extends BaseIntegrationTest {
         assertThat(reloaded.getDecision())
                 .as("decision must not be nullified by a scalar-only partial update (managed entity)")
                 .isNotNull();
+        assertThat(reloaded.getDecision().getId())
+                .as("decision_id FK must not be nullified by a scalar-only partial update (managed entity)")
+                .isEqualTo(decision.getId());
+        assertThat(reloaded.getDecision().getId()).isEqualTo(decision.getId());
         assertThat(reloaded.getCaseworker())
                 .as("caseworker must not be nullified by a scalar-only partial update (managed entity)")
                 .isNotNull();
@@ -70,6 +74,9 @@ public class ApplicationEntityOrmSpikeTest extends BaseIntegrationTest {
         assertThat(reloaded.getDecision())
                 .as("decision FK must not be nullified when merging a detached entity with uninitialised LAZY proxy")
                 .isNotNull();
+        assertThat(reloaded.getDecision().getId())
+                .as("decision_id FK must match original after merging a detached entity")
+                .isEqualTo(decision.getId());
         assertThat(reloaded.getCaseworker())
                 .as("caseworker FK must not be nullified when merging a detached entity with uninitialised LAZY proxy")
                 .isNotNull();
