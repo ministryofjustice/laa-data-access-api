@@ -1,4 +1,4 @@
-# Ticket Sequencing and Dependencies (01-09)
+# Ticket Sequencing and Dependencies (00-09)
 
 **Status:** Sequencing draft  
 **Baseline:** `main`  
@@ -12,29 +12,31 @@ This planning note defines a recommended implementation sequence for the DSTEW-1
 
 ## Recommended Delivery Order
 
-1. Ticket 01: Split Make Decision into Use Case + Command Factory
-2. Ticket 02: Standardise Controller Boundary and Security Placement
-3. Ticket 07: Implement Hexagonal Changes for Update Application Flow
-4. Ticket 08: Implement Hexagonal Changes for Application Notes Flow
-5. Ticket 09: Implement Hexagonal Changes for Caseworker Assignment Flow
-6. Ticket 03: Introduce First Outbound Ports for Create Flow
-7. Ticket 04: Align Make Decision with Outbound Ports
-8. Ticket 05: Introduce Domain Model for Application Aggregate
-9. Ticket 06: Transaction Boundary and Cross-Cutting Hardening
+1. Ticket 00: Prepare POC Work for Application to Main
+2. Ticket 01: Split Make Decision into Use Case + Command Factory
+3. Ticket 02: Standardise Controller Boundary and Security Placement
+4. Ticket 07: Implement Hexagonal Changes for Update Application Flow
+5. Ticket 08: Implement Hexagonal Changes for Application Notes Flow
+6. Ticket 09: Implement Hexagonal Changes for Caseworker Assignment Flow
+7. Ticket 03: Introduce First Outbound Ports for Create Flow
+8. Ticket 04: Align Make Decision with Outbound Ports
+9. Ticket 05: Introduce Domain Model for Application Aggregate
+10. Ticket 06: Transaction Boundary and Cross-Cutting Hardening
 
 ## Dependency Matrix
 
 | Ticket | Depends On | Dependency Type | Reason |
 |---|---|---|---|
-| 01 | 04-use-case-interface-with-command-factory baseline implementation | Hard | Establishes create-flow pattern and naming conventions that make-decision should mirror |
-| 02 | 01 | Soft | Boundary standardization is easier after both create and make-decision use case splits are in place |
-| 07 | 02 | Soft | Update flow can be migrated earlier, but controller boundary conventions reduce rework |
-| 08 | 02 | Soft | Same as update flow: preferred to align boundary conventions first |
-| 09 | 02 | Soft | Caseworker flow migration benefits from consistent controller/use case boundary patterns |
-| 03 | 04-use-case-interface-with-command-factory baseline implementation | Hard | Create outbound ports should be applied to already-extracted create use case |
-| 04 | 01, 03 | Hard | Make-decision port migration should follow make-decision split and reuse create port/adaptor pattern |
-| 05 | 03, 04 | Hard | Domain model introduction is safer after both major write flows already depend on outbound ports |
-| 06 | 03, 04, 05 | Hard | Hardening transaction/cross-cutting placement requires stable architectural boundaries |
+| 00 | None | — | Establishes how validated POC work will be reconciled to `main` before delivery starts |
+| 01 | 00, 04-use-case-interface-with-command-factory baseline implementation | Hard | Reconciles any existing POC make-decision work and establishes the create-flow pattern/naming conventions it should mirror |
+| 02 | 00, 01 | Soft | Boundary standardization is easier after POC reconciliation and both create/make-decision use case splits are in place |
+| 07 | 00, 02 | Soft | Update flow can be migrated earlier, but POC cleanup and controller boundary conventions reduce rework |
+| 08 | 00, 02 | Soft | Same as update flow: preferred to align boundary conventions first |
+| 09 | 00, 02 | Soft | Caseworker flow migration benefits from consistent controller/use case boundary patterns |
+| 03 | 00, 04-use-case-interface-with-command-factory baseline implementation | Hard | Create outbound ports should be applied to the reconciled create use case |
+| 04 | 00, 01, 03 | Hard | Make-decision port migration should follow make-decision split and reuse create port/adaptor pattern |
+| 05 | 00, 03, 04 | Hard | Domain model introduction is safer after both major write flows already depend on outbound ports |
+| 06 | 00, 03, 04, 05 | Hard | Hardening transaction/cross-cutting placement requires stable architectural boundaries |
 
 ## Parallelization Guidance
 
@@ -63,8 +65,9 @@ Rationale:
 ## Suggested Milestone Plan
 
 ### Milestone 1: Use Case Boundary Consistency
-Includes: 01, 02
+Includes: 00, 01, 02
 Outcome:
+- POC work is reconciled into a clean plan for `main`.
 - Create and make-decision both command-driven at the controller boundary.
 - Security and validation placement is standardized.
 
@@ -112,8 +115,9 @@ These decisions should be resolved before the corresponding tickets are treated 
 - Inconsistent exception mapping when moving validation/parsing logic out of services.
 - Divergent conventions if Wave A tickets are worked in parallel without a short architecture checklist.
 
-## Lightweight Governance Checklist for Every Ticket (01-09)
+## Lightweight Governance Checklist for Every Ticket (00-09)
 
+- Makes explicit whether work is net-new on `main` or adapted from the POC branch.
 - Uses interface-based use case boundary in controller.
 - Uses command object input for write-path use case.
 - Places API payload validation/parsing before use case boundary.

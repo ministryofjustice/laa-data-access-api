@@ -47,6 +47,11 @@ The `domain` layer will have zero external dependencies.
 
 The migration will be executed in phases to minimize risk and disruption.
 
+### Phase 0: POC Reconciliation (If Reusing Branch Work)
+If the team intends to apply validated POC work onto `main`, start with a short reconciliation step to clean up, decompose, and align that work with the ticket plan before implementation begins.
+
+This step is captured as `future tickets/00-prepare-poc-work-for-main-application.md`.
+
 ### Phase 1: Use Case Boundary Stabilization (Lightweight First)
 The first step is to create a "seam" between the API layer and the application layer without touching the persistence layer.
 
