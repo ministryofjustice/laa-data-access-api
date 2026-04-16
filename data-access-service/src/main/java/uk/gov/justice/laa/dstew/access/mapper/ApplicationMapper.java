@@ -103,7 +103,7 @@ public interface ApplicationMapper {
     application.setUsedDelegatedFunctions(entity.getUsedDelegatedFunctions());
     application.setAutoGrant(entity.getIsAutoGranted());
     if (entity.getDecision() != null) {
-      application.setOverallDecision(entity.getDecision().getOverallDecision());
+      application.setDecisionStatus(entity.getDecision().getOverallDecision());
     }
     application.setApplicationType(ApplicationType.INITIAL);
     application.setOpponents(extractOpponents(entity.getApplicationContent()));
