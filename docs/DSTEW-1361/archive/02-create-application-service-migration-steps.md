@@ -1,5 +1,12 @@
 # Step-by-Step: Migrate `CreateApplicationService` to Hexagonal Architecture
 
+**Status:** Archived POC implementation plan  
+**Baseline:** POC branch exploration  
+**Validated against:** `CreateApplication` proof-of-concept work  
+**Last reviewed:** 2026-04-16
+
+This file is preserved as historical implementation guidance from the POC branch and is not the live plan for `main`.
+
 ## Current State
 
 `CreateApplicationService` lives in `service/usecase/` and directly depends on:

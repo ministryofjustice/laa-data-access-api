@@ -1,5 +1,10 @@
 # Hexagonal Architecture Migration — Architecture Decision Record
 
+**Status:** ADR supporting note  
+**Baseline:** `main`  
+**Validated against:** POC branch findings  
+**Last reviewed:** 2026-04-16
+
 ## ADR-001: Adopt Hexagonal Architecture for Use Case Layer
 
 **Status:** Proposed  

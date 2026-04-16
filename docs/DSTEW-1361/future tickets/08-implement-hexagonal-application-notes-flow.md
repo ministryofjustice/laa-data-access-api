@@ -1,5 +1,12 @@
 # Ticket 08: Implement Hexagonal Changes for Application Notes Flow
 
+**Status:** Ticket draft  
+**Baseline:** `main`  
+**Validated against:** `CreateApplication` POC branch pattern  
+**Last reviewed:** 2026-04-16
+
+Assumption: scope is described relative to `main`. Reuse the controller -> factory -> use case pattern proven on the POC branch.
+
 ## Jira Summary
 Migrate application-notes write path to hexagonal structure with dedicated use case abstraction, command model, and outbound ports/adapters.
 

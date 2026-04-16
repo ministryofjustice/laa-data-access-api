@@ -1,5 +1,12 @@
 # Ticket 11: Reorganise Packages to Hexagonal Structure and Enable ArchUnit
 
+**Status:** Ticket draft  
+**Baseline:** `main`  
+**Validated against:** Target architecture design and POC branch patterns  
+**Last reviewed:** 2026-04-16
+
+Assumption: scope is described relative to `main`. This ticket should follow successful use-case and port migration slices rather than precede them.
+
 ## Jira Summary
 After initial use-case and port/adaptor refactors are stable, reorganise package/folder structure to a conventional hexagonal layout and introduce ArchUnit rules to enforce architecture boundaries.
 

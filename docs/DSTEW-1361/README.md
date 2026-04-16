@@ -2,11 +2,12 @@
 
 This folder has been reorganized to clarify the hexagonal architecture migration plan.
 
-## Status
+**Status:** Index and navigation note  
+**Baseline:** `main`  
+**Validated against:** POC branch context  
+**Last reviewed:** 2026-04-16
 
-- **Main branch baseline:** No hexagonal architecture changes are merged.
-- **POC branch status:** `CreateApplication` and parts of `MakeDecision` have been prototyped to validate the approach.
-- **How to read this folder:** Some documents describe the `main` baseline, some capture findings from the POC branch, and some describe the intended target state. Prefer the master plan for the current agreed direction.
+How to read this folder: some documents describe the `main` baseline, some capture findings from the POC branch, and some describe the intended target state. Prefer the master plan for the current agreed direction.
 
 - **`master-plan/`**: This directory now contains the single, consolidated design document (`00-master-plan.md`) that outlines the motivation, target architecture, and phased strategy. This is the recommended starting point for understanding the migration.
 

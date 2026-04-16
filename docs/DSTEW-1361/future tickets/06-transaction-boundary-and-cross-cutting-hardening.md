@@ -1,5 +1,12 @@
 # Ticket 06: Transaction Boundary and Cross-Cutting Hardening
 
+**Status:** Ticket draft  
+**Baseline:** `main`  
+**Validated against:** POC branch boundary patterns  
+**Last reviewed:** 2026-04-16
+
+Assumption: scope is described relative to `main`. Resolve the intended transaction-boundary policy before treating this ticket as implementation-ready.
+
 ## Jira Summary
 Harden transaction and cross-cutting concern placement after use case and port/adaptor migration is in place.
 

@@ -1,5 +1,12 @@
 # Use Case Interface Split with Command Factory
 
+**Status:** Archived design step  
+**Baseline:** Early `main`-style service structure  
+**Validated against:** Early POC design exploration  
+**Last reviewed:** 2026-04-16
+
+This document captures an incremental design step considered during POC exploration and is retained for historical context.
+
 ## Summary
 
 This document describes a lightweight first step towards hexagonal architecture when the current baseline is a single `ApplicationService` class containing all the application change logic.

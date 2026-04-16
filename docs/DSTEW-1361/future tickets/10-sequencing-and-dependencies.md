@@ -1,6 +1,11 @@
 # Ticket Sequencing and Dependencies (01-09)
 
-**Status:** Sequencing proposal written against the `main` branch baseline. If validated POC work is reused, re-check ticket order and scope before implementation.
+**Status:** Sequencing draft  
+**Baseline:** `main`  
+**Validated against:** POC branch patterns where noted  
+**Last reviewed:** 2026-04-16
+
+Assumption: sequence is written relative to `main`. If validated POC work is reused, re-check ticket order and scope before implementation.
 
 ## Purpose
 This planning note defines a recommended implementation sequence for the DSTEW-1361 future tickets and highlights hard dependencies, soft dependencies, and opportunities to run work in parallel.

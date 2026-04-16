@@ -1,5 +1,12 @@
 # DSTEW-1361: Hexagonal Architecture — CreateApplication POC
 
+**Status:** Archived POC output summary  
+**Baseline:** POC branch  
+**Validated against:** `CreateApplication` proof-of-concept work  
+**Last reviewed:** 2026-04-16
+
+This file summarizes POC branch work and should not be read as the merged state of `main`.
+
 ## Summary
 
 Migrate `CreateApplicationService` to hexagonal (ports & adapters) architecture as a proof of concept, establishing the pattern and shared infrastructure for future use case migrations.

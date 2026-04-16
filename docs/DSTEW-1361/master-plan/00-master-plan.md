@@ -1,13 +1,13 @@
 # Hexagonal Architecture Migration Plan
 
+**Status:** Agreed migration plan  
+**Baseline:** `main`  
+**Validated against:** POC branch findings  
+**Last reviewed:** 2026-04-16
+
 This document provides a consolidated, pragmatic roadmap for migrating the `laa-data-access-api` to a hexagonal architecture. It synthesizes the key design decisions from the exploratory documents in `archive/` into a single, actionable plan.
 
-## Status
-
-- **Document role:** Single source of truth for the agreed migration direction.
-- **Main branch baseline:** No hexagonal architecture changes are merged.
-- **POC branch status:** `CreateApplication` and parts of `MakeDecision` have been prototyped to validate the approach.
-- **Interpretation rule:** Where other documents describe completed hexagonal work, read those statements as referring to the POC branch unless explicitly stated otherwise.
+This document is the single source of truth for the agreed migration direction. Where other documents describe completed hexagonal work, read those statements as referring to the POC branch unless explicitly stated otherwise.
 
 ## 1. Motivation & Design Goals
 

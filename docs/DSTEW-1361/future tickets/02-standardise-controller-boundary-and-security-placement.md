@@ -1,5 +1,12 @@
 # Ticket 02: Standardise Controller Boundary and Security Placement
 
+**Status:** Ticket draft  
+**Baseline:** `main`  
+**Validated against:** `CreateApplication` POC branch pattern and partial `MakeDecision` POC work  
+**Last reviewed:** 2026-04-16
+
+Assumption: scope is described relative to `main`. Reuse validated POC boundary patterns where they already exist.
+
 ## Jira Summary
 Apply a consistent controller boundary pattern across application endpoints: security on controllers, API validation/parsing before use case invocation, and interface-based use case dependencies.
 

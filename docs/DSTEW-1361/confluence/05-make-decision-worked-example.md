@@ -1,5 +1,10 @@
 # Hexagonal Architecture Migration — MakeDecisionService Worked Example
 
+**Status:** Worked example and design note  
+**Baseline:** `main`  
+**Validated against:** Current `MakeDecisionService` structure and partial POC work  
+**Last reviewed:** 2026-04-16
+
 ## Current State
 
 `MakeDecisionService` (249 lines) is the most complex service in the codebase. It directly depends on **5 repositories** and **6 entity types**:

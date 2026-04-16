@@ -1,5 +1,12 @@
 # Ticket 07: Implement Hexagonal Changes for Update Application Flow
 
+**Status:** Ticket draft  
+**Baseline:** `main`  
+**Validated against:** `CreateApplication` POC branch pattern  
+**Last reviewed:** 2026-04-16
+
+Assumption: scope is described relative to `main`. Use the established create-flow pattern unless update-specific requirements force a different shape.
+
 ## Jira Summary
 Migrate update-application write path from service-centric implementation to hexagonal structure using use case interface, command factory, and outbound ports/adapters.
 

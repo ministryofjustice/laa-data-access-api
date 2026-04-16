@@ -1,5 +1,12 @@
 # Ticket 09: Implement Hexagonal Changes for Caseworker Assignment Flow
 
+**Status:** Ticket draft  
+**Baseline:** `main`  
+**Validated against:** `CreateApplication` POC branch pattern  
+**Last reviewed:** 2026-04-16
+
+Assumption: scope is described relative to `main`. Reuse validated write-flow patterns, but keep the final use case split aligned to the domain model agreed at implementation time.
+
 ## Jira Summary
 Migrate caseworker assignment/unassignment flow to hexagonal structure with dedicated use case interfaces, command factories, and outbound ports/adapters.
 

@@ -1,5 +1,10 @@
 # Hexagonal Architecture Migration — Impact Assessment
 
+**Status:** Impact assessment  
+**Baseline:** `main`  
+**Validated against:** `CreateApplication` POC branch work  
+**Last reviewed:** 2026-04-16
+
 ## What Changes?
 
 ### New packages introduced
@@ -19,7 +24,7 @@ The existing `entity/`, `repository/`, `mapper/`, `model/`, `controller/`, `serv
 
 ### What is added per use case migration
 
-Based on the `CreateApplicationService` migration (actual counts):
+Based on the `CreateApplicationService` migration on the POC branch (actual counts):
 
 | Artefact | Files | Total lines |
 |---|---|---|
@@ -33,7 +38,7 @@ Based on the `CreateApplicationService` migration (actual counts):
 
 ### What is reusable across use cases
 
-Several artefacts created for `CreateApplicationService` are **shared infrastructure** that won't need to be recreated:
+Several artefacts created for `CreateApplicationService` on the POC branch are **shared infrastructure** that won't need to be recreated if that work is reused:
 
 - `DomainEntityMapper` — maps `Application` ↔ `ApplicationEntity`, `Individual` ↔ `IndividualEntity`. Extended as new domain models are added.
 - `ApplicationPersistenceAdapter` — wraps `ApplicationRepository`. Any use case that reads/writes applications reuses this.
@@ -58,7 +63,7 @@ Subsequent use cases will only need:
 
 | Concern | Impact |
 |---|---|
-| **Learning curve** | The pattern is straightforward. The `CreateApplicationService` migration serves as a complete worked example. |
+| **Learning curve** | The pattern is straightforward. The `CreateApplicationService` POC migration serves as a complete worked example. |
 | **PR size** | Each use case migration is a self-contained PR. Expect 10–15 new files, most of which are small interfaces or thin adapters. |
 | **Merge conflicts** | Low risk — new packages don't overlap with existing code. The only files modified are the controller and the service being migrated. |
 | **Feature work** | Can continue in parallel. New features written against the old pattern still work. Migration is purely structural. |

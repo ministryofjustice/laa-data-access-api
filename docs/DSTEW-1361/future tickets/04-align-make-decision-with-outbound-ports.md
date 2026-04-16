@@ -1,5 +1,12 @@
 # Ticket 04: Align Make Decision with Outbound Ports
 
+**Status:** Ticket draft  
+**Baseline:** `main`  
+**Validated against:** `CreateApplication` POC branch work and partial `MakeDecision` POC work  
+**Last reviewed:** 2026-04-16
+
+Assumption: scope is described relative to `main`. Reuse the create-flow adapter style and any validated `MakeDecision` POC work where practical.
+
 ## Jira Summary
 Apply the same outbound-port pattern to make-decision flow, keeping adapters thin and behavior stable.
 

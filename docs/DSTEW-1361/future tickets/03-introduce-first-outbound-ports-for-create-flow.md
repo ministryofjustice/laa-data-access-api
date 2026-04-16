@@ -1,5 +1,12 @@
 # Ticket 03: Introduce First Outbound Ports for Create Flow
 
+**Status:** Ticket draft  
+**Baseline:** `main`  
+**Validated against:** `CreateApplication` POC branch work  
+**Last reviewed:** 2026-04-16
+
+Assumption: scope is described relative to `main`. If the POC branch is reused, focus this ticket on reconciling and hardening the create-flow port pattern.
+
 ## Jira Summary
 Introduce outbound ports for the create-application path only, with thin adapters over existing repository/services, while preserving behavior.
 

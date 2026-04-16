@@ -1,6 +1,11 @@
 # Ticket 01: Split Make Decision into Use Case + Command Factory
 
-**Baseline note:** This ticket is written against the `main` branch baseline, where no hexagonal changes are merged. The POC branch already contains partial `MakeDecision` work; if that branch is reused, treat this ticket as a reconciliation and uplift exercise rather than a net-new extraction.
+**Status:** Ticket draft  
+**Baseline:** `main`  
+**Validated against:** `CreateApplication` POC branch pattern and partial `MakeDecision` POC work  
+**Last reviewed:** 2026-04-16
+
+Assumption: scope is described relative to `main`. If POC changes are reused, treat this ticket as reconciliation and uplift work rather than a net-new extraction.
 
 ## Jira Summary
 Extract make-decision logic from `ApplicationService` into a dedicated use case abstraction and implementation, and introduce a command factory so API validation/parsing concerns are outside the use case.

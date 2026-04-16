@@ -1,5 +1,12 @@
 # Folder Structure and ArchUnit Design
 
+**Status:** Archived architecture design note  
+**Baseline:** Target-state design exploration  
+**Validated against:** POC branch patterns where noted  
+**Last reviewed:** 2026-04-16
+
+This document is retained for historical design context. Refer to the master plan and current ticket drafts for the live migration sequence.
+
 ## Purpose
 This document defines a pragmatic target folder structure for hexagonal architecture and explains how ArchUnit should be introduced to enforce boundaries as migration progresses.
 

@@ -1,5 +1,12 @@
 # Ticket 05: Introduce Domain Model for Application Aggregate
 
+**Status:** Ticket draft  
+**Baseline:** `main`  
+**Validated against:** `CreateApplication` POC branch work and partial `MakeDecision` POC work  
+**Last reviewed:** 2026-04-16
+
+Assumption: scope is described relative to `main`. Start with the smallest domain model that supports migrated write flows unless a broader model is explicitly agreed.
+
 ## Jira Summary
 Introduce a first-cut domain model for the application aggregate used by migrated write use cases, and confine JPA entities to adapters.
 
