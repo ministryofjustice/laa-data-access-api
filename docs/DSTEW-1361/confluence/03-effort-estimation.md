@@ -1,12 +1,14 @@
 # Hexagonal Architecture Migration — Effort Estimation
 
+**Status:** Estimate based on the `main` branch baseline, informed by implementation experience on the POC branch.
+
 ## Effort Per Use Case
 
-Based on actual time and artefact counts from the `CreateApplicationService` migration.
+Based on actual time and artefact counts from the `CreateApplicationService` migration on the POC branch.
 
 ### A note on the existing structure
 
-`CreateApplicationService` and `MakeDecisionService` already live in the `service/usecase/` package — they were previously extracted from `ApplicationService` into dedicated classes. This extraction was a positive step: each class now owns a single use case with a clear boundary.
+On the POC branch, `CreateApplicationService` and `MakeDecisionService` already live in the `service/usecase/` package — they were previously extracted from `ApplicationService` into dedicated classes. This extraction was a positive step: each class now owns a single use case with a clear boundary.
 
 However, the extraction was only structural — the services still depend directly on JPA repositories and entities. The hexagonal migration takes the next step: replacing those concrete infrastructure dependencies with port interfaces so the business logic is fully decoupled.
 
@@ -35,7 +37,7 @@ These are unrelated operations bundled into one class. Migrating them to hexagon
 
 | Service | Lines | Entity/repo imports | New domain models needed | Size | Est. effort |
 |---|---|---|---|---|---|
-| `CreateApplicationService` | 183 | 0 (migrated) | ✅ Done | — | ✅ Complete |
+| `CreateApplicationService` | 183 | 0 (migrated on POC branch) | ✅ Done | — | ✅ Complete |
 | `MakeDecisionService` | 249 | 11 | `Decision`, `MeritsDecision`, `Proceeding`, `Certificate` | Large | 2–3 days |
 | `ApplicationService` (6 operations) | 298 | 9 | Reuses existing + `Note`, `Caseworker` | 6 × Small/Medium | 3–5 days (incremental) |
 | `ApplicationSummaryService` | 178 | 4 | `ApplicationSummary` | Medium | 1–2 days |
@@ -49,12 +51,12 @@ These are unrelated operations bundled into one class. Migrating them to hexagon
 
 | Phase | Services | Effort |
 |---|---|---|
-| Phase 1 (proof of concept) | `CreateApplicationService` | ✅ Complete |
+| Phase 1 (proof of concept on POC branch) | `CreateApplicationService` | ✅ Complete |
 | Phase 2 (next use case) | `MakeDecisionService` | 2–3 days |
 | Phase 3 (decompose ApplicationService) | `ApplicationService` → 6 focused use cases | 3–5 days (1 PR per operation) |
 | Phase 4 (medium services) | `ApplicationSummaryService`, `DomainEventService`, `IndividualsService` | 3–4 days |
 | Phase 5 (small services) | `CertificateService`, `CaseworkerService`, `ProceedingsService` | 1–2 days |
-| **Total** | **All services** | **~10–15 days** |
+| **Total** | **All services from the `main` baseline** | **~10–15 days** |
 
 > **Note:** Later phases benefit from reusable infrastructure (domain models, adapters, mapper) created in earlier phases. The estimates above already account for this — Phase 5 services are trivially small because their domain models and adapters will already exist.
 >

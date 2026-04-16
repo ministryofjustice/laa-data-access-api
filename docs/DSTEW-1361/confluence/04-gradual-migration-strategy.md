@@ -1,5 +1,7 @@
 # Hexagonal Architecture Migration — Gradual Migration Strategy
 
+**Status:** Proposed delivery strategy from the `main` branch baseline, informed by the POC branch.
+
 ## Guiding Principles
 
 1. **One use case per PR** — each migration is self-contained and independently reviewable.
@@ -10,14 +12,16 @@
 
 ## Recommended Migration Order
 
-### Phase 1: Proof of Concept ✅ Complete
+### Phase 1: Proof of Concept ✅ Complete on POC Branch
 
-**`CreateApplicationService`** — already migrated. This established:
-- Package structure (`domain/`, `adapter/`)
+**`CreateApplicationService`** — already migrated on the POC branch. This established:
+- An interim package structure (`domain/`, `adapter/`)
 - Shared domain models (`Application`, `Individual`)
 - Shared infrastructure (`DomainEntityMapper`, `ApplicationPersistenceAdapter`)
 - The `CreateApplicationCommandFactory` pattern for API → domain conversion
 - The legacy bridge method pattern for backward-compatible test support
+
+These points describe validated POC work, not changes already merged to `main`.
 
 ### Phase 2: Second Use Case — `MakeDecisionService`
 
@@ -39,7 +43,7 @@ Each can be its own PR, migrated independently within the `ApplicationService`.
 
 `ApplicationSummaryService`, `DomainEventService`, `IndividualsService` — these are read-heavy services with fewer entity dependencies. By this phase, most domain models and persistence adapters already exist.
 
-**Note on `DomainEventService`:** This service is already consumed via `DomainEventPort` by `CreateApplicationService`. Its full migration would mean refactoring it to accept domain types instead of entities — making the `DomainEventAdapter` trivial or unnecessary.
+**Note on `DomainEventService`:** On the POC branch, this service is already consumed via `DomainEventPort` by `CreateApplicationService`. Its full migration would mean refactoring it to accept domain types instead of entities — making the `DomainEventAdapter` trivial or unnecessary.
 
 ### Phase 5: Small Services
 
@@ -73,7 +77,7 @@ There's no requirement to migrate everything. The architecture supports a **mixe
 | **Medium** | `ApplicationService` | Large and multi-purpose, but relatively stable |
 | **Low** | Everything else | Small, simple, and unlikely to need the isolation benefits |
 
-If the team only migrates the two high-priority services, the investment is ~3 days of work and covers the most complex business logic in the codebase.
+If the team only migrates the two high-priority services, the investment from the `main` baseline is ~3 days of work and covers the most complex business logic in the codebase.
 
 ## Conventions for New Code
 

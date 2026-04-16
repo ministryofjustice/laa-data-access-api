@@ -1,5 +1,7 @@
 # Hexagonal Architecture Overview for `laa-data-access-api`
 
+> **Archived POC design note:** This document captures the proof-of-concept design used during branch exploration. It does **not** describe the `main` branch as merged today, and its package examples are an interim POC structure rather than the final end-state package naming in the master plan.
+
 ## What is Hexagonal Architecture?
 
 Hexagonal architecture (also called Ports & Adapters) organises code into three concentric layers:
@@ -81,6 +83,8 @@ This ticket migrates **one use case** — `CreateApplicationService` — to a he
 
 Future tickets will migrate `MakeDecisionService` and the remaining services in the same pattern.
 
+At the time of writing, this reflected planned or validated POC work rather than changes merged to `main`.
+
 ---
 
 ## Target Package Structure
@@ -116,6 +120,8 @@ uk.gov.justice.laa.dstew.access
 ```
 
 > **Note:** The existing packages (`entity/`, `repository/`, `mapper/`, `controller/`) remain in place. Adapters wrap them. We are not restructuring the entire project — just introducing the domain layer and wiring the use case through ports.
+
+> **Status note:** The master plan now describes a different end-state package naming model (`api`, `application`, `infra`). The structure shown here is the interim POC layout used to validate the approach.
 
 ---
 

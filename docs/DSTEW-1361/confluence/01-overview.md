@@ -1,5 +1,7 @@
 # Hexagonal Architecture Migration — Overview
 
+**Status:** Summary note based on the `main` branch baseline and validated findings from the POC branch.
+
 ## What Is This?
 
 A proposal to incrementally migrate the `laa-data-access-api` service layer from its current structure — where use cases depend directly on JPA repositories, entities, and OpenAPI-generated DTOs — to a **hexagonal (ports & adapters) architecture** where business logic is isolated behind well-defined interfaces.
@@ -16,12 +18,14 @@ A proposal to incrementally migrate the `laa-data-access-api` service layer from
 
 ## What Has Already Been Done?
 
-`CreateApplicationService` has been migrated as a **proof of concept**. This established:
+On the **POC branch**, `CreateApplicationService` has been migrated as a proof of concept. This established:
 
-- The package structure (`domain/`, `adapter/`)
+- An interim package structure (`domain/`, `adapter/`)
 - Conventions for domain models, port interfaces, command objects, and adapters
-- A working pattern that all existing tests (290 unit, 275 integration) pass against
+- A working pattern that all existing tests (290 unit, 275 integration) pass against as of 2026-04-16 on the POC branch
 - A reusable `DomainEntityMapper` and persistence adapter that other use cases can share
+
+The final agreed package layout remains the end-state structure described in the master plan.
 
 ## What Does the Target Look Like?
 

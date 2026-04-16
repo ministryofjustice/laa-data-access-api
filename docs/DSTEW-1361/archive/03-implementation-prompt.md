@@ -1,5 +1,7 @@
 # Implementation Prompt: Migrate `CreateApplicationService` to Hexagonal Architecture
 
+> **Archived implementation prompt:** This file is preserved for historical context from the POC branch exploration. It is not the live execution guide for current work on `main`, and some referenced paths reflect the older archive layout.
+
 ## Context
 
 You are working on `laa-data-access-api`, a Spring Boot 3 / Gradle multi-module project (Java 21, Lombok, MapStruct, Spring Data JPA, Jackson). The module `data-access-service` contains the application logic.

@@ -2,7 +2,7 @@
 
 ## Summary
 
-This document describes a lightweight first step towards hexagonal architecture when the current baseline is a single `ApplicationService` class containing both create-application and make-decision behaviour.
+This document describes a lightweight first step towards hexagonal architecture when the current baseline is a single `ApplicationService` class containing all the application change logic.
 
 The proposed change is to extract create-application into a dedicated use case abstraction and implementation, introduce a `CreateApplicationCommand` input model, and build that command via a dedicated factory.
 
