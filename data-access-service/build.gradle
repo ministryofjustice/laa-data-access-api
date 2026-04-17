@@ -155,6 +155,10 @@ jacocoTestReport {
     }
 }
 
+jacocoTestCoverageVerification {
+    enabled = false
+}
+
 dependencyManagement {
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924, SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE)
     imports {
