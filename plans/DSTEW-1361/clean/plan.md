@@ -494,9 +494,8 @@ public class CreateApplicationUseCase {
 
     public CreateApplicationUseCase(…) { /* constructor injection */ }
 
-    @EnforceRole(RequiredRole.API_CASEWORKER)
+    @EnforceRole(anyOf = RequiredRole.API_CASEWORKER)
     public UUID execute(CreateApplicationCommand command) {
-        // 1. parse content — ApplicationContentParserService reads Map<String,Object>
         //    and returns domain types; ApplicationContent (model) never enters the use case
         ParsedAppContentDetails details = contentParser.parseFromMap(command.applicationContent());
 
@@ -701,7 +700,7 @@ Scenarios to cover (mirroring `CreateApplicationTest`):
 | Missing lead application | `ResourceNotFoundException` thrown |
 | Missing associated application | `ValidationException` from `UseCaseValidations` |
 | Invalid content (no lead proceeding) | `ValidationException` from parser |
-| Security annotation present | `execute` method carries `@EnforceRole(RequiredRole.API_CASEWORKER)` (reflection assertion) |
+| Security annotation present | `execute` method carries `@EnforceRole(anyOf = RequiredRole.API_CASEWORKER)` (reflection assertion) |
 
 ```java
 @Test
@@ -711,7 +710,7 @@ void execute_isAnnotatedWithCorrectRole() throws NoSuchMethodException {
     var annotation = method.getAnnotation(EnforceRole.class);
 
     assertThat(annotation).isNotNull();
-    assertThat(annotation.value()).isEqualTo(RequiredRole.API_CASEWORKER);
+    assertThat(annotation.anyOf()).contains(RequiredRole.API_CASEWORKER);
 }
 ```
 
@@ -727,22 +726,24 @@ class EnforceRoleAspectTest {
     @Autowired StubUseCase stubUseCase;
 
     @Test
-    void callsAccessPolicyWithCorrectRole() {
+    void passesFullAnnotationToAccessPolicy() {
         stubUseCase.doSomething();
-        verify(accessPolicy).enforce(RequiredRole.API_CASEWORKER);
+        ArgumentCaptor<EnforceRole> captor = ArgumentCaptor.forClass(EnforceRole.class);
+        verify(accessPolicy).enforce(captor.capture());
+        assertThat(captor.getValue().anyOf()).containsExactly(RequiredRole.API_CASEWORKER);
     }
 
     @Test
     void throwsWhenAccessPolicyDenies() {
         doThrow(new AccessDeniedException("denied"))
-            .when(accessPolicy).enforce(any());
+            .when(accessPolicy).enforce(any(EnforceRole.class));
         assertThatThrownBy(() -> stubUseCase.doSomething())
             .isInstanceOf(AccessDeniedException.class);
     }
 
     @Component
     static class StubUseCase {
-        @EnforceRole(RequiredRole.API_CASEWORKER)
+        @EnforceRole(anyOf = RequiredRole.API_CASEWORKER)
         public void doSomething() {}
     }
 }
@@ -860,9 +861,11 @@ public class CleanArchitectureTest {
 | `domain/ParsedAppContentDetails.java` | Create (record — domain version) |
 | `domain/ApplicationDomain.java` | Create |
 | `domain/ProceedingDomain.java` | Create |
-| `usecase/shared/security/AccessPolicy.java` | Create |
-| `usecase/shared/security/RequiredRole.java` | Create |
-| `usecase/shared/security/EnforceRole.java` | Create |
+| `usecase/shared/security/AccessPolicy.java` | Create (interface: `enforce(EnforceRole)`) |
+| `usecase/shared/security/RequiredRole.java` | Create (enum: AUTHENTICATED, API_CASEWORKER, ADMIN, SUPERVISOR) |
+| `usecase/shared/security/EnforceRole.java` | Create (annotation with `anyOf`/`allOf` arrays) |
+| `usecase/shared/security/AuthorizationPort.java` | Create (contextual policy interface) |
+| `usecase/shared/security/ApplicationAction.java` | Create (enum: READ, UPDATE, MAKE_DECISION, …) |
 | `usecase/shared/validation/UseCaseValidations.java` | Create |
 | `usecase/shared/ApplicationConstants.java` | Create |
 | `usecase/createapplication/CreateApplicationCommand.java` | Create |
@@ -871,7 +874,8 @@ public class CleanArchitectureTest {
 | `usecase/createapplication/infrastructure/ApplicationGateway.java` | Create |
 | `usecase/createapplication/infrastructure/ProceedingGateway.java` | Create |
 | `usecase/createapplication/infrastructure/DomainEventGateway.java` | Create |
-| `infrastructure/security/SpringSecurityAccessPolicy.java` | Create |
+| `infrastructure/security/SpringSecurityAccessPolicy.java` | Create (evaluates allOf/anyOf) |
+| `infrastructure/security/SpringAuthorizationPort.java` | Create (contextual checks; may load domain state) |
 | `infrastructure/security/EnforceRoleAspect.java` | Create |
 | `infrastructure/jpa/createapplication/ApplicationJpaGateway.java` | Create (no @Component) |
 | `infrastructure/jpa/createapplication/ProceedingJpaGateway.java` | Create (proceedings logic inlined) |
@@ -896,15 +900,16 @@ public class CleanArchitectureTest {
 
 ### 1. Security enforcement approach
 `@AllowApiCaseworker` must **not** be placed on `CreateApplicationUseCase`. Security is handled via:
-- `@EnforceRole(RequiredRole.API_CASEWORKER)` on `execute(...)` — a plain Java annotation with no
-  Spring imports, defined in `usecase/shared/security/`.
-- `EnforceRoleAspect` in `infrastructure/security/` — intercepts it and delegates to
-  `SpringSecurityAccessPolicy`, which calls `SecurityContextHolder`.
+- `@EnforceRole(anyOf = RequiredRole.API_CASEWORKER)` on `execute(...)` — a plain Java annotation
+  with `anyOf` (OR) and `allOf` (AND) `RequiredRole[]` arrays; zero Spring imports. Defined in
+  `usecase/shared/security/`.
+- `EnforceRoleAspect` in `infrastructure/security/` — intercepts it and passes the whole
+  annotation to `SpringSecurityAccessPolicy`, which evaluates the `allOf`/`anyOf` arrays.
 - `SpringSecurityAccessPolicy.enforce` throws
   `org.springframework.security.access.AccessDeniedException` (a Spring Security type; permitted
   in the infrastructure layer where Spring imports are allowed).
 
-Remove `@AllowApiCaseworker` from the deprecated `ApplicationService.createApplication` to
+Remove `@AllowApiCaseworker` from the deprecated `ApplicationService.createApplication`.
 prevent a double security check.
 
 ### 2. `DomainEventService` refactor scope

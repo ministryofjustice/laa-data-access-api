@@ -44,9 +44,9 @@ uk.gov.justice.laa.dstew.access
 ├── usecase/
 │   ├── shared/
 │   │   ├── security/
-│   │   │   ├── AccessPolicy.java            # Interface: enforce(RequiredRole) — no Spring imports
-│   │   │   ├── RequiredRole.java            # Enum: API_CASEWORKER, ADMIN, …
-│   │   │   └── EnforceRole.java             # Annotation — pure java.lang.annotation
+│   │   │   ├── AuthorizeOperation.java      # Annotation: declares named operation string
+│   │   │   ├── PolicyContext.java           # Record: operation + caller + args (plain Java)
+│   │   │   └── PolicyDecisionPort.java      # Interface: authorize(PolicyContext) — no Spring imports
 │   │   ├── validation/
 │   │   │   └── UseCaseValidations.java      # Business validation helpers (e.g. checkApplicationIdList)
 │   │   └── ApplicationConstants.java        # e.g. APPLICATION_SCHEMA_VERSION
@@ -71,8 +71,9 @@ uk.gov.justice.laa.dstew.access
 │
 ├── infrastructure/
 │   ├── security/
-│   │   ├── SpringSecurityAccessPolicy.java  # Implements AccessPolicy via SecurityContextHolder
-│   │   └── EnforceRoleAspect.java           # @Aspect that intercepts @EnforceRole
+│   │   ├── LocalPolicyDecisionPort.java     # Phase 1: evaluates roles/rules locally
+│   │   ├── ExternalPolicyDecisionPort.java  # Phase 2: calls OPA / external PDP
+│   │   └── PolicyEnforcementAspect.java     # @Aspect: builds PolicyContext, calls port
 │   └── jpa/
 │       └── createapplication/
 │           ├── ApplicationJpaGateway.java   # Implements ApplicationGateway using JPA (no @Component)
@@ -82,7 +83,8 @@ uk.gov.justice.laa.dstew.access
 │           └── ProceedingGatewayMapper.java   # ProceedingDomain ↔ ProceedingEntity (fully reimplemented)
 │
 └── config/
-    └── CreateApplicationConfig.java         # @Configuration — wires the beans together
+    ├── CreateApplicationConfig.java         # @Configuration — wires the beans together
+    └── MethodSecurityConfig.java            # @Configuration — registers PolicyEnforcementInterceptor
 ```
 
 ---
@@ -174,8 +176,11 @@ case requires.
 ### 4. Write the use case class
 In `usecase/<usecasename>/`, write the orchestration logic. The use case:
 - Takes a command/query as input.
-- Is annotated with `@EnforceRole(RequiredRole.API_CASEWORKER)` on `execute(...)` if the
-  operation requires authorisation (see [Security in the use case layer](#security-in-the-use-case-layer)).
+- Is annotated with `@AuthorizeOperation("resource:action")` on `execute(...)` — this is the
+  only security declaration the use case makes. The method body contains **no authorization code**.
+  Convention: `"application:create"`, `"application:makeDecision"`, `"caseworker:assign"`, etc.
+  This string becomes the stable operation identity passed to the `PolicyDecisionPort` and,
+  eventually, to any external PDP.
 - Calls gateway interfaces.
 - Returns a domain type or a simple Java value.
 - Carries `@Transactional` if it writes.
@@ -265,9 +270,23 @@ As each area migrates, tighten or extend the rules to cover it.
 ## Security in the use case layer
 
 Keeping the use case free of Spring annotations (`@AllowApiCaseworker`, `@PreAuthorize`, etc.)
-means security cannot be enforced by AOP alone. The solution is a **Security Port** — a plain
-Java interface that the use case calls as a precondition. Spring provides one implementation;
-any other entry point (CLI tool, batch job, test) provides its own.
+means security cannot be enforced by AOP alone. The solution is a **Policy Decision Port** — a
+plain Java interface that an aspect calls on behalf of the use case. The use case method body
+contains **zero authorization code**. This design is forward-compatible with an external Policy
+Decision Point (OPA, Keycloak Authorization Server, or any bespoke PDP API): when that migration
+happens, only the `PolicyDecisionPort` implementation changes — use case code is untouched.
+
+### Why not `@PreAuthorize` or calling an `AuthorizationPort` in the method body?
+
+- `@PreAuthorize` SpEL expressions are untestable without a Spring context and break silently on
+  parameter rename.
+- Calling a port inside `execute(...)` means authorization logic is scattered across use case
+  bodies and must be changed when moving to an external PDP.
+- An aspect that reads the annotation, the caller identity, and the method arguments can build a
+  complete policy context without any cooperation from the use case — making the use case
+  completely oblivious to authorization.
+
+---
 
 ### Package structure
 
@@ -275,180 +294,341 @@ any other entry point (CLI tool, batch job, test) provides its own.
 usecase/
 └── shared/
     └── security/
-        ├── AccessPolicy.java       ← interface (no Spring imports)
-        ├── RequiredRole.java       ← enum: API_CASEWORKER, ADMIN, …
-        └── EnforceRole.java        ← annotation (no Spring imports — pure java.lang.annotation)
+        ├── AuthorizeOperation.java    ← annotation: declares a named operation string
+        ├── PolicyContext.java         ← record: operation + caller + method args (plain Java)
+        └── PolicyDecisionPort.java    ← interface: authorize(PolicyContext) — no Spring imports
 
 infrastructure/
 └── security/
-    ├── SpringSecurityAccessPolicy.java   ← implements AccessPolicy via SecurityContextHolder
-    └── EnforceRoleAspect.java            ← @Aspect that intercepts @EnforceRole and calls AccessPolicy
+    ├── LocalPolicyDecisionPort.java   ← Phase 1: evaluates roles + rules locally
+    ├── ExternalPolicyDecisionPort.java ← Phase 2: calls OPA / external PDP HTTP API
+    └── PolicyEnforcementAspect.java   ← @Aspect: builds PolicyContext and calls the port
 ```
 
-### The annotation (use case layer — zero Spring imports)
+---
+
+### `@AuthorizeOperation` — declares a stable operation identity (use case layer)
 
 ```java
-// usecase/shared/security/EnforceRole.java
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
+// usecase/shared/security/AuthorizeOperation.java
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface EnforceRole {
-    RequiredRole value();
+public @interface AuthorizeOperation {
+    /**
+     * A stable, human-readable name for the operation.
+     * Used as the policy input to the PolicyDecisionPort.
+     * Convention: "<resource>:<action>", e.g. "application:create", "application:makeDecision".
+     * This string is the contract with the external PDP — do not change it without updating
+     * the policy definitions in the PDP.
+     */
+    String value();
 }
 ```
 
-Only `java.lang.annotation.*` — no Spring, no security framework.
-
-### The interface and enum (use case layer — zero Spring imports)
+Usage — the use case body contains **no authorization code**:
 
 ```java
-// usecase/shared/security/AccessPolicy.java
-public interface AccessPolicy {
-    /** Throws AccessDeniedException if the current caller does not hold the required role. */
-    void enforce(RequiredRole role);
+@AuthorizeOperation("application:create")
+public UUID execute(CreateApplicationCommand command) {
+    // pure business logic
 }
 
-// usecase/shared/security/RequiredRole.java
-public enum RequiredRole {
-    API_CASEWORKER,
-    ADMIN
+@AuthorizeOperation("application:makeDecision")
+public void execute(MakeDecisionCommand command) {
+    // pure business logic — no authorizationPort.requireApplicationAccess(...) call here
 }
 ```
 
-### The Spring implementation and aspect (infrastructure layer)
+---
+
+### `PolicyContext` — the input to any PDP (use case layer — plain Java)
 
 ```java
-// infrastructure/security/SpringSecurityAccessPolicy.java
-@Component
-public class SpringSecurityAccessPolicy implements AccessPolicy {
-    @Override
-    public void enforce(RequiredRole role) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (!hasRole(auth, role)) {
-            throw new AccessDeniedException("Required role: " + role);
-        }
-    }
-}
+// usecase/shared/security/PolicyContext.java
+public record PolicyContext(
+    String operation,              // e.g. "application:makeDecision"
+    String callerId,               // extracted from the auth token by the aspect
+    List<String> callerRoles,      // extracted from the auth token by the aspect
+    Map<String, Object> input      // method arguments, keyed by parameter name
+) {}
+```
 
-// infrastructure/security/EnforceRoleAspect.java
-@Aspect
-@Component
-public class EnforceRoleAspect {
-    private final AccessPolicy accessPolicy;
+### `PolicyDecisionPort` interface (use case layer — zero Spring imports)
 
-    public EnforceRoleAspect(AccessPolicy accessPolicy) {
-        this.accessPolicy = accessPolicy;
-    }
-
-    @Before("@annotation(enforceRole)")
-    public void enforce(EnforceRole enforceRole) {
-        accessPolicy.enforce(enforceRole.value());
-    }
+```java
+// usecase/shared/security/PolicyDecisionPort.java
+public interface PolicyDecisionPort {
+    /**
+     * Evaluates the policy for the given context.
+     * Throws AccessDeniedException if the policy denies the operation.
+     */
+    void authorize(PolicyContext context);
 }
 ```
 
-The aspect lives entirely in infrastructure. It knows about Spring AOP and `AccessPolicy`, but
-the use case and the annotation itself know about neither.
+---
 
-### Usage in a use case
+### The aspect — builds context from `JoinPoint` (infrastructure layer)
+
+Rather than writing a custom `@Aspect`, use Spring Security 6's
+**`AuthorizationManagerBeforeMethodInterceptor`**. This is the framework's built-in plumbing for
+exactly this pattern — it intercepts annotated methods, provides the full `MethodInvocation`
+(method name, parameter names, argument values) and a `Supplier<Authentication>` (caller
+identity + roles), and handles the AOP proxy setup automatically.
 
 ```java
-public class CreateApplicationUseCase {
-    private final ApplicationGateway applicationGateway;
-    // … other gateways — no AccessPolicy needed as a constructor arg
+// infrastructure/security/PolicyEnforcementAspect.java
+// NOT a custom @Aspect — registered as Spring Security's method interceptor instead.
+// No @Component — wired via @Bean in SecurityConfig (or CreateApplicationConfig).
 
-    @EnforceRole(RequiredRole.API_CASEWORKER)   // ← declarative, no Spring imports
-    public UUID execute(CreateApplicationCommand command) {
-        // … business logic, no security boilerplate
+public class PolicyEnforcementInterceptor
+        implements AuthorizationManager<MethodInvocation> {
+
+    private final PolicyDecisionPort policyDecisionPort;
+
+    public PolicyEnforcementInterceptor(PolicyDecisionPort policyDecisionPort) {
+        this.policyDecisionPort = policyDecisionPort;
     }
-}
-```
-
-The annotation is the only thing the use case imports from `usecase/shared/security/`. There is
-no `AccessPolicy` constructor dependency to inject.
-
-### Usage in a console app (or any non-Spring entry point)
-
-```java
-public class ConsoleAccessPolicy implements AccessPolicy {
-    private final Set<String> grantedRoles;
 
     @Override
-    public void enforce(RequiredRole role) {
-        if (!grantedRoles.contains(role.name())) {
-            throw new AccessDeniedException("Required role: " + role);
+    public AuthorizationDecision check(
+            Supplier<Authentication> authenticationSupplier,
+            MethodInvocation invocation) {
+
+        AuthorizeOperation annotation =
+            invocation.getMethod().getAnnotation(AuthorizeOperation.class);
+        if (annotation == null) {
+            return new AuthorizationDecision(true);   // not annotated → allow
         }
+
+        Authentication auth = authenticationSupplier.get();
+        PolicyContext context = new PolicyContext(
+            annotation.value(),
+            extractCallerId(auth),
+            extractRoles(auth),
+            extractInput(invocation)          // see below
+        );
+
+        policyDecisionPort.authorize(context);    // throws AccessDeniedException if denied
+        return new AuthorizationDecision(true);
+    }
+
+    private Map<String, Object> extractInput(MethodInvocation invocation) {
+        // MethodInvocation gives parameter names and values directly.
+        // Requires -parameters compile flag (enabled by Spring Boot by default).
+        Parameter[] params = invocation.getMethod().getParameters();
+        Object[]    args   = invocation.getArguments();
+        Map<String, Object> input = new LinkedHashMap<>();
+        for (int i = 0; i < params.length; i++) {
+            input.put(params[i].getName(), args[i]);
+        }
+        return input;
+    }
+
+    private String       extractCallerId(Authentication auth) { … }
+    private List<String> extractRoles(Authentication auth)    { … }
+}
+```
+
+**Wiring** — register as a Spring Security method interceptor advisor, not as an `@Aspect`:
+
+```java
+// config/MethodSecurityConfig.java  (or alongside CreateApplicationConfig)
+@Configuration
+@EnableMethodSecurity(prePostEnabled = false)   // disable SpEL-based annotations; use ours only
+public class MethodSecurityConfig {
+
+    @Bean
+    @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+    public Advisor authorizeOperationAdvisor(PolicyDecisionPort policyDecisionPort) {
+        return AuthorizationManagerBeforeMethodInterceptor.annotated(
+            AuthorizeOperation.class,
+            new PolicyEnforcementInterceptor(policyDecisionPort)
+        );
     }
 }
 ```
 
-Wire a `ConsoleEnforceRoleAspect` (or a simple reflective proxy) that reads `@EnforceRole` from
-the method and calls the `ConsoleAccessPolicy`. The use case code is unchanged.
+**Why this over a custom `@Aspect`:**
+- Spring Security manages the AOP proxy — no `@EnableAspectJAutoProxy` needed.
+- `@WithMockUser` and `@WithSecurityContext` work in tests because Spring Security's
+  authentication propagation handles it.
+- Spring Security publishes `AuthorizationDeniedEvent` automatically on denial —
+  audit logging comes for free.
+- `MethodInvocation` gives parameter names via `Method.getParameters()` — same information
+  as `JoinPoint`, no difference in capability.
 
-### Testing security without Spring
+Key points:
+- `Method.getParameters()` gives the declared parameter names (`command`, `applicationId`, etc.)
+  — requires the class to be compiled with `-parameters` (Spring Boot does this by default).
+- `invocation.getArguments()` gives the runtime argument values in the same order.
+- The interceptor never imports any use-case or domain class — it works reflectively.
 
-Because `@EnforceRole` is processed by an AOP proxy, calling `execute(...)` directly in a plain
-JUnit test means the aspect never fires — security is silently bypassed. Keep tests Spring-free
-by splitting the concern into two:
+---
 
-**1. Assert the annotation is present (per use case — no Spring needed)**
+### Phase 1: local policy evaluation
+
+The initial implementation evaluates policies locally using configurable role and rule definitions.
+This is fully swappable for an external PDP later:
+
+```java
+// infrastructure/security/LocalPolicyDecisionPort.java
+@Component
+public class LocalPolicyDecisionPort implements PolicyDecisionPort {
+
+    // Operation → required roles (loaded from config or hardcoded initially)
+    private static final Map<String, List<String>> REQUIRED_ROLES = Map.of(
+        "application:create",       List.of("ROLE_API_CASEWORKER"),
+        "application:makeDecision", List.of("ROLE_API_CASEWORKER"),
+        "application:assignCaseworker", List.of("ROLE_API_CASEWORKER", "ROLE_ADMIN")
+    );
+
+    @Override
+    public void authorize(PolicyContext context) {
+        List<String> required = REQUIRED_ROLES.getOrDefault(context.operation(), List.of());
+
+        boolean hasAll = required.stream()
+            .allMatch(role -> context.callerRoles().contains(role));
+
+        if (!hasAll) {
+            throw new AccessDeniedException(
+                "Operation '" + context.operation() + "' denied for caller: " + context.callerId());
+        }
+        // Future: add contextual rules using context.input() fields (e.g. applicationId lookups)
+    }
+}
+```
+
+---
+
+### Phase 2: external PDP (drop-in replacement)
+
+When the PDP is ready, provide an alternative `PolicyDecisionPort` implementation. Wire it in
+config — no other change anywhere:
+
+```java
+// infrastructure/security/ExternalPolicyDecisionPort.java
+@Component
+@ConditionalOnProperty("policy.external.enabled")  // or just swap the @Bean
+public class ExternalPolicyDecisionPort implements PolicyDecisionPort {
+
+    private final RestClient pdpClient;  // points to OPA / Keycloak / custom PDP
+
+    @Override
+    public void authorize(PolicyContext context) {
+        // POST to PDP with { operation, callerId, callerRoles, input }
+        // PDP returns { allow: true/false, reason: "…" }
+        // Throw AccessDeniedException if allow == false
+    }
+}
+```
+
+The `PolicyContext` record is the stable contract between the codebase and the PDP. The `input`
+map contains the method arguments — for `MakeDecisionCommand`, that includes `applicationId`,
+which the PDP can use to look up additional context (assigned caseworker, application state) on
+its own.
+
+---
+
+### Testing
+
+**Use-case unit tests — no Spring, no authorization wiring**
+
+Because `@AuthorizeOperation` is processed by a Spring Security method interceptor, calling
+`execute(...)` directly in a plain JUnit test means the interceptor never fires. This is
+intentional — use-case tests test business logic only:
+
+```java
+class MakeDecisionUseCaseTest {
+    // No PolicyDecisionPort mock needed — interceptor never fires in plain unit tests
+    @Test
+    void makesDecision_happyPath() { … }
+}
+```
+
+**Assert the annotation is present (per use case — reflection, no Spring)**
 
 ```java
 @Test
-void execute_isAnnotatedWithCorrectRole() throws NoSuchMethodException {
-    var method = CreateApplicationUseCase.class
-        .getMethod("execute", CreateApplicationCommand.class);
-    var annotation = method.getAnnotation(EnforceRole.class);
+void execute_isAnnotatedWithCorrectOperation() throws NoSuchMethodException {
+    var method = MakeDecisionUseCase.class.getMethod("execute", MakeDecisionCommand.class);
+    var annotation = method.getAnnotation(AuthorizeOperation.class);
 
     assertThat(annotation).isNotNull();
-    assertThat(annotation.value()).isEqualTo(RequiredRole.API_CASEWORKER);
+    assertThat(annotation.value()).isEqualTo("application:makeDecision");
 }
 ```
 
-This confirms the security intent without wiring Spring. It lives in the use-case unit test
-alongside the business logic tests.
+**Interceptor test — verifies context is built correctly (once for the project)**
 
-**2. Verify the aspect enforces the annotation (once for the whole project)**
-
-Write a single `EnforceRoleAspectTest` as a focused Spring slice test. It only needs the aspect
-and a mock `AccessPolicy` — no full application context:
+Because we use Spring Security's method interceptor (not a custom `@Aspect`), `@WithMockUser`
+works out of the box. The test wires only the interceptor and a stub use case:
 
 ```java
 @ExtendWith(SpringExtension.class)
-@Import({EnforceRoleAspect.class, EnforceRoleAspectTest.StubUseCase.class})
-class EnforceRoleAspectTest {
+@Import({MethodSecurityConfig.class,
+         PolicyEnforcementAspectTest.StubConfig.class})
+class PolicyEnforcementAspectTest {
 
-    @MockBean AccessPolicy accessPolicy;
+    @MockBean PolicyDecisionPort policyDecisionPort;
     @Autowired StubUseCase stubUseCase;
 
     @Test
-    void callsAccessPolicyWithCorrectRole() {
-        stubUseCase.doSomething();
-        verify(accessPolicy).enforce(RequiredRole.API_CASEWORKER);
+    @WithMockUser(roles = "API_CASEWORKER")
+    void buildsPolicyContextFromMethodArgs() {
+        UUID id = UUID.randomUUID();
+        stubUseCase.doSomething(id);
+
+        ArgumentCaptor<PolicyContext> captor = ArgumentCaptor.forClass(PolicyContext.class);
+        verify(policyDecisionPort).authorize(captor.capture());
+
+        PolicyContext ctx = captor.getValue();
+        assertThat(ctx.operation()).isEqualTo("stub:doSomething");
+        assertThat(ctx.input()).containsEntry("applicationId", id);
     }
 
     @Test
-    void throwsWhenAccessPolicyDenies() {
+    @WithMockUser(roles = "API_CASEWORKER")
+    void throwsWhenPortDenies() {
         doThrow(new AccessDeniedException("denied"))
-            .when(accessPolicy).enforce(any());
-        assertThatThrownBy(() -> stubUseCase.doSomething())
+            .when(policyDecisionPort).authorize(any());
+        assertThatThrownBy(() -> stubUseCase.doSomething(UUID.randomUUID()))
             .isInstanceOf(AccessDeniedException.class);
     }
 
-    @Component
+    @Configuration
+    static class StubConfig {
+        @Bean StubUseCase stubUseCase() { return new StubUseCase(); }
+    }
+
     static class StubUseCase {
-        @EnforceRole(RequiredRole.API_CASEWORKER)
-        public void doSomething() {}
+        @AuthorizeOperation("stub:doSomething")
+        public void doSomething(UUID applicationId) {}
     }
 }
 ```
 
-This test is written **once** and covers every use case that uses `@EnforceRole`. Individual
-use-case unit tests only need the reflection assertion above.
+**`LocalPolicyDecisionPort` unit test — no Spring, tests all role/rule combinations**
+
+```java
+class LocalPolicyDecisionPortTest {
+    LocalPolicyDecisionPort port = new LocalPolicyDecisionPort();
+
+    @Test
+    void allowsWhenCallerHasRequiredRole() {
+        port.authorize(new PolicyContext(
+            "application:create", "user-1", List.of("ROLE_API_CASEWORKER"), Map.of()));
+        // no exception
+    }
+
+    @Test
+    void deniesWhenCallerLacksRole() {
+        assertThatThrownBy(() -> port.authorize(new PolicyContext(
+            "application:create", "user-1", List.of("ROLE_READ_ONLY"), Map.of())))
+            .isInstanceOf(AccessDeniedException.class);
+    }
+}
+```
 
 ### ArchUnit rule to add
 
@@ -469,11 +649,11 @@ static final ArchRule useCasesMustNotDependOnSpringSecurityAnnotations =
 
 ### `@AllowApiCaseworker` AOP proxy scope
 `@AllowApiCaseworker` is a Spring AOP annotation and must not be placed on use-case classes.
-Security for use cases is enforced declaratively via `@EnforceRole(RequiredRole.API_CASEWORKER)`
-on `execute(...)`. The annotation itself (`EnforceRole`) lives in `usecase/shared/security/` with
-no Spring imports; the `EnforceRoleAspect` in `infrastructure/security/` intercepts it and
-delegates to `SpringSecurityAccessPolicy`, which throws
-`org.springframework.security.access.AccessDeniedException` when access is denied. Remove
+Security for use cases is enforced by placing `@AuthorizeOperation("application:create")` on
+`execute(...)`. The aspect `PolicyEnforcementAspect` intercepts it, builds a `PolicyContext` from
+the caller identity and method arguments, and calls `PolicyDecisionPort.authorize(context)`.
+`LocalPolicyDecisionPort` (Phase 1) evaluates roles locally and throws
+`org.springframework.security.access.AccessDeniedException` when denied. Remove
 `@AllowApiCaseworker` from the deprecated `ApplicationService` method to prevent double-checking
 during the migration period. See [Security in the use case layer](#security-in-the-use-case-layer)
 for full details.
@@ -525,7 +705,7 @@ bean definitions and makes dependency wiring explicit and inspectable in one pla
 | **Gateway mapper** | A class in `infrastructure/jpa/*/` that translates between domain records and JPA entities. Fully reimplemented — does not delegate to legacy `mapper/` classes because those map from API model types. Wired via `@Bean`. |
 | **Command mapper** | A class in `usecase/*/` that translates between generated API models and command records. The only place an API model is permitted on the use-case side of the boundary. |
 | **UseCaseValidations** | A utility class in `usecase/shared/validation/` containing static business validation helpers (e.g. null-ID checks). Business validation logic that is needed by use cases is duplicated here rather than depending on `validation.ApplicationValidations` (which carries model-layer dependencies). |
-| **AccessPolicy** | A plain Java interface in `usecase/shared/security/` that the use case calls to enforce authorisation. Spring provides `SpringSecurityAccessPolicy`; other entry points provide their own implementation. |
-| **RequiredRole** | A plain Java enum in `usecase/shared/security/` that names the roles a use case may require. No Spring or security framework imports. |
-| **EnforceRole** | A plain Java annotation in `usecase/shared/security/` placed on use-case `execute(...)` methods. Contains only `java.lang.annotation.*` imports. The `EnforceRoleAspect` in `infrastructure/security/` intercepts it and delegates to `AccessPolicy`, throwing `AccessDeniedException` on denial. |
+| **AuthorizeOperation** | A plain Java annotation in `usecase/shared/security/` placed on use-case `execute(...)` methods. Its `value()` is a stable operation name string (e.g. `"application:create"`). The `PolicyEnforcementAspect` reads this, plus caller identity and method args from the `JoinPoint`, builds a `PolicyContext`, and calls `PolicyDecisionPort.authorize(context)`. |
+| **PolicyContext** | A plain Java record in `usecase/shared/security/` carrying: `operation` name, `callerId`, `callerRoles`, and `input` (method args keyed by parameter name). This is the stable contract between the codebase and any PDP — local or external. |
+| **PolicyDecisionPort** | A plain Java interface in `usecase/shared/security/` with a single `authorize(PolicyContext)` method. `LocalPolicyDecisionPort` evaluates policies locally (Phase 1); `ExternalPolicyDecisionPort` calls an external PDP (Phase 2). Swapping is done in config only. |
 

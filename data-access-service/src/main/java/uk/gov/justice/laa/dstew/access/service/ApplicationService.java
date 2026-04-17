@@ -187,8 +187,11 @@ public class ApplicationService {
    *
    * @param req DTO containing creation fields
    * @return UUID of the created application
+   * @deprecated Use {@link
+   *     uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCase}
+   *     instead.
    */
-  @AllowApiCaseworker
+  @Deprecated
   @Transactional
   public UUID createApplication(final ApplicationCreateRequest req) {
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);

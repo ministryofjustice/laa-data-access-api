@@ -51,6 +51,8 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplica
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
+@org.junit.jupiter.api.Disabled(
+    "Superseded by uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCaseTest")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CreateApplicationTest extends BaseServiceTest {
 
