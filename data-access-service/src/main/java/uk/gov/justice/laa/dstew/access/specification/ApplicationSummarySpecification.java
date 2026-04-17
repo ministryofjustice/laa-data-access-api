@@ -7,7 +7,6 @@ import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -19,7 +18,7 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 public class ApplicationSummarySpecification {
 
   /** Filters Application Summaries based on different filters. */
-  public static Specification<ApplicationSummaryEntity> filterBy(
+  public static Specification<ApplicationEntity> filterBy(
       ApplicationStatus status,
       String reference,
       String firstName,
@@ -36,7 +35,7 @@ public class ApplicationSummarySpecification {
         .and(isAutoGranted(isAutoGranted));
   }
 
-  private static Specification<ApplicationSummaryEntity> isMatterType(MatterType matterType) {
+  private static Specification<ApplicationEntity> isMatterType(MatterType matterType) {
     if (matterType != null) {
       return (root, query, builder) -> builder.equal(root.get("matterType"), matterType);
     }
@@ -44,7 +43,7 @@ public class ApplicationSummarySpecification {
     return Specification.unrestricted();
   }
 
-  private static Specification<ApplicationSummaryEntity> isStatus(ApplicationStatus status) {
+  private static Specification<ApplicationEntity> isStatus(ApplicationStatus status) {
     if (status != null) {
       return (root, query, builder) -> builder.equal(root.get("status"), status);
     }
@@ -52,7 +51,7 @@ public class ApplicationSummarySpecification {
     return Specification.unrestricted();
   }
 
-  private static Specification<ApplicationSummaryEntity> likeLaaReference(String reference) {
+  private static Specification<ApplicationEntity> likeLaaReference(String reference) {
     if (reference != null && !reference.isBlank()) {
       return (root, query, builder) ->
           builder.like(
@@ -62,7 +61,7 @@ public class ApplicationSummarySpecification {
     return Specification.unrestricted();
   }
 
-  private static Specification<ApplicationSummaryEntity> isCaseworkerId(UUID caseworkerId) {
+  private static Specification<ApplicationEntity> isCaseworkerId(UUID caseworkerId) {
 
     if (caseworkerId != null) {
       return (root, query, builder) -> {
@@ -77,9 +76,9 @@ public class ApplicationSummarySpecification {
 
   @ExcludeFromGeneratedCodeCoverage
   private class IndividualFilterSpecification {
-    public static Specification<ApplicationSummaryEntity> filterIndividual(
+    public static Specification<ApplicationEntity> filterIndividual(
         String firstName, String lastName, LocalDate dateOfBirth) {
-      Specification<ApplicationSummaryEntity> baseSpecification = Specification.unrestricted();
+      Specification<ApplicationEntity> baseSpecification = Specification.unrestricted();
       if (isPopulated(firstName) || isPopulated(lastName) || dateOfBirth != null) {
         baseSpecification = isClient();
       }
@@ -89,7 +88,7 @@ public class ApplicationSummarySpecification {
           .and(isDateOfBirth(dateOfBirth));
     }
 
-    private static Specification<ApplicationSummaryEntity> isClient() {
+    private static Specification<ApplicationEntity> isClient() {
       return (root, query, builder) -> {
         Join<ApplicationEntity, IndividualEntity> individualsJoin =
             root.join("individuals", JoinType.INNER);
@@ -97,7 +96,7 @@ public class ApplicationSummarySpecification {
       };
     }
 
-    private static Specification<ApplicationSummaryEntity> likeFirstName(String firstName) {
+    private static Specification<ApplicationEntity> likeFirstName(String firstName) {
       if (firstName != null && !firstName.isBlank()) {
         return (root, query, builder) -> {
           Join<ApplicationEntity, IndividualEntity> individualsJoin =
@@ -109,7 +108,7 @@ public class ApplicationSummarySpecification {
       return Specification.unrestricted();
     }
 
-    private static Specification<ApplicationSummaryEntity> likeLastName(String lastName) {
+    private static Specification<ApplicationEntity> likeLastName(String lastName) {
       if (lastName != null && !lastName.isBlank()) {
         return (root, query, builder) -> {
           Join<ApplicationEntity, IndividualEntity> individualsJoin =
@@ -121,8 +120,7 @@ public class ApplicationSummarySpecification {
       return Specification.unrestricted();
     }
 
-    private static Specification<ApplicationSummaryEntity> isDateOfBirth(
-        LocalDate clientDateOfBirth) {
+    private static Specification<ApplicationEntity> isDateOfBirth(LocalDate clientDateOfBirth) {
       if (clientDateOfBirth != null) {
         return (root, query, builder) -> {
           Join<ApplicationEntity, IndividualEntity> individualsJoin =
@@ -138,7 +136,7 @@ public class ApplicationSummarySpecification {
     return str != null && !str.isBlank();
   }
 
-  private static Specification<ApplicationSummaryEntity> isAutoGranted(Boolean isAutoGranted) {
+  private static Specification<ApplicationEntity> isAutoGranted(Boolean isAutoGranted) {
     if (isAutoGranted != null) {
       return (root, query, builder) -> builder.equal(root.get("isAutoGranted"), isAutoGranted);
     }

@@ -31,7 +31,8 @@ public class IntegrationTestContextProvider implements TestContextProvider {
                 "--spring.datasource.username=" + postgreSQLContainer.getUsername(),
                 "--spring.datasource.password=" + postgreSQLContainer.getPassword(),
                 "--feature.enable-dev-token=true",
-                "--feature.disable-security=false");
+                "--feature.disable-security=false",
+                "--spring.jpa.properties.hibernate.generate_statistics=true");
 
     int port =
         applicationContext

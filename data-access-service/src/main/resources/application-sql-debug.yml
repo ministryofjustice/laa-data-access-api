@@ -1,0 +1,17 @@
+spring:
+  jpa:
+    show-sql: false  # Disabled in favour of org.hibernate.SQL logger which supports formatting
+    properties:
+      hibernate:
+        format_sql: true
+        generate_statistics: true
+
+logging:
+  level:
+    # Logs the SQL statement itself (formatted due to format_sql above)
+    org.hibernate.SQL: DEBUG
+    # Logs bound parameter values for each statement (Hibernate 6+)
+    org.hibernate.orm.jdbc.bind: TRACE
+    # Logs per-session statistics: entity loads, collection fetches, query counts
+    # A sudden jump in query count per request is the N+1 signal
+    org.hibernate.stat: DEBUG

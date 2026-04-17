@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
@@ -25,6 +26,7 @@ import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationSummaryDtoGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationSummaryGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationSummaryDtoGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
@@ -116,7 +118,7 @@ public class ApplicationSummaryMapperTest extends BaseMapperTest {
 
   @Test
   void givenNullApplicationSummary_whenToApplicationSummary_thenReturnNull() {
-    assertThat(applicationMapper.toApplicationSummary(null)).isNull();
+    assertThat(applicationMapper.toApplicationSummary((ApplicationSummaryEntity) null)).isNull();
   }
 
   @Test
@@ -187,5 +189,80 @@ public class ApplicationSummaryMapperTest extends BaseMapperTest {
     assertThat(result.getApplicationId()).isEqualTo(applicationId);
     assertThat(result.getLaaReference()).isEqualTo(laaReference);
     assertThat(result.getIsLead()).isEqualTo(isLead);
+  }
+
+  @Test
+  void givenApplicationSummaryDto_whenToApplicationSummary_thenMapsFieldsCorrectly() {
+    UUID id = UUID.randomUUID();
+    Instant modifiedAt = Instant.now();
+    Instant submittedAt = Instant.now();
+    UUID caseworkerId = UUID.randomUUID();
+
+    ApplicationSummaryDto dto =
+        DataGenerator.createDefault(
+            ApplicationSummaryDtoGenerator.class,
+            builder ->
+                builder
+                    .id(id)
+                    .modifiedAt(modifiedAt)
+                    .submittedAt(submittedAt)
+                    .caseworkerId(caseworkerId)
+                    .clientFirstName("Jane")
+                    .clientLastName("Smith")
+                    .clientDateOfBirth(LocalDate.of(1990, 3, 15))
+                    .isLead(true));
+
+    ApplicationSummary result = applicationMapper.toApplicationSummary(dto);
+
+    assertThat(result).isNotNull();
+    assertThat(result.getApplicationId()).isEqualTo(id);
+    assertThat(result.getLastUpdated()).isEqualTo(modifiedAt.atOffset(ZoneOffset.UTC));
+    assertThat(result.getSubmittedAt()).isEqualTo(submittedAt.atOffset(ZoneOffset.UTC));
+    assertThat(result.getAssignedTo()).isEqualTo(caseworkerId);
+    assertThat(result.getClientFirstName()).isEqualTo("Jane");
+    assertThat(result.getClientLastName()).isEqualTo("Smith");
+    assertThat(result.getClientDateOfBirth()).isEqualTo(LocalDate.of(1990, 3, 15));
+    assertThat(result.getIsLead()).isTrue();
+    assertThat(result.getApplicationType()).isEqualTo(ApplicationType.INITIAL);
+  }
+
+  @Test
+  void
+      givenApplicationSummaryDtoWithNullCaseworker_whenToApplicationSummary_thenAssignedToIsNull() {
+    ApplicationSummaryDto dto =
+        DataGenerator.createDefault(
+            ApplicationSummaryDtoGenerator.class, builder -> builder.caseworkerId(null));
+
+    assertThat(applicationMapper.toApplicationSummary(dto).getAssignedTo()).isNull();
+  }
+
+  @Test
+  void
+      givenApplicationSummaryDtoWithNullSubmittedAt_whenToApplicationSummary_thenSubmittedAtIsNull() {
+    ApplicationSummaryDto dto =
+        DataGenerator.createDefault(
+            ApplicationSummaryDtoGenerator.class, builder -> builder.submittedAt(null));
+
+    assertThat(applicationMapper.toApplicationSummary(dto).getSubmittedAt()).isNull();
+  }
+
+  @Test
+  void
+      givenApplicationSummaryDtoWithNullIndividualFields_whenToApplicationSummary_thenClientFieldsAreNull() {
+    ApplicationSummaryDto dto =
+        DataGenerator.createDefault(
+            ApplicationSummaryDtoGenerator.class,
+            builder -> builder.clientFirstName(null).clientLastName(null).clientDateOfBirth(null));
+
+    ApplicationSummary result = applicationMapper.toApplicationSummary(dto);
+
+    assertThat(result.getClientFirstName()).isNull();
+    assertThat(result.getClientLastName()).isNull();
+    assertThat(result.getClientDateOfBirth()).isNull();
+  }
+
+  @Test
+  void givenNullApplicationSummaryDto_whenToApplicationSummary_thenReturnNull() {
+    assertThat(applicationMapper.toApplicationSummary((ApplicationSummaryDto) null)).isNull();
   }
 }
