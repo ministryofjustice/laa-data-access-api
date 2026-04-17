@@ -14,7 +14,7 @@
 #     (start it with: docker compose up -d)
 #   - Java 25+ must be available on PATH
 
-set -euo pipefail
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -66,7 +66,12 @@ echo "==> Starting mass data generator (COUNT=${COUNT})..."
 echo "    Press Ctrl-C to abort."
 echo ""
 
-java -jar "${JAR_PATH}" "${COUNT}"
+JAVA_OPTS=()
+[[ -n "${SPRING_DATASOURCE_URL:-}"      ]] && JAVA_OPTS+=("-Dspring.datasource.url=${SPRING_DATASOURCE_URL}")
+[[ -n "${SPRING_DATASOURCE_USERNAME:-}" ]] && JAVA_OPTS+=("-Dspring.datasource.username=${SPRING_DATASOURCE_USERNAME}")
+[[ -n "${SPRING_DATASOURCE_PASSWORD:-}" ]] && JAVA_OPTS+=("-Dspring.datasource.password=${SPRING_DATASOURCE_PASSWORD}")
+
+java "${JAVA_OPTS[@]}" -jar "${JAR_PATH}" "${COUNT}"
 
 echo ""
 echo "==> Done."

@@ -46,6 +46,7 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
     private static final int DEFAULT_COUNT = 100;
     private static final int BATCH_SIZE = 500;
     private static final double DECISION_RATE = 0.4;
+    private static final double LINK_RATE = 0.3; // ~30% of applications will form a linked group
 
     @Autowired
     private PersistedDataGenerator persistedDataGenerator;
@@ -206,14 +207,18 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
         persistedDataGenerator.flushAndClear();
 
         int i = 0;
-        while (i + 1 < persistedAppIds.size()) {
-            UUID leadId = persistedAppIds.get(i);
-            i++;
-            int associateCount = faker.number().numberBetween(1,4); // 1 or 3 associates
-            for (int j = 0; j < associateCount && i < persistedAppIds.size(); j++) {
-                persistedDataGenerator.linkApplications(leadId, persistedAppIds.get(i));
+        while (i < persistedAppIds.size()) {
+            if (faker.number().randomDouble(2, 0, 1) < LINK_RATE && i + 1 < persistedAppIds.size()) {
+                UUID leadId = persistedAppIds.get(i);
                 i++;
-                linkedCount++;
+                int associateCount = faker.number().numberBetween(1, 4); // 1 to 3 associates
+                for (int j = 0; j < associateCount && i < persistedAppIds.size(); j++) {
+                    persistedDataGenerator.linkApplications(leadId, persistedAppIds.get(i));
+                    i++;
+                    linkedCount++;
+                }
+            } else {
+                i++; // standalone — skip without linking
             }
         }
 
