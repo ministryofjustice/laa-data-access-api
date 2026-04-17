@@ -16,4 +16,11 @@ public class ApplicationOfficeGenerator extends
       .code("officeCode")
       .build();
   }
+
+  @Override
+  public ApplicationOffice createRandom() {
+    return ApplicationOffice.builder()
+      .code(faker.regexify("[A-Z0-9]{6,10}"))
+      .build();
+  }
 }

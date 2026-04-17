@@ -174,8 +174,10 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
+    // Mass data generator
+    implementation 'net.datafaker:datafaker:2.5.2'
+
     testImplementation 'org.instancio:instancio-junit:5.5.1'
-    testImplementation 'net.datafaker:datafaker:2.5.2'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.1"
@@ -196,3 +198,12 @@ dependencies {
     implementation "io.sentry:sentry-logback:$versions.sentry"
     implementation "io.sentry:sentry-spring-boot-4:$versions.sentry"
 }
+
+// Exclude mass generator and utility classes from checkstyle (moved from test utilities)
+checkstyleMain {
+    exclude '**/massgenerator/**'
+    exclude '**/utils/generator/**'
+    exclude '**/utils/helpers/**'
+    exclude '**/utils/testDto/**'
+}
+

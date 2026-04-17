@@ -18,4 +18,11 @@ public class OpponentDetailsGenerator extends
         .opposable(opposableGenerator.createDefault())
         .build();
   }
+
+  @Override
+  public OpponentDetails createRandom() {
+    return OpponentDetails.builder()
+        .opposable(opposableGenerator.createRandom())
+        .build();
+  }
 }

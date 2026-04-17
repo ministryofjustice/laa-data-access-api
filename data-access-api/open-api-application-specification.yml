@@ -430,6 +430,35 @@ paths:
         '401': { description: Unauthorized }
         '403': { description: Forbidden }
         '500': { description: Internal server error }
+
+  /api/v0/admin/generate-mass-data:
+    post:
+      tags:
+        - admin
+      summary: Generate mass test data
+      operationId: generateMassData
+      description: |
+        Generate mass test data including applications, proceedings, decisions, certificates, 
+        and linked relationships. This endpoint is intended for testing and development purposes only.
+      requestBody:
+        description: Configuration for mass data generation
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MassDataGenerationRequest'
+      responses:
+        '200':
+          description: Mass data generation completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MassDataGenerationResponse'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '500': { description: Internal server error }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -966,3 +995,56 @@ components:
           items:
             $ref: "#/components/schemas/ApplicationNoteResponse"
 
+    MassDataGenerationRequest:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: int32
+          minimum: 1
+          default: 100
+          description: Number of application records to generate
+        batchSize:
+          type: integer
+          format: int32
+          minimum: 1
+          default: 500
+          description: Number of records to process before flushing the session
+        decisionRate:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.4
+          description: Percentage (0.0 to 1.0) of applications that should have decisions
+        linkRate:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.3
+          description: Percentage (0.0 to 1.0) of applications that should be linked together
+
+    MassDataGenerationResponse:
+      type: object
+      properties:
+        recordsGenerated:
+          type: integer
+          format: int32
+          description: Total number of application records generated
+        decidedCount:
+          type: integer
+          format: int32
+          description: Number of applications that received decisions
+        linkedCount:
+          type: integer
+          format: int32
+          description: Number of linked application pairs created
+        durationMillis:
+          type: integer
+          format: int64
+          description: Total time taken in milliseconds
+        throughputRecordsPerSecond:
+          type: number
+          format: double
+          description: Average throughput in records per second

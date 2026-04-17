@@ -27,6 +27,8 @@ paths:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1individuals"
   /api/v0/applications/{id}/notes:
     $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1notes"
+  /api/v0/admin/generate-mass-data:
+    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1admin~1generate-mass-data"
 
 components:
   securitySchemes:
@@ -67,3 +69,7 @@ components:
       $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationNoteResponse"
     ApplicationNotesResponse:
       $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationNotesResponse"
+    MassDataGenerationRequest:
+      $ref: "./open-api-application-specification.yml#/components/schemas/MassDataGenerationRequest"
+    MassDataGenerationResponse:
+      $ref: "./open-api-application-specification.yml#/components/schemas/MassDataGenerationResponse"
