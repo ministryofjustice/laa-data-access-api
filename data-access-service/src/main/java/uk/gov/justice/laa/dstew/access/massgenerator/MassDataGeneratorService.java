@@ -241,22 +241,42 @@ public class MassDataGeneratorService {
     // flush any remaining partial batch
     persistedDataGenerator.flushAndClear();
 
-    // Link applications
+    // Link applications in batches to reduce query overhead
+    log.info("Starting linking phase for {} applications...", persistedAppIds.size());
     int i = 0;
+    List<List<UUID>> linkBatch = new ArrayList<>();
+
     while (i < persistedAppIds.size()) {
       if (faker.number().randomDouble(2, 0, 1) < linkRate && i + 1 < persistedAppIds.size()) {
         UUID leadId = persistedAppIds.get(i);
         i++;
         int associateCount = faker.number().numberBetween(1, 4);
         for (int j = 0; j < associateCount && i < persistedAppIds.size(); j++) {
-          persistedDataGenerator.linkApplications(leadId, persistedAppIds.get(i));
+          // Collect link pairs for batch processing
+          linkBatch.add(List.of(leadId, persistedAppIds.get(i)));
           i++;
           linkedCount++;
+
+          // Process in batches of 50 links to reduce memory and queries
+          if (linkBatch.size() >= 50) {
+            persistedDataGenerator.linkApplicationsBatch(linkBatch);
+            persistedDataGenerator.flushAndClear();
+            linkBatch.clear();
+            log.info("Linked {} applications so far...", linkedCount);
+          }
         }
       } else {
         i++;
       }
     }
+
+    // Process any remaining links
+    if (!linkBatch.isEmpty()) {
+      persistedDataGenerator.linkApplicationsBatch(linkBatch);
+      persistedDataGenerator.flushAndClear();
+    }
+
+    log.info("Linking phase completed: {} applications linked", linkedCount);
 
     long elapsedMs = System.currentTimeMillis() - startTime;
     long minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedMs);

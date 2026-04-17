@@ -166,7 +166,31 @@ public class PersistedDataGenerator {
     ApplicationEntity associated = entityManager.find(ApplicationEntity.class, associatedId);
     lead.addLinkedApplication(associated);
     ApplicationRepository repo = applicationContext.getBean(ApplicationRepository.class);
-    repo.saveAndFlush(lead);
+    repo.save(lead); // Changed from saveAndFlush - let batch handle flushing
+  }
+
+  /**
+   * Links multiple applications in a batch for better performance. Each entry in the list is a pair
+   * of [leadId, associatedId].
+   *
+   * @param linkPairs list of UUID pairs where first is lead and second is associated
+   */
+  @Transactional
+  public void linkApplicationsBatch(java.util.List<java.util.List<UUID>> linkPairs) {
+    ApplicationRepository repo = applicationContext.getBean(ApplicationRepository.class);
+
+    for (java.util.List<UUID> pair : linkPairs) {
+      UUID leadId = pair.get(0);
+      UUID associatedId = pair.get(1);
+
+      ApplicationEntity lead = entityManager.find(ApplicationEntity.class, leadId);
+      ApplicationEntity associated = entityManager.find(ApplicationEntity.class, associatedId);
+      lead.addLinkedApplication(associated);
+      repo.save(lead);
+    }
+
+    // Flush all at once at the end of the batch
+    entityManager.flush();
   }
 
   /**
