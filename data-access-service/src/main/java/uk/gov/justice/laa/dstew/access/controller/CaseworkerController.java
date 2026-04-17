@@ -12,9 +12,7 @@ import uk.gov.justice.laa.dstew.access.service.CaseworkerService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 
-/**
- * Controller for getting the caseworkers.
- */
+/** Controller for getting the caseworkers. */
 @RequiredArgsConstructor
 @RestController
 @ExcludeFromGeneratedCodeCoverage
@@ -27,5 +25,5 @@ public class CaseworkerController implements CaseworkersApi {
   @Override
   public ResponseEntity<List<CaseworkerResponse>> getCaseworkers(ServiceName serviceName) {
     return ResponseEntity.ok(caseworkerService.getAllCaseworkers());
-  }  
+  }
 }

@@ -10,10 +10,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class FullOpposable {
-    private String id;
-    private String createdAt;
-    private String updatedAt;
-    private String firstName;
-    private String lastName;
+  private String id;
+  private String createdAt;
+  private String updatedAt;
+  private String firstName;
+  private String lastName;
 }
-

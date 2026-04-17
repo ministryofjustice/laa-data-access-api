@@ -496,6 +496,7 @@ components:
         - UNASSIGN_APPLICATION_TO_CASEWORKER
         - APPLICATION_MAKE_DECISION_REFUSED
         - APPLICATION_MAKE_DECISION_GRANTED
+        - APPLICATION_NOTES
 
     CategoryOfLaw:
       type: string
@@ -635,7 +636,7 @@ components:
           type: boolean
         autoGrant:
           type: boolean
-        overallDecision:
+        decisionStatus:
           $ref: "#/components/schemas/DecisionStatus"
         applicationType:
           $ref: "#/components/schemas/ApplicationType"
@@ -948,13 +949,13 @@ components:
           type: string
         proceedingDescription:
           type: string
-        usedDelegatedFunctionsOn:
+        delegatedFunctionsDate:
           type: string
           format: date
         categoryOfLaw:
-          type: string
+          $ref: "#/components/schemas/CategoryOfLaw"
         matterType:
-          type: string
+          $ref: "#/components/schemas/MatterType"
         levelOfService:
           type: string
         substantiveCostLimitation:
@@ -962,9 +963,17 @@ components:
         scopeLimitations:
           type: array
           items:
-            type: object
+            $ref: "#/components/schemas/ScopeLimitationResponse"
         meritsDecision:
           $ref: "#/components/schemas/MeritsDecisionStatus"
+
+    ScopeLimitationResponse:
+      type: object
+      properties:
+        scopeLimitation:
+          type: string
+        scopeDescription:
+          type: string
 
     CreateNoteRequest:
       type: object

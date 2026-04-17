@@ -23,4 +23,3 @@ public class FullMeans {
   private List<Object> cashTransactions;
   private FullCfeSubmission mostRecentCFESubmission;
 }
-

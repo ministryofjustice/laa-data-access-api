@@ -8,9 +8,7 @@ import org.mapstruct.Mapping;
 import uk.gov.justice.laa.dstew.access.entity.NoteEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationNoteResponse;
 
-/**
- * Maps between note entity and note API model.
- */
+/** Maps between note entity and note API model. */
 @Mapper(componentModel = "spring")
 public interface NoteMapper {
 
@@ -21,5 +19,3 @@ public interface NoteMapper {
     return value != null ? value.atOffset(ZoneOffset.UTC) : null;
   }
 }
-
-

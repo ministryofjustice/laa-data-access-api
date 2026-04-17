@@ -3,8 +3,7 @@ package uk.gov.justice.laa.dstew.access.utils.generator.application;
 import uk.gov.justice.laa.dstew.access.model.Opposable;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
-public class OpposableGenerator extends
-    BaseGenerator<Opposable, Opposable.OpposableBuilder> {
+public class OpposableGenerator extends BaseGenerator<Opposable, Opposable.OpposableBuilder> {
 
   public OpposableGenerator() {
     super(Opposable::toBuilder, Opposable.OpposableBuilder::build);

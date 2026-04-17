@@ -21,8 +21,8 @@ import org.springframework.lang.Nullable;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
- * ApplicationContent pojo.
- * Using the same format as the OpenAPI generator to enable switch when schema stable
+ * ApplicationContent pojo. Using the same format as the OpenAPI generator to enable switch when
+ * schema stable
  */
 @Builder(toBuilder = true)
 @NoArgsConstructor
@@ -31,8 +31,8 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @ExcludeFromGeneratedCodeCoverage
 public class ApplicationContent implements Serializable {
 
-  @Serial
-  private static final long serialVersionUID = 1L;
+  @Serial private static final long serialVersionUID = 1L;
+
   @NotNull
   @Valid
   @Schema(name = "id", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -47,7 +47,6 @@ public class ApplicationContent implements Serializable {
   @NotNull
   @Schema(name = "submittedAt", requiredMode = Schema.RequiredMode.REQUIRED)
   private String submittedAt;
-
 
   private @Nullable String status;
 
@@ -70,24 +69,21 @@ public class ApplicationContent implements Serializable {
   @Schema(name = "allLinkedApplications", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   private List<LinkedApplication> allLinkedApplications;
 
-  @Nullable
-  private ApplicationMerits applicationMerits;
+  @Nullable private ApplicationMerits applicationMerits;
 
   @Nullable
   @Schema(name = "submitterEmail", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   private String submitterEmail;
 
   /**
-   * A container for additional, undeclared properties.
-   * This is a holder for any undeclared properties as specified with
-   * the 'additionalProperties' keyword in the OAS document.
+   * A container for additional, undeclared properties. This is a holder for any undeclared
+   * properties as specified with the 'additionalProperties' keyword in the OAS document.
    */
-  @JsonAnyGetter
-  private Map<String, Object> additionalApplicationContent;
+  @JsonAnyGetter private Map<String, Object> additionalApplicationContent;
 
   /**
-   * Set the additional (undeclared) property with the specified name and value.
-   * If the property does not already exist, create it otherwise replace it.
+   * Set the additional (undeclared) property with the specified name and value. If the property
+   * does not already exist, create it otherwise replace it.
    */
   @JsonAnySetter
   public ApplicationContent putAdditionalApplicationContent(String key, Object value) {
@@ -97,7 +93,4 @@ public class ApplicationContent implements Serializable {
     this.additionalApplicationContent.put(key, value);
     return this;
   }
-
-
 }
-

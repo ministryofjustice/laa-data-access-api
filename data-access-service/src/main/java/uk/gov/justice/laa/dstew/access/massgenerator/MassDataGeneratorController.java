@@ -16,8 +16,8 @@ import uk.gov.justice.laa.dstew.access.massgenerator.model.MassDataGenerationReq
 import uk.gov.justice.laa.dstew.access.massgenerator.model.MassDataGenerationResponse;
 
 /**
- * Controller for mass data generation endpoints.
- * This is intended for testing and development purposes only.
+ * Controller for mass data generation endpoints. This is intended for testing and development
+ * purposes only.
  */
 @RestController
 @RequestMapping("/api/v0/admin")
@@ -26,57 +26,64 @@ import uk.gov.justice.laa.dstew.access.massgenerator.model.MassDataGenerationRes
 @ExcludeFromGeneratedCodeCoverage
 public class MassDataGeneratorController {
 
-    private final MassDataGeneratorService massDataGeneratorService;
+  private final MassDataGeneratorService massDataGeneratorService;
 
-    /**
-     * Generate mass test data with default settings using a query parameter.
-     *
-     * @param count number of application records to generate (default: 10)
-     * @return response with generation statistics
-     */
-    @GetMapping("/generate-mass-data")
-    public ResponseEntity<MassDataGenerationResponse> generateMassDataSimple(
-            @RequestParam(defaultValue = "10") int count) {
+  /**
+   * Generate mass test data with default settings using a query parameter.
+   *
+   * @param count number of application records to generate (default: 10)
+   * @return response with generation statistics
+   */
+  @GetMapping("/generate-mass-data")
+  public ResponseEntity<MassDataGenerationResponse> generateMassDataSimple(
+      @RequestParam(defaultValue = "10") int count) {
 
-        log.info("Received simple mass data generation request: count={}", count);
+    log.info("Received simple mass data generation request: count={}", count);
 
-        try {
-            MassDataGenerationRequest request = new MassDataGenerationRequest();
-            request.setCount(count);
-            request.setBatchSize(100);
-            request.setDecisionRate(0.6);
-            request.setLinkRate(0.3);
+    try {
+      MassDataGenerationRequest request = new MassDataGenerationRequest();
+      request.setCount(count);
+      request.setBatchSize(100);
+      request.setDecisionRate(0.6);
+      request.setLinkRate(0.3);
 
-            MassDataGenerationResponse response = massDataGeneratorService.generateMassData(request);
-            log.info("Mass data generation completed successfully: {} records generated", response.getRecordsGenerated());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("Error during mass data generation", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+      MassDataGenerationResponse response = massDataGeneratorService.generateMassData(request);
+      log.info(
+          "Mass data generation completed successfully: {} records generated",
+          response.getRecordsGenerated());
+      return ResponseEntity.ok(response);
+    } catch (Exception e) {
+      log.error("Error during mass data generation", e);
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
+  }
 
-    /**
-     * Generate mass test data including applications, proceedings, decisions, and certificates.
-     *
-     * @param request the generation request with configuration
-     * @return response with generation statistics
-     */
-    @PostMapping("/generate-mass-data")
-    public ResponseEntity<MassDataGenerationResponse> generateMassData(
-            @Valid @RequestBody MassDataGenerationRequest request) {
+  /**
+   * Generate mass test data including applications, proceedings, decisions, and certificates.
+   *
+   * @param request the generation request with configuration
+   * @return response with generation statistics
+   */
+  @PostMapping("/generate-mass-data")
+  public ResponseEntity<MassDataGenerationResponse> generateMassData(
+      @Valid @RequestBody MassDataGenerationRequest request) {
 
-        log.info("Received mass data generation request: count={}, batchSize={}, decisionRate={}, linkRate={}",
-                request.getCount(), request.getBatchSize(), request.getDecisionRate(), request.getLinkRate());
+    log.info(
+        "Received mass data generation request: count={}, batchSize={}, decisionRate={}, linkRate={}",
+        request.getCount(),
+        request.getBatchSize(),
+        request.getDecisionRate(),
+        request.getLinkRate());
 
-        try {
-            MassDataGenerationResponse response = massDataGeneratorService.generateMassData(request);
-            log.info("Mass data generation completed successfully: {} records generated", response.getRecordsGenerated());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("Error during mass data generation", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+    try {
+      MassDataGenerationResponse response = massDataGeneratorService.generateMassData(request);
+      log.info(
+          "Mass data generation completed successfully: {} records generated",
+          response.getRecordsGenerated());
+      return ResponseEntity.ok(response);
+    } catch (Exception e) {
+      log.error("Error during mass data generation", e);
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
+  }
 }
-

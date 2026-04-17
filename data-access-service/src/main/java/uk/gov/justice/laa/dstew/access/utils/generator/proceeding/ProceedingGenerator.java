@@ -25,22 +25,21 @@ public class ProceedingGenerator extends BaseGenerator<Proceeding, Proceeding.Pr
         .usedDelegatedFunctionsOn(LocalDate.parse("2025-05-06"))
         .substantiveCostLimitation("23.45")
         .substantiveLevelOfServiceName("service")
-            .scopeLimitations(
-              List.of(
+        .scopeLimitations(
+            List.of(
                 Map.of(
-                  "id", "100",
-                  "code", "AB123D",
-                  "meaning", "hearing"
-                )
-              )
-            )
+                    "id", "100",
+                    "code", "AB123D",
+                    "meaning", "hearing")))
         .build();
   }
 
   @Override
   public Proceeding createRandom() {
     String[] categories = {"Family", "Civil", "Housing", "Immigration"};
-    String[] matterTypes = {"SPECIAL_CHILDREN_ACT", "DOMESTIC_ABUSE", "PRIVATE_FAMILY", "PUBLIC_FAMILY"};
+    String[] matterTypes = {
+      "SPECIAL_CHILDREN_ACT", "DOMESTIC_ABUSE", "PRIVATE_FAMILY", "PUBLIC_FAMILY"
+    };
     String[] meanings = {"hearing", "application", "appeal", "review"};
 
     return Proceeding.builder()
@@ -52,17 +51,16 @@ public class ProceedingGenerator extends BaseGenerator<Proceeding, Proceeding.Pr
         .description(faker.lorem().sentence())
         .meaning(faker.options().option(meanings))
         .usedDelegatedFunctionsOn(getRandomDate())
-        .substantiveCostLimitation(String.format("%.2f", faker.number().randomDouble(2, 100, 100000)))
-        .substantiveLevelOfServiceName(faker.options().option("Full Representation", "Legal Help", "Help at Court"))
-            .scopeLimitations(
-              List.of(
+        .substantiveCostLimitation(
+            String.format("%.2f", faker.number().randomDouble(2, 100, 100000)))
+        .substantiveLevelOfServiceName(
+            faker.options().option("Full Representation", "Legal Help", "Help at Court"))
+        .scopeLimitations(
+            List.of(
                 Map.of(
-                  "id", String.valueOf(faker.number().numberBetween(100, 999)),
-                  "code", faker.regexify("[A-Z]{2}[0-9]{3}[A-Z]"),
-                  "meaning", faker.options().option(meanings)
-                )
-              )
-            )
+                    "id", String.valueOf(faker.number().numberBetween(100, 999)),
+                    "code", faker.regexify("[A-Z]{2}[0-9]{3}[A-Z]"),
+                    "meaning", faker.options().option(meanings))))
         .build();
   }
 }

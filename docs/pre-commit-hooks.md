@@ -21,14 +21,32 @@ Run the setup script to configure Git hooks using Prek, which manages and runs p
 
 The pre-commit hooks will automatically perform:
 
-1.**Security Scanning** - Run the MoJ security scanner to detect secrets and vulnerabilities.
+1. **Security Scanning** - Run the MoJ security scanner to detect secrets and vulnerabilities.
+2. **Code Formatting** - Run Spotless to auto-format Java code (Google Java Format, import ordering, unused import removal).
+3. **Code Style Check** - Run Checkstyle against `config/checkstyle/checkstyle.xml`.
+
+### Manual Commands
+
+```bash
+# Auto-format code
+./gradlew spotlessApply
+
+# Check formatting without changing files
+./gradlew spotlessCheck
+
+# Run checkstyle
+./gradlew checkstyleMain
+```
 
 ### Configuration
 
 The pre-commit configuration (`.pre-commit-config.yaml`) includes:
 
 - **MoJ DevSecOps Hooks** - For security scanning.
+- **Spotless** - For code formatting. Configured in `build.gradle`.
+- **Checkstyle** - For code style validation.
 
 For more information, see:
 - [Pre-commit documentation](https://pre-commit.com/)
 - [MoJ DevSecOps Hooks](https://github.com/ministryofjustice/devsecops-hooks)
+- [Spotless](https://github.com/diffplug/spotless)

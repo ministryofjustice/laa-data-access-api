@@ -24,11 +24,12 @@ import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 
 /**
- * Mapper interface.
- * All mapping operations are performed safely, throwing an
- * {@link IllegalArgumentException} if JSON conversion fails.
+ * Mapper interface. All mapping operations are performed safely, throwing an {@link
+ * IllegalArgumentException} if JSON conversion fails.
  */
-@Mapper(componentModel = "spring", uses = {IndividualMapper.class})
+@Mapper(
+    componentModel = "spring",
+    uses = {IndividualMapper.class})
 public interface ApplicationMapper {
 
   IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
@@ -37,7 +38,8 @@ public interface ApplicationMapper {
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
    *
    * @param req the CREATE request to map
-   * @return a new {@link ApplicationEntity} populated from the request, or {@code null} if the request is null
+   * @return a new {@link ApplicationEntity} populated from the request, or {@code null} if the
+   *     request is null
    * @throws IllegalArgumentException if the {@code applicationContent} cannot be serialized
    */
   default ApplicationEntity toApplicationEntity(ApplicationCreateRequest req) {
@@ -48,25 +50,26 @@ public interface ApplicationMapper {
     entity.setStatus(req.getStatus());
     entity.setLaaReference(req.getLaaReference());
     ObjectMapper mapper = MapperUtil.getObjectMapper();
-    var individuals = req.getIndividuals()
-        .stream()
-        .map(individualMapper::toIndividualEntity)
-        .collect(Collectors.toSet());
+    var individuals =
+        req.getIndividuals().stream()
+            .map(individualMapper::toIndividualEntity)
+            .collect(Collectors.toSet());
     entity.setApplicationContent(mapper.convertValue(req.getApplicationContent(), Map.class));
     entity.setIndividuals(individuals);
     return entity;
   }
 
-
   /**
-   * Updates an existing {@link ApplicationEntity} using values from an {@link ApplicationUpdateRequest}.
+   * Updates an existing {@link ApplicationEntity} using values from an {@link
+   * ApplicationUpdateRequest}.
    *
    * @param entity the entity to update
-   * @param req    the update request containing new values
+   * @param req the update request containing new values
    * @throws IllegalArgumentException if the {@code applicationContent} cannot be serialized
    */
   @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  default void updateApplicationEntity(@MappingTarget ApplicationEntity entity, ApplicationUpdateRequest req) {
+  default void updateApplicationEntity(
+      @MappingTarget ApplicationEntity entity, ApplicationUpdateRequest req) {
     if (req.getStatus() != null) {
       entity.setStatus(req.getStatus());
     }
@@ -95,21 +98,16 @@ public interface ApplicationMapper {
     application.setSubmittedAt(
         entity.getSubmittedAt() != null
             ? OffsetDateTime.ofInstant(entity.getSubmittedAt(), ZoneOffset.UTC)
-            : null
-    );
+            : null);
     application.setIsLead(entity.isLead());
     application.setUsedDelegatedFunctions(entity.getUsedDelegatedFunctions());
     application.setAutoGrant(entity.getIsAutoGranted());
     if (entity.getDecision() != null) {
-      application.setOverallDecision(entity.getDecision().getOverallDecision());
+      application.setDecisionStatus(entity.getDecision().getOverallDecision());
     }
     application.setApplicationType(ApplicationType.INITIAL);
-    application.setOpponents(
-        extractOpponents(entity.getApplicationContent())
-    );
-    application.setProvider(
-        extractProvider(entity)
-    );
+    application.setOpponents(extractOpponents(entity.getApplicationContent()));
+    application.setProvider(extractProvider(entity));
     application.setVersion(entity.getVersion());
 
     return application;
@@ -134,8 +132,8 @@ public interface ApplicationMapper {
       return null;
     }
 
-    ApplicationContent applicationContent = MapperUtil.getObjectMapper()
-        .convertValue(content, ApplicationContent.class);
+    ApplicationContent applicationContent =
+        MapperUtil.getObjectMapper().convertValue(content, ApplicationContent.class);
 
     return applicationContent.getSubmitterEmail();
   }
@@ -146,7 +144,8 @@ public interface ApplicationMapper {
       return Collections.emptyList();
     }
 
-    ApplicationContent applicationContent = MapperUtil.getObjectMapper().convertValue(content, ApplicationContent.class);
+    ApplicationContent applicationContent =
+        MapperUtil.getObjectMapper().convertValue(content, ApplicationContent.class);
     ApplicationMerits meritsObj = applicationContent.getApplicationMerits();
     if (meritsObj == null) {
       return Collections.emptyList();
@@ -159,12 +158,14 @@ public interface ApplicationMapper {
 
     return opponentsList.stream()
         .map(OpponentDetails::getOpposable)
-        .map(opposableObj -> OpponentResponse.builder()
-            .opposableType(opposableObj.getOpposableType())
-            .firstName(opposableObj.getFirstName())
-            .lastName(opposableObj.getLastName())
-            .organisationName(opposableObj.getName())
-            .build())
+        .map(
+            opposableObj ->
+                OpponentResponse.builder()
+                    .opposableType(opposableObj.getOpposableType())
+                    .firstName(opposableObj.getFirstName())
+                    .lastName(opposableObj.getLastName())
+                    .organisationName(opposableObj.getName())
+                    .build())
         .toList();
   }
 }

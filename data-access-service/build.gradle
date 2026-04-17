@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
 plugins {
     id 'java'
     id 'jacoco'
@@ -81,6 +83,54 @@ test {
     finalizedBy jacocoTestReport
 }
 
+tasks.named('integrationTest') {
+    useJUnitPlatform()
+
+    testLogging {
+        events TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED
+        exceptionFormat = 'full'
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+    }
+}
+
+tasks.register('infrastructureTest', Test) {
+    description = 'Runs @SmokeTest-annotated tests against a live deployed environment'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    // Unconditionally use infrastructure mode — no flag needed
+    systemProperty 'test.mode', 'infrastructure'
+
+    filter {
+        includeTestsMatching 'uk.gov.justice.laa.dstew.access.controller.*'
+    }
+    useJUnitPlatform {
+        includeTags 'smoke'
+    }
+
+    ['LAA_SMOKE_ACCESS_API_URL',
+     'LAA_SMOKE_ACCESS_DB_URL',
+     'LAA_SMOKE_ACCESS_DB_USERNAME',
+     'LAA_SMOKE_ACCESS_DB_PASSWORD',
+     'FEATURE_DISABLE_SECURITY',
+     'FEATURE_ENABLE_DEV_TOKENS'].each { key ->
+        def value = System.getenv(key)
+        if (value) environment key, value
+    }
+
+    testLogging {
+        events TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED
+        exceptionFormat = 'full'
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+        showStandardStreams = true
+    }
+}
+
 jacoco {
     toolVersion = "0.8.13"
 }
@@ -152,8 +202,8 @@ dependencies {
     //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-12485150, SNYK-JAVA-IONETTY-15789758
     implementation 'io.netty:netty-codec-http2:4.1.132.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-15307781
-    implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.52'
-    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924, SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE)
+    implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.54'
+    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
     implementation 'com.fasterxml.jackson.core:jackson-core:2.21.2'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
     implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2') {
@@ -167,6 +217,9 @@ dependencies {
     implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.0.0'
     implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
 
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+    implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot:2.2.0'
+
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
     implementation 'org.javers:javers-core:7.10.0'
@@ -177,6 +230,7 @@ dependencies {
     // Mass data generator
     implementation 'net.datafaker:datafaker:2.5.2'
 
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
     testImplementation 'org.instancio:instancio-junit:5.5.1'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'

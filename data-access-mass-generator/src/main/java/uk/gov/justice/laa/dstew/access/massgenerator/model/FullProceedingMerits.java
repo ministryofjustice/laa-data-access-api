@@ -11,14 +11,13 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class FullProceedingMerits {
-    private String opponentsApplication;
-    private String attemptsToSettle;
-    private String specificIssue;
-    private String varyOrder;
-    private String chancesOfSuccess;
-    private String prohibitedSteps;
-    private String childCareAssessment;
-    private List<Object> proceedingLinkedChildren;
-    private List<Object> involvedChildren;
+  private String opponentsApplication;
+  private String attemptsToSettle;
+  private String specificIssue;
+  private String varyOrder;
+  private String chancesOfSuccess;
+  private String prohibitedSteps;
+  private String childCareAssessment;
+  private List<Object> proceedingLinkedChildren;
+  private List<Object> involvedChildren;
 }
-

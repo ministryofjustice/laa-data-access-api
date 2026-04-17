@@ -20,4 +20,3 @@ public class FullOpponentDetails {
   private Boolean existsInCCMS;
   private FullOpposable opposable;
 }
-

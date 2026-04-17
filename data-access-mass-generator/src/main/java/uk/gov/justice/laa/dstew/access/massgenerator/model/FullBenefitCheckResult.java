@@ -10,11 +10,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class FullBenefitCheckResult {
-    private String id;
-    private String legalAidApplicationId;
-    private String result;
-    private String dwpRef;
-    private String createdAt;
-    private String updatedAt;
+  private String id;
+  private String legalAidApplicationId;
+  private String result;
+  private String dwpRef;
+  private String createdAt;
+  private String updatedAt;
 }
-

@@ -9,23 +9,22 @@ import org.springframework.stereotype.Component;
 /**
  * Writes directly to the linked_individuals join table via a native query.
  *
- * Kept in a separate bean so that @Transactional is honoured by the Spring proxy.
- * Calling a @Transactional method on the same bean that calls it (self-invocation)
- * bypasses the proxy and the transaction annotation is silently ignored.
+ * <p>Kept in a separate bean so that @Transactional is honoured by the Spring proxy. Calling
+ * a @Transactional method on the same bean that calls it (self-invocation) bypasses the proxy and
+ * the transaction annotation is silently ignored.
  */
 @Component("massGeneratorLinkedIndividualWriter")
 public class LinkedIndividualWriter {
 
-    @Autowired
-    private EntityManager entityManager;
+  @Autowired private EntityManager entityManager;
 
-    @Transactional
-    public void link(UUID applicationId, UUID individualId) {
-        entityManager.createNativeQuery(
-                "INSERT INTO linked_individuals (application_id, individual_id) VALUES (:appId, :indivId)")
-                .setParameter("appId", applicationId)
-                .setParameter("indivId", individualId)
-                .executeUpdate();
-    }
+  @Transactional
+  public void link(UUID applicationId, UUID individualId) {
+    entityManager
+        .createNativeQuery(
+            "INSERT INTO linked_individuals (application_id, individual_id) VALUES (:appId, :indivId)")
+        .setParameter("appId", applicationId)
+        .setParameter("indivId", individualId)
+        .executeUpdate();
+  }
 }
-

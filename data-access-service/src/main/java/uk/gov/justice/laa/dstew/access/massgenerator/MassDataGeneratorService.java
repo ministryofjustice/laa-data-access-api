@@ -44,230 +44,243 @@ import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEnti
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
 /**
- * Service for generating mass test data including applications, decisions, certificates, and linked relationships.
+ * Service for generating mass test data including applications, decisions, certificates, and linked
+ * relationships.
  */
 @Service
 @Slf4j
 public class MassDataGeneratorService {
 
-    private final PersistedDataGenerator persistedDataGenerator;
-    private final LinkedIndividualWriter linkedIndividualWriter;
-    private final ObjectMapper objectMapper;
+  private final PersistedDataGenerator persistedDataGenerator;
+  private final LinkedIndividualWriter linkedIndividualWriter;
+  private final ObjectMapper objectMapper;
 
-    public MassDataGeneratorService(
-            @Qualifier("massGeneratorPersistedDataGenerator") PersistedDataGenerator persistedDataGenerator,
-            @Qualifier("massGeneratorLinkedIndividualWriter") LinkedIndividualWriter linkedIndividualWriter,
-            ObjectMapper objectMapper) {
-        this.persistedDataGenerator = persistedDataGenerator;
-        this.linkedIndividualWriter = linkedIndividualWriter;
-        this.objectMapper = objectMapper;
+  public MassDataGeneratorService(
+      @Qualifier("massGeneratorPersistedDataGenerator")
+          PersistedDataGenerator persistedDataGenerator,
+      @Qualifier("massGeneratorLinkedIndividualWriter")
+          LinkedIndividualWriter linkedIndividualWriter,
+      ObjectMapper objectMapper) {
+    this.persistedDataGenerator = persistedDataGenerator;
+    this.linkedIndividualWriter = linkedIndividualWriter;
+    this.objectMapper = objectMapper;
+  }
+
+  // Non-Spring managed generators - created on demand
+  private FullMeritsDecisionGenerator meritsDecisionGenerator;
+  private FullCertificateGenerator certificateGenerator;
+  private FullJsonGenerator jsonGenerator;
+
+  private void initGenerators() {
+    if (meritsDecisionGenerator == null) {
+      meritsDecisionGenerator = new FullMeritsDecisionGenerator();
+      certificateGenerator = new FullCertificateGenerator();
+      jsonGenerator = new FullJsonGenerator();
     }
+  }
 
-    // Non-Spring managed generators - created on demand
-    private FullMeritsDecisionGenerator meritsDecisionGenerator;
-    private FullCertificateGenerator certificateGenerator;
-    private FullJsonGenerator jsonGenerator;
+  /**
+   * Generate mass test data.
+   *
+   * @param request the generation request containing count and configuration
+   * @return response with generation statistics
+   */
+  @Transactional
+  public MassDataGenerationResponse generateMassData(MassDataGenerationRequest request) {
+    initGenerators();
 
-    private void initGenerators() {
-        if (meritsDecisionGenerator == null) {
-            meritsDecisionGenerator = new FullMeritsDecisionGenerator();
-            certificateGenerator = new FullCertificateGenerator();
-            jsonGenerator = new FullJsonGenerator();
-        }
-    }
+    int count = request.getCount();
+    int batchSize = request.getBatchSize();
+    double decisionRate = request.getDecisionRate();
+    double linkRate = request.getLinkRate();
 
-    /**
-     * Generate mass test data.
-     *
-     * @param request the generation request containing count and configuration
-     * @return response with generation statistics
-     */
-    @Transactional
-    public MassDataGenerationResponse generateMassData(MassDataGenerationRequest request) {
-        initGenerators();
+    long startTime = System.currentTimeMillis();
+    log.info("Mass generation started at {} for {} records", Instant.now(), count);
 
-        int count = request.getCount();
-        int batchSize = request.getBatchSize();
-        double decisionRate = request.getDecisionRate();
-        double linkRate = request.getLinkRate();
+    Faker faker = new Faker();
 
-        long startTime = System.currentTimeMillis();
-        log.info("Mass generation started at {} for {} records", Instant.now(), count);
+    // Pre-generate pools using random variants in one saveAllAndFlush each
+    List<CaseworkerEntity> caseworkers =
+        persistedDataGenerator.createAndPersistMultipleRandom(CaseworkerGenerator.class, 100);
+    log.info("Created {} caseworkers", caseworkers.size());
 
-        Faker faker = new Faker();
+    List<IndividualEntity> individuals =
+        persistedDataGenerator.createAndPersistMultipleRandom(
+            IndividualEntityGenerator.class, 1000);
+    log.info("Created {} individuals", individuals.size());
 
-        // Pre-generate pools using random variants in one saveAllAndFlush each
-        List<CaseworkerEntity> caseworkers =
-                persistedDataGenerator.createAndPersistMultipleRandom(CaseworkerGenerator.class, 100);
-        log.info("Created {} caseworkers", caseworkers.size());
+    log.info("Generating {} application records...", count);
 
-        List<IndividualEntity> individuals =
-                persistedDataGenerator.createAndPersistMultipleRandom(IndividualEntityGenerator.class, 1000);
-        log.info("Created {} individuals", individuals.size());
+    CategoryOfLawTypeConvertor colConvertor = new CategoryOfLawTypeConvertor();
+    MatterTypeConvertor mtConvertor = new MatterTypeConvertor();
 
-        log.info("Generating {} application records...", count);
+    int decidedCount = 0;
+    int linkedCount = 0;
+    List<UUID> persistedAppIds = new ArrayList<>();
 
-        CategoryOfLawTypeConvertor colConvertor = new CategoryOfLawTypeConvertor();
-        MatterTypeConvertor mtConvertor = new MatterTypeConvertor();
+    for (int i = 0; i < count; i++) {
 
-        int decidedCount = 0;
-        int linkedCount = 0;
-        List<UUID> persistedAppIds = new ArrayList<>();
+      // 1. Generate full rich application content
+      ApplicationContent content = jsonGenerator.createDefault();
 
-        for (int i = 0; i < count; i++) {
+      // 2. Pick a random caseworker and individual from the pre-generated pools
+      CaseworkerEntity cw = caseworkers.get(faker.number().numberBetween(0, caseworkers.size()));
+      IndividualEntity indiv = individuals.get(faker.number().numberBetween(0, individuals.size()));
 
-            // 1. Generate full rich application content
-            ApplicationContent content = jsonGenerator.createDefault();
+      // 3. Derive entity-level columns from the content (mirrors ApplicationContentParserService)
+      Proceeding lead =
+          content.getProceedings().stream()
+              .filter(p -> Boolean.TRUE.equals(p.getLeadProceeding()))
+              .findFirst()
+              .orElseThrow(
+                  () -> new IllegalStateException("No lead proceeding found in generated content"));
 
-            // 2. Pick a random caseworker and individual from the pre-generated pools
-            CaseworkerEntity cw = caseworkers.get(faker.number().numberBetween(0, caseworkers.size()));
-            IndividualEntity indiv = individuals.get(faker.number().numberBetween(0, individuals.size()));
+      CategoryOfLaw col = colConvertor.lenientEnumConversion(lead.getCategoryOfLaw());
+      MatterType mt = mtConvertor.lenientEnumConversion(lead.getMatterType());
+      boolean udf =
+          content.getProceedings().stream()
+              .anyMatch(p -> Boolean.TRUE.equals(p.getUsedDelegatedFunctions()));
 
-            // 3. Derive entity-level columns from the content (mirrors ApplicationContentParserService)
-            Proceeding lead = content.getProceedings().stream()
-                    .filter(p -> Boolean.TRUE.equals(p.getLeadProceeding()))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalStateException("No lead proceeding found in generated content"));
+      // 4. Persist ApplicationEntity with all required columns populated
+      ApplicationEntity app =
+          persistedDataGenerator.createAndPersist(
+              ApplicationEntityGenerator.class,
+              b ->
+                  b.applyApplicationId(content.getId())
+                      .laaReference(content.getLaaReference())
+                      .submittedAt(Instant.parse(content.getSubmittedAt()))
+                      .officeCode(
+                          content.getOffice() != null ? content.getOffice().getCode() : null)
+                      .status(
+                          faker
+                              .options()
+                              .option(
+                                  ApplicationStatus.APPLICATION_IN_PROGRESS,
+                                  ApplicationStatus.APPLICATION_SUBMITTED))
+                      .categoryOfLaw(col)
+                      .matterType(mt)
+                      .usedDelegatedFunctions(udf)
+                      .applicationContent(objectMapper.convertValue(content, Map.class))
+                      .caseworker(cw));
+      persistedAppIds.add(app.getId());
 
-            CategoryOfLaw col = colConvertor.lenientEnumConversion(lead.getCategoryOfLaw());
-            MatterType mt = mtConvertor.lenientEnumConversion(lead.getMatterType());
-            boolean udf = content.getProceedings().stream()
-                    .anyMatch(p -> Boolean.TRUE.equals(p.getUsedDelegatedFunctions()));
+      // 4a. Link individual via native INSERT to bypass CascadeType.PERSIST
+      linkedIndividualWriter.link(app.getId(), indiv.getId());
 
-            // 4. Persist ApplicationEntity with all required columns populated
-            ApplicationEntity app = persistedDataGenerator.createAndPersist(
-                    ApplicationEntityGenerator.class,
-                    b -> b
-                            .applyApplicationId(content.getId())
-                            .laaReference(content.getLaaReference())
-                            .submittedAt(Instant.parse(content.getSubmittedAt()))
-                            .officeCode(content.getOffice() != null ? content.getOffice().getCode() : null)
-                            .status(faker.options().option(ApplicationStatus.APPLICATION_IN_PROGRESS, ApplicationStatus.APPLICATION_SUBMITTED))
-                            .categoryOfLaw(col)
-                            .matterType(mt)
-                            .usedDelegatedFunctions(udf)
-                            .applicationContent(objectMapper.convertValue(content, Map.class))
-                            .caseworker(cw)
-            );
-            persistedAppIds.add(app.getId());
+      // 5. Accumulate proceedings then persist as a single saveAllAndFlush
+      List<ProceedingEntity> proceedingBatch = new ArrayList<>();
+      for (Proceeding p : content.getProceedings()) {
+        proceedingBatch.add(
+            DataGenerator.createDefault(
+                ProceedingsEntityGenerator.class,
+                b ->
+                    b.applicationId(app.getId())
+                        .applyProceedingId(p.getId())
+                        .description(p.getDescription())
+                        .isLead(Boolean.TRUE.equals(p.getLeadProceeding()))
+                        .createdBy("mass-generator")
+                        .updatedBy("mass-generator")
+                        .proceedingContent(objectMapper.convertValue(p, Map.class))));
+      }
+      persistedDataGenerator.persist(ProceedingsEntityGenerator.class, proceedingBatch);
 
-            // 4a. Link individual via native INSERT to bypass CascadeType.PERSIST
-            linkedIndividualWriter.link(app.getId(), indiv.getId());
+      // 6. Optionally generate a decision for this application
+      if (faker.number().randomDouble(2, 0, 1) < decisionRate) {
+        decidedCount++;
 
-            // 5. Accumulate proceedings then persist as a single saveAllAndFlush
-            List<ProceedingEntity> proceedingBatch = new ArrayList<>();
-            for (Proceeding p : content.getProceedings()) {
-                proceedingBatch.add(DataGenerator.createDefault(
-                        ProceedingsEntityGenerator.class,
-                        b -> b
-                                .applicationId(app.getId())
-                                .applyProceedingId(p.getId())
-                                .description(p.getDescription())
-                                .isLead(Boolean.TRUE.equals(p.getLeadProceeding()))
-                                .createdBy("mass-generator")
-                                .updatedBy("mass-generator")
-                                .proceedingContent(objectMapper.convertValue(p, Map.class))
-                ));
-            }
-            persistedDataGenerator.persist(ProceedingsEntityGenerator.class, proceedingBatch);
+        DecisionStatus overallDecision =
+            faker
+                .options()
+                .option(
+                    DecisionStatus.REFUSED,
+                    DecisionStatus.REFUSED,
+                    DecisionStatus.REFUSED,
+                    DecisionStatus.GRANTED,
+                    DecisionStatus.GRANTED);
 
-            // 6. Optionally generate a decision for this application
-            if (faker.number().randomDouble(2, 0, 1) < decisionRate) {
-                decidedCount++;
+        // Re-attach proceedings and application in case the session was cleared mid-batch
+        List<ProceedingEntity> attachedProceedings =
+            persistedDataGenerator.reattach(proceedingBatch);
+        ApplicationEntity attachedApp = persistedDataGenerator.reattach(List.of(app)).get(0);
 
-                DecisionStatus overallDecision = faker.options().option(
-                        DecisionStatus.REFUSED,
-                        DecisionStatus.REFUSED,
-                        DecisionStatus.REFUSED,
-                        DecisionStatus.GRANTED,
-                        DecisionStatus.GRANTED
-                );
-
-                // Re-attach proceedings and application in case the session was cleared mid-batch
-                List<ProceedingEntity> attachedProceedings = persistedDataGenerator.reattach(proceedingBatch);
-                ApplicationEntity attachedApp = persistedDataGenerator.reattach(List.of(app)).get(0);
-
-                // 6a. One MeritsDecisionEntity per proceeding
-                Set<MeritsDecisionEntity> merits = new LinkedHashSet<>();
-                for (ProceedingEntity pe : attachedProceedings) {
-                    MeritsDecisionEntity merit = meritsDecisionGenerator.createDefault(b -> b.proceeding(pe));
-                    persistedDataGenerator.persist(FullMeritsDecisionGenerator.class, merit);
-                    merits.add(merit);
-                }
-
-                // 6b. DecisionEntity — persist without merits first
-                DecisionEntity decision = DecisionEntity.builder()
-                        .overallDecision(overallDecision)
-                        .build();
-                persistedDataGenerator.persist(DecisionEntityGenerator.class, decision);
-                // Now attach the merits via merge
-                decision.setMeritsDecisions(merits);
-                persistedDataGenerator.mergeDecision(decision);
-
-                // 6c. Certificate (GRANTED only)
-                if (overallDecision == DecisionStatus.GRANTED) {
-                    CertificateEntity cert = certificateGenerator.createDefault(
-                            b -> b.applicationId(attachedApp.getId()));
-                    persistedDataGenerator.persist(FullCertificateGenerator.class, cert);
-                }
-
-                // 6d. Link decision back to application
-                attachedApp.setDecision(decision);
-                attachedApp.setIsAutoGranted(overallDecision == DecisionStatus.GRANTED);
-                persistedDataGenerator.saveApplication(attachedApp);
-            }
-
-            // 7. Flush + clear Hibernate session every BATCH_SIZE applications
-            if ((i + 1) % batchSize == 0) {
-                persistedDataGenerator.flushAndClear();
-                log.info("Persisted {} / {} applications", i + 1, count);
-            }
+        // 6a. One MeritsDecisionEntity per proceeding
+        Set<MeritsDecisionEntity> merits = new LinkedHashSet<>();
+        for (ProceedingEntity pe : attachedProceedings) {
+          MeritsDecisionEntity merit = meritsDecisionGenerator.createDefault(b -> b.proceeding(pe));
+          persistedDataGenerator.persist(FullMeritsDecisionGenerator.class, merit);
+          merits.add(merit);
         }
 
-        // flush any remaining partial batch
+        // 6b. DecisionEntity — persist without merits first
+        DecisionEntity decision = DecisionEntity.builder().overallDecision(overallDecision).build();
+        persistedDataGenerator.persist(DecisionEntityGenerator.class, decision);
+        // Now attach the merits via merge
+        decision.setMeritsDecisions(merits);
+        persistedDataGenerator.mergeDecision(decision);
+
+        // 6c. Certificate (GRANTED only)
+        if (overallDecision == DecisionStatus.GRANTED) {
+          CertificateEntity cert =
+              certificateGenerator.createDefault(b -> b.applicationId(attachedApp.getId()));
+          persistedDataGenerator.persist(FullCertificateGenerator.class, cert);
+        }
+
+        // 6d. Link decision back to application
+        attachedApp.setDecision(decision);
+        attachedApp.setIsAutoGranted(overallDecision == DecisionStatus.GRANTED);
+        persistedDataGenerator.saveApplication(attachedApp);
+      }
+
+      // 7. Flush + clear Hibernate session every BATCH_SIZE applications
+      if ((i + 1) % batchSize == 0) {
         persistedDataGenerator.flushAndClear();
-
-        // Link applications
-        int i = 0;
-        while (i < persistedAppIds.size()) {
-            if (faker.number().randomDouble(2, 0, 1) < linkRate && i + 1 < persistedAppIds.size()) {
-                UUID leadId = persistedAppIds.get(i);
-                i++;
-                int associateCount = faker.number().numberBetween(1, 4);
-                for (int j = 0; j < associateCount && i < persistedAppIds.size(); j++) {
-                    persistedDataGenerator.linkApplications(leadId, persistedAppIds.get(i));
-                    i++;
-                    linkedCount++;
-                }
-            } else {
-                i++;
-            }
-        }
-
-        long elapsedMs = System.currentTimeMillis() - startTime;
-        long minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedMs);
-        long seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedMs) % 60;
-        double recordsPerSecond = count / (elapsedMs / 1000.0);
-
-        log.info("========================================");
-        log.info("       Mass Generation Report");
-        log.info("========================================");
-        log.info("  Records generated  : {}", count);
-        log.info("  Decided applications: {} ({}%)", decidedCount, String.format("%.0f", 100.0 * decidedCount / count));
-        log.info("  Linked applications : {} pairs", linkedCount);
-        log.info("  Total time         : {} min {:02d} sec", minutes, seconds);
-        log.info("  Throughput         : {} records/sec", String.format("%.1f", recordsPerSecond));
-        log.info("========================================");
-
-        return MassDataGenerationResponse.builder()
-                .recordsGenerated(count)
-                .decidedCount(decidedCount)
-                .linkedCount(linkedCount)
-                .durationMillis(elapsedMs)
-                .throughputRecordsPerSecond(recordsPerSecond)
-                .build();
+        log.info("Persisted {} / {} applications", i + 1, count);
+      }
     }
+
+    // flush any remaining partial batch
+    persistedDataGenerator.flushAndClear();
+
+    // Link applications
+    int i = 0;
+    while (i < persistedAppIds.size()) {
+      if (faker.number().randomDouble(2, 0, 1) < linkRate && i + 1 < persistedAppIds.size()) {
+        UUID leadId = persistedAppIds.get(i);
+        i++;
+        int associateCount = faker.number().numberBetween(1, 4);
+        for (int j = 0; j < associateCount && i < persistedAppIds.size(); j++) {
+          persistedDataGenerator.linkApplications(leadId, persistedAppIds.get(i));
+          i++;
+          linkedCount++;
+        }
+      } else {
+        i++;
+      }
+    }
+
+    long elapsedMs = System.currentTimeMillis() - startTime;
+    long minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedMs);
+    long seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedMs) % 60;
+    double recordsPerSecond = count / (elapsedMs / 1000.0);
+
+    log.info("========================================");
+    log.info("       Mass Generation Report");
+    log.info("========================================");
+    log.info("  Records generated  : {}", count);
+    log.info(
+        "  Decided applications: {} ({}%)",
+        decidedCount, String.format("%.0f", 100.0 * decidedCount / count));
+    log.info("  Linked applications : {} pairs", linkedCount);
+    log.info("  Total time         : {} min {:02d} sec", minutes, seconds);
+    log.info("  Throughput         : {} records/sec", String.format("%.1f", recordsPerSecond));
+    log.info("========================================");
+
+    return MassDataGenerationResponse.builder()
+        .recordsGenerated(count)
+        .decidedCount(decidedCount)
+        .linkedCount(linkedCount)
+        .durationMillis(elapsedMs)
+        .throughputRecordsPerSecond(recordsPerSecond)
+        .build();
+  }
 }
-
-
-

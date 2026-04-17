@@ -21,8 +21,8 @@ import uk.gov.justice.laa.dstew.access.utils.PaginationHelper;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
- * REST controller for managing individuals.
- * Implements the OpenAPI-generated {@link IndividualsApi} interface.
+ * REST controller for managing individuals. Implements the OpenAPI-generated {@link IndividualsApi}
+ * interface.
  */
 @RequiredArgsConstructor
 @RestController
@@ -52,8 +52,7 @@ public class IndividualsController implements IndividualsApi {
       Integer page,
       Integer pageSize,
       UUID applicationId,
-      IndividualType type
-  ) {
+      IndividualType type) {
     validateRequest(applicationId, include);
 
     PaginationHelper.PaginatedResult<IndividualResponse> result =
@@ -80,7 +79,8 @@ public class IndividualsController implements IndividualsApi {
 
     if (includedDataTypes == IncludedAdditionalData.CLIENT_DETAILS) {
       if (applicationId == null) {
-        throw new ValidationException(List.of("Application ID is required when included data is CLIENT_DETAILS"));
+        throw new ValidationException(
+            List.of("Application ID is required when included data is CLIENT_DETAILS"));
       }
     }
   }

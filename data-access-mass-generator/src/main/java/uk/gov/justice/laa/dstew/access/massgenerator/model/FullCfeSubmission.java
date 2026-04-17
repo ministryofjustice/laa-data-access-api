@@ -10,13 +10,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class FullCfeSubmission {
-    private String id;
-    private String legalAidApplicationId;
-    private String assessmentId;
-    private String aasmState;
-    private String errorMessage;
-    private String cfeResult;
-    private String createdAt;
-    private String updatedAt;
+  private String id;
+  private String legalAidApplicationId;
+  private String assessmentId;
+  private String aasmState;
+  private String errorMessage;
+  private String cfeResult;
+  private String createdAt;
+  private String updatedAt;
 }
-

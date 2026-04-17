@@ -15,17 +15,14 @@ import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationPro
 @ExtendWith(MockitoExtension.class)
 public class ApplicationTransformerTest {
 
-  @InjectMocks
-  ApplicationTransformer classUnderTest;
+  @InjectMocks ApplicationTransformer classUnderTest;
 
-  @Mock
-  EffectiveAuthorizationProvider mockEntra;
+  @Mock EffectiveAuthorizationProvider mockEntra;
 
   @Test
   void givenApplicationAndRoleProceedingsReader_whenTransform_thenOnlyCorrectFieldsArePresent() {
-    ApplicationResponse request = ApplicationResponse.builder()
-        .applicationId(UUID.randomUUID())
-        .build();
+    ApplicationResponse request =
+        ApplicationResponse.builder().applicationId(UUID.randomUUID()).build();
 
     when(mockEntra.hasAppRole("ProceedingReader")).thenReturn(true);
 
@@ -35,16 +32,13 @@ public class ApplicationTransformerTest {
 
   @Test
   void givenApplicationAndNoRole_whenTransform_thenNoFieldsAreTransformed() {
-    ApplicationResponse request = ApplicationResponse.builder()
-        .applicationId(UUID.randomUUID())
-        .build();
+    ApplicationResponse request =
+        ApplicationResponse.builder().applicationId(UUID.randomUUID()).build();
 
     when(mockEntra.hasAppRole("ProceedingReader")).thenReturn(false);
 
     ApplicationResponse response = classUnderTest.transform(request);
 
-    assertThat(response)
-            .usingRecursiveComparison()
-            .isEqualTo(request);
+    assertThat(response).usingRecursiveComparison().isEqualTo(request);
   }
 }

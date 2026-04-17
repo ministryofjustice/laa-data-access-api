@@ -21,7 +21,9 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleApplicationNotFound_returnsGenericNotFoundExceptionAndErrorMessage() {
-    var result = globalExceptionHandler.handleResourceNotFound(new ResourceNotFoundException("Application not found"));
+    var result =
+        globalExceptionHandler.handleResourceNotFound(
+            new ResourceNotFoundException("Application not found"));
 
     assertThat(result).isNotNull();
     assertThat(result.getStatusCode()).isEqualTo(NOT_FOUND);
@@ -31,7 +33,9 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleCaseworkerNotFound_returnsGenericNotFoundExceptionAndErrorMessage() {
-    var result = globalExceptionHandler.handleResourceNotFound(new ResourceNotFoundException("Caseworker not found"));
+    var result =
+        globalExceptionHandler.handleResourceNotFound(
+            new ResourceNotFoundException("Caseworker not found"));
 
     assertThat(result).isNotNull();
     assertThat(result.getStatusCode()).isEqualTo(NOT_FOUND);
@@ -41,7 +45,9 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleValidationException_returnsBadRequestStatusAndErrors() {
-    ResponseEntity<ProblemDetail> result = globalExceptionHandler.handleValidationException(new ValidationException(List.of("error1")));
+    ResponseEntity<ProblemDetail> result =
+        globalExceptionHandler.handleValidationException(
+            new ValidationException(List.of("error1")));
 
     assertThat(result).isNotNull();
     ProblemDetail problemDetail = result.getBody();
@@ -55,7 +61,8 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleIllegalArgumentException_returnsBadRequestStatusAndErrorMessage() {
-    var result = globalExceptionHandler.handleIllegalArgumentException(
+    var result =
+        globalExceptionHandler.handleIllegalArgumentException(
             new IllegalArgumentException("page must be greater than or equal to 1"));
 
     assertThat(result).isNotNull();
@@ -68,7 +75,8 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleGenericException_returnsInternalServerErrorStatusAndErrorMessage() {
-    var result = globalExceptionHandler.handleGenericException(new RuntimeException("Something went wrong"));
+    var result =
+        globalExceptionHandler.handleGenericException(new RuntimeException("Something went wrong"));
 
     assertThat(result).isNotNull();
     assertThat(result.getStatusCode()).isEqualTo(INTERNAL_SERVER_ERROR);
@@ -76,16 +84,22 @@ class GlobalExceptionHandlerTest {
     assertThat(result.getBody().getDetail()).isEqualTo("An unexpected error has occurred.");
   }
 
-  @Test void handleAuthorizationDeniedException_throwsException_for_ExceptionTranslationFilter_to_handle() {
+  @Test
+  void
+      handleAuthorizationDeniedException_throwsException_for_ExceptionTranslationFilter_to_handle() {
     assertThatException()
-      .isThrownBy(() -> globalExceptionHandler.handleAuthorizationDeniedException(new AuthorizationDeniedException("")))
+        .isThrownBy(
+            () ->
+                globalExceptionHandler.handleAuthorizationDeniedException(
+                    new AuthorizationDeniedException("")))
         .isInstanceOf(AuthorizationDeniedException.class);
   }
 
   @Test
   void handleDataAccessException_returnsInternalServerErrorStatusAndErrorMessage() {
-    var result = globalExceptionHandler.handleDataAccessException(new DataRetrievalFailureException("Database error") {
-    });
+    var result =
+        globalExceptionHandler.handleDataAccessException(
+            new DataRetrievalFailureException("Database error") {});
 
     assertThat(result).isNotNull();
     assertThat(result.getStatusCode()).isEqualTo(INTERNAL_SERVER_ERROR);
@@ -95,14 +109,15 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleOptimisticLockingxception_returnsConflictStatusAndErrorMessage() {
-    var result = globalExceptionHandler
-        .handleOptimisticLoggingException(new OptimisticLockingFailureException("Application with id 123 and version 1 not found") {
-    });
+    var result =
+        globalExceptionHandler.handleOptimisticLoggingException(
+            new OptimisticLockingFailureException(
+                "Application with id 123 and version 1 not found") {});
 
     assertThat(result).isNotNull();
     assertThat(result.getStatusCode()).isEqualTo(CONFLICT);
     assertThat(result.getBody()).isNotNull();
-    assertThat(result.getBody().getDetail()).isEqualTo("Application with id 123 and version 1 not found");
+    assertThat(result.getBody().getDetail())
+        .isEqualTo("Application with id 123 and version 1 not found");
   }
-
 }

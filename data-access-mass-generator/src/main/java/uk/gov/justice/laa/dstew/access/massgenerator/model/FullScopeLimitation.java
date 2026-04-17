@@ -10,14 +10,13 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class FullScopeLimitation {
-    private String id;
-    private String scopeType;
-    private String code;
-    private String meaning;
-    private String description;
-    private String hearingDate;
-    private String limitationNote;
-    private String createdAt;
-    private String updatedAt;
+  private String id;
+  private String scopeType;
+  private String code;
+  private String meaning;
+  private String description;
+  private String hearingDate;
+  private String limitationNote;
+  private String createdAt;
+  private String updatedAt;
 }
-

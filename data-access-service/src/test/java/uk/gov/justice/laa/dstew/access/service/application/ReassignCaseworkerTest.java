@@ -28,64 +28,70 @@ import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGene
 
 public class ReassignCaseworkerTest extends BaseServiceTest {
 
-    @Autowired
-    private ApplicationService serviceUnderTest;
+  @Autowired private ApplicationService serviceUnderTest;
 
-    @Test
-    void givenApplicationWithCaseworker_whenReassignCaseworker_thenSaveAndCreateDomainEvent() throws JacksonException {
+  @Test
+  void givenApplicationWithCaseworker_whenReassignCaseworker_thenSaveAndCreateDomainEvent()
+      throws JacksonException {
 
-        // given
-        UUID applicationId = UUID.randomUUID();
+    // given
+    UUID applicationId = UUID.randomUUID();
 
-        CaseworkerEntity existingCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder ->
-                builder.id(UUID.randomUUID())
-                        .username("John Doe")
-        );
+    CaseworkerEntity existingCaseworker =
+        DataGenerator.createDefault(
+            CaseworkerGenerator.class,
+            builder -> builder.id(UUID.randomUUID()).username("John Doe"));
 
-        CaseworkerEntity expectedCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class, builder ->
-                builder.id(UUID.randomUUID())
-                        .username("Jane Doe")
-        );
+    CaseworkerEntity expectedCaseworker =
+        DataGenerator.createDefault(
+            CaseworkerGenerator.class,
+            builder -> builder.id(UUID.randomUUID()).username("Jane Doe"));
 
-        ApplicationEntity existingApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-                builder.id(applicationId).caseworker(existingCaseworker)
-        );
+    ApplicationEntity existingApplicationEntity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class,
+            builder -> builder.id(applicationId).caseworker(existingCaseworker));
 
-        ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
+    ApplicationEntity expectedApplicationEntity =
+        existingApplicationEntity.toBuilder().caseworker(expectedCaseworker).build();
 
-        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
-                .eventDescription("Case reassigned.")
-                .build();
+    EventHistoryRequest eventHistoryRequest =
+        EventHistoryRequest.builder().eventDescription("Case reassigned.").build();
 
-        DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
-                .applicationId(applicationId)
-                .caseworkerId(expectedCaseworker.getId())
-                .createdBy("")
-                .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
-                .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
+    DomainEventEntity expectedDomainEvent =
+        DomainEventEntity.builder()
+            .applicationId(applicationId)
+            .caseworkerId(expectedCaseworker.getId())
+            .createdBy("")
+            .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
+            .data(
+                objectMapper.writeValueAsString(
+                    AssignApplicationDomainEventDetails.builder()
                         .applicationId(existingApplicationEntity.getId())
                         .caseWorkerId(expectedCaseworker.getId())
                         .eventDescription(eventHistoryRequest.getEventDescription())
                         .createdBy("")
                         .build()))
-                .build();
+            .build();
 
-        List<UUID> applicationIds = List.of(applicationId);
+    List<UUID> applicationIds = List.of(applicationId);
 
-        when(applicationRepository.findAllById(eq(applicationIds))).thenReturn(List.of(existingApplicationEntity));
-        when(caseworkerRepository.findById(expectedCaseworker.getId()))
-                .thenReturn(Optional.of(expectedCaseworker));
+    when(applicationRepository.findAllById(eq(applicationIds)))
+        .thenReturn(List.of(existingApplicationEntity));
+    when(caseworkerRepository.findById(expectedCaseworker.getId()))
+        .thenReturn(Optional.of(expectedCaseworker));
 
-        setSecurityContext(TestConstants.Roles.CASEWORKER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        // when
-        serviceUnderTest.assignCaseworker(expectedCaseworker.getId(), List.of(applicationId), eventHistoryRequest);
+    // when
+    serviceUnderTest.assignCaseworker(
+        expectedCaseworker.getId(), List.of(applicationId), eventHistoryRequest);
 
-        // then
-        verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
-        verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
+    // then
+    verify(applicationRepository, times(1)).findAllById(eq(applicationIds));
+    verify(caseworkerRepository, times(1)).findById(expectedCaseworker.getId());
 
-        verifyThatApplicationEntitySaved(applicationRepository, expectedApplicationEntity, 1);
-        verifyThatDomainEventSaved(domainEventRepository, objectMapper, expectedDomainEvent, 1);
-    }
+    verifyThatApplicationEntitySaved(applicationRepository, expectedApplicationEntity, 1);
+    verifyThatDomainEventSaved(domainEventRepository, objectMapper, expectedDomainEvent, 1);
+  }
 }

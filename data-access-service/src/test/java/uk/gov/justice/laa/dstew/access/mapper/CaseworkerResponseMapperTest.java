@@ -14,35 +14,35 @@ import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGene
 @ExtendWith(MockitoExtension.class)
 public class CaseworkerResponseMapperTest extends BaseMapperTest {
 
-    @InjectMocks
-    private CaseworkerMapperImpl mapper;
+  @InjectMocks private CaseworkerMapperImpl mapper;
 
-    @Test
-    void givenNullCaseworker_whenToCaseworker_thenReturnNull() {
-        assertThat(mapper.toCaseworker(null)).isNull();
-    }
+  @Test
+  void givenNullCaseworker_whenToCaseworker_thenReturnNull() {
+    assertThat(mapper.toCaseworker(null)).isNull();
+  }
 
-    @Test
-    void givenCaseworkerEntity_whenToCaseworker_thenMapsFieldsCorrectly() {
-        UUID caseworkerId = UUID.randomUUID();
-        CaseworkerEntity entity = DataGenerator.createDefault(CaseworkerGenerator.class,
-                builder -> builder.id(caseworkerId)
-                                  .username("caseworker1"));
+  @Test
+  void givenCaseworkerEntity_whenToCaseworker_thenMapsFieldsCorrectly() {
+    UUID caseworkerId = UUID.randomUUID();
+    CaseworkerEntity entity =
+        DataGenerator.createDefault(
+            CaseworkerGenerator.class, builder -> builder.id(caseworkerId).username("caseworker1"));
 
-        var result = mapper.toCaseworker(entity);
+    var result = mapper.toCaseworker(entity);
 
-        assertThat(result.getId()).isEqualTo(caseworkerId);
-        assertThat(result.getUsername()).isEqualTo("caseworker1");
-    }
+    assertThat(result.getId()).isEqualTo(caseworkerId);
+    assertThat(result.getUsername()).isEqualTo("caseworker1");
+  }
 
-    @Test
-    void givenCaseworkerEntityWithAllNullFields_whenToCaseworker_thenAllFieldsAreNull() {
-        CaseworkerEntity entity = DataGenerator.createDefault(CaseworkerGenerator.class,
-                builder -> builder.id(null).username(null));
+  @Test
+  void givenCaseworkerEntityWithAllNullFields_whenToCaseworker_thenAllFieldsAreNull() {
+    CaseworkerEntity entity =
+        DataGenerator.createDefault(
+            CaseworkerGenerator.class, builder -> builder.id(null).username(null));
 
-        var result = mapper.toCaseworker(entity);
+    var result = mapper.toCaseworker(entity);
 
-        assertThat(result.getId()).isNull();
-        assertThat(result.getUsername()).isNull();
-    }
+    assertThat(result.getId()).isNull();
+    assertThat(result.getUsername()).isNull();
+  }
 }

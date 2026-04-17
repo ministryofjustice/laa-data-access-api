@@ -10,18 +10,17 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class FullOfficeSchedule {
-    private String id;
-    private String officeId;
-    private String areaOfLaw;
-    private String categoryOfLaw;
-    private String authorisationStatus;
-    private String status;
-    private String startDate;
-    private String endDate;
-    private Boolean cancelled;
-    private Integer licenseIndicator;
-    private String devolvedPowerStatus;
-    private String createdAt;
-    private String updatedAt;
+  private String id;
+  private String officeId;
+  private String areaOfLaw;
+  private String categoryOfLaw;
+  private String authorisationStatus;
+  private String status;
+  private String startDate;
+  private String endDate;
+  private Boolean cancelled;
+  private Integer licenseIndicator;
+  private String devolvedPowerStatus;
+  private String createdAt;
+  private String updatedAt;
 }
-

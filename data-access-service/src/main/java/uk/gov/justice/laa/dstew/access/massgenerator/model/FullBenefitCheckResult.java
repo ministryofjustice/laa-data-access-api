@@ -17,4 +17,3 @@ public class FullBenefitCheckResult {
   private String createdAt;
   private String updatedAt;
 }
-

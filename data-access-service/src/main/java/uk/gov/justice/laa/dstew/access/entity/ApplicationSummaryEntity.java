@@ -29,10 +29,9 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 
-
 /**
- * Represents an application summary for legal aid.
- * Will be removed when merged into new application structures
+ * Represents an application summary for legal aid. Will be removed when merged into new application
+ * structures
  */
 @ExcludeFromGeneratedCodeCoverage
 @Builder(toBuilder = true)
@@ -85,25 +84,21 @@ public class ApplicationSummaryEntity {
   @JoinTable(
       name = "linked_applications",
       joinColumns = @JoinColumn(name = "lead_application_id"),
-      inverseJoinColumns = @JoinColumn(name = "associated_application_id")
-  )
+      inverseJoinColumns = @JoinColumn(name = "associated_application_id"))
   private Set<ApplicationEntity> linkedApplications;
-
 
   @Transient
   public boolean isLead() {
     return linkedApplications != null && !linkedApplications.isEmpty();
   }
 
-  @Transient
-  private ApplicationType type = ApplicationType.INITIAL;
+  @Transient private ApplicationType type = ApplicationType.INITIAL;
 
   @ManyToMany(cascade = CascadeType.PERSIST)
   @JoinTable(
-          name = "linked_individuals",
-          joinColumns = @JoinColumn(name = "application_id"),
-          inverseJoinColumns = @JoinColumn(name = "individual_id")
-  )
+      name = "linked_individuals",
+      joinColumns = @JoinColumn(name = "application_id"),
+      inverseJoinColumns = @JoinColumn(name = "individual_id"))
   private Set<IndividualEntity> individuals;
 
   @OneToOne

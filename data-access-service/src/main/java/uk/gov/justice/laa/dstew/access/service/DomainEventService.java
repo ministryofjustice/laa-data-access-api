@@ -19,6 +19,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.CreateApplicationNoteDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
@@ -29,9 +31,9 @@ import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
 /**
- * Service class for managing domain events.
- * Service name for all domain events is retrieved from the request-scoped ServiceNameContext,
- * which is populated by the ServiceNameInterceptor from the X-Service-Name header.
+ * Service class for managing domain events. Service name for all domain events is retrieved from
+ * the request-scoped ServiceNameContext, which is populated by the ServiceNameInterceptor from the
+ * X-Service-Name header.
  */
 @Service
 @RequiredArgsConstructor
@@ -44,14 +46,9 @@ public class DomainEventService {
   private final DomainEventMapper mapper;
   private final ServiceNameContext serviceNameContext;
 
-  /**
-   * Shared internal logic for persisting domain events.
-   */
+  /** Shared internal logic for persisting domain events. */
   private void saveDomainEvent(
-      UUID applicationId,
-      UUID caseworkerId,
-      DomainEventType eventType,
-      Object data) {
+      UUID applicationId, UUID caseworkerId, DomainEventType eventType, Object data) {
 
     DomainEventEntity entity =
         DomainEventEntity.builder()
@@ -67,14 +64,10 @@ public class DomainEventService {
     domainEventRepository.save(entity);
   }
 
-  /**
-   * Posts an APPLICATION_CREATED domain event.
-   */
+  /** Posts an APPLICATION_CREATED domain event. */
   @AllowApiCaseworker
   public void saveCreateApplicationDomainEvent(
-      ApplicationEntity applicationEntity,
-      ApplicationCreateRequest request,
-      String createdBy) {
+      ApplicationEntity applicationEntity, ApplicationCreateRequest request, String createdBy) {
 
     CreateApplicationDomainEventDetails domainEventDetails =
         CreateApplicationDomainEventDetails.builder()
@@ -99,13 +92,10 @@ public class DomainEventService {
     domainEventRepository.save(domainEventEntity);
   }
 
-  /**
-   * Posts an APPLICATION_UPDATED domain event.
-   */
+  /** Posts an APPLICATION_UPDATED domain event. */
   @AllowApiCaseworker
   public void saveUpdateApplicationDomainEvent(
-      ApplicationEntity applicationEntity,
-      String updatedBy) {
+      ApplicationEntity applicationEntity, String updatedBy) {
 
     UpdateApplicationDomainEventDetails domainEventDetails =
         UpdateApplicationDomainEventDetails.builder()
@@ -118,109 +108,103 @@ public class DomainEventService {
 
     saveDomainEvent(
         applicationEntity.getId(),
-        applicationEntity.getCaseworker() != null ? applicationEntity.getCaseworker().getId() : null,
+        applicationEntity.getCaseworker() != null
+            ? applicationEntity.getCaseworker().getId()
+            : null,
         DomainEventType.APPLICATION_UPDATED,
-        domainEventDetails
-    );
+        domainEventDetails);
   }
 
-
-  /**
-   * Posts an ASSIGN_APPLICATION_TO_CASEWORKER domain event.
-   */
+  /** Posts an ASSIGN_APPLICATION_TO_CASEWORKER domain event. */
   @AllowApiCaseworker
   public void saveAssignApplicationDomainEvent(
-      UUID applicationId,
-      UUID caseworkerId,
-      String eventDescription) {
+      UUID applicationId, UUID caseworkerId, String eventDescription) {
 
     AssignApplicationDomainEventDetails domainEventDetails =
         AssignApplicationDomainEventDetails.builder()
-          .applicationId(applicationId)
-          .caseWorkerId(caseworkerId)
-          .createdAt(Instant.now())
-          .createdBy(defaultCreatedByName)
-          .eventDescription(eventDescription)
-          .build();
+            .applicationId(applicationId)
+            .caseWorkerId(caseworkerId)
+            .createdAt(Instant.now())
+            .createdBy(defaultCreatedByName)
+            .eventDescription(eventDescription)
+            .build();
 
     saveDomainEvent(
         applicationId,
         caseworkerId,
         DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
-        domainEventDetails
-    );
+        domainEventDetails);
   }
 
   /**
    * Converts domain event details to JSON string.
    *
    * @param domainEventDetails the domain event details
-   * @param domainEventType    domain event type enum
+   * @param domainEventType domain event type enum
    * @return JSON string representation of the domain event details
    */
   private String getEventDetailsAsJson(Object domainEventDetails, DomainEventType domainEventType) {
     try {
       return objectMapper.writeValueAsString(domainEventDetails);
     } catch (JacksonException e) {
-      throw new DomainEventPublishException(String.format("Unable to save Domain Event of type: %s",
-          domainEventType.name()));
+      throw new DomainEventPublishException(
+          String.format("Unable to save Domain Event of type: %s", domainEventType.name()));
     }
   }
 
-  /**
-   * Posts an UNASSIGN_APPLICATION_TO_CASEWORKER domain event.
-   */
+  /** Posts an UNASSIGN_APPLICATION_TO_CASEWORKER domain event. */
   @AllowApiCaseworker
   public void saveUnassignApplicationDomainEvent(
-      UUID applicationId,
-      UUID caseworkerId,
-      String eventDescription) {
+      UUID applicationId, UUID caseworkerId, String eventDescription) {
 
-    UnassignApplicationDomainEventDetails eventDetails = UnassignApplicationDomainEventDetails.builder()
-        .applicationId(applicationId)
-        .caseworkerId(caseworkerId)
-        .createdAt(Instant.now())
-        .createdBy(defaultCreatedByName)
-        .eventDescription(eventDescription)
-        .build();
+    UnassignApplicationDomainEventDetails eventDetails =
+        UnassignApplicationDomainEventDetails.builder()
+            .applicationId(applicationId)
+            .caseworkerId(caseworkerId)
+            .createdAt(Instant.now())
+            .createdBy(defaultCreatedByName)
+            .eventDescription(eventDescription)
+            .build();
 
     saveDomainEvent(
         applicationId,
         caseworkerId,
         DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
-        eventDetails
-    );
+        eventDetails);
   }
 
-  /**
-   * Provides a list of events associated with an application in createdAt ascending order.
-   */
+  /** Provides a list of events associated with an application in createdAt ascending order. */
   @AllowApiCaseworker
-  public List<ApplicationDomainEventResponse> getEvents(UUID applicationId,
-                                                        @Valid List<DomainEventType> eventType) {
+  public List<ApplicationDomainEventResponse> getEvents(
+      UUID applicationId, @Valid List<DomainEventType> eventType) {
 
     var filterEventType = DomainEventSpecification.filterEventTypes(eventType);
-    Specification<DomainEventEntity> filter = DomainEventSpecification.filterApplicationId(applicationId)
-        .and(filterEventType);
+    Specification<DomainEventEntity> filter =
+        DomainEventSpecification.filterApplicationId(applicationId).and(filterEventType);
 
-    Comparator<ApplicationDomainEventResponse> comparer = Comparator.comparing(ApplicationDomainEventResponse::getCreatedAt);
-    return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
+    Comparator<ApplicationDomainEventResponse> comparer =
+        Comparator.comparing(ApplicationDomainEventResponse::getCreatedAt);
+    return domainEventRepository.findAll(filter).stream()
+        .map(mapper::toDomainEvent)
+        .sorted(comparer)
+        .toList();
   }
-
 
   /**
    * Posts a make decision domain event.
    *
    * @param applicationId the id of the application for which the decision was made
-   * @param request       the details of the decision that was made
-   * @param caseworkerId  the id of the caseworker who made the decision
-   * @param domainEventType the type of the domain event to post,
-   *                        either APPLICATION_MAKE_DECISION_REFUSED or APPLICATION_MAKE_DECISION_GRANTED
+   * @param request the details of the decision that was made
+   * @param caseworkerId the id of the caseworker who made the decision
+   * @param domainEventType the type of the domain event to post, either
+   *     APPLICATION_MAKE_DECISION_REFUSED or APPLICATION_MAKE_DECISION_GRANTED
    */
   @AllowApiCaseworker
   public void saveMakeDecisionDomainEvent(
       UUID applicationId,
-      MakeDecisionRequest request, UUID caseworkerId, DomainEventType domainEventType) {
+      MakeDecisionRequest request,
+      UUID caseworkerId,
+      DomainEventType domainEventType) {
 
     String eventDescription = request.getEventHistory().getEventDescription();
 
@@ -233,11 +217,31 @@ public class DomainEventService {
             .eventDescription(eventDescription)
             .build();
 
-    saveDomainEvent(
-        applicationId,
-        caseworkerId,
-        domainEventType,
-        domainEventDetails
-    );
+    saveDomainEvent(applicationId, caseworkerId, domainEventType, domainEventDetails);
+  }
+
+  /** Posts an APPLICATION_NOTES domain event. */
+  @AllowApiCaseworker
+  public void saveCreateApplicationNoteDomainEvent(
+      ApplicationEntity applicationEntity, CreateNoteRequest request) {
+
+    DomainEventType domainEventType = DomainEventType.APPLICATION_NOTES;
+    // TODO: caseworkerId currently sourced from the assigned caseworker on the application.
+    //  Once authentication is in place, all domain events should use the logged-in user
+    //  from the auth token instead.
+    UUID caseworkerId =
+        applicationEntity.getCaseworker() != null
+            ? applicationEntity.getCaseworker().getId()
+            : null;
+
+    CreateApplicationNoteDomainEventDetails domainEventDetails =
+        CreateApplicationNoteDomainEventDetails.builder()
+            .applicationId(applicationEntity.getId())
+            .caseworkerId(caseworkerId)
+            .request(getEventDetailsAsJson(request, domainEventType))
+            .createdDate(Instant.now())
+            .build();
+
+    saveDomainEvent(applicationEntity.getId(), caseworkerId, domainEventType, domainEventDetails);
   }
 }

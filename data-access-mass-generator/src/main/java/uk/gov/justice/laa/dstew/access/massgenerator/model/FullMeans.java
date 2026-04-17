@@ -12,15 +12,14 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class FullMeans {
-    private Map<String, Object> openBanking;
-    private String otherAssetsDeclaration;
-    private String savingsAmount;
-    private List<Object> dependants;
-    private List<Object> vehicles;
-    private List<Object> capitalDisregards;
-    private List<Object> legalAidApplicationTransactionTypes;
-    private List<Object> regularTransactions;
-    private List<Object> cashTransactions;
-    private FullCfeSubmission mostRecentCFESubmission;
+  private Map<String, Object> openBanking;
+  private String otherAssetsDeclaration;
+  private String savingsAmount;
+  private List<Object> dependants;
+  private List<Object> vehicles;
+  private List<Object> capitalDisregards;
+  private List<Object> legalAidApplicationTransactionTypes;
+  private List<Object> regularTransactions;
+  private List<Object> cashTransactions;
+  private FullCfeSubmission mostRecentCFESubmission;
 }
-

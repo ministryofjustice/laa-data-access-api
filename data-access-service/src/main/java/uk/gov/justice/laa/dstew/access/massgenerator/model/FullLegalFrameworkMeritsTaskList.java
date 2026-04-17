@@ -16,4 +16,3 @@ public class FullLegalFrameworkMeritsTaskList {
   private String createdAt;
   private String updatedAt;
 }
-

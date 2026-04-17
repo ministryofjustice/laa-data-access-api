@@ -17,9 +17,7 @@ import tools.jackson.databind.PropertyNamingStrategies;
 import tools.jackson.databind.annotation.JsonNaming;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/**
- * Represents a linked application.
- */
+/** Represents a linked application. */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter

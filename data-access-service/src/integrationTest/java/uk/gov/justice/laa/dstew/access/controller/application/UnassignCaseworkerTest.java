@@ -1,266 +1,310 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MvcResult;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
-import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
-import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
-import uk.gov.justice.laa.dstew.access.utils.TestConstants;
-import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerUnassignRequestGenerator;
-
-import java.util.List;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
-@ActiveProfiles("test")
-public class UnassignCaseworkerTest extends BaseIntegrationTest {
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
+import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerUnassignRequestGenerator;
+import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
-    @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
-    void givenValidUnassignRequestAndInvalidHeader_whenUnassignCaseworker_thenReturnBadRequest(
-            String serviceName
-    ) throws Exception {
-        verifyBadServiceNameHeader(serviceName);
-    }
+public class UnassignCaseworkerTest extends BaseHarnessTest {
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    void givenValidUnassignRequestAndNoHeader_whenUnassignCaseworker_thenReturnBadRequest() throws Exception {
-        verifyBadServiceNameHeader(null);
-    }
+  @SmokeTest
+  @ParameterizedTest
+  @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
+  void givenValidUnassignRequestAndInvalidHeader_whenUnassignCaseworker_thenReturnBadRequest(
+      String serviceName) throws Exception {
+    verifyBadServiceNameHeader(serviceName);
+  }
 
-    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
-        ApplicationEntity toUnassignedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
-            builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
-        });
+  @SmokeTest
+  @Test
+  void givenValidUnassignRequestAndNoHeader_whenUnassignCaseworker_thenReturnBadRequest()
+      throws Exception {
+    verifyBadServiceNameHeader(null);
+  }
 
-        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class, builder -> {
-            builder.eventHistory(EventHistoryRequest.builder()
-                    .eventDescription("Unassigned Caseworker")
-                    .build());
-        });
-        ApplicationEntity expectedUnassignedApplication = toUnassignedApplication.toBuilder()
-                .caseworker(null)
-                .build();
+  private void verifyBadServiceNameHeader(String serviceName) throws Exception {
+    ApplicationEntity toUnassignedApplication =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder -> {
+              builder.caseworker(CaseworkerJohnDoe);
+            });
 
-        MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER,
-                                    caseworkerUnassignRequest,
-                                    ServiceNameHeader(serviceName),
-                                    expectedUnassignedApplication.getId());
+    CaseworkerUnassignRequest caseworkerUnassignRequest =
+        DataGenerator.createDefault(
+            CaseworkerUnassignRequestGenerator.class,
+            builder -> {
+              builder.eventHistory(
+                  EventHistoryRequest.builder().eventDescription("Unassigned Caseworker").build());
+            });
+    ApplicationEntity expectedUnassignedApplication =
+        toUnassignedApplication.toBuilder().caseworker(null).build();
 
-        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
-    }
+    HarnessResult result =
+        postUri(
+            TestConstants.URIs.UNASSIGN_CASEWORKER,
+            caseworkerUnassignRequest,
+            ServiceNameHeader(serviceName),
+            expectedUnassignedApplication.getId());
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    public void givenValidUnassignRequest_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
-        // given
-        ApplicationEntity toUnassignedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
-            builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
-        });
+    applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+  }
 
-        ApplicationEntity expectedUnassignedApplication = toUnassignedApplication.toBuilder()
-                .caseworker(null)
-                .build();
+  @Test
+  public void givenValidUnassignRequest_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker()
+      throws Exception {
+    // given
+    ApplicationEntity toUnassignedApplication =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder -> {
+              builder.caseworker(CaseworkerJohnDoe);
+            });
 
-        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class, builder -> {
-            builder.eventHistory(EventHistoryRequest.builder()
-                    .eventDescription("Unassigned Caseworker")
-                    .build());
-        });
+    ApplicationEntity expectedUnassignedApplication =
+        toUnassignedApplication.toBuilder().caseworker(null).build();
 
-        // when
-        MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, expectedUnassignedApplication.getId());
+    CaseworkerUnassignRequest caseworkerUnassignRequest =
+        DataGenerator.createDefault(
+            CaseworkerUnassignRequestGenerator.class,
+            builder -> {
+              builder.eventHistory(
+                  EventHistoryRequest.builder().eventDescription("Unassigned Caseworker").build());
+            });
 
-        // then
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertOK(result);
+    // when
+    HarnessResult result =
+        postUri(
+            TestConstants.URIs.UNASSIGN_CASEWORKER,
+            caseworkerUnassignRequest,
+            expectedUnassignedApplication.getId());
 
-        ApplicationEntity actual = applicationRepository.findById(expectedUnassignedApplication.getId()).orElseThrow();
-        assertNull(actual.getCaseworker());
-        assertEquals(
-                applicationAsserts.createApplicationIgnoreLastUpdated(expectedUnassignedApplication),
-                applicationAsserts.createApplicationIgnoreLastUpdated(actual)
-        );
+    // then
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertOK(result);
 
-        domainEventAsserts.assertDomainEventsCreatedForApplications(
-                List.of(expectedUnassignedApplication),
-                null,
-                DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
-                caseworkerUnassignRequest.getEventHistory()
-        );
-    }
+    ApplicationEntity actual =
+        applicationRepository.findById(expectedUnassignedApplication.getId()).orElseThrow();
+    assertNull(actual.getCaseworker());
+    assertEquals(
+        applicationAsserts.createApplicationIgnoreLastUpdated(expectedUnassignedApplication),
+        applicationAsserts.createApplicationIgnoreLastUpdated(actual));
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    public void givenValidUnassignRequestWithBlankEventDescription_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
-        // given
-        ApplicationEntity toUnassignedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
-            builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
-        });
+    domainEventAsserts.assertDomainEventsCreatedForApplications(
+        List.of(expectedUnassignedApplication),
+        null,
+        DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
+        caseworkerUnassignRequest.getEventHistory());
+  }
 
-        ApplicationEntity expectedUnassignedApplication = toUnassignedApplication.toBuilder()
-                .caseworker(null)
-                .build();
+  @Test
+  public void
+      givenValidUnassignRequestWithBlankEventDescription_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker()
+          throws Exception {
+    // given
+    ApplicationEntity toUnassignedApplication =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder -> {
+              builder.caseworker(CaseworkerJohnDoe);
+            });
 
-        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class, builder -> {
-            builder.eventHistory(EventHistoryRequest.builder()
-                    .eventDescription("")
-                    .build());
-        });
+    ApplicationEntity expectedUnassignedApplication =
+        toUnassignedApplication.toBuilder().caseworker(null).build();
 
-        // when
-        MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, expectedUnassignedApplication.getId());
+    CaseworkerUnassignRequest caseworkerUnassignRequest =
+        DataGenerator.createDefault(
+            CaseworkerUnassignRequestGenerator.class,
+            builder -> {
+              builder.eventHistory(EventHistoryRequest.builder().eventDescription("").build());
+            });
 
-        // then
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertOK(result);
+    // when
+    HarnessResult result =
+        postUri(
+            TestConstants.URIs.UNASSIGN_CASEWORKER,
+            caseworkerUnassignRequest,
+            expectedUnassignedApplication.getId());
 
-        ApplicationEntity actual = applicationRepository.findById(expectedUnassignedApplication.getId()).orElseThrow();
-        assertNull(actual.getCaseworker());
-        assertEquals(
-                applicationAsserts.createApplicationIgnoreLastUpdated(expectedUnassignedApplication),
-                applicationAsserts.createApplicationIgnoreLastUpdated(actual)
-        );
+    // then
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertOK(result);
 
-        domainEventAsserts.assertDomainEventsCreatedForApplications(
-                List.of(expectedUnassignedApplication),
-                null,
-                DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
-                caseworkerUnassignRequest.getEventHistory()
-        );
-    }
+    ApplicationEntity actual =
+        applicationRepository.findById(expectedUnassignedApplication.getId()).orElseThrow();
+    assertNull(actual.getCaseworker());
+    assertEquals(
+        applicationAsserts.createApplicationIgnoreLastUpdated(expectedUnassignedApplication),
+        applicationAsserts.createApplicationIgnoreLastUpdated(actual));
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    public void givenValidUnassignRequestWithNullEventDescription_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker() throws Exception {
-        // given
-        ApplicationEntity expectedUnassignedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
-            builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe);
-        });
+    domainEventAsserts.assertDomainEventsCreatedForApplications(
+        List.of(expectedUnassignedApplication),
+        null,
+        DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
+        caseworkerUnassignRequest.getEventHistory());
+  }
 
-        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class, builder -> {
-            builder.eventHistory(EventHistoryRequest.builder()
-                    .eventDescription(null)
-                    .build());
-        });
+  @Test
+  public void
+      givenValidUnassignRequestWithNullEventDescription_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker()
+          throws Exception {
+    // given
+    ApplicationEntity expectedUnassignedApplication =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder -> {
+              builder.caseworker(CaseworkerJohnDoe);
+            });
 
-        // when
-        MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, expectedUnassignedApplication.getId());
+    CaseworkerUnassignRequest caseworkerUnassignRequest =
+        DataGenerator.createDefault(
+            CaseworkerUnassignRequestGenerator.class,
+            builder -> {
+              builder.eventHistory(EventHistoryRequest.builder().eventDescription(null).build());
+            });
 
-        // then
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertOK(result);
+    // when
+    HarnessResult result =
+        postUri(
+            TestConstants.URIs.UNASSIGN_CASEWORKER,
+            caseworkerUnassignRequest,
+            expectedUnassignedApplication.getId());
 
-        domainEventAsserts.assertDomainEventsCreatedForApplications(
-                List.of(expectedUnassignedApplication),
-                null,
-                DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
-                caseworkerUnassignRequest.getEventHistory()
-        );
-    }
+    // then
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertOK(result);
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    public void givenApplicationNotExist_whenUnassignCaseworker_thenReturnNotFound() throws Exception {
-        // given
-        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class);
+    domainEventAsserts.assertDomainEventsCreatedForApplications(
+        List.of(expectedUnassignedApplication),
+        null,
+        DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
+        caseworkerUnassignRequest.getEventHistory());
+  }
 
-        // when
-        MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, UUID.randomUUID());
+  @Test
+  public void givenApplicationNotExist_whenUnassignCaseworker_thenReturnNotFound()
+      throws Exception {
+    CaseworkerUnassignRequest caseworkerUnassignRequest =
+        DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class);
 
-        // then
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertNotFound(result);
-    }
+    HarnessResult result =
+        postUri(
+            TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, UUID.randomUUID());
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    public void givenCaseworkerNotExist_whenUnassignCaseworker_thenReturnOK() throws Exception {
-        // given
-        ApplicationEntity expectedUnassignedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder -> {
-            builder.caseworker(null);
-        });
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertNotFound(result);
+  }
 
-        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class, builder -> {
-            builder.eventHistory(EventHistoryRequest.builder()
-                    .eventDescription("Unassigned Caseworker")
-                    .build());
-        });
+  @Test
+  public void givenCaseworkerNotExist_whenUnassignCaseworker_thenReturnOK() throws Exception {
+    // given
+    ApplicationEntity expectedUnassignedApplication =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder -> {
+              builder.caseworker(null);
+            });
 
-        // when
-        MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, expectedUnassignedApplication.getId());
+    CaseworkerUnassignRequest caseworkerUnassignRequest =
+        DataGenerator.createDefault(
+            CaseworkerUnassignRequestGenerator.class,
+            builder -> {
+              builder.eventHistory(
+                  EventHistoryRequest.builder().eventDescription("Unassigned Caseworker").build());
+            });
 
-        // then
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        // TODO: is this right?
-        assertOK(result);
+    // when
+    HarnessResult result =
+        postUri(
+            TestConstants.URIs.UNASSIGN_CASEWORKER,
+            caseworkerUnassignRequest,
+            expectedUnassignedApplication.getId());
 
-        List<DomainEventEntity> domainEventEntities = domainEventRepository.findAll();
-        assertEquals(0, domainEventEntities.size());
-    }
+    // then
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    // TODO: is this right?
+    assertOK(result);
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
-    public void givenReaderRole_whenUnassignCaseworker_thenReturnForbidden() throws Exception {
-        // given
-        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class);
+    // Scoped to this application — avoids global count sensitivity
+    assertEquals(
+        0,
+        domainEventRepository.findAll().stream()
+            .filter(e -> e.getApplicationId().equals(expectedUnassignedApplication.getId()))
+            .count());
+  }
 
-        // when
-        MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, UUID.randomUUID().toString());
+  @Test
+  public void givenReaderRole_whenUnassignCaseworker_thenReturnForbidden() throws Exception {
+    withToken(TestConstants.Tokens.UNKNOWN);
+    CaseworkerUnassignRequest caseworkerUnassignRequest =
+        DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class);
 
-        // then
-        assertSecurityHeaders(result);
-        assertForbidden(result);
-    }
+    HarnessResult result =
+        postUri(
+            TestConstants.URIs.UNASSIGN_CASEWORKER,
+            caseworkerUnassignRequest,
+            UUID.randomUUID().toString());
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
-    public void givenUnknownRole_whenUnassignCaseworker_thenReturnForbidden() throws Exception {
-        // given
-        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class);
+    assertSecurityHeaders(result);
+    assertForbidden(result);
+  }
 
-        // when
-        MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, UUID.randomUUID().toString());
+  @Test
+  public void givenUnknownRole_whenUnassignCaseworker_thenReturnForbidden() throws Exception {
+    withToken(TestConstants.Tokens.UNKNOWN);
+    CaseworkerUnassignRequest caseworkerUnassignRequest =
+        DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class);
 
-        // then
-        assertSecurityHeaders(result);
-        assertForbidden(result);
-    }
+    HarnessResult result =
+        postUri(
+            TestConstants.URIs.UNASSIGN_CASEWORKER,
+            caseworkerUnassignRequest,
+            UUID.randomUUID().toString());
 
-    @Test
-    public void givenNoUser_whenUnassignCaseworker_thenReturnUnauthorised() throws Exception {
-        // given
-        CaseworkerUnassignRequest caseworkerUnassignRequest = DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class);
+    assertSecurityHeaders(result);
+    assertForbidden(result);
+  }
 
-        // when
-        MvcResult result = postUri(TestConstants.URIs.UNASSIGN_CASEWORKER, caseworkerUnassignRequest, UUID.randomUUID().toString());
+  @SmokeTest
+  @Test
+  public void givenNoUser_whenUnassignCaseworker_thenReturnUnauthorised() throws Exception {
+    withNoToken();
+    CaseworkerUnassignRequest caseworkerUnassignRequest =
+        DataGenerator.createDefault(CaseworkerUnassignRequestGenerator.class);
 
-        // then
-        assertSecurityHeaders(result);
-        assertUnauthorised(result);
-    }
+    HarnessResult result =
+        postUri(
+            TestConstants.URIs.UNASSIGN_CASEWORKER,
+            caseworkerUnassignRequest,
+            UUID.randomUUID().toString());
+
+    assertSecurityHeaders(result);
+    assertUnauthorised(result);
+  }
 }

@@ -7,9 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/**
- * Opponent Details pojo.
- */
+/** Opponent Details pojo. */
 @Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor

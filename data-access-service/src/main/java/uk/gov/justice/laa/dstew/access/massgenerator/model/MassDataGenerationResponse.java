@@ -5,38 +5,25 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Response model containing statistics from mass data generation.
- */
+/** Response model containing statistics from mass data generation. */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class MassDataGenerationResponse {
 
-    /**
-     * Total number of application records generated.
-     */
-    private int recordsGenerated;
+  /** Total number of application records generated. */
+  private int recordsGenerated;
 
-    /**
-     * Number of applications that received decisions.
-     */
-    private int decidedCount;
+  /** Number of applications that received decisions. */
+  private int decidedCount;
 
-    /**
-     * Number of linked application pairs created.
-     */
-    private int linkedCount;
+  /** Number of linked application pairs created. */
+  private int linkedCount;
 
-    /**
-     * Total time taken in milliseconds.
-     */
-    private long durationMillis;
+  /** Total time taken in milliseconds. */
+  private long durationMillis;
 
-    /**
-     * Average throughput in records per second.
-     */
-    private double throughputRecordsPerSecond;
+  /** Average throughput in records per second. */
+  private double throughputRecordsPerSecond;
 }
-

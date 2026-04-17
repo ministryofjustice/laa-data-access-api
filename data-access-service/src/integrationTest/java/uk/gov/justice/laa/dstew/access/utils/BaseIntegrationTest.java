@@ -26,259 +26,253 @@ import uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts.Appl
 import uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts.DomainEventAsserts;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.repository.*;
-import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
-import uk.gov.justice.laa.dstew.access.utils.factory.Factory;
 import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
-
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
-@SpringBootTest(classes = AccessApp.class, properties = {"feature.disable-security=false"})
+@SpringBootTest(
+    classes = AccessApp.class,
+    properties = {"feature.disable-security=false"})
 @ContextConfiguration(initializers = PostgresContainerInitializer.class)
 @ExtendWith(SpringExtension.class)
 @Transactional
 public abstract class BaseIntegrationTest {
 
-    @PersistenceContext
-    protected EntityManager entityManager;
+  @PersistenceContext protected EntityManager entityManager;
 
-    @Autowired protected MockMvc mockMvc;
-    @Autowired protected ObjectMapper objectMapper;
+  @Autowired protected MockMvc mockMvc;
+  @Autowired protected ObjectMapper objectMapper;
 
-    @Autowired
-    protected PersistedDataGenerator persistedDataGenerator;
+  @Autowired protected PersistedDataGenerator persistedDataGenerator;
 
-    @Autowired
-    protected ApplicationRepository applicationRepository;
+  @Autowired protected ApplicationRepository applicationRepository;
 
-    @Autowired
-    protected CaseworkerRepository caseworkerRepository;
+  @Autowired protected CaseworkerRepository caseworkerRepository;
 
-    @Autowired
-    protected DomainEventRepository domainEventRepository;
+  @Autowired protected DomainEventRepository domainEventRepository;
 
-    @Autowired
-    protected DecisionRepository decisionRepository;
+  @Autowired protected DecisionRepository decisionRepository;
 
-    @Autowired
-    protected CertificateRepository certificateRepository;
+  @Autowired protected CertificateRepository certificateRepository;
 
-    @Autowired
-    protected NoteRepository noteRepository;
+  @Autowired protected NoteRepository noteRepository;
 
-    @Autowired
-    protected ApplicationAsserts applicationAsserts;
+  @Autowired protected ApplicationAsserts applicationAsserts;
 
-    @Autowired
-    protected DomainEventAsserts domainEventAsserts;
+  @Autowired protected DomainEventAsserts domainEventAsserts;
 
-    // for use in tests and factories where applicable (i.e. default in ApplicationFactoryImpl)
-    public static CaseworkerEntity CaseworkerJohnDoe;
-    public static CaseworkerEntity CaseworkerJaneDoe;
-    public static List<CaseworkerEntity> Caseworkers;
+  // for use in tests and factories where applicable (i.e. default in ApplicationFactoryImpl)
+  public static CaseworkerEntity CaseworkerJohnDoe;
+  public static CaseworkerEntity CaseworkerJaneDoe;
+  public static List<CaseworkerEntity> Caseworkers;
 
-    @BeforeEach
-    void setupCaseworkers() {
-        caseworkerRepository.deleteAll();
-        CaseworkerJohnDoe = persistedDataGenerator.createAndPersist(CaseworkerGenerator.class, builder ->
-                builder.username("JohnDoe").build());
-        CaseworkerJaneDoe = persistedDataGenerator.createAndPersist(CaseworkerGenerator.class, builder ->
-                builder.username("JaneDoe").build());
-        Caseworkers = List.of(CaseworkerJohnDoe, CaseworkerJaneDoe);
+  @BeforeEach
+  void setupCaseworkers() {
+    caseworkerRepository.deleteAll();
+    applicationRepository.deleteAll();
+    CaseworkerJohnDoe =
+        persistedDataGenerator.createAndPersist(
+            CaseworkerGenerator.class, builder -> builder.username("JohnDoe").build());
+    CaseworkerJaneDoe =
+        persistedDataGenerator.createAndPersist(
+            CaseworkerGenerator.class, builder -> builder.username("JaneDoe").build());
+    Caseworkers = List.of(CaseworkerJohnDoe, CaseworkerJaneDoe);
 
-        clearCache();
+    clearCache();
+  }
+
+  public HttpHeaders ServiceNameHeader(String serviceName) {
+    HttpHeadersBuilder headersBuilder = new HttpHeadersBuilder();
+    return (serviceName == null) ? null : headersBuilder.withServiceName(serviceName).build();
+  }
+
+  private HttpHeaders DefaultHttpHeaders() {
+    HttpHeadersBuilder builder = new HttpHeadersBuilder();
+    return builder.withServiceName("CIVIL_APPLY").build();
+  }
+
+  public MvcResult getUri(String uri, HttpHeaders httpHeaders) throws Exception {
+    clearCache();
+
+    MvcResult result;
+    if (httpHeaders == null) {
+      result = mockMvc.perform(get(uri)).andReturn();
+    } else {
+      result = mockMvc.perform(get(uri).headers(httpHeaders)).andReturn();
     }
 
-    public HttpHeaders ServiceNameHeader(String serviceName) {
-        HttpHeadersBuilder headersBuilder = new HttpHeadersBuilder();
-        return (serviceName == null) ? null : headersBuilder.withServiceName(serviceName).build();
+    clearCache();
+    return result;
+  }
+
+  public MvcResult getUri(String uri) throws Exception {
+    return getUri(uri, DefaultHttpHeaders());
+  }
+
+  public MvcResult getUri(String uri, HttpHeaders httpHeaders, Object... args) throws Exception {
+    clearCache();
+    MvcResult result;
+
+    if (httpHeaders == null) {
+      result = mockMvc.perform(get(uri, args)).andReturn();
+    } else {
+      result = mockMvc.perform(get(uri, args).headers(httpHeaders)).andReturn();
+    }
+    clearCache();
+    return result;
+  }
+
+  public MvcResult getUri(String uri, Object... args) throws Exception {
+    return getUri(uri, DefaultHttpHeaders(), args);
+  }
+
+  public MvcResult getUri(URI uri, HttpHeaders httpHeaders) throws Exception {
+    clearCache();
+    MvcResult result;
+    if (httpHeaders == null) {
+      result = mockMvc.perform(get(uri)).andReturn();
+    } else {
+      result = mockMvc.perform(get(uri).headers(httpHeaders)).andReturn();
+    }
+    clearCache();
+    return result;
+  }
+
+  public MvcResult getUri(URI uri) throws Exception {
+    return getUri(uri, DefaultHttpHeaders());
+  }
+
+  public MvcResult postUriWithoutModel(String uri, HttpHeaders httpHeaders, Object... args)
+      throws Exception {
+    clearCache();
+    MvcResult result;
+
+    if (httpHeaders == null) {
+      result = mockMvc.perform(post(uri, args)).andReturn();
+    } else {
+      result = mockMvc.perform(post(uri, args).headers(httpHeaders)).andReturn();
     }
 
-    private HttpHeaders DefaultHttpHeaders() {
-        HttpHeadersBuilder builder = new HttpHeadersBuilder();
-        return builder.withServiceName("CIVIL_APPLY").build();
-    }
+    clearCache();
+    return result;
+  }
 
-    public MvcResult getUri(String uri, HttpHeaders httpHeaders) throws Exception {
-        clearCache();
+  public MvcResult postUriWithoutModel(String uri, Object... args) throws Exception {
+    return postUriWithoutModel(uri, DefaultHttpHeaders(), args);
+  }
 
-        MvcResult result;
-        if (httpHeaders == null) {
-          result = mockMvc
-                    .perform(get(uri))
-                    .andReturn();
-        } else {
-          result = mockMvc
-              .perform(get(uri).headers(httpHeaders))
+  public <TRequestModel> MvcResult postUri(
+      String uri, TRequestModel requestModel, HttpHeaders httpHeaders) throws Exception {
+    clearCache();
+    MvcResult result;
+
+    if (httpHeaders == null) {
+      result =
+          mockMvc
+              .perform(
+                  post(uri)
+                      .content(objectMapper.writeValueAsString(requestModel))
+                      .contentType(TestConstants.MediaTypes.APPLICATION_JSON))
               .andReturn();
-        }
-
-        clearCache();
-        return result;
+    } else {
+      result =
+          mockMvc
+              .perform(
+                  post(uri)
+                      .content(objectMapper.writeValueAsString(requestModel))
+                      .contentType(TestConstants.MediaTypes.APPLICATION_JSON)
+                      .headers(httpHeaders))
+              .andReturn();
     }
+    clearCache();
+    return result;
+  }
 
-    public MvcResult getUri(String uri) throws Exception {
-        return getUri(uri, DefaultHttpHeaders());
+  public <TRequestModel> MvcResult postUri(String uri, TRequestModel requestModel)
+      throws Exception {
+    return postUri(uri, requestModel, DefaultHttpHeaders());
+  }
+
+  public <TRequestModel> MvcResult postUri(
+      String uri, TRequestModel requestModel, HttpHeaders httpHeaders, Object... args)
+      throws Exception {
+    clearCache();
+    MvcResult result;
+
+    if (httpHeaders == null) {
+      result =
+          mockMvc
+              .perform(
+                  post(uri, args)
+                      .content(objectMapper.writeValueAsString(requestModel))
+                      .contentType(TestConstants.MediaTypes.APPLICATION_JSON))
+              .andReturn();
+    } else {
+      result =
+          mockMvc
+              .perform(
+                  post(uri, args)
+                      .content(objectMapper.writeValueAsString(requestModel))
+                      .contentType(TestConstants.MediaTypes.APPLICATION_JSON)
+                      .headers(httpHeaders))
+              .andReturn();
     }
+    clearCache();
+    return result;
+  }
 
-    public MvcResult getUri(String uri, HttpHeaders httpHeaders, Object ... args) throws Exception {
-        clearCache();
-        MvcResult result;
+  public <TRequestModel> MvcResult postUri(String uri, TRequestModel requestModel, Object... args)
+      throws Exception {
+    return postUri(uri, requestModel, DefaultHttpHeaders(), args);
+  }
 
-        if (httpHeaders == null) {
-            result = mockMvc
-                .perform(get(uri, args))
-                .andReturn();
-        } else {
-            result = mockMvc
-                .perform(get(uri, args).headers(httpHeaders))
-                .andReturn();
-        }
-        clearCache();
-        return result;
+  public <TRequestModel> MvcResult patchUri(
+      String uri, TRequestModel requestModel, HttpHeaders httpHeaders, Object... args)
+      throws Exception {
+    clearCache();
+    MvcResult result;
+
+    if (httpHeaders == null) {
+      result =
+          mockMvc
+              .perform(
+                  patch(uri, args)
+                      .content(objectMapper.writeValueAsString(requestModel))
+                      .contentType(TestConstants.MediaTypes.APPLICATION_JSON))
+              .andReturn();
+    } else {
+      result =
+          mockMvc
+              .perform(
+                  patch(uri, args)
+                      .content(objectMapper.writeValueAsString(requestModel))
+                      .contentType(TestConstants.MediaTypes.APPLICATION_JSON)
+                      .headers(httpHeaders))
+              .andReturn();
     }
+    clearCache();
+    return result;
+  }
 
-    public MvcResult getUri(String uri, Object... args) throws Exception {
-        return getUri(uri, DefaultHttpHeaders(), args);
-    }
+  public <TRequestModel> MvcResult patchUri(String uri, TRequestModel requestModel, Object... args)
+      throws Exception {
+    return patchUri(uri, requestModel, DefaultHttpHeaders(), args);
+  }
 
-    public MvcResult getUri(URI uri, HttpHeaders httpHeaders) throws Exception {
-        clearCache();
-        MvcResult result;
-        if (httpHeaders == null) {
-            result = mockMvc
-                    .perform(get(uri))
-                    .andReturn();
-        } else {
-            result = mockMvc
-                    .perform(get(uri).headers(httpHeaders))
-                    .andReturn();
+  public <TResponseModel> TResponseModel deserialise(MvcResult result, Class<TResponseModel> clazz)
+      throws Exception {
+    return objectMapper.readValue(result.getResponse().getContentAsString(), clazz);
+  }
 
-        }
-        clearCache();
-        return result;
-    }
-
-    public MvcResult getUri(URI uri) throws Exception {
-        return getUri(uri, DefaultHttpHeaders());
-    }
-
-    public MvcResult postUriWithoutModel(String uri, HttpHeaders httpHeaders, Object... args) throws Exception {
-        clearCache();
-        MvcResult result;
-
-        if (httpHeaders == null) {
-            result = mockMvc
-                    .perform(post(uri, args))
-                    .andReturn();
-        } else {
-            result = mockMvc
-                    .perform(post(uri, args).headers(httpHeaders))
-                    .andReturn();
-        }
-
-        clearCache();
-        return result;
-    }
-
-    public MvcResult postUriWithoutModel(String uri, Object... args) throws Exception {
-      return postUriWithoutModel(uri, DefaultHttpHeaders(), args);
-    }
-
-    public <TRequestModel> MvcResult postUri(String uri, TRequestModel requestModel, HttpHeaders httpHeaders) throws Exception {
-        clearCache();
-        MvcResult result;
-
-        if (httpHeaders == null) {
-            result = mockMvc
-                    .perform(post(uri)
-                            .content(objectMapper.writeValueAsString(requestModel))
-                            .contentType(TestConstants.MediaTypes.APPLICATION_JSON))
-                    .andReturn();
-        } else {
-            result = mockMvc
-                    .perform(post(uri)
-                            .content(objectMapper.writeValueAsString(requestModel))
-                            .contentType(TestConstants.MediaTypes.APPLICATION_JSON)
-                            .headers(httpHeaders))
-                    .andReturn();
-        }
-        clearCache();
-        return result;
-    }
-
-    public <TRequestModel> MvcResult postUri(String uri, TRequestModel requestModel) throws Exception {
-        return postUri(uri, requestModel, DefaultHttpHeaders());
-    }
-
-    public <TRequestModel> MvcResult postUri(String uri, TRequestModel requestModel, HttpHeaders httpHeaders, Object... args) throws Exception {
-        clearCache();
-        MvcResult result;
-
-        if (httpHeaders == null) {
-            result = mockMvc
-                    .perform(post(uri, args)
-                            .content(objectMapper.writeValueAsString(requestModel))
-                            .contentType(TestConstants.MediaTypes.APPLICATION_JSON))
-                    .andReturn();
-        } else {
-            result = mockMvc
-                    .perform(post(uri, args)
-                            .content(objectMapper.writeValueAsString(requestModel))
-                            .contentType(TestConstants.MediaTypes.APPLICATION_JSON)
-                            .headers(httpHeaders))
-                    .andReturn();
-        }
-        clearCache();
-        return result;
-    }
-
-    public <TRequestModel> MvcResult postUri(String uri, TRequestModel requestModel, Object... args) throws Exception {
-      return postUri(uri, requestModel, DefaultHttpHeaders(), args);
-    }
-
-    public <TRequestModel> MvcResult patchUri(String uri, TRequestModel requestModel, HttpHeaders httpHeaders, Object... args) throws Exception {
-        clearCache();
-        MvcResult result;
-
-        if (httpHeaders == null) {
-            result = mockMvc
-                    .perform(patch(uri, args)
-                            .content(objectMapper.writeValueAsString(requestModel))
-                            .contentType(TestConstants.MediaTypes.APPLICATION_JSON))
-                    .andReturn();
-        } else {
-            result = mockMvc
-                    .perform(patch(uri, args)
-                            .content(objectMapper.writeValueAsString(requestModel))
-                            .contentType(TestConstants.MediaTypes.APPLICATION_JSON)
-                            .headers(httpHeaders))
-                    .andReturn();
-        }
-        clearCache();
-        return result;
-    }
-
-    public <TRequestModel> MvcResult patchUri(String uri, TRequestModel requestModel, Object... args) throws Exception {
-        return patchUri(uri, requestModel, DefaultHttpHeaders(), args);
-    }
-
-    public <TResponseModel> TResponseModel deserialise(MvcResult result, Class<TResponseModel> clazz) throws Exception {
-        return objectMapper.readValue(result.getResponse().getContentAsString(), clazz);
-    }
-
-    public void clearCache() {
-        entityManager.flush();
-        entityManager.clear();
-    }
-
-    @Autowired
-    protected Factory<IndividualCreateRequest, IndividualCreateRequest.Builder> applicationCreateRequestIndividualFactory;
+  public void clearCache() {
+    entityManager.flush();
+    entityManager.clear();
+  }
 }

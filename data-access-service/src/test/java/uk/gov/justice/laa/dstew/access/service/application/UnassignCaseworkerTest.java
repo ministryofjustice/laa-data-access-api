@@ -38,147 +38,148 @@ import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGene
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class UnassignCaseworkerTest extends BaseServiceTest {
 
-    @Autowired
-    private ApplicationService serviceUnderTest;
+  @Autowired private ApplicationService serviceUnderTest;
 
-    @ParameterizedTest
-    @MethodSource("validUnassignEventDescriptionCases")
-    void givenAssignedCaseworker_whenUnassignCaseworker_thenUnassignAndSave(
-            String eventDescription
-    ) throws JacksonException {
-        // given
-        UUID applicationId = UUID.randomUUID();
+  @ParameterizedTest
+  @MethodSource("validUnassignEventDescriptionCases")
+  void givenAssignedCaseworker_whenUnassignCaseworker_thenUnassignAndSave(String eventDescription)
+      throws JacksonException {
+    // given
+    UUID applicationId = UUID.randomUUID();
 
-        CaseworkerEntity expectedCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
+    CaseworkerEntity expectedCaseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
 
-        ApplicationEntity existingApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-                builder.id(applicationId).caseworker(expectedCaseworker)
-        );
+    ApplicationEntity existingApplicationEntity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class,
+            builder -> builder.id(applicationId).caseworker(expectedCaseworker));
 
-        ApplicationEntity expectedApplicationEntity = existingApplicationEntity.toBuilder().caseworker(null).build();
+    ApplicationEntity expectedApplicationEntity =
+        existingApplicationEntity.toBuilder().caseworker(null).build();
 
-        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
-                .eventDescription(eventDescription)
-                .build();
+    EventHistoryRequest eventHistoryRequest =
+        EventHistoryRequest.builder().eventDescription(eventDescription).build();
 
-        DomainEventEntity expectedDomainEvent = DomainEventEntity.builder()
-                .applicationId(applicationId)
-                .caseworkerId(null)
-                .createdBy("")
-                .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
-                .data(objectMapper.writeValueAsString(AssignApplicationDomainEventDetails.builder()
+    DomainEventEntity expectedDomainEvent =
+        DomainEventEntity.builder()
+            .applicationId(applicationId)
+            .caseworkerId(null)
+            .createdBy("")
+            .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER)
+            .data(
+                objectMapper.writeValueAsString(
+                    AssignApplicationDomainEventDetails.builder()
                         .applicationId(existingApplicationEntity.getId())
                         .caseWorkerId(null)
                         .eventDescription(eventHistoryRequest.getEventDescription())
                         .createdBy("")
                         .build()))
-                .build();
+            .build();
 
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
+    when(applicationRepository.findById(applicationId))
+        .thenReturn(Optional.of(existingApplicationEntity));
 
-        setSecurityContext(TestConstants.Roles.CASEWORKER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        // when
-        serviceUnderTest.unassignCaseworker(applicationId, eventHistoryRequest);
+    // when
+    serviceUnderTest.unassignCaseworker(applicationId, eventHistoryRequest);
 
-        // then
-        verify(applicationRepository, times(1)).findById(applicationId);
+    // then
+    verify(applicationRepository, times(1)).findById(applicationId);
 
-        verifyThatApplicationEntitySaved(applicationRepository, expectedApplicationEntity, 1);
-        verifyThatDomainEventSaved(domainEventRepository, objectMapper, expectedDomainEvent, 1);
-    }
+    verifyThatApplicationEntitySaved(applicationRepository, expectedApplicationEntity, 1);
+    verifyThatDomainEventSaved(domainEventRepository, objectMapper, expectedDomainEvent, 1);
+  }
 
-    @Test
-    void givenAlreadyUnassigned_whenUnassignCaseworker_thenNotSave() throws JacksonException {
-        UUID applicationId = UUID.randomUUID();
-        ApplicationEntity existingApplicationEntity = DataGenerator.createDefault(ApplicationEntityGenerator.class, builder ->
-                builder.id(applicationId).caseworker(null)
-        );
+  @Test
+  void givenAlreadyUnassigned_whenUnassignCaseworker_thenNotSave() throws JacksonException {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationEntity existingApplicationEntity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class,
+            builder -> builder.id(applicationId).caseworker(null));
 
-        EventHistoryRequest eventHistoryRequest = EventHistoryRequest.builder()
-                .eventDescription("Unassigned")
-                .build();
+    EventHistoryRequest eventHistoryRequest =
+        EventHistoryRequest.builder().eventDescription("Unassigned").build();
 
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(existingApplicationEntity));
+    when(applicationRepository.findById(applicationId))
+        .thenReturn(Optional.of(existingApplicationEntity));
 
-        setSecurityContext(TestConstants.Roles.CASEWORKER);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        // when
-        serviceUnderTest.unassignCaseworker(applicationId, eventHistoryRequest);
+    // when
+    serviceUnderTest.unassignCaseworker(applicationId, eventHistoryRequest);
 
-        // then
-        verify(applicationRepository, times(1)).findById(applicationId);
-        verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-        verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    }
+    // then
+    verify(applicationRepository, times(1)).findById(applicationId);
+    verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+    verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+  }
 
-    @ParameterizedTest
-    @MethodSource("invalidUnassignApplicationIdCases")
-    void givenNonexistentApplication_whenUnassignCaseworker_thenThrowResourceNotFoundException(
-            UUID applicationId
-    ) {
+  @ParameterizedTest
+  @MethodSource("invalidUnassignApplicationIdCases")
+  void givenNonexistentApplication_whenUnassignCaseworker_thenThrowResourceNotFoundException(
+      UUID applicationId) {
 
-        // given
-        setSecurityContext(TestConstants.Roles.CASEWORKER);
+    // given
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-        // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(applicationId, new EventHistoryRequest()));
-        assertThat(thrown)
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessage("No application found with id: " + applicationId);
+    // when
+    Throwable thrown =
+        catchThrowable(
+            () -> serviceUnderTest.unassignCaseworker(applicationId, new EventHistoryRequest()));
+    assertThat(thrown)
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("No application found with id: " + applicationId);
 
-        // then
-        verify(applicationRepository, times(1)).findById(applicationId);
-        verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-        verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    }
+    // then
+    verify(applicationRepository, times(1)).findById(applicationId);
+    verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+    verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+  }
 
-    @Test
-    void givenRoleReader_whenUnassignCaseworker_thenThrowUnauthorizedException() {
-        // given
-        setSecurityContext(TestConstants.Roles.NO_ROLE);
+  @Test
+  void givenRoleReader_whenUnassignCaseworker_thenThrowUnauthorizedException() {
+    // given
+    setSecurityContext(TestConstants.Roles.NO_ROLE);
 
-        // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistoryRequest()));
-        assertThat(thrown)
-                .isInstanceOf(AuthorizationDeniedException.class)
-                .hasMessage("Access Denied");
+    // when
+    Throwable thrown =
+        catchThrowable(
+            () ->
+                serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistoryRequest()));
+    assertThat(thrown).isInstanceOf(AuthorizationDeniedException.class).hasMessage("Access Denied");
 
-        // then
-        verify(applicationRepository, never()).findAllById(any(Iterable.class));
-        verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-        verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    }
+    // then
+    verify(applicationRepository, never()).findAllById(any(Iterable.class));
+    verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+    verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+  }
 
-    @Test
-    void givenNoRole_whenUnassignCaseworker_thenThrowUnauthorizedException() {
-        // given
-        // no security context set
+  @Test
+  void givenNoRole_whenUnassignCaseworker_thenThrowUnauthorizedException() {
+    // given
+    // no security context set
 
-        // when
-        Throwable thrown = catchThrowable(() -> serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistoryRequest()));
-        assertThat(thrown)
-                .isInstanceOf(AuthorizationDeniedException.class)
-                .hasMessage("Access Denied");
+    // when
+    Throwable thrown =
+        catchThrowable(
+            () ->
+                serviceUnderTest.unassignCaseworker(UUID.randomUUID(), new EventHistoryRequest()));
+    assertThat(thrown).isInstanceOf(AuthorizationDeniedException.class).hasMessage("Access Denied");
 
-        // then
-        verify(applicationRepository, never()).findAllById(any(Iterable.class));
-        verify(applicationRepository, never()).save(any(ApplicationEntity.class));
-        verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
-    }
+    // then
+    verify(applicationRepository, never()).findAllById(any(Iterable.class));
+    verify(applicationRepository, never()).save(any(ApplicationEntity.class));
+    verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
+  }
 
-    private Stream<Arguments> validUnassignEventDescriptionCases() {
-        return Stream.of(
-                Arguments.of("Assigned by system"),
-                Arguments.of(""),
-                Arguments.of((Object)null)
-        );
-    }
+  private Stream<Arguments> validUnassignEventDescriptionCases() {
+    return Stream.of(
+        Arguments.of("Assigned by system"), Arguments.of(""), Arguments.of((Object) null));
+  }
 
-    private Stream<Arguments> invalidUnassignApplicationIdCases() {
-        return Stream.of(
-                Arguments.of(UUID.randomUUID()),
-                Arguments.of((UUID)null)
-        );
-    }
+  private Stream<Arguments> invalidUnassignApplicationIdCases() {
+    return Stream.of(Arguments.of(UUID.randomUUID()), Arguments.of((UUID) null));
+  }
 }

@@ -21,4 +21,3 @@ public class FullProceedingMerits {
   private List<Object> proceedingLinkedChildren;
   private List<Object> involvedChildren;
 }
-

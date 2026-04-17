@@ -7,11 +7,10 @@ import java.lang.annotation.Target;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
- * Security annotation that restricts access to methods or types
- * to users with the "LAA_CASEWORKER" role.
+ * Security annotation that restricts access to methods or types to users with the "LAA_CASEWORKER"
+ * role.
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @PreAuthorize("@entra.hasAppRole('LAA_CASEWORKER') && @entra.hasName()")
-public @interface AllowApiCaseworker {
-}
+public @interface AllowApiCaseworker {}

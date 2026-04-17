@@ -10,10 +10,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class FullLegalFrameworkMeritsTaskList {
-    private String id;
-    private String legalAidApplicationId;
-    private String serializedData;
-    private String createdAt;
-    private String updatedAt;
+  private String id;
+  private String legalAidApplicationId;
+  private String serializedData;
+  private String createdAt;
+  private String updatedAt;
 }
-

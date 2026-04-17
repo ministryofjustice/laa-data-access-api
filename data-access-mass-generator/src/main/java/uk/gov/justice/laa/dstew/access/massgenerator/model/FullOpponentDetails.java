@@ -10,14 +10,13 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class FullOpponentDetails {
-    private String id;
-    private String legalAidApplicationId;
-    private String createdAt;
-    private String updatedAt;
-    private String ccmsOpponentId;
-    private String opposableType;
-    private String opposableId;
-    private Boolean existsInCCMS;
-    private FullOpposable opposable;
+  private String id;
+  private String legalAidApplicationId;
+  private String createdAt;
+  private String updatedAt;
+  private String ccmsOpponentId;
+  private String opposableType;
+  private String opposableId;
+  private Boolean existsInCCMS;
+  private FullOpposable opposable;
 }
-

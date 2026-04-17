@@ -19,4 +19,3 @@ public class FullCfeSubmission {
   private String createdAt;
   private String updatedAt;
 }
-

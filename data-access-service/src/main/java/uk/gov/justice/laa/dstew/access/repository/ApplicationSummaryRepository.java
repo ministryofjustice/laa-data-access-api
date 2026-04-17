@@ -7,10 +7,10 @@ import org.springframework.stereotype.Repository;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 
 /**
- * Repository for managing application entities.
- * Will be revisited when the application tables are merged in
+ * Repository for managing application entities. Will be revisited when the application tables are
+ * merged in
  */
 @Repository
-public interface ApplicationSummaryRepository extends
-    JpaRepository<ApplicationSummaryEntity, UUID>, JpaSpecificationExecutor<ApplicationSummaryEntity> {
-}
+public interface ApplicationSummaryRepository
+    extends JpaRepository<ApplicationSummaryEntity, UUID>,
+        JpaSpecificationExecutor<ApplicationSummaryEntity> {}

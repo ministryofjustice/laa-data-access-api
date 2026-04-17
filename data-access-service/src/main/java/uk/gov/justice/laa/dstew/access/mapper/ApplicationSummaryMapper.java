@@ -12,8 +12,7 @@ import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 
 /**
- * Mapper between ApplicationSummaryEntity and DTOs.
- * Handles JSONB content for applicationContent.
+ * Mapper between ApplicationSummaryEntity and DTOs. Handles JSONB content for applicationContent.
  */
 @Mapper(componentModel = "spring")
 public interface ApplicationSummaryMapper {
@@ -24,16 +23,18 @@ public interface ApplicationSummaryMapper {
    * @param applicationSummaryEntity the application summary entity
    * @return the application summary
    */
-  default ApplicationSummary toApplicationSummary(ApplicationSummaryEntity applicationSummaryEntity) {
+  default ApplicationSummary toApplicationSummary(
+      ApplicationSummaryEntity applicationSummaryEntity) {
 
     if (applicationSummaryEntity == null) {
       return null;
     }
     ApplicationSummary app = new ApplicationSummary();
     app.setApplicationId(applicationSummaryEntity.getId());
-    app.setSubmittedAt(applicationSummaryEntity.getSubmittedAt() != null 
-                          ? applicationSummaryEntity.getSubmittedAt().atOffset(ZoneOffset.UTC) 
-                          : null);
+    app.setSubmittedAt(
+        applicationSummaryEntity.getSubmittedAt() != null
+            ? applicationSummaryEntity.getSubmittedAt().atOffset(ZoneOffset.UTC)
+            : null);
     app.setAutoGrant(applicationSummaryEntity.getIsAutoGranted());
     app.setCategoryOfLaw(applicationSummaryEntity.getCategoryOfLaw());
     app.setMatterType(applicationSummaryEntity.getMatterType());
@@ -41,10 +42,10 @@ public interface ApplicationSummaryMapper {
     app.setLaaReference(applicationSummaryEntity.getLaaReference());
     app.setOfficeCode(applicationSummaryEntity.getOfficeCode());
     app.setStatus(applicationSummaryEntity.getStatus());
-    app.setAssignedTo(applicationSummaryEntity.getCaseworker() != null 
-                        ? 
-                        applicationSummaryEntity.getCaseworker().getId() : 
-                        null);
+    app.setAssignedTo(
+        applicationSummaryEntity.getCaseworker() != null
+            ? applicationSummaryEntity.getCaseworker().getId()
+            : null);
     var individual = getLeadIndividual(applicationSummaryEntity);
     if (individual != null) {
       app.setClientFirstName(individual.getFirstName());
@@ -66,10 +67,7 @@ public interface ApplicationSummaryMapper {
     if (individuals == null || individuals.isEmpty()) {
       return null;
     }
-    return individuals.stream()
-    .filter(ApplicationSummaryMapper::isClient)
-    .findFirst()
-    .orElse(null);
+    return individuals.stream().filter(ApplicationSummaryMapper::isClient).findFirst().orElse(null);
   }
 
   private static boolean isClient(IndividualEntity individual) {

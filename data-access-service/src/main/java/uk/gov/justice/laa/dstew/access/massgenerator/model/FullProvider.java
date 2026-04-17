@@ -10,18 +10,17 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class FullProvider {
-    private String id;
-    private String username;
-    private String type;
-    private String roles;
-    private String createdAt;
-    private String updatedAt;
-    private String officeCodes;
-    private String firmId;
-    private String selectedOfficeId;
-    private String name;
-    private String email;
-    private Long ccmsContactId;
-    private String silasId;
+  private String id;
+  private String username;
+  private String type;
+  private String roles;
+  private String createdAt;
+  private String updatedAt;
+  private String officeCodes;
+  private String firmId;
+  private String selectedOfficeId;
+  private String name;
+  private String email;
+  private Long ccmsContactId;
+  private String silasId;
 }
-

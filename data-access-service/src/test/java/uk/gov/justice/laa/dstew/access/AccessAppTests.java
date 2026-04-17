@@ -12,43 +12,33 @@ import uk.gov.justice.laa.dstew.access.massgenerator.generator.PersistedDataGene
 import uk.gov.justice.laa.dstew.access.repository.*;
 
 @SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=true"})
-@ImportAutoConfiguration(exclude = {
-    DataSourceAutoConfiguration.class,
-    HibernateJpaAutoConfiguration.class,
-})
+@ImportAutoConfiguration(
+    exclude = {
+      DataSourceAutoConfiguration.class,
+      HibernateJpaAutoConfiguration.class,
+    })
 public class AccessAppTests {
-  @MockitoBean
-  private ApplicationRepository applicationRepository;
+  @MockitoBean private ApplicationRepository applicationRepository;
 
-  @MockitoBean
-  private ApplicationSummaryRepository applicationSummaryRepository;
+  @MockitoBean private ApplicationSummaryRepository applicationSummaryRepository;
 
-  @MockitoBean
-  private CaseworkerRepository caseworkerRepository;
+  @MockitoBean private CaseworkerRepository caseworkerRepository;
 
-  @MockitoBean
-  private DomainEventRepository domainEventRepository;
+  @MockitoBean private DomainEventRepository domainEventRepository;
 
-  @MockitoBean
-  private DecisionRepository decisionRepository;
+  @MockitoBean private DecisionRepository decisionRepository;
 
-  @MockitoBean
-  private ProceedingRepository proceedingRepository;
+  @MockitoBean private ProceedingRepository proceedingRepository;
 
-  @MockitoBean
-  private MeritsDecisionRepository meritsDecisionRepository;
+  @MockitoBean private MeritsDecisionRepository meritsDecisionRepository;
 
-  @MockitoBean
-  private CertificateRepository certificateRepository;
+  @MockitoBean private CertificateRepository certificateRepository;
 
-  @MockitoBean
-  private IndividualRepository individualRepository;
+  @MockitoBean private IndividualRepository individualRepository;
 
-  @MockitoBean
-  private NoteRepository noteRepository;
+  @MockitoBean private NoteRepository noteRepository;
 
-  @MockitoBean
-  private MassDataGeneratorService massDataGeneratorService;
+  @MockitoBean private MassDataGeneratorService massDataGeneratorService;
 
   @MockitoBean(name = "massGeneratorPersistedDataGenerator")
   private PersistedDataGenerator persistedDataGenerator;
@@ -57,6 +47,5 @@ public class AccessAppTests {
   private LinkedIndividualWriter linkedIndividualWriter;
 
   @Test
-  void contextLoads() {
-  }
+  void contextLoads() {}
 }

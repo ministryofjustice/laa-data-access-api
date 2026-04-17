@@ -10,12 +10,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class FullStateMachine {
-    private String id;
-    private String legalAidApplicationId;
-    private String type;
-    private String aasmState;
-    private String createdAt;
-    private String updatedAt;
-    private String ccmsReason;
+  private String id;
+  private String legalAidApplicationId;
+  private String type;
+  private String aasmState;
+  private String createdAt;
+  private String updatedAt;
+  private String ccmsReason;
 }
-
