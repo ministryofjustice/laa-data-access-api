@@ -95,12 +95,7 @@ runs:
               ;;
           esac
         else
-          export SPRING_PROFILE="preview"
-          # Using Bitnami legacy with PostgreSQL 17.2 (specified in values.yaml)
-          helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
-            -f .helm/bitnami_postgres/values.yaml \
-            --namespace ${KUBE_NAMESPACE} \
-            --install --wait
+          export SPRING_PROFILE="unsecured"
         fi
 
         helm upgrade $RELEASE_NAME .helm/data-access-api \
