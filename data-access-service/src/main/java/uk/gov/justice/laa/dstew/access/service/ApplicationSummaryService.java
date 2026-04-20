@@ -145,7 +145,8 @@ public class ApplicationSummaryService {
         .collect(
             Collectors.toMap(
                 ApplicationSummaryDto::getId,
-                entity -> resolveLinkedApplications(entity.getId(), linkedAppsByLeadId)));
+                entity -> resolveLinkedApplications(entity.getId(), linkedAppsByLeadId),
+                (existing, duplicate) -> existing));
   }
 
   private List<LinkedApplicationSummaryDto> resolveLinkedApplications(

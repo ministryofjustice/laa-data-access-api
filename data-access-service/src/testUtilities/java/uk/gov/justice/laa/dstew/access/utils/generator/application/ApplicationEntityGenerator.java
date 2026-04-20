@@ -34,7 +34,7 @@ public class ApplicationEntityGenerator
         .applyApplicationId(UUID.randomUUID())
         .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
         .modifiedAt(Instant.now())
-        .submittedAt(Instant.parse("2024-01-01T12:00:00Z"))
+        .submittedAt(Instant.now())
         .laaReference("REF7327")
         .individuals(new HashSet<>(java.util.List.of(individualEntityGenerator.createDefault())))
         .applicationContent(

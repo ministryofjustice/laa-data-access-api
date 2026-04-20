@@ -60,10 +60,6 @@ public interface ApplicationSummaryMapper {
     return app;
   }
 
-  default OffsetDateTime map(Instant value) {
-    return value != null ? value.atOffset(ZoneOffset.UTC) : null;
-  }
-
   /**
    * Maps the given application summary DTO to an application summary.
    *
@@ -93,6 +89,10 @@ public interface ApplicationSummaryMapper {
     app.setLastUpdated(dto.getModifiedAt().atOffset(ZoneOffset.UTC));
     app.setIsLead(dto.isLead());
     return app;
+  }
+
+  default OffsetDateTime map(Instant value) {
+    return value != null ? value.atOffset(ZoneOffset.UTC) : null;
   }
 
   private static IndividualEntity getLeadIndividual(ApplicationSummaryEntity entity) {

@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.specification;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
@@ -78,57 +79,48 @@ public class ApplicationSummarySpecification {
   private class IndividualFilterSpecification {
     public static Specification<ApplicationEntity> filterIndividual(
         String firstName, String lastName, LocalDate dateOfBirth) {
-      Specification<ApplicationEntity> baseSpecification = Specification.unrestricted();
-      if (isPopulated(firstName) || isPopulated(lastName) || dateOfBirth != null) {
-        baseSpecification = isClient();
+      if (!isPopulated(firstName) && !isPopulated(lastName) && dateOfBirth == null) {
+        return Specification.unrestricted();
       }
-      return baseSpecification
-          .and(likeFirstName(firstName))
-          .and(likeLastName(lastName))
-          .and(isDateOfBirth(dateOfBirth));
-    }
-
-    private static Specification<ApplicationEntity> isClient() {
       return (root, query, builder) -> {
+        // Reuse an existing individuals join if the repo has already created one,
+        // to avoid a second fan-out join in the same query.
+        @SuppressWarnings("unchecked")
         Join<ApplicationEntity, IndividualEntity> individualsJoin =
-            root.join("individuals", JoinType.INNER);
-        return builder.equal(individualsJoin.get("type"), IndividualType.CLIENT);
+            (Join<ApplicationEntity, IndividualEntity>)
+                Optional.ofNullable(root.getJoins()).stream()
+                    .flatMap(java.util.Set::stream)
+                    .filter(j -> "individuals".equals(j.getAttribute().getName()))
+                    .findFirst()
+                    .orElseGet(() -> root.join("individuals", JoinType.INNER));
+
+        // All predicates share the single join — no Cartesian product
+        jakarta.persistence.criteria.Predicate predicate =
+            builder.equal(individualsJoin.get("type"), IndividualType.CLIENT);
+
+        if (isPopulated(firstName)) {
+          predicate =
+              builder.and(
+                  predicate,
+                  builder.like(
+                      builder.lower(individualsJoin.get("firstName")),
+                      "%" + firstName.toLowerCase() + "%"));
+        }
+        if (isPopulated(lastName)) {
+          predicate =
+              builder.and(
+                  predicate,
+                  builder.like(
+                      builder.lower(individualsJoin.get("lastName")),
+                      "%" + lastName.toLowerCase() + "%"));
+        }
+        if (dateOfBirth != null) {
+          predicate =
+              builder.and(
+                  predicate, builder.equal(individualsJoin.get("dateOfBirth"), dateOfBirth));
+        }
+        return predicate;
       };
-    }
-
-    private static Specification<ApplicationEntity> likeFirstName(String firstName) {
-      if (firstName != null && !firstName.isBlank()) {
-        return (root, query, builder) -> {
-          Join<ApplicationEntity, IndividualEntity> individualsJoin =
-              root.join("individuals", JoinType.INNER);
-          return builder.like(
-              builder.lower(individualsJoin.get("firstName")), "%" + firstName.toLowerCase() + "%");
-        };
-      }
-      return Specification.unrestricted();
-    }
-
-    private static Specification<ApplicationEntity> likeLastName(String lastName) {
-      if (lastName != null && !lastName.isBlank()) {
-        return (root, query, builder) -> {
-          Join<ApplicationEntity, IndividualEntity> individualsJoin =
-              root.join("individuals", JoinType.INNER);
-          return builder.like(
-              builder.lower(individualsJoin.get("lastName")), "%" + lastName.toLowerCase() + "%");
-        };
-      }
-      return Specification.unrestricted();
-    }
-
-    private static Specification<ApplicationEntity> isDateOfBirth(LocalDate clientDateOfBirth) {
-      if (clientDateOfBirth != null) {
-        return (root, query, builder) -> {
-          Join<ApplicationEntity, IndividualEntity> individualsJoin =
-              root.join("individuals", JoinType.INNER);
-          return builder.equal(individualsJoin.get("dateOfBirth"), clientDateOfBirth);
-        };
-      }
-      return Specification.unrestricted();
     }
   }
 

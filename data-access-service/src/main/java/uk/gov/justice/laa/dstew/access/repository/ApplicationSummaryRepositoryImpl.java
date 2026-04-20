@@ -10,7 +10,9 @@ import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Order;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -47,9 +49,24 @@ public class ApplicationSummaryRepositoryImpl implements ApplicationSummaryRepos
     Join<ApplicationEntity, CaseworkerEntity> caseworkerJoin =
         root.join("caseworker", JoinType.LEFT);
 
+    // Use a correlated subquery to select the minimum CLIENT individual id for this application,
+    // so that the join never fans out to more than one row per application.
+    Subquery<UUID> clientIdSubquery = query.subquery(UUID.class);
+    Root<ApplicationEntity> subApp = clientIdSubquery.from(ApplicationEntity.class);
+    Join<ApplicationEntity, IndividualEntity> subIndividualJoin =
+        subApp.join("individuals", JoinType.INNER);
+    clientIdSubquery
+        .select(cb.least(subIndividualJoin.<UUID>get("id")))
+        .where(
+            cb.equal(subApp.get("id"), root.get("id")),
+            cb.equal(subIndividualJoin.get("type"), IndividualType.CLIENT));
+
     Join<ApplicationEntity, IndividualEntity> individualsJoin =
         root.join("individuals", JoinType.LEFT);
-    individualsJoin.on(cb.equal(individualsJoin.get("type"), IndividualType.CLIENT));
+    individualsJoin.on(
+        cb.and(
+            cb.equal(individualsJoin.get("type"), IndividualType.CLIENT),
+            cb.equal(individualsJoin.get("id"), clientIdSubquery)));
 
     Expression<Boolean> isLead =
         cb.<Boolean>selectCase()
