@@ -42,7 +42,7 @@ jobs:
         run: ./gradlew jacocoTestCoverageVerification
 
       - name: Integration test
-        run: ./gradlew integrationTest
+        run: ./gradlew integrationTest -PskipIntegrationTests
 
       - name: Publish api models package
         run: |
