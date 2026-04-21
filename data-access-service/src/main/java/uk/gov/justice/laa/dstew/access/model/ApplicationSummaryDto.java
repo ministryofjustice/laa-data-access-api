@@ -32,4 +32,32 @@ public class ApplicationSummaryDto {
   private String clientLastName;
   private LocalDate clientDateOfBirth;
   private boolean isLead;
+
+  /** Constructor for data query projection (without client info and lead flag). */
+  public ApplicationSummaryDto(
+      UUID id,
+      ApplicationStatus status,
+      String laaReference,
+      String officeCode,
+      Instant createdAt,
+      Instant modifiedAt,
+      Instant submittedAt,
+      Boolean usedDelegatedFunctions,
+      CategoryOfLaw categoryOfLaw,
+      MatterType matterType,
+      Boolean isAutoGranted,
+      UUID caseworkerId) {
+    this.id = id;
+    this.status = status;
+    this.laaReference = laaReference;
+    this.officeCode = officeCode;
+    this.createdAt = createdAt;
+    this.modifiedAt = modifiedAt;
+    this.submittedAt = submittedAt;
+    this.usedDelegatedFunctions = usedDelegatedFunctions;
+    this.categoryOfLaw = categoryOfLaw;
+    this.matterType = matterType;
+    this.isAutoGranted = isAutoGranted;
+    this.caseworkerId = caseworkerId;
+  }
 }

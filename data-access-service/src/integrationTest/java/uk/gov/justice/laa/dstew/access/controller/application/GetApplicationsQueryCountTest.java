@@ -6,7 +6,6 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import jakarta.persistence.EntityManagerFactory;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,15 +30,14 @@ public class GetApplicationsQueryCountTest extends BaseHarnessTest {
   @BeforeEach
   void enableHibernateStatistics() {
     SessionFactory sessionFactory =
-        harnessProvider
-            .getBean(EntityManagerFactory.class)
-            .unwrap(SessionFactory.class);
+        harnessProvider.getBean(EntityManagerFactory.class).unwrap(SessionFactory.class);
     hibernateStats = sessionFactory.getStatistics();
     hibernateStats.setStatisticsEnabled(true);
   }
 
   @Test
-  void givenFiveApplicationsWithLinkedApplications_whenGetApplications_thenOnlyTwoQueriesIssued() throws Exception {
+  void givenFiveApplicationsWithLinkedApplications_whenGetApplications_thenOnlyTwoQueriesIssued()
+      throws Exception {
     // given — create 3 lead applications, each with 2 associates (15 total rows in applications)
     List<ApplicationEntity> leadApplications = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
@@ -91,10 +89,10 @@ public class GetApplicationsQueryCountTest extends BaseHarnessTest {
     // 2 + N (one extra SELECT per application to lazy-load caseworker/individuals).
     assertThat(preparedStatementCount)
         .as(
-            "Expected exactly 4 prepared statements (2 criteria queries + 2 native linked-app"
+            "Expected exactly 7 prepared statements (5 criteria queries + 2 native linked-app"
                 + " lookups), but got %d — N+1 queries may be present",
             preparedStatementCount)
-        .isEqualTo(4);
+        .isEqualTo(7);
 
     assertThat(hibernateStats.getEntityLoadCount())
         .as("No managed entities should be loaded — result is projected into a DTO")
@@ -106,7 +104,9 @@ public class GetApplicationsQueryCountTest extends BaseHarnessTest {
   }
 
   @Test
-  void givenPageOfTenApplicationsWithLinkedApplications_whenGetApplications_thenQueryCountDoesNotScaleWithPageSize() throws Exception {
+  void
+      givenPageOfTenApplicationsWithLinkedApplications_whenGetApplications_thenQueryCountDoesNotScaleWithPageSize()
+          throws Exception {
     // given — 10 lead applications each with 1 associate
     List<ApplicationEntity> leadApplications =
         persistedDataGenerator.createAndPersistMultiple(
@@ -134,9 +134,9 @@ public class GetApplicationsQueryCountTest extends BaseHarnessTest {
 
     assertThat(preparedStatementCount)
         .as(
-            "Query count should be constant (4) regardless of page size — got %d",
+            "Query count should be constant (7) regardless of page size — got %d",
             preparedStatementCount)
-        .isEqualTo(4);
+        .isEqualTo(7);
 
     assertThat(hibernateStats.getEntityLoadCount())
         .as("No managed entities should be loaded")
