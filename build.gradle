@@ -87,11 +87,14 @@ allprojects {
     }
 }
 
-tasks.register('resolveAndLockAll') {
-    description = 'Resolves all locked configurations for every project (use with --write-locks to update lock files).'
-    doFirst {
-        assert gradle.startParameter.writeDependencyLocks : '--write-locks must be passed when running this task'
-    }
+tasks.register('resolveAndLockAll', Exec) {
+    description = 'Resolves all locked configurations for every project and writes lock files.'
+    workingDir = rootDir
+    commandLine './gradlew', 'resolveAndLockAllInternal', '--write-locks'
+}
+
+tasks.register('resolveAndLockAllInternal') {
+    description = 'Internal task – use resolveAndLockAll instead.'
     doLast {
         allprojects.each { proj ->
             proj.configurations
