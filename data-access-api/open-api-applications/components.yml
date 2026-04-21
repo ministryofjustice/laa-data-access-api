@@ -38,7 +38,7 @@ components:
         - laaReference
         - lastUpdated
         - proceedings
-        - version
+        - applicationVersion
       properties:
         applicationId:
           type: string
