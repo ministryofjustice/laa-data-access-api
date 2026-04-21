@@ -14,9 +14,9 @@ import uk.gov.justice.laa.dstew.access.domain.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.service.ApplicationContentParserService;
-import uk.gov.justice.laa.dstew.access.usecase.createapplication.infrastructure.ApplicationGateway;
-import uk.gov.justice.laa.dstew.access.usecase.createapplication.infrastructure.DomainEventGateway;
-import uk.gov.justice.laa.dstew.access.usecase.createapplication.infrastructure.ProceedingGateway;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.DomainEventGateway;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ProceedingGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.EnforceRole;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.RequiredRole;
 import uk.gov.justice.laa.dstew.access.usecase.shared.validation.UseCaseValidations;
@@ -78,23 +78,31 @@ public class CreateApplicationUseCase {
               .filter(id -> !id.equals(details.applyApplicationId()))
               .toList();
       UseCaseValidations.checkApplicationIdList(associatedIds);
+
+      List<UUID> missingIds =
+          associatedIds.stream()
+              .filter(id -> !applicationGateway.existsByApplyApplicationId(id))
+              .toList();
+      if (!missingIds.isEmpty()) {
+        throw new ResourceNotFoundException(
+            "No linked application found with associated apply ids: " + missingIds);
+      }
     }
 
     ApplicationDomain domain =
-        new ApplicationDomain(
-            null,
-            command.status(),
-            command.laaReference(),
-            details.officeCode(),
-            details.applyApplicationId(),
-            details.usedDelegatedFunctions(),
-            details.categoryOfLaw(),
-            details.matterType(),
-            details.submittedAt(),
-            null,
-            command.applicationContent(),
-            command.individuals(),
-            APPLICATION_SCHEMA_VERSION);
+        ApplicationDomain.builder()
+            .status(command.status())
+            .laaReference(command.laaReference())
+            .officeCode(details.officeCode())
+            .applyApplicationId(details.applyApplicationId())
+            .usedDelegatedFunctions(details.usedDelegatedFunctions())
+            .categoryOfLaw(details.categoryOfLaw())
+            .matterType(details.matterType())
+            .submittedAt(details.submittedAt())
+            .applicationContent(command.applicationContent())
+            .individuals(command.individuals())
+            .schemaVersion(APPLICATION_SCHEMA_VERSION)
+            .build();
 
     ApplicationDomain saved = applicationGateway.save(domain);
 
@@ -104,7 +112,7 @@ public class CreateApplicationUseCase {
         buildProceedingDomains(command.applicationContent(), saved.id());
     proceedingGateway.saveAll(saved.id(), proceedings);
 
-    domainEventGateway.saveCreatedEvent(saved);
+    domainEventGateway.saveCreatedEvent(saved, command.serialisedRequest());
 
     return saved.id();
   }

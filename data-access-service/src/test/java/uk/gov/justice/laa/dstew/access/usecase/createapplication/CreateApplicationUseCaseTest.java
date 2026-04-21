@@ -7,7 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.Instant;
+import jakarta.validation.Validation;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,14 +19,19 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.service.ApplicationContentParserService;
-import uk.gov.justice.laa.dstew.access.usecase.createapplication.infrastructure.ApplicationGateway;
-import uk.gov.justice.laa.dstew.access.usecase.createapplication.infrastructure.DomainEventGateway;
-import uk.gov.justice.laa.dstew.access.usecase.createapplication.infrastructure.ProceedingGateway;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.DomainEventGateway;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ProceedingGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.EnforceRole;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.RequiredRole;
+import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationDomainGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.CreateApplicationCommandGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationsGenerator;
+import uk.gov.justice.laa.dstew.access.validation.PayloadValidationService;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,25 +45,13 @@ class CreateApplicationUseCaseTest {
   private CreateApplicationUseCase useCase;
   private ObjectMapper objectMapper;
 
-  private static final Map<String, Object> VALID_CONTENT =
-      Map.of(
-          "id",
-          UUID.randomUUID().toString(),
-          "submittedAt",
-          "2024-01-01T12:00:00Z",
-          "proceedings",
-          List.of(
-              Map.of(
-                  "id", UUID.randomUUID().toString(),
-                  "leadProceeding", true,
-                  "description", "Test proceeding",
-                  "categoryOfLaw", "FAMILY",
-                  "matterType", "SPECIAL_CHILDREN_ACT")));
-
   @BeforeEach
   void setUp() {
     objectMapper = new ObjectMapper();
-    contentParser = new ApplicationContentParserService(objectMapper);
+    var validator = Validation.buildDefaultValidatorFactory().getValidator();
+    contentParser =
+        new ApplicationContentParserService(
+            objectMapper, new PayloadValidationService(objectMapper, validator));
     useCase =
         new CreateApplicationUseCase(
             applicationGateway, proceedingGateway, domainEventGateway, contentParser, objectMapper);
@@ -66,20 +59,56 @@ class CreateApplicationUseCaseTest {
 
   @Test
   void execute_happyPath_returnsSavedId() {
-    UUID savedId = UUID.randomUUID();
-    ApplicationDomain saved = buildSavedDomain(savedId);
+    UUID expectedId = UUID.randomUUID();
+    ApplicationDomain saved =
+        DataGenerator.createDefault(ApplicationDomainGenerator.class, b -> b.id(expectedId));
     when(applicationGateway.existsByApplyApplicationId(any())).thenReturn(false);
     when(applicationGateway.save(any())).thenReturn(saved);
 
     CreateApplicationCommand command =
-        new CreateApplicationCommand(
-            ApplicationStatus.APPLICATION_IN_PROGRESS, "REF001", VALID_CONTENT, List.of());
+        DataGenerator.createDefault(CreateApplicationCommandGenerator.class);
 
     UUID result = useCase.execute(command);
 
-    assertThat(result).isEqualTo(savedId);
+    assertThat(result).isEqualTo(expectedId);
     verify(applicationGateway).save(any());
-    verify(domainEventGateway).saveCreatedEvent(saved);
+    verify(domainEventGateway).saveCreatedEvent(saved, command.serialisedRequest());
+  }
+
+  @Test
+  void execute_happyPath_proceedingsSaved() {
+    ApplicationDomain saved = DataGenerator.createDefault(ApplicationDomainGenerator.class);
+    when(applicationGateway.existsByApplyApplicationId(any())).thenReturn(false);
+    when(applicationGateway.save(any())).thenReturn(saved);
+
+    CreateApplicationCommand command =
+        DataGenerator.createDefault(CreateApplicationCommandGenerator.class);
+
+    useCase.execute(command);
+
+    verify(proceedingGateway).saveAll(any(), any());
+  }
+
+  @Test
+  void execute_withLinkedApplication_callsAddLinkedApplication() {
+    UUID leadApplyId = UUID.randomUUID();
+    UUID assocId = UUID.randomUUID();
+
+    ApplicationDomain saved = DataGenerator.createDefault(ApplicationDomainGenerator.class);
+    ApplicationDomain lead = DataGenerator.createDefault(ApplicationDomainGenerator.class);
+    when(applicationGateway.existsByApplyApplicationId(any())).thenReturn(false);
+    when(applicationGateway.save(any())).thenReturn(saved);
+    when(applicationGateway.findByApplyApplicationId(leadApplyId)).thenReturn(Optional.of(lead));
+    when(applicationGateway.addLinkedApplication(any(), any())).thenReturn(lead);
+
+    CreateApplicationCommand command =
+        DataGenerator.createDefault(
+            CreateApplicationCommandGenerator.class,
+            b -> b.applicationContent(linkedContent(leadApplyId, assocId)));
+
+    useCase.execute(command);
+
+    verify(applicationGateway).addLinkedApplication(lead, saved);
   }
 
   @Test
@@ -87,8 +116,7 @@ class CreateApplicationUseCaseTest {
     when(applicationGateway.existsByApplyApplicationId(any())).thenReturn(true);
 
     CreateApplicationCommand command =
-        new CreateApplicationCommand(
-            ApplicationStatus.APPLICATION_IN_PROGRESS, "REF001", VALID_CONTENT, List.of());
+        DataGenerator.createDefault(CreateApplicationCommandGenerator.class);
 
     assertThatThrownBy(() -> useCase.execute(command))
         .isInstanceOf(ValidationException.class)
@@ -102,37 +130,63 @@ class CreateApplicationUseCaseTest {
   }
 
   @Test
+  void execute_missingAssociatedApplication_throwsResourceNotFoundException() {
+    UUID leadApplyId = UUID.randomUUID();
+    UUID assocId = UUID.randomUUID();
+    UUID missingId = UUID.randomUUID();
+
+    // two linked apps: the one being created (assocId) plus one that doesn't exist (missingId)
+    var contentWithMissingAssoc =
+        objectMapper.convertValue(
+            DataGenerator.createDefault(
+                ApplicationContentGenerator.class,
+                ac ->
+                    ac.id(assocId)
+                        .allLinkedApplications(
+                            List.of(
+                                DataGenerator.createDefault(
+                                    LinkedApplicationsGenerator.class,
+                                    b ->
+                                        b.leadApplicationId(leadApplyId)
+                                            .associatedApplicationId(assocId)),
+                                DataGenerator.createDefault(
+                                    LinkedApplicationsGenerator.class,
+                                    b ->
+                                        b.leadApplicationId(leadApplyId)
+                                            .associatedApplicationId(missingId))))),
+            Map.class);
+
+    // assocId is the application being created — its existence check is filtered out
+    // missingId does not exist
+    when(applicationGateway.existsByApplyApplicationId(assocId)).thenReturn(false); // new app
+    when(applicationGateway.existsByApplyApplicationId(missingId)).thenReturn(false);
+
+    CreateApplicationCommand command =
+        DataGenerator.createDefault(
+            CreateApplicationCommandGenerator.class,
+            b -> b.applicationContent(contentWithMissingAssoc));
+
+    assertThatThrownBy(() -> useCase.execute(command))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessageContaining("No linked application found with associated apply ids:");
+
+    verify(applicationGateway, never()).save(any());
+  }
+
+  @Test
   void execute_missingLeadApplication_throwsResourceNotFoundException() {
     UUID leadApplyId = UUID.randomUUID();
     UUID assocId = UUID.randomUUID();
-    Map<String, Object> contentWithLink =
-        Map.of(
-            "id",
-            assocId.toString(),
-            "submittedAt",
-            "2024-01-01T12:00:00Z",
-            "allLinkedApplications",
-            List.of(
-                Map.of(
-                    "leadApplicationId", leadApplyId.toString(),
-                    "associatedApplicationId", assocId.toString())),
-            "proceedings",
-            List.of(
-                Map.of(
-                    "id", UUID.randomUUID().toString(),
-                    "leadProceeding", true,
-                    "description", "Test",
-                    "categoryOfLaw", "FAMILY",
-                    "matterType", "SPECIAL_CHILDREN_ACT")));
 
-    UUID savedId = UUID.randomUUID();
     when(applicationGateway.existsByApplyApplicationId(any())).thenReturn(false);
-    when(applicationGateway.save(any())).thenReturn(buildSavedDomain(savedId));
+    when(applicationGateway.save(any()))
+        .thenReturn(DataGenerator.createDefault(ApplicationDomainGenerator.class));
     when(applicationGateway.findByApplyApplicationId(leadApplyId)).thenReturn(Optional.empty());
 
     CreateApplicationCommand command =
-        new CreateApplicationCommand(
-            ApplicationStatus.APPLICATION_IN_PROGRESS, "REF001", contentWithLink, List.of());
+        DataGenerator.createDefault(
+            CreateApplicationCommandGenerator.class,
+            b -> b.applicationContent(linkedContent(leadApplyId, assocId)));
 
     assertThatThrownBy(() -> useCase.execute(command))
         .isInstanceOf(ResourceNotFoundException.class)
@@ -141,25 +195,23 @@ class CreateApplicationUseCaseTest {
 
   @Test
   void execute_contentWithNoLeadProceeding_throwsValidationException() {
-    Map<String, Object> badContent =
-        Map.of(
-            "id",
-            UUID.randomUUID().toString(),
-            "submittedAt",
-            "2024-01-01T12:00:00Z",
-            "proceedings",
-            List.of(
-                Map.of(
-                    "id",
-                    UUID.randomUUID().toString(),
-                    "leadProceeding",
-                    false,
-                    "description",
-                    "Non-lead")));
+    var noLeadProceedingContent =
+        objectMapper.convertValue(
+            DataGenerator.createDefault(
+                ApplicationContentGenerator.class,
+                ac ->
+                    ac.proceedings(
+                        List.of(
+                            DataGenerator.createDefault(
+                                uk.gov.justice.laa.dstew.access.utils.generator.proceeding
+                                    .ProceedingGenerator.class,
+                                p -> p.leadProceeding(false))))),
+            Map.class);
 
     CreateApplicationCommand command =
-        new CreateApplicationCommand(
-            ApplicationStatus.APPLICATION_IN_PROGRESS, "REF001", badContent, List.of());
+        DataGenerator.createDefault(
+            CreateApplicationCommandGenerator.class,
+            b -> b.applicationContent(noLeadProceedingContent));
 
     assertThatThrownBy(() -> useCase.execute(command)).isInstanceOf(ValidationException.class);
   }
@@ -174,20 +226,17 @@ class CreateApplicationUseCaseTest {
     assertThat(annotation.anyOf()).contains(RequiredRole.API_CASEWORKER);
   }
 
-  private ApplicationDomain buildSavedDomain(UUID id) {
-    return new ApplicationDomain(
-        id,
-        ApplicationStatus.APPLICATION_IN_PROGRESS,
-        "REF001",
-        "OFFICE1",
-        UUID.randomUUID(),
-        false,
-        uk.gov.justice.laa.dstew.access.domain.CategoryOfLaw.FAMILY,
-        uk.gov.justice.laa.dstew.access.domain.MatterType.SPECIAL_CHILDREN_ACT,
-        Instant.parse("2024-01-01T12:00:00Z"),
-        Instant.now(),
-        VALID_CONTENT,
-        List.of(),
-        1);
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  private Map<String, Object> linkedContent(UUID leadApplyId, UUID assocId) {
+    var link =
+        DataGenerator.createDefault(
+            LinkedApplicationsGenerator.class,
+            b -> b.leadApplicationId(leadApplyId).associatedApplicationId(assocId));
+    return objectMapper.convertValue(
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            ac -> ac.id(assocId).allLinkedApplications(List.of(link))),
+        Map.class);
   }
 }

@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.infrastructure.jpa.createapplication;
+package uk.gov.justice.laa.dstew.access.infrastructure.jpa.shared;
 
 import java.util.Map;
 import java.util.UUID;

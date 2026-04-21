@@ -66,13 +66,15 @@ public class DomainEventService {
   }
 
   /** Posts an APPLICATION_CREATED domain event using domain types. Preferred overload. */
-  public void saveCreateApplicationDomainEvent(ApplicationDomain saved, String createdBy) {
+  public void saveCreateApplicationDomainEvent(
+      ApplicationDomain saved, String serialisedRequest, String createdBy) {
     CreateApplicationDomainEventDetails domainEventDetails =
         CreateApplicationDomainEventDetails.builder()
             .applicationId(saved.id())
             .createdDate(saved.createdAt())
             .laaReference(saved.laaReference())
             .applicationStatus(saved.status().name())
+            .request(serialisedRequest)
             .build();
 
     DomainEventEntity domainEventEntity =
@@ -221,6 +223,34 @@ public class DomainEventService {
   }
 
   /**
+   * Posts a make decision domain event (new primitive-args overload for use-case path).
+   *
+   * @param applicationId the id of the application
+   * @param caseworkerId the id of the caseworker
+   * @param serialisedRequest the already-serialised request JSON
+   * @param eventDescription the event description
+   * @param domainEventType the type of the domain event
+   */
+  public void saveMakeDecisionDomainEvent(
+      UUID applicationId,
+      UUID caseworkerId,
+      String serialisedRequest,
+      String eventDescription,
+      DomainEventType domainEventType) {
+
+    MakeDecisionDomainEventDetails domainEventDetails =
+        MakeDecisionDomainEventDetails.builder()
+            .applicationId(applicationId)
+            .caseworkerId(caseworkerId)
+            .createdAt(Instant.now())
+            .request(serialisedRequest)
+            .eventDescription(eventDescription)
+            .build();
+
+    saveDomainEvent(applicationId, caseworkerId, domainEventType, domainEventDetails);
+  }
+
+  /**
    * Posts a make decision domain event.
    *
    * @param applicationId the id of the application for which the decision was made
@@ -228,7 +258,10 @@ public class DomainEventService {
    * @param caseworkerId the id of the caseworker who made the decision
    * @param domainEventType the type of the domain event to post, either
    *     APPLICATION_MAKE_DECISION_REFUSED or APPLICATION_MAKE_DECISION_GRANTED
+   * @deprecated Use {@link #saveMakeDecisionDomainEvent(UUID, UUID, String, String,
+   *     DomainEventType)} instead.
    */
+  @Deprecated
   @AllowApiCaseworker
   public void saveMakeDecisionDomainEvent(
       UUID applicationId,

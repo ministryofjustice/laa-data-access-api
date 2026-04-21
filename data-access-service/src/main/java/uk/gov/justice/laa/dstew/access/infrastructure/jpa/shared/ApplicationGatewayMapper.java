@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.infrastructure.jpa.createapplication;
+package uk.gov.justice.laa.dstew.access.infrastructure.jpa.shared;
 
 import java.util.List;
 import java.util.Set;
@@ -59,7 +59,10 @@ public class ApplicationGatewayMapper {
         entity.getCreatedAt(),
         entity.getApplicationContent(),
         individuals,
-        entity.getSchemaVersion() != null ? entity.getSchemaVersion() : 0);
+        entity.getSchemaVersion() != null ? entity.getSchemaVersion() : 0,
+        entity.getVersion(),
+        entity.getCaseworker() != null ? entity.getCaseworker().getId() : null,
+        entity.getIsAutoGranted());
   }
 
   private IndividualEntity toIndividualEntity(Individual individual) {

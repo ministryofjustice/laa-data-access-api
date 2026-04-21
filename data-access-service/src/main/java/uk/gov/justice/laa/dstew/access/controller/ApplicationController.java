@@ -39,6 +39,8 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationCommandMapper;
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionCommandMapper;
+import uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
 /** Controller for handling /api/v0/applications requests. */
@@ -53,6 +55,8 @@ public class ApplicationController implements ApplicationApi {
   private final CertificateService certificateService;
   private final CreateApplicationUseCase createApplicationUseCase;
   private final CreateApplicationCommandMapper createApplicationCommandMapper;
+  private final MakeDecisionUseCase makeDecisionUseCase;
+  private final MakeDecisionCommandMapper makeDecisionCommandMapper;
 
   @LogMethodArguments
   @LogMethodResponse
@@ -171,7 +175,7 @@ public class ApplicationController implements ApplicationApi {
   public ResponseEntity<Void> makeDecision(
       @NotNull ServiceName serviceName, UUID applicationId, @Valid MakeDecisionRequest request) {
 
-    service.makeDecision(applicationId, request);
+    makeDecisionUseCase.execute(makeDecisionCommandMapper.toCommand(applicationId, request));
 
     return ResponseEntity.noContent().build();
   }

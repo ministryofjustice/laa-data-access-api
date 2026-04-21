@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
+import uk.gov.justice.laa.dstew.access.validation.PayloadValidationService;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Service class for parsing and normalising application content. */
@@ -26,9 +27,12 @@ public class ApplicationContentParserService {
       new CategoryOfLawTypeConvertor();
 
   private final ObjectMapper objectMapper;
+  private final PayloadValidationService payloadValidationService;
 
-  public ApplicationContentParserService(ObjectMapper objectMapper) {
+  public ApplicationContentParserService(
+      ObjectMapper objectMapper, PayloadValidationService payloadValidationService) {
     this.objectMapper = objectMapper;
+    this.payloadValidationService = payloadValidationService;
   }
 
   /**
@@ -53,7 +57,8 @@ public class ApplicationContentParserService {
   public uk.gov.justice.laa.dstew.access.domain.ParsedAppContentDetails parseFromMap(
       Map<String, Object> applicationContentMap) {
     ApplicationContent content =
-        objectMapper.convertValue(applicationContentMap, ApplicationContent.class);
+        payloadValidationService.convertAndValidate(
+            applicationContentMap, ApplicationContent.class);
     ParsedAppContentDetails legacy = processingApplicationContent(content);
     return new uk.gov.justice.laa.dstew.access.domain.ParsedAppContentDetails(
         legacy.applyApplicationId(),

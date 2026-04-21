@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.usecase.createapplication.infrastructure;
+package uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -13,4 +13,8 @@ public interface ApplicationGateway {
   Optional<ApplicationDomain> findByApplyApplicationId(UUID applyApplicationId);
 
   ApplicationDomain addLinkedApplication(ApplicationDomain lead, ApplicationDomain linked);
+
+  ApplicationDomain findById(UUID id);
+
+  ApplicationDomain updateAutoGranted(UUID applicationId, Boolean autoGranted);
 }

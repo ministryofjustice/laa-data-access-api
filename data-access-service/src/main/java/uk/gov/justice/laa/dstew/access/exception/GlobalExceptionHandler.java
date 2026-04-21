@@ -12,6 +12,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -71,6 +72,17 @@ public class GlobalExceptionHandler {
       throws AuthorizationDeniedException {
     throw exception; // rely on Spring ExceptionTranslationFilter to differ between 403 and 401
     // return codes
+  }
+
+  /**
+   * Thrown by EnforceRoleAspect / SpringSecurityAccessPolicy when the caller has a valid token but
+   * lacks the required role. Re-thrown so that Spring's ExceptionTranslationFilter converts it to
+   * 403 — the same treatment as AuthorizationDeniedException above.
+   */
+  @ExceptionHandler(AccessDeniedException.class)
+  public void handleAccessDeniedException(AccessDeniedException exception)
+      throws AccessDeniedException {
+    throw exception;
   }
 
   /** The handler for ViolationException. */

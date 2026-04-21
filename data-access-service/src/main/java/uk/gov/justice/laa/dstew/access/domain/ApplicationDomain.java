@@ -4,8 +4,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.Builder;
 
 /** Domain record representing an application. */
+@Builder(toBuilder = true)
 public record ApplicationDomain(
     UUID id,
     ApplicationStatus status,
@@ -19,4 +21,7 @@ public record ApplicationDomain(
     Instant createdAt,
     Map<String, Object> applicationContent,
     List<Individual> individuals,
-    int schemaVersion) {}
+    int schemaVersion,
+    Long version,
+    UUID caseworkerId,
+    Boolean isAutoGranted) {}

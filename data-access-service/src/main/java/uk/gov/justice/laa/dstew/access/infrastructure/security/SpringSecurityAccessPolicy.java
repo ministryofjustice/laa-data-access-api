@@ -13,13 +13,9 @@ import uk.gov.justice.laa.dstew.access.usecase.shared.security.RequiredRole;
 @Component
 public class SpringSecurityAccessPolicy implements AccessPolicy {
 
-  private static final String ROLE_PREFIX = "ROLE_";
+  private static final String ROLE_PREFIX = "APPROLE_";
   private static final java.util.Map<RequiredRole, String> ROLE_MAPPING =
-      java.util.Map.of(
-          RequiredRole.API_CASEWORKER, "LAA_CASEWORKER",
-          RequiredRole.ADMIN, "ADMIN",
-          RequiredRole.SUPERVISOR, "SUPERVISOR",
-          RequiredRole.AUTHENTICATED, "AUTHENTICATED");
+      java.util.Map.of(RequiredRole.API_CASEWORKER, "LAA_CASEWORKER");
 
   @Override
   public void enforce(EnforceRole annotation) {

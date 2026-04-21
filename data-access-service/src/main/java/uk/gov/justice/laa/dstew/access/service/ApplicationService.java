@@ -447,9 +447,11 @@ public class ApplicationService {
    *
    * @param applicationId application UUID
    * @param request DTO with update fields
+   * @deprecated Use {@link
+   *     uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionUseCase} instead.
    */
+  @Deprecated
   @Transactional
-  @AllowApiCaseworker
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     VersionCheckHelper.checkEntityVersionLocking(
