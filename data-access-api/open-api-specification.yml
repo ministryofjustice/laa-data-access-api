@@ -47,6 +47,8 @@ components:
       $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationSummary"
     CaseworkerResponse:
       $ref: "./open-api-caseworkers/components.yml#/components/schemas/CaseworkerResponse"
+    CaseworkersResponse:
+      $ref: "./open-api-caseworkers/components.yml#/components/schemas/CaseworkersResponse"
     CaseworkerAssignRequest:
       $ref: "./open-api-caseworkers/components.yml#/components/schemas/CaseworkerAssignRequest"
     ApplicationDomainEventResponse:

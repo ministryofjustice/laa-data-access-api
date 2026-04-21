@@ -9,6 +9,11 @@ components:
         username:
           type: string
 
+    CaseworkersResponse:
+      type: array
+      items:
+        $ref: "#/components/schemas/CaseworkerResponse"
+
     CaseworkerAssignRequest:
       type: object
       required:
