@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.specification;
 
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
@@ -78,57 +79,40 @@ public class ApplicationSummarySpecification {
   private class IndividualFilterSpecification {
     public static Specification<ApplicationEntity> filterIndividual(
         String firstName, String lastName, LocalDate dateOfBirth) {
-      Specification<ApplicationEntity> baseSpecification = Specification.unrestricted();
-      if (isPopulated(firstName) || isPopulated(lastName) || dateOfBirth != null) {
-        baseSpecification = isClient();
+      if (!isPopulated(firstName) && !isPopulated(lastName) && dateOfBirth == null) {
+        return Specification.unrestricted();
       }
-      return baseSpecification
-          .and(likeFirstName(firstName))
-          .and(likeLastName(lastName))
-          .and(isDateOfBirth(dateOfBirth));
-    }
 
-    private static Specification<ApplicationEntity> isClient() {
       return (root, query, builder) -> {
         Join<ApplicationEntity, IndividualEntity> individualsJoin =
             root.join("individuals", JoinType.INNER);
-        return builder.equal(individualsJoin.get("type"), IndividualType.CLIENT);
+
+        Predicate predicate = builder.equal(individualsJoin.get("type"), IndividualType.CLIENT);
+
+        if (isPopulated(firstName)) {
+          predicate =
+              builder.and(
+                  predicate,
+                  builder.like(
+                      builder.lower(individualsJoin.get("firstName")),
+                      "%" + firstName.toLowerCase() + "%"));
+        }
+        if (isPopulated(lastName)) {
+          predicate =
+              builder.and(
+                  predicate,
+                  builder.like(
+                      builder.lower(individualsJoin.get("lastName")),
+                      "%" + lastName.toLowerCase() + "%"));
+        }
+        if (dateOfBirth != null) {
+          predicate =
+              builder.and(
+                  predicate, builder.equal(individualsJoin.get("dateOfBirth"), dateOfBirth));
+        }
+
+        return predicate;
       };
-    }
-
-    private static Specification<ApplicationEntity> likeFirstName(String firstName) {
-      if (firstName != null && !firstName.isBlank()) {
-        return (root, query, builder) -> {
-          Join<ApplicationEntity, IndividualEntity> individualsJoin =
-              root.join("individuals", JoinType.INNER);
-          return builder.like(
-              builder.lower(individualsJoin.get("firstName")), "%" + firstName.toLowerCase() + "%");
-        };
-      }
-      return Specification.unrestricted();
-    }
-
-    private static Specification<ApplicationEntity> likeLastName(String lastName) {
-      if (lastName != null && !lastName.isBlank()) {
-        return (root, query, builder) -> {
-          Join<ApplicationEntity, IndividualEntity> individualsJoin =
-              root.join("individuals", JoinType.INNER);
-          return builder.like(
-              builder.lower(individualsJoin.get("lastName")), "%" + lastName.toLowerCase() + "%");
-        };
-      }
-      return Specification.unrestricted();
-    }
-
-    private static Specification<ApplicationEntity> isDateOfBirth(LocalDate clientDateOfBirth) {
-      if (clientDateOfBirth != null) {
-        return (root, query, builder) -> {
-          Join<ApplicationEntity, IndividualEntity> individualsJoin =
-              root.join("individuals", JoinType.INNER);
-          return builder.equal(individualsJoin.get("dateOfBirth"), clientDateOfBirth);
-        };
-      }
-      return Specification.unrestricted();
     }
   }
 
