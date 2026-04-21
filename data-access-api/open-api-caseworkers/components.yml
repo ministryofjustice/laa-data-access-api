@@ -1,0 +1,36 @@
+components:
+  schemas:
+    CaseworkerResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+
+    CaseworkerAssignRequest:
+      type: object
+      required:
+        - caseworkerId
+        - applicationIds
+      properties:
+        caseworkerId:
+          type: string
+          format: uuid
+        applicationIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+        eventHistory:
+          $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
+
+    CaseworkerUnassignRequest:
+      type: object
+      required:
+        - eventHistory
+      properties:
+        eventHistory:
+          $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
