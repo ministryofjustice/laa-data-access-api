@@ -23,6 +23,8 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity_;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity_;
+import uk.gov.justice.laa.dstew.access.entity.LinkedApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.LinkedApplicationEntity_;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
@@ -62,20 +64,19 @@ public class ApplicationSummaryRepositoryImpl implements ApplicationSummaryRepos
     CriteriaBuilder cb = entityManager.getCriteriaBuilder();
     CriteriaQuery<UUID> query = cb.createQuery(UUID.class);
     Root<ApplicationEntity> outerRoot = query.from(ApplicationEntity.class);
+    query.select(outerRoot.get(ApplicationEntity_.id));
 
-    // Subquery: find distinct IDs matching the spec (joins live here)
+    // Build the spec predicate against a subquery root so that any joins the spec introduces
+    // don't cause duplicate rows in the outer OFFSET/FETCH result.
     Subquery<UUID> subquery = query.subquery(UUID.class);
     Root<ApplicationEntity> subRoot = subquery.from(ApplicationEntity.class);
-    subquery.select(subRoot.get(ApplicationEntity_.id)).distinct(true);
-
     Predicate predicate = spec.toPredicate(subRoot, query, cb);
-    if (predicate != null) {
-      subquery.where(predicate);
-    }
 
-    // Outer query: paginate and sort without joins
-    query.select(outerRoot.get(ApplicationEntity_.id));
-    query.where(outerRoot.get(ApplicationEntity_.id).in(subquery));
+    if (predicate != null) {
+      subquery.select(subRoot.get(ApplicationEntity_.id)).distinct(true).where(predicate);
+      query.where(outerRoot.get(ApplicationEntity_.id).in(subquery));
+    }
+    // else: no filters/joins needed — query the outer root directly, avoiding a no-op subquery.
 
     applySort(cb, outerRoot, query, pageable);
 
@@ -134,13 +135,15 @@ public class ApplicationSummaryRepositoryImpl implements ApplicationSummaryRepos
       CriteriaQuery<ApplicationSummaryDto> query,
       CriteriaBuilder cb,
       Root<ApplicationEntity> root) {
-    // Subquery to determine if this application is a lead application
-    Subquery<Long> leadSubquery = query.subquery(Long.class);
-    Root<ApplicationEntity> leadRoot = leadSubquery.from(ApplicationEntity.class);
-    leadRoot.join(ApplicationEntity_.linkedApplications, JoinType.INNER);
-    leadSubquery.select(cb.literal(1L));
+    // EXISTS subquery rooted directly on linked_applications — no need to join back to
+    // applications, we already have the outer application id.
+    Subquery<Integer> leadSubquery = query.subquery(Integer.class);
+    Root<LinkedApplicationEntity> leadRoot = leadSubquery.from(LinkedApplicationEntity.class);
+    leadSubquery.select(cb.literal(1));
     leadSubquery.where(
-        cb.equal(leadRoot.get(ApplicationEntity_.id), root.get(ApplicationEntity_.id)));
+        cb.equal(
+            leadRoot.get(LinkedApplicationEntity_.leadApplicationId),
+            root.get(ApplicationEntity_.id)));
 
     return cb.selectCase().when(cb.exists(leadSubquery), true).otherwise(false).as(Boolean.class);
   }
@@ -158,10 +161,13 @@ public class ApplicationSummaryRepositoryImpl implements ApplicationSummaryRepos
 
     Predicate predicate = spec.toPredicate(countRoot, countQuery, cb);
     if (predicate != null) {
-      countQuery.where(predicate);
+      // countDistinct is required because the spec may introduce joins that fan out rows.
+      countQuery.where(predicate).select(cb.countDistinct(countRoot));
+    } else {
+      // No predicate → no joins → count(*) is equivalent and cheaper than count(distinct id).
+      countQuery.select(cb.count(countRoot));
     }
 
-    countQuery.select(cb.countDistinct(countRoot));
     return entityManager.createQuery(countQuery).getSingleResult();
   }
 
