@@ -48,13 +48,14 @@ public abstract class BaseGenerator<TEntity, TBuilder> {
   }
 
   public LocalDate getRandomDate() {
-    LocalDate from = LocalDate.from(LocalDate.of(1950, 1, 1).atStartOfDay(ZoneId.systemDefault()));
-    LocalDate to =
-        LocalDate.from(
-            LocalDate.of(LocalDate.now().getYear(), 12, 31)
-                .atStartOfDay(ZoneId.systemDefault())
-                .toInstant());
-    Instant randomDate = faker.timeAndDate().between(Instant.from(from), Instant.from(to));
+    LocalDate from = LocalDate.of(1950, 1, 1);
+    LocalDate to = LocalDate.of(LocalDate.now().getYear(), 12, 31);
+    Instant randomDate =
+        faker
+            .timeAndDate()
+            .between(
+                from.atStartOfDay(ZoneId.systemDefault()).toInstant(),
+                to.atStartOfDay(ZoneId.systemDefault()).toInstant());
     return randomDate.atZone(ZoneId.systemDefault()).toLocalDate();
   }
 }

@@ -43,10 +43,10 @@ import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEnt
 @Component
 public class MassDataGeneratorRunner implements CommandLineRunner {
 
-  private static final int DEFAULT_COUNT = 100;
+  private static final int DEFAULT_COUNT = 1000;
   private static final int BATCH_SIZE = 500;
   private static final double DECISION_RATE = 0.4;
-  private static final double LINK_RATE = 0.3; // ~30% of applications will form a linked group
+  private static final double LINK_RATE = 0.1; // ~10% of applications will form a linked group
 
   @Autowired private PersistedDataGenerator persistedDataGenerator;
 
@@ -87,6 +87,9 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
 
     int linkedCount = 0;
     List<UUID> persistedAppIds = new ArrayList<>();
+    // Buffer for (applicationId, individualId) pairs — flushed to DB at batch boundaries
+    // after Hibernate has written the application rows.
+    List<UUID[]> pendingLinks = new ArrayList<>();
 
     for (int i = 0; i < count; i++) {
 
@@ -137,8 +140,8 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
               );
       persistedAppIds.add(app.getId());
 
-      // 4a. Link individual via native INSERT to bypass CascadeType.PERSIST
-      linkedIndividualWriter.link(app.getId(), indiv.getId());
+      // 4a. Buffer the individual link — will be flushed after Hibernate writes the app row
+      pendingLinks.add(new UUID[] {app.getId(), indiv.getId()});
 
       // 5. Accumulate proceedings then persist as a single saveAllAndFlush (Option C)
       List<ProceedingEntity> proceedingBatch = new ArrayList<>();
@@ -174,9 +177,8 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
                     );
 
         // Re-attach proceedings and application in case the session was cleared mid-batch
-        List<ProceedingEntity> attachedProceedings =
-            persistedDataGenerator.reattach(proceedingBatch);
-        ApplicationEntity attachedApp = persistedDataGenerator.reattach(List.of(app)).get(0);
+        List<ProceedingEntity> attachedProceedings = proceedingBatch;
+        ApplicationEntity attachedApp = app;
 
         // 6a. One MeritsDecisionEntity per proceeding
         Set<MeritsDecisionEntity> merits = new LinkedHashSet<>();
@@ -207,15 +209,22 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
         persistedDataGenerator.saveApplication(attachedApp);
       }
 
-      // 7. Flush + clear Hibernate session every BATCH_SIZE applications (Option B)
+      // 7. Flush + clear Hibernate session every BATCH_SIZE applications
       if ((i + 1) % BATCH_SIZE == 0) {
-        persistedDataGenerator.flushAndClear();
+        // Flush Hibernate writes so application rows exist before the native FK insert
+        persistedDataGenerator.flush();
+        linkedIndividualWriter.linkAll(pendingLinks);
+        pendingLinks.clear();
+        persistedDataGenerator.clear();
         System.out.printf("Persisted %d / %d applications%n", i + 1, count);
       }
     }
 
     // flush any remaining partial batch
-    persistedDataGenerator.flushAndClear();
+    persistedDataGenerator.flush();
+    linkedIndividualWriter.linkAll(pendingLinks);
+    pendingLinks.clear();
+    persistedDataGenerator.clear();
 
     int i = 0;
     while (i < persistedAppIds.size()) {
