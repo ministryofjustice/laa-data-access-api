@@ -69,6 +69,41 @@ subprojects {
     }
 }
 
+allprojects {
+    // Keep lockfile count low: lock only the configurations that are actually resolved in CI/dev.
+    def lockedConfigs = [
+            "compileClasspath",
+            "runtimeClasspath",
+            "testCompileClasspath",
+            "testRuntimeClasspath",
+            "integrationTestCompileClasspath",
+            "integrationTestRuntimeClasspath"
+    ] as Set
+
+    configurations.configureEach { conf ->
+        if (lockedConfigs.contains(conf.name)) {
+            resolutionStrategy.activateDependencyLocking()
+        }
+    }
+}
+
+tasks.register('resolveAndLockAll', Exec) {
+    description = 'Resolves all locked configurations for every project and writes lock files.'
+    workingDir = rootDir
+    commandLine './gradlew', 'resolveAndLockAllInternal', '--write-locks'
+}
+
+tasks.register('resolveAndLockAllInternal') {
+    description = 'Internal task – use resolveAndLockAll instead.'
+    doLast {
+        allprojects.each { proj ->
+            proj.configurations
+                .findAll { it.canBeResolved }
+                .each { it.resolve() }
+        }
+    }
+}
+
 tasks.register('jacocoAggregatedReport', JacocoReport) {
     description = 'Generates JaCoCo report from data-access-service module'
     group = 'verification'

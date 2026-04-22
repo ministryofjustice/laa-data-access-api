@@ -1,0 +1,40 @@
+name: Software Composition Analysis - Scheduled Scan (main)
+
+on:
+  schedule:
+    # Nightly run at midnight (UTC). Adjust as needed.
+    - cron: "0 0 * * *"
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: sca-scheduled-main
+  cancel-in-progress: false
+
+jobs:
+  sca-main:
+    name: SCA Scheduled Scan (main)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+      packages: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Run Software Composition Analysis (with Renovate)
+        uses: ./.github/actions/sca
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          renovate: "true"
+          codeql-upload-findings: "always"
+
+
