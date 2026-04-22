@@ -214,8 +214,6 @@ dependencies {
 
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
-// Source: https://mvnrepository.com/artifact/org.hibernate.orm/hibernate-processor
-    annotationProcessor 'org.hibernate.orm:hibernate-processor:7.3.2.Final'
     implementation 'org.javers:javers-core:7.10.0'
 
     runtimeOnly 'org.postgresql:postgresql'
