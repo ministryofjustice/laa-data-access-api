@@ -6,8 +6,6 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.makedecision.CertificateJpaGateway;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.makedecision.DecisionGatewayMapper;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.makedecision.DecisionJpaGateway;
-import uk.gov.justice.laa.dstew.access.infrastructure.jpa.makedecision.MakeDecisionDomainEventJpaGateway;
-import uk.gov.justice.laa.dstew.access.infrastructure.jpa.shared.DomainEventJpaGateway;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
@@ -17,8 +15,8 @@ import uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionCommandM
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.CertificateGateway;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.DecisionGateway;
-import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.MakeDecisionDomainEventGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.DomainEventGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ProceedingGateway;
 
 /** Wires all beans for the makeDecision use case. */
@@ -32,7 +30,7 @@ public class MakeDecisionConfig {
       ProceedingGateway proceedingGateway,
       DecisionGateway decisionGateway,
       CertificateGateway certificateGateway,
-      MakeDecisionDomainEventGateway domainEventGateway) {
+      DomainEventGateway domainEventGateway) {
     return new MakeDecisionUseCase(
         applicationGateway,
         proceedingGateway,
@@ -57,13 +55,6 @@ public class MakeDecisionConfig {
   @Bean
   public CertificateGateway certificateGateway(CertificateRepository repo) {
     return new CertificateJpaGateway(repo);
-  }
-
-  /** Bean for the MakeDecisionDomainEventGateway. */
-  @Bean
-  public MakeDecisionDomainEventGateway makeDecisionDomainEventGateway(
-      DomainEventJpaGateway sharedDomainEventGateway) {
-    return new MakeDecisionDomainEventJpaGateway(sharedDomainEventGateway);
   }
 
   /** Bean for the DecisionGatewayMapper. */

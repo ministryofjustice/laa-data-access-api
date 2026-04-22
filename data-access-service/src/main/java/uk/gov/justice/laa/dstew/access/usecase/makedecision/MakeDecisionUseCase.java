@@ -13,8 +13,8 @@ import uk.gov.justice.laa.dstew.access.domain.MeritsDecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.OverallDecisionStatus;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.CertificateGateway;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.DecisionGateway;
-import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.MakeDecisionDomainEventGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.DomainEventGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ProceedingGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.EnforceRole;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.RequiredRole;
@@ -31,7 +31,7 @@ public class MakeDecisionUseCase {
   private final ProceedingGateway proceedingGateway;
   private final DecisionGateway decisionGateway;
   private final CertificateGateway certificateGateway;
-  private final MakeDecisionDomainEventGateway domainEventGateway;
+  private final DomainEventGateway domainEventGateway;
 
   /**
    * Constructs the use case with required dependencies.
@@ -47,7 +47,7 @@ public class MakeDecisionUseCase {
       ProceedingGateway proceedingGateway,
       DecisionGateway decisionGateway,
       CertificateGateway certificateGateway,
-      MakeDecisionDomainEventGateway domainEventGateway) {
+      DomainEventGateway domainEventGateway) {
     this.applicationGateway = applicationGateway;
     this.proceedingGateway = proceedingGateway;
     this.decisionGateway = decisionGateway;

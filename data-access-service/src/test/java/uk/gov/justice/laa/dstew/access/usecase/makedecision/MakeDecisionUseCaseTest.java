@@ -26,8 +26,8 @@ import uk.gov.justice.laa.dstew.access.domain.OverallDecisionStatus;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.CertificateGateway;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.DecisionGateway;
-import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.MakeDecisionDomainEventGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.DomainEventGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ProceedingGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.EnforceRole;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.RequiredRole;
@@ -42,7 +42,7 @@ class MakeDecisionUseCaseTest {
   @Mock private ProceedingGateway proceedingGateway;
   @Mock private DecisionGateway decisionGateway;
   @Mock private CertificateGateway certificateGateway;
-  @Mock private MakeDecisionDomainEventGateway domainEventGateway;
+  @Mock private DomainEventGateway domainEventGateway;
 
   private MakeDecisionUseCase useCase;
   private final MakeDecisionCommandGenerator commandGenerator = new MakeDecisionCommandGenerator();

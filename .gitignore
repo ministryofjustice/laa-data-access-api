@@ -24,3 +24,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### agent plans and prompts ###
+plans/
