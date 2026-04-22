@@ -53,13 +53,17 @@ public class ApplicationSummaryRepositoryImpl implements ApplicationSummaryRepos
     return new PageImpl<>(results, pageable, count);
   }
 
-  /** Fetches application IDs matching the spec, with pagination and sorting. */
+  /**
+   * Fetches application IDs matching the spec, with pagination and sorting. Uses a subquery to
+   * isolate filtering joins from the outer sort/pagination, avoiding duplicate rows from joins
+   * affecting OFFSET/FETCH results.
+   */
   private List<UUID> executeIdQuery(Specification<ApplicationEntity> spec, Pageable pageable) {
     CriteriaBuilder cb = entityManager.getCriteriaBuilder();
     CriteriaQuery<UUID> query = cb.createQuery(UUID.class);
-    Root<ApplicationEntity> root = query.from(ApplicationEntity.class);
+    Root<ApplicationEntity> outerRoot = query.from(ApplicationEntity.class);
 
-    // Use a subquery with the spec to get matching IDs (handles deduplication from spec joins)
+    // Subquery: find distinct IDs matching the spec (joins live here)
     Subquery<UUID> subquery = query.subquery(UUID.class);
     Root<ApplicationEntity> subRoot = subquery.from(ApplicationEntity.class);
     subquery.select(subRoot.get(ApplicationEntity_.id)).distinct(true);
@@ -69,11 +73,11 @@ public class ApplicationSummaryRepositoryImpl implements ApplicationSummaryRepos
       subquery.where(predicate);
     }
 
-    // Outer query selects from the root, filtered by the subquery IDs
-    query.select(root.get(ApplicationEntity_.id));
-    query.where(root.get(ApplicationEntity_.id).in(subquery));
+    // Outer query: paginate and sort without joins
+    query.select(outerRoot.get(ApplicationEntity_.id));
+    query.where(outerRoot.get(ApplicationEntity_.id).in(subquery));
 
-    applySort(cb, root, query, pageable);
+    applySort(cb, outerRoot, query, pageable);
 
     TypedQuery<UUID> typedQuery = entityManager.createQuery(query);
     typedQuery.setFirstResult((int) pageable.getOffset());
