@@ -106,8 +106,11 @@ public class MassDataGeneratorService {
 
     List<IndividualEntity> individuals =
         persistedDataGenerator.createAndPersistMultipleRandom(
-            IndividualEntityGenerator.class, 1000);
+            IndividualEntityGenerator.class, Math.min(count, 100));
     log.info("Created {} individuals", individuals.size());
+
+    // Flush pre-generated pools before main generation loop
+    persistedDataGenerator.flush();
 
     log.info("Generating {} application records...", count);
 
@@ -117,6 +120,9 @@ public class MassDataGeneratorService {
     int decidedCount = 0;
     int linkedCount = 0;
     List<UUID> persistedAppIds = new ArrayList<>();
+    // Buffer for (applicationId, individualId) pairs — flushed to DB at batch boundaries
+    // after Hibernate has written the application rows.
+    List<UUID[]> pendingIndividualLinks = new ArrayList<>();
 
     for (int i = 0; i < count; i++) {
 
@@ -128,18 +134,24 @@ public class MassDataGeneratorService {
       IndividualEntity indiv = individuals.get(faker.number().numberBetween(0, individuals.size()));
 
       // 3. Derive entity-level columns from the content (mirrors ApplicationContentParserService)
-      Proceeding lead =
-          content.getProceedings().stream()
-              .filter(p -> Boolean.TRUE.equals(p.getLeadProceeding()))
-              .findFirst()
-              .orElseThrow(
-                  () -> new IllegalStateException("No lead proceeding found in generated content"));
+      // Optimized: single pass instead of two stream operations
+      Proceeding lead = null;
+      boolean udfFound = false;
+      for (Proceeding p : content.getProceedings()) {
+        if (Boolean.TRUE.equals(p.getLeadProceeding())) {
+          lead = p;
+        }
+        if (Boolean.TRUE.equals(p.getUsedDelegatedFunctions())) {
+          udfFound = true;
+        }
+      }
+      if (lead == null) {
+        throw new IllegalStateException("No lead proceeding found in generated content");
+      }
 
       CategoryOfLaw col = colConvertor.lenientEnumConversion(lead.getCategoryOfLaw());
       MatterType mt = mtConvertor.lenientEnumConversion(lead.getMatterType());
-      boolean udf =
-          content.getProceedings().stream()
-              .anyMatch(p -> Boolean.TRUE.equals(p.getUsedDelegatedFunctions()));
+      final boolean udf = udfFound;
 
       // 4. Persist ApplicationEntity with all required columns populated
       ApplicationEntity app =
@@ -164,8 +176,8 @@ public class MassDataGeneratorService {
                       .caseworker(cw));
       persistedAppIds.add(app.getId());
 
-      // 4a. Link individual via native INSERT to bypass CascadeType.PERSIST
-      linkedIndividualWriter.link(app.getId(), indiv.getId());
+      // 4a. Buffer the individual link — will be flushed after Hibernate writes the app row
+      pendingIndividualLinks.add(new UUID[] {app.getId(), indiv.getId()});
 
       // 5. Accumulate proceedings then persist as a single saveAllAndFlush
       List<ProceedingEntity> proceedingBatch = new ArrayList<>();
@@ -233,13 +245,20 @@ public class MassDataGeneratorService {
 
       // 7. Flush + clear Hibernate session every BATCH_SIZE applications
       if ((i + 1) % batchSize == 0) {
-        persistedDataGenerator.flushAndClear();
+        // Flush Hibernate writes so application rows exist before the native FK insert
+        persistedDataGenerator.flush();
+        linkedIndividualWriter.linkAll(pendingIndividualLinks);
+        pendingIndividualLinks.clear();
+        persistedDataGenerator.clear();
         log.info("Persisted {} / {} applications", i + 1, count);
       }
     }
 
     // flush any remaining partial batch
-    persistedDataGenerator.flushAndClear();
+    persistedDataGenerator.flush();
+    linkedIndividualWriter.linkAll(pendingIndividualLinks);
+    pendingIndividualLinks.clear();
+    persistedDataGenerator.clear();
 
     // Link applications in batches to reduce query overhead
     log.info("Starting linking phase for {} applications...", persistedAppIds.size());

@@ -105,15 +105,25 @@ public class PersistedDataGenerator {
 
   public <TEntity, TGenerator> TEntity persist(Class<TGenerator> generatorType, TEntity entity) {
     JpaRepository<TEntity, ?> repository = getRepository(generatorType);
-    repository.saveAndFlush(entity);
+    repository.save(entity);
     return entity;
   }
 
   public <TEntity, TGenerator> List<TEntity> persist(
       Class<TGenerator> generatorType, List<TEntity> entities) {
     JpaRepository<TEntity, ?> repository = getRepository(generatorType);
-    repository.saveAllAndFlush(entities);
+    repository.saveAll(entities);
     return entities;
+  }
+
+  @Transactional
+  public void flush() {
+    entityManager.flush();
+  }
+
+  @Transactional
+  public void clear() {
+    entityManager.clear();
   }
 
   @Transactional
@@ -144,7 +154,7 @@ public class PersistedDataGenerator {
   public ApplicationEntity saveApplication(ApplicationEntity application) {
     ApplicationRepository repo =
         (ApplicationRepository) applicationContext.getBean(ApplicationRepository.class);
-    return repo.saveAndFlush(application);
+    return repo.save(application);
   }
 
   /**

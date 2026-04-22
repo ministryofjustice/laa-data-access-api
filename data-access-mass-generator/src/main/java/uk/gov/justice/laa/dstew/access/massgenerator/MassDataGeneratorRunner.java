@@ -68,15 +68,10 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
 
     Faker faker = new Faker();
 
-    // Pre-generate pools using random variants in one saveAllAndFlush each (Option D)
+    // Pre-generate caseworker pool
     List<CaseworkerEntity> caseworkers =
-        persistedDataGenerator.createAndPersistMultipleRandom(CaseworkerGenerator.class, 100);
+        persistedDataGenerator.createAndPersistMultipleRandom(CaseworkerGenerator.class, 10);
     System.out.printf("Created %d caseworkers%n", caseworkers.size());
-
-    List<IndividualEntity> individuals =
-        persistedDataGenerator.createAndPersistMultipleRandom(
-            IndividualEntityGenerator.class, 1000);
-    System.out.printf("Created %d individuals%n", individuals.size());
 
     System.out.printf("Generating %d application records...%n", count);
 
@@ -96,23 +91,30 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
       // 1. Generate full rich application content
       ApplicationContent content = jsonGenerator.createDefault();
 
-      // 2. Pick a random caseworker and individual from the pre-generated pools
+      // 2. Pick a random caseworker and create a unique individual for this application
       CaseworkerEntity cw = caseworkers.get(faker.number().numberBetween(0, caseworkers.size()));
-      IndividualEntity indiv = individuals.get(faker.number().numberBetween(0, individuals.size()));
+      IndividualEntity indiv =
+          persistedDataGenerator.createAndPersist(IndividualEntityGenerator.class);
 
       // 3. Derive entity-level columns from the content (mirrors ApplicationContentParserService)
-      Proceeding lead =
-          content.getProceedings().stream()
-              .filter(p -> Boolean.TRUE.equals(p.getLeadProceeding()))
-              .findFirst()
-              .orElseThrow(
-                  () -> new IllegalStateException("No lead proceeding found in generated content"));
+      // Optimized: single pass instead of two stream operations
+      Proceeding lead = null;
+      boolean udfFound = false;
+      for (Proceeding p : content.getProceedings()) {
+        if (Boolean.TRUE.equals(p.getLeadProceeding())) {
+          lead = p;
+        }
+        if (Boolean.TRUE.equals(p.getUsedDelegatedFunctions())) {
+          udfFound = true;
+        }
+      }
+      if (lead == null) {
+        throw new IllegalStateException("No lead proceeding found in generated content");
+      }
 
       CategoryOfLaw col = colConvertor.lenientEnumConversion(lead.getCategoryOfLaw());
       MatterType mt = mtConvertor.lenientEnumConversion(lead.getMatterType());
-      boolean udf =
-          content.getProceedings().stream()
-              .anyMatch(p -> Boolean.TRUE.equals(p.getUsedDelegatedFunctions()));
+      final boolean udf = udfFound;
 
       // 4. Persist ApplicationEntity with all required columns populated
       ApplicationEntity app =
