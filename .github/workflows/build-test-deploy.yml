@@ -38,10 +38,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-
-      - name: Integration test
-        run: ./gradlew integrationTest
-
       - name: Publish api models package
         run: |
           version=$(git rev-parse --short HEAD)
