@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
-import uk.gov.justice.laa.dstew.access.domain.MakeDecisionProceedingCommand;
 import uk.gov.justice.laa.dstew.access.domain.OverallDecisionStatus;
 
 /** Command record for the makeDecision use case. */

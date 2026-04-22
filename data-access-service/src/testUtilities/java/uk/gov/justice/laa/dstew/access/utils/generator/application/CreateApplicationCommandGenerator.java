@@ -12,8 +12,8 @@ public class CreateApplicationCommandGenerator
     extends BaseGenerator<
         CreateApplicationCommand, CreateApplicationCommand.CreateApplicationCommandBuilder> {
 
-  private final ApplicationContentGenerator applicationContentGenerator =
-      new ApplicationContentGenerator();
+  private final ApplicationContentDomainGenerator applicationContentGenerator =
+      new ApplicationContentDomainGenerator();
   private final IndividualDomainGenerator individualGenerator = new IndividualDomainGenerator();
 
   public CreateApplicationCommandGenerator() {

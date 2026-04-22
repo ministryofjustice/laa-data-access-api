@@ -27,10 +27,10 @@ import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ProceedingG
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.EnforceRole;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.RequiredRole;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentDomainGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationDomainGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.CreateApplicationCommandGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationsGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.DomainLinkedApplicationsGenerator;
 import uk.gov.justice.laa.dstew.access.validation.PayloadValidationService;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -59,9 +59,8 @@ class CreateApplicationUseCaseTest {
 
   @Test
   void execute_happyPath_returnsSavedId() {
-    UUID expectedId = UUID.randomUUID();
-    ApplicationDomain saved =
-        DataGenerator.createDefault(ApplicationDomainGenerator.class, b -> b.id(expectedId));
+    ApplicationDomain saved = DataGenerator.createDefault(ApplicationDomainGenerator.class);
+    UUID expectedId = saved.id();
     when(applicationGateway.existsByApplyApplicationId(any())).thenReturn(false);
     when(applicationGateway.save(any())).thenReturn(saved);
 
@@ -139,18 +138,18 @@ class CreateApplicationUseCaseTest {
     var contentWithMissingAssoc =
         objectMapper.convertValue(
             DataGenerator.createDefault(
-                ApplicationContentGenerator.class,
+                ApplicationContentDomainGenerator.class,
                 ac ->
                     ac.id(assocId)
                         .allLinkedApplications(
                             List.of(
                                 DataGenerator.createDefault(
-                                    LinkedApplicationsGenerator.class,
+                                    DomainLinkedApplicationsGenerator.class,
                                     b ->
                                         b.leadApplicationId(leadApplyId)
                                             .associatedApplicationId(assocId)),
                                 DataGenerator.createDefault(
-                                    LinkedApplicationsGenerator.class,
+                                    DomainLinkedApplicationsGenerator.class,
                                     b ->
                                         b.leadApplicationId(leadApplyId)
                                             .associatedApplicationId(missingId))))),
@@ -198,13 +197,13 @@ class CreateApplicationUseCaseTest {
     var noLeadProceedingContent =
         objectMapper.convertValue(
             DataGenerator.createDefault(
-                ApplicationContentGenerator.class,
+                ApplicationContentDomainGenerator.class,
                 ac ->
                     ac.proceedings(
                         List.of(
                             DataGenerator.createDefault(
                                 uk.gov.justice.laa.dstew.access.utils.generator.proceeding
-                                    .ProceedingGenerator.class,
+                                    .DomainProceedingGenerator.class,
                                 p -> p.leadProceeding(false))))),
             Map.class);
 
@@ -231,11 +230,11 @@ class CreateApplicationUseCaseTest {
   private Map<String, Object> linkedContent(UUID leadApplyId, UUID assocId) {
     var link =
         DataGenerator.createDefault(
-            LinkedApplicationsGenerator.class,
+            DomainLinkedApplicationsGenerator.class,
             b -> b.leadApplicationId(leadApplyId).associatedApplicationId(assocId));
     return objectMapper.convertValue(
         DataGenerator.createDefault(
-            ApplicationContentGenerator.class,
+            ApplicationContentDomainGenerator.class,
             ac -> ac.id(assocId).allLinkedApplications(List.of(link))),
         Map.class);
   }

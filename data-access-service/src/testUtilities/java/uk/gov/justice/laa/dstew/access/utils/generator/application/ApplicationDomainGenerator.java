@@ -17,6 +17,13 @@ public class ApplicationDomainGenerator
     super(ApplicationDomain::toBuilder, ApplicationDomain.ApplicationDomainBuilder::build);
   }
 
+  /**
+   * Creates a domain with a caller-supplied id; avoids lambdas that call {@code .id()} in tests.
+   */
+  public ApplicationDomain createWithSpecificId(UUID id) {
+    return createDefault(b -> b.id(id).version(0L));
+  }
+
   @Override
   public ApplicationDomain createDefault() {
     return ApplicationDomain.builder()

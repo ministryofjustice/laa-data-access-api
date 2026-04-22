@@ -20,7 +20,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.OptimisticLockingFailureException;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.domain.DecisionDomain;
-import uk.gov.justice.laa.dstew.access.domain.MakeDecisionProceedingCommand;
 import uk.gov.justice.laa.dstew.access.domain.MeritsDecisionOutcome;
 import uk.gov.justice.laa.dstew.access.domain.OverallDecisionStatus;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -31,6 +30,7 @@ import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.DomainEvent
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ProceedingGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.EnforceRole;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.RequiredRole;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationDomainGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionDomainGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.decision.MakeDecisionCommandGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -47,6 +47,8 @@ class MakeDecisionUseCaseTest {
   private MakeDecisionUseCase useCase;
   private final MakeDecisionCommandGenerator commandGenerator = new MakeDecisionCommandGenerator();
   private final DecisionDomainGenerator decisionGenerator = new DecisionDomainGenerator();
+  private final ApplicationDomainGenerator applicationDomainGenerator =
+      new ApplicationDomainGenerator();
 
   private UUID applicationId;
   private ApplicationDomain application;
@@ -61,12 +63,7 @@ class MakeDecisionUseCaseTest {
             certificateGateway,
             domainEventGateway);
     applicationId = UUID.randomUUID();
-    application =
-        ApplicationDomain.builder()
-            .id(applicationId)
-            .version(0L)
-            .caseworkerId(UUID.randomUUID())
-            .build();
+    application = applicationDomainGenerator.createWithSpecificId(applicationId);
   }
 
   @Test
@@ -138,7 +135,7 @@ class MakeDecisionUseCaseTest {
 
   @Test
   void givenExistingDecision_whenExecute_thenUpdatesDecision() {
-    DecisionDomain existing = decisionGenerator.createDefault(b -> b.id(UUID.randomUUID()));
+    DecisionDomain existing = decisionGenerator.createDefault();
     MakeDecisionCommand command =
         commandGenerator.createDefault(b -> b.applicationId(applicationId).applicationVersion(0L));
     when(applicationGateway.findById(applicationId)).thenReturn(application);

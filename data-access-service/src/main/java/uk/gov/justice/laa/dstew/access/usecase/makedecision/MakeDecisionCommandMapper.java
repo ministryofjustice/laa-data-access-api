@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.UUID;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.domain.MakeDecisionProceedingCommand;
 import uk.gov.justice.laa.dstew.access.domain.MeritsDecisionOutcome;
 import uk.gov.justice.laa.dstew.access.domain.OverallDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;

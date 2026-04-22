@@ -91,7 +91,6 @@ public class CreateApplicationUseCase {
 
     ApplicationDomain domain =
         ApplicationDomain.builder()
-            .id(UUID.randomUUID())
             .status(command.status())
             .laaReference(command.laaReference())
             .officeCode(details.officeCode())

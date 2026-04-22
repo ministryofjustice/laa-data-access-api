@@ -111,7 +111,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     UUID applyApplicationId = UUID.randomUUID();
     UUID associatedApplicationId = UUID.randomUUID();
 
-    ApplicationContent applicationContent =
+    var applicationContent =
         DataGenerator.createDefault(
             ApplicationContentGenerator.class,
             appContentBuilder ->
@@ -179,7 +179,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     UUID applyApplicationId = UUID.randomUUID();
     UUID associatedApplicationId = UUID.randomUUID();
 
-    ApplicationContent applicationContent =
+    var applicationContent =
         DataGenerator.createDefault(
             ApplicationContentGenerator.class,
             appContentBuilder ->
@@ -230,7 +230,7 @@ public class CreateApplicationTest extends BaseServiceTest {
         createLinkedApplications(
             applyApplicationId, List.of(associatedApplicationId, otherAssociatedApplication));
 
-    ApplicationContent applicationContent =
+    var applicationContent =
         DataGenerator.createDefault(
             ApplicationContentGenerator.class,
             appContentBuilder ->
@@ -289,8 +289,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     return linkedApplications;
   }
 
-  private void verifyThatProceedingsSaved(
-      ApplicationContent applicationCreateRequest, UUID expectedId) {
+  private void verifyThatProceedingsSaved(Object applicationCreateRequest, UUID expectedId) {
     ArgumentCaptor<List<ProceedingEntity>> captor = ArgumentCaptor.forClass((Class) List.class);
     verify(proceedingRepository).saveAll(captor.capture());
     List<ProceedingEntity> actualProceedingEntities = captor.getValue();
@@ -386,7 +385,7 @@ public class CreateApplicationTest extends BaseServiceTest {
 
     UUID applyApplicationId = UUID.randomUUID();
 
-    ApplicationContent applicationContent =
+    var applicationContent =
         DataGenerator.createDefault(
             ApplicationContentGenerator.class, builder -> builder.id(applyApplicationId));
 
@@ -438,7 +437,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     ValidationException validationException =
         new ValidationException(List.of("No lead proceeding found in application content"));
 
-    ApplicationContent applicationContent =
+    var applicationContent =
         DataGenerator.createDefault(
             ApplicationContentGenerator.class,
             appContentBuilder ->
@@ -459,7 +458,7 @@ public class CreateApplicationTest extends BaseServiceTest {
   private Map<String, Object> getAppContentParent(
       List<Proceeding> proceedings, String appContentId) {
 
-    ApplicationContent applicationContent =
+    var applicationContent =
         DataGenerator.createDefault(
             ApplicationContentGenerator.class,
             appContentBuilder ->
@@ -468,8 +467,9 @@ public class CreateApplicationTest extends BaseServiceTest {
                     .proceedings(proceedings)
                     .id(UUID.fromString(appContentId)));
 
-    applicationContent.putAdditionalApplicationContent("testPropertyInTest", "testValue");
-    return objectMapper.convertValue(applicationContent, Map.class);
+    Map<String, Object> contentMap = objectMapper.convertValue(applicationContent, Map.class);
+    contentMap.put("testPropertyInTest", "testValue");
+    return contentMap;
   }
 
   private Proceeding getProceeding(Boolean useDelegatedFunctions, boolean leadProceeding) {

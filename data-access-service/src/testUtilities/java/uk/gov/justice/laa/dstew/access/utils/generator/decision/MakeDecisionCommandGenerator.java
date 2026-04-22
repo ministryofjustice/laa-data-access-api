@@ -3,10 +3,10 @@ package uk.gov.justice.laa.dstew.access.utils.generator.decision;
 import java.util.List;
 import java.util.UUID;
 import tools.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.domain.MakeDecisionProceedingCommand;
 import uk.gov.justice.laa.dstew.access.domain.MeritsDecisionOutcome;
 import uk.gov.justice.laa.dstew.access.domain.OverallDecisionStatus;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionCommand;
+import uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionProceedingCommand;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
 public class MakeDecisionCommandGenerator

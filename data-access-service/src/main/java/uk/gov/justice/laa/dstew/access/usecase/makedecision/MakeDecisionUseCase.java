@@ -4,11 +4,9 @@ import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.domain.DecisionDomain;
-import uk.gov.justice.laa.dstew.access.domain.MakeDecisionProceedingCommand;
 import uk.gov.justice.laa.dstew.access.domain.MeritsDecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.OverallDecisionStatus;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.CertificateGateway;
@@ -136,37 +134,44 @@ public class MakeDecisionUseCase {
   private DecisionDomain buildDecisionDomain(DecisionDomain existing, MakeDecisionCommand command) {
     Set<MeritsDecisionDomain> meritsDecisions =
         command.proceedings().stream()
-            .map(
-                p -> {
-                  UUID existingId =
-                      existing != null
-                          ? findExistingMeritsId(existing.meritsDecisions(), p.proceedingId())
-                          : null;
-                  return MeritsDecisionDomain.builder()
-                      .id(existingId)
-                      .proceedingId(p.proceedingId())
+            .map(p -> buildMeritsDecision(existing, p))
+            .collect(Collectors.toSet());
+
+    return existing != null
+        ? existing.toBuilder()
+            .overallDecision(command.overallDecision())
+            .meritsDecisions(meritsDecisions)
+            .build()
+        : DecisionDomain.builder()
+            .overallDecision(command.overallDecision())
+            .meritsDecisions(meritsDecisions)
+            .build();
+  }
+
+  private MeritsDecisionDomain buildMeritsDecision(
+      DecisionDomain existing, MakeDecisionProceedingCommand p) {
+    if (existing != null && existing.meritsDecisions() != null) {
+      return existing.meritsDecisions().stream()
+          .filter(m -> p.proceedingId().equals(m.proceedingId()))
+          .findFirst()
+          .map(
+              existingMerit ->
+                  existingMerit.toBuilder()
                       .decision(p.meritsDecision())
                       .reason(p.reason())
                       .justification(p.justification())
-                      .build();
-                })
-            .collect(Collectors.toSet());
-
-    return DecisionDomain.builder()
-        .id(existing != null ? existing.id() : null)
-        .overallDecision(command.overallDecision())
-        .meritsDecisions(meritsDecisions)
-        .build();
+                      .build())
+          .orElseGet(() -> newMeritsDecision(p));
+    }
+    return newMeritsDecision(p);
   }
 
-  private UUID findExistingMeritsId(Set<MeritsDecisionDomain> existing, UUID proceedingId) {
-    if (existing == null) {
-      return null;
-    }
-    return existing.stream()
-        .filter(m -> proceedingId.equals(m.proceedingId()))
-        .map(MeritsDecisionDomain::id)
-        .findFirst()
-        .orElse(null);
+  private MeritsDecisionDomain newMeritsDecision(MakeDecisionProceedingCommand p) {
+    return MeritsDecisionDomain.builder()
+        .proceedingId(p.proceedingId())
+        .decision(p.meritsDecision())
+        .reason(p.reason())
+        .justification(p.justification())
+        .build();
   }
 }
