@@ -33,7 +33,7 @@ public class ApplicationSummaryDto {
   private LocalDate clientDateOfBirth;
   private boolean isLead;
 
-  /** Constructor for data query projection (without client info and lead flag). */
+  /** Constructor for data query projection (app data + client info + lead flag). */
   public ApplicationSummaryDto(
       UUID id,
       ApplicationStatus status,
@@ -46,7 +46,11 @@ public class ApplicationSummaryDto {
       CategoryOfLaw categoryOfLaw,
       MatterType matterType,
       Boolean isAutoGranted,
-      UUID caseworkerId) {
+      UUID caseworkerId,
+      String clientFirstName,
+      String clientLastName,
+      LocalDate clientDateOfBirth,
+      Boolean isLead) {
     this.id = id;
     this.status = status;
     this.laaReference = laaReference;
@@ -59,5 +63,9 @@ public class ApplicationSummaryDto {
     this.matterType = matterType;
     this.isAutoGranted = isAutoGranted;
     this.caseworkerId = caseworkerId;
+    this.clientFirstName = clientFirstName;
+    this.clientLastName = clientLastName;
+    this.clientDateOfBirth = clientDateOfBirth;
+    this.isLead = isLead != null && isLead;
   }
 }

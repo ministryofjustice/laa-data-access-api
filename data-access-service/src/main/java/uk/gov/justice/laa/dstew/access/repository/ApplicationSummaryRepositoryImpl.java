@@ -4,25 +4,25 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Order;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity_;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity_;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity_;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
@@ -49,18 +49,6 @@ public class ApplicationSummaryRepositoryImpl implements ApplicationSummaryRepos
     }
 
     List<ApplicationSummaryDto> results = executeDataQuery(ids, pageable);
-    Map<UUID, ClientInfo> clientMap = fetchClientInfo(ids);
-    Set<UUID> leadIds = fetchLeadIds(ids);
-
-    for (ApplicationSummaryDto dto : results) {
-      ClientInfo client = clientMap.get(dto.getId());
-      if (client != null) {
-        dto.setClientFirstName(client.firstName());
-        dto.setClientLastName(client.lastName());
-        dto.setClientDateOfBirth(client.dateOfBirth());
-      }
-      dto.setLead(leadIds.contains(dto.getId()));
-    }
 
     return new PageImpl<>(results, pageable, count);
   }
@@ -74,7 +62,7 @@ public class ApplicationSummaryRepositoryImpl implements ApplicationSummaryRepos
     // Use a subquery with the spec to get matching IDs (handles deduplication from spec joins)
     Subquery<UUID> subquery = query.subquery(UUID.class);
     Root<ApplicationEntity> subRoot = subquery.from(ApplicationEntity.class);
-    subquery.select(subRoot.get("id")).distinct(true);
+    subquery.select(subRoot.get(ApplicationEntity_.id)).distinct(true);
 
     Predicate predicate = spec.toPredicate(subRoot, query, cb);
     if (predicate != null) {
@@ -82,8 +70,8 @@ public class ApplicationSummaryRepositoryImpl implements ApplicationSummaryRepos
     }
 
     // Outer query selects from the root, filtered by the subquery IDs
-    query.select(root.get("id"));
-    query.where(root.get("id").in(subquery));
+    query.select(root.get(ApplicationEntity_.id));
+    query.where(root.get(ApplicationEntity_.id).in(subquery));
 
     applySort(cb, root, query, pageable);
 
@@ -93,80 +81,72 @@ public class ApplicationSummaryRepositoryImpl implements ApplicationSummaryRepos
     return typedQuery.getResultList();
   }
 
-  /** Fetches application data with caseworker join only — no one-to-many joins, no DISTINCT. */
+  /**
+   * Fetches application data with caseworker, client individual info, and lead status in a single
+   * query.
+   */
   private List<ApplicationSummaryDto> executeDataQuery(List<UUID> ids, Pageable pageable) {
     CriteriaBuilder cb = entityManager.getCriteriaBuilder();
     CriteriaQuery<ApplicationSummaryDto> query = cb.createQuery(ApplicationSummaryDto.class);
     Root<ApplicationEntity> root = query.from(ApplicationEntity.class);
 
     Join<ApplicationEntity, CaseworkerEntity> caseworkerJoin =
-        root.join("caseworker", JoinType.LEFT);
+        root.join(ApplicationEntity_.caseworker, JoinType.LEFT);
+
+    Join<ApplicationEntity, IndividualEntity> clientJoin =
+        root.join(ApplicationEntity_.individuals, JoinType.LEFT);
+    clientJoin.on(cb.equal(clientJoin.get(IndividualEntity_.type), IndividualType.CLIENT));
+
+    Expression<Boolean> isLeadExpr = getIsLeadExpr(query, cb, root);
 
     query.select(
         cb.construct(
             ApplicationSummaryDto.class,
-            root.get("id"),
-            root.get("status"),
-            root.get("laaReference"),
-            root.get("officeCode"),
-            root.get("createdAt"),
-            root.get("modifiedAt"),
-            root.get("submittedAt"),
-            root.get("usedDelegatedFunctions"),
-            root.get("categoryOfLaw"),
-            root.get("matterType"),
-            root.get("isAutoGranted"),
-            caseworkerJoin.get("id")));
+            root.get(ApplicationEntity_.id),
+            root.get(ApplicationEntity_.status),
+            root.get(ApplicationEntity_.laaReference),
+            root.get(ApplicationEntity_.officeCode),
+            root.get(ApplicationEntity_.createdAt),
+            root.get(ApplicationEntity_.modifiedAt),
+            root.get(ApplicationEntity_.submittedAt),
+            root.get(ApplicationEntity_.usedDelegatedFunctions),
+            root.get(ApplicationEntity_.categoryOfLaw),
+            root.get(ApplicationEntity_.matterType),
+            root.get(ApplicationEntity_.isAutoGranted),
+            caseworkerJoin.get(CaseworkerEntity_.id),
+            clientJoin.get(IndividualEntity_.firstName),
+            clientJoin.get(IndividualEntity_.lastName),
+            clientJoin.get(IndividualEntity_.dateOfBirth),
+            isLeadExpr));
 
-    query.where(root.get("id").in(ids));
+    query.where(root.get(ApplicationEntity_.id).in(ids));
 
     applySort(cb, root, query, pageable);
 
     return entityManager.createQuery(query).getResultList();
   }
 
-  /** Fetches client individual info for the given application IDs. */
-  private Map<UUID, ClientInfo> fetchClientInfo(List<UUID> applicationIds) {
-    CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-    CriteriaQuery<Object[]> query = cb.createQuery(Object[].class);
-    Root<ApplicationEntity> root = query.from(ApplicationEntity.class);
+  private static Expression<Boolean> getIsLeadExpr(
+      CriteriaQuery<ApplicationSummaryDto> query,
+      CriteriaBuilder cb,
+      Root<ApplicationEntity> root) {
+    // Subquery to determine if this application is a lead application
+    Subquery<Long> leadSubquery = query.subquery(Long.class);
+    Root<ApplicationEntity> leadRoot = leadSubquery.from(ApplicationEntity.class);
+    leadRoot.join(ApplicationEntity_.linkedApplications, JoinType.INNER);
+    leadSubquery.select(cb.literal(1L));
+    leadSubquery.where(
+        cb.equal(leadRoot.get(ApplicationEntity_.id), root.get(ApplicationEntity_.id)));
 
-    Join<ApplicationEntity, IndividualEntity> individualJoin =
-        root.join("individuals", JoinType.INNER);
-
-    query.multiselect(
-        root.get("id"),
-        individualJoin.get("firstName"),
-        individualJoin.get("lastName"),
-        individualJoin.get("dateOfBirth"));
-
-    query.where(
-        cb.and(
-            root.get("id").in(applicationIds),
-            cb.equal(individualJoin.get("type"), IndividualType.CLIENT)));
-
-    return entityManager.createQuery(query).getResultList().stream()
-        .collect(
-            Collectors.toMap(
-                row -> (UUID) row[0],
-                row -> new ClientInfo((String) row[1], (String) row[2], (LocalDate) row[3]),
-                (a, b) -> a));
+    return cb.selectCase().when(cb.exists(leadSubquery), true).otherwise(false).as(Boolean.class);
   }
 
-  /** Fetches which of the given application IDs are lead applications. */
-  private Set<UUID> fetchLeadIds(List<UUID> applicationIds) {
-    CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-    CriteriaQuery<UUID> query = cb.createQuery(UUID.class);
-    Root<ApplicationEntity> root = query.from(ApplicationEntity.class);
-
-    root.join("linkedApplications", JoinType.INNER);
-
-    query.select(root.get("id")).distinct(true);
-    query.where(root.get("id").in(applicationIds));
-
-    return Set.copyOf(entityManager.createQuery(query).getResultList());
-  }
-
+  /**
+   * Executes a separate count query to determine the total number of matching applications. This is
+   * needed because the ID query applies OFFSET/FETCH for pagination, so its result set cannot be
+   * used to derive the total count. Spring's PageImpl requires the total count to calculate total
+   * pages and determine whether further pages exist.
+   */
   private long executeCountQuery(Specification<ApplicationEntity> spec) {
     CriteriaBuilder cb = entityManager.getCriteriaBuilder();
     CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
@@ -194,9 +174,7 @@ public class ApplicationSummaryRepositoryImpl implements ApplicationSummaryRepos
           .forEach(orders::add);
     }
     // Always add createdAt as a tiebreaker for deterministic, insertion-order pagination
-    orders.add(cb.asc(root.get("createdAt")));
+    orders.add(cb.asc(root.get(ApplicationEntity_.createdAt)));
     query.orderBy(orders);
   }
-
-  private record ClientInfo(String firstName, String lastName, LocalDate dateOfBirth) {}
 }
