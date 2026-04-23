@@ -107,7 +107,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           # Only open Renovate PRs/updates on main. Never from PR context.
-          renovate: ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
+          # Temporarily allow spike/1546-renovate branch for testing
+          renovate: ${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/spike/1546-renovate' || github.head_ref == 'spike/1546-renovate') && 'true' || 'false' }}
           codeql-upload-findings: "always"
 
   infrastructure-smoke-test:
