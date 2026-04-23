@@ -16,7 +16,6 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.service.ApplicationContentParserService;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.DomainEventGateway;
-import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ProceedingGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.EnforceRole;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.RequiredRole;
 import uk.gov.justice.laa.dstew.access.usecase.shared.validation.UseCaseValidations;
@@ -27,7 +26,6 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 public class CreateApplicationUseCase {
 
   private final ApplicationGateway applicationGateway;
-  private final ProceedingGateway proceedingGateway;
   private final DomainEventGateway domainEventGateway;
   private final ApplicationContentParserService contentParser;
   private final ObjectMapper objectMapper;
@@ -36,19 +34,16 @@ public class CreateApplicationUseCase {
    * Constructs the use case with required dependencies.
    *
    * @param applicationGateway gateway for application persistence
-   * @param proceedingGateway gateway for proceeding persistence
    * @param domainEventGateway gateway for domain event publishing
    * @param contentParser service for parsing application content
    * @param objectMapper Jackson mapper for extracting proceedings from content map
    */
   public CreateApplicationUseCase(
       ApplicationGateway applicationGateway,
-      ProceedingGateway proceedingGateway,
       DomainEventGateway domainEventGateway,
       ApplicationContentParserService contentParser,
       ObjectMapper objectMapper) {
     this.applicationGateway = applicationGateway;
-    this.proceedingGateway = proceedingGateway;
     this.domainEventGateway = domainEventGateway;
     this.contentParser = contentParser;
     this.objectMapper = objectMapper;
@@ -89,6 +84,10 @@ public class CreateApplicationUseCase {
       }
     }
 
+    // Build proceedings up-front — JPA sets application_id FK via @JoinColumn on
+    // ApplicationEntityV2
+    List<ProceedingDomain> proceedings = buildProceedingDomains(command.applicationContent());
+
     ApplicationDomain domain =
         ApplicationDomain.builder()
             .status(command.status())
@@ -102,15 +101,13 @@ public class CreateApplicationUseCase {
             .applicationContent(command.applicationContent())
             .individuals(command.individuals())
             .schemaVersion(APPLICATION_SCHEMA_VERSION)
+            .proceedings(proceedings)
+            .decision(null)
             .build();
 
     ApplicationDomain saved = applicationGateway.save(domain);
 
     linkToLeadIfApplicable(details, saved);
-
-    List<ProceedingDomain> proceedings =
-        buildProceedingDomains(command.applicationContent(), saved.id());
-    proceedingGateway.saveAll(saved.id(), proceedings);
 
     domainEventGateway.saveCreatedEvent(saved, command.serialisedRequest());
 
@@ -138,8 +135,7 @@ public class CreateApplicationUseCase {
   }
 
   @SuppressWarnings("unchecked")
-  private List<ProceedingDomain> buildProceedingDomains(
-      Map<String, Object> contentMap, UUID applicationId) {
+  private List<ProceedingDomain> buildProceedingDomains(Map<String, Object> contentMap) {
     Object proceedingsRaw = contentMap.get("proceedings");
     if (proceedingsRaw == null) {
       return Collections.emptyList();
@@ -154,7 +150,11 @@ public class CreateApplicationUseCase {
         .map(
             p -> {
               boolean isLead = Boolean.TRUE.equals(p.get("leadProceeding"));
-              return new ProceedingDomain(applicationId, isLead, p);
+              return ProceedingDomain.builder()
+                  .isLead(isLead)
+                  .proceedingContent(p)
+                  .meritsDecision(null)
+                  .build();
             })
         .toList();
   }

@@ -1,24 +1,61 @@
 package uk.gov.justice.laa.dstew.access.infrastructure.jpa.shared;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.domain.Individual;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntityV2;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntityV2;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
-/** Maps between ApplicationDomain and ApplicationEntity. */
+/** Maps between ApplicationDomain and ApplicationEntityV2. */
 public class ApplicationGatewayMapper {
 
-  /** Converts a domain record to a JPA entity. */
-  public ApplicationEntity toEntity(ApplicationDomain domain) {
-    if (domain == null) {
+  private final ProceedingGatewayMapper proceedingMapper = new ProceedingGatewayMapper();
+  private final DecisionGatewayMapper decisionMapper = new DecisionGatewayMapper();
+
+  /** Converts an ApplicationEntityV2 to a domain record (full sub-graph). */
+  public ApplicationDomain toDomain(ApplicationEntityV2 entity) {
+    if (entity == null) {
       return null;
     }
-    ApplicationEntity entity = new ApplicationEntity();
-    entity.setId(domain.id());
+    List<Individual> individuals =
+        entity.getIndividuals() == null
+            ? List.of()
+            : entity.getIndividuals().stream().map(this::toIndividual).toList();
+    List<ProceedingDomain> proceedings =
+        entity.getProceedings() == null
+            ? List.of()
+            : entity.getProceedings().stream().map(proceedingMapper::toDomain).toList();
+    return ApplicationDomain.builder()
+        .id(entity.getId())
+        .status(toDomainStatus(entity.getStatus()))
+        .laaReference(entity.getLaaReference())
+        .officeCode(entity.getOfficeCode())
+        .applyApplicationId(entity.getApplyApplicationId())
+        .usedDelegatedFunctions(entity.getUsedDelegatedFunctions())
+        .categoryOfLaw(toDomainCategoryOfLaw(entity.getCategoryOfLaw()))
+        .matterType(toDomainMatterType(entity.getMatterType()))
+        .submittedAt(entity.getSubmittedAt())
+        .createdAt(entity.getCreatedAt())
+        .applicationContent(entity.getApplicationContent())
+        .individuals(individuals)
+        .schemaVersion(entity.getSchemaVersion() != null ? entity.getSchemaVersion() : 0)
+        .version(entity.getVersion())
+        .caseworkerId(entity.getCaseworker() != null ? entity.getCaseworker().getId() : null)
+        .isAutoGranted(entity.getIsAutoGranted())
+        .proceedings(proceedings)
+        .decision(decisionMapper.toDomain(entity.getDecision()))
+        .build();
+  }
+
+  /** Builds a fresh ApplicationEntityV2 from domain (INSERT path — id is null). */
+  public ApplicationEntityV2 toNewEntity(ApplicationDomain domain) {
+    ApplicationEntityV2 entity = new ApplicationEntityV2();
     entity.setStatus(toModelStatus(domain.status()));
     entity.setLaaReference(domain.laaReference());
     entity.setOfficeCode(domain.officeCode());
@@ -34,35 +71,42 @@ public class ApplicationGatewayMapper {
           domain.individuals().stream().map(this::toIndividualEntity).collect(Collectors.toSet());
       entity.setIndividuals(individualEntities);
     }
+    List<ProceedingEntityV2> proceedingEntities =
+        domain.proceedings() != null
+            ? domain.proceedings().stream().map(proceedingMapper::toNewEntity).toList()
+            : new ArrayList<>();
+    entity.setProceedings(new ArrayList<>(proceedingEntities));
+    if (domain.decision() != null) {
+      entity.setDecision(decisionMapper.toNewEntity(domain.decision()));
+    }
     return entity;
   }
 
-  /** Converts a JPA entity to a domain record. */
-  public ApplicationDomain toDomain(ApplicationEntity entity) {
-    if (entity == null) {
-      return null;
+  /** Mutates a managed ApplicationEntityV2 in-place (UPDATE path). */
+  public void applyToEntity(ApplicationDomain domain, ApplicationEntityV2 entity) {
+    entity.setIsAutoGranted(domain.isAutoGranted());
+    // Reconcile proceedings — match by id, update existing or add new
+    if (domain.proceedings() != null) {
+      List<ProceedingEntityV2> existing = entity.getProceedings();
+      for (ProceedingDomain pd : domain.proceedings()) {
+        if (pd.id() != null) {
+          existing.stream()
+              .filter(e -> e.getId().equals(pd.id()))
+              .findFirst()
+              .ifPresent(e -> proceedingMapper.applyToEntity(pd, e));
+        } else {
+          existing.add(proceedingMapper.toNewEntity(pd));
+        }
+      }
     }
-    List<Individual> individuals =
-        entity.getIndividuals() == null
-            ? List.of()
-            : entity.getIndividuals().stream().map(this::toIndividual).toList();
-    return new ApplicationDomain(
-        entity.getId(),
-        toDomainStatus(entity.getStatus()),
-        entity.getLaaReference(),
-        entity.getOfficeCode(),
-        entity.getApplyApplicationId(),
-        entity.getUsedDelegatedFunctions(),
-        toDomainCategoryOfLaw(entity.getCategoryOfLaw()),
-        toDomainMatterType(entity.getMatterType()),
-        entity.getSubmittedAt(),
-        entity.getCreatedAt(),
-        entity.getApplicationContent(),
-        individuals,
-        entity.getSchemaVersion() != null ? entity.getSchemaVersion() : 0,
-        entity.getVersion(),
-        entity.getCaseworker() != null ? entity.getCaseworker().getId() : null,
-        entity.getIsAutoGranted());
+    // Reconcile decision
+    if (domain.decision() != null) {
+      if (entity.getDecision() != null) {
+        decisionMapper.applyToEntity(domain.decision(), entity.getDecision());
+      } else {
+        entity.setDecision(decisionMapper.toNewEntity(domain.decision()));
+      }
+    }
   }
 
   private IndividualEntity toIndividualEntity(Individual individual) {

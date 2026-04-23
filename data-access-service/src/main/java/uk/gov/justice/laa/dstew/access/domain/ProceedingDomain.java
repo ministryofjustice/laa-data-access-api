@@ -7,4 +7,9 @@ import lombok.Builder;
 /** Domain record representing a proceeding. */
 @Builder(toBuilder = true)
 public record ProceedingDomain(
-    UUID applicationId, boolean isLead, Map<String, Object> proceedingContent) {}
+    UUID id,
+    UUID applyProceedingId,
+    String description,
+    boolean isLead,
+    Map<String, Object> proceedingContent,
+    MeritsDecisionDomain meritsDecision) {}

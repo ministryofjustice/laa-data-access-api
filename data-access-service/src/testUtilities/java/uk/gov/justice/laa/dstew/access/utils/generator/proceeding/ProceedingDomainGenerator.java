@@ -15,7 +15,9 @@ public class ProceedingDomainGenerator
   @Override
   public ProceedingDomain createDefault() {
     return ProceedingDomain.builder()
-        .applicationId(UUID.randomUUID())
+        .id(UUID.randomUUID())
+        .applyProceedingId(UUID.randomUUID())
+        .description("Test proceeding")
         .isLead(true)
         .proceedingContent(
             Map.of(
@@ -31,6 +33,7 @@ public class ProceedingDomainGenerator
                 "SPECIAL_CHILDREN_ACT",
                 "description",
                 "Test proceeding"))
+        .meritsDecision(null)
         .build();
   }
 }

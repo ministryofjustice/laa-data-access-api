@@ -209,6 +209,10 @@ public class PersistedDataGenerator extends DataGenerator {
       // so the application row must go first to clear the FK column before we can drop the
       // decision).
       trackedDecisionIds.forEach(id -> decRepo.findById(id).ifPresent(decRepo::delete));
+      // Clean up MeritsDecisionEntityV2 rows created by the new clean-arch use case.
+      // V2 rows have proceeding_id = NULL (MeritsDecisionEntityV2 has no proceeding_id field).
+      // They are orphaned after proceedings are cascade-deleted above.
+      jdbcTemplate.update("DELETE FROM merits_decisions WHERE proceeding_id IS NULL");
       trackedCaseworkerIds.forEach(id -> cwRepo.findById(id).ifPresent(cwRepo::delete));
       trackedIndividualIds.forEach(id -> indivRepo.findById(id).ifPresent(indivRepo::delete));
     } finally {

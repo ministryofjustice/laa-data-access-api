@@ -6,6 +6,10 @@ import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 
 /** Gateway interface for application persistence operations. */
 public interface ApplicationGateway {
+
+  /** Full aggregate load — proceedings (with meritsDecision) and decision always populated. */
+  ApplicationDomain loadById(UUID id);
+
   ApplicationDomain save(ApplicationDomain domain);
 
   boolean existsByApplyApplicationId(UUID applyApplicationId);
@@ -13,8 +17,4 @@ public interface ApplicationGateway {
   Optional<ApplicationDomain> findByApplyApplicationId(UUID applyApplicationId);
 
   ApplicationDomain addLinkedApplication(ApplicationDomain lead, ApplicationDomain linked);
-
-  ApplicationDomain findById(UUID id);
-
-  ApplicationDomain updateAutoGranted(UUID applicationId, Boolean autoGranted);
 }

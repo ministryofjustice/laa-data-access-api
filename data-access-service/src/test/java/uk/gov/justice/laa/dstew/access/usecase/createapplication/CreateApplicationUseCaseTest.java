@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.usecase.createapplication;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -23,7 +24,6 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.service.ApplicationContentParserService;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.DomainEventGateway;
-import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ProceedingGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.EnforceRole;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.RequiredRole;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -38,7 +38,6 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 class CreateApplicationUseCaseTest {
 
   @Mock private ApplicationGateway applicationGateway;
-  @Mock private ProceedingGateway proceedingGateway;
   @Mock private DomainEventGateway domainEventGateway;
 
   private ApplicationContentParserService contentParser;
@@ -54,7 +53,7 @@ class CreateApplicationUseCaseTest {
             objectMapper, new PayloadValidationService(objectMapper, validator));
     useCase =
         new CreateApplicationUseCase(
-            applicationGateway, proceedingGateway, domainEventGateway, contentParser, objectMapper);
+            applicationGateway, domainEventGateway, contentParser, objectMapper);
   }
 
   @Test
@@ -75,7 +74,7 @@ class CreateApplicationUseCaseTest {
   }
 
   @Test
-  void execute_happyPath_proceedingsSaved() {
+  void execute_happyPath_proceedingsSavedInsideAggregate() {
     ApplicationDomain saved = DataGenerator.createDefault(ApplicationDomainGenerator.class);
     when(applicationGateway.existsByApplyApplicationId(any())).thenReturn(false);
     when(applicationGateway.save(any())).thenReturn(saved);
@@ -85,7 +84,8 @@ class CreateApplicationUseCaseTest {
 
     useCase.execute(command);
 
-    verify(proceedingGateway).saveAll(any(), any());
+    verify(applicationGateway)
+        .save(argThat(d -> d.proceedings() != null && !d.proceedings().isEmpty()));
   }
 
   @Test
@@ -134,7 +134,6 @@ class CreateApplicationUseCaseTest {
     UUID assocId = UUID.randomUUID();
     UUID missingId = UUID.randomUUID();
 
-    // two linked apps: the one being created (assocId) plus one that doesn't exist (missingId)
     var contentWithMissingAssoc =
         objectMapper.convertValue(
             DataGenerator.createDefault(
@@ -155,9 +154,7 @@ class CreateApplicationUseCaseTest {
                                             .associatedApplicationId(missingId))))),
             Map.class);
 
-    // assocId is the application being created — its existence check is filtered out
-    // missingId does not exist
-    when(applicationGateway.existsByApplyApplicationId(assocId)).thenReturn(false); // new app
+    when(applicationGateway.existsByApplyApplicationId(assocId)).thenReturn(false);
     when(applicationGateway.existsByApplyApplicationId(missingId)).thenReturn(false);
 
     CreateApplicationCommand command =

@@ -24,4 +24,6 @@ public record ApplicationDomain(
     int schemaVersion,
     Long version,
     UUID caseworkerId,
-    Boolean isAutoGranted) {}
+    Boolean isAutoGranted,
+    List<ProceedingDomain> proceedings,
+    DecisionDomain decision) {}

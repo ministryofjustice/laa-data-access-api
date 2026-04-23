@@ -9,6 +9,7 @@ import uk.gov.justice.laa.dstew.access.domain.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.domain.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.domain.MatterType;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingDomainGenerator;
 
 public class ApplicationDomainGenerator
     extends BaseGenerator<ApplicationDomain, ApplicationDomain.ApplicationDomainBuilder> {
@@ -40,6 +41,8 @@ public class ApplicationDomainGenerator
         .applicationContent(Map.of())
         .individuals(List.of())
         .schemaVersion(1)
+        .proceedings(List.of(new ProceedingDomainGenerator().createDefault()))
+        .decision(null)
         .build();
   }
 }

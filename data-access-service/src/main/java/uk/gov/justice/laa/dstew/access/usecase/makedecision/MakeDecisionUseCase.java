@@ -4,16 +4,17 @@ import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.domain.DecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.MeritsDecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.OverallDecisionStatus;
+import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.CertificateGateway;
-import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.DecisionGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.DomainEventGateway;
-import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ProceedingGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.EnforceRole;
 import uk.gov.justice.laa.dstew.access.usecase.shared.security.RequiredRole;
 import uk.gov.justice.laa.dstew.access.utils.VersionCheckHelper;
@@ -26,29 +27,21 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 public class MakeDecisionUseCase {
 
   private final ApplicationGateway applicationGateway;
-  private final ProceedingGateway proceedingGateway;
-  private final DecisionGateway decisionGateway;
   private final CertificateGateway certificateGateway;
   private final DomainEventGateway domainEventGateway;
 
   /**
    * Constructs the use case with required dependencies.
    *
-   * @param applicationGateway gateway for application persistence
-   * @param proceedingGateway gateway for proceeding persistence
-   * @param decisionGateway gateway for decision persistence
+   * @param applicationGateway gateway for application persistence (aggregate load + save)
    * @param certificateGateway gateway for certificate persistence
    * @param domainEventGateway gateway for domain event publishing
    */
   public MakeDecisionUseCase(
       ApplicationGateway applicationGateway,
-      ProceedingGateway proceedingGateway,
-      DecisionGateway decisionGateway,
       CertificateGateway certificateGateway,
       DomainEventGateway domainEventGateway) {
     this.applicationGateway = applicationGateway;
-    this.proceedingGateway = proceedingGateway;
-    this.decisionGateway = decisionGateway;
     this.certificateGateway = certificateGateway;
     this.domainEventGateway = domainEventGateway;
   }
@@ -60,8 +53,8 @@ public class MakeDecisionUseCase {
    */
   @EnforceRole(anyOf = RequiredRole.API_CASEWORKER)
   public void execute(MakeDecisionCommand command) {
-    // 1. Load application
-    ApplicationDomain application = applicationGateway.findById(command.applicationId());
+    // 1. Load full aggregate
+    ApplicationDomain application = applicationGateway.loadById(command.applicationId());
 
     // 2. Optimistic locking check
     VersionCheckHelper.checkEntityVersionLocking(
@@ -70,20 +63,40 @@ public class MakeDecisionUseCase {
     // 3. Business validation
     validateCommand(command);
 
-    // 4. Validate proceedings existence and linkage
-    proceedingGateway.findAllByIds(
-        command.applicationId(),
-        command.proceedings().stream().map(MakeDecisionProceedingCommand::proceedingId).toList());
+    // 4. Validate proceedings exist in aggregate (in-memory, no gateway)
+    Set<UUID> loadedIds =
+        application.proceedings().stream().map(ProceedingDomain::id).collect(Collectors.toSet());
+    List<UUID> missing =
+        command.proceedings().stream()
+            .map(MakeDecisionProceedingCommand::proceedingId)
+            .filter(id -> !loadedIds.contains(id))
+            .toList();
+    if (!missing.isEmpty()) {
+      throw new ResourceNotFoundException(
+          "No proceeding found with id: " + missing + ". Not linked to application: " + missing);
+    }
 
-    // 5. Update application autoGranted flag
-    applicationGateway.updateAutoGranted(command.applicationId(), command.autoGranted());
+    // 5. Build updated proceedings with patched merits decisions
+    List<ProceedingDomain> updatedProceedings =
+        application.proceedings().stream().map(p -> patchProceeding(p, command)).toList();
 
-    // 6. Upsert decision + merits; link to application if new
-    DecisionDomain existingDecision = decisionGateway.findByApplicationId(command.applicationId());
-    DecisionDomain toSave = buildDecisionDomain(existingDecision, command);
-    decisionGateway.saveAndLink(command.applicationId(), toSave);
+    // 6. Build updated decision
+    DecisionDomain decision =
+        application.decision() != null
+            ? application.decision().toBuilder().overallDecision(command.overallDecision()).build()
+            : DecisionDomain.builder().overallDecision(command.overallDecision()).build();
 
-    // 7. Certificate handling
+    // 7. Build updated aggregate and save
+    ApplicationDomain updated =
+        application.toBuilder()
+            .isAutoGranted(command.autoGranted())
+            .proceedings(updatedProceedings)
+            .decision(decision)
+            .build();
+
+    applicationGateway.save(updated);
+
+    // 8. Certificate handling
     if (command.overallDecision() == OverallDecisionStatus.GRANTED) {
       certificateGateway.saveOrUpdate(command.applicationId(), command.certificate());
     } else if (command.overallDecision() == OverallDecisionStatus.REFUSED) {
@@ -94,13 +107,38 @@ public class MakeDecisionUseCase {
       throw new IllegalStateException("Unexpected value: " + command.overallDecision());
     }
 
-    // 8. Domain event
+    // 9. Domain event
     domainEventGateway.saveDecisionEvent(
         command.applicationId(),
         application.caseworkerId(),
         command.serialisedRequest(),
         command.eventDescription(),
         command.overallDecision());
+  }
+
+  private ProceedingDomain patchProceeding(
+      ProceedingDomain proceeding, MakeDecisionCommand command) {
+    MakeDecisionProceedingCommand cmd =
+        command.proceedings().stream()
+            .filter(p -> p.proceedingId().equals(proceeding.id()))
+            .findFirst()
+            .orElse(null);
+    if (cmd == null) {
+      return proceeding; // not included in this decision — leave untouched
+    }
+    MeritsDecisionDomain merits =
+        proceeding.meritsDecision() != null
+            ? proceeding.meritsDecision().toBuilder()
+                .decision(cmd.meritsDecision())
+                .reason(cmd.reason())
+                .justification(cmd.justification())
+                .build()
+            : MeritsDecisionDomain.builder()
+                .decision(cmd.meritsDecision())
+                .reason(cmd.reason())
+                .justification(cmd.justification())
+                .build();
+    return proceeding.toBuilder().meritsDecision(merits).build();
   }
 
   private void validateCommand(MakeDecisionCommand command) {
@@ -129,49 +167,5 @@ public class MakeDecisionUseCase {
 
   private boolean isCertificateNullOrEmpty(Map<String, Object> certificate) {
     return certificate == null || certificate.isEmpty();
-  }
-
-  private DecisionDomain buildDecisionDomain(DecisionDomain existing, MakeDecisionCommand command) {
-    Set<MeritsDecisionDomain> meritsDecisions =
-        command.proceedings().stream()
-            .map(p -> buildMeritsDecision(existing, p))
-            .collect(Collectors.toSet());
-
-    return existing != null
-        ? existing.toBuilder()
-            .overallDecision(command.overallDecision())
-            .meritsDecisions(meritsDecisions)
-            .build()
-        : DecisionDomain.builder()
-            .overallDecision(command.overallDecision())
-            .meritsDecisions(meritsDecisions)
-            .build();
-  }
-
-  private MeritsDecisionDomain buildMeritsDecision(
-      DecisionDomain existing, MakeDecisionProceedingCommand p) {
-    if (existing != null && existing.meritsDecisions() != null) {
-      return existing.meritsDecisions().stream()
-          .filter(m -> p.proceedingId().equals(m.proceedingId()))
-          .findFirst()
-          .map(
-              existingMerit ->
-                  existingMerit.toBuilder()
-                      .decision(p.meritsDecision())
-                      .reason(p.reason())
-                      .justification(p.justification())
-                      .build())
-          .orElseGet(() -> newMeritsDecision(p));
-    }
-    return newMeritsDecision(p);
-  }
-
-  private MeritsDecisionDomain newMeritsDecision(MakeDecisionProceedingCommand p) {
-    return MeritsDecisionDomain.builder()
-        .proceedingId(p.proceedingId())
-        .decision(p.meritsDecision())
-        .reason(p.reason())
-        .justification(p.justification())
-        .build();
   }
 }

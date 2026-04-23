@@ -17,7 +17,6 @@ public class MeritsDecisionDomainGenerator
   public MeritsDecisionDomain createDefault() {
     return MeritsDecisionDomain.builder()
         .id(UUID.randomUUID())
-        .proceedingId(UUID.randomUUID())
         .decision(MeritsDecisionOutcome.REFUSED)
         .reason("Test reason")
         .justification("Test justification")

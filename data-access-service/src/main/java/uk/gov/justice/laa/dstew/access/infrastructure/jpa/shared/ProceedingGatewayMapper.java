@@ -3,38 +3,59 @@ package uk.gov.justice.laa.dstew.access.infrastructure.jpa.shared;
 import java.util.Map;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
-import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntityV2;
 
-/** Maps between ProceedingDomain and ProceedingEntity. */
+/** Maps between ProceedingDomain and ProceedingEntityV2. */
 public class ProceedingGatewayMapper {
 
-  /** Converts a ProceedingDomain to a ProceedingEntity. */
-  public ProceedingEntity toEntity(ProceedingDomain domain, UUID applicationId) {
-    if (domain == null) {
-      return null;
-    }
-    Map<String, Object> content = domain.proceedingContent();
-    ProceedingEntity entity = new ProceedingEntity();
-    entity.setApplicationId(applicationId);
-    entity.setLead(domain.isLead());
-    entity.setProceedingContent(content);
-    Object idObj = content.get("id");
-    if (idObj != null) {
-      entity.setApplyProceedingId(UUID.fromString(idObj.toString()));
-    }
-    Object desc = content.get("description");
-    entity.setDescription(desc != null ? desc.toString() : "");
-    entity.setCreatedBy("");
-    entity.setUpdatedBy("");
-    return entity;
-  }
+  private final MeritsDecisionGatewayMapper meritsMapper = new MeritsDecisionGatewayMapper();
 
-  /** Converts a ProceedingEntity to a ProceedingDomain. */
-  public ProceedingDomain toDomain(ProceedingEntity entity) {
+  /** Converts a ProceedingEntityV2 to a ProceedingDomain. */
+  public ProceedingDomain toDomain(ProceedingEntityV2 entity) {
     if (entity == null) {
       return null;
     }
-    return new ProceedingDomain(
-        entity.getApplicationId(), entity.isLead(), entity.getProceedingContent());
+    return ProceedingDomain.builder()
+        .id(entity.getId())
+        .applyProceedingId(entity.getApplyProceedingId())
+        .description(entity.getDescription())
+        .isLead(entity.isLead())
+        .proceedingContent(entity.getProceedingContent())
+        .meritsDecision(
+            entity.getMeritsDecision() != null
+                ? meritsMapper.toDomain(entity.getMeritsDecision())
+                : null)
+        .build();
+  }
+
+  /** Creates a new ProceedingEntityV2 from a domain (INSERT path — id is null). */
+  public ProceedingEntityV2 toNewEntity(ProceedingDomain domain) {
+    ProceedingEntityV2 entity = new ProceedingEntityV2();
+    entity.setLead(domain.isLead());
+    entity.setProceedingContent(domain.proceedingContent());
+    Map<String, Object> content = domain.proceedingContent();
+    Object idObj = content != null ? content.get("id") : null;
+    if (idObj != null) {
+      entity.setApplyProceedingId(UUID.fromString(idObj.toString()));
+    }
+    Object desc = content != null ? content.get("description") : null;
+    entity.setDescription(desc != null ? desc.toString() : "");
+    entity.setCreatedBy("");
+    entity.setUpdatedBy("");
+    // meritsDecision is null on create; set via applyToEntity on the make-decision path
+    return entity;
+  }
+
+  /** Applies domain values to an existing managed entity (UPDATE path). */
+  public void applyToEntity(ProceedingDomain domain, ProceedingEntityV2 entity) {
+    entity.setLead(domain.isLead());
+    entity.setProceedingContent(domain.proceedingContent());
+    if (domain.meritsDecision() != null) {
+      if (entity.getMeritsDecision() != null) {
+        meritsMapper.applyToEntity(domain.meritsDecision(), entity.getMeritsDecision());
+      } else {
+        entity.setMeritsDecision(meritsMapper.toNewEntity(domain.meritsDecision()));
+      }
+    }
   }
 }

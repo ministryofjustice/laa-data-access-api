@@ -8,7 +8,6 @@ import lombok.Builder;
 @Builder(toBuilder = true)
 public record MeritsDecisionDomain(
     UUID id,
-    UUID proceedingId,
     MeritsDecisionOutcome decision,
     String reason,
     String justification,
