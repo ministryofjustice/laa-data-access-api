@@ -276,6 +276,7 @@ jobs:
       - vulnerability-scan-app
       - vulnerability-scan-docker
       - sca
+      - deploy-uat
     environment: staging
     permissions:
       id-token: write

@@ -84,6 +84,12 @@ allprojects {
         if (lockedConfigs.contains(conf.name)) {
             resolutionStrategy.activateDependencyLocking()
         }
+
+        // Add global force for Spring Security CVE fix
+        conf.resolutionStrategy {
+            force 'org.springframework.security:spring-security-config:7.0.5'
+            force 'org.springframework.security:spring-security-web:7.0.5'
+        }
     }
 }
 
