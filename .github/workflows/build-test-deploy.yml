@@ -109,8 +109,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           # Only open Renovate PRs/updates on main. Never from PR context.
-          #renovate: ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
-          renovate: 'true'
+          renovate: ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
           codeql-upload-findings: "always"
 
   infrastructure-smoke-test:
