@@ -1,0 +1,21 @@
+host: https://ministryofjustice.github.io/laa-data-access-api
+show_govuk_logo: false
+service_name: LAA Access Data Store APIs
+service_link: https://github.com/ministryofjustice/laa-data-access-api
+phase: Beta
+
+header_links:
+  Swagger Docs: https://main-laa-data-access-api-uat.cloud-platform.service.justice.gov.uk/swagger-ui/index.html
+  Documentation: https://ministryofjustice.github.io/laa-data-access-api
+  GitHub: https://github.com/ministryofjustice/laa-data-access-api
+
+enable_search: true
+collapsible_nav: true
+max_toc_heading_level: 3
+prevent_indexing: false
+show_contribution_banner: true
+github_repo: ministryofjustice/laa-data-access-api
+github_branch: main
+full_service_name: LAA Access Data Stewardship APIs
+show_expiry: true
+show_review_banner: true

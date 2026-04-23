@@ -135,6 +135,12 @@ public class GetApplicationTest extends BaseServiceTest {
     assertThat(actualApplication.getStatus()).isEqualTo(expectedApplication.getStatus());
     assertThat(actualApplication.getLaaReference())
         .isEqualTo(expectedApplication.getLaaReference());
+    if (expectedApplication.getDecision() != null) {
+      assertThat(actualApplication.getDecisionStatus())
+          .isEqualTo(expectedApplication.getDecision().getOverallDecision());
+    } else {
+      assertThat(actualApplication.getDecisionStatus()).isNull();
+    }
   }
 
   private void assertApplicationProceedingsEqual(

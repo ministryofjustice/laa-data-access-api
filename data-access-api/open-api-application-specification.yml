@@ -607,7 +607,7 @@ components:
           type: boolean
         autoGrant:
           type: boolean
-        overallDecision:
+        decisionStatus:
           $ref: "#/components/schemas/DecisionStatus"
         applicationType:
           $ref: "#/components/schemas/ApplicationType"
