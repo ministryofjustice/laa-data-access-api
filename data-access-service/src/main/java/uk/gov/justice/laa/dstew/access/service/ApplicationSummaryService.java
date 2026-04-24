@@ -23,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
@@ -33,7 +32,6 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 /** Service class responsible for retrieving and managing {@link ApplicationSummary} data. */
 @Service
 public class ApplicationSummaryService {
-  private final ApplicationSummaryRepository applicationSummaryRepository;
   private final ApplicationRepository applicationRepository;
   private final CaseworkerRepository caseworkerRepository;
   private final ApplicationSummaryMapper mapper;
@@ -41,17 +39,14 @@ public class ApplicationSummaryService {
   /**
    * Constructs a new {@link ApplicationSummaryService} with the required repositories and mapper.
    *
-   * @param applicationSummaryRepository the repository used to access application summary data
    * @param applicationRepository the repository used to access application entities
    * @param applicationSummaryMapper the mapper used to convert entities into API-facing models
    * @param caseworkerRepository the repository used to access caseworker data
    */
   public ApplicationSummaryService(
-      final ApplicationSummaryRepository applicationSummaryRepository,
       final ApplicationRepository applicationRepository,
       final ApplicationSummaryMapper applicationSummaryMapper,
       final CaseworkerRepository caseworkerRepository) {
-    this.applicationSummaryRepository = applicationSummaryRepository;
     this.applicationRepository = applicationRepository;
     this.mapper = applicationSummaryMapper;
     this.caseworkerRepository = caseworkerRepository;
@@ -92,7 +87,7 @@ public class ApplicationSummaryService {
     }
 
     Page<ApplicationSummaryDto> resultPage =
-        applicationSummaryRepository.findAllAsDtos(
+        applicationRepository.findAllAsDtos(
             ApplicationSummarySpecification.filterBy(
                 applicationStatus,
                 laaReference,

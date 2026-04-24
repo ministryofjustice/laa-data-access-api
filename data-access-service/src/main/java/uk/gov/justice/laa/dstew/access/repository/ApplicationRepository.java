@@ -12,7 +12,8 @@ import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 
 /** Repository for managing application entities. */
 @Repository
-public interface ApplicationRepository extends JpaRepository<ApplicationEntity, UUID> {
+public interface ApplicationRepository
+    extends JpaRepository<ApplicationEntity, UUID>, ApplicationSummaryRepositoryCustom {
   ApplicationEntity findByApplyApplicationId(UUID applyApplicationId);
 
   boolean existsByApplyApplicationId(UUID applyApplicationId);

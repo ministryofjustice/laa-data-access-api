@@ -29,11 +29,11 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
 /** Implementation of custom application summary repository using CriteriaBuilder. */
-public class ApplicationSummaryRepositoryImpl implements ApplicationSummaryRepositoryCustom {
+public class ApplicationRepositoryImpl implements ApplicationSummaryRepositoryCustom {
 
   private final EntityManager entityManager;
 
-  public ApplicationSummaryRepositoryImpl(EntityManager entityManager) {
+  public ApplicationRepositoryImpl(EntityManager entityManager) {
     this.entityManager = entityManager;
   }
 

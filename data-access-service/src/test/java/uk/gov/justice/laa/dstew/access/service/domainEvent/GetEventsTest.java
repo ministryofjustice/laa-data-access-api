@@ -76,7 +76,7 @@ public class GetEventsTest extends BaseServiceTest {
     assertThatExceptionOfType(AuthorizationDeniedException.class)
         .isThrownBy(() -> serviceUnderTest.getEvents(null, null))
         .withMessageContaining("Access Denied");
-    verify(applicationSummaryRepository, never()).findAll();
+    verify(applicationRepository, never()).findAll();
   }
 
   private void assertDomainEventsEqual(
