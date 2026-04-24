@@ -116,7 +116,7 @@ public class ApplicationSummaryMapperTest extends BaseMapperTest {
 
   @Test
   void givenNullApplicationSummary_whenToApplicationSummary_thenReturnNull() {
-    assertThat(applicationMapper.toApplicationSummary(null)).isNull();
+    assertThat(applicationMapper.toApplicationSummary((ApplicationSummaryEntity) null)).isNull();
   }
 
   @Test
