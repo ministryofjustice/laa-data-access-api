@@ -1,0 +1,71 @@
+plugins {
+    id 'java'
+    id 'io.freefair.lombok' version '9.2.0'
+    id 'org.springframework.boot' version '4.0.4'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.boot:spring-boot-dependencies:4.0.4"
+    }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        force 'com.fasterxml.jackson.core:jackson-core:2.21.1'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.21.1'
+    }
+}
+
+dependencies {
+    implementation project(':data-access-service')
+    implementation project(path: ':data-access-service', configuration: 'testUtilitiesRuntimeElements')
+
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'net.datafaker:datafaker:2.5.2'
+
+    runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql'
+}
+
+springBoot {
+    mainClass = 'uk.gov.justice.laa.dstew.access.massgenerator.MassGeneratorApp'
+}
+
+bootJar {
+    enabled = true
+    mainClass = 'uk.gov.justice.laa.dstew.access.massgenerator.MassGeneratorApp'
+}
+
+bootRun {
+    mainClass = 'uk.gov.justice.laa.dstew.access.massgenerator.MassGeneratorApp'
+}
+
+// Separate executable jar for the API performance test runner (no DB required)
+tasks.register('perfTestJar', org.springframework.boot.gradle.tasks.bundling.BootJar) {
+    mainClass = 'uk.gov.justice.laa.dstew.access.massgenerator.PerfTestApp'
+    archiveClassifier = 'perf'
+    classpath = sourceSets.main.runtimeClasspath
+    targetJavaVersion = JavaVersion.toVersion(25)
+}
+
+assemble.dependsOn perfTestJar
+
+jar {
+    enabled = false
+}
+
+
+

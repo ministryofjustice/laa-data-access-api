@@ -1,6 +1,8 @@
 services:
   postgres:
     image: postgres:17
+    mem_limit: 16834m        # limit RAM to 512 MB
+    cpus: 4
     container_name: laa-postgres
     restart: unless-stopped
     ports:

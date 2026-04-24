@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.domain;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
 
@@ -19,7 +18,7 @@ public record ApplicationDomain(
     MatterType matterType,
     Instant submittedAt,
     Instant createdAt,
-    Map<String, Object> applicationContent,
+    String applicationContent,
     List<Individual> individuals,
     int schemaVersion,
     Long version,

@@ -22,7 +22,6 @@ import uk.gov.justice.laa.dstew.access.usecase.shared.validation.UseCaseValidati
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Use case for creating an application. Wired via CreateApplicationConfig (no @Component). */
-@Transactional
 public class CreateApplicationUseCase {
 
   private final ApplicationGateway applicationGateway;
@@ -55,6 +54,7 @@ public class CreateApplicationUseCase {
    * @param command the creation command
    * @return the UUID of the created application
    */
+  @Transactional
   @EnforceRole(anyOf = RequiredRole.API_CASEWORKER)
   public UUID execute(CreateApplicationCommand command) {
     var details = contentParser.parseFromMap(command.applicationContent());
@@ -88,6 +88,13 @@ public class CreateApplicationUseCase {
     // ApplicationEntityV2
     List<ProceedingDomain> proceedings = buildProceedingDomains(command.applicationContent());
 
+    String applicationContentJson;
+    try {
+      applicationContentJson = objectMapper.writeValueAsString(command.applicationContent());
+    } catch (tools.jackson.core.JacksonException e) {
+      throw new IllegalStateException("Failed to serialise application content", e);
+    }
+
     ApplicationDomain domain =
         ApplicationDomain.builder()
             .status(command.status())
@@ -98,7 +105,7 @@ public class CreateApplicationUseCase {
             .categoryOfLaw(details.categoryOfLaw())
             .matterType(details.matterType())
             .submittedAt(details.submittedAt())
-            .applicationContent(command.applicationContent())
+            .applicationContent(applicationContentJson)
             .individuals(command.individuals())
             .schemaVersion(APPLICATION_SCHEMA_VERSION)
             .proceedings(proceedings)
@@ -150,9 +157,22 @@ public class CreateApplicationUseCase {
         .map(
             p -> {
               boolean isLead = Boolean.TRUE.equals(p.get("leadProceeding"));
+              Object idObj = p.get("id");
+              UUID applyProceedingId =
+                  idObj != null ? UUID.fromString(idObj.toString()) : null;
+              Object descObj = p.get("description");
+              String description = descObj != null ? descObj.toString() : "";
+              String proceedingContentJson;
+              try {
+                proceedingContentJson = objectMapper.writeValueAsString(p);
+              } catch (tools.jackson.core.JacksonException e) {
+                throw new IllegalStateException("Failed to serialise proceeding content", e);
+              }
               return ProceedingDomain.builder()
                   .isLead(isLead)
-                  .proceedingContent(p)
+                  .applyProceedingId(applyProceedingId)
+                  .description(description)
+                  .proceedingContent(proceedingContentJson)
                   .meritsDecision(null)
                   .build();
             })

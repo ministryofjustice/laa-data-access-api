@@ -57,6 +57,25 @@ sourceSets {
 configurations {
     testUtilitiesImplementation.extendsFrom testImplementation
     testUtilitiesRuntimeOnly.extendsFrom testRuntimeOnly
+
+    // Expose testUtilities classes as a consumable variant so other modules
+    // (e.g. data-access-mass-generator) can depend on them via:
+    //   project(path: ':data-access-service', configuration: 'testUtilitiesRuntimeElements')
+    testUtilitiesRuntimeElements {
+        canBeConsumed = true
+        canBeResolved = false
+        extendsFrom testUtilitiesImplementation, testUtilitiesRuntimeOnly
+    }
+}
+
+// Jar containing compiled testUtilities classes (must be declared before the artifact wiring below)
+def testUtilitiesJarTask = tasks.register('testUtilitiesJar', Jar) {
+    archiveClassifier = 'testUtilities'
+    from sourceSets.testUtilities.output
+}
+
+artifacts {
+    testUtilitiesRuntimeElements testUtilitiesJarTask
 }
 
 dockerCompose {

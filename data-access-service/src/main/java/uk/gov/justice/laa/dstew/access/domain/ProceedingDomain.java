@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.domain;
 
-import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
 
@@ -11,5 +10,5 @@ public record ProceedingDomain(
     UUID applyProceedingId,
     String description,
     boolean isLead,
-    Map<String, Object> proceedingContent,
+    String proceedingContent,
     MeritsDecisionDomain meritsDecision) {}

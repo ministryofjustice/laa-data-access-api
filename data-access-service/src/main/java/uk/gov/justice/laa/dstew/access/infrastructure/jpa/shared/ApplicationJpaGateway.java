@@ -36,7 +36,7 @@ public class ApplicationJpaGateway implements ApplicationGateway {
       // INSERT — build fresh entity; JPA cascades proceedings + decision
       return mapper.toDomain(applicationRepository.save(mapper.toNewEntity(domain)));
     }
-    // UPDATE — load managed entity, apply in-place, save
+    // UPDATE — load managed entity from L1 cache (same transaction as loadById), apply in-place
     ApplicationEntityV2 entity =
         applicationRepository
             .findById(domain.id())

@@ -12,7 +12,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,6 +19,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
@@ -39,6 +41,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @AllArgsConstructor
 @Builder(toBuilder = true)
 @Entity
+@DynamicUpdate
 @Table(name = "proceedings")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
@@ -60,10 +63,11 @@ public class ProceedingEntityV2 implements AuditableEntity {
 
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "proceeding_content", columnDefinition = "jsonb", nullable = false)
-  private Map<String, Object> proceedingContent;
+  private String proceedingContent;
 
   @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
   @JoinColumn(name = "merits_decision_id", referencedColumnName = "id")
+  @Fetch(FetchMode.JOIN)
   private MeritsDecisionEntityV2 meritsDecision;
 
   @CreationTimestamp

@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.infrastructure.jpa.shared;
 
-import java.util.Map;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntityV2;
@@ -33,13 +32,10 @@ public class ProceedingGatewayMapper {
     ProceedingEntityV2 entity = new ProceedingEntityV2();
     entity.setLead(domain.isLead());
     entity.setProceedingContent(domain.proceedingContent());
-    Map<String, Object> content = domain.proceedingContent();
-    Object idObj = content != null ? content.get("id") : null;
-    if (idObj != null) {
-      entity.setApplyProceedingId(UUID.fromString(idObj.toString()));
-    }
-    Object desc = content != null ? content.get("description") : null;
-    entity.setDescription(desc != null ? desc.toString() : "");
+    // applyProceedingId and description are pre-extracted from the content map in
+    // CreateApplicationUseCase so we never need to parse the JSON string here.
+    entity.setApplyProceedingId(domain.applyProceedingId());
+    entity.setDescription(domain.description() != null ? domain.description() : "");
     entity.setCreatedBy("");
     entity.setUpdatedBy("");
     // meritsDecision is null on create; set via applyToEntity on the make-decision path

@@ -23,10 +23,13 @@ public class ApplicationGatewayMapper {
     if (entity == null) {
       return null;
     }
+    // Only access individuals if the collection is already initialised (i.e. eagerly joined by
+    // the caller). Triggering a lazy-load here causes a redundant SELECT on every aggregate load
+    // even when individuals are not needed (e.g. makeDecision).
     List<Individual> individuals =
-        entity.getIndividuals() == null
-            ? List.of()
-            : entity.getIndividuals().stream().map(this::toIndividual).toList();
+        org.hibernate.Hibernate.isInitialized(entity.getIndividuals())
+            ? entity.getIndividuals().stream().map(this::toIndividual).toList()
+            : List.of();
     List<ProceedingDomain> proceedings =
         entity.getProceedings() == null
             ? List.of()

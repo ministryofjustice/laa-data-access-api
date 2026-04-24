@@ -23,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 /**
  * Use case for making a decision on an application. Wired via MakeDecisionConfig (no @Component).
  */
-@Transactional
 public class MakeDecisionUseCase {
 
   private final ApplicationGateway applicationGateway;
@@ -51,6 +50,7 @@ public class MakeDecisionUseCase {
    *
    * @param command the make decision command
    */
+  @Transactional
   @EnforceRole(anyOf = RequiredRole.API_CASEWORKER)
   public void execute(MakeDecisionCommand command) {
     // 1. Load full aggregate

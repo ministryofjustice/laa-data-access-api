@@ -38,7 +38,7 @@ public class ApplicationDomainGenerator
         .matterType(MatterType.SPECIAL_CHILDREN_ACT)
         .submittedAt(Instant.parse("2024-01-01T12:00:00Z"))
         .createdAt(Instant.now())
-        .applicationContent(Map.of())
+        .applicationContent("{}")
         .individuals(List.of())
         .schemaVersion(1)
         .proceedings(List.of(new ProceedingDomainGenerator().createDefault()))

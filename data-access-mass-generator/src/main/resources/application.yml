@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: LAA Data Access Mass Generator
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/laa_data_access_api?reWriteBatchedInserts=true
+    username: laa_user
+    password: laa_password
+
+  jpa:
+    hibernate.ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 500
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+
+  sql:
+    init:
+      mode: never
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+
+logging:
+  level:
+    root: WARN
+    uk.gov.justice.laa.dstew.access.massgenerator: INFO
+

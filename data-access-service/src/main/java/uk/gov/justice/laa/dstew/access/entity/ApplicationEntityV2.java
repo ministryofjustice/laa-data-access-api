@@ -22,7 +22,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -31,6 +30,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -55,6 +55,7 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 @NoArgsConstructor
 @Builder(toBuilder = true)
 @Entity
+@DynamicUpdate
 @Table(name = "applications")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
@@ -79,7 +80,16 @@ public class ApplicationEntityV2 implements AuditableEntity {
 
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(columnDefinition = "json")
-  private Map<String, Object> applicationContent;
+  private String applicationContent;
+
+  // Explicit getter/setter kept to satisfy any callers that reference the concrete type
+  public String getApplicationContent() {
+    return applicationContent;
+  }
+
+  public void setApplicationContent(String applicationContent) {
+    this.applicationContent = applicationContent;
+  }
 
   @ManyToMany(cascade = CascadeType.PERSIST)
   @JoinTable(
@@ -145,13 +155,6 @@ public class ApplicationEntityV2 implements AuditableEntity {
     return linkedApplications != null && !linkedApplications.isEmpty();
   }
 
-  public Map<String, Object> getApplicationContent() {
-    return applicationContent;
-  }
-
-  public void setApplicationContent(Map<String, Object> applicationContent) {
-    this.applicationContent = applicationContent;
-  }
 
   /** adds an application to the set of linked applications. */
   public void addLinkedApplication(ApplicationEntityV2 toAdd) {
