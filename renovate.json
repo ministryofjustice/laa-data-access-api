@@ -9,34 +9,5 @@
   "prCreation": "immediate",
   "labels": ["dependencies"],
   "semanticCommits": "enabled",
-  "commitMessagePrefix": "chore(deps):",
-  "prTitle": "chore(deps): {{{groupName}}}",
-  "packageRules": [
-    {
-      "description": "Group Gradle Dependencies (excluding internal packages)",
-      "matchManagers": ["gradle"],
-      "excludePackagePatterns": ["^uk\\.gov\\.justice\\.laa\\.dstew\\.access"],
-      "groupName": "gradle-updates",
-      "additionalBranchPrefix": "gradle-",
-      "labels": ["dependencies", "gradle"]
-    },
-    {
-      "description": "Group internal Gradle packages separately",
-      "matchPackagePatterns": ["^uk\\.gov\\.justice\\.laa\\.dstew\\.access"],
-      "groupName": "internal-packages",
-      "labels": ["dependencies", "gradle"]
-    },
-    {
-      "description": "Group GitHub Actions",
-      "matchManagers": ["github-actions"],
-      "groupName": "github-actions",
-      "labels": ["dependencies", "github_actions"]
-    },
-    {
-      "description": "Group Docker Dependencies",
-      "matchDatasources": ["docker"],
-      "groupName": "docker-updates",
-      "labels": ["dependencies", "docker_compose"]
-    }
-  ]
+  "commitMessagePrefix": "chore(deps):"
 }

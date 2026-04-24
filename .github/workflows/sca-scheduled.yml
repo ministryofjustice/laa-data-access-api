@@ -32,6 +32,7 @@ jobs:
         uses: ./.github/actions/sca
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LOG_LEVEL: debug
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           renovate: "true"
