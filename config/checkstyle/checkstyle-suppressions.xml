@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+        "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+        "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<suppressions>
+    <!-- Suppress checkstyle for mass generator utilities (copied from test utilities) -->
+    <suppress checks=".*" files=".*[/\\]massgenerator[/\\].*\.java"/>
+    <suppress checks=".*" files=".*[/\\]utils[/\\]generator[/\\].*\.java"/>
+    <suppress checks=".*" files=".*[/\\]utils[/\\]helpers[/\\].*\.java"/>
+    <suppress checks=".*" files=".*[/\\]utils[/\\]testDto[/\\].*\.java"/>
+</suppressions>
+

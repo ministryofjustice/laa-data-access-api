@@ -6,6 +6,9 @@ import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfigur
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import uk.gov.justice.laa.dstew.access.massgenerator.MassDataGeneratorService;
+import uk.gov.justice.laa.dstew.access.massgenerator.generator.LinkedIndividualWriter;
+import uk.gov.justice.laa.dstew.access.massgenerator.generator.PersistedDataGenerator;
 import uk.gov.justice.laa.dstew.access.repository.*;
 
 @SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=true"})
@@ -34,6 +37,14 @@ public class AccessAppTests {
   @MockitoBean private IndividualRepository individualRepository;
 
   @MockitoBean private NoteRepository noteRepository;
+
+  @MockitoBean private MassDataGeneratorService massDataGeneratorService;
+
+  @MockitoBean(name = "massGeneratorPersistedDataGenerator")
+  private PersistedDataGenerator persistedDataGenerator;
+
+  @MockitoBean(name = "massGeneratorLinkedIndividualWriter")
+  private LinkedIndividualWriter linkedIndividualWriter;
 
   @Test
   void contextLoads() {}

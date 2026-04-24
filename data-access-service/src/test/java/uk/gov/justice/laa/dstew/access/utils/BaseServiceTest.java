@@ -18,6 +18,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
+import uk.gov.justice.laa.dstew.access.massgenerator.MassDataGeneratorService;
+import uk.gov.justice.laa.dstew.access.massgenerator.generator.LinkedIndividualWriter;
+import uk.gov.justice.laa.dstew.access.massgenerator.generator.PersistedDataGenerator;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.*;
 
@@ -51,6 +54,14 @@ public class BaseServiceTest {
   @MockitoBean protected IndividualRepository individualRepository;
 
   @MockitoBean protected NoteRepository noteRepository;
+
+  @MockitoBean protected MassDataGeneratorService massDataGeneratorService;
+
+  @MockitoBean(name = "massGeneratorPersistedDataGenerator")
+  protected PersistedDataGenerator persistedDataGenerator;
+
+  @MockitoBean(name = "massGeneratorLinkedIndividualWriter")
+  protected LinkedIndividualWriter linkedIndividualWriter;
 
   @MockitoBean protected ServiceNameContext serviceNameContext;
 

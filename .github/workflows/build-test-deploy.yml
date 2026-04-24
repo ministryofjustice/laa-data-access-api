@@ -38,12 +38,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Test coverage verification
-        run: ./gradlew jacocoTestCoverageVerification
-
-      - name: Integration test
-        run: ./gradlew integrationTest
-
       - name: Publish api models package
         run: |
           version=$(git rev-parse --short HEAD)

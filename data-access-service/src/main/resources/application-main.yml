@@ -9,6 +9,14 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate.ddl-auto: none  # Use Flyway for DB schema.
+    show-sql: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 500
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
 
   sql.init.mode: never # Use Flyway for DB schema.
 
