@@ -3,14 +3,10 @@
   "extends": [
     "config:recommended"
   ],
-  "schedule": [
-    "after 5am on wednesday",
-    "before 8am on wednesday"
-  ],
   "timezone": "Europe/London",
   "prConcurrentLimit": 4,
   "prHourlyLimit": 4,
-  "prCreation": "not-pending",
+  "prCreation": "immediate",
   "labels": ["dependencies"],
   "semanticCommits": "enabled",
   "commitMessagePrefix": "chore(deps):",
