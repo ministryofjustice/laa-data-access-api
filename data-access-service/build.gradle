@@ -28,6 +28,9 @@ configurations.all {
         force 'tools.jackson:jackson-bom:3.1.1'
         force 'org.springframework.boot:spring-boot-actuator:3.5.12'
         force 'org.springframework.boot:spring-boot-actuator-autoconfigure:3.5.12'
+        // TEMP: Snyk SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16198880 / -16191774. Revert when laa-spring-boot-gradle-plugin ships Spring Boot >= 4.0.6.
+        force 'org.springframework.boot:spring-boot:4.0.6'
+        force 'org.springframework.boot:spring-boot-security:4.0.6'
         force 'org.springframework:spring-webmvc:6.2.17'
         force 'org.springframework.security:spring-security-config:7.0.5'
         force 'org.springframework.security:spring-security-web:7.0.5'
