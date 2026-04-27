@@ -101,8 +101,15 @@ public abstract class BaseHarnessTest {
     dbCleanliness = harnessProvider.getBean(DatabaseCleanlinessAssertion.class);
     tableRowCountAssertion = harnessProvider.getBean(TableRowCountAssertion.class);
 
-    tokenFactory = new TestTokenFactory(IntegrationTestContextProvider.mockOAuth2Server());
-    currentToken = tokenFactory.caseworkerToken();
+    // In infrastructure mode, obtain tokens from the mock server running in Docker.
+    // In integration mode, use the in-process mock server via TestTokenFactory.
+    if (HarnessMode.isInfrastructure()) {
+      currentToken = SmokeTestTokenProvider.getCaseworkerToken();
+      tokenFactory = null; // Not available in infrastructure mode
+    } else {
+      tokenFactory = new TestTokenFactory(IntegrationTestContextProvider.mockOAuth2Server());
+      currentToken = tokenFactory.caseworkerToken();
+    }
     omitToken = false;
 
     // Belt-and-braces: clear any IDs left over from a previous test's failed
@@ -156,6 +163,13 @@ public abstract class BaseHarnessTest {
 
   /** Use a properly-signed JWT with an unknown role (produces 403 Forbidden). */
   protected void withUnknownToken() {
+    if (HarnessMode.isInfrastructure()) {
+      throw new UnsupportedOperationException(
+          "withUnknownToken() is not supported in infrastructure mode. "
+              + "The mock-oauth2-server running in Docker is configured with a fixed token callback. "
+              + "To test unauthorized roles in infrastructure mode, add a custom token callback "
+              + "to docker-compose.smoke-test.yml and fetch the token via SmokeTestTokenProvider.");
+    }
     withToken(tokenFactory.unknownRoleToken());
   }
 

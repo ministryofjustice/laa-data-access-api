@@ -7,7 +7,6 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -32,12 +31,11 @@ import org.springframework.security.web.SecurityFilterChain;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
-/** Spring Security configuration if security is not disabled. */
+/** Spring Security configuration for JWT-based authentication and authorization. */
 @ExcludeFromGeneratedCodeCoverage
 @Configuration
 @EnableMethodSecurity
 @EnableWebSecurity
-@ConditionalOnProperty(prefix = "feature", name = "disable-security", havingValue = "false")
 public class SecurityConfig {
 
   @Value("${spring.security.oauth2.resourceserver.jwt.audience}")

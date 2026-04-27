@@ -110,16 +110,22 @@ The smoke tests will also run in CI eventually.
 
 ### Run application
 
-Start Postgres and the mock OAuth2 server:
+**Simplest approach - automatic startup:**
 
-`docker compose up -d`
+```bash
+./gradlew bootRun
+```
 
-Then run the application with the `local` profile:
+This automatically starts the mock-oauth2-server (if not already running), applies the `local` profile, and launches the application with JWT validation enabled.
 
-`./gradlew bootRun --args='--spring.profiles.active=local'`
+**Manual approach - control Docker yourself:**
 
-This starts the app with JWT validation pointed at the local mock-oauth2-server (port 9999).
-No dummy environment variables or security flags needed.
+```bash
+docker compose up -d
+./gradlew bootRun --args='--spring.profiles.active=local'
+```
+
+The application uses the mock-oauth2-server on port 9999 for JWT validation. Security is always enabled—no environment variables or feature flags needed.
 
 #### Getting a local dev token
 
@@ -127,15 +133,20 @@ To get a valid Bearer token for Swagger or Postman, run:
 
 ```bash
 curl -s -X POST http://localhost:9999/entra/token \
-  -d grant_type=client_credentials \
-  -d client_id=test \
-  -d client_secret=test | jq -r .access_token
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=test" \
+  -d "client_secret=test" | jq -r .access_token
 ```
 
-Or as a one-liner you can copy straight into the Swagger "Authorize" dialog:
+Or as a one-liner that copies the token to your clipboard:Or as a one-liner that copies the token to your clipboard (macOS):
 
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:9999/entra/token -d grant_type=client_credentials -d client_id=test -d client_secret=test | jq -r .access_token) && echo $TOKEN | pbcopy && echo "Token copied to clipboard"
+TOKEN=$(curl -s -X POST http://localhost:9999/entra/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=test" \
+  -d "client_secret=test" | jq -r .access_token) && echo $TOKEN | pbcopy && echo "✓ Token copied to clipboard"
 ```
 
 The token is pre-configured with the `LAA_CASEWORKER` role and a 1-hour expiry.

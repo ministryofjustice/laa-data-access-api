@@ -107,7 +107,7 @@ tasks.register('infrastructureTest', Test) {
      'LAA_SMOKE_ACCESS_DB_URL',
      'LAA_SMOKE_ACCESS_DB_USERNAME',
      'LAA_SMOKE_ACCESS_DB_PASSWORD',
-     'FEATURE_DISABLE_SECURITY'].each { key ->
+     'LAA_SMOKE_OAUTH_TOKEN_URL'].each { key ->
         def value = System.getenv(key)
         if (value) environment key, value
     }
@@ -143,6 +143,50 @@ jacocoTestReport {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, exclude: ['**/AccessApp.class'])
         }))
+    }
+}
+
+// Automatically start mock-oauth2-server for local development
+tasks.register('startMockOAuthServer') {
+    group = 'application'
+    description = 'Starts mock-oauth2-server via docker compose for local development'
+
+    doLast {
+        def composeFile = project.rootProject.file('docker-compose.yml')
+
+        // Check if mock server is already running
+        def checkRunning = "docker ps --filter name=laa-mock-oauth2 --format '{{.Names}}'".execute()
+        checkRunning.waitFor()
+        def isRunning = checkRunning.text.trim()
+
+        if (isRunning) {
+            println "✓ mock-oauth2-server is already running"
+        } else {
+            println "Starting mock-oauth2-server..."
+            def startCommand = "docker compose -f ${composeFile.absolutePath} up -d mock-oauth2-server"
+            def process = startCommand.execute()
+            process.waitForProcessOutput(System.out, System.err)
+
+            if (process.exitValue() == 0) {
+                println "✓ mock-oauth2-server started successfully"
+                println "  Token URL: http://localhost:9999/entra/token"
+
+                // Wait a moment for server to be ready
+                Thread.sleep(2000)
+            } else {
+                throw new GradleException("Failed to start mock-oauth2-server. Run 'docker compose up -d mock-oauth2-server' manually.")
+            }
+        }
+    }
+}
+
+// Make bootRun depend on starting the mock server
+tasks.named('bootRun') {
+    dependsOn startMockOAuthServer
+
+    // Set the local profile by default
+    if (!project.hasProperty('args')) {
+        args = ['--spring.profiles.active=local']
     }
 }
 

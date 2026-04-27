@@ -5,16 +5,19 @@ import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.repository.*;
 
-@SpringBootTest(properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=true"})
+@SpringBootTest(properties = {"feature.disable-jpa-auditing=true"})
 @ImportAutoConfiguration(
     exclude = {
       DataSourceAutoConfiguration.class,
       HibernateJpaAutoConfiguration.class,
     })
 public class AccessAppTests {
+  @MockitoBean private JwtDecoder jwtDecoder;
+
   @MockitoBean private ApplicationRepository applicationRepository;
 
   @MockitoBean private ApplicationSummaryRepository applicationSummaryRepository;

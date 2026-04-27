@@ -39,8 +39,7 @@ public class IntegrationTestContextProvider implements TestContextProvider {
                 "--spring.datasource.password=" + postgreSQLContainer.getPassword(),
                 "--spring.security.oauth2.resourceserver.jwt.issuer-uri=" + issuerUrl,
                 "--spring.security.oauth2.resourceserver.jwt.jwk-set-uri=" + jwksUrl,
-                "--spring.security.oauth2.resourceserver.jwt.audience=laa-data-access-api",
-                "--feature.disable-security=false");
+                "--spring.security.oauth2.resourceserver.jwt.audience=laa-data-access-api");
 
     int port =
         applicationContext

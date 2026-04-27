@@ -21,8 +21,7 @@ import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.*;
 
-@SpringBootTest(
-    properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=false"})
+@SpringBootTest(properties = {"feature.disable-jpa-auditing=true"})
 @ImportAutoConfiguration(
     exclude = {
       DataSourceAutoConfiguration.class,

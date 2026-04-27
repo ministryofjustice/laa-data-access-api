@@ -21,9 +21,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
  *     `feature.disable-jpa-auditing`. Environment variable: `FEATURE_DISABLEJPAAUDITING`. Needed
  *     because JPA auditing cannot be disabled by excluding autoconfiguration classes in
  *     `@SpringBootTest` tests.
- * @param disableSecurity whether Spring Security is disabled (e.g. for development). Spring
- *     property: `feature.disable-security`. Environment variable: `FEATURE_DISABLE_SECURITY`.
  */
 @ExcludeFromGeneratedCodeCoverage
 @ConfigurationProperties(prefix = "feature")
-public record FeatureProperties(boolean disableJpaAuditing, boolean disableSecurity) {}
+public record FeatureProperties(boolean disableJpaAuditing) {}

@@ -80,12 +80,6 @@ sentry:
     minimum-event-level: error
     minimum-breadcrumb-level: info
 
-### Set feature flags in the environment to avoid committing insecure values.
-### For example, `FEATURE_SECURITY=false` to disable endpoint authorization,
-### or `FEATURE_TRANSFORMATION=false` to disable response transformations.
-
-feature:
-  disable-security: ${FEATURE_DISABLE_SECURITY:false}
 
 server:
   forward-headers-strategy: framework
