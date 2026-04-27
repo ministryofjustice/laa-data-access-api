@@ -8,25 +8,25 @@ security:
 
 paths:
   /api/v0/applications:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications"
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications"
   /api/v0/applications/{id}:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}"
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}"
   /api/v0/caseworkers:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1caseworkers"
+    $ref: "./open-api-caseworkers/resources.yml#/paths/~1api~1v0~1caseworkers"
   /api/v0/applications/assign:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1assign"
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1assign"
   /api/v0/applications/{id}/unassign:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1unassign"
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1unassign"
   /api/v0/applications/{id}/history-search:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1history-search"
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1history-search"
   /api/v0/applications/{id}/decision:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1decision"
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1decision"
   /api/v0/applications/{id}/certificate:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1certificate"
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1certificate"
   /api/v0/individuals:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1individuals"
+    $ref: "./open-api-individuals/resources.yml#/paths/~1api~1v0~1individuals"
   /api/v0/applications/{id}/notes:
-    $ref: "./open-api-application-specification.yml#/paths/~1api~1v0~1applications~1{id}~1notes"
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1notes"
 
 components:
   securitySchemes:
@@ -36,34 +36,34 @@ components:
       bearerFormat: JWT
   schemas:
     ApplicationResponse:
-      $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationResponse"
+      $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationResponse"
     ApplicationCreateRequest:
-      $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationCreateRequest"
+      $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationCreateRequest"
     ApplicationUpdateRequest:
-      $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationUpdateRequest"
+      $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationUpdateRequest"
     ApplicationSummaryResponse:
-      $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationSummaryResponse"
+      $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationSummaryResponse"
     ApplicationSummary:
-      $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationSummary"
+      $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationSummary"
     CaseworkerResponse:
-      $ref: "./open-api-application-specification.yml#/components/schemas/CaseworkerResponse"
+      $ref: "./open-api-caseworkers/components.yml#/components/schemas/CaseworkerResponse"
     CaseworkersResponse:
-      $ref: "./open-api-application-specification.yml#/components/schemas/CaseworkersResponse"
+      $ref: "./open-api-caseworkers/components.yml#/components/schemas/CaseworkersResponse"
     CaseworkerAssignRequest:
-      $ref: "./open-api-application-specification.yml#/components/schemas/CaseworkerAssignRequest"
+      $ref: "./open-api-caseworkers/components.yml#/components/schemas/CaseworkerAssignRequest"
     ApplicationDomainEventResponse:
-      $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationDomainEventResponse"
+      $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationDomainEventResponse"
     PagingResponse:
-      $ref: "./open-api-application-specification.yml#/components/schemas/PagingResponse"
+      $ref: "./open-api-common/components.yml#/components/schemas/PagingResponse"
     MakeDecisionRequest:
-      $ref: "./open-api-application-specification.yml#/components/schemas/MakeDecisionRequest"
+      $ref: "./open-api-applications/components.yml#/components/schemas/MakeDecisionRequest"
     IndividualResponse:
-      $ref: "./open-api-application-specification.yml#/components/schemas/IndividualResponse"
+      $ref: "./open-api-individuals/components.yml#/components/schemas/IndividualResponse"
     IndividualsResponse:
-      $ref: "./open-api-application-specification.yml#/components/schemas/IndividualsResponse"
+      $ref: "./open-api-individuals/components.yml#/components/schemas/IndividualsResponse"
     CreateNoteRequest:
-      $ref: "./open-api-application-specification.yml#/components/schemas/CreateNoteRequest"
+      $ref: "./open-api-applications/components.yml#/components/schemas/CreateNoteRequest"
     ApplicationNoteResponse:
-      $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationNoteResponse"
+      $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationNoteResponse"
     ApplicationNotesResponse:
-      $ref: "./open-api-application-specification.yml#/components/schemas/ApplicationNotesResponse"
+      $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationNotesResponse"

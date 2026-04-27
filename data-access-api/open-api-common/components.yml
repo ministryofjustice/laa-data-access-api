@@ -1,0 +1,62 @@
+components:
+  parameters:
+    XServiceName:
+      in: header
+      name: X-Service-Name
+      required: true
+      schema:
+        $ref: "#/components/schemas/ServiceName"
+
+  schemas:
+    ServiceName:
+      type: string
+      enum:
+        - CIVIL_APPLY
+        - CIVIL_DECIDE
+      description: Service name
+
+    ApplicationStatus:
+      type: string
+      enum:
+        - APPLICATION_IN_PROGRESS
+        - APPLICATION_SUBMITTED
+      description: Application statuses
+
+    DomainEventType:
+      type: string
+      enum:
+        - APPLICATION_CREATED
+        - APPLICATION_UPDATED
+        - ASSIGN_APPLICATION_TO_CASEWORKER
+        - UNASSIGN_APPLICATION_TO_CASEWORKER
+        - APPLICATION_MAKE_DECISION_REFUSED
+        - APPLICATION_MAKE_DECISION_GRANTED
+        - APPLICATION_NOTES
+
+    CategoryOfLaw:
+      type: string
+      enum:
+        - FAMILY
+
+    MatterType:
+      type: string
+      enum:
+        - SPECIAL_CHILDREN_ACT
+
+    EventHistoryRequest:
+      type: object
+      properties:
+        eventDescription:
+          type: string
+
+    PagingResponse:
+      type: object
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        itemsReturned:
+          type: integer
+        totalRecords:
+          type: integer
