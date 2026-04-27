@@ -282,30 +282,39 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$BRANCH_NAME" = "main" ]; then
-            echo "pod_selector=run=port-forward-pod" >> "$GITHUB_OUTPUT"
+            echo "db_pod_selector=run=port-forward-pod" >> "$GITHUB_OUTPUT"
             echo "db_secret=rds-postgresql-instance-output" >> "$GITHUB_OUTPUT"
             echo "db_flavour=rds" >> "$GITHUB_OUTPUT"
           else
-            echo "pod_selector=app.kubernetes.io/instance=${RELEASE_NAME}-postgresql,app.kubernetes.io/name=postgresql" >> "$GITHUB_OUTPUT"
+            echo "db_pod_selector=app.kubernetes.io/instance=${RELEASE_NAME}-postgresql,app.kubernetes.io/name=postgresql" >> "$GITHUB_OUTPUT"
             echo "db_secret=${RELEASE_NAME}-postgresql" >> "$GITHUB_OUTPUT"
             echo "db_flavour=bitnami" >> "$GITHUB_OUTPUT"
           fi
-          echo "api_url=https://${RELEASE_NAME}-${KUBE_NAMESPACE}.cloud-platform.service.justice.gov.uk" >> "$GITHUB_OUTPUT"
+          echo "app_pod_selector=app.kubernetes.io/instance=${RELEASE_NAME},app.kubernetes.io/name=data-access-api" >> "$GITHUB_OUTPUT"
 
       - name: Port forward to Postgres
         uses: ./.github/actions/port-forward
         with:
           kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
-          pod_selector: ${{ steps.target.outputs.pod_selector }}
+          pod_selector: ${{ steps.target.outputs.db_pod_selector }}
           local_port: "5432"
           remote_port: "5432"
+          pid_env_var: DB_PORT_FORWARD_PID
+
+      - name: Port forward to app
+        uses: ./.github/actions/port-forward
+        with:
+          kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
+          pod_selector: ${{ steps.target.outputs.app_pod_selector }}
+          local_port: "8080"
+          remote_port: "8080"
+          pid_env_var: APP_PORT_FORWARD_PID
 
       - name: Configure smoke-test environment
         shell: bash
         env:
           DB_SECRET: ${{ steps.target.outputs.db_secret }}
           DB_FLAVOUR: ${{ steps.target.outputs.db_flavour }}
-          API_URL: ${{ steps.target.outputs.api_url }}
         run: |
           set -euo pipefail
           decode() {
@@ -322,7 +331,7 @@ jobs:
           fi
           echo "::add-mask::$DB_PASS"
           {
-            echo "LAA_SMOKE_ACCESS_API_URL=$API_URL"
+            echo "LAA_SMOKE_ACCESS_API_URL=http://localhost:8080"
             echo "LAA_SMOKE_ACCESS_DB_URL=jdbc:postgresql://localhost:5432/$DB_NAME"
             echo "LAA_SMOKE_ACCESS_DB_USERNAME=$DB_USER"
             echo "LAA_SMOKE_ACCESS_DB_PASSWORD=$DB_PASS"
@@ -339,13 +348,13 @@ jobs:
           path: data-access-service/build/reports/tests/infrastructureTest
           retention-days: 14
 
-      - name: Stop port-forward
+      - name: Stop port-forwards
         if: always()
         shell: bash
         run: |
-          if [ -n "${PORT_FORWARD_PID:-}" ]; then
-            kill "$PORT_FORWARD_PID" || true
-          fi
+          for pid in "${DB_PORT_FORWARD_PID:-}" "${APP_PORT_FORWARD_PID:-}"; do
+            [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+          done
 
   deploy-staging:
     if: github.ref == 'refs/heads/main'
