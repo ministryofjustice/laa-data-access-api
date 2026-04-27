@@ -11,6 +11,11 @@
   "semanticCommits": "enabled",
   "commitMessagePrefix": "chore(deps):",
   "prTitle": "chore(deps): {{{groupName}}}",
+  "postUpgradeTasks": {
+    "commands": ["./gradlew resolveAndLockAll"],
+    "fileFilters": ["**/*.lockfile"],
+    "executionMode": "branch"
+  },
   "packageRules": [
     {
       "description": "Group Gradle Dependencies (excluding internal packages)",
