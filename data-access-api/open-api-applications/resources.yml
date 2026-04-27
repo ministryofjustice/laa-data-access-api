@@ -1,0 +1,359 @@
+paths:
+  /api/v0/applications:
+    get:
+      tags:
+        - application
+      summary: Get applications
+      operationId: getApplications
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - in: query
+          name: status
+          description: The current overall status of the applications' decision.
+          schema:
+            $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
+        - in: query
+          name: laaReference
+          description: The LAA reference number of the application
+          schema:
+            type: string
+        - in: query
+          name: clientFirstName
+          description: The client first name
+          schema:
+            type: string
+        - in: query
+          name: clientLastName
+          description: The client last name
+          schema:
+            type: string
+        - in: query
+          name: clientDateOfBirth
+          description: The linked individuals date of dateOfBirth
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: userId
+          description: The caseworkers id
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: isAutoGranted
+          description: Has the application been marked as auto granted
+          schema:
+            type: boolean
+        - in: query
+          name: matterType
+          description: The matter type of the application
+          schema:
+            $ref: "../open-api-common/components.yml#/components/schemas/MatterType"
+        - in: query
+          name: sortBy
+          description: The field name to sort by if sorting required (defaults to SUBMITTED_DATE)
+          schema:
+            $ref: "./components.yml#/components/schemas/ApplicationSortBy"
+        - in: query
+          name: orderBy
+          description: The order to sort by if sorting required (defaults to ASC)
+          schema:
+            $ref: "./components.yml#/components/schemas/ApplicationOrderBy"
+        - in: query
+          name: page
+          description: Page number of data to be returned (defaults to 1)
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: pageSize
+          description: Number of applications in a page (defaults to 20)
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/ApplicationSummaryResponse"
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
+    post:
+      tags:
+        - application
+      summary: Create an application
+      operationId: createApplication
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+      requestBody:
+        description: Create an application (all fields inside `applicationContent`)
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./components.yml#/components/schemas/ApplicationCreateRequest"
+      responses:
+        '201': { description: Created }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '500': { description: Internal server error }
+
+  /api/v0/applications/{id}:
+    get:
+      tags:
+        - application
+      summary: Get an application by id
+      operationId: getApplicationById
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/ApplicationResponse"
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
+    patch:
+      tags:
+        - application
+      summary: Update an application
+      operationId: updateApplication
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Partial update of application (all fields inside `applicationContent`)
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./components.yml#/components/schemas/ApplicationUpdateRequest"
+      responses:
+        '200': { description: Success }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '409': { description: Conflict }
+        '500': { description: Internal server error }
+
+  /api/v0/applications/{id}/history-search:
+    get:
+      tags:
+        - application
+      summary: Get a list of events associated with an application
+      operationId: getApplicationHistory
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - in: path
+          name: id
+          description: "the ID of the application to get history format"
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: eventType
+          required: false
+          schema:
+            type: array
+            items:
+              $ref: "../open-api-common/components.yml#/components/schemas/DomainEventType"
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/ApplicationHistoryResponse"
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
+
+  /api/v0/applications/assign:
+    post:
+      tags:
+        - application
+      operationId: assignCaseworker
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+      summary: Assign a caseworker to one or more applications.
+      requestBody:
+        description: Assign the supplied caseworker to one or more applications.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../open-api-caseworkers/components.yml#/components/schemas/CaseworkerAssignRequest'
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
+
+  /api/v0/applications/{id}/unassign:
+    post:
+      tags:
+        - application
+      operationId: unassignCaseworker
+      summary: Unassign a caseworker from an application
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        description: Optional event history describing the unassignment action
+        content:
+          application/json:
+            schema:
+              $ref: '../open-api-caseworkers/components.yml#/components/schemas/CaseworkerUnassignRequest'
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
+
+  /api/v0/applications/{id}/notes:
+    get:
+      tags:
+        - application
+      operationId: getApplicationNotes
+      summary: Get notes for an application in ascending date order
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: './components.yml#/components/schemas/ApplicationNotesResponse'
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
+    post:
+      tags:
+        - application
+      operationId: createApplicationNotes
+      summary: Create notes for an application
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        description: notes to add to application
+        content:
+          application/json:
+            schema:
+              $ref: './components.yml#/components/schemas/CreateNoteRequest'
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
+
+  /api/v0/applications/{id}/decision:
+    patch:
+      tags:
+        - application
+      operationId: makeDecision
+      summary: Make a decision request for an application
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        description: event history describing the create decision action
+        content:
+          application/json:
+            schema:
+              $ref: './components.yml#/components/schemas/MakeDecisionRequest'
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
+
+  /api/v0/applications/{id}/certificate:
+    get:
+      tags:
+        - application
+      operationId: getCertificate
+      summary: Get the certificate information for an application (if it exists)
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 'Success'
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Certificate information
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Not found }
+        '500': { description: Internal server error }
