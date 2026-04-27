@@ -89,6 +89,16 @@ allprojects {
         conf.resolutionStrategy {
             force 'org.springframework.security:spring-security-config:7.0.5'
             force 'org.springframework.security:spring-security-web:7.0.5'
+
+            // Force all Spring Boot modules to 4.0.6 to fix CVEs:
+            // SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16198880 (Insecure Temporary File)
+            // SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16191774 (Missing Authorization)
+            eachDependency { details ->
+                if (details.requested.group == 'org.springframework.boot' && details.requested.version == '4.0.4') {
+                    details.useVersion '4.0.6'
+                    details.because 'Security fixes for CVE vulnerabilities'
+                }
+            }
         }
     }
 }
