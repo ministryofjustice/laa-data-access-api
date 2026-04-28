@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -119,21 +118,14 @@ public class ApplicationSummaryService {
   private Map<UUID, List<LinkedApplicationSummaryDto>> retrieveLinkedApplications(
       List<ApplicationSummaryDto> content) {
     List<UUID> pageIds = content.stream().map(ApplicationSummaryDto::getId).toList();
-    List<UUID> allLeadIds =
-        Stream.concat(
-                content.stream()
-                    .filter(ApplicationSummaryDto::isLead)
-                    .map(ApplicationSummaryDto::getId),
-                applicationRepository.findLeadIdsByAssociatedIds(pageIds).stream())
-            .distinct()
-            .toList();
 
-    if (allLeadIds.isEmpty()) {
+    if (pageIds.isEmpty()) {
       return Map.of();
     }
 
+    // Single query replaces findLeadIdsByAssociatedIds + findAllLinkedApplicationsByLeadIds
     Map<UUID, List<LinkedApplicationSummaryDto>> linkedAppsByLeadId =
-        applicationRepository.findAllLinkedApplicationsByLeadIds(allLeadIds).stream()
+        applicationRepository.findAllLinkedApplicationsForPageIds(pageIds).stream()
             .collect(Collectors.groupingBy(LinkedApplicationSummaryDto::getLeadApplicationId));
 
     return content.stream()

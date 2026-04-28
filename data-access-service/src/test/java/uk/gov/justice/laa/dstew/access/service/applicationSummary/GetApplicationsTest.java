@@ -326,8 +326,7 @@ public class GetApplicationsTest extends BaseServiceTest {
 
     when(applicationRepository.findAllAsDtos(any(Specification.class), any(Pageable.class)))
         .thenReturn(new PageImpl<>(expectedApplications));
-    when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
-    when(applicationRepository.findAllLinkedApplicationsByLeadIds(any())).thenReturn(linkedDtos);
+    when(applicationRepository.findAllLinkedApplicationsForPageIds(any())).thenReturn(linkedDtos);
 
     // when
     List<ApplicationSummary> actualApplications =
@@ -386,8 +385,7 @@ public class GetApplicationsTest extends BaseServiceTest {
 
     when(applicationRepository.findAllAsDtos(any(Specification.class), any(Pageable.class)))
         .thenReturn(new PageImpl<>(List.of(firstAssociateApplication, secondAssociateApplication)));
-    when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of(leadId));
-    when(applicationRepository.findAllLinkedApplicationsByLeadIds(any()))
+    when(applicationRepository.findAllLinkedApplicationsForPageIds(any()))
         .thenReturn(linkedApplicationSummaryDtos);
 
     // when
@@ -442,9 +440,7 @@ public class GetApplicationsTest extends BaseServiceTest {
 
     when(applicationRepository.findAllAsDtos(any(Specification.class), any(Pageable.class)))
         .thenReturn(new PageImpl<>(List.of(firstAssociateApplication, secondAssociateApplication)));
-    when(applicationRepository.findLeadIdsByAssociatedIds(any()))
-        .thenReturn(List.of(firstLeadId, secondLeadId));
-    when(applicationRepository.findAllLinkedApplicationsByLeadIds(any())).thenReturn(linkedDtos);
+    when(applicationRepository.findAllLinkedApplicationsForPageIds(any())).thenReturn(linkedDtos);
 
     // when
     List<ApplicationSummary> actualApplications =
@@ -479,7 +475,7 @@ public class GetApplicationsTest extends BaseServiceTest {
 
     when(applicationRepository.findAllAsDtos(any(Specification.class), any(Pageable.class)))
         .thenReturn(new PageImpl<>(List.of(standaloneApplication)));
-    when(applicationRepository.findLeadIdsByAssociatedIds(any())).thenReturn(List.of());
+    when(applicationRepository.findAllLinkedApplicationsForPageIds(any())).thenReturn(List.of());
 
     // when
     List<ApplicationSummary> actualApplications =
@@ -491,7 +487,7 @@ public class GetApplicationsTest extends BaseServiceTest {
     // then
     assertThat(actualApplications).hasSize(1);
     assertThat(actualApplications).allMatch(r -> r.getLinkedApplications().isEmpty());
-    verify(applicationRepository, never()).findAllLinkedApplicationsByLeadIds(any());
+    verify(applicationRepository, times(1)).findAllLinkedApplicationsForPageIds(any());
   }
 
   private void assertApplicationSummaryListsEqual(
