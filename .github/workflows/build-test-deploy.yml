@@ -220,13 +220,13 @@ jobs:
 
         # ---------- AWS auth (OIDC) ----------
       - name: Configure AWS creds
-        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
         with:
           role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
           aws-region: ${{  vars.ECR_REGION }}
 
       - name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
+        uses: aws-actions/amazon-ecr-login@19d944daaa35f0fa1d3f7f8af1d3f2e5de25c5b7 # v2
         id: login-ecr
       - name: Build and push a Docker image for data-access-service
         run: |
