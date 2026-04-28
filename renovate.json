@@ -11,6 +11,7 @@
   "semanticCommits": "enabled",
   "commitMessagePrefix": "chore(deps):",
   "prTitle": "chore(deps): {{{groupName}}}",
+  "minimumReleaseAge": "7 days",
   "postUpgradeTasks": {
     "commands": ["./gradlew resolveAndLockAll"],
     "fileFilters": ["**/*.lockfile"],
