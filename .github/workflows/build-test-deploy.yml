@@ -384,6 +384,13 @@ jobs:
             [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
           done
 
+      - name: Delete in-cluster port-forward resources
+        if: always()
+        shell: bash
+        run: |
+          kubectl -n "$KUBE_NAMESPACE" delete deployment port-forward-pod --ignore-not-found
+          kubectl -n "$KUBE_NAMESPACE" delete service laa-data-access-api-uat-postgresql --ignore-not-found
+
   deploy-staging:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
