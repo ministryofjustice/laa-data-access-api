@@ -23,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
-import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -34,7 +33,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEnt
 
 public class GetApplicationTest extends BaseServiceTest {
 
-  @Autowired private ApplicationService serviceUnderTest;
+  @Autowired private GetApplicationsService serviceUnderTest;
 
   @Test
   public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {

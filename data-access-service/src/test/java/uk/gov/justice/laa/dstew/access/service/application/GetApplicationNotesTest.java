@@ -18,7 +18,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.NoteEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationNotesResponse;
-import uk.gov.justice.laa.dstew.access.service.ApplicationService;
+import uk.gov.justice.laa.dstew.access.service.notes.GetNotesService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -28,7 +28,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.notes.NoteEntityGenerator
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class GetApplicationNotesTest extends BaseServiceTest {
 
-  @Autowired private ApplicationService serviceUnderTest;
+  @Autowired private GetNotesService serviceUnderTest;
 
   @Test
   void givenApplicationExistsWithNotes_whenGetApplicationNotes_thenReturnNotesInAscendingOrder() {

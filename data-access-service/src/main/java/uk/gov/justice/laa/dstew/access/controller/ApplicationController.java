@@ -31,10 +31,16 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.service.CertificateService;
 import uk.gov.justice.laa.dstew.access.service.DomainEventService;
+import uk.gov.justice.laa.dstew.access.service.application.CreateApplicationService;
+import uk.gov.justice.laa.dstew.access.service.application.GetApplicationsService;
+import uk.gov.justice.laa.dstew.access.service.application.UpdateApplicationService;
+import uk.gov.justice.laa.dstew.access.service.caseworker.AssignCaseworkerService;
+import uk.gov.justice.laa.dstew.access.service.decision.MakeDecisionService;
+import uk.gov.justice.laa.dstew.access.service.notes.CreateNoteService;
+import uk.gov.justice.laa.dstew.access.service.notes.GetNotesService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
@@ -45,17 +51,23 @@ import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 @ExcludeFromGeneratedCodeCoverage
 public class ApplicationController implements ApplicationApi {
 
-  private final ApplicationService service;
+  private final CreateApplicationService createApplicationService;
+  private final UpdateApplicationService updateApplication;
+  private final GetApplicationsService getApplicationsService;
   private final ApplicationSummaryService summaryService;
   private final DomainEventService domainService;
   private final CertificateService certificateService;
+  private final AssignCaseworkerService assignCaseworkerService;
+  private final MakeDecisionService makeDecisionService;
+  private final GetNotesService getNotesService;
+  private final CreateNoteService createNoteService;
 
   @LogMethodArguments
   @LogMethodResponse
   @Override
   public ResponseEntity<Void> createApplication(
       @NotNull ServiceName serviceName, @Valid ApplicationCreateRequest applicationCreateReq) {
-    UUID id = service.createApplication(applicationCreateReq);
+    UUID id = createApplicationService.createApplication(applicationCreateReq);
 
     URI uri =
         ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
@@ -69,7 +81,7 @@ public class ApplicationController implements ApplicationApi {
       @NotNull ServiceName serviceName,
       UUID id,
       @Valid ApplicationUpdateRequest applicationUpdateReq) {
-    service.updateApplication(id, applicationUpdateReq);
+    updateApplication.updateApplication(id, applicationUpdateReq);
     return ResponseEntity.noContent().build();
   }
 
@@ -124,7 +136,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<ApplicationResponse> getApplicationById(ServiceName serviceName, UUID id) {
-    return ResponseEntity.ok(service.getApplication(id));
+    return ResponseEntity.ok(getApplicationsService.getApplication(id));
   }
 
   @Override
@@ -132,7 +144,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   public ResponseEntity<Void> assignCaseworker(
       @NotNull ServiceName serviceName, @Valid CaseworkerAssignRequest request) {
-    service.assignCaseworker(
+    assignCaseworkerService.assignCaseworker(
         request.getCaseworkerId(), request.getApplicationIds(), request.getEventHistory());
     return ResponseEntity.ok().build();
   }
@@ -143,7 +155,7 @@ public class ApplicationController implements ApplicationApi {
   public ResponseEntity<Void> unassignCaseworker(
       @NotNull ServiceName serviceName, UUID id, @Valid CaseworkerUnassignRequest request) {
 
-    service.unassignCaseworker(id, request.getEventHistory());
+    assignCaseworkerService.unassignCaseworker(id, request.getEventHistory());
 
     return ResponseEntity.ok().build();
   }
@@ -165,7 +177,7 @@ public class ApplicationController implements ApplicationApi {
   public ResponseEntity<Void> makeDecision(
       @NotNull ServiceName serviceName, UUID applicationId, @Valid MakeDecisionRequest request) {
 
-    service.makeDecision(applicationId, request);
+    makeDecisionService.makeDecision(applicationId, request);
 
     return ResponseEntity.noContent().build();
   }
@@ -176,7 +188,7 @@ public class ApplicationController implements ApplicationApi {
   public ResponseEntity<Void> createApplicationNotes(
       @NotNull ServiceName serviceName, UUID applicationId, @Valid CreateNoteRequest request) {
 
-    service.createApplicationNote(applicationId, request);
+    createNoteService.createApplicationNote(applicationId, request);
 
     return ResponseEntity.noContent().build();
   }
@@ -186,7 +198,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   public ResponseEntity<ApplicationNotesResponse> getApplicationNotes(
       @NotNull ServiceName serviceName, UUID applicationId) {
-    return ResponseEntity.ok(service.getApplicationNotes(applicationId));
+    return ResponseEntity.ok(getNotesService.getApplicationNotes(applicationId));
   }
 
   @Override

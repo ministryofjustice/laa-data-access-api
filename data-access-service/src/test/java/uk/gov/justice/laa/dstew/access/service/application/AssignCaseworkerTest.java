@@ -33,7 +33,7 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
-import uk.gov.justice.laa.dstew.access.service.ApplicationService;
+import uk.gov.justice.laa.dstew.access.service.caseworker.AssignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -44,7 +44,7 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class AssignCaseworkerTest extends BaseServiceTest {
 
-  @Autowired private ApplicationService serviceUnderTest;
+  @Autowired private AssignCaseworkerService serviceUnderTest;
 
   @ParameterizedTest
   @MethodSource("validAssignEventDescriptionCases")
