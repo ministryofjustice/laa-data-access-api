@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity_;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
@@ -29,6 +30,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
 /** Implementation of custom application summary repository using CriteriaBuilder. */
+@ExcludeFromGeneratedCodeCoverage
 public class ApplicationRepositoryImpl implements ApplicationSummaryRepositoryCustom {
 
   private final EntityManager entityManager;
