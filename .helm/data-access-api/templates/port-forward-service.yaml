@@ -1,9 +1,9 @@
 {{- if .Values.portForward.enabled }}
-{{- if not (lookup "v1" "Service" .Release.Namespace "laa-data-access-api-uat-postgresql") }}
+{{- if not (lookup "v1" "Service" .Release.Namespace "laa-data-access-api-uat-postgresql-portforward") }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: laa-data-access-api-uat-postgresql
+  name: laa-data-access-api-uat-postgresql-portforward
   namespace: {{ .Release.Namespace }}
   annotations:
     "helm.sh/resource-policy": keep

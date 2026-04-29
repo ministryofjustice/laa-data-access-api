@@ -389,7 +389,7 @@ jobs:
         shell: bash
         run: |
           kubectl -n "$KUBE_NAMESPACE" delete deployment port-forward-pod --ignore-not-found
-          kubectl -n "$KUBE_NAMESPACE" delete service laa-data-access-api-uat-postgresql --ignore-not-found
+          kubectl -n "$KUBE_NAMESPACE" delete service laa-data-access-api-uat-postgresql-portforward --ignore-not-found
 
   deploy-staging:
     if: github.ref == 'refs/heads/main'
