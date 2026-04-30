@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationStatus;

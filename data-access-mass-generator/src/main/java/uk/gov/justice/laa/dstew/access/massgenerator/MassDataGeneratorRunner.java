@@ -40,7 +40,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGe
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
-@Profile("db")
+@Profile("db & !web")
 @Component
 public class MassDataGeneratorRunner implements CommandLineRunner {
 

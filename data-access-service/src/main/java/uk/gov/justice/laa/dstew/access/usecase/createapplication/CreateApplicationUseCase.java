@@ -158,8 +158,7 @@ public class CreateApplicationUseCase {
             p -> {
               boolean isLead = Boolean.TRUE.equals(p.get("leadProceeding"));
               Object idObj = p.get("id");
-              UUID applyProceedingId =
-                  idObj != null ? UUID.fromString(idObj.toString()) : null;
+              UUID applyProceedingId = idObj != null ? UUID.fromString(idObj.toString()) : null;
               Object descObj = p.get("description");
               String description = descObj != null ? descObj.toString() : "";
               String proceedingContentJson;

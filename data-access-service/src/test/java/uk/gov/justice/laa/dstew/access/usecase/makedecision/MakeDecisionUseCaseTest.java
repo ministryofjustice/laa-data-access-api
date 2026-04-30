@@ -111,7 +111,8 @@ class MakeDecisionUseCaseTest {
     assertThat(updatedProceeding.meritsDecision()).isNotNull();
     assertThat(updatedProceeding.meritsDecision().decision()).isEqualTo(procCmd.meritsDecision());
     assertThat(updatedProceeding.meritsDecision().reason()).isEqualTo(procCmd.reason());
-    assertThat(updatedProceeding.meritsDecision().justification()).isEqualTo(procCmd.justification());
+    assertThat(updatedProceeding.meritsDecision().justification())
+        .isEqualTo(procCmd.justification());
 
     verify(domainEventGateway)
         .saveDecisionEvent(
@@ -172,9 +173,11 @@ class MakeDecisionUseCaseTest {
             .findFirst()
             .orElseThrow();
     assertThat(updatedProceeding.meritsDecision()).isNotNull();
-    assertThat(updatedProceeding.meritsDecision().decision()).isEqualTo(MeritsDecisionOutcome.GRANTED);
+    assertThat(updatedProceeding.meritsDecision().decision())
+        .isEqualTo(MeritsDecisionOutcome.GRANTED);
     assertThat(updatedProceeding.meritsDecision().reason()).isEqualTo(procCmd.reason());
-    assertThat(updatedProceeding.meritsDecision().justification()).isEqualTo(procCmd.justification());
+    assertThat(updatedProceeding.meritsDecision().justification())
+        .isEqualTo(procCmd.justification());
 
     verify(certificateGateway).saveOrUpdate(eq(applicationId), eq(cert));
     verify(domainEventGateway)
@@ -383,9 +386,7 @@ class MakeDecisionUseCaseTest {
         proceedingGenerator.createDefault(b -> b.id(refusedProceedingId).meritsDecision(null));
 
     ApplicationDomain appWithTwoProceedings =
-        applicationDomainGenerator
-            .createWithSpecificId(applicationId)
-            .toBuilder()
+        applicationDomainGenerator.createWithSpecificId(applicationId).toBuilder()
             .proceedings(List.of(grantedProceeding, refusedProceeding))
             .decision(null)
             .build();
@@ -459,9 +460,7 @@ class MakeDecisionUseCaseTest {
             b -> b.id(untouchedProceedingId).meritsDecision(existingMerits));
 
     ApplicationDomain appWithTwoProceedings =
-        applicationDomainGenerator
-            .createWithSpecificId(applicationId)
-            .toBuilder()
+        applicationDomainGenerator.createWithSpecificId(applicationId).toBuilder()
             .proceedings(List.of(commandProceeding, untouchedProceeding))
             .decision(null)
             .build();
@@ -521,13 +520,10 @@ class MakeDecisionUseCaseTest {
                         .justification("old justification"));
 
     ProceedingDomain proceedingWithExistingMerits =
-        proceedingGenerator.createDefault(
-            b -> b.id(proceedingId).meritsDecision(existingMerits));
+        proceedingGenerator.createDefault(b -> b.id(proceedingId).meritsDecision(existingMerits));
 
     ApplicationDomain appWithExistingMerits =
-        applicationDomainGenerator
-            .createWithSpecificId(applicationId)
-            .toBuilder()
+        applicationDomainGenerator.createWithSpecificId(applicationId).toBuilder()
             .proceedings(List.of(proceedingWithExistingMerits))
             .decision(decisionGenerator.createDefault())
             .build();
@@ -600,7 +596,8 @@ class MakeDecisionUseCaseTest {
   }
 
   @Test
-  void givenExecuteMethod_whenInspected_thenCarriesEnforceRoleAnnotationForCaseworker() throws NoSuchMethodException {
+  void givenExecuteMethod_whenInspected_thenCarriesEnforceRoleAnnotationForCaseworker()
+      throws NoSuchMethodException {
     Method method = MakeDecisionUseCase.class.getMethod("execute", MakeDecisionCommand.class);
     EnforceRole annotation = method.getAnnotation(EnforceRole.class);
     assert annotation != null;

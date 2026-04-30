@@ -129,9 +129,11 @@ public class ApiPerformanceTestRunner implements CommandLineRunner {
                       // Without this, all threads hammer the same tables simultaneously which
                       // is not representative of real usage.
                       if (thinkTimeMaxMs > 0) {
-                        long delay = thinkTimeMinMs == thinkTimeMaxMs
-                            ? thinkTimeMinMs
-                            : thinkTimeMinMs + (long) (Math.random() * (thinkTimeMaxMs - thinkTimeMinMs));
+                        long delay =
+                            thinkTimeMinMs == thinkTimeMaxMs
+                                ? thinkTimeMinMs
+                                : thinkTimeMinMs
+                                    + (long) (Math.random() * (thinkTimeMaxMs - thinkTimeMinMs));
                         if (delay > 0) {
                           Thread.sleep(delay);
                         }
@@ -145,9 +147,11 @@ public class ApiPerformanceTestRunner implements CommandLineRunner {
                       if (!proceedingIds.isEmpty()) {
 
                         if (thinkTimeMaxMs > 0) {
-                          long delay = thinkTimeMinMs == thinkTimeMaxMs
-                              ? thinkTimeMinMs
-                              : thinkTimeMinMs + (long) (Math.random() * (thinkTimeMaxMs - thinkTimeMinMs));
+                          long delay =
+                              thinkTimeMinMs == thinkTimeMaxMs
+                                  ? thinkTimeMinMs
+                                  : thinkTimeMinMs
+                                      + (long) (Math.random() * (thinkTimeMaxMs - thinkTimeMinMs));
                           if (delay > 0) {
                             Thread.sleep(delay);
                           }
@@ -228,9 +232,7 @@ public class ApiPerformanceTestRunner implements CommandLineRunner {
         .proceedings(proceedingRequests)
         .autoGranted(overallDecision == DecisionStatus.GRANTED)
         .eventHistory(
-            EventHistoryRequest.builder()
-                .eventDescription("Performance test decision")
-                .build())
+            EventHistoryRequest.builder().eventDescription("Performance test decision").build())
         .applicationVersion(0L)
         .build();
   }

@@ -15,12 +15,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -117,7 +117,8 @@ class CreateApplicationUseCaseTest {
 
     assertThat(proceeding).isNotNull();
 
-    // Fields built from the content proceeding map (see CreateApplicationUseCase#buildProceedingDomains)
+    // Fields built from the content proceeding map (see
+    // CreateApplicationUseCase#buildProceedingDomains)
     assertThat(proceeding.isLead()).isTrue();
     assertThat(proceeding.description()).isEqualTo("Proceeding description");
     assertThat(proceeding.meritsDecision()).isNull();
@@ -125,13 +126,15 @@ class CreateApplicationUseCaseTest {
     // applyProceedingId maps from the 'id' field of the content proceeding
     @SuppressWarnings("unchecked")
     var contentProceedings =
-        (java.util.List<java.util.Map<String, Object>>) command.applicationContent().get("proceedings");
+        (java.util.List<java.util.Map<String, Object>>)
+            command.applicationContent().get("proceedings");
     UUID expectedProceedingId = UUID.fromString(contentProceedings.getFirst().get("id").toString());
     assertThat(proceeding.applyProceedingId()).isEqualTo(expectedProceedingId);
   }
 
   @Test
-  void givenNewApplicationWithLinkedApplication_whenCreateApplication_thenCallsAddLinkedApplication() {
+  void
+      givenNewApplicationWithLinkedApplication_whenCreateApplication_thenCallsAddLinkedApplication() {
     UUID leadApplyId = UUID.randomUUID();
     UUID assocId = UUID.randomUUID();
 
@@ -171,7 +174,8 @@ class CreateApplicationUseCaseTest {
   }
 
   @Test
-  void givenNewApplicationWithMissingAssociatedApplication_whenCreateApplication_thenThrowResourceNotFoundException() {
+  void
+      givenNewApplicationWithMissingAssociatedApplication_whenCreateApplication_thenThrowResourceNotFoundException() {
     UUID leadApplyId = UUID.randomUUID();
     UUID assocId = UUID.randomUUID();
     UUID missingId = UUID.randomUUID();
@@ -212,7 +216,8 @@ class CreateApplicationUseCaseTest {
   }
 
   @Test
-  void givenNewApplicationWithMissingLeadApplication_whenCreateApplication_thenThrowResourceNotFoundException() {
+  void
+      givenNewApplicationWithMissingLeadApplication_whenCreateApplication_thenThrowResourceNotFoundException() {
     UUID leadApplyId = UUID.randomUUID();
     UUID assocId = UUID.randomUUID();
 
@@ -233,7 +238,8 @@ class CreateApplicationUseCaseTest {
   }
 
   @Test
-  void givenApplicationContentWithNoLeadProceeding_whenCreateApplication_thenThrowValidationException() {
+  void
+      givenApplicationContentWithNoLeadProceeding_whenCreateApplication_thenThrowValidationException() {
     var noLeadProceedingContent =
         objectMapper.convertValue(
             DataGenerator.createDefault(
@@ -263,9 +269,13 @@ class CreateApplicationUseCaseTest {
     DomainProceedingGenerator gen = new DomainProceedingGenerator();
     return Stream.of(
         // lead only, udf=true  → true
-        Arguments.of(List.of(gen.createDefault(p -> p.leadProceeding(true).usedDelegatedFunctions(true))), true),
+        Arguments.of(
+            List.of(gen.createDefault(p -> p.leadProceeding(true).usedDelegatedFunctions(true))),
+            true),
         // lead only, udf=false → false
-        Arguments.of(List.of(gen.createDefault(p -> p.leadProceeding(true).usedDelegatedFunctions(false))), false),
+        Arguments.of(
+            List.of(gen.createDefault(p -> p.leadProceeding(true).usedDelegatedFunctions(false))),
+            false),
         // lead udf=false + non-lead udf=true → true (anyOf logic)
         Arguments.of(
             List.of(
@@ -303,18 +313,21 @@ class CreateApplicationUseCaseTest {
 
     ArgumentCaptor<ApplicationDomain> captor = ArgumentCaptor.forClass(ApplicationDomain.class);
     verify(applicationGateway).save(captor.capture());
-    assertThat(captor.getValue().usedDelegatedFunctions()).isEqualTo(expectedUsedDelegatedFunctions);
+    assertThat(captor.getValue().usedDelegatedFunctions())
+        .isEqualTo(expectedUsedDelegatedFunctions);
   }
 
   @Test
-  void givenMultipleProceedings_whenCreateApplication_thenAllProceedingDomainsBuiltWithCorrectLeadFlag() {
+  void
+      givenMultipleProceedings_whenCreateApplication_thenAllProceedingDomainsBuiltWithCorrectLeadFlag() {
     ApplicationDomain saved = DataGenerator.createDefault(ApplicationDomainGenerator.class);
     when(applicationGateway.existsByApplyApplicationId(any())).thenReturn(false);
     when(applicationGateway.save(any())).thenReturn(saved);
 
     DomainProceedingGenerator gen = new DomainProceedingGenerator();
     var leadProceeding = gen.createDefault(p -> p.leadProceeding(true).description("lead proc"));
-    var nonLeadProceeding = gen.createDefault(p -> p.leadProceeding(false).description("non-lead proc"));
+    var nonLeadProceeding =
+        gen.createDefault(p -> p.leadProceeding(false).description("non-lead proc"));
 
     var content =
         objectMapper.convertValue(
@@ -334,18 +347,23 @@ class CreateApplicationUseCaseTest {
     List<ProceedingDomain> builtProceedings = captor.getValue().proceedings();
 
     assertThat(builtProceedings).hasSize(2);
-    assertThat(builtProceedings).anySatisfy(p -> {
-      assertThat(p.isLead()).isTrue();
-      assertThat(p.description()).isEqualTo("lead proc");
-    });
-    assertThat(builtProceedings).anySatisfy(p -> {
-      assertThat(p.isLead()).isFalse();
-      assertThat(p.description()).isEqualTo("non-lead proc");
-    });
+    assertThat(builtProceedings)
+        .anySatisfy(
+            p -> {
+              assertThat(p.isLead()).isTrue();
+              assertThat(p.description()).isEqualTo("lead proc");
+            });
+    assertThat(builtProceedings)
+        .anySatisfy(
+            p -> {
+              assertThat(p.isLead()).isFalse();
+              assertThat(p.description()).isEqualTo("non-lead proc");
+            });
   }
 
   @Test
-  void givenExecuteMethod_whenInspected_thenCarriesEnforceRoleAnnotationForCaseworker() throws NoSuchMethodException {
+  void givenExecuteMethod_whenInspected_thenCarriesEnforceRoleAnnotationForCaseworker()
+      throws NoSuchMethodException {
     var method =
         CreateApplicationUseCase.class.getMethod("execute", CreateApplicationCommand.class);
     var annotation = method.getAnnotation(EnforceRole.class);

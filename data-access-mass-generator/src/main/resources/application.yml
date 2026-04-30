@@ -4,9 +4,9 @@ spring:
 
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/laa_data_access_api?reWriteBatchedInserts=true
-    username: laa_user
-    password: laa_password
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?reWriteBatchedInserts=true}
+    username: ${SPRING_DATASOURCE_USERNAME:laa_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:laa_password}
 
   jpa:
     hibernate.ddl-auto: none
@@ -24,9 +24,19 @@ spring:
       mode: never
 
   flyway:
-    enabled: true
-    locations: classpath:db/migration
+    enabled: false
 
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
 
 logging:
   level:

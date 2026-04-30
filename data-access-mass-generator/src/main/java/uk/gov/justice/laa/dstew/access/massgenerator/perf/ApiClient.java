@@ -88,17 +88,18 @@ public class ApiClient {
 
     } catch (WebClientResponseException e) {
       metrics.recordError();
-//      System.err.printf(
-//          "[ApiClient] POST /api/v0/applications failed: HTTP %d%n  Response body: %s%n  Request body: %s%n",
-//          e.getStatusCode().value(),
-//          e.getResponseBodyAsString(),
-//          toJson(body));
+      //      System.err.printf(
+      //          "[ApiClient] POST /api/v0/applications failed: HTTP %d%n  Response body: %s%n
+      // Request body: %s%n",
+      //          e.getStatusCode().value(),
+      //          e.getResponseBodyAsString(),
+      //          toJson(body));
       return null;
     } catch (Exception e) {
       metrics.recordError();
-//      System.err.printf(
-//          "[ApiClient] POST /api/v0/applications failed: %s%n  Request body: %s%n",
-//          e.getMessage(), toJson(body));
+      //      System.err.printf(
+      //          "[ApiClient] POST /api/v0/applications failed: %s%n  Request body: %s%n",
+      //          e.getMessage(), toJson(body));
       return null;
     }
   }
@@ -126,33 +127,36 @@ public class ApiClient {
 
     } catch (WebClientResponseException e) {
       metrics.recordError();
-//      System.err.printf(
-//          "[ApiClient] PATCH /api/v0/applications/%s/decision failed: HTTP %d%n  Response body: %s%n  Request body: %s%n",
-//          applicationId,
-//          e.getStatusCode().value(),
-//          e.getResponseBodyAsString(),
-//          toJson(body));
+      //      System.err.printf(
+      //          "[ApiClient] PATCH /api/v0/applications/%s/decision failed: HTTP %d%n  Response
+      // body: %s%n  Request body: %s%n",
+      //          applicationId,
+      //          e.getStatusCode().value(),
+      //          e.getResponseBodyAsString(),
+      //          toJson(body));
     } catch (Exception e) {
-//      metrics.recordError();
-//      System.err.printf(
-//          "[ApiClient] PATCH /api/v0/applications/%s/decision failed: %s%n  Request body: %s%n",
-//          applicationId, e.getMessage(), toJson(body));
+      //      metrics.recordError();
+      //      System.err.printf(
+      //          "[ApiClient] PATCH /api/v0/applications/%s/decision failed: %s%n  Request body:
+      // %s%n",
+      //          applicationId, e.getMessage(), toJson(body));
     }
   }
 
   /**
-   * GET /api/v0/applications/{id} and return the list of proceedingIds from the response.
-   * Returns an empty list if the call fails.
+   * GET /api/v0/applications/{id} and return the list of proceedingIds from the response. Returns
+   * an empty list if the call fails.
    */
   public List<UUID> getApplicationProceedingIds(UUID applicationId) {
     try {
-      String body = webClient
-          .get()
-          .uri("/api/v0/applications/{id}", applicationId)
-          .header("X-Service-Name", "CIVIL_DECIDE")
-          .retrieve()
-          .bodyToMono(String.class)
-          .block();
+      String body =
+          webClient
+              .get()
+              .uri("/api/v0/applications/{id}", applicationId)
+              .header("X-Service-Name", "CIVIL_DECIDE")
+              .retrieve()
+              .bodyToMono(String.class)
+              .block();
 
       if (body == null) return List.of();
 

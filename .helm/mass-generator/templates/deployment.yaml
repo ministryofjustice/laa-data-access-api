@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-mass-generator
+  labels:
+    app: mass-generator
+    app.kubernetes.io/name: mass-generator
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mass-generator
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: mass-generator
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        releaseTime: {{ dateInZone "2006-01-02 15:04:05Z" (now) "UTC" | quote }}
+    spec:
+      serviceAccountName: "{{ .Values.service_account.name }}"
+      containers:
+        - name: mass-generator
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 90
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop: [ "ALL" ]
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key: database_name
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key: database_username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key: database_password
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key: rds_instance_address
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://$(DB_HOST):5432/$(DB_NAME)?reWriteBatchedInserts=true"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key: database_username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key: database_password

@@ -117,3 +117,27 @@ runs:
           --values ${VALUES_FILE} \
           --install \
           --wait
+
+    - name: Helm deployment of mass generator
+      shell: bash
+      continue-on-error: true
+      env:
+        ECR_REPOSITORY: ${{ inputs.ecr-repository }}
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        GIT_SHA: ${{ github.sha }}
+        KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+        APP_ENVIRONMENT: ${{ inputs.app-environment }}
+      run: |
+        MASS_GEN_VALUES=".helm/mass-generator/values/${APP_ENVIRONMENT}.yaml"
+        if [ -f "${MASS_GEN_VALUES}" ]; then
+          helm upgrade laa-mass-generator .helm/mass-generator \
+            --namespace ${KUBE_NAMESPACE} \
+            --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
+            --set image.tag="mass-gen-${GIT_SHA}" \
+            --values ${MASS_GEN_VALUES} \
+            --install \
+            --wait
+        else
+          echo "No mass generator values file for ${APP_ENVIRONMENT}, skipping"
+        fi
+

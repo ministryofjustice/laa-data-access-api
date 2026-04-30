@@ -155,7 +155,6 @@ public class ApplicationEntityV2 implements AuditableEntity {
     return linkedApplications != null && !linkedApplications.isEmpty();
   }
 
-
   /** adds an application to the set of linked applications. */
   public void addLinkedApplication(ApplicationEntityV2 toAdd) {
     if (linkedApplications == null) {

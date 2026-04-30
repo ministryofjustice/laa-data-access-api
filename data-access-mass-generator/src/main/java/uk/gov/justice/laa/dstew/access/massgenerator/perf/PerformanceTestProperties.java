@@ -41,14 +41,14 @@ public class PerformanceTestProperties {
 
   /**
    * Minimum think time (ms) to sleep between the create and make-decision calls within a single
-   * iteration. Models the time a caseworker spends reviewing the application before deciding.
-   * Set to 0 to disable think time entirely (synthetic worst-case stress test).
+   * iteration. Models the time a caseworker spends reviewing the application before deciding. Set
+   * to 0 to disable think time entirely (synthetic worst-case stress test).
    */
   private long thinkTimeMinMs = 0;
 
   /**
-   * Maximum think time (ms). A random value between thinkTimeMinMs and thinkTimeMaxMs is chosen
-   * per iteration. Defaults to the same as thinkTimeMinMs (i.e. fixed delay, not random).
+   * Maximum think time (ms). A random value between thinkTimeMinMs and thinkTimeMaxMs is chosen per
+   * iteration. Defaults to the same as thinkTimeMinMs (i.e. fixed delay, not random).
    */
   private long thinkTimeMaxMs = 0;
 

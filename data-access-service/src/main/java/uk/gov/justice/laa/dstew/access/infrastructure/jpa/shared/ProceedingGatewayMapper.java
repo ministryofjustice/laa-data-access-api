@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.infrastructure.jpa.shared;
 
-import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntityV2;
 
