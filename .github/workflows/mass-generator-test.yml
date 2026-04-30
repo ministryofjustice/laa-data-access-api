@@ -50,17 +50,21 @@ jobs:
           echo "namespace=${NAMESPACE}" >> $GITHUB_OUTPUT
           echo "Found pod: ${POD_NAME}"
 
-      - name: Start generation job
-        id: start-job
+      - name: Port forward
         run: |
           POD_NAME="${{ steps.find-pod.outputs.pod_name }}"
           NAMESPACE="${{ steps.find-pod.outputs.namespace }}"
+          kubectl port-forward -n "${NAMESPACE}" "${POD_NAME}" 8080:8080 &
+          sleep 5
+
+      - name: Start generation job
+        id: start-job
+        run: |
           echo "Starting mass generation..."
           echo "  Environment: uat"
           echo "  Count: ${{ env.COUNT }}"
           echo "  Cleanup: ${{ env.CLEANUP }}"
-          JOB_RESPONSE=$(kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- \
-            curl -s -X POST "http://localhost:8080/api/mass-generator/generate?count=${{ env.COUNT }}&cleanup=${{ env.CLEANUP }}")
+          JOB_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/mass-generator/generate?count=${{ env.COUNT }}&cleanup=${{ env.CLEANUP }}")
           echo "Response: ${JOB_RESPONSE}"
           JOB_ID=$(echo "${JOB_RESPONSE}" | jq -r '.jobId')
           if [ -z "${JOB_ID}" ] || [ "${JOB_ID}" = "null" ]; then
@@ -72,14 +76,11 @@ jobs:
 
       - name: Monitor job progress
         run: |
-          POD_NAME="${{ steps.find-pod.outputs.pod_name }}"
-          NAMESPACE="${{ steps.find-pod.outputs.namespace }}"
           JOB_ID="${{ steps.start-job.outputs.job_id }}"
           echo "Monitoring job: ${JOB_ID}"
           MAX_ITERATIONS=1440
           for i in $(seq 1 $MAX_ITERATIONS); do
-            STATUS_JSON=$(kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- \
-              curl -s "http://localhost:8080/api/mass-generator/jobs/${JOB_ID}")
+            STATUS_JSON=$(curl -s "http://localhost:8080/api/mass-generator/jobs/${JOB_ID}")
             STATUS=$(echo "${STATUS_JSON}" | jq -r '.status')
             PROCESSED=$(echo "${STATUS_JSON}" | jq -r '.processedCount')
             TARGET=$(echo "${STATUS_JSON}" | jq -r '.targetCount')
@@ -106,12 +107,9 @@ jobs:
       - name: Job summary
         if: always()
         run: |
-          POD_NAME="${{ steps.find-pod.outputs.pod_name }}"
-          NAMESPACE="${{ steps.find-pod.outputs.namespace }}"
           JOB_ID="${{ steps.start-job.outputs.job_id }}"
           if [ -n "${JOB_ID}" ]; then
-            STATUS_JSON=$(kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- \
-              curl -s "http://localhost:8080/api/mass-generator/jobs/${JOB_ID}" || echo '{}')
+            STATUS_JSON=$(curl -s "http://localhost:8080/api/mass-generator/jobs/${JOB_ID}" || echo '{}')
             echo "## Mass Data Generation Summary" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
