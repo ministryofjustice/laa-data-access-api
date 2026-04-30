@@ -28,18 +28,18 @@ public interface ApplicationRepository
    * of finding lead IDs and fetching all linked applications, reducing query count from 2 to 1.
    * Uses a CTE to avoid duplicate subqueries and reduce parameter bindings.
    *
-   * @param pageIds the IDs of applications on the current page
+   * @param applicationPageIds the IDs of applications on the current page
    * @return list of linked application summary DTOs for all applications in the same link groups
    */
   @Query(
       value =
           "WITH lead_ids AS ( "
               + "  SELECT id FROM applications "
-              + "  WHERE id IN :pageIds "
+              + "  WHERE id IN :applicationPageIds "
               + "    AND EXISTS (SELECT 1 FROM linked_applications WHERE lead_application_id = id) "
               + "  UNION "
               + "  SELECT lead_application_id FROM linked_applications "
-              + "  WHERE associated_application_id IN :pageIds "
+              + "  WHERE associated_application_id IN :applicationPageIds "
               + ") "
               + "SELECT a.id, a.laa_reference, false AS is_lead, la.lead_application_id "
               + "FROM applications a "
@@ -51,5 +51,5 @@ public interface ApplicationRepository
               + "WHERE a.id IN (SELECT id FROM lead_ids)",
       nativeQuery = true)
   List<LinkedApplicationSummaryDto> findAllLinkedApplicationsForPageIds(
-      @Param("pageIds") List<UUID> pageIds);
+      @Param("applicationPageIds") List<UUID> applicationPageIds);
 }

@@ -117,15 +117,15 @@ public class ApplicationSummaryService {
 
   private Map<UUID, List<LinkedApplicationSummaryDto>> retrieveLinkedApplications(
       List<ApplicationSummaryDto> content) {
-    List<UUID> pageIds = content.stream().map(ApplicationSummaryDto::getId).toList();
+    List<UUID> applicationPageIds = content.stream().map(ApplicationSummaryDto::getId).toList();
 
-    if (pageIds.isEmpty()) {
+    if (applicationPageIds.isEmpty()) {
       return Map.of();
     }
 
     // Single query replaces findLeadIdsByAssociatedIds + findAllLinkedApplicationsByLeadIds
     Map<UUID, List<LinkedApplicationSummaryDto>> linkedAppsByLeadId =
-        applicationRepository.findAllLinkedApplicationsForPageIds(pageIds).stream()
+        applicationRepository.findAllLinkedApplicationsForPageIds(applicationPageIds).stream()
             .collect(Collectors.groupingBy(LinkedApplicationSummaryDto::getLeadApplicationId));
 
     return content.stream()
