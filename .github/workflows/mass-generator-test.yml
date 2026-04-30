@@ -72,6 +72,16 @@ jobs:
 
           JOB_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/mass-generator/generate?count=${{ env.COUNT }}&cleanup=${{ env.CLEANUP }}")
           echo "Response: ${JOB_RESPONSE}"
+
+          # If 500, try to get more details
+          if echo "${JOB_RESPONSE}" | jq -e '.status == 500' > /dev/null 2>&1; then
+            echo "Trying to get error details..."
+            curl -s "http://localhost:8080/api/mass-generator/generate?count=1&cleanup=false" -X POST -H "Accept: text/html" || true
+            echo ""
+            # Try a simple GET to see if other endpoints work
+            echo "Testing jobs list endpoint..."
+            curl -s "http://localhost:8080/api/mass-generator/jobs" | jq . || true
+          fi
           
           JOB_ID=$(echo "${JOB_RESPONSE}" | jq -r '.jobId')
           if [ -z "${JOB_ID}" ] || [ "${JOB_ID}" = "null" ]; then
