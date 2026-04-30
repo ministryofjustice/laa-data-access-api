@@ -67,27 +67,27 @@ jobs:
 
           # Check app health first
           echo "Checking app health..."
-          curl -sv "http://localhost:8080/actuator/health" || true
+          curl -s "http://localhost:8080/actuator/health" | jq . || true
           echo ""
 
-          JOB_RESPONSE=$(curl -sv -X POST "http://localhost:8080/api/mass-generator/generate?count=${{ env.COUNT }}&cleanup=${{ env.CLEANUP }}" 2>&1)
+          JOB_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/mass-generator/generate?count=${{ env.COUNT }}&cleanup=${{ env.CLEANUP }}")
           echo "Response: ${JOB_RESPONSE}"
           
-          # Extract just the body (last line from curl -sv)
-          BODY=$(echo "${JOB_RESPONSE}" | grep -v '^\*\|^>\|^<\|^{' | tail -1)
-          if [ -z "$BODY" ]; then
-            BODY=$(echo "${JOB_RESPONSE}" | grep '{' | tail -1)
-          fi
-          echo "Body: ${BODY}"
-          
-          JOB_ID=$(echo "${BODY}" | jq -r '.jobId' 2>/dev/null)
+          JOB_ID=$(echo "${JOB_RESPONSE}" | jq -r '.jobId')
           if [ -z "${JOB_ID}" ] || [ "${JOB_ID}" = "null" ]; then
-            echo "ERROR: Failed to start job. Full response was:"
-            echo "${JOB_RESPONSE}"
+            echo "ERROR: Failed to start job. Response was: ${JOB_RESPONSE}"
             exit 1
           fi
           echo "job_id=${JOB_ID}" >> $GITHUB_OUTPUT
           echo "Job started: ${JOB_ID}"
+
+      - name: Fetch pod logs on failure
+        if: failure()
+        run: |
+          POD_NAME="${{ steps.find-pod.outputs.pod_name }}"
+          NAMESPACE="${{ steps.find-pod.outputs.namespace }}"
+          echo "Fetching last 100 lines of pod logs..."
+          kubectl logs -n "${NAMESPACE}" "${POD_NAME}" --tail=100
 
       - name: Monitor job progress
         run: |
