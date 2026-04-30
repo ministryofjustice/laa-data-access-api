@@ -1,0 +1,128 @@
+name: Mass Data Generator (Test - TEMPORARY)
+
+# TEMPORARY: Remove this workflow before merging to main.
+# This is a workaround to test the mass-generator workflow on a feature branch
+# since workflow_dispatch only works from the default branch.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/dstew1611-seeding-data
+    paths:
+      - '.github/workflows/mass-generator-test.yml'
+      - 'data-access-mass-generator/**'
+
+jobs:
+  generate-data:
+    runs-on: ubuntu-latest
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      COUNT: '1000'
+      CLEANUP: 'false'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to the cluster
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
+        with:
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+
+      - name: Find pod
+        id: find-pod
+        run: |
+          NAMESPACE="${{ secrets.KUBE_NAMESPACE }}"
+          POD_NAME=$(kubectl get pods -n "${NAMESPACE}" -l app=mass-generator -o jsonpath='{.items[0].metadata.name}')
+          if [ -z "${POD_NAME}" ]; then
+            echo "ERROR: No mass-generator pod found in namespace ${NAMESPACE}"
+            exit 1
+          fi
+          echo "pod_name=${POD_NAME}" >> $GITHUB_OUTPUT
+          echo "namespace=${NAMESPACE}" >> $GITHUB_OUTPUT
+          echo "Found pod: ${POD_NAME}"
+
+      - name: Start generation job
+        id: start-job
+        run: |
+          POD_NAME="${{ steps.find-pod.outputs.pod_name }}"
+          NAMESPACE="${{ steps.find-pod.outputs.namespace }}"
+          echo "Starting mass generation..."
+          echo "  Environment: uat"
+          echo "  Count: ${{ env.COUNT }}"
+          echo "  Cleanup: ${{ env.CLEANUP }}"
+          JOB_RESPONSE=$(kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- \
+            curl -s -X POST "http://localhost:8080/api/mass-generator/generate?count=${{ env.COUNT }}&cleanup=${{ env.CLEANUP }}")
+          echo "Response: ${JOB_RESPONSE}"
+          JOB_ID=$(echo "${JOB_RESPONSE}" | jq -r '.jobId')
+          if [ -z "${JOB_ID}" ] || [ "${JOB_ID}" = "null" ]; then
+            echo "ERROR: Failed to start job. Response was: ${JOB_RESPONSE}"
+            exit 1
+          fi
+          echo "job_id=${JOB_ID}" >> $GITHUB_OUTPUT
+          echo "Job started: ${JOB_ID}"
+
+      - name: Monitor job progress
+        run: |
+          POD_NAME="${{ steps.find-pod.outputs.pod_name }}"
+          NAMESPACE="${{ steps.find-pod.outputs.namespace }}"
+          JOB_ID="${{ steps.start-job.outputs.job_id }}"
+          echo "Monitoring job: ${JOB_ID}"
+          MAX_ITERATIONS=1440
+          for i in $(seq 1 $MAX_ITERATIONS); do
+            STATUS_JSON=$(kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- \
+              curl -s "http://localhost:8080/api/mass-generator/jobs/${JOB_ID}")
+            STATUS=$(echo "${STATUS_JSON}" | jq -r '.status')
+            PROCESSED=$(echo "${STATUS_JSON}" | jq -r '.processedCount')
+            TARGET=$(echo "${STATUS_JSON}" | jq -r '.targetCount')
+            ERRORS=$(echo "${STATUS_JSON}" | jq -r '.errorCount')
+            echo "[$(date +%H:%M:%S)] ${STATUS} | Progress: ${PROCESSED}/${TARGET} | Errors: ${ERRORS}"
+            if [ "${STATUS}" = "COMPLETED" ]; then
+              echo ""
+              echo "========================================="
+              echo "  Job completed successfully!"
+              echo "========================================="
+              echo "${STATUS_JSON}" | jq '.'
+              exit 0
+            elif [ "${STATUS}" = "FAILED" ] || [ "${STATUS}" = "CANCELLED" ]; then
+              echo ""
+              echo "  Job finished with status: ${STATUS}"
+              echo "${STATUS_JSON}" | jq '.'
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "ERROR: Timed out after 4 hours"
+          exit 1
+
+      - name: Job summary
+        if: always()
+        run: |
+          POD_NAME="${{ steps.find-pod.outputs.pod_name }}"
+          NAMESPACE="${{ steps.find-pod.outputs.namespace }}"
+          JOB_ID="${{ steps.start-job.outputs.job_id }}"
+          if [ -n "${JOB_ID}" ]; then
+            STATUS_JSON=$(kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- \
+              curl -s "http://localhost:8080/api/mass-generator/jobs/${JOB_ID}" || echo '{}')
+            echo "## Mass Data Generation Summary" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Environment | uat |" >> $GITHUB_STEP_SUMMARY
+            echo "| Requested count | ${{ env.COUNT }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Cleanup | ${{ env.CLEANUP }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Job ID | \`${JOB_ID}\` |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Result" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            echo "${STATUS_JSON}" | jq '.' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
