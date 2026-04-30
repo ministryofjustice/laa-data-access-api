@@ -2,7 +2,7 @@
 # Manual edits can break the build and are not advised.
 # This file is expected to be part of source control.
 com.fasterxml.jackson.core:jackson-annotations:2.21=compileClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
-org.projectlombok:lombok:1.18.38=compileClasspath,testCompileClasspath
+org.projectlombok:lombok:1.18.46=compileClasspath,testCompileClasspath
 tools.jackson.core:jackson-core:3.1.1=compileClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
 tools.jackson.core:jackson-databind:3.1.1=compileClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
 tools.jackson:jackson-bom:3.1.1=compileClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath

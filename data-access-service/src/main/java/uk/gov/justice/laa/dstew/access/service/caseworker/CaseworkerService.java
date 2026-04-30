@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.service;
+package uk.gov.justice.laa.dstew.access.service.caseworker;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;

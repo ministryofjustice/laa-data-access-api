@@ -19,7 +19,7 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
-import uk.gov.justice.laa.dstew.access.service.ApplicationService;
+import uk.gov.justice.laa.dstew.access.service.caseworker.AssignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -28,7 +28,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGene
 
 public class ReassignCaseworkerTest extends BaseServiceTest {
 
-  @Autowired private ApplicationService serviceUnderTest;
+  @Autowired private AssignCaseworkerService serviceUnderTest;
 
   @Test
   void givenApplicationWithCaseworker_whenReassignCaseworker_thenSaveAndCreateDomainEvent()

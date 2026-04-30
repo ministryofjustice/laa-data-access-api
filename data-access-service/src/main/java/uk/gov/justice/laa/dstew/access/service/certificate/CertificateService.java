@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.service;
+package uk.gov.justice.laa.dstew.access.service.certificate;
 
 import java.util.Map;
 import java.util.UUID;

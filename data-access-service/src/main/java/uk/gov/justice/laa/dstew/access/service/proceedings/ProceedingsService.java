@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.service;
+package uk.gov.justice.laa.dstew.access.service.proceedings;
 
 import java.util.List;
 import java.util.UUID;

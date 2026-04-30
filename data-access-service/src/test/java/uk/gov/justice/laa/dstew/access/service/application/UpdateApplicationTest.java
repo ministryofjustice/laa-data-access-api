@@ -32,7 +32,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
-import uk.gov.justice.laa.dstew.access.service.ApplicationService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -43,7 +42,7 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class UpdateApplicationTest extends BaseServiceTest {
 
-  @Autowired private ApplicationService serviceUnderTest;
+  @Autowired private UpdateApplicationService serviceUnderTest;
 
   @Test
   void givenNoApplication_whenUpdateApplication_thenThrowResourceNotFoundException() {

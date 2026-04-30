@@ -3,7 +3,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 plugins {
     id 'java'
     id 'jacoco'
-    id 'io.freefair.lombok' version '9.2.0'
+    id 'io.freefair.lombok' version '9.4.0'
     id "com.gorylenko.gradle-git-properties" version "2.4.2"
     id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin'
     id 'com.avast.gradle.docker-compose' version '0.17.12'
@@ -195,8 +195,8 @@ dependencies {
     implementation('org.springframework.boot:spring-boot-starter-oauth2-resource-server') {
         exclude group: 'org.springframework.security', module: 'spring-security-web'
     }
-    implementation 'org.springframework.security:spring-security-config:7.0.5'
-    implementation 'org.springframework.security:spring-security-web:7.0.5'
+    implementation 'org.springframework.security:spring-security-config'
+    implementation 'org.springframework.security:spring-security-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation('org.springframework.boot:spring-boot-starter-web') {
         exclude group: 'com.google.code.gson', module: 'gson'
@@ -232,7 +232,7 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
     implementation 'org.javers:javers-core:7.10.0'
 
-    runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'org.postgresql:postgresql:42.7.11'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
