@@ -31,14 +31,15 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.service.ApplicationSummaryService;
-import uk.gov.justice.laa.dstew.access.service.CertificateService;
-import uk.gov.justice.laa.dstew.access.service.DomainEventService;
+import uk.gov.justice.laa.dstew.access.service.application.ApplicationSummaryService;
 import uk.gov.justice.laa.dstew.access.service.application.CreateApplicationService;
 import uk.gov.justice.laa.dstew.access.service.application.GetApplicationsService;
 import uk.gov.justice.laa.dstew.access.service.application.UpdateApplicationService;
 import uk.gov.justice.laa.dstew.access.service.caseworker.AssignCaseworkerService;
+import uk.gov.justice.laa.dstew.access.service.caseworker.UnassignCaseworkerService;
+import uk.gov.justice.laa.dstew.access.service.certificate.CertificateService;
 import uk.gov.justice.laa.dstew.access.service.decision.MakeDecisionService;
+import uk.gov.justice.laa.dstew.access.service.domain.GetDomainEventsService;
 import uk.gov.justice.laa.dstew.access.service.notes.CreateNoteService;
 import uk.gov.justice.laa.dstew.access.service.notes.GetNotesService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
@@ -55,12 +56,13 @@ public class ApplicationController implements ApplicationApi {
   private final UpdateApplicationService updateApplication;
   private final GetApplicationsService getApplicationsService;
   private final ApplicationSummaryService summaryService;
-  private final DomainEventService domainService;
   private final CertificateService certificateService;
   private final AssignCaseworkerService assignCaseworkerService;
+  private final UnassignCaseworkerService unassignCaseworkerService;
   private final MakeDecisionService makeDecisionService;
   private final GetNotesService getNotesService;
   private final CreateNoteService createNoteService;
+  private final GetDomainEventsService getDomainEventsService;
 
   @LogMethodArguments
   @LogMethodResponse
@@ -155,7 +157,7 @@ public class ApplicationController implements ApplicationApi {
   public ResponseEntity<Void> unassignCaseworker(
       @NotNull ServiceName serviceName, UUID id, @Valid CaseworkerUnassignRequest request) {
 
-    assignCaseworkerService.unassignCaseworker(id, request.getEventHistory());
+    unassignCaseworkerService.unassignCaseworker(id, request.getEventHistory());
 
     return ResponseEntity.ok().build();
   }
@@ -167,7 +169,7 @@ public class ApplicationController implements ApplicationApi {
       @NotNull ServiceName serviceName,
       UUID applicationId,
       @Valid List<DomainEventType> eventType) {
-    var events = domainService.getEvents(applicationId, eventType);
+    var events = getDomainEventsService.getEvents(applicationId, eventType);
     return ResponseEntity.ok(ApplicationHistoryResponse.builder().events(events).build());
   }
 

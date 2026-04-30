@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.service;
+package uk.gov.justice.laa.dstew.access.service.application;
 
 import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.createPageable;
 import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.wrapResult;

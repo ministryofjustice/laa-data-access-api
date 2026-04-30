@@ -14,9 +14,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
-import uk.gov.justice.laa.dstew.access.service.ApplicationContentParserService;
-import uk.gov.justice.laa.dstew.access.service.DomainEventService;
-import uk.gov.justice.laa.dstew.access.service.ProceedingsService;
+import uk.gov.justice.laa.dstew.access.service.domain.SaveDomainEventService;
+import uk.gov.justice.laa.dstew.access.service.proceedings.ProceedingsService;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 import uk.gov.justice.laa.dstew.access.validation.PayloadValidationService;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -33,7 +32,7 @@ public class CreateApplicationService {
   private final ApplicationRepository applicationRepository;
   private final ApplicationMapper applicationMapper;
   private final ApplicationValidations applicationValidations;
-  private final DomainEventService domainEventService;
+  private final SaveDomainEventService saveDomainEventService;
   private final ApplicationContentParserService applicationContentParser;
   private final ProceedingsService proceedingsService;
   private final PayloadValidationService payloadValidationService;
@@ -59,7 +58,7 @@ public class CreateApplicationService {
 
     linkToLeadApplicationIfApplicable(applicationContent, saved);
     proceedingsService.saveProceedings(applicationContent, saved.getId());
-    domainEventService.saveCreateApplicationDomainEvent(saved, req, null);
+    saveDomainEventService.saveCreateApplicationDomainEvent(saved, req, null);
 
     return saved.getId();
   }

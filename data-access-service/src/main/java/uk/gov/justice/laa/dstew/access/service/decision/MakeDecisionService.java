@@ -13,6 +13,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
@@ -29,8 +30,8 @@ import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
-import uk.gov.justice.laa.dstew.access.service.DomainEventService;
-import uk.gov.justice.laa.dstew.access.service.common.ServiceUtilities;
+import uk.gov.justice.laa.dstew.access.service.domain.SaveDomainEventService;
+import uk.gov.justice.laa.dstew.access.utils.ApplicationServiceHelper;
 import uk.gov.justice.laa.dstew.access.utils.VersionCheckHelper;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
@@ -41,12 +42,11 @@ public class MakeDecisionService {
 
   private final ApplicationRepository applicationRepository;
   private final ApplicationValidations applicationValidations;
-  private final DomainEventService domainEventService;
+  private final SaveDomainEventService saveDomainEventService;
   private final DecisionRepository decisionRepository;
   private final ProceedingRepository proceedingRepository;
   private final MeritsDecisionRepository meritsDecisionRepository;
   private final CertificateRepository certificateRepository;
-  private final ServiceUtilities serviceUtilities;
 
   /**
    * Update an existing application to add the decision details.
@@ -57,10 +57,11 @@ public class MakeDecisionService {
   @Transactional
   @AllowApiCaseworker
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
-    final ApplicationEntity application = serviceUtilities.checkIfApplicationExists(applicationId);
+    final ApplicationEntity application =
+        ApplicationServiceHelper.getExistingApplication(applicationId, applicationRepository);
     VersionCheckHelper.checkEntityVersionLocking(
         applicationId, application.getVersion(), request.getApplicationVersion());
-    final UUID caseworkerId = serviceUtilities.getCaseworkerId(applicationId, application);
+    final UUID caseworkerId = getCaseworkerId(application);
     applicationValidations.checkApplicationMakeDecisionRequest(request);
 
     application.setModifiedAt(Instant.now());
@@ -120,13 +121,13 @@ public class MakeDecisionService {
 
     switch (decision.getOverallDecision()) {
       case GRANTED ->
-          domainEventService.saveMakeDecisionDomainEvent(
+          saveDomainEventService.saveMakeDecisionDomainEvent(
               applicationId,
               request,
               caseworkerId,
               DomainEventType.APPLICATION_MAKE_DECISION_GRANTED);
       case REFUSED ->
-          domainEventService.saveMakeDecisionDomainEvent(
+          saveDomainEventService.saveMakeDecisionDomainEvent(
               applicationId,
               request,
               caseworkerId,
@@ -218,5 +219,23 @@ public class MakeDecisionService {
     meritDecisionEntity.setJustification(proceeding.getMeritsDecision().getJustification());
     meritsDecisionRepository.save(meritDecisionEntity);
     merits.add(meritDecisionEntity);
+  }
+
+  /**
+   * Gets the caseworker id from an application.
+   *
+   * @param application application entity
+   * @return caseworker id
+   */
+  private static UUID getCaseworkerId(ApplicationEntity application) {
+    final CaseworkerEntity caseworker = application.getCaseworker();
+    // This logic will be implemented in the next iteration when security is implemented in the
+    // service
+    //    if (caseworker == null) {
+    //      throw new ResourceNotFoundException(
+    //          String.format("Caseworker not found for application id: %s", applicationId)
+    //      );
+    //    }
+    return caseworker != null ? caseworker.getId() : null;
   }
 }

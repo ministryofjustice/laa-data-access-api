@@ -1,12 +1,8 @@
-package uk.gov.justice.laa.dstew.access.service;
+package uk.gov.justice.laa.dstew.access.service.domain;
 
-import jakarta.validation.Valid;
 import java.time.Instant;
-import java.util.Comparator;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -14,9 +10,7 @@ import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
-import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationNoteDomainEventDetails;
@@ -28,7 +22,6 @@ import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetai
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
-import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
 
 /**
  * Service class for managing domain events. Service name for all domain events is retrieved from
@@ -37,13 +30,12 @@ import uk.gov.justice.laa.dstew.access.specification.DomainEventSpecification;
  */
 @Service
 @RequiredArgsConstructor
-public class DomainEventService {
+public class SaveDomainEventService {
 
   private static final String defaultCreatedByName = "";
 
   private final DomainEventRepository domainEventRepository;
   private final ObjectMapper objectMapper;
-  private final DomainEventMapper mapper;
   private final ServiceNameContext serviceNameContext;
 
   /** Shared internal logic for persisting domain events. */
@@ -65,7 +57,6 @@ public class DomainEventService {
   }
 
   /** Posts an APPLICATION_CREATED domain event. */
-  @AllowApiCaseworker
   public void saveCreateApplicationDomainEvent(
       ApplicationEntity applicationEntity, ApplicationCreateRequest request, String createdBy) {
 
@@ -93,7 +84,6 @@ public class DomainEventService {
   }
 
   /** Posts an APPLICATION_UPDATED domain event. */
-  @AllowApiCaseworker
   public void saveUpdateApplicationDomainEvent(
       ApplicationEntity applicationEntity, String updatedBy) {
 
@@ -116,7 +106,6 @@ public class DomainEventService {
   }
 
   /** Posts an ASSIGN_APPLICATION_TO_CASEWORKER domain event. */
-  @AllowApiCaseworker
   public void saveAssignApplicationDomainEvent(
       UUID applicationId, UUID caseworkerId, String eventDescription) {
 
@@ -153,7 +142,6 @@ public class DomainEventService {
   }
 
   /** Posts an UNASSIGN_APPLICATION_TO_CASEWORKER domain event. */
-  @AllowApiCaseworker
   public void saveUnassignApplicationDomainEvent(
       UUID applicationId, UUID caseworkerId, String eventDescription) {
 
@@ -171,23 +159,6 @@ public class DomainEventService {
         caseworkerId,
         DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER,
         eventDetails);
-  }
-
-  /** Provides a list of events associated with an application in createdAt ascending order. */
-  @AllowApiCaseworker
-  public List<ApplicationDomainEventResponse> getEvents(
-      UUID applicationId, @Valid List<DomainEventType> eventType) {
-
-    var filterEventType = DomainEventSpecification.filterEventTypes(eventType);
-    Specification<DomainEventEntity> filter =
-        DomainEventSpecification.filterApplicationId(applicationId).and(filterEventType);
-
-    Comparator<ApplicationDomainEventResponse> comparer =
-        Comparator.comparing(ApplicationDomainEventResponse::getCreatedAt);
-    return domainEventRepository.findAll(filter).stream()
-        .map(mapper::toDomainEvent)
-        .sorted(comparer)
-        .toList();
   }
 
   /**

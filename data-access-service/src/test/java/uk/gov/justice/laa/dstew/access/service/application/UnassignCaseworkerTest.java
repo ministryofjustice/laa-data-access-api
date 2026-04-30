@@ -28,7 +28,7 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
-import uk.gov.justice.laa.dstew.access.service.caseworker.AssignCaseworkerService;
+import uk.gov.justice.laa.dstew.access.service.caseworker.UnassignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -38,7 +38,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGene
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class UnassignCaseworkerTest extends BaseServiceTest {
 
-  @Autowired private AssignCaseworkerService serviceUnderTest;
+  @Autowired private UnassignCaseworkerService serviceUnderTest;
 
   @ParameterizedTest
   @MethodSource("validUnassignEventDescriptionCases")

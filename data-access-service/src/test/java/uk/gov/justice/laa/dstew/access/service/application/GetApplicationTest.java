@@ -15,6 +15,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.web.client.RestClient;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -34,11 +35,14 @@ import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEnt
 public class GetApplicationTest extends BaseServiceTest {
 
   @Autowired private GetApplicationsService serviceUnderTest;
+  @Autowired private RestClient.Builder builder;
 
   @Test
   public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {
     // given
-    ProceedingEntity proceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class);
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class, builder -> builder.id(UUID.randomUUID()));
     Set<ProceedingEntity> proceedings = Set.of(proceeding);
 
     ApplicationEntity expectedApplication =

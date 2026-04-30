@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.service.caseworker;
 
-import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -8,24 +7,25 @@ import java.util.stream.Collectors;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
-import uk.gov.justice.laa.dstew.access.service.DomainEventService;
-import uk.gov.justice.laa.dstew.access.service.common.ServiceUtilities;
+import uk.gov.justice.laa.dstew.access.service.domain.SaveDomainEventService;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
 
-/** Service for working with caseworkers. */
+/** Service for assigning caseworkers to an application. */
 @RequiredArgsConstructor
 @Service
 public class AssignCaseworkerService {
 
-  private final ServiceUtilities serviceUtilities;
+  private final CaseworkerRepository caseworkerRepository;
   private final ApplicationRepository applicationRepository;
-  private final DomainEventService domainEventService;
+  private final SaveDomainEventService saveDomainEventService;
   final ApplicationValidations applicationValidations;
 
   /**
@@ -41,44 +41,21 @@ public class AssignCaseworkerService {
       @NonNull final UUID caseworkerId,
       final List<UUID> applicationIds,
       final EventHistoryRequest eventHistoryRequest) {
-    final CaseworkerEntity caseworker = serviceUtilities.checkIfCaseworkerExists(caseworkerId);
+    final CaseworkerEntity caseworker = checkIfCaseworkerExists(caseworkerId);
 
     final List<ApplicationEntity> applications = checkIfAllApplicationsExist(applicationIds);
 
     applications.forEach(
         app -> {
-          if (!serviceUtilities.applicationCurrentCaseworkerIsCaseworker(app, caseworker)) {
+          if (!applicationCurrentCaseworkerIsCaseworker(app, caseworker)) {
             app.setCaseworker(caseworker);
             app.setModifiedAt(Instant.now());
             applicationRepository.save(app);
           }
 
-          domainEventService.saveAssignApplicationDomainEvent(
+          saveDomainEventService.saveAssignApplicationDomainEvent(
               app.getId(), caseworker.getId(), eventHistoryRequest.getEventDescription());
         });
-  }
-
-  /**
-   * Unassigns a caseworker from an application.
-   *
-   * @param applicationId the UUID of the application to update
-   * @throws ResourceNotFoundException if the application does not exist
-   */
-  @AllowApiCaseworker
-  public void unassignCaseworker(final UUID applicationId, EventHistoryRequest history) {
-    final ApplicationEntity entity = serviceUtilities.checkIfApplicationExists(applicationId);
-
-    if (entity.getCaseworker() == null) {
-      return;
-    }
-
-    entity.setCaseworker(null);
-    entity.setModifiedAt(Instant.now());
-
-    applicationRepository.save(entity);
-
-    domainEventService.saveUnassignApplicationDomainEvent(
-        entity.getId(), null, history.getEventDescription());
   }
 
   /**
@@ -103,5 +80,29 @@ public class AssignCaseworkerService {
       throw new ResourceNotFoundException(exceptionMsg);
     }
     return applications;
+  }
+
+  /**
+   * Check if an application has a caseworker assigned already and checks if the assigned caseworker
+   * matches the given caseworker.
+   */
+  private static boolean applicationCurrentCaseworkerIsCaseworker(
+      ApplicationEntity application, CaseworkerEntity caseworker) {
+    return application.getCaseworker() != null && application.getCaseworker().equals(caseworker);
+  }
+
+  /**
+   * Check existence of a caseworker by ID.
+   *
+   * @param caseworkerId userid of caseworker
+   * @return found entity
+   */
+  private CaseworkerEntity checkIfCaseworkerExists(final UUID caseworkerId) {
+    return caseworkerRepository
+        .findById(caseworkerId)
+        .orElseThrow(
+            () ->
+                new ResourceNotFoundException(
+                    String.format("No caseworker found with id: %s", caseworkerId)));
   }
 }
