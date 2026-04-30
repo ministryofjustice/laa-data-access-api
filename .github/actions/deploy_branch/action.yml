@@ -130,6 +130,13 @@ runs:
       run: |
         MASS_GEN_VALUES=".helm/mass-generator/values/${APP_ENVIRONMENT}.yaml"
         if [ -f "${MASS_GEN_VALUES}" ]; then
+          # Fix stuck helm release if previous operation failed
+          RELEASE_STATUS=$(helm status laa-mass-generator --namespace ${KUBE_NAMESPACE} -o json 2>/dev/null | jq -r '.info.status' 2>/dev/null || echo "not-found")
+          if [ "$RELEASE_STATUS" = "pending-install" ] || [ "$RELEASE_STATUS" = "pending-upgrade" ] || [ "$RELEASE_STATUS" = "pending-rollback" ]; then
+            echo "Release is stuck in ${RELEASE_STATUS}, rolling back..."
+            helm rollback laa-mass-generator 0 --namespace ${KUBE_NAMESPACE} || helm uninstall laa-mass-generator --namespace ${KUBE_NAMESPACE} || true
+          fi
+
           helm upgrade laa-mass-generator .helm/mass-generator \
             --namespace ${KUBE_NAMESPACE} \
             --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
