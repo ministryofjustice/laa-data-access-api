@@ -243,6 +243,7 @@ dependencies {
     }
     implementation("org.springframework.boot:spring-boot-starter-flyway:4.0.6")
     implementation("org.flywaydb:flyway-database-postgresql")
+    implementation 'org.springframework:spring-web:7.0.7'
 
     // Source: https://mvnrepository.com/artifact/com.azure.spring/spring-cloud-azure-starter-active-directory
     // Note: Version 7.0.0 may not be compatible with Spring Boot 4, check for updated version
@@ -256,7 +257,7 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
     implementation 'org.javers:javers-core:7.10.0'
 
-    runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'org.postgresql:postgresql:42.7.11'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
