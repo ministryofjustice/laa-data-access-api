@@ -53,9 +53,9 @@ import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 public class ApplicationController implements ApplicationApi {
 
   private final CreateApplicationService createApplicationService;
-  private final UpdateApplicationService updateApplication;
+  private final UpdateApplicationService updateApplicationService;
   private final GetApplicationsService getApplicationsService;
-  private final ApplicationSummaryService summaryService;
+  private final ApplicationSummaryService applicationSummaryService;
   private final CertificateService certificateService;
   private final AssignCaseworkerService assignCaseworkerService;
   private final UnassignCaseworkerService unassignCaseworkerService;
@@ -83,7 +83,7 @@ public class ApplicationController implements ApplicationApi {
       @NotNull ServiceName serviceName,
       UUID id,
       @Valid ApplicationUpdateRequest applicationUpdateReq) {
-    updateApplication.updateApplication(id, applicationUpdateReq);
+    updateApplicationService.updateApplication(id, applicationUpdateReq);
     return ResponseEntity.noContent().build();
   }
 
@@ -106,7 +106,7 @@ public class ApplicationController implements ApplicationApi {
       Integer pageSize) {
 
     PaginatedResult<ApplicationSummary> result =
-        summaryService.getAllApplications(
+        applicationSummaryService.getAllApplications(
             status,
             laaReference,
             clientFirstName,

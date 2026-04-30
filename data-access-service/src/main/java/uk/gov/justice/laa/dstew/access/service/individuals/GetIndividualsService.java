@@ -27,7 +27,7 @@ import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
  * pagination support.
  */
 @Service
-public class IndividualsService {
+public class GetIndividualsService {
 
   private final IndividualRepository individualRepository;
   private final IndividualMapper individualMapper;
@@ -35,7 +35,7 @@ public class IndividualsService {
   private final ObjectMapper objectMapper;
 
   /** Constructor for managing individual records. */
-  public IndividualsService(
+  public GetIndividualsService(
       final IndividualRepository individualRepository,
       final IndividualMapper individualMapper,
       ApplicationRepository applicationRepository,

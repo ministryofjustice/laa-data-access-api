@@ -14,7 +14,7 @@ import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
-import uk.gov.justice.laa.dstew.access.service.individuals.IndividualsService;
+import uk.gov.justice.laa.dstew.access.service.individuals.GetIndividualsService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper;
@@ -29,7 +29,7 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 @ExcludeFromGeneratedCodeCoverage
 public class IndividualsController implements IndividualsApi {
 
-  private final IndividualsService individualsService;
+  private final GetIndividualsService getIndividualsService;
 
   /**
    * Retrieves a paginated list of individuals.
@@ -56,7 +56,7 @@ public class IndividualsController implements IndividualsApi {
     validateRequest(applicationId, include);
 
     PaginationHelper.PaginatedResult<IndividualResponse> result =
-        individualsService.getIndividuals(page, pageSize, applicationId, type, include);
+        getIndividualsService.getIndividuals(page, pageSize, applicationId, type, include);
 
     List<IndividualResponse> individualResponses = result.page().stream().toList();
     PagingResponse pagingResponse = new PagingResponse();
