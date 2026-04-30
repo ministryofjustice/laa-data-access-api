@@ -64,11 +64,26 @@ jobs:
           echo "  Environment: uat"
           echo "  Count: ${{ env.COUNT }}"
           echo "  Cleanup: ${{ env.CLEANUP }}"
-          JOB_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/mass-generator/generate?count=${{ env.COUNT }}&cleanup=${{ env.CLEANUP }}")
+
+          # Check app health first
+          echo "Checking app health..."
+          curl -sv "http://localhost:8080/actuator/health" || true
+          echo ""
+
+          JOB_RESPONSE=$(curl -sv -X POST "http://localhost:8080/api/mass-generator/generate?count=${{ env.COUNT }}&cleanup=${{ env.CLEANUP }}" 2>&1)
           echo "Response: ${JOB_RESPONSE}"
-          JOB_ID=$(echo "${JOB_RESPONSE}" | jq -r '.jobId')
+          
+          # Extract just the body (last line from curl -sv)
+          BODY=$(echo "${JOB_RESPONSE}" | grep -v '^\*\|^>\|^<\|^{' | tail -1)
+          if [ -z "$BODY" ]; then
+            BODY=$(echo "${JOB_RESPONSE}" | grep '{' | tail -1)
+          fi
+          echo "Body: ${BODY}"
+          
+          JOB_ID=$(echo "${BODY}" | jq -r '.jobId' 2>/dev/null)
           if [ -z "${JOB_ID}" ] || [ "${JOB_ID}" = "null" ]; then
-            echo "ERROR: Failed to start job. Response was: ${JOB_RESPONSE}"
+            echo "ERROR: Failed to start job. Full response was:"
+            echo "${JOB_RESPONSE}"
             exit 1
           fi
           echo "job_id=${JOB_ID}" >> $GITHUB_OUTPUT
