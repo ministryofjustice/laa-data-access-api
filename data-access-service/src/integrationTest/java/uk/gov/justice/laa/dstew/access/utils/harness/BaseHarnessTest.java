@@ -26,6 +26,7 @@ import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
 import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
+import uk.gov.justice.laa.dstew.access.utils.SmokeTestTokenProvider;
 import uk.gov.justice.laa.dstew.access.utils.TestTokenFactory;
 import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
