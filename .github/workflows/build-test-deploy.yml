@@ -305,7 +305,7 @@ jobs:
       contents: read
 
     env:
-      COUNT: '1000'
+      COUNT: '100000'
       CLEANUP: 'false'
 
     steps:
