@@ -75,6 +75,8 @@ management:
   endpoint.health.show-details: always
   info.env.enabled: true
   metrics:
+    tags:
+      release: ${METRICS_RELEASE_TAG:local}
     distribution:
       percentile-histogram:
         jdbc.query: true

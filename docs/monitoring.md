@@ -133,6 +133,49 @@ The Grafana dashboard includes the following panel groups:
 2. Ensure all new PromQL queries include the appropriate release/pod filter
 3. Deploy and verify in UAT before merging
 
+> After editing the template, re-run `scripts/generate-local-dashboard.sh` to keep the local dashboard in sync.
+
+## Running Prometheus & Grafana locally
+
+Prometheus and Grafana are included in `docker-compose.yml` and are configured to scrape a Spring Boot dev server running on your machine.
+
+**Prerequisites**
+
+1. Generate the local dashboard JSON (the Helm template is the source of truth):
+   ```bash
+   bash scripts/generate-local-dashboard.sh
+   ```
+   Re-run this whenever `.helm/data-access-api/templates/grafana-dashboard-template.json` changes.
+
+2. Start your Spring Boot application locally (default port `8080`).
+
+**Start the monitoring stack**
+
+```bash
+docker compose up prometheus grafana
+```
+
+Or start everything at once (DB + monitoring):
+
+```bash
+docker compose up
+```
+
+| Service | URL | Default credentials |
+|---|---|---|
+| Prometheus | http://localhost:9090 | — |
+| Grafana | http://localhost:3000 | admin / admin |
+
+Confirm Prometheus is scraping your app at `http://localhost:9090/targets` — the `laa-data-access-api` job should show **UP**.
+
+**How it works**
+
+The local Prometheus scrapes `/actuator/prometheus` on `host.docker.internal:8080` and attaches static labels `release=local`, `namespace=local`, and `container=data-access-api`. The app emits the `release=local` tag via Micrometer (controlled by the `METRICS_RELEASE_TAG` environment variable, which defaults to `local` and is overridden to the Helm release name in k8s deployments). The dashboard filters on these labels, so all panels work without modification.
+
+**Panels not available locally**
+
+The "Service Stats" panels that query `kube_pod_container_info` and `kube_pod_status_phase` require kube-state-metrics and will show no data. All other panels (HTTP, SQL, JVM, entity operations) work fully.
+
 ## Troubleshooting
 
 | Problem | Likely cause | Fix |

@@ -1,0 +1,363 @@
+components:
+  schemas:
+    ApplicationSortBy:
+      type: string
+      enum:
+        - LAST_UPDATED_DATE
+        - SUBMITTED_DATE
+
+    ApplicationOrderBy:
+      type: string
+      enum:
+        - ASC
+        - DESC
+
+    ApplicationType:
+      type: string
+      enum:
+        - INITIAL
+      default: INITIAL
+
+    OpponentResponse:
+      type: object
+      properties:
+        opposableType:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        organisationName:
+          type: string
+
+    ApplicationResponse:
+      type: object
+      required:
+        - applicationId
+        - status
+        - laaReference
+        - lastUpdated
+        - proceedings
+        - applicationVersion
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        status:
+          $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
+        laaReference:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+        assignedTo:
+          type: string
+          format: uuid
+        submittedAt:
+          type: string
+          format: date-time
+        isLead:
+          type: boolean
+        usedDelegatedFunctions:
+          type: boolean
+        autoGrant:
+          type: boolean
+        decisionStatus:
+          $ref: "#/components/schemas/DecisionStatus"
+        applicationType:
+          $ref: "#/components/schemas/ApplicationType"
+        opponents:
+          type: array
+          items:
+            $ref: "#/components/schemas/OpponentResponse"
+        proceedings:
+          $ref: "#/components/schemas/ApplicationProceedingsResponse"
+        provider:
+          $ref: "#/components/schemas/ProviderResponse"
+        version:
+          type: integer
+          format: int64
+
+    ProviderResponse:
+      type: object
+      properties:
+        officeCode:
+          type: string
+        contactEmail:
+          type: string
+
+    ApplicationCreateRequest:
+      type: object
+      required:
+        - status
+        - applicationContent
+        - laaReference
+        - individuals
+      properties:
+        status:
+          $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
+        applicationContent:
+          type: object
+          description: Application data to create
+          additionalProperties: true
+          minProperties: 1
+        laaReference:
+          type: string
+          minLength: 1
+        individuals:
+          type: array
+          minItems: 1
+          items:
+            $ref: "../open-api-individuals/components.yml#/components/schemas/IndividualCreateRequest"
+
+    ApplicationUpdateRequest:
+      type: object
+      required:
+        - applicationContent
+      properties:
+        status:
+          $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
+        applicationContent:
+          type: object
+          description: Application data to update
+          additionalProperties: true
+          minProperties: 1
+
+    ApplicationSummary:
+      type: object
+      description: (APPLICATION LIST PAGE / VIEW - OPEN APPLICATIONS ONLY BY DEFAULT)
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+          description: The unique reference used to identify the application.
+        status:
+          $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
+        submittedAt:
+          type: string
+          format: date-time
+        lastUpdated:
+          type: string
+          format: date-time
+        usedDelegatedFunctions:
+          type: boolean
+        categoryOfLaw:
+          $ref: "../open-api-common/components.yml#/components/schemas/CategoryOfLaw"
+        matterType:
+          $ref: "../open-api-common/components.yml#/components/schemas/MatterType"
+        assignedTo:
+          type: string
+          format: uuid
+        autoGrant:
+          type: boolean
+        clientFirstName:
+          type: string
+        clientLastName:
+          type: string
+        clientDateOfBirth:
+          type: string
+          format: date
+        laaReference:
+          type: string
+        officeCode:
+          type: string
+        applicationType:
+          $ref: "#/components/schemas/ApplicationType"
+        isLead:
+          type: boolean
+        linkedApplications:
+          type: array
+          items:
+            $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
+
+    ApplicationSummaryResponse:
+      type: object
+      properties:
+        paging:
+          $ref: "../open-api-common/components.yml#/components/schemas/PagingResponse"
+        applications:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicationSummary"
+
+    LinkedApplicationSummaryResponse:
+      type: object
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        laaReference:
+          type: string
+        isLead:
+          type: boolean
+
+    ApplicationHistoryResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicationDomainEventResponse"
+
+    ApplicationDomainEventResponse:
+      type: object
+      required:
+        - applicationId
+        - domainEventType
+        - createdAt
+        - createdBy
+        - eventDescription
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        caseworkerId:
+          type: string
+          format: uuid
+        domainEventType:
+          $ref: "../open-api-common/components.yml#/components/schemas/DomainEventType"
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        eventDescription:
+          type: string
+
+    DecisionStatus:
+      type: string
+      enum:
+        - GRANTED
+        - REFUSED
+
+    MeritsDecisionStatus:
+      type: string
+      enum:
+        - GRANTED
+        - REFUSED
+
+    MeritsDecisionDetailsRequest:
+      type: object
+      required:
+        - decision
+        - justification
+      properties:
+        decision:
+          $ref: "#/components/schemas/MeritsDecisionStatus"
+        reason:
+          type: string
+        justification:
+          type: string
+
+    MakeDecisionProceedingRequest:
+      type: object
+      required:
+        - proceedingId
+        - meritsDecision
+      properties:
+        proceedingId:
+          type: string
+          format: uuid
+        meritsDecision:
+          $ref: "#/components/schemas/MeritsDecisionDetailsRequest"
+
+    MakeDecisionRequest:
+      type: object
+      required:
+        - overallDecision
+        - proceedings
+        - eventHistory
+        - autoGranted
+        - applicationVersion
+      properties:
+        overallDecision:
+          $ref: "#/components/schemas/DecisionStatus"
+        proceedings:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/MakeDecisionProceedingRequest"
+        eventHistory:
+          $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
+        autoGranted:
+          type: boolean
+        certificate:
+          type: object
+          additionalProperties: true
+          description: Certificate information (required when overallDecision is GRANTED)
+        applicationVersion:
+          type: integer
+          format: int64
+          description: Version of application being decided, used for concurrency control
+
+    ApplicationProceedingsResponse:
+      type: array
+      items:
+        $ref: "#/components/schemas/ApplicationProceedingResponse"
+
+    ApplicationProceedingResponse:
+      type: object
+      required:
+        - proceedingId
+      properties:
+        proceedingId:
+          type: string
+          format: uuid
+        proceedingType:
+          type: string
+        proceedingDescription:
+          type: string
+        delegatedFunctionsDate:
+          type: string
+          format: date
+        categoryOfLaw:
+          $ref: "../open-api-common/components.yml#/components/schemas/CategoryOfLaw"
+        matterType:
+          $ref: "../open-api-common/components.yml#/components/schemas/MatterType"
+        levelOfService:
+          type: string
+        substantiveCostLimitation:
+          type: string
+        scopeLimitations:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScopeLimitationResponse"
+        meritsDecision:
+          $ref: "#/components/schemas/MeritsDecisionStatus"
+
+    ScopeLimitationResponse:
+      type: object
+      properties:
+        scopeLimitation:
+          type: string
+        scopeDescription:
+          type: string
+
+    CreateNoteRequest:
+      type: object
+      required:
+        - notes
+      properties:
+        notes:
+          type: string
+          minLength: 1
+          maxLength: 10000
+
+    ApplicationNoteResponse:
+      type: object
+      properties:
+        note:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+
+    ApplicationNotesResponse:
+      type: object
+      properties:
+        notes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicationNoteResponse"

@@ -66,3 +66,5 @@ spec:
             {{ include "sentryConfig" . | nindent 12 }}
             - name: SLOW_QUERY_THRESHOLD_SECONDS
               value: "{{ .Values.slowQueryThresholdSeconds | default 0 }}"
+            - name: METRICS_RELEASE_TAG
+              value: "{{ .Release.Name }}"
