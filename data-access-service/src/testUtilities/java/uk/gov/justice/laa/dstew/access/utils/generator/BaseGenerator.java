@@ -13,7 +13,7 @@ public abstract class BaseGenerator<TEntity, TBuilder> {
   private final Function<TEntity, TBuilder> toBuilder;
   private final Function<TBuilder, TEntity> buildFromBuilder;
 
-  protected Faker faker = new Faker(new java.util.Random(12345L));
+  protected Faker faker = new Faker();
 
   public BaseGenerator(
       Function<TEntity, TBuilder> toBuilder, Function<TBuilder, TEntity> buildFromBuilder) {
