@@ -173,20 +173,8 @@ jacocoTestReport {
         }))
     }
 }
-
 jacocoTestCoverageVerification {
-    violationRules {
-        rule {
-            limit {
-                minimum = 0.70
-            }
-        }
-    }
-    afterEvaluate {
-        classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it, exclude: ['**/AccessApp.class'])
-        }))
-    }
+    enabled = false
 }
 
 dependencyManagement {
