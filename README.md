@@ -169,6 +169,28 @@ You can also use the Swagger UI to execute endpoints, which is described below i
 [API documentation](#api-documentation) section.
 
 
+### Dependency lock files
+
+Gradle [dependency locking](https://docs.gradle.org/current/userguide/dependency_locking.html) is enabled for this
+project. Lock files (`gradle.lockfile`) exist in the root and each subproject directory, recording the exact resolved
+versions of every dependency.
+
+**Why lock files exist:** They ensure that builds are reproducible across different machines and CI environments. Without
+them, Gradle may resolve dynamic or transitive dependency versions differently over time, leading to inconsistent builds.
+
+**What happens when lock files don't match:** If a dependency version changes (e.g. a new dependency is added, upgraded,
+or removed) but the lock files have not been updated, the build will **fail** with a dependency verification error. This
+is intentional — it forces an explicit decision to accept the new set of resolved dependencies.
+
+**To regenerate lock files** after changing dependencies, run:
+
+```bash
+./gradlew resolveAndLockAll
+```
+
+This resolves all configurations across every subproject and writes updated lock files automatically. The updated
+`gradle.lockfile` files should be committed alongside the dependency change.
+
 ### Useful gradle commands
 
 Prior to pushing code, it's useful to run the following commands to check code style:

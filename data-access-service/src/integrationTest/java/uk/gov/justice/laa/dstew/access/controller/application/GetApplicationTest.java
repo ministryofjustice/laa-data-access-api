@@ -340,7 +340,7 @@ public class GetApplicationTest extends BaseHarnessTest {
     application.setUsedDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
     application.setAutoGrant(applicationEntity.getIsAutoGranted());
     if (applicationEntity.getDecision() != null) {
-      application.setOverallDecision(applicationEntity.getDecision().getOverallDecision());
+      application.setDecisionStatus(applicationEntity.getDecision().getOverallDecision());
     }
     application.isLead(applicationEntity.isLead());
 

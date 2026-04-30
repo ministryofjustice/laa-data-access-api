@@ -1644,7 +1644,7 @@
   "tags": [
     "LAA",
     "DSTEW",
-    "Claims",
+    "Data Access Api",
     "{{ .Chart.Name }}",
     "{{ .Release.Namespace }}",
     "{{ .Release.Name }}"

@@ -17,7 +17,8 @@ def versions = [
 configurations.all {
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
-    // Fix for Spring Boot security vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-15701836, 15701840 (Authentication Bypass)
+    // Fix for Spring Boot security vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16198880 (Insecure Temporary File)
+    // Fix for Spring Boot security vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16191774 (Missing Authorization)
     // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
     // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
     resolutionStrategy {
@@ -26,10 +27,17 @@ configurations.all {
         force 'tools.jackson.core:jackson-core:3.1.1'
         force 'tools.jackson.core:jackson-databind:3.1.1'
         force 'tools.jackson:jackson-bom:3.1.1'
-        force 'org.springframework.boot:spring-boot-actuator:3.5.12'
-        force 'org.springframework.boot:spring-boot-actuator-autoconfigure:3.5.12'
-        force 'org.springframework.security:spring-security-web:6.5.9'
         force 'org.springframework:spring-webmvc:6.2.17'
+        force 'org.springframework.security:spring-security-config:7.0.5'
+        force 'org.springframework.security:spring-security-web:7.0.5'
+
+        // Force all Spring Boot modules to 4.0.6
+        eachDependency { details ->
+            if (details.requested.group == 'org.springframework.boot') {
+                details.useVersion '4.0.6'
+                details.because 'Security fixes: SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16198880, SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16191774'
+            }
+        }
     }
 }
 
@@ -223,7 +231,15 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
-    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation('org.springframework.boot:spring-boot-starter-security') {
+        exclude group: 'org.springframework.security', module: 'spring-security-config'
+        exclude group: 'org.springframework.security', module: 'spring-security-web'
+    }
+    implementation('org.springframework.boot:spring-boot-starter-oauth2-resource-server') {
+        exclude group: 'org.springframework.security', module: 'spring-security-web'
+    }
+    implementation 'org.springframework.security:spring-security-config:7.0.5'
+    implementation 'org.springframework.security:spring-security-web:7.0.5'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation('org.springframework.boot:spring-boot-starter-web') {
         exclude group: 'com.google.code.gson', module: 'gson'
@@ -244,7 +260,7 @@ dependencies {
     implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2') {
         exclude group: 'tools.jackson.core'
     }
-    implementation("org.springframework.boot:spring-boot-starter-flyway:4.0.1")
+    implementation("org.springframework.boot:spring-boot-starter-flyway:4.0.6")
     implementation("org.flywaydb:flyway-database-postgresql")
 
     // Source: https://mvnrepository.com/artifact/com.azure.spring/spring-cloud-azure-starter-active-directory
@@ -269,7 +285,7 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.1"
     testImplementation 'org.testcontainers:postgresql:1.21.3'
-    testImplementation 'org.springframework.boot:spring-boot-testcontainers:3.5.7'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers:4.0.6'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     // https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide#test-code
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
