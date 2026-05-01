@@ -91,4 +91,3 @@ services:
 
 volumes:
   pgdata-smoketest:
-
