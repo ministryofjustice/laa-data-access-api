@@ -2,10 +2,12 @@ package uk.gov.justice.laa.dstew.access.repository;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
+import java.util.HashSet;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -19,33 +21,25 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
   public void givenSaveOfExpectedApplication_whenGetCalled_expectedAndActualAreEqual() {
 
     // given
+    // Build full aggregate: meritsDecision → proceeding → application + decision
+    MeritsDecisionEntity meritsDecision =
+        DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class);
+
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class, builder -> builder.meritsDecision(meritsDecision));
+
+    DecisionEntity expectedDecision = DataGenerator.createDefault(DecisionEntityGenerator.class);
+
     ApplicationEntity expected =
         persistedDataGenerator.createAndPersist(
             ApplicationEntityGenerator.class,
             builder ->
                 builder
                     .caseworker(BaseIntegrationTest.CaseworkerJohnDoe)
-                    .linkedApplications(Set.of()));
-    ProceedingEntity proceeding =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> {
-              builder.applicationId(expected.getId());
-            });
-    DecisionEntity expectedDecision =
-        persistedDataGenerator.createAndPersist(
-            DecisionEntityGenerator.class,
-            builder -> {
-              builder.meritsDecisions(
-                  Set.of(
-                      DataGenerator.createDefault(
-                          MeritsDecisionsEntityGenerator.class,
-                          mBuilder -> {
-                            mBuilder.proceeding(proceeding);
-                          })));
-            });
-    expected.setDecision(expectedDecision);
-    applicationRepository.saveAndFlush(expected);
+                    .linkedApplications(Set.of())
+                    .proceedings(new HashSet<>(Set.of(proceeding)))
+                    .decision(expectedDecision));
     clearCache();
 
     // when
@@ -84,7 +78,7 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
   private void assertApplicationEqual(ApplicationEntity expected, ApplicationEntity actual) {
     assertThat(expected)
         .usingRecursiveComparison()
-        .ignoringFields("createdAt", "modifiedAt", "individuals")
+        .ignoringFields("createdAt", "modifiedAt", "individuals", "proceedings")
         .isEqualTo(actual);
     assertThat(expected.getModifiedAt()).isNotNull();
   }

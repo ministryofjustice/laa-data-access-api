@@ -289,9 +289,11 @@ public class CreateApplicationTest extends BaseServiceTest {
 
   private void verifyThatProceedingsSaved(
       ApplicationContent applicationCreateRequest, UUID expectedId) {
-    ArgumentCaptor<List<ProceedingEntity>> captor = ArgumentCaptor.forClass((Class) List.class);
-    verify(proceedingRepository).saveAll(captor.capture());
-    List<ProceedingEntity> actualProceedingEntities = captor.getValue();
+    ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
+    verify(applicationRepository).saveAndFlush(captor.capture());
+    ApplicationEntity savedApplication = captor.getValue();
+    List<ProceedingEntity> actualProceedingEntities =
+        new ArrayList<>(savedApplication.getProceedings());
 
     ApplicationContent applicationContentDetails =
         objectMapper.convertValue(applicationCreateRequest, ApplicationContent.class);
@@ -303,7 +305,6 @@ public class CreateApplicationTest extends BaseServiceTest {
       Proceeding expectedProceeding = expectedProceedings.get(index);
       ProceedingEntity actualProceedingEntity = actualProceedingEntities.get(index);
 
-      assertThat(actualProceedingEntity.getApplicationId()).isEqualTo(expectedId);
       assertThat(actualProceedingEntity.isLead()).isEqualTo(expectedProceeding.getLeadProceeding());
       assertThat(actualProceedingEntity.getProceedingContent())
           .isEqualTo(objectMapper.convertValue(expectedProceeding, Map.class));

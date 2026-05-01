@@ -20,16 +20,24 @@ public final class ApplicationDomainTables {
 
   private ApplicationDomainTables() {}
 
+  /**
+   * Names verified against Flyway migration scripts: V1–V24. V23__aggregate_root_refactor.sql
+   * dropped linked_merits_decisions. V24__add_fk_indexes.sql added FK indexes.
+   *
+   * <p>Note: after V23 the relationship is proceedings.merits_decision_id → merits_decisions, so
+   * deleting an application via JPA cascade also deletes proceedings, merits_decisions, and
+   * decisions.
+   */
   public static final List<String> TABLES =
       List.of(
           "domain_events",
-          "linked_merits_decisions", // join table: decisions ↔ merits_decisions
+          // "linked_merits_decisions" — dropped in V23
           "merits_decisions",
           "decisions",
           "proceedings",
           "certificates",
           "linked_applications",
-          "linked_individuals", // join table: applications ↔ individuals
+          "linked_individuals",
           "individuals",
           "applications",
           "caseworkers");

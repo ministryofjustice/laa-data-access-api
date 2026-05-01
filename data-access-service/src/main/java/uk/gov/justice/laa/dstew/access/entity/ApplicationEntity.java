@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -101,7 +102,7 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "submitted_at")
   private Instant submittedAt;
 
-  @OneToOne()
+  @OneToOne(cascade = CascadeType.ALL)
   @JoinColumn(name = "decision_id", referencedColumnName = "id")
   private DecisionEntity decision;
 
@@ -119,12 +120,19 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "is_auto_granted")
   private Boolean isAutoGranted;
 
-  @OneToMany
+  @OneToMany(fetch = FetchType.EAGER)
   @JoinTable(
       name = "linked_applications",
       joinColumns = @JoinColumn(name = "lead_application_id"),
       inverseJoinColumns = @JoinColumn(name = "associated_application_id"))
   private Set<ApplicationEntity> linkedApplications;
+
+  @OneToMany(
+      mappedBy = "application",
+      cascade = CascadeType.ALL,
+      fetch = FetchType.EAGER,
+      orphanRemoval = true)
+  private Set<ProceedingEntity> proceedings = new HashSet<>();
 
   @Transient
   public boolean isLead() {
