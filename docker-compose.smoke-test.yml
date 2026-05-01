@@ -49,11 +49,11 @@ services:
           ]
         }
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9999/entra/jwks || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9999/entra/.well-known/openid-configuration || exit 1"]
       interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 15s
+      timeout: 5s
+      retries: 15
+      start_period: 60s
 
   app-smoketest:
     build:
