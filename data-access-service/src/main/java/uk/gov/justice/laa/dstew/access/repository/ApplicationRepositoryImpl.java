@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.repository;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Tuple;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -159,12 +160,12 @@ public class ApplicationRepositoryImpl implements ApplicationSummaryRepositoryCu
 
   /**
    * Fetches application data with caseworker and all individuals in a single query using
-   * CriteriaQuery&lt;Object[]&gt;. Rows are grouped in Java to produce one {@link
+   * CriteriaQuery&lt;Tuple&gt;. Rows are grouped in Java to produce one {@link
    * ApplicationSummaryDto} per application, each holding a list of {@link IndividualSummaryDto}.
    */
   private List<ApplicationSummaryDto> executeDataQuery(List<UUID> ids, Pageable pageable) {
     CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-    CriteriaQuery<Object[]> query = cb.createQuery(Object[].class);
+    CriteriaQuery<Tuple> query = cb.createTupleQuery();
     Root<ApplicationEntity> root = query.from(ApplicationEntity.class);
 
     // Join all individuals — no type filter — to avoid fanning out only for CLIENTs
@@ -175,75 +176,77 @@ public class ApplicationRepositoryImpl implements ApplicationSummaryRepositoryCu
 
     Expression<Boolean> isLeadExpr = getIsLeadExpr(query, cb, root);
 
-    query.multiselect(
-        root.get(ApplicationEntity_.id),
-        root.get(ApplicationEntity_.status),
-        root.get(ApplicationEntity_.laaReference),
-        root.get(ApplicationEntity_.officeCode),
-        root.get(ApplicationEntity_.createdAt),
-        root.get(ApplicationEntity_.modifiedAt),
-        root.get(ApplicationEntity_.submittedAt),
-        root.get(ApplicationEntity_.usedDelegatedFunctions),
-        root.get(ApplicationEntity_.categoryOfLaw),
-        root.get(ApplicationEntity_.matterType),
-        root.get(ApplicationEntity_.isAutoGranted),
-        caseworkerJoin.get(CaseworkerEntity_.id),
-        isLeadExpr,
-        individualJoin.get(IndividualEntity_.id),
-        individualJoin.get(IndividualEntity_.firstName),
-        individualJoin.get(IndividualEntity_.lastName),
-        individualJoin.get(IndividualEntity_.dateOfBirth),
-        individualJoin.get(IndividualEntity_.type));
+    query.select(
+        cb.tuple(
+            /* Col.ID                       */ root.get(ApplicationEntity_.id),
+            /* Col.STATUS                   */ root.get(ApplicationEntity_.status),
+            /* Col.LAA_REFERENCE            */ root.get(ApplicationEntity_.laaReference),
+            /* Col.OFFICE_CODE              */ root.get(ApplicationEntity_.officeCode),
+            /* Col.CREATED_AT               */ root.get(ApplicationEntity_.createdAt),
+            /* Col.MODIFIED_AT              */ root.get(ApplicationEntity_.modifiedAt),
+            /* Col.SUBMITTED_AT             */ root.get(ApplicationEntity_.submittedAt),
+            /* Col.USED_DELEGATED_FUNCTIONS */ root.get(ApplicationEntity_.usedDelegatedFunctions),
+            /* Col.CATEGORY_OF_LAW          */ root.get(ApplicationEntity_.categoryOfLaw),
+            /* Col.MATTER_TYPE              */ root.get(ApplicationEntity_.matterType),
+            /* Col.IS_AUTO_GRANTED          */ root.get(ApplicationEntity_.isAutoGranted),
+            /* Col.CASEWORKER_ID            */ caseworkerJoin.get(CaseworkerEntity_.id),
+            /* Col.IS_LEAD                  */ isLeadExpr,
+            /* Col.INDIVIDUAL_ID            */ individualJoin.get(IndividualEntity_.id),
+            /* Col.INDIVIDUAL_FIRST_NAME    */ individualJoin.get(IndividualEntity_.firstName),
+            /* Col.INDIVIDUAL_LAST_NAME     */ individualJoin.get(IndividualEntity_.lastName),
+            /* Col.INDIVIDUAL_DATE_OF_BIRTH */ individualJoin.get(IndividualEntity_.dateOfBirth),
+            /* Col.INDIVIDUAL_TYPE          */ individualJoin.get(IndividualEntity_.type)));
 
     query.where(root.get(ApplicationEntity_.id).in(ids));
 
     applySort(cb, root, query, pageable);
 
-    List<Object[]> rows = entityManager.createQuery(query).getResultList();
+    List<Tuple> rows = entityManager.createQuery(query).getResultList();
     return groupRows(rows, ids);
   }
 
   /**
-   * Groups raw Object[] rows (one per individual) into one {@link ApplicationSummaryDto} per
+   * Groups {@link Tuple} rows (one per individual) into one {@link ApplicationSummaryDto} per
    * application, preserving the page-sort order dictated by {@code ids}.
    */
-  private List<ApplicationSummaryDto> groupRows(List<Object[]> rows, List<UUID> ids) {
+  private List<ApplicationSummaryDto> groupRows(List<Tuple> rows, List<UUID> ids) {
     Map<UUID, ApplicationSummaryDto> byId = new LinkedHashMap<>();
 
-    for (Object[] row : rows) {
-      UUID appId = (UUID) row[Col.ID.idx()];
+    for (Tuple row : rows) {
+      UUID appId = row.get(Col.ID.idx(), UUID.class);
       ApplicationSummaryDto dto =
           byId.computeIfAbsent(
               appId,
               id -> {
                 ApplicationSummaryDto d = new ApplicationSummaryDto();
                 d.setId(id);
-                d.setStatus((ApplicationStatus) row[Col.STATUS.idx()]);
-                d.setLaaReference((String) row[Col.LAA_REFERENCE.idx()]);
-                d.setOfficeCode((String) row[Col.OFFICE_CODE.idx()]);
-                d.setCreatedAt((Instant) row[Col.CREATED_AT.idx()]);
-                d.setModifiedAt((Instant) row[Col.MODIFIED_AT.idx()]);
-                d.setSubmittedAt((Instant) row[Col.SUBMITTED_AT.idx()]);
-                d.setUsedDelegatedFunctions((Boolean) row[Col.USED_DELEGATED_FUNCTIONS.idx()]);
-                d.setCategoryOfLaw((CategoryOfLaw) row[Col.CATEGORY_OF_LAW.idx()]);
-                d.setMatterType((MatterType) row[Col.MATTER_TYPE.idx()]);
-                d.setIsAutoGranted((Boolean) row[Col.IS_AUTO_GRANTED.idx()]);
-                d.setCaseworkerId((UUID) row[Col.CASEWORKER_ID.idx()]);
-                Boolean isLead = (Boolean) row[Col.IS_LEAD.idx()];
+                d.setStatus(row.get(Col.STATUS.idx(), ApplicationStatus.class));
+                d.setLaaReference(row.get(Col.LAA_REFERENCE.idx(), String.class));
+                d.setOfficeCode(row.get(Col.OFFICE_CODE.idx(), String.class));
+                d.setCreatedAt(row.get(Col.CREATED_AT.idx(), Instant.class));
+                d.setModifiedAt(row.get(Col.MODIFIED_AT.idx(), Instant.class));
+                d.setSubmittedAt(row.get(Col.SUBMITTED_AT.idx(), Instant.class));
+                d.setUsedDelegatedFunctions(
+                    row.get(Col.USED_DELEGATED_FUNCTIONS.idx(), Boolean.class));
+                d.setCategoryOfLaw(row.get(Col.CATEGORY_OF_LAW.idx(), CategoryOfLaw.class));
+                d.setMatterType(row.get(Col.MATTER_TYPE.idx(), MatterType.class));
+                d.setIsAutoGranted(row.get(Col.IS_AUTO_GRANTED.idx(), Boolean.class));
+                d.setCaseworkerId(row.get(Col.CASEWORKER_ID.idx(), UUID.class));
+                Boolean isLead = row.get(Col.IS_LEAD.idx(), Boolean.class);
                 d.setLead(isLead != null && isLead);
                 d.setIndividuals(new ArrayList<>());
                 return d;
               });
 
       // INDIVIDUAL_ID is null when the LEFT JOIN found no individual for this application
-      if (row[Col.INDIVIDUAL_ID.idx()] != null) {
+      if (row.get(Col.INDIVIDUAL_ID.idx()) != null) {
         IndividualSummaryDto individual =
             IndividualSummaryDto.builder()
-                .id((UUID) row[Col.INDIVIDUAL_ID.idx()])
-                .firstName((String) row[Col.INDIVIDUAL_FIRST_NAME.idx()])
-                .lastName((String) row[Col.INDIVIDUAL_LAST_NAME.idx()])
-                .dateOfBirth((LocalDate) row[Col.INDIVIDUAL_DATE_OF_BIRTH.idx()])
-                .type((IndividualType) row[Col.INDIVIDUAL_TYPE.idx()])
+                .id(row.get(Col.INDIVIDUAL_ID.idx(), UUID.class))
+                .firstName(row.get(Col.INDIVIDUAL_FIRST_NAME.idx(), String.class))
+                .lastName(row.get(Col.INDIVIDUAL_LAST_NAME.idx(), String.class))
+                .dateOfBirth(row.get(Col.INDIVIDUAL_DATE_OF_BIRTH.idx(), LocalDate.class))
+                .type(row.get(Col.INDIVIDUAL_TYPE.idx(), IndividualType.class))
                 .build();
         dto.getIndividuals().add(individual);
       }
