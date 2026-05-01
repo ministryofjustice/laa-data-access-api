@@ -6,7 +6,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,27 +14,24 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationSummaryGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationSummaryDtoGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationSummaryDtoGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
 
 @ExtendWith(MockitoExtension.class)
 public class ApplicationSummaryMapperTest extends BaseMapperTest {
 
   @InjectMocks private ApplicationSummaryMapperImpl applicationMapper;
 
-  private static List<Arguments> parametersForMappingApplicationSummaryEntityTest() {
+  private static List<Arguments> parametersForMappingApplicationSummaryDtoTest() {
     return List.of(
         Arguments.of("95bb88f1-99ca-4ecf-b867-659b55a8cf93", true),
         Arguments.of("95bb88f1-99ca-4ecf-b867-659b55a8cf93", false),
@@ -46,8 +42,8 @@ public class ApplicationSummaryMapperTest extends BaseMapperTest {
   }
 
   @ParameterizedTest
-  @MethodSource("parametersForMappingApplicationSummaryEntityTest")
-  void givenApplicationSummaryEntity_whenToApplicationSummary_thenMapsFieldsCorrectly(
+  @MethodSource("parametersForMappingApplicationSummaryDtoTest")
+  void givenApplicationSummaryDto_whenToApplicationSummary_thenMapsFieldsCorrectly(
       UUID caseworkerId, Boolean autoGranted) {
     UUID id = UUID.randomUUID();
     Instant createdAt = Instant.now();
@@ -61,22 +57,12 @@ public class ApplicationSummaryMapperTest extends BaseMapperTest {
     ApplicationType applicationType = ApplicationType.INITIAL;
     String officeCode = "office-code";
 
-    var individual =
-        DataGenerator.createDefault(
-            IndividualEntityGenerator.class,
-            builder ->
-                builder
-                    .firstName("John")
-                    .lastName("Doe")
-                    .dateOfBirth(LocalDate.of(1980, 5, 2))
-                    .type(IndividualType.CLIENT));
-
     var caseworker =
         DataGenerator.createDefault(CaseworkerGenerator.class, builder -> builder.id(caseworkerId));
 
-    ApplicationSummaryEntity entity =
+    ApplicationSummaryDto summaryDto =
         DataGenerator.createDefault(
-            ApplicationSummaryGenerator.class,
+            ApplicationSummaryDtoGenerator.class,
             builder ->
                 builder
                     .id(id)
@@ -90,11 +76,12 @@ public class ApplicationSummaryMapperTest extends BaseMapperTest {
                     .laaReference(laaReference)
                     .officeCode(officeCode)
                     .status(status)
-                    .caseworker(caseworker)
-                    .individuals(Set.of(individual))
-                    .type(applicationType));
+                    .clientFirstName("John")
+                    .clientLastName("Doe")
+                    .clientDateOfBirth(LocalDate.of(1980, 5, 2))
+                    .caseworkerId(caseworker.getId()));
 
-    ApplicationSummary result = applicationMapper.toApplicationSummary(entity);
+    ApplicationSummary result = applicationMapper.toApplicationSummary(summaryDto);
 
     assertThat(result).isNotNull();
     assertThat(result.getApplicationId()).isEqualTo(id);
@@ -121,47 +108,44 @@ public class ApplicationSummaryMapperTest extends BaseMapperTest {
 
   @Test
   void
-      givenApplicationSummaryEntityWithNullSubmittedAt_whenToApplicationSummary_thenSubmittedAtIsNull() {
-    ApplicationSummaryEntity entity =
+      givenApplicationSummaryDtoWithNullSubmittedAt_whenToApplicationSummary_thenSubmittedAtIsNull() {
+    ApplicationSummaryDto summaryDto =
         DataGenerator.createDefault(
-            ApplicationSummaryGenerator.class,
-            builder -> builder.submittedAt(null).individuals(Set.of()));
+            ApplicationSummaryDtoGenerator.class, builder -> builder.submittedAt(null));
 
-    assertThat(applicationMapper.toApplicationSummary(entity).getSubmittedAt()).isNull();
+    assertThat(applicationMapper.toApplicationSummary(summaryDto).getSubmittedAt()).isNull();
   }
 
   @Test
   void
-      givenApplicationSummaryEntityWithLinkedApplications_whenToApplicationSummary_thenIsLeadIsTrue() {
-    var linkedApplication = DataGenerator.createDefault(ApplicationEntityGenerator.class);
+      givenApplicationSummaryDtoWithLinkedApplications_whenToApplicationSummary_thenIsLeadIsTrue() {
 
-    ApplicationSummaryEntity entity =
+    ApplicationSummaryDto summaryDto =
         DataGenerator.createDefault(
-            ApplicationSummaryGenerator.class,
-            builder -> builder.individuals(Set.of()).linkedApplications(Set.of(linkedApplication)));
+            ApplicationSummaryDtoGenerator.class, builder -> builder.isLead(true));
 
-    assertThat(applicationMapper.toApplicationSummary(entity).getIsLead()).isTrue();
+    assertThat(applicationMapper.toApplicationSummary(summaryDto).getIsLead()).isTrue();
   }
 
   @Test
   void
-      givenApplicationSummaryEntityWithNoLinkedApplications_whenToApplicationSummary_thenIsLeadIsFalse() {
-    ApplicationSummaryEntity entity =
+      givenApplicationSummaryDtoWithNoLinkedApplications_whenToApplicationSummary_thenIsLeadIsFalse() {
+    ApplicationSummaryDto summaryDto =
         DataGenerator.createDefault(
-            ApplicationSummaryGenerator.class,
-            builder -> builder.individuals(Set.of()).linkedApplications(null));
+            ApplicationSummaryDtoGenerator.class, builder -> builder.isLead(false));
 
-    assertThat(applicationMapper.toApplicationSummary(entity).getIsLead()).isFalse();
+    assertThat(applicationMapper.toApplicationSummary(summaryDto).getIsLead()).isFalse();
   }
 
   @Test
   void
-      givenApplicationSummaryEntityWithNoIndividuals_whenToApplicationSummary_thenClientFieldsAreNull() {
-    ApplicationSummaryEntity entity =
+      givenApplicationSummaryDtoWithNoIndividuals_whenToApplicationSummary_thenClientFieldsAreNull() {
+    ApplicationSummaryDto summaryDto =
         DataGenerator.createDefault(
-            ApplicationSummaryGenerator.class, builder -> builder.individuals(Set.of()));
+            ApplicationSummaryDtoGenerator.class,
+            builder -> builder.clientLastName(null).clientFirstName(null).clientDateOfBirth(null));
 
-    ApplicationSummary result = applicationMapper.toApplicationSummary(entity);
+    ApplicationSummary result = applicationMapper.toApplicationSummary(summaryDto);
 
     assertThat(result.getClientFirstName()).isNull();
     assertThat(result.getClientLastName()).isNull();

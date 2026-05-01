@@ -8,22 +8,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationSummaryEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationSummaryMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortFields;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationSummaryRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
@@ -33,7 +31,6 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 /** Service class responsible for retrieving and managing {@link ApplicationSummary} data. */
 @Service
 public class ApplicationSummaryService {
-  private final ApplicationSummaryRepository applicationSummaryRepository;
   private final ApplicationRepository applicationRepository;
   private final CaseworkerRepository caseworkerRepository;
   private final ApplicationSummaryMapper mapper;
@@ -41,17 +38,14 @@ public class ApplicationSummaryService {
   /**
    * Constructs a new {@link ApplicationSummaryService} with the required repositories and mapper.
    *
-   * @param applicationSummaryRepository the repository used to access application summary data
    * @param applicationRepository the repository used to access application entities
    * @param applicationSummaryMapper the mapper used to convert entities into API-facing models
    * @param caseworkerRepository the repository used to access caseworker data
    */
   public ApplicationSummaryService(
-      final ApplicationSummaryRepository applicationSummaryRepository,
       final ApplicationRepository applicationRepository,
       final ApplicationSummaryMapper applicationSummaryMapper,
       final CaseworkerRepository caseworkerRepository) {
-    this.applicationSummaryRepository = applicationSummaryRepository;
     this.applicationRepository = applicationRepository;
     this.mapper = applicationSummaryMapper;
     this.caseworkerRepository = caseworkerRepository;
@@ -91,8 +85,8 @@ public class ApplicationSummaryService {
       throw new ValidationException(List.of("Caseworker not found"));
     }
 
-    Page<ApplicationSummaryEntity> resultPage =
-        applicationSummaryRepository.findAll(
+    Page<ApplicationSummaryDto> resultPage =
+        applicationRepository.findAllAsDtos(
             ApplicationSummarySpecification.filterBy(
                 applicationStatus,
                 laaReference,
@@ -111,10 +105,10 @@ public class ApplicationSummaryService {
         page,
         pageSize,
         resultPage.map(
-            entity -> {
-              ApplicationSummary summary = mapper.toApplicationSummary(entity);
+            dto -> {
+              ApplicationSummary summary = mapper.toApplicationSummary(dto);
               summary.setLinkedApplications(
-                  linkedApplications.getOrDefault(entity.getId(), List.of()).stream()
+                  linkedApplications.getOrDefault(dto.getId(), List.of()).stream()
                       .map(mapper::toLinkedApplicationSummary)
                       .toList());
               return summary;
@@ -122,30 +116,24 @@ public class ApplicationSummaryService {
   }
 
   private Map<UUID, List<LinkedApplicationSummaryDto>> retrieveLinkedApplications(
-      List<ApplicationSummaryEntity> content) {
-    List<UUID> pageIds = content.stream().map(ApplicationSummaryEntity::getId).toList();
-    List<UUID> allLeadIds =
-        Stream.concat(
-                content.stream()
-                    .filter(ApplicationSummaryEntity::isLead)
-                    .map(ApplicationSummaryEntity::getId),
-                applicationRepository.findLeadIdsByAssociatedIds(pageIds).stream())
-            .distinct()
-            .toList();
+      List<ApplicationSummaryDto> content) {
+    List<UUID> applicationPageIds = content.stream().map(ApplicationSummaryDto::getId).toList();
 
-    if (allLeadIds.isEmpty()) {
+    if (applicationPageIds.isEmpty()) {
       return Map.of();
     }
 
+    // Single query replaces findLeadIdsByAssociatedIds + findAllLinkedApplicationsByLeadIds
     Map<UUID, List<LinkedApplicationSummaryDto>> linkedAppsByLeadId =
-        applicationRepository.findAllLinkedApplicationsByLeadIds(allLeadIds).stream()
+        applicationRepository.findAllLinkedApplicationsForPageIds(applicationPageIds).stream()
             .collect(Collectors.groupingBy(LinkedApplicationSummaryDto::getLeadApplicationId));
 
     return content.stream()
         .collect(
             Collectors.toMap(
-                ApplicationSummaryEntity::getId,
-                entity -> resolveLinkedApplications(entity.getId(), linkedAppsByLeadId)));
+                ApplicationSummaryDto::getId,
+                entity -> resolveLinkedApplications(entity.getId(), linkedAppsByLeadId),
+                (existing, replacement) -> existing));
   }
 
   private List<LinkedApplicationSummaryDto> resolveLinkedApplications(

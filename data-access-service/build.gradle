@@ -21,15 +21,32 @@ configurations.all {
     // Fix for Spring Boot security vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16191774 (Missing Authorization)
     // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
     // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
+    // Fix for PostgreSQL vulnerability SNYK-JAVA-ORGPOSTGRESQL-16321668 (Allocation of Resources Without Limits or Throttling)
+    // Fix for Spring Web vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-16109615 (Incomplete Cleanup)
     resolutionStrategy {
         force 'com.fasterxml.jackson.core:jackson-core:2.21.2'
         force 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
         force 'tools.jackson.core:jackson-core:3.1.1'
         force 'tools.jackson.core:jackson-databind:3.1.1'
         force 'tools.jackson:jackson-bom:3.1.1'
-        force 'org.springframework:spring-webmvc:6.2.17'
         force 'org.springframework.security:spring-security-config:7.0.5'
         force 'org.springframework.security:spring-security-web:7.0.5'
+
+        // Use strictly to override Spring Boot BOM versions
+        eachDependency { details ->
+            if (details.requested.group == 'org.springframework' && details.requested.name == 'spring-web') {
+                details.useVersion '7.0.7'
+                details.because 'Security fix: SNYK-JAVA-ORGSPRINGFRAMEWORK-16109615 (Incomplete Cleanup)'
+            }
+            if (details.requested.group == 'org.springframework' && details.requested.name == 'spring-webmvc') {
+                details.useVersion '7.0.7'
+                details.because 'Security fix: SNYK-JAVA-ORGSPRINGFRAMEWORK-16109615 (Incomplete Cleanup)'
+            }
+            if (details.requested.group == 'org.postgresql' && details.requested.name == 'postgresql') {
+                details.useVersion '42.7.11'
+                details.because 'Security fix: SNYK-JAVA-ORGPOSTGRESQL-16321668 (Allocation of Resources Without Limits or Throttling)'
+            }
+        }
 
         // Force all Spring Boot modules to 4.0.6
         eachDependency { details ->
@@ -230,6 +247,8 @@ dependencies {
 
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+// Source: https://mvnrepository.com/artifact/org.hibernate.orm/hibernate-processor
+    annotationProcessor 'org.hibernate.orm:hibernate-processor:7.3.2.Final'
     implementation 'org.javers:javers-core:7.10.0'
 
     runtimeOnly 'org.postgresql:postgresql'

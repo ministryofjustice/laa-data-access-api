@@ -20,7 +20,6 @@ import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.repository.*;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationSummaryGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateEntityGenerator;
@@ -56,7 +55,6 @@ public class PersistedDataGenerator extends DataGenerator {
   public void init() {
     registerRepository(DomainEventGenerator.class, DomainEventRepository.class);
     registerRepository(ApplicationEntityGenerator.class, ApplicationRepository.class);
-    registerRepository(ApplicationSummaryGenerator.class, ApplicationSummaryRepository.class);
     registerRepository(CaseworkerGenerator.class, CaseworkerRepository.class);
     registerRepository(DecisionEntityGenerator.class, DecisionRepository.class);
     registerRepository(ProceedingsEntityGenerator.class, ProceedingRepository.class);
@@ -157,15 +155,16 @@ public class PersistedDataGenerator extends DataGenerator {
    */
   @SuppressWarnings("unchecked")
   public <TEntity> TEntity updateAndFlush(TEntity entity) {
-    if (entity instanceof ApplicationEntity e) {
-      applicationContext.getBean(ApplicationRepository.class).saveAndFlush(e);
-    } else if (entity instanceof CaseworkerEntity e) {
-      applicationContext.getBean(CaseworkerRepository.class).saveAndFlush(e);
-    } else if (entity instanceof IndividualEntity e) {
-      applicationContext.getBean(IndividualRepository.class).saveAndFlush(e);
-    } else {
-      throw new IllegalArgumentException(
-          "No repository mapped for entity type: " + entity.getClass().getName());
+    switch (entity) {
+      case ApplicationEntity e ->
+          applicationContext.getBean(ApplicationRepository.class).saveAndFlush(e);
+      case CaseworkerEntity e ->
+          applicationContext.getBean(CaseworkerRepository.class).saveAndFlush(e);
+      case IndividualEntity e ->
+          applicationContext.getBean(IndividualRepository.class).saveAndFlush(e);
+      default ->
+          throw new IllegalArgumentException(
+              "No repository mapped for entity type: " + entity.getClass().getName());
     }
     // Entity is already tracked — no need to call track() again.
     return entity;
