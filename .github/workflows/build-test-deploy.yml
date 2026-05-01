@@ -325,21 +325,43 @@ jobs:
         id: find-pod
         run: |
           NAMESPACE="${{ secrets.KUBE_NAMESPACE }}"
+          echo "Waiting for mass-generator pod to be ready..."
+          kubectl wait --for=condition=ready pod -l app=mass-generator -n "${NAMESPACE}" --timeout=120s || true
+          
           POD_NAME=$(kubectl get pods -n "${NAMESPACE}" -l app=mass-generator -o jsonpath='{.items[0].metadata.name}')
           if [ -z "${POD_NAME}" ]; then
             echo "ERROR: No mass-generator pod found in namespace ${NAMESPACE}"
+            echo "Listing all pods:"
+            kubectl get pods -n "${NAMESPACE}" || true
             exit 1
           fi
+          
+          POD_STATUS=$(kubectl get pod -n "${NAMESPACE}" "${POD_NAME}" -o jsonpath='{.status.phase}')
+          echo "Pod: ${POD_NAME} | Status: ${POD_STATUS}"
+          
+          if [ "${POD_STATUS}" != "Running" ]; then
+            echo "ERROR: Pod is not running. Getting events and logs..."
+            kubectl describe pod -n "${NAMESPACE}" "${POD_NAME}" | tail -30 || true
+            exit 1
+          fi
+          
           echo "pod_name=${POD_NAME}" >> $GITHUB_OUTPUT
           echo "namespace=${NAMESPACE}" >> $GITHUB_OUTPUT
-          echo "Found pod: ${POD_NAME}"
 
       - name: Port forward
         run: |
           POD_NAME="${{ steps.find-pod.outputs.pod_name }}"
           NAMESPACE="${{ steps.find-pod.outputs.namespace }}"
           kubectl port-forward -n "${NAMESPACE}" "${POD_NAME}" 8080:8080 &
+          PF_PID=$!
           sleep 5
+          
+          # Verify port-forward is still alive
+          if ! kill -0 $PF_PID 2>/dev/null; then
+            echo "ERROR: Port-forward process died"
+            exit 1
+          fi
+          echo "Port-forward established (PID: $PF_PID)"
 
       - name: Start generation job
         id: start-job
