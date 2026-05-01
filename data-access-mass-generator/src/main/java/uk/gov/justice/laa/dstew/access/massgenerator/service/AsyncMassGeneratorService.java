@@ -87,14 +87,16 @@ public class AsyncMassGeneratorService {
       CategoryOfLawTypeConvertor colConvertor = new CategoryOfLawTypeConvertor();
       MatterTypeConvertor mtConvertor = new MatterTypeConvertor();
 
-      int decidedCount = 0;
+      // Reuse a single generator instance across all iterations to avoid object churn
+      FullJsonGenerator jsonGenerator = new FullJsonGenerator();
 
+      int decidedCount = 0;
       int errorCount = 0;
 
       for (int i = 0; i < count; i++) {
 
         try {
-          ApplicationContent content = new FullJsonGenerator().createDefault();
+          ApplicationContent content = jsonGenerator.createDefault();
           CaseworkerEntity cw =
               caseworkers.get(faker.number().numberBetween(0, caseworkers.size()));
           IndividualEntity indiv =
@@ -112,8 +114,9 @@ public class AsyncMassGeneratorService {
               content.getProceedings().stream()
                   .anyMatch(p -> Boolean.TRUE.equals(p.getUsedDelegatedFunctions()));
 
+          // Use persist (no flush) instead of saveAndFlush — let batching accumulate
           ApplicationEntity app =
-              persistedDataGenerator.createAndPersist(
+              DataGenerator.createDefault(
                   ApplicationEntityGenerator.class,
                   b ->
                       b.applyApplicationId(content.getId())
@@ -127,8 +130,9 @@ public class AsyncMassGeneratorService {
                           .usedDelegatedFunctions(udf)
                           .applicationContent(objectMapper.convertValue(content, Map.class))
                           .caseworker(cw));
+          persistedDataGenerator.persistNoFlush(ApplicationEntityGenerator.class, app);
 
-          linkedIndividualWriter.link(app.getId(), indiv.getId());
+          linkedIndividualWriter.linkDeferred(app.getId(), indiv.getId());
 
           List<ProceedingEntity> proceedingBatch = new ArrayList<>();
           for (Proceeding p : content.getProceedings()) {
@@ -144,7 +148,8 @@ public class AsyncMassGeneratorService {
                             .updatedBy("mass-generator")
                             .proceedingContent(objectMapper.convertValue(p, Map.class))));
           }
-          persistedDataGenerator.persist(ProceedingsEntityGenerator.class, proceedingBatch);
+          persistedDataGenerator.persistAllNoFlush(
+              ProceedingsEntityGenerator.class, proceedingBatch);
 
           if (faker.number().randomDouble(2, 0, 1) < DECISION_RATE) {
             decidedCount++;
@@ -159,33 +164,27 @@ public class AsyncMassGeneratorService {
                         DecisionStatus.GRANTED,
                         DecisionStatus.REFUSED);
 
-            List<ProceedingEntity> attachedProceedings =
-                persistedDataGenerator.reattach(proceedingBatch);
-            ApplicationEntity attachedApp = persistedDataGenerator.reattach(List.of(app)).get(0);
-
             Set<MeritsDecisionEntity> merits = new LinkedHashSet<>();
-            for (ProceedingEntity pe : attachedProceedings) {
+            for (ProceedingEntity pe : proceedingBatch) {
               MeritsDecisionEntity merit =
                   meritsDecisionGenerator.createDefault(b -> b.proceeding(pe));
-              persistedDataGenerator.persist(FullMeritsDecisionGenerator.class, merit);
+              persistedDataGenerator.persistNoFlush(FullMeritsDecisionGenerator.class, merit);
               merits.add(merit);
             }
 
             DecisionEntity decision =
                 DecisionEntity.builder().overallDecision(overallDecision).build();
-            persistedDataGenerator.persist(DecisionEntityGenerator.class, decision);
+            persistedDataGenerator.persistNoFlush(DecisionEntityGenerator.class, decision);
             decision.setMeritsDecisions(merits);
-            persistedDataGenerator.mergeDecision(decision);
 
             if (overallDecision == DecisionStatus.GRANTED) {
               CertificateEntity cert =
-                  certificateGenerator.createDefault(b -> b.applicationId(attachedApp.getId()));
-              persistedDataGenerator.persist(FullCertificateGenerator.class, cert);
+                  certificateGenerator.createDefault(b -> b.applicationId(app.getId()));
+              persistedDataGenerator.persistNoFlush(FullCertificateGenerator.class, cert);
             }
 
-            attachedApp.setDecision(decision);
-            attachedApp.setIsAutoGranted(overallDecision == DecisionStatus.GRANTED);
-            persistedDataGenerator.saveApplication(attachedApp);
+            app.setDecision(decision);
+            app.setIsAutoGranted(overallDecision == DecisionStatus.GRANTED);
           }
 
         } catch (Exception recordEx) {
@@ -196,6 +195,7 @@ public class AsyncMassGeneratorService {
 
         if ((i + 1) % BATCH_SIZE == 0) {
           persistedDataGenerator.flushAndClear();
+          linkedIndividualWriter.flushDeferred();
           job.setProcessedCount(i + 1);
           job.setDecidedCount(decidedCount);
           job.setErrorCount(errorCount);
@@ -212,6 +212,7 @@ public class AsyncMassGeneratorService {
       }
 
       persistedDataGenerator.flushAndClear();
+      linkedIndividualWriter.flushDeferred();
 
       long elapsedMs = System.currentTimeMillis() - startTime;
       double throughput = count / (elapsedMs / 1000.0);

@@ -115,6 +115,28 @@ public class PersistedDataGenerator extends DataGenerator {
     return entities;
   }
 
+  /**
+   * Persist without flushing — allows Hibernate to batch inserts. Call flushAndClear() at batch
+   * boundaries.
+   */
+  public <TEntity, TGenerator> TEntity persistNoFlush(
+      Class<TGenerator> generatorType, TEntity entity) {
+    JpaRepository<TEntity, ?> repository = getRepository(generatorType);
+    repository.save(entity);
+    return entity;
+  }
+
+  /**
+   * Persist a list without flushing — allows Hibernate to batch inserts. Call flushAndClear() at
+   * batch boundaries.
+   */
+  public <TEntity, TGenerator> List<TEntity> persistAllNoFlush(
+      Class<TGenerator> generatorType, List<TEntity> entities) {
+    JpaRepository<TEntity, ?> repository = getRepository(generatorType);
+    repository.saveAll(entities);
+    return entities;
+  }
+
   @Transactional
   public void flushAndClear() {
     entityManager.flush();
