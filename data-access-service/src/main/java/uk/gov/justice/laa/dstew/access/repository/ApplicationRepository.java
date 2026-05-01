@@ -26,7 +26,8 @@ public interface ApplicationRepository
   /**
    * Finds all linked applications for the given page IDs in a single query. This combines the logic
    * of finding lead IDs and fetching all linked applications, reducing query count from 2 to 1.
-   * Uses a CTE to avoid duplicate subqueries and reduce parameter bindings.
+   * Optimized to only query linked_applications table in CTE and use UNION ALL for better
+   * performance.
    *
    * @param applicationPageIds the IDs of applications on the current page
    * @return list of linked application summary DTOs for all applications in the same link groups
@@ -34,21 +35,19 @@ public interface ApplicationRepository
   @Query(
       value =
           "WITH lead_ids AS ( "
-              + "  SELECT id FROM applications "
-              + "  WHERE id IN :applicationPageIds "
-              + "    AND EXISTS (SELECT 1 FROM linked_applications WHERE lead_application_id = id) "
-              + "  UNION "
-              + "  SELECT lead_application_id FROM linked_applications "
-              + "  WHERE associated_application_id IN :applicationPageIds "
+              + "  SELECT lead_application_id AS id "
+              + "  FROM linked_applications "
+              + "  WHERE lead_application_id IN :applicationPageIds "
+              + "     OR associated_application_id IN :applicationPageIds "
               + ") "
               + "SELECT a.id, a.laa_reference, false AS is_lead, la.lead_application_id "
-              + "FROM applications a "
-              + "JOIN linked_applications la ON a.id = la.associated_application_id "
-              + "WHERE la.lead_application_id IN (SELECT id FROM lead_ids) "
-              + "UNION "
+              + "FROM lead_ids lIds "
+              + "JOIN linked_applications la ON la.lead_application_id = lIds.id "
+              + "JOIN applications a ON a.id = la.associated_application_id "
+              + "UNION ALL "
               + "SELECT a.id, a.laa_reference, true AS is_lead, a.id "
-              + "FROM applications a "
-              + "WHERE a.id IN (SELECT id FROM lead_ids)",
+              + "FROM lead_ids lIds "
+              + "JOIN applications a ON a.id = lIds.id",
       nativeQuery = true)
   List<LinkedApplicationSummaryDto> findAllLinkedApplicationsForPageIds(
       @Param("applicationPageIds") List<UUID> applicationPageIds);
