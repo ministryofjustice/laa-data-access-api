@@ -197,6 +197,37 @@ public class GetApplicationsTest extends BaseHarnessTest {
 
   @Test
   void
+      givenApplicationsFilteredByFirstNameAndStatus_MultipleIndividuals_whenGetApplications_thenReturnExpectedApplicationsCorrectly()
+          throws Exception {
+    // given
+
+    uk.gov.justice.laa.dstew.access.entity.IndividualEntity jane =
+        DataGenerator.createDefault(IndividualEntityGenerator.class, i -> i.firstName("Jane"));
+    uk.gov.justice.laa.dstew.access.entity.IndividualEntity alice =
+        DataGenerator.createDefault(IndividualEntityGenerator.class, i -> i.firstName("Alice"));
+    persistedDataGenerator.createAndPersist(
+        ApplicationEntityGenerator.class,
+        builder ->
+            builder
+                .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+                .individuals(Set.of(jane, alice)));
+
+    // when
+    HarnessResult result =
+        getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_FIRSTNAME_PARAM + "Alice");
+    ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+    // then
+    assertContentHeaders(result);
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertOK(result);
+    assertThat(actual.getApplications().size()).isEqualTo(1);
+    assertEquals("Jane", actual.getApplications().getFirst().getClientFirstName());
+  }
+
+  @Test
+  void
       givenApplicationsWithoutFiltering_whenGetApplications_thenReturnApplicationsWithPagingCorrectly()
           throws Exception {
     // given

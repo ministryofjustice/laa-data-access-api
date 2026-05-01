@@ -7,6 +7,8 @@ import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
+import uk.gov.justice.laa.dstew.access.model.IndividualSummaryDto;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 
@@ -38,9 +40,16 @@ public interface ApplicationSummaryMapper {
     app.setOfficeCode(dto.getOfficeCode());
     app.setStatus(dto.getStatus());
     app.setAssignedTo(dto.getCaseworkerId());
-    app.setClientFirstName(dto.getClientFirstName());
-    app.setClientLastName(dto.getClientLastName());
-    app.setClientDateOfBirth(dto.getClientDateOfBirth());
+    IndividualSummaryDto client =
+        dto.getIndividuals().stream()
+            .filter(i -> IndividualType.CLIENT.equals(i.getType()))
+            .findFirst()
+            .orElse(null);
+    if (client != null) {
+      app.setClientFirstName(client.getFirstName());
+      app.setClientLastName(client.getLastName());
+      app.setClientDateOfBirth(client.getDateOfBirth());
+    }
     app.setApplicationType(ApplicationType.INITIAL);
     app.setLastUpdated(dto.getModifiedAt().atOffset(ZoneOffset.UTC));
     app.setIsLead(dto.isLead());

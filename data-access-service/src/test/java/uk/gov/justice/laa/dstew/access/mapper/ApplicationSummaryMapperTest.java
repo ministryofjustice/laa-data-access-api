@@ -19,6 +19,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.IndividualSummaryDto;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -76,10 +78,15 @@ public class ApplicationSummaryMapperTest extends BaseMapperTest {
                     .laaReference(laaReference)
                     .officeCode(officeCode)
                     .status(status)
-                    .clientFirstName("John")
-                    .clientLastName("Doe")
-                    .clientDateOfBirth(LocalDate.of(1980, 5, 2))
-                    .caseworkerId(caseworker.getId()));
+                    .caseworkerId(caseworker.getId())
+                    .individuals(
+                        List.of(
+                            IndividualSummaryDto.builder()
+                                .firstName("John")
+                                .lastName("Doe")
+                                .dateOfBirth(LocalDate.of(1980, 5, 2))
+                                .type(IndividualType.CLIENT)
+                                .build())));
 
     ApplicationSummary result = applicationMapper.toApplicationSummary(summaryDto);
 
@@ -142,8 +149,7 @@ public class ApplicationSummaryMapperTest extends BaseMapperTest {
       givenApplicationSummaryDtoWithNoIndividuals_whenToApplicationSummary_thenClientFieldsAreNull() {
     ApplicationSummaryDto summaryDto =
         DataGenerator.createDefault(
-            ApplicationSummaryDtoGenerator.class,
-            builder -> builder.clientLastName(null).clientFirstName(null).clientDateOfBirth(null));
+            ApplicationSummaryDtoGenerator.class, builder -> builder.individuals(List.of()));
 
     ApplicationSummary result = applicationMapper.toApplicationSummary(summaryDto);
 

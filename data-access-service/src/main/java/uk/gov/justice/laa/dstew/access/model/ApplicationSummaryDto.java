@@ -1,7 +1,8 @@
 package uk.gov.justice.laa.dstew.access.model;
 
 import java.time.Instant;
-import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,44 +29,7 @@ public class ApplicationSummaryDto {
   private MatterType matterType;
   private Boolean isAutoGranted;
   private UUID caseworkerId;
-  private String clientFirstName;
-  private String clientLastName;
-  private LocalDate clientDateOfBirth;
   private boolean isLead;
 
-  /** Constructor for data query projection (app data + client info + lead flag). */
-  public ApplicationSummaryDto(
-      UUID id,
-      ApplicationStatus status,
-      String laaReference,
-      String officeCode,
-      Instant createdAt,
-      Instant modifiedAt,
-      Instant submittedAt,
-      Boolean usedDelegatedFunctions,
-      CategoryOfLaw categoryOfLaw,
-      MatterType matterType,
-      Boolean isAutoGranted,
-      UUID caseworkerId,
-      String clientFirstName,
-      String clientLastName,
-      LocalDate clientDateOfBirth,
-      Boolean isLead) {
-    this.id = id;
-    this.status = status;
-    this.laaReference = laaReference;
-    this.officeCode = officeCode;
-    this.createdAt = createdAt;
-    this.modifiedAt = modifiedAt;
-    this.submittedAt = submittedAt;
-    this.usedDelegatedFunctions = usedDelegatedFunctions;
-    this.categoryOfLaw = categoryOfLaw;
-    this.matterType = matterType;
-    this.isAutoGranted = isAutoGranted;
-    this.caseworkerId = caseworkerId;
-    this.clientFirstName = clientFirstName;
-    this.clientLastName = clientLastName;
-    this.clientDateOfBirth = clientDateOfBirth;
-    this.isLead = isLead != null && isLead;
-  }
+  @Builder.Default private List<IndividualSummaryDto> individuals = new ArrayList<>();
 }
