@@ -112,37 +112,6 @@ jobs:
           renovate: ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
           codeql-upload-findings: "always"
 
-  infrastructure-smoke-test:
-    if: startsWith(github.head_ref || github.ref_name, 'openapi/') == false
-    runs-on: ubuntu-latest
-    needs:
-      - build-test
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Set up JDK 25
-        uses: actions/setup-java@v5
-        with:
-          java-version: 25
-          distribution: 'corretto'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
-
-      - name: Run infrastructure smoke tests
-        run: ./scripts/run-infrastructure-smoke-tests.sh
-        env:
-          FEATURE_ENABLE_DEV_TOKEN: "true"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload smoke test report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: smoke-test-report
-          path: data-access-service/build/reports/tests/integrationTest
-          retention-days: 14
-
   vulnerability-scan-app:
     runs-on: ubuntu-latest
     needs:
@@ -241,7 +210,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-push-docker
-      - infrastructure-smoke-test
       - vulnerability-scan-app
       - vulnerability-scan-docker
       - sca
@@ -249,6 +217,9 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    outputs:
+      release-name: ${{ steps.deploy_uat_branch.outputs.release-name }}
+      branch-name: ${{ steps.deploy_uat_branch.outputs.branch-name }}
 
     steps:
 
@@ -267,6 +238,126 @@ jobs:
           kube-cluster: ${{ secrets.KUBE_CLUSTER }}
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
           app-environment: uat
+
+  uat-smoke-test:
+    if: startsWith(github.head_ref || github.ref_name, 'openapi/') == false
+    runs-on: ubuntu-latest
+    needs:
+      - deploy-uat
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      RELEASE_NAME: ${{ needs.deploy-uat.outputs.release-name }}
+      BRANCH_NAME: ${{ needs.deploy-uat.outputs.branch-name }}
+      KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with:
+          java-version: 25
+          distribution: 'corretto'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+
+      - name: Authenticate to the cluster
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
+        with:
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+
+      - name: Resolve smoke-test target
+        id: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$BRANCH_NAME" = "main" ]; then
+            echo "db_pod_selector=run=port-forward-pod" >> "$GITHUB_OUTPUT"
+            echo "db_secret=rds-postgresql-instance-output" >> "$GITHUB_OUTPUT"
+            echo "db_flavour=rds" >> "$GITHUB_OUTPUT"
+          else
+            echo "db_pod_selector=app.kubernetes.io/instance=${RELEASE_NAME}-postgresql,app.kubernetes.io/name=postgresql" >> "$GITHUB_OUTPUT"
+            echo "db_secret=${RELEASE_NAME}-postgresql" >> "$GITHUB_OUTPUT"
+            echo "db_flavour=bitnami" >> "$GITHUB_OUTPUT"
+          fi
+          echo "app_pod_selector=app.kubernetes.io/instance=${RELEASE_NAME},app.kubernetes.io/name=data-access-api" >> "$GITHUB_OUTPUT"
+
+      - name: Port forward to Postgres
+        uses: ./.github/actions/port-forward
+        with:
+          kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
+          pod_selector: ${{ steps.target.outputs.db_pod_selector }}
+          local_port: "5432"
+          remote_port: "5432"
+          pid_env_var: DB_PORT_FORWARD_PID
+
+      - name: Port forward to app
+        uses: ./.github/actions/port-forward
+        with:
+          kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
+          pod_selector: ${{ steps.target.outputs.app_pod_selector }}
+          local_port: "8080"
+          remote_port: "8080"
+          pid_env_var: APP_PORT_FORWARD_PID
+
+      - name: Configure smoke-test environment
+        shell: bash
+        env:
+          DB_SECRET: ${{ steps.target.outputs.db_secret }}
+          DB_FLAVOUR: ${{ steps.target.outputs.db_flavour }}
+        run: |
+          set -euo pipefail
+          decode() {
+            kubectl -n "$KUBE_NAMESPACE" get secret "$DB_SECRET" -o jsonpath="{.data.$1}" | base64 -d
+          }
+          if [ "$DB_FLAVOUR" = "rds" ]; then
+            DB_NAME=$(decode database_name)
+            DB_USER=$(decode database_username)
+            DB_PASS=$(decode database_password)
+          else
+            DB_NAME="postgres"
+            DB_USER="postgres"
+            DB_PASS=$(decode postgres-password)
+          fi
+          echo "::add-mask::$DB_PASS"
+          {
+            echo "LAA_SMOKE_ACCESS_API_URL=http://localhost:8080"
+            echo "LAA_SMOKE_ACCESS_DB_URL=jdbc:postgresql://localhost:5432/$DB_NAME"
+            echo "LAA_SMOKE_ACCESS_DB_USERNAME=$DB_USER"
+            echo "LAA_SMOKE_ACCESS_DB_PASSWORD=$DB_PASS"
+          } >> "$GITHUB_ENV"
+
+      - name: Run UAT smoke tests
+        run: ./gradlew :data-access-service:infrastructureTest --continue --console=plain
+
+      - name: Upload smoke test report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: uat-smoke-test-report
+          path: data-access-service/build/reports/tests/infrastructureTest
+          retention-days: 14
+
+      - name: Stop port-forwards
+        if: always()
+        shell: bash
+        run: |
+          for pid in "${DB_PORT_FORWARD_PID:-}" "${APP_PORT_FORWARD_PID:-}"; do
+            [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+          done
+
+      - name: Delete in-cluster port-forward resources
+        if: always()
+        shell: bash
+        run: |
+          kubectl -n "$KUBE_NAMESPACE" delete deployment port-forward-pod --ignore-not-found
+          kubectl -n "$KUBE_NAMESPACE" delete service laa-data-access-api-uat-postgresql-portforward --ignore-not-found
 
   deploy-staging:
     if: github.ref == 'refs/heads/main'

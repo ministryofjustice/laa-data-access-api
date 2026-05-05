@@ -3,6 +3,15 @@ plugins {
     id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin'
 }
 
+configurations.all {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == 'org.springframework' && details.requested.module.name in ['spring-web', 'spring-webflux', 'spring-webmvc']) {
+            details.useVersion '7.0.7'
+            details.because 'Security fix: override strict BOM constraint to 7.0.7'
+        }
+    }
+}
+
 java {
     withJavadocJar()
     withSourcesJar()
