@@ -160,7 +160,7 @@ public class CreateNoteTest extends BaseHarnessTest {
   @Test
   public void givenUnknownRole_whenCreateNote_thenReturnForbidden() throws Exception {
     // given
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
 
     // when
     HarnessResult result =

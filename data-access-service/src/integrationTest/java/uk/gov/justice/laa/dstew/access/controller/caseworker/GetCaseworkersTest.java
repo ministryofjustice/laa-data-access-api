@@ -63,7 +63,7 @@ public class GetCaseworkersTest extends BaseHarnessTest {
 
   @Test
   public void givenUnknownRole_whenGetCaseworkers_thenReturnForbidden() throws Exception {
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     HarnessResult result = getUri(TestConstants.URIs.GET_CASEWORKERS);
 
     assertSecurityHeaders(result);

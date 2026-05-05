@@ -20,14 +20,32 @@ repositories {
     mavenCentral()
 }
 
+configurations.all {
+    resolutionStrategy {
+        force 'org.springframework:spring-web:7.0.7'
+        force 'org.springframework:spring-webflux:7.0.7'
+        force 'org.springframework:spring-webmvc:7.0.7'
+        force 'org.springframework.security:spring-security-config:7.0.5'
+        force 'org.springframework.security:spring-security-web:7.0.5'
+        force 'org.postgresql:postgresql:42.7.11'
+
+        // Force all Spring Boot modules to 4.0.6
+        eachDependency { details ->
+            if (details.requested.group == 'org.springframework.boot') {
+                details.useVersion '4.0.6'
+                details.because 'Security fixes: SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16198880, SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16191774'
+            }
+        }
+    }
+}
+
 dependencies {
     implementation('org.springframework.boot:spring-boot-starter-web') {
         exclude group: 'com.google.code.gson', module: 'gson'
     }
 
     implementation 'org.springframework:spring-aspects'
-    implementation 'org.springframework.security:spring-security-core:7.0.2'
-    implementation 'org.springframework:spring-core:6.2.11'
+    implementation 'org.springframework.security:spring-security-core:7.0.5'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }

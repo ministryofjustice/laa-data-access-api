@@ -571,14 +571,11 @@ public class ApplicationService {
 
   private static UUID getCaseworkerId(UUID applicationId, ApplicationEntity application) {
     final CaseworkerEntity caseworker = application.getCaseworker();
-    // This logic will be implemented in the next iteration when security is implemented in the
-    // service
-    //    if (caseworker == null) {
-    //      throw new ResourceNotFoundException(
-    //          String.format("Caseworker not found for application id: %s", applicationId)
-    //      );
-    //    }
-    return caseworker != null ? caseworker.getId() : null;
+    if (caseworker == null) {
+      throw new ResourceNotFoundException(
+          String.format("Caseworker not found for application id: %s", applicationId));
+    }
+    return caseworker.getId();
   }
 
   /**

@@ -58,9 +58,10 @@ Create or modify your '~/.zshrc' file to include the following environment varia
 export ENTRA_ISSUER_URI=https://dummy-issuer
 export ENTRA_JWK_SET_URI=https://dummy-jwk-set-uri
 export ENTRA_AUD=dummy-aud
-export FEATURE_ENABLE_DEV_TOKEN=true
-export FEATURE_DISABLE_SECURITY=true
 ```
+
+> **Note:** These dummy values are only needed if you run `bootRun` without the `local` profile.
+> When using the `local` profile (recommended), the mock OAuth2 server provides real JWT validation — see [Run application](#run-application).
 
 This will ensure that where-ever you run the application from locally (IntelliJ, any terminal window, etc)
 , these environment variables will be set. 
@@ -109,24 +110,51 @@ The smoke tests will also run in CI eventually.
 
 ### Run application
 
-Ensure that the environment variables specified in the 
-[Set up environment variables](#set-up-environment-variables) section have been set.
+**Simplest approach - automatic startup:**
 
-To start up Localstack and Postgres
+```bash
+./gradlew bootRun
+```
 
-`docker compose up -d`
+This automatically starts the mock-oauth2-server (if not already running), applies the `local` profile, and launches the application with JWT validation enabled.
 
-Or if you want to use a different name or credentials
+**Manual approach - control Docker yourself:**
 
-`docker compose run -p 5432:5432 -e POSTGRES_DB={database name} POSTGRES_USER={username} POSTGRES_PASSWORD={password} postgres`
+```bash
+docker compose up -d
+./gradlew bootRun --args='--spring.profiles.active=local'
+```
 
-followed by
+The application uses the mock-oauth2-server on port 9999 for JWT validation. Security is always enabled—no environment variables or feature flags needed.
 
-`docker compose run -p 4566:4566 localstack`
+#### Getting a local dev token
 
-Then execute
+To get a valid Bearer token for Swagger or Postman, run:
 
-`./gradlew bootRun`
+```bash
+curl -s -X POST http://localhost:9999/entra/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=test" \
+  -d "client_secret=test" | jq -r .access_token
+```
+
+Or as a one-liner that copies the token to your clipboard:Or as a one-liner that copies the token to your clipboard (macOS):
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:9999/entra/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=test" \
+  -d "client_secret=test" | jq -r .access_token) && echo $TOKEN | pbcopy && echo "✓ Token copied to clipboard"
+```
+
+The token is pre-configured with the `LAA_CASEWORKER` role and a 1-hour expiry.
+
+> **Why not auto-authenticate in Swagger?** Swagger UI supports OAuth2 flows, but switching
+> the OpenAPI security scheme from Bearer to OAuth2 would affect all environments (not just local).
+> In production, tokens come from the Entra OBO flow, not client_credentials. Keeping a single
+> Bearer scheme keeps Swagger consistent across environments.
 
 ### Executing endpoints
 
@@ -140,10 +168,6 @@ curl -X GET "http://localhost:8080/applications" -H "accept: application/json" -
 You can also use the Swagger UI to execute endpoints, which is described below in the 
 [API documentation](#api-documentation) section.
 
-If FEATURE_ENABLE_DEV_TOKEN is set to true, you can use the following token for testing purposes
-```
-Authorization: Bearer swagger-caseworker-token
-```
 
 ### Dependency lock files
 
@@ -189,14 +213,8 @@ You may need to drop database tables manually prior to running app so Flyway can
 - http://localhost:8080/swagger-ui/index.html
 
 The "Authorize" button is available in the top right of the Swagger UI, which allows you to enter a Bearer token for 
-authentication when executing endpoints. 
-If you have set up the environment variables as specified in the 
-[Set up environment variables](#set-up-environment-variables) section, 
-you can use the "Authorize" button to enter the following token for testing purposes:
-
-```
-swagger-caseworker-token
-```
+authentication when executing endpoints.
+See [Getting a local dev token](#getting-a-local-dev-token) for how to obtain a token.
 
 #### API docs (JSON)
 - http://localhost:8080/v3/api-docs

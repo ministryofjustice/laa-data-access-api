@@ -166,7 +166,7 @@ public class GetDomainEventTest extends BaseHarnessTest {
 
   @Test
   public void givenNoRole_whenApplicationHistorySearch_thenReturnForbidden() throws Exception {
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     HarnessResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, UUID.randomUUID());
 
     assertSecurityHeaders(result);

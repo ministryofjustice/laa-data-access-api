@@ -17,6 +17,43 @@ services:
       timeout: 5s
       retries: 5
 
+  mock-oauth2-server-smoketest:
+    # Version: 2.1.10 (also update: docker-compose.yml, build.gradle testImplementation)
+    image: ghcr.io/navikt/mock-oauth2-server:2.1.10
+    container_name: laa-mock-oauth2-smoketest
+    restart: unless-stopped
+    ports:
+      - "9998:9999"
+    environment:
+      SERVER_PORT: 9999
+      JSON_CONFIG: >
+        {
+          "interactiveLogin": false,
+          "tokenCallbacks": [
+            {
+              "issuerId": "entra",
+              "tokenExpiry": 3600,
+              "requestMappings": [
+                {
+                  "requestParam": "grant_type",
+                  "match": "client_credentials",
+                  "claims": {
+                    "sub": "smoke-test-user",
+                    "aud": ["laa-data-access-api"],
+                    "roles": ["LAA_CASEWORKER"],
+                    "LAA_APP_ROLES": "LAA_CASEWORKER"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+    healthcheck:
+      # navikt/mock-oauth2-server uses a distroless JVM base image (no shell, no wget/curl).
+      # CMD-SHELL is unavailable, so we probe the HTTP endpoint via /dev/tcp in bash-free sh.
+      # The simplest reliable approach is to disable the healthcheck and let the app retry.
+      disable: true
+
   app-smoketest:
     build:
       context: .
@@ -29,21 +66,18 @@ services:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 60s
+      retries: 15
+      start_period: 90s
 
     environment:
       # Database
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-smoketest:5432/laa_data_access_api
       SPRING_DATASOURCE_USERNAME: laa_user
       SPRING_DATASOURCE_PASSWORD: laa_password
-      # Entra / OAuth2 — set these in your shell or a .env file before running
-      ENTRA_ISSUER_URI: ${ENTRA_ISSUER_URI:-https://dummy-issuer}
-      ENTRA_JWK_SET_URI: ${ENTRA_JWK_SET_URI:-https://dummy-jwk-set-uri}
-      ENTRA_AUD: ${ENTRA_AUD:-dummy-aud}
-      # Optional feature flags
-      FEATURE_ENABLE_DEV_TOKEN: ${FEATURE_ENABLE_DEV_TOKEN:-true}
-      FEATURE_DISABLE_SECURITY: ${FEATURE_DISABLE_SECURITY:-false}
+      # Entra / OAuth2 — points to mock-oauth2-server for smoke tests
+      ENTRA_ISSUER_URI: http://mock-oauth2-server-smoketest:9999/entra
+      ENTRA_JWK_SET_URI: http://mock-oauth2-server-smoketest:9999/entra/jwks
+      ENTRA_AUD: laa-data-access-api
       # Sentry (disabled locally by default)
       SENTRY_ENABLED: ${SENTRY_ENABLED:-false}
       SENTRY_DSN: ${SENTRY_DSN:-}
@@ -51,7 +85,8 @@ services:
     depends_on:
       postgres-smoketest:
         condition: service_healthy
+      mock-oauth2-server-smoketest:
+        condition: service_started
 
 volumes:
   pgdata-smoketest:
-

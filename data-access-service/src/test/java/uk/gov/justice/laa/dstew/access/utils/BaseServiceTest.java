@@ -21,8 +21,7 @@ import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.*;
 
-@SpringBootTest(
-    properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=false"})
+@SpringBootTest(properties = {"feature.disable-jpa-auditing=true"})
 @ImportAutoConfiguration(
     exclude = {
       DataSourceAutoConfiguration.class,
@@ -53,6 +52,8 @@ public class BaseServiceTest {
   @MockitoBean protected NoteRepository noteRepository;
 
   @MockitoBean protected ServiceNameContext serviceNameContext;
+
+  @MockitoBean protected org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder;
 
   @Autowired protected ObjectMapper objectMapper;
 

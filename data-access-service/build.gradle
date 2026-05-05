@@ -21,15 +21,20 @@ configurations.all {
     // Fix for Spring Boot security vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16191774 (Missing Authorization)
     // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
     // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
+    // Fix for SNYK-JAVA-ORGPOSTGRESQL-16321668 (Allocation of Resources Without Limits or Throttling) - updated to 42.7.11
+    // Fix for SNYK-JAVA-ORGSPRINGFRAMEWORK-16109615 (Incomplete Cleanup) - updated spring-web to 7.0.7
     resolutionStrategy {
         force 'com.fasterxml.jackson.core:jackson-core:2.21.2'
         force 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
         force 'tools.jackson.core:jackson-core:3.1.1'
         force 'tools.jackson.core:jackson-databind:3.1.1'
         force 'tools.jackson:jackson-bom:3.1.1'
-        force 'org.springframework:spring-webmvc:6.2.17'
+        force 'org.springframework:spring-web:7.0.7'
+        force 'org.springframework:spring-webflux:7.0.7'
+        force 'org.springframework:spring-webmvc:7.0.7'
         force 'org.springframework.security:spring-security-config:7.0.5'
         force 'org.springframework.security:spring-security-web:7.0.5'
+        force 'org.postgresql:postgresql:42.7.11'
 
         // Force all Spring Boot modules to 4.0.6
         eachDependency { details ->
@@ -115,8 +120,7 @@ tasks.register('infrastructureTest', Test) {
      'LAA_SMOKE_ACCESS_DB_URL',
      'LAA_SMOKE_ACCESS_DB_USERNAME',
      'LAA_SMOKE_ACCESS_DB_PASSWORD',
-     'FEATURE_DISABLE_SECURITY',
-     'FEATURE_ENABLE_DEV_TOKENS'].each { key ->
+     'LAA_SMOKE_OAUTH_TOKEN_URL'].each { key ->
         def value = System.getenv(key)
         if (value) environment key, value
     }
@@ -152,6 +156,50 @@ jacocoTestReport {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, exclude: ['**/AccessApp.class'])
         }))
+    }
+}
+
+// Automatically start mock-oauth2-server for local development
+tasks.register('startMockOAuthServer') {
+    group = 'application'
+    description = 'Starts mock-oauth2-server via docker compose for local development'
+
+    doLast {
+        def composeFile = project.rootProject.file('docker-compose.yml')
+
+        // Check if mock server is already running
+        def checkRunning = "docker ps --filter name=laa-mock-oauth2 --format '{{.Names}}'".execute()
+        checkRunning.waitFor()
+        def isRunning = checkRunning.text.trim()
+
+        if (isRunning) {
+            println "✓ mock-oauth2-server is already running"
+        } else {
+            println "Starting mock-oauth2-server..."
+            def startCommand = "docker compose -f ${composeFile.absolutePath} up -d mock-oauth2-server"
+            def process = startCommand.execute()
+            process.waitForProcessOutput(System.out, System.err)
+
+            if (process.exitValue() == 0) {
+                println "✓ mock-oauth2-server started successfully"
+                println "  Token URL: http://localhost:9999/entra/token"
+
+                // Wait a moment for server to be ready
+                Thread.sleep(2000)
+            } else {
+                throw new GradleException("Failed to start mock-oauth2-server. Run 'docker compose up -d mock-oauth2-server' manually.")
+            }
+        }
+    }
+}
+
+// Make bootRun depend on starting the mock server
+tasks.named('bootRun') {
+    dependsOn startMockOAuthServer
+
+    // Set the local profile by default
+    if (!project.hasProperty('args')) {
+        args = ['--spring.profiles.active=local']
     }
 }
 
@@ -232,7 +280,7 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
     implementation 'org.javers:javers-core:7.10.0'
 
-    runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'org.postgresql:postgresql:42.7.11'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
@@ -247,6 +295,8 @@ dependencies {
     // https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide#test-code
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+
+    testImplementation 'no.nav.security:mock-oauth2-server:2.1.10'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 

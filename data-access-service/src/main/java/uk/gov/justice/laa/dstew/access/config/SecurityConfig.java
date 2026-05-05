@@ -6,10 +6,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -18,7 +15,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -30,19 +26,16 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
-import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.filter.OncePerRequestFilter;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
-/** Spring Security configuration if security is not disabled. */
+/** Spring Security configuration for JWT-based authentication and authorization. */
 @ExcludeFromGeneratedCodeCoverage
 @Configuration
 @EnableMethodSecurity
 @EnableWebSecurity
-@ConditionalOnProperty(prefix = "feature", name = "disable-security", havingValue = "false")
 public class SecurityConfig {
 
   @Value("${spring.security.oauth2.resourceserver.jwt.audience}")
@@ -66,14 +59,7 @@ public class SecurityConfig {
    * @throws Exception if anything went wrong.
    */
   @Bean
-  SecurityFilterChain securityFilterChain(
-      final HttpSecurity http,
-      @Autowired(required = false) @Qualifier("devTokenFilter") OncePerRequestFilter devTokenFilter)
-      throws Exception {
-
-    if (devTokenFilter != null) {
-      http.addFilterBefore(devTokenFilter, BearerTokenAuthenticationFilter.class);
-    }
+  SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
 
     http.authorizeHttpRequests(
             authorize ->
@@ -111,19 +97,11 @@ public class SecurityConfig {
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
     JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter =
         new JwtGrantedAuthoritiesConverter();
-    grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
+    grantedAuthoritiesConverter.setAuthorityPrefix(AUTHORITY_PREFIX);
     grantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
 
     JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(
-        jwt -> {
-          var authorities = grantedAuthoritiesConverter.convert(jwt);
-          if (authorities == null || authorities.isEmpty()) {
-            // Add default roles
-            return Set.of(new SimpleGrantedAuthority("APPROLE_LAA_CASEWORKER"));
-          }
-          return authorities;
-        });
+    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
     return jwtAuthenticationConverter;
   }
 

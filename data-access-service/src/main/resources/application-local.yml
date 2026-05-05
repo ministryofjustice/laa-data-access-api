@@ -1,0 +1,12 @@
+# Local development profile — uses mock-oauth2-server from docker-compose.
+# Usage: ./gradlew bootRun --args='--spring.profiles.active=local'
+# Prerequisite: docker-compose up (starts Postgres + mock-oauth2-server)
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9999/entra
+          jwk-set-uri: http://localhost:9999/entra/jwks
+          audience: laa-data-access-api
