@@ -1,0 +1,12 @@
+FROM amazoncorretto:25-alpine
+
+RUN apk update && apk upgrade && apk add --no-cache curl
+
+WORKDIR /mass-generator
+VOLUME /tmp
+COPY data-access-mass-generator/build/libs/data-access-mass-generator-*-SNAPSHOT.jar mass-generator.jar
+EXPOSE 8080
+
+ENV TZ=Europe/London
+ENV JAVA_TOOL_OPTIONS="-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=80.0"
+CMD java -jar mass-generator.jar --web --spring.profiles.active=db,web

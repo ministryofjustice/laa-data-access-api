@@ -14,11 +14,17 @@ spring:
     url: jdbc:postgresql://localhost:5432/laa_data_access_api
     username: laa_user
     password: laa_password
+    hikari:
+      maximum-pool-size: 10       # default 10 is too low for concurrent workflows; tune per env
+      minimum-idle: 5
+      connection-timeout: 30000   # ms — fail fast rather than queue indefinitely
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate.ddl-auto: none  # Use Flyway for DB schema.
-    show-sql: false
+    show-sql: true
 
   sql.init.mode: never # Use Flyway for DB schema.
 
@@ -53,11 +59,14 @@ logging:
             dstew:
               access:
                 config: INFO
+                service:
+                  logging:
+                    aspects: OFF
 
 jdbc:
   datasource-proxy:
     slow-query:
-      enable-logging: true
+      enable-logging: false
       log-level: WARN
       threshold: 0  # seconds; overridden per environment
 
@@ -71,6 +80,7 @@ management:
     distribution:
       percentile-histogram:
         jdbc.query: true
+        hikaricp.connections.acquire: true  # connection wait time histogram
 
 sentry:
   enabled: ${SENTRY_ENABLED:false}

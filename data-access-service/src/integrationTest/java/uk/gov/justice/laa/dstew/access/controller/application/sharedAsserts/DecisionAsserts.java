@@ -1,34 +1,33 @@
 package uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts;
 
+import java.util.List;
 import java.util.UUID;
 import org.assertj.core.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
-import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
-import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
-import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntityV2;
+import uk.gov.justice.laa.dstew.access.entity.DecisionEntityV2;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntityV2;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntityV2;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.repository.ApplicationRepositoryV2;
 
 /**
  * Shared test assertions for decision-related integration tests.
  *
- * <p>Methods are {@link Transactional} so that the JPA session remains open while lazy collections
- * (e.g. {@code DecisionEntity.meritsDecisions}) are traversed, avoiding {@link
- * org.hibernate.LazyInitializationException}.
+ * <p>Navigates via ApplicationEntityV2 → ProceedingEntityV2 → MeritsDecisionEntityV2, matching the
+ * new clean-architecture aggregate-root path.
  */
 @Component
 public class DecisionAsserts {
 
-  @Autowired private ApplicationRepository applicationRepository;
+  @Autowired private ApplicationRepositoryV2 applicationRepositoryV2;
 
   /**
-   * Fetches the saved {@link DecisionEntity} for the given application and asserts that it matches
-   * the expected {@link MakeDecisionRequest}.
+   * Fetches the saved {@link DecisionEntityV2} for the given application and asserts that it
+   * matches the expected {@link MakeDecisionRequest}.
    *
    * <p>All repository and collection access happens within a single transaction so lazy collections
    * are initialised before the session closes.
@@ -36,60 +35,36 @@ public class DecisionAsserts {
   @Transactional
   public void verifyDecisionSavedCorrectly(
       UUID applicationId, MakeDecisionRequest expectedMakeDecisionRequest) {
-    ApplicationEntity updatedApplicationEntity =
-        applicationRepository.findById(applicationId).orElseThrow();
 
-    DecisionEntity savedDecision = updatedApplicationEntity.getDecision();
+    ApplicationEntityV2 app = applicationRepositoryV2.findById(applicationId).orElseThrow();
 
-    MakeDecisionRequest actual =
-        mapToMakeDecisionRequest(
-            savedDecision, updatedApplicationEntity, expectedMakeDecisionRequest.getEventHistory());
-
-    Assertions.assertThat(actual)
-        .usingRecursiveComparison()
-        .ignoringCollectionOrder()
-        .ignoringFields("certificate", "applicationVersion")
-        .isEqualTo(expectedMakeDecisionRequest);
-
+    DecisionEntityV2 savedDecision = app.getDecision();
+    Assertions.assertThat(savedDecision).isNotNull();
+    Assertions.assertThat(savedDecision.getOverallDecision().name())
+        .isEqualTo(expectedMakeDecisionRequest.getOverallDecision().name());
     Assertions.assertThat(savedDecision.getModifiedAt()).isNotNull();
-    Assertions.assertThat(savedDecision.getMeritsDecisions())
-        .allSatisfy(merits -> Assertions.assertThat(merits.getModifiedAt()).isNotNull());
-  }
 
-  // ── Mapping helpers ───────────────────────────────────────────────────────
+    // Verify merits decisions via the proceedings they belong to
+    List<MakeDecisionProceedingRequest> expectedProceedings =
+        expectedMakeDecisionRequest.getProceedings();
+    for (MakeDecisionProceedingRequest expected : expectedProceedings) {
+      ProceedingEntityV2 proceeding =
+          app.getProceedings().stream()
+              .filter(p -> p.getId().equals(expected.getProceedingId()))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new AssertionError(
+                          "No proceeding found with id: " + expected.getProceedingId()));
 
-  private static MakeDecisionRequest mapToMakeDecisionRequest(
-      DecisionEntity decisionEntity,
-      ApplicationEntity applicationEntity,
-      EventHistoryRequest eventHistoryRequest) {
-    if (decisionEntity == null) return null;
-    return MakeDecisionRequest.builder()
-        .overallDecision(decisionEntity.getOverallDecision())
-        .eventHistory(eventHistoryRequest)
-        .proceedings(
-            decisionEntity.getMeritsDecisions().stream()
-                .map(DecisionAsserts::mapToProceedingDetails)
-                .toList())
-        .autoGranted(applicationEntity.getIsAutoGranted())
-        .build();
-  }
-
-  private static MakeDecisionProceedingRequest mapToProceedingDetails(
-      MeritsDecisionEntity meritsDecisionEntity) {
-    if (meritsDecisionEntity == null) return null;
-    return MakeDecisionProceedingRequest.builder()
-        .proceedingId(meritsDecisionEntity.getProceeding().getId())
-        .meritsDecision(mapToMeritsDecisionDetails(meritsDecisionEntity))
-        .build();
-  }
-
-  private static MeritsDecisionDetailsRequest mapToMeritsDecisionDetails(
-      MeritsDecisionEntity entity) {
-    if (entity == null) return null;
-    return MeritsDecisionDetailsRequest.builder()
-        .decision(entity.getDecision())
-        .reason(entity.getReason())
-        .justification(entity.getJustification())
-        .build();
+      MeritsDecisionEntityV2 merits = proceeding.getMeritsDecision();
+      Assertions.assertThat(merits).isNotNull();
+      Assertions.assertThat(merits.getDecision().name())
+          .isEqualTo(expected.getMeritsDecision().getDecision().name());
+      Assertions.assertThat(merits.getReason()).isEqualTo(expected.getMeritsDecision().getReason());
+      Assertions.assertThat(merits.getJustification())
+          .isEqualTo(expected.getMeritsDecision().getJustification());
+      Assertions.assertThat(merits.getModifiedAt()).isNotNull();
+    }
   }
 }

@@ -15,7 +15,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,7 +30,15 @@ class ProceedingMapperTest extends BaseMapperTest {
   @Test
   void givenProceedingAndApplicationId_whenToProceedingEntity_thenMapsFieldsCorrectly() {
     UUID applicationId = UUID.randomUUID();
-    Proceeding proceeding = DataGenerator.createDefault(ProceedingGenerator.class);
+    Proceeding proceeding =
+        Proceeding.builder()
+            .id(UUID.randomUUID())
+            .categoryOfLaw("Family")
+            .matterType("SPECIAL_CHILDREN_ACT")
+            .leadProceeding(true)
+            .usedDelegatedFunctions(true)
+            .description("Proceeding description")
+            .build();
 
     ProceedingEntity result = proceedingMapper.toProceedingEntity(proceeding, applicationId);
 
@@ -46,9 +53,7 @@ class ProceedingMapperTest extends BaseMapperTest {
   @Test
   void givenProceedingWithAllNullFields_whenToProceedingEntity_thenNullableFieldsAreNull() {
     Proceeding proceeding =
-        DataGenerator.createDefault(
-            ProceedingGenerator.class,
-            builder -> builder.id(null).leadProceeding(null).description(null));
+        Proceeding.builder().id(null).leadProceeding(null).description(null).build();
 
     ProceedingEntity result = proceedingMapper.toProceedingEntity(proceeding, null);
 

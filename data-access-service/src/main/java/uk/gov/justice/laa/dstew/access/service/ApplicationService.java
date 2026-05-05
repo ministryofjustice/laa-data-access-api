@@ -187,8 +187,11 @@ public class ApplicationService {
    *
    * @param req DTO containing creation fields
    * @return UUID of the created application
+   * @deprecated Use {@link
+   *     uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCase}
+   *     instead.
    */
-  @AllowApiCaseworker
+  @Deprecated
   @Transactional
   public UUID createApplication(final ApplicationCreateRequest req) {
     ApplicationEntity entity = applicationMapper.toApplicationEntity(req);
@@ -444,9 +447,11 @@ public class ApplicationService {
    *
    * @param applicationId application UUID
    * @param request DTO with update fields
+   * @deprecated Use {@link
+   *     uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionUseCase} instead.
    */
+  @Deprecated
   @Transactional
-  @AllowApiCaseworker
   public void makeDecision(final UUID applicationId, final MakeDecisionRequest request) {
     final ApplicationEntity application = checkIfApplicationExists(applicationId);
     VersionCheckHelper.checkEntityVersionLocking(

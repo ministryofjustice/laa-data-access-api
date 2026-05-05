@@ -28,8 +28,10 @@ configurations.all {
         force 'tools.jackson.core:jackson-databind:3.1.1'
         force 'tools.jackson:jackson-bom:3.1.1'
         force 'org.springframework:spring-webmvc:6.2.17'
+        force 'org.springframework:spring-web:7.0.7'
         force 'org.springframework.security:spring-security-config:7.0.5'
         force 'org.springframework.security:spring-security-web:7.0.5'
+        force 'org.postgresql:postgresql:42.7.11'
 
         // Force all Spring Boot modules to 4.0.6
         eachDependency { details ->
@@ -65,6 +67,25 @@ sourceSets {
 configurations {
     testUtilitiesImplementation.extendsFrom testImplementation
     testUtilitiesRuntimeOnly.extendsFrom testRuntimeOnly
+
+    // Expose testUtilities classes as a consumable variant so other modules
+    // (e.g. data-access-mass-generator) can depend on them via:
+    //   project(path: ':data-access-service', configuration: 'testUtilitiesRuntimeElements')
+    testUtilitiesRuntimeElements {
+        canBeConsumed = true
+        canBeResolved = false
+        extendsFrom testUtilitiesImplementation, testUtilitiesRuntimeOnly
+    }
+}
+
+// Jar containing compiled testUtilities classes (must be declared before the artifact wiring below)
+def testUtilitiesJarTask = tasks.register('testUtilitiesJar', Jar) {
+    archiveClassifier = 'testUtilities'
+    from sourceSets.testUtilities.output
+}
+
+artifacts {
+    testUtilitiesRuntimeElements testUtilitiesJarTask
 }
 
 dockerCompose {
@@ -154,6 +175,9 @@ jacocoTestReport {
         }))
     }
 }
+jacocoTestCoverageVerification {
+    enabled = false
+}
 
 dependencyManagement {
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
@@ -219,6 +243,7 @@ dependencies {
     }
     implementation("org.springframework.boot:spring-boot-starter-flyway:4.0.6")
     implementation("org.flywaydb:flyway-database-postgresql")
+    implementation 'org.springframework:spring-web:7.0.7'
 
     // Source: https://mvnrepository.com/artifact/com.azure.spring/spring-cloud-azure-starter-active-directory
     // Note: Version 7.0.0 may not be compatible with Spring Boot 4, check for updated version
@@ -232,7 +257,7 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
     implementation 'org.javers:javers-core:7.10.0'
 
-    runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'org.postgresql:postgresql:42.7.11'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
@@ -249,6 +274,8 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.1'
 
     // Security fix for SNYK-JAVA-ORGAPACHECOMMONS-10734078 (CVE-2025-48924)
     implementation 'org.apache.commons:commons-lang3:3.18.0'

@@ -13,7 +13,7 @@ public abstract class BaseGenerator<TEntity, TBuilder> {
   private final Function<TEntity, TBuilder> toBuilder;
   private final Function<TBuilder, TEntity> buildFromBuilder;
 
-  protected Faker faker = new Faker(new java.util.Random(12345L));
+  protected Faker faker = new Faker();
 
   public BaseGenerator(
       Function<TEntity, TBuilder> toBuilder, Function<TBuilder, TEntity> buildFromBuilder) {
@@ -48,13 +48,12 @@ public abstract class BaseGenerator<TEntity, TBuilder> {
   }
 
   public LocalDate getRandomDate() {
-    LocalDate from = LocalDate.from(LocalDate.of(1950, 1, 1).atStartOfDay(ZoneId.systemDefault()));
-    LocalDate to =
-        LocalDate.from(
-            LocalDate.of(LocalDate.now().getYear(), 12, 31)
-                .atStartOfDay(ZoneId.systemDefault())
-                .toInstant());
-    Instant randomDate = faker.timeAndDate().between(Instant.from(from), Instant.from(to));
+    Instant from = LocalDate.of(1950, 1, 1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+    Instant to =
+        LocalDate.of(LocalDate.now().getYear(), 12, 31)
+            .atStartOfDay(ZoneId.systemDefault())
+            .toInstant();
+    Instant randomDate = faker.timeAndDate().between(from, to);
     return randomDate.atZone(ZoneId.systemDefault()).toLocalDate();
   }
 }

@@ -1,0 +1,16 @@
+replicaCount: 1
+
+image:
+  repository: null
+  tag: null
+
+service_account:
+  name: laa-data-access-staging-service-account
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 2G
+  requests:
+    cpu: 500m
+    memory: 2G
