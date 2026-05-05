@@ -179,37 +179,22 @@ curl -X DELETE http://localhost:8081/api/mass-generator/jobs/<jobId>
 
 ---
 
-## Running via GitHub Actions
+## Running via port-forward
 
-### Prerequisites
+The mass generator runs as a web server in the pod. Port-forward to it and use curl.
 
-- Code deployed to the target environment (the pod must have the mass generator endpoints)
-- Existing `KUBE_CERT`, `KUBE_TOKEN`, `KUBE_CLUSTER`, `KUBE_NAMESPACE` secrets (same ones used by the deploy workflow)
+```bash
+kubectl port-forward -n <namespace> pod/<pod-name> 8080:8080
 
-### How to trigger
+# Start a job
+curl -X POST "http://localhost:8080/api/mass-generator/generate?count=1000&cleanup=true"
 
-1. Go to the **Actions** tab on GitHub
-2. Select **"Mass Data Generator"** in the left sidebar
-3. Click **"Run workflow"**
-4. Fill in:
-   - **Environment**: dev, staging, or uat
-   - **Count**: number of records (e.g. `1000` for testing, `250000` for a full run)
-   - **Cleanup**: tick to wipe existing data first
-5. Click **"Run workflow"**
+# Poll status
+curl http://localhost:8080/api/mass-generator/jobs/<jobId> | jq .
 
-### What happens
-
-1. Workflow authenticates to the cluster using MoJ reusable action (same as deploy)
-2. Finds the first pod with label `app=laa-data-access-api`
-3. Runs `kubectl exec` to send `POST /api/mass-generator/generate` inside the pod
-4. Polls `GET /api/mass-generator/jobs/{id}` every 10 seconds
-5. Prints progress in the workflow logs: `[14:32:10] RUNNING | Progress: 1500/5000 | Errors: 0`
-6. On completion, writes a summary table to the GitHub Actions summary page
-7. Exits 0 on COMPLETED, exits 1 on FAILED/CANCELLED/timeout
-
-### Timeout
-
-The workflow polls for up to 360 iterations × 10 seconds = **60 minutes**. For 250k records at ~142 rec/sec that's ~29 minutes, well within the limit.
+# Cancel
+curl -X DELETE http://localhost:8080/api/mass-generator/jobs/<jobId>
+```
 
 ---
 
@@ -255,8 +240,6 @@ data-access-mass-generator/src/main/java/.../massgenerator/
 scripts/
 ├── run-mass-generator-web.sh               # Builds JAR + starts web server on port 8081
 
-.github/workflows/
-└── mass-generator.yml                      # Manual workflow_dispatch trigger
 
 data-access-service/src/main/resources/db/migration/
 └── V24__add_generation_jobs_table.sql      # Flyway migration for generation_jobs table

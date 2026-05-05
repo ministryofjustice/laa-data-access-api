@@ -93,6 +93,14 @@ public class AsyncMassGeneratorService {
       int decidedCount = 0;
       int errorCount = 0;
 
+      // Phase-grouped accumulators — populated per record, flushed together at batch boundaries
+      // so Hibernate can form dense same-table JDBC batches.
+      List<ApplicationEntity> appBatch = new ArrayList<>(BATCH_SIZE);
+      List<ProceedingEntity> procBatch = new ArrayList<>(BATCH_SIZE * 3);
+      List<MeritsDecisionEntity> meritsBatch = new ArrayList<>(BATCH_SIZE);
+      List<DecisionEntity> decisionBatch = new ArrayList<>(BATCH_SIZE);
+      List<CertificateEntity> certBatch = new ArrayList<>(BATCH_SIZE);
+
       for (int i = 0; i < count; i++) {
 
         try {
@@ -102,19 +110,24 @@ public class AsyncMassGeneratorService {
           IndividualEntity indiv =
               individuals.get(faker.number().numberBetween(0, individuals.size()));
 
-          Proceeding lead =
-              content.getProceedings().stream()
-                  .filter(p -> Boolean.TRUE.equals(p.getLeadProceeding()))
-                  .findFirst()
-                  .orElseThrow(() -> new IllegalStateException("No lead proceeding"));
+          // Single pass over proceedings to find lead and check delegated functions
+          Proceeding lead = null;
+          boolean udf = false;
+          for (Proceeding p : content.getProceedings()) {
+            if (Boolean.TRUE.equals(p.getLeadProceeding())) {
+              lead = p;
+            }
+            if (Boolean.TRUE.equals(p.getUsedDelegatedFunctions())) {
+              udf = true;
+            }
+          }
+          if (lead == null) {
+            throw new IllegalStateException("No lead proceeding");
+          }
 
           CategoryOfLaw col = colConvertor.lenientEnumConversion(lead.getCategoryOfLaw());
           MatterType mt = mtConvertor.lenientEnumConversion(lead.getMatterType());
-          boolean udf =
-              content.getProceedings().stream()
-                  .anyMatch(p -> Boolean.TRUE.equals(p.getUsedDelegatedFunctions()));
 
-          // Use persist (no flush) instead of saveAndFlush — let batching accumulate
           ApplicationEntity app =
               DataGenerator.createDefault(
                   ApplicationEntityGenerator.class,
@@ -130,13 +143,13 @@ public class AsyncMassGeneratorService {
                           .usedDelegatedFunctions(udf)
                           .applicationContent(objectMapper.convertValue(content, Map.class))
                           .caseworker(cw));
-          persistedDataGenerator.persistNoFlush(ApplicationEntityGenerator.class, app);
+          appBatch.add(app);
 
           linkedIndividualWriter.linkDeferred(app.getId(), indiv.getId());
 
-          List<ProceedingEntity> proceedingBatch = new ArrayList<>();
+          List<ProceedingEntity> recordProceedings = new ArrayList<>();
           for (Proceeding p : content.getProceedings()) {
-            proceedingBatch.add(
+            recordProceedings.add(
                 DataGenerator.createDefault(
                     ProceedingsEntityGenerator.class,
                     b ->
@@ -148,8 +161,7 @@ public class AsyncMassGeneratorService {
                             .updatedBy("mass-generator")
                             .proceedingContent(objectMapper.convertValue(p, Map.class))));
           }
-          persistedDataGenerator.persistAllNoFlush(
-              ProceedingsEntityGenerator.class, proceedingBatch);
+          procBatch.addAll(recordProceedings);
 
           if (faker.number().randomDouble(2, 0, 1) < DECISION_RATE) {
             decidedCount++;
@@ -165,22 +177,22 @@ public class AsyncMassGeneratorService {
                         DecisionStatus.REFUSED);
 
             Set<MeritsDecisionEntity> merits = new LinkedHashSet<>();
-            for (ProceedingEntity pe : proceedingBatch) {
+            for (ProceedingEntity pe : recordProceedings) {
               MeritsDecisionEntity merit =
                   meritsDecisionGenerator.createDefault(b -> b.proceeding(pe));
-              persistedDataGenerator.persistNoFlush(FullMeritsDecisionGenerator.class, merit);
               merits.add(merit);
+              meritsBatch.add(merit);
             }
 
             DecisionEntity decision =
                 DecisionEntity.builder().overallDecision(overallDecision).build();
-            persistedDataGenerator.persistNoFlush(DecisionEntityGenerator.class, decision);
             decision.setMeritsDecisions(merits);
+            decisionBatch.add(decision);
 
             if (overallDecision == DecisionStatus.GRANTED) {
               CertificateEntity cert =
                   certificateGenerator.createDefault(b -> b.applicationId(app.getId()));
-              persistedDataGenerator.persistNoFlush(FullCertificateGenerator.class, cert);
+              certBatch.add(cert);
             }
 
             app.setDecision(decision);
@@ -194,8 +206,22 @@ public class AsyncMassGeneratorService {
         }
 
         if ((i + 1) % BATCH_SIZE == 0) {
+          // Persist phase-by-phase so Hibernate batches same-table INSERTs together
+          persistedDataGenerator.persistAllNoFlush(ApplicationEntityGenerator.class, appBatch);
+          persistedDataGenerator.persistAllNoFlush(ProceedingsEntityGenerator.class, procBatch);
+          persistedDataGenerator.persistAllNoFlush(FullMeritsDecisionGenerator.class, meritsBatch);
+          persistedDataGenerator.persistAllNoFlush(DecisionEntityGenerator.class, decisionBatch);
+          persistedDataGenerator.persistAllNoFlush(FullCertificateGenerator.class, certBatch);
+
           persistedDataGenerator.flushAndClear();
           linkedIndividualWriter.flushDeferred();
+
+          appBatch.clear();
+          procBatch.clear();
+          meritsBatch.clear();
+          decisionBatch.clear();
+          certBatch.clear();
+
           job.setProcessedCount(i + 1);
           job.setDecidedCount(decidedCount);
           job.setErrorCount(errorCount);
@@ -209,6 +235,15 @@ public class AsyncMassGeneratorService {
             return;
           }
         }
+      }
+
+      // Flush any remaining records that didn't fill a full batch
+      if (!appBatch.isEmpty()) {
+        persistedDataGenerator.persistAllNoFlush(ApplicationEntityGenerator.class, appBatch);
+        persistedDataGenerator.persistAllNoFlush(ProceedingsEntityGenerator.class, procBatch);
+        persistedDataGenerator.persistAllNoFlush(FullMeritsDecisionGenerator.class, meritsBatch);
+        persistedDataGenerator.persistAllNoFlush(DecisionEntityGenerator.class, decisionBatch);
+        persistedDataGenerator.persistAllNoFlush(FullCertificateGenerator.class, certBatch);
       }
 
       persistedDataGenerator.flushAndClear();
