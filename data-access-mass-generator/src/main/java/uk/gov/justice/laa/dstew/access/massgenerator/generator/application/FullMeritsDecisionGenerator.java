@@ -16,8 +16,8 @@ public class FullMeritsDecisionGenerator
     return MeritsDecisionEntity.builder()
         .decision(
             faker.options().option(MeritsDecisionStatus.GRANTED, MeritsDecisionStatus.REFUSED))
-        .justification(faker.lorem().sentence())
-        .reason(faker.lorem().sentence())
+        .justification(faker.lorem().sentence(5))
+        .reason(faker.lorem().sentence(5))
         .build();
   }
 }

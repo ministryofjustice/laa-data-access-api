@@ -29,7 +29,7 @@ public class FullProceedingGenerator
         .matterType("SPECIAL_CHILDREN_ACT")
         .leadProceeding(faker.bool().bool())
         .usedDelegatedFunctions(faker.bool().bool())
-        .description(faker.lorem().sentence())
+        .description(faker.lorem().sentence(5))
         .meaning(
             faker
                 .options()
