@@ -88,8 +88,18 @@ allprojects {
         // Add global force for Spring Security CVE fix and Spring Web CVE fix
         conf.resolutionStrategy {
             force 'org.springframework:spring-web:7.0.7'
+            force 'org.springframework:spring-webflux:7.0.7'
+            force 'org.springframework:spring-webmvc:7.0.7'
             force 'org.springframework.security:spring-security-config:7.0.5'
             force 'org.springframework.security:spring-security-web:7.0.5'
+
+            // Security fix: override strict BOM constraint to 7.0.7
+            eachDependency { details ->
+                if (details.requested.group == 'org.springframework' && details.requested.module.name in ['spring-web', 'spring-webflux', 'spring-webmvc']) {
+                    details.useVersion '7.0.7'
+                    details.because 'Security fix: override strict BOM constraint to 7.0.7'
+                }
+            }
 
             // Force all Spring Boot modules to 4.0.6 to fix CVEs:
             // SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16198880 (Insecure Temporary File)
