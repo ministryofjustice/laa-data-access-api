@@ -125,8 +125,9 @@ public class AsyncMassGeneratorService {
             throw new IllegalStateException("No lead proceeding");
           }
 
-          CategoryOfLaw col = colConvertor.lenientEnumConversion(lead.getCategoryOfLaw());
-          MatterType mt = mtConvertor.lenientEnumConversion(lead.getMatterType());
+          final CategoryOfLaw col = colConvertor.lenientEnumConversion(lead.getCategoryOfLaw());
+          final MatterType mt = mtConvertor.lenientEnumConversion(lead.getMatterType());
+          final boolean udfFinal = udf;
 
           ApplicationEntity app =
               DataGenerator.createDefault(
@@ -140,7 +141,7 @@ public class AsyncMassGeneratorService {
                           .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
                           .categoryOfLaw(col)
                           .matterType(mt)
-                          .usedDelegatedFunctions(udf)
+                          .usedDelegatedFunctions(udfFinal)
                           .applicationContent(objectMapper.convertValue(content, Map.class))
                           .caseworker(cw));
           appBatch.add(app);
