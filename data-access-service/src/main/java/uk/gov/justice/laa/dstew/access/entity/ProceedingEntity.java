@@ -9,7 +9,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -46,10 +45,6 @@ public class ProceedingEntity implements AuditableEntity {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(columnDefinition = "UUID")
   private UUID id;
-
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "application_id", nullable = false)
-  private ApplicationEntity application;
 
   @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
   @JoinColumn(name = "merits_decision_id", referencedColumnName = "id")

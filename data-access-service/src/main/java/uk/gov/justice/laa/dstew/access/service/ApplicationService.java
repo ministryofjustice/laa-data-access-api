@@ -171,7 +171,6 @@ public class ApplicationService {
 
     Set<ProceedingEntity> proceedingEntities = buildProceedingEntities(applicationContent);
     if (!proceedingEntities.isEmpty()) {
-      proceedingEntities.forEach(p -> p.setApplication(saved));
       saved.setProceedings(proceedingEntities);
       applicationRepository.saveAndFlush(saved);
     }

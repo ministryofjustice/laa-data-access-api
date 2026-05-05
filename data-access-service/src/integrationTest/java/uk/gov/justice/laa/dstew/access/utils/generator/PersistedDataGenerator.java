@@ -211,12 +211,6 @@ public class PersistedDataGenerator extends DataGenerator {
   }
 
   public <TEntity, TGenerator> TEntity persist(Class<TGenerator> generatorType, TEntity entity) {
-    // For ApplicationEntity, set back-references on proceedings before saving
-    if (entity instanceof ApplicationEntity appEntity) {
-      if (appEntity.getProceedings() != null) {
-        appEntity.getProceedings().forEach(p -> p.setApplication(appEntity));
-      }
-    }
     JpaRepository<TEntity, ?> repository = getRepository(generatorType);
     repository.saveAndFlush(entity);
     track(entity);
@@ -237,7 +231,6 @@ public class PersistedDataGenerator extends DataGenerator {
         DataGenerator.createDefault(ProceedingsEntityGenerator.class, customiser);
     ApplicationRepository appRepo = applicationContext.getBean(ApplicationRepository.class);
     ApplicationEntity managed = appRepo.findById(application.getId()).orElseThrow();
-    proceeding.setApplication(managed);
     managed.getProceedings().add(proceeding);
     ApplicationEntity saved = appRepo.saveAndFlush(managed);
     // Return the just-persisted proceeding by finding it in saved.getProceedings()
@@ -270,10 +263,6 @@ public class PersistedDataGenerator extends DataGenerator {
         merged.add(ind.getId() != null ? entityManager.merge(ind) : ind);
       }
       entity.setIndividuals(merged);
-    }
-    // Set back-references on proceedings
-    if (entity.getProceedings() != null) {
-      entity.getProceedings().forEach(p -> p.setApplication(entity));
     }
     ApplicationRepository appRepo = applicationContext.getBean(ApplicationRepository.class);
     ApplicationEntity saved = appRepo.saveAndFlush(entity);

@@ -9,6 +9,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -170,7 +171,8 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
                               "justification 1",
                               "reason 1")))
                   .certificate(objectMapper.convertValue(expectedCertificateContent, Map.class))
-                  .autoGranted(false);
+                  .autoGranted(false)
+                  .applicationVersion(0L);
             });
 
     MakeDecisionRequest secondMakeDecisionRequest =
@@ -209,14 +211,13 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
             builder -> {
               builder.applicationContent(new HashMap<>(Map.of("test", "content")));
               builder.caseworker(CaseworkerJohnDoe);
+              builder.proceedings(Set.of(
+                  DataGenerator.createDefault(ProceedingsEntityGenerator.class),
+                  DataGenerator.createDefault(ProceedingsEntityGenerator.class)
+              ));
             });
 
-    ProceedingEntity refusedProceedingEntity =
-        persistedDataGenerator.addProceedingToApplication(applicationEntity);
-
-    ProceedingEntity grantedProceedingEntity =
-        persistedDataGenerator.addProceedingToApplication(applicationEntity);
-
+    Iterator<ProceedingEntity> existingProceedings = applicationEntity.getProceedings().iterator();
     MakeDecisionRequest makeDecisionRequest =
         DataGenerator.createDefault(
             ApplicationMakeDecisionRequestGenerator.class,
@@ -228,16 +229,17 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
                     .proceedings(
                         List.of(
                             createMakeDecisionProceeding(
-                                grantedProceedingEntity.getId(),
+                                existingProceedings.next().getId(),
                                 MeritsDecisionStatus.GRANTED,
                                 "justification 1",
                                 "reason 1"),
                             createMakeDecisionProceeding(
-                                refusedProceedingEntity.getId(),
+                                existingProceedings.next().getId(),
                                 MeritsDecisionStatus.REFUSED,
                                 "justification 2",
                                 "reason 2")))
-                    .autoGranted(true));
+                    .autoGranted(true)
+                    .applicationVersion(0L));
 
     // when
     HarnessResult result =
@@ -251,9 +253,7 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
     ApplicationEntity actualApplication =
         applicationRepository.findById(applicationEntity.getId()).orElseThrow();
     assertEquals(ApplicationStatus.APPLICATION_IN_PROGRESS, actualApplication.getStatus());
-    ApplicationEntity updatedApplicationEntity =
-        applicationRepository.findById(applicationEntity.getId()).orElseThrow();
-    assertThat(updatedApplicationEntity.getDecision()).isNotNull();
+    assertThat(actualApplication.getDecision()).isNotNull();
 
     domainEventAsserts.assertDomainEventsCreatedForApplications(
         List.of(applicationEntity),
@@ -384,7 +384,8 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
             builder ->
                 builder
                     .applicationContent(new HashMap<>(Map.of("test", "content")))
-                    .caseworker(CaseworkerJohnDoe));
+                    .caseworker(CaseworkerJohnDoe)
+        );
 
     ApplicationEntity unrelatedApplicationEntity =
         persistedDataGenerator.createAndPersist(
@@ -554,7 +555,8 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
                                 MeritsDecisionStatus.REFUSED,
                                 "justification 2",
                                 "reason 2")))
-                    .autoGranted(true));
+                    .autoGranted(true)
+                    .applicationVersion(3L));
 
     // when
     HarnessResult result =

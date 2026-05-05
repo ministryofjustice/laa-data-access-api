@@ -38,3 +38,7 @@ ALTER TABLE merits_decisions
 -- 5. Drop the linked_merits_decisions join table (no longer needed)
 DROP TABLE IF EXISTS linked_merits_decisions;
 
+-- 6. Remove the NOT NULL constraint on proceedings.application_id
+ALTER TABLE proceedings
+    ALTER COLUMN application_id DROP NOT NULL;
+

@@ -127,11 +127,8 @@ public class ApplicationEntity implements AuditableEntity {
       inverseJoinColumns = @JoinColumn(name = "associated_application_id"))
   private Set<ApplicationEntity> linkedApplications;
 
-  @OneToMany(
-      mappedBy = "application",
-      cascade = CascadeType.ALL,
-      fetch = FetchType.EAGER,
-      orphanRemoval = true)
+  @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+  @JoinColumn(name = "application_id")
   private Set<ProceedingEntity> proceedings = new HashSet<>();
 
   @Transient

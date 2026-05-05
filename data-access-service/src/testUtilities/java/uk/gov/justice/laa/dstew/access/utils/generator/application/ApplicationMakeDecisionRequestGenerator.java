@@ -20,7 +20,7 @@ public class ApplicationMakeDecisionRequestGenerator
     return MakeDecisionRequest.builder()
         .overallDecision(DecisionStatus.REFUSED)
         .proceedings(List.of(makeDecisionProceedingGenerator.createDefault()))
-        .applicationVersion(0L)
+        .applicationVersion(1L)
         .build();
   }
 }
