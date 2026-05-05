@@ -39,6 +39,9 @@ ALTER TABLE merits_decisions
 DROP TABLE IF EXISTS linked_merits_decisions;
 
 -- 6. Remove the NOT NULL constraint on proceedings.application_id
+-- necessary due to unidirectional @OneToMany relationship on the application side
+-- JPA does not guarantee the FK is populated on insert from the application, it will handle
+-- the creation as a two step process, INSERT then UPDATE when the application_id is known.
 ALTER TABLE proceedings
     ALTER COLUMN application_id DROP NOT NULL;
 

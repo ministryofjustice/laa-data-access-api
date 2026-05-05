@@ -96,7 +96,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     assertEquals(expectedId, actualId);
 
     verifyThatApplicationSaved(applicationCreateRequest, 1);
-    verifyThatProceedingsSaved(applicationContent, expectedId);
+    verifyThatProceedingsSaved(applicationContent, expectedId, 1);
     verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
   }
 
@@ -164,7 +164,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     assertEquals(expectedId, actualId);
 
     verifyThatApplicationSaved(applicationCreateRequest, 2);
-    verifyThatProceedingsSaved(applicationContent, expectedId);
+    verifyThatProceedingsSaved(applicationContent, expectedId, 2);
     verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
   }
 
@@ -288,12 +288,14 @@ public class CreateApplicationTest extends BaseServiceTest {
   }
 
   private void verifyThatProceedingsSaved(
-      ApplicationContent applicationCreateRequest, UUID expectedId) {
+      ApplicationContent applicationCreateRequest, UUID expectedId, int timesCalled) {
     ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
-    verify(applicationRepository).saveAndFlush(captor.capture());
-    ApplicationEntity savedApplication = captor.getValue();
+    verify(applicationRepository, times(timesCalled)).save(captor.capture());
+    List<ApplicationEntity> capturedEntities = captor.getAllValues();
+    // ignore second saves that might happen due to linked applications for this assert
+    ApplicationEntity actualApplicationEntity = capturedEntities.getFirst();
     List<ProceedingEntity> actualProceedingEntities =
-        new ArrayList<>(savedApplication.getProceedings());
+        new ArrayList<>(actualApplicationEntity.getProceedings());
 
     ApplicationContent applicationContentDetails =
         objectMapper.convertValue(applicationCreateRequest, ApplicationContent.class);
@@ -341,7 +343,8 @@ public class CreateApplicationTest extends BaseServiceTest {
                 Instant.parse("2026-01-15T10:20:30Z"), actualApplicationEntity.getSubmittedAt()));
     verifyThatProceedingsSaved(
         objectMapper.convertValue(application.getApplicationContent(), ApplicationContent.class),
-        expectedId);
+        expectedId,
+        1);
   }
 
   @Test

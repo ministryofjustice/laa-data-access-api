@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.mapper;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
@@ -29,10 +31,11 @@ import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
  */
 @Mapper(
     componentModel = "spring",
-    uses = {IndividualMapper.class})
+    uses = {IndividualMapper.class, ProceedingMapper.class})
 public interface ApplicationMapper {
 
   IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
+  ProceedingMapper proceedingMapper = Mappers.getMapper(ProceedingMapper.class);
 
   /**
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
@@ -109,6 +112,23 @@ public interface ApplicationMapper {
     application.setOpponents(extractOpponents(entity.getApplicationContent()));
     application.setProvider(extractProvider(entity));
     application.setVersion(entity.getVersion());
+
+    if (entity.getProceedings() != null) {
+      List<ApplicationProceedingResponse> proceedingResponses = new ArrayList<>();
+      entity
+          .getProceedings()
+          .forEach(
+              proceeding -> {
+                ApplicationProceedingResponse proceedingResponse =
+                    proceedingMapper.toApplicationProceeding(proceeding);
+                if (proceeding.getMeritsDecision() != null) {
+                  proceedingResponse.setMeritsDecision(
+                      proceeding.getMeritsDecision().getDecision());
+                }
+                proceedingResponses.add(proceedingResponse);
+              });
+      application.setProceedings(proceedingResponses);
+    }
 
     return application;
   }

@@ -30,7 +30,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
 import uk.gov.justice.laa.dstew.access.model.ApplicationNoteResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationNotesResponse;
-import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
@@ -113,25 +112,7 @@ public class ApplicationService {
   @AllowApiCaseworker
   public ApplicationResponse getApplication(final UUID id) {
     final ApplicationEntity entity = checkIfApplicationExists(id);
-    ApplicationResponse application = applicationMapper.toApplication(entity);
-
-    if (entity.getProceedings() != null) {
-      entity
-          .getProceedings()
-          .forEach(
-              proceeding -> {
-                ApplicationProceedingResponse applicationProceedingResponse =
-                    proceedingMapper.toApplicationProceeding(proceeding);
-
-                if (proceeding.getMeritsDecision() != null) {
-                  applicationProceedingResponse.setMeritsDecision(
-                      proceeding.getMeritsDecision().getDecision());
-                }
-                application.getProceedings().add(applicationProceedingResponse);
-              });
-    }
-
-    return application;
+    return applicationMapper.toApplication(entity);
   }
 
   private List<Map<String, Object>> getInvolvedChildren(ApplicationEntity entity) {
@@ -165,15 +146,14 @@ public class ApplicationService {
     checkForDuplicateApplication(entity.getApplyApplicationId());
     entity.setSchemaVersion(applicationVersion);
 
+    Set<ProceedingEntity> proceedingEntities = buildProceedingEntities(applicationContent);
+    if (!proceedingEntities.isEmpty()) {
+      entity.setProceedings(proceedingEntities);
+    }
+
     final ApplicationEntity saved = applicationRepository.save(entity);
 
     linkToLeadApplicationIfApplicable(applicationContent, saved);
-
-    Set<ProceedingEntity> proceedingEntities = buildProceedingEntities(applicationContent);
-    if (!proceedingEntities.isEmpty()) {
-      saved.setProceedings(proceedingEntities);
-      applicationRepository.saveAndFlush(saved);
-    }
 
     domainEventService.saveCreateApplicationDomainEvent(saved, req, null);
     createAndSendHistoricRecord(saved, null);
