@@ -90,31 +90,34 @@ public class MakeDecisionService {
     application.setModifiedAt(Instant.now());
     application.setIsAutoGranted(request.getAutoGranted());
 
-    // Persist certificate if overallDecision is GRANTED
-    if (decision.getOverallDecision() == DecisionStatus.GRANTED
-        && request.getCertificate() != null) {
-      CertificateEntity certificate =
-          certificateRepository
-              .findByApplicationId(applicationId)
-              .map(
-                  existing -> {
-                    existing.setCertificateContent(request.getCertificate());
-                    return existing;
-                  })
-              .orElseGet(
-                  () ->
-                      CertificateEntity.builder()
-                          .applicationId(applicationId)
-                          .certificateContent(request.getCertificate())
-                          .build());
-
-      certificateRepository.save(certificate);
-    }
-
-    if (decision.getOverallDecision() == DecisionStatus.REFUSED) {
-      if (certificateRepository.existsByApplicationId(applicationId)) {
-        certificateRepository.deleteByApplicationId(applicationId);
+    // Persist or remove certificate based on overallDecision
+    switch (decision.getOverallDecision()) {
+      case GRANTED -> {
+        if (request.getCertificate() != null) {
+          CertificateEntity certificate =
+              certificateRepository
+                  .findByApplicationId(applicationId)
+                  .map(
+                      existing -> {
+                        existing.setCertificateContent(request.getCertificate());
+                        return existing;
+                      })
+                  .orElseGet(
+                      () ->
+                          CertificateEntity.builder()
+                              .applicationId(applicationId)
+                              .certificateContent(request.getCertificate())
+                              .build());
+          certificateRepository.save(certificate);
+        }
       }
+      case REFUSED -> {
+        if (certificateRepository.existsByApplicationId(applicationId)) {
+          certificateRepository.deleteByApplicationId(applicationId);
+        }
+      }
+      default ->
+          throw new IllegalStateException("Unexpected value: " + decision.getOverallDecision());
     }
 
     applicationRepository.save(application);
@@ -161,7 +164,7 @@ public class MakeDecisionService {
             .collect(Collectors.joining(","));
 
     if (!notFound.isEmpty()) {
-      throw new ResourceNotFoundException("No proceeding found with id: " + notFound);
+      throw new ResourceNotFoundException("Not linked to application: " + notFound);
     }
     return map;
   }

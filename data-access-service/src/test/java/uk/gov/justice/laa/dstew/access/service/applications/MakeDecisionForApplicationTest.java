@@ -580,7 +580,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         // Arguments.of("NO_CASEWORKER",  appId2, proceedingId, "Caseworker not found for
         // application id: " + appId2),
         Arguments.of(
-            "NO_PROCEEDING", appId3, proceedingId, "No proceeding found with id: " + proceedingId));
+            "NO_PROCEEDING", appId3, proceedingId, "Not linked to application: " + proceedingId));
   }
 
   @ParameterizedTest(name = "{0}")
@@ -659,7 +659,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // then
     assertThat(thrown)
         .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessage("No proceeding found with id: " + proceedingId);
+        .hasMessage("Not linked to application: " + proceedingId);
   }
 
   @Test
