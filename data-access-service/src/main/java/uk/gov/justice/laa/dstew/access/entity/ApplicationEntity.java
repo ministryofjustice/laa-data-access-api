@@ -23,12 +23,16 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
@@ -51,6 +55,7 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 @Table(name = "applications")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+@DynamicUpdate
 public class ApplicationEntity implements AuditableEntity {
 
   @Version private Long version;
@@ -121,11 +126,9 @@ public class ApplicationEntity implements AuditableEntity {
   private Boolean isAutoGranted;
 
   @OneToMany(fetch = FetchType.EAGER)
-  @JoinTable(
-      name = "linked_applications",
-      joinColumns = @JoinColumn(name = "lead_application_id"),
-      inverseJoinColumns = @JoinColumn(name = "associated_application_id"))
-  private Set<ApplicationEntity> linkedApplications;
+  @JoinColumn(name = "lead_application_id", insertable = false, updatable = false)
+  @Fetch(FetchMode.JOIN)
+  private Set<LinkedApplicationEntity> linkedApplications;
 
   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
   @JoinColumn(name = "application_id")
@@ -145,12 +148,15 @@ public class ApplicationEntity implements AuditableEntity {
     this.applicationContent = applicationContent;
   }
 
-  /** adds an application to the set of linked applications. */
-  public void addLinkedApplication(ApplicationEntity toAdd) {
+  /** Returns the IDs of associated applications linked to this lead application. */
+  @Transient
+  public Set<UUID> getLinkedApplicationIds() {
     if (linkedApplications == null) {
-      linkedApplications = new HashSet<>();
+      return Set.of();
     }
-    linkedApplications.add(toAdd);
+    return linkedApplications.stream()
+        .map(LinkedApplicationEntity::getAssociatedApplicationId)
+        .collect(Collectors.toSet());
   }
 
   @Override

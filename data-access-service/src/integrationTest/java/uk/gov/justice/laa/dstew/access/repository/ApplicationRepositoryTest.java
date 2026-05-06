@@ -4,6 +4,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
@@ -17,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEnti
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
 public class ApplicationRepositoryTest extends BaseIntegrationTest {
+
   @Test
   public void givenSaveOfExpectedApplication_whenGetCalled_expectedAndActualAreEqual() {
 
@@ -57,22 +59,20 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
     final ApplicationEntity associatedApplication =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-    clearCache();
-    leadApplication.setLinkedApplications(Set.of(associatedApplication));
-    applicationRepository.save(leadApplication);
+
+    persistedDataGenerator.persistLink(leadApplication, associatedApplication);
     clearCache();
 
     // when
     final ApplicationEntity actual =
         applicationRepository.findById(leadApplication.getId()).orElseThrow();
-    final ApplicationEntity actualAssociatedApplication =
-        applicationRepository.findById(associatedApplication.getId()).orElseThrow();
+
     // then
     assertThat(actual.getLinkedApplications()).isNotNull();
     assertThat(actual.getLinkedApplications().size()).isEqualTo(1);
-    assertApplicationEqual(
-        actualAssociatedApplication,
-        actual.getLinkedApplications().stream().findFirst().orElseThrow());
+    Set<UUID> linkedIds = actual.getLinkedApplicationIds();
+    assertThat(linkedIds.contains(associatedApplication.getId())).isTrue();
+    assertThat(actual.isLead()).isTrue();
   }
 
   private void assertApplicationEqual(ApplicationEntity expected, ApplicationEntity actual) {

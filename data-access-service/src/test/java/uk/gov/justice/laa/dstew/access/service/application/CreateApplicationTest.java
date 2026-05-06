@@ -163,9 +163,10 @@ public class CreateApplicationTest extends BaseServiceTest {
     // then
     assertEquals(expectedId, actualId);
 
-    verifyThatApplicationSaved(applicationCreateRequest, 2);
-    verifyThatProceedingsSaved(applicationContent, expectedId, 2);
+    verifyThatApplicationSaved(applicationCreateRequest, 1);
+    verifyThatProceedingsSaved(applicationContent, expectedId, 1);
     verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
+    verify(linkedApplicationRepository, times(1)).save(any());
   }
 
   @Test

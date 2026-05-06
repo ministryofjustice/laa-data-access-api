@@ -46,6 +46,8 @@ public class BaseServiceTest {
 
   @MockitoBean protected NoteRepository noteRepository;
 
+  @MockitoBean protected LinkedApplicationRepository linkedApplicationRepository;
+
   @MockitoBean protected ServiceNameContext serviceNameContext;
 
   @Autowired protected ObjectMapper objectMapper;

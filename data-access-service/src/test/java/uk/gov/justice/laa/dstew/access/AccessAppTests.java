@@ -29,6 +29,8 @@ public class AccessAppTests {
 
   @MockitoBean private NoteRepository noteRepository;
 
+  @MockitoBean private LinkedApplicationRepository linkedApplicationRepository;
+
   @Test
   void contextLoads() {}
 }

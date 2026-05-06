@@ -279,10 +279,9 @@ public class PersistedDataGenerator extends DataGenerator {
   }
 
   /**
-   * Persists a LinkedApplicationEntity using entityManager directly (no repository exists for this
-   * type). The linked_applications row is cascade-deleted when the lead application is deleted via
-   * deleteTrackedData(). Must be called within a transaction — this method is @Transactional for
-   * that purpose.
+   * Persists a LinkedApplicationEntity using entityManager directly. The linked_applications row is
+   * cascade-deleted when the lead application is deleted via deleteTrackedData(). Must be called
+   * within a transaction — this method is @Transactional for that purpose.
    */
   @Transactional
   public void persistLink(

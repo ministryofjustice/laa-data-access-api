@@ -715,10 +715,6 @@ public class CreateApplicationTest extends BaseHarnessTest {
 
   private void assertLinkedApplicationCorrectlyApplied(
       ApplicationEntity leadApplication, ApplicationEntity linkedApplication) {
-    assertEquals(
-        1,
-        leadApplication.getLinkedApplications().stream()
-            .filter(linkedApp -> linkedApp.getId().equals(linkedApplication.getId()))
-            .count());
+    assertTrue(leadApplication.getLinkedApplicationIds().contains(linkedApplication.getId()));
   }
 }

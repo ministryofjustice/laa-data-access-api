@@ -17,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.LinkedApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.NoteEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
@@ -43,6 +44,7 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
+import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.utils.VersionCheckHelper;
@@ -67,6 +69,7 @@ public class ApplicationService {
   private final PayloadValidationService payloadValidationService;
   private final NoteRepository noteRepository;
   private final NoteMapper noteMapper;
+  private final LinkedApplicationRepository linkedApplicationRepository;
 
   /**
    * Constructs an ApplicationService with required dependencies.
@@ -88,7 +91,8 @@ public class ApplicationService {
       final CertificateRepository certificateRepository,
       final PayloadValidationService payloadValidationService,
       final NoteRepository noteRepository,
-      final NoteMapper noteMapper) {
+      final NoteMapper noteMapper,
+      final LinkedApplicationRepository linkedApplicationRepository) {
     this.applicationRepository = applicationRepository;
     this.applicationMapper = applicationMapper;
     this.proceedingMapper = proceedingMapper;
@@ -101,6 +105,7 @@ public class ApplicationService {
     this.certificateRepository = certificateRepository;
     this.noteRepository = noteRepository;
     this.noteMapper = noteMapper;
+    this.linkedApplicationRepository = linkedApplicationRepository;
   }
 
   /**
@@ -573,8 +578,12 @@ public class ApplicationService {
     final Optional<ApplicationEntity> leadApplication = getLeadApplication(appContent);
     leadApplication.ifPresent(
         leadApp -> {
-          leadApp.addLinkedApplication(entityToAdd);
-          applicationRepository.save(leadApp);
+          var link =
+              LinkedApplicationEntity.builder()
+                  .leadApplicationId(leadApp.getId())
+                  .associatedApplicationId(entityToAdd.getId())
+                  .build();
+          linkedApplicationRepository.save(link);
         });
   }
 }
