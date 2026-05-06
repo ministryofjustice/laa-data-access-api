@@ -3,15 +3,15 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 plugins {
     id 'java'
     id 'jacoco'
-    id 'io.freefair.lombok' version '9.2.0'
-    id "com.gorylenko.gradle-git-properties" version "2.4.2"
+    id 'io.freefair.lombok' version '9.5.0'
+    id "com.gorylenko.gradle-git-properties" version "2.5.7"
     id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin'
-    id 'com.avast.gradle.docker-compose' version '0.17.12'
+    id 'com.avast.gradle.docker-compose' version '0.17.21'
     id 'io.sentry.jvm.gradle' version '5.12.2'
 }
 
 def versions = [
-        sentry : '8.28.0'
+        sentry : '8.40.0'
 ]
 
 configurations.all {
@@ -20,11 +20,11 @@ configurations.all {
     // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
     // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
     resolutionStrategy {
-        force 'com.fasterxml.jackson.core:jackson-core:2.21.2'
-        force 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
-        force 'tools.jackson.core:jackson-core:3.1.1'
-        force 'tools.jackson.core:jackson-databind:3.1.1'
-        force 'tools.jackson:jackson-bom:3.1.1'
+        force 'com.fasterxml.jackson.core:jackson-core:2.21.3'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.21.3'
+        force 'tools.jackson.core:jackson-core:3.1.2'
+        force 'tools.jackson.core:jackson-databind:3.1.2'
+        force 'tools.jackson:jackson-bom:3.1.2'
         force 'org.springframework.security:spring-security-config:7.0.5'
         force 'org.springframework.security:spring-security-web:7.0.5'
     }
@@ -121,7 +121,7 @@ tasks.register('infrastructureTest', Test) {
 }
 
 jacoco {
-    toolVersion = "0.8.13"
+    toolVersion = "0.8.14"
 }
 
 //so that we load properties from gradle properties
@@ -147,7 +147,7 @@ jacocoTestReport {
 dependencyManagement {
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     imports {
-        mavenBom 'tools.jackson:jackson-bom:3.1.1'
+        mavenBom 'tools.jackson:jackson-bom:3.1.2'
     }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
@@ -201,9 +201,9 @@ dependencies {
     //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-15307781
     implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.54'
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.2'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
-    implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2') {
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.3'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.3'
+    implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3') {
         exclude group: 'tools.jackson.core'
     }
     implementation("org.springframework.boot:spring-boot-starter-flyway:4.0.6")
@@ -211,26 +211,26 @@ dependencies {
 
     // Source: https://mvnrepository.com/artifact/com.azure.spring/spring-cloud-azure-starter-active-directory
     // Note: Version 7.0.0 may not be compatible with Spring Boot 4, check for updated version
-    implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.0.0'
-    implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
+    implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.2.0'
+    implementation 'com.fasterxml.uuid:java-uuid-generator:5.2.0'
 
     implementation 'io.micrometer:micrometer-registry-prometheus'
-    implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot:2.2.0'
+    implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot:2.2.1'
 
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
-    implementation 'org.javers:javers-core:7.10.0'
+    implementation 'org.javers:javers-core:7.11.0'
 
     runtimeOnly 'org.postgresql:postgresql:42.7.11'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
     testImplementation 'org.instancio:instancio-junit:5.5.1'
-    testImplementation 'net.datafaker:datafaker:2.5.2'
+    testImplementation 'net.datafaker:datafaker:2.5.4'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
-    testImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.1"
-    testImplementation 'org.testcontainers:postgresql:1.21.3'
+    testImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.5"
+    testImplementation 'org.testcontainers:postgresql:1.21.4'
     testImplementation 'org.springframework.boot:spring-boot-testcontainers:4.0.6'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     // https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide#test-code
@@ -240,7 +240,7 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // Security fix for SNYK-JAVA-ORGAPACHECOMMONS-10734078 (CVE-2025-48924)
-    implementation 'org.apache.commons:commons-lang3:3.18.0'
+    implementation 'org.apache.commons:commons-lang3:3.20.0'
 
     // Sentry
     implementation platform("io.sentry:sentry-bom:$versions.sentry")
