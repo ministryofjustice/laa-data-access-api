@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.service.application;
+package uk.gov.justice.laa.dstew.access.service.applications;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
