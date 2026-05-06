@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.service.domainEvents;
+package uk.gov.justice.laa.dstew.access.service.domainevents;
 
 import java.time.Instant;
 import java.util.UUID;

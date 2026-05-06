@@ -30,7 +30,7 @@ import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.MeritsDecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
-import uk.gov.justice.laa.dstew.access.service.domainEvents.SaveDomainEventService;
+import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
 import uk.gov.justice.laa.dstew.access.utils.ApplicationServiceHelper;
 import uk.gov.justice.laa.dstew.access.utils.VersionCheckHelper;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;

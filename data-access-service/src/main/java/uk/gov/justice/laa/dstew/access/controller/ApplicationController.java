@@ -41,7 +41,7 @@ import uk.gov.justice.laa.dstew.access.service.applications.GetCertificateServic
 import uk.gov.justice.laa.dstew.access.service.applications.MakeDecisionService;
 import uk.gov.justice.laa.dstew.access.service.applications.UnassignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.service.applications.UpdateApplicationService;
-import uk.gov.justice.laa.dstew.access.service.domainEvents.GetDomainEventService;
+import uk.gov.justice.laa.dstew.access.service.domainevents.GetDomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
