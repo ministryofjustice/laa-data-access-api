@@ -24,10 +24,8 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationSu
 import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.notes.NoteEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
@@ -50,7 +48,6 @@ public class PersistedDataGenerator extends DataGenerator {
   private final Set<UUID> trackedApplicationIds = new LinkedHashSet<>();
   private final Set<UUID> trackedDomainEventIds = new LinkedHashSet<>();
   private final Set<UUID> trackedIndividualIds = new LinkedHashSet<>();
-  private final Set<UUID> trackedDecisionIds = new LinkedHashSet<>();
 
   @PostConstruct
   public void init() {
@@ -58,9 +55,6 @@ public class PersistedDataGenerator extends DataGenerator {
     registerRepository(ApplicationEntityGenerator.class, ApplicationRepository.class);
     registerRepository(ApplicationSummaryGenerator.class, ApplicationSummaryRepository.class);
     registerRepository(CaseworkerGenerator.class, CaseworkerRepository.class);
-    registerRepository(DecisionEntityGenerator.class, DecisionRepository.class);
-    registerRepository(ProceedingsEntityGenerator.class, ProceedingRepository.class);
-    registerRepository(MeritsDecisionsEntityGenerator.class, MeritsDecisionRepository.class);
     registerRepository(CertificateEntityGenerator.class, CertificateRepository.class);
     registerRepository(IndividualEntityGenerator.class, IndividualRepository.class);
     registerRepository(NoteEntityGenerator.class, NoteRepository.class);
@@ -173,42 +167,19 @@ public class PersistedDataGenerator extends DataGenerator {
 
   /**
    * Deletes every entity persisted via this generator, in leaf-to-root order to respect FK
-   * constraints. findById().ifPresent() makes each delete idempotent — safe even if the test itself
-   * already deleted a row. Call this from @AfterEach in BaseHarnessTest.
-   *
-   * <p>Note: since V14__change_decision_relationship.sql the FK runs {@code
-   * applications.decision_id → decisions}, so deleting an application does NOT cascade-delete its
-   * decision. We therefore collect each tracked application's {@code decision_id} via JDBC before
-   * deletion, then delete those decisions afterwards.
+   * constraints. Cascade from application covers: proceedings, merits_decisions, decisions,
+   * certificates. Call this from @AfterEach in BaseHarnessTest.
    */
   public void deleteTrackedData() {
     DomainEventRepository deRepo = applicationContext.getBean(DomainEventRepository.class);
     ApplicationRepository appRepo = applicationContext.getBean(ApplicationRepository.class);
     CaseworkerRepository cwRepo = applicationContext.getBean(CaseworkerRepository.class);
     IndividualRepository indivRepo = applicationContext.getBean(IndividualRepository.class);
-    DecisionRepository decRepo = applicationContext.getBean(DecisionRepository.class);
 
     try {
-      // Discover decision_id for every tracked application before we delete the application row.
-      // We read via JDBC to avoid lazy-load issues and to cope with the fact that the
-      // application entity cached in memory may not reflect the latest decision_id.
-      for (UUID appId : trackedApplicationIds) {
-        List<UUID> decisionIds =
-            jdbcTemplate.queryForList(
-                "SELECT decision_id FROM applications WHERE id = ? AND decision_id IS NOT NULL",
-                UUID.class,
-                appId);
-        trackedDecisionIds.addAll(decisionIds);
-      }
-
-      // ON DELETE CASCADE covers proceedings, merits_decisions via linked_merits_decisions,
-      // certificates
       trackedDomainEventIds.forEach(id -> deRepo.findById(id).ifPresent(deRepo::delete));
+      // Cascade from application covers: proceedings, merits_decisions, decisions, certificates
       trackedApplicationIds.forEach(id -> appRepo.findById(id).ifPresent(appRepo::delete));
-      // Decisions must be deleted AFTER their parent application (the FK is application→decision,
-      // so the application row must go first to clear the FK column before we can drop the
-      // decision).
-      trackedDecisionIds.forEach(id -> decRepo.findById(id).ifPresent(decRepo::delete));
       trackedCaseworkerIds.forEach(id -> cwRepo.findById(id).ifPresent(cwRepo::delete));
       trackedIndividualIds.forEach(id -> indivRepo.findById(id).ifPresent(indivRepo::delete));
     } finally {
@@ -220,7 +191,6 @@ public class PersistedDataGenerator extends DataGenerator {
   public void clearTrackedIds() {
     trackedDomainEventIds.clear();
     trackedApplicationIds.clear();
-    trackedDecisionIds.clear();
     trackedCaseworkerIds.clear();
     trackedIndividualIds.clear();
   }
@@ -238,8 +208,6 @@ public class PersistedDataGenerator extends DataGenerator {
     } else if (entity instanceof CaseworkerEntity e) trackedCaseworkerIds.add(e.getId());
     else if (entity instanceof DomainEventEntity e) trackedDomainEventIds.add(e.getId());
     else if (entity instanceof IndividualEntity e) trackedIndividualIds.add(e.getId());
-    else if (entity instanceof uk.gov.justice.laa.dstew.access.entity.DecisionEntity e)
-      trackedDecisionIds.add(e.getId());
   }
 
   public <TEntity, TGenerator> TEntity persist(Class<TGenerator> generatorType, TEntity entity) {
@@ -250,30 +218,33 @@ public class PersistedDataGenerator extends DataGenerator {
   }
 
   /**
-   * Creates and persists a DecisionEntity where the meritsDecisions set contains already-persisted
-   * (detached) MeritsDecisionEntity instances. Uses merge to re-attach them within the same
-   * transaction so that CascadeType.PERSIST does not throw DetachedEntityPassedToPersist.
+   * Adds a new ProceedingEntity to an existing application's proceedings set and saves the
+   * aggregate via ApplicationRepository. Returns the persisted ProceedingEntity (with its
+   * DB-generated ID populated).
    */
   @Transactional
-  public uk.gov.justice.laa.dstew.access.entity.DecisionEntity
-      createAndPersistWithPersistedMeritsDecisions(
-          Consumer<uk.gov.justice.laa.dstew.access.entity.DecisionEntity.DecisionEntityBuilder>
-              customiser) {
-    uk.gov.justice.laa.dstew.access.entity.DecisionEntity entity =
-        DataGenerator.createDefault(DecisionEntityGenerator.class, customiser);
-    if (entity.getMeritsDecisions() != null) {
-      java.util.Set<uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity> merged =
-          new java.util.HashSet<>();
-      for (uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity md :
-          entity.getMeritsDecisions()) {
-        merged.add(md.getId() != null ? entityManager.merge(md) : md);
-      }
-      entity.setMeritsDecisions(merged);
-    }
-    DecisionRepository decRepo = applicationContext.getBean(DecisionRepository.class);
-    uk.gov.justice.laa.dstew.access.entity.DecisionEntity saved = decRepo.saveAndFlush(entity);
-    track(saved);
-    return saved;
+  public uk.gov.justice.laa.dstew.access.entity.ProceedingEntity addProceedingToApplication(
+      ApplicationEntity application,
+      Consumer<uk.gov.justice.laa.dstew.access.entity.ProceedingEntity.ProceedingEntityBuilder>
+          customiser) {
+    uk.gov.justice.laa.dstew.access.entity.ProceedingEntity proceeding =
+        DataGenerator.createDefault(ProceedingsEntityGenerator.class, customiser);
+    ApplicationRepository appRepo = applicationContext.getBean(ApplicationRepository.class);
+    ApplicationEntity managed = appRepo.findById(application.getId()).orElseThrow();
+    managed.getProceedings().add(proceeding);
+    ApplicationEntity saved = appRepo.saveAndFlush(managed);
+    // Return the just-persisted proceeding by finding it in saved.getProceedings()
+    return saved.getProceedings().stream()
+        .filter(p -> p.getApplyProceedingId().equals(proceeding.getApplyProceedingId()))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  /** Convenience overload with no customiser. */
+  @Transactional
+  public uk.gov.justice.laa.dstew.access.entity.ProceedingEntity addProceedingToApplication(
+      ApplicationEntity application) {
+    return addProceedingToApplication(application, builder -> {});
   }
 
   /**
@@ -308,10 +279,9 @@ public class PersistedDataGenerator extends DataGenerator {
   }
 
   /**
-   * Persists a LinkedApplicationEntity using entityManager directly (no repository exists for this
-   * type). The linked_applications row is cascade-deleted when the lead application is deleted via
-   * deleteTrackedData(). Must be called within a transaction — this method is @Transactional for
-   * that purpose.
+   * Persists a LinkedApplicationEntity using entityManager directly. The linked_applications row is
+   * cascade-deleted when the lead application is deleted via deleteTrackedData(). Must be called
+   * within a transaction — this method is @Transactional for that purpose.
    */
   @Transactional
   public void persistLink(

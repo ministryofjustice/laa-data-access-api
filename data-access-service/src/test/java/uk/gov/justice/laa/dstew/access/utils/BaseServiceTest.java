@@ -40,17 +40,13 @@ public class BaseServiceTest {
 
   @MockitoBean protected ApplicationSummaryRepository applicationSummaryRepository;
 
-  @MockitoBean protected ProceedingRepository proceedingRepository;
-
-  @MockitoBean protected DecisionRepository decisionRepository;
-
-  @MockitoBean protected MeritsDecisionRepository meritsDecisionRepository;
-
   @MockitoBean protected CertificateRepository certificateRepository;
 
   @MockitoBean protected IndividualRepository individualRepository;
 
   @MockitoBean protected NoteRepository noteRepository;
+
+  @MockitoBean protected LinkedApplicationRepository linkedApplicationRepository;
 
   @MockitoBean protected ServiceNameContext serviceNameContext;
 

@@ -27,6 +27,7 @@ import org.springframework.http.ProblemDetail;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
@@ -43,6 +44,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCr
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationOfficeGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.ApplicationCreateRequestIndividualGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
 import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
 import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
 import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
@@ -296,6 +298,105 @@ public class CreateApplicationTest extends BaseHarnessTest {
 
     domainEventAsserts.assertDomainEventForApplication(
         createdApplication, DomainEventType.APPLICATION_CREATED, serviceName);
+  }
+
+  @Test
+  public void
+      givenCreateNewApplication_whenCreateApplicationWithProceedings_thenProceedingsArePersistedCorrectly()
+          throws Exception {
+    // given - ApplicationContentGenerator includes one proceeding by default
+    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class);
+    ApplicationCreateRequest applicationCreateRequest =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
+
+    // when
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
+
+    // then
+    assertCreated(result);
+    UUID createdApplicationId =
+        HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    persistedDataGenerator.trackExistingApplication(createdApplicationId);
+    ApplicationEntity createdApplication =
+        applicationRepository
+            .findById(createdApplicationId)
+            .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
+
+    assertNotNull(createdApplication.getProceedings());
+    assertEquals(1, createdApplication.getProceedings().size());
+
+    ProceedingEntity persistedProceeding = createdApplication.getProceedings().iterator().next();
+    assertEquals(
+        content.getProceedings().get(0).getId(), persistedProceeding.getApplyProceedingId());
+    assertEquals(
+        content.getProceedings().get(0).getDescription(), persistedProceeding.getDescription());
+  }
+
+  @Test
+  public void
+      givenCreateNewApplication_whenCreateApplicationWithMultipleProceedings_thenAllProceedingsArePersistedCorrectly()
+          throws Exception {
+    // given - two proceedings
+    ProceedingGenerator proceedingGenerator = new ProceedingGenerator();
+    List<uk.gov.justice.laa.dstew.access.model.Proceeding> proceedings =
+        List.of(proceedingGenerator.createDefault(), proceedingGenerator.createDefault());
+
+    ApplicationContent content =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class, builder -> builder.proceedings(proceedings));
+    ApplicationCreateRequest applicationCreateRequest =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
+
+    // when
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
+
+    // then
+    assertCreated(result);
+    UUID createdApplicationId =
+        HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    persistedDataGenerator.trackExistingApplication(createdApplicationId);
+    ApplicationEntity createdApplication =
+        applicationRepository
+            .findById(createdApplicationId)
+            .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
+
+    assertNotNull(createdApplication.getProceedings());
+    assertEquals(2, createdApplication.getProceedings().size());
+  }
+
+  @Test
+  public void
+      givenCreateNewApplication_whenCreateApplicationWithNoProceedings_thenReturnCreatedWithNoProceedings()
+          throws Exception {
+    // given - no proceedings
+    ApplicationContent content =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class, builder -> builder.proceedings(null));
+    ApplicationCreateRequest applicationCreateRequest =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
+
+    // when
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
+
+    // then
+    assertCreated(result);
+    UUID createdApplicationId =
+        HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    persistedDataGenerator.trackExistingApplication(createdApplicationId);
+    ApplicationEntity createdApplication =
+        applicationRepository
+            .findById(createdApplicationId)
+            .orElseThrow(() -> new ResourceNotFoundException(createdApplicationId.toString()));
+
+    assertTrue(
+        createdApplication.getProceedings() == null
+            || createdApplication.getProceedings().isEmpty());
   }
 
   @SmokeTest
@@ -614,10 +715,6 @@ public class CreateApplicationTest extends BaseHarnessTest {
 
   private void assertLinkedApplicationCorrectlyApplied(
       ApplicationEntity leadApplication, ApplicationEntity linkedApplication) {
-    assertEquals(
-        1,
-        leadApplication.getLinkedApplications().stream()
-            .filter(linkedApp -> linkedApp.getId().equals(linkedApplication.getId()))
-            .count());
+    assertTrue(leadApplication.getLinkedApplicationIds().contains(linkedApplication.getId()));
   }
 }

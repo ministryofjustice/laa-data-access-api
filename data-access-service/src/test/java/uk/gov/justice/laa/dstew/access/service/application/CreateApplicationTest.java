@@ -96,7 +96,7 @@ public class CreateApplicationTest extends BaseServiceTest {
     assertEquals(expectedId, actualId);
 
     verifyThatApplicationSaved(applicationCreateRequest, 1);
-    verifyThatProceedingsSaved(applicationContent, expectedId);
+    verifyThatProceedingsSaved(applicationContent, expectedId, 1);
     verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
   }
 
@@ -163,9 +163,10 @@ public class CreateApplicationTest extends BaseServiceTest {
     // then
     assertEquals(expectedId, actualId);
 
-    verifyThatApplicationSaved(applicationCreateRequest, 2);
-    verifyThatProceedingsSaved(applicationContent, expectedId);
+    verifyThatApplicationSaved(applicationCreateRequest, 1);
+    verifyThatProceedingsSaved(applicationContent, expectedId, 1);
     verifyThatCreateDomainEventSaved(expectedDomainEvent, 1);
+    verify(linkedApplicationRepository, times(1)).save(any());
   }
 
   @Test
@@ -288,10 +289,14 @@ public class CreateApplicationTest extends BaseServiceTest {
   }
 
   private void verifyThatProceedingsSaved(
-      ApplicationContent applicationCreateRequest, UUID expectedId) {
-    ArgumentCaptor<List<ProceedingEntity>> captor = ArgumentCaptor.forClass((Class) List.class);
-    verify(proceedingRepository).saveAll(captor.capture());
-    List<ProceedingEntity> actualProceedingEntities = captor.getValue();
+      ApplicationContent applicationCreateRequest, UUID expectedId, int timesCalled) {
+    ArgumentCaptor<ApplicationEntity> captor = ArgumentCaptor.forClass(ApplicationEntity.class);
+    verify(applicationRepository, times(timesCalled)).save(captor.capture());
+    List<ApplicationEntity> capturedEntities = captor.getAllValues();
+    // ignore second saves that might happen due to linked applications for this assert
+    ApplicationEntity actualApplicationEntity = capturedEntities.getFirst();
+    List<ProceedingEntity> actualProceedingEntities =
+        new ArrayList<>(actualApplicationEntity.getProceedings());
 
     ApplicationContent applicationContentDetails =
         objectMapper.convertValue(applicationCreateRequest, ApplicationContent.class);
@@ -303,7 +308,6 @@ public class CreateApplicationTest extends BaseServiceTest {
       Proceeding expectedProceeding = expectedProceedings.get(index);
       ProceedingEntity actualProceedingEntity = actualProceedingEntities.get(index);
 
-      assertThat(actualProceedingEntity.getApplicationId()).isEqualTo(expectedId);
       assertThat(actualProceedingEntity.isLead()).isEqualTo(expectedProceeding.getLeadProceeding());
       assertThat(actualProceedingEntity.getProceedingContent())
           .isEqualTo(objectMapper.convertValue(expectedProceeding, Map.class));
@@ -340,7 +344,8 @@ public class CreateApplicationTest extends BaseServiceTest {
                 Instant.parse("2026-01-15T10:20:30Z"), actualApplicationEntity.getSubmittedAt()));
     verifyThatProceedingsSaved(
         objectMapper.convertValue(application.getApplicationContent(), ApplicationContent.class),
-        expectedId);
+        expectedId,
+        1);
   }
 
   @Test

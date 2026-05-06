@@ -1,11 +1,15 @@
 package uk.gov.justice.laa.dstew.access.entity;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Map;
@@ -42,8 +46,9 @@ public class ProceedingEntity implements AuditableEntity {
   @Column(columnDefinition = "UUID")
   private UUID id;
 
-  @Column(name = "application_id", nullable = false)
-  private UUID applicationId;
+  @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+  @JoinColumn(name = "merits_decision_id", referencedColumnName = "id")
+  private MeritsDecisionEntity meritsDecision;
 
   @Column(name = "apply_proceeding_id", nullable = false)
   private UUID applyProceedingId;
