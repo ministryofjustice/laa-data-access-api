@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerResponse;
+import uk.gov.justice.laa.dstew.access.service.caseworkers.GetAllCaseworkersService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -22,7 +23,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGene
 
 public class GetAllCaseworkersTest extends BaseServiceTest {
 
-  @Autowired private CaseworkerService serviceUnderTest;
+  @Autowired private GetAllCaseworkersService serviceUnderTest;
 
   @ParameterizedTest
   @ValueSource(ints = {0, 10})

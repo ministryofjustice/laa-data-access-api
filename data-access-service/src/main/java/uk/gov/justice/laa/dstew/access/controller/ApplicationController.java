@@ -31,17 +31,17 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.service.application.ApplicationSummaryService;
-import uk.gov.justice.laa.dstew.access.service.application.CreateApplicationService;
-import uk.gov.justice.laa.dstew.access.service.application.GetApplicationsService;
-import uk.gov.justice.laa.dstew.access.service.application.UpdateApplicationService;
-import uk.gov.justice.laa.dstew.access.service.caseworker.AssignCaseworkerService;
-import uk.gov.justice.laa.dstew.access.service.caseworker.UnassignCaseworkerService;
-import uk.gov.justice.laa.dstew.access.service.certificate.CertificateService;
-import uk.gov.justice.laa.dstew.access.service.decision.MakeDecisionService;
-import uk.gov.justice.laa.dstew.access.service.domain.GetDomainEventsService;
-import uk.gov.justice.laa.dstew.access.service.notes.CreateNoteService;
-import uk.gov.justice.laa.dstew.access.service.notes.GetNotesService;
+import uk.gov.justice.laa.dstew.access.service.applications.AssignCaseworkerService;
+import uk.gov.justice.laa.dstew.access.service.applications.CreateApplicationService;
+import uk.gov.justice.laa.dstew.access.service.applications.CreateNoteService;
+import uk.gov.justice.laa.dstew.access.service.applications.GetAllApplicationsService;
+import uk.gov.justice.laa.dstew.access.service.applications.GetAllNotesForApplicationService;
+import uk.gov.justice.laa.dstew.access.service.applications.GetApplicationService;
+import uk.gov.justice.laa.dstew.access.service.applications.GetCertificateService;
+import uk.gov.justice.laa.dstew.access.service.applications.MakeDecisionService;
+import uk.gov.justice.laa.dstew.access.service.applications.UnassignCaseworkerService;
+import uk.gov.justice.laa.dstew.access.service.applications.UpdateApplicationService;
+import uk.gov.justice.laa.dstew.access.service.domainEvents.GetDomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
@@ -54,15 +54,15 @@ public class ApplicationController implements ApplicationApi {
 
   private final CreateApplicationService createApplicationService;
   private final UpdateApplicationService updateApplicationService;
-  private final GetApplicationsService getApplicationsService;
-  private final ApplicationSummaryService applicationSummaryService;
-  private final CertificateService certificateService;
+  private final GetApplicationService getApplicationsService;
+  private final GetAllApplicationsService applicationSummaryService;
+  private final GetCertificateService certificateService;
   private final AssignCaseworkerService assignCaseworkerService;
   private final UnassignCaseworkerService unassignCaseworkerService;
   private final MakeDecisionService makeDecisionService;
-  private final GetNotesService getNotesService;
+  private final GetAllNotesForApplicationService getNotesService;
   private final CreateNoteService createNoteService;
-  private final GetDomainEventsService getDomainEventsService;
+  private final GetDomainEventService getDomainEventsService;
 
   @LogMethodArguments
   @LogMethodResponse

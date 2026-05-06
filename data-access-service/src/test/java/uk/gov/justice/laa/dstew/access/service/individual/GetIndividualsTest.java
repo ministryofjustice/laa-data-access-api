@@ -25,7 +25,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
 import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
-import uk.gov.justice.laa.dstew.access.service.individuals.GetIndividualsService;
+import uk.gov.justice.laa.dstew.access.service.individuals.GetAllIndividualsService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -35,7 +35,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEnti
 
 public class GetIndividualsTest extends BaseServiceTest {
 
-  @Autowired private GetIndividualsService serviceUnderTest;
+  @Autowired private GetAllIndividualsService serviceUnderTest;
 
   @Test
   public void givenIndividuals_whenGetIndividuals_thenReturnExtendedIndividuals() {

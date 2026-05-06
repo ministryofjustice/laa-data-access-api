@@ -8,7 +8,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.api.CaseworkersApi;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.service.caseworker.CaseworkerService;
+import uk.gov.justice.laa.dstew.access.service.caseworkers.GetAllCaseworkersService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 
@@ -18,7 +18,7 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 @ExcludeFromGeneratedCodeCoverage
 public class CaseworkerController implements CaseworkersApi {
 
-  private final CaseworkerService caseworkerService;
+  private final GetAllCaseworkersService caseworkerService;
 
   @LogMethodArguments
   @LogMethodResponse
