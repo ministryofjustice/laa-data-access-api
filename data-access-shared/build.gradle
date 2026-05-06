@@ -1,8 +1,7 @@
 plugins {
-    id 'io.freefair.lombok' version '8.13.1'
+    id 'io.freefair.lombok' version '9.2.0'
     id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin'
 }
-
 java {
     withJavadocJar()
     withSourcesJar()
