@@ -718,7 +718,9 @@ public class CreateApplicationTest extends BaseHarnessTest {
     assertEquals(
         1,
         leadApplication.getLinkedApplications().stream()
-            .filter(linkedApp -> linkedApp.getAssociatedApplicationId().equals(linkedApplication.getId()))
+            .filter(
+                linkedApp ->
+                    linkedApp.getAssociatedApplicationId().equals(linkedApplication.getId()))
             .count());
   }
 }

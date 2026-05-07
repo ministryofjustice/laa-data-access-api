@@ -47,7 +47,7 @@ import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
 import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
 import uk.gov.justice.laa.dstew.access.utils.testDto.certificate.CertificateContent;
 
-public class ApplicationMakeDecisionTest extends BaseHarnessTest {
+public class MakeDecisionTest extends BaseHarnessTest {
 
   static Stream<String> invalidServiceNameHeaders() {
     return Stream.of("", "invalid-header", "CIVIL-APPLY", "civil_apply", null);

@@ -62,7 +62,7 @@ import uk.gov.justice.laa.dstew.access.utils.testDto.certificate.CertificateCont
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Unit tests for the make decision behaviour in the application service. */
-public class MakeDecisionForApplicationTest extends BaseServiceTest {
+public class MakeDecisionTest extends BaseServiceTest {
 
   @Autowired private MakeDecisionService serviceUnderTest;
 
@@ -653,8 +653,10 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         .thenReturn(Optional.of(expectedApplicationEntity));
 
     when(proceedingRepository.findAllById(List.of(proceedingId)))
-        .thenReturn(List.of(DataGenerator.createDefault(ProceedingsEntityGenerator.class,
-            builder -> builder.id(proceedingId))));
+        .thenReturn(
+            List.of(
+                DataGenerator.createDefault(
+                    ProceedingsEntityGenerator.class, builder -> builder.id(proceedingId))));
 
     Throwable thrown =
         catchThrowable(() -> serviceUnderTest.makeDecision(applicationId, makeDecisionRequest));
@@ -692,7 +694,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                             "reason2",
                             "justification2"))));
 
-    // Application has no proceedings — neither id will be found
     ApplicationEntity expectedApplicationEntity =
         getApplicationEntity(applicationId, caseworker, "unmodified");
 
@@ -701,6 +702,13 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // when
     when(applicationRepository.findById(applicationId))
         .thenReturn(Optional.of(expectedApplicationEntity));
+    when(proceedingRepository.findAllById(
+            List.of(nonExistentProceedingId, unrelatedApplicationProceedingId)))
+        .thenReturn(
+            List.of(
+                DataGenerator.createDefault(
+                    ProceedingsEntityGenerator.class,
+                    builder -> builder.id(unrelatedApplicationProceedingId))));
 
     Throwable thrown =
         catchThrowable(() -> serviceUnderTest.makeDecision(applicationId, makeDecisionRequest));
@@ -710,6 +718,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessageContaining("No proceeding found with id:")
         .hasMessageContaining(nonExistentProceedingId.toString())
+        .hasMessageContaining("Not linked to application:")
         .hasMessageContaining(unrelatedApplicationProceedingId.toString());
   }
 
@@ -1026,7 +1035,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         .proceedings(
             applicationEntity.getProceedings().stream()
                 .filter(p -> p.getMeritsDecision() != null)
-                .map(MakeDecisionForApplicationTest::mapToProceedingDetails)
+                .map(MakeDecisionTest::mapToProceedingDetails)
                 .toList())
         .build();
   }
