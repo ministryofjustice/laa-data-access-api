@@ -98,7 +98,6 @@ public class GetApplicationTest extends BaseHarnessTest {
     ApplicationEntity savedApplication =
         applicationRepository.findById(application.getId()).orElseThrow();
     ProceedingEntity savedProceeding = savedApplication.getProceedings().iterator().next();
-    savedApplication.setVersion(savedApplication.getVersion());
 
     // when
     HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());

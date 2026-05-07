@@ -643,7 +643,6 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
                             "reason",
                             "justification"))));
 
-    // Application has no proceedings — so proceedingId is not found in the aggregate
     ApplicationEntity expectedApplicationEntity =
         getApplicationEntity(applicationId, caseworker, "unmodified");
 

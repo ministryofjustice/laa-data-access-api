@@ -73,6 +73,8 @@ public class GetApplicationTest extends BaseServiceTest {
         objectMapper.convertValue(
             expectedApplication.getApplicationContent(), ApplicationContent.class);
 
+    // assertThat(expectedApplicationContent.getApplicationMerits().getInvolvedChildren().getFirst())
+    //        .isEqualTo(actualApplicationInvolvedChild);
     verify(applicationRepository, times(1)).findById(expectedApplication.getId());
   }
 
