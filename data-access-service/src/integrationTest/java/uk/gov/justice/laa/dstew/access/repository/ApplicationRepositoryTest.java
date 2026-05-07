@@ -23,7 +23,11 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
   public void givenSaveOfExpectedApplication_whenGetCalled_expectedAndActualAreEqual() {
 
     // given
-    // Build full aggregate: meritsDecision → proceeding → application + decision
+
+    // Build full aggregate:
+    // application -> proceeding -> merit decision
+    // application -> decision
+
     MeritsDecisionEntity meritsDecision =
         DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class);
 
@@ -81,18 +85,14 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
     // Compare the application excluding individuals (compared separately below)
     assertThat(expected)
         .usingRecursiveComparison()
-        .ignoringFields(
-            "createdAt",
-            "modifiedAt",
-            "individuals",
-            "proceedings")
+        .ignoringFields("createdAt", "modifiedAt", "individuals", "proceedings")
         .isEqualTo(actual);
 
-    // Compare individuals by id to correlate them, then compare fields recursively
     assertThat(actual.getIndividuals())
         .as("individuals")
         .usingRecursiveFieldByFieldElementComparator()
-        .usingRecursiveFieldByFieldElementComparatorIgnoringFields("createdAt", "modifiedAt", "applications")
+        .usingRecursiveFieldByFieldElementComparatorIgnoringFields(
+            "createdAt", "modifiedAt", "applications")
         .containsExactlyInAnyOrderElementsOf(expected.getIndividuals());
 
     assertThat(actual.getProceedings())
@@ -101,6 +101,21 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
         .usingRecursiveFieldByFieldElementComparatorIgnoringFields("createdAt", "modifiedAt")
         .containsExactlyInAnyOrderElementsOf(expected.getProceedings());
 
+    assertThat(expected.getCreatedAt()).isNotNull();
     assertThat(expected.getModifiedAt()).isNotNull();
+
+    assertThat(actual.getIndividuals())
+        .as("individuals.createdAt")
+        .allSatisfy(i -> assertThat(i.getCreatedAt()).isNotNull());
+    assertThat(actual.getIndividuals())
+        .as("individuals.modifiedAt")
+        .allSatisfy(i -> assertThat(i.getModifiedAt()).isNotNull());
+
+    assertThat(actual.getProceedings())
+        .as("proceedings.createdAt")
+        .allSatisfy(p -> assertThat(p.getCreatedAt()).isNotNull());
+    assertThat(actual.getProceedings())
+        .as("proceedings.modifiedAt")
+        .allSatisfy(p -> assertThat(p.getModifiedAt()).isNotNull());
   }
 }

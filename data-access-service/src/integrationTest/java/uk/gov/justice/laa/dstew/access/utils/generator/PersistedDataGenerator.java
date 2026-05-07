@@ -27,7 +27,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateEn
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.notes.NoteEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
 @Component
 public class PersistedDataGenerator extends DataGenerator {
