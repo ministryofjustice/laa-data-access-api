@@ -19,7 +19,6 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import jakarta.persistence.Version;
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -107,8 +106,9 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "submitted_at")
   private Instant submittedAt;
 
-  @OneToOne(cascade = CascadeType.ALL)
+  @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
   @JoinColumn(name = "decision_id", referencedColumnName = "id")
+  @Fetch(FetchMode.JOIN)
   private DecisionEntity decision;
 
   @Column(name = "used_delegated_functions")
@@ -127,12 +127,13 @@ public class ApplicationEntity implements AuditableEntity {
 
   @OneToMany(fetch = FetchType.EAGER)
   @JoinColumn(name = "lead_application_id", insertable = false, updatable = false)
-  @Fetch(FetchMode.JOIN)
+  @Fetch(FetchMode.SUBSELECT)
   private Set<LinkedApplicationEntity> linkedApplications;
 
   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
   @JoinColumn(name = "application_id")
-  private Set<ProceedingEntity> proceedings = new HashSet<>();
+  @Fetch(FetchMode.SUBSELECT)
+  private Set<ProceedingEntity> proceedings;
 
   @Transient
   public boolean isLead() {
