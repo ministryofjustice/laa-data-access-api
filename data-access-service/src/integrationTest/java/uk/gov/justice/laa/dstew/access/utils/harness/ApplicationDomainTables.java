@@ -31,7 +31,6 @@ public final class ApplicationDomainTables {
   public static final List<String> TABLES =
       List.of(
           "domain_events",
-          // "linked_merits_decisions" — dropped in V23
           "merits_decisions",
           "decisions",
           "proceedings",
