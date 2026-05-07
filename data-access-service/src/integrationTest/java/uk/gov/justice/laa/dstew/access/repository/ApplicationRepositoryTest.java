@@ -1,6 +1,6 @@
 package uk.gov.justice.laa.dstew.access.repository;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -76,10 +76,31 @@ public class ApplicationRepositoryTest extends BaseIntegrationTest {
   }
 
   private void assertApplicationEqual(ApplicationEntity expected, ApplicationEntity actual) {
+    assertThat(actual).as("ApplicationEntity should be found in repository").isNotNull();
+
+    // Compare the application excluding individuals (compared separately below)
     assertThat(expected)
         .usingRecursiveComparison()
-        .ignoringFields("createdAt", "modifiedAt", "individuals", "proceedings")
+        .ignoringFields(
+            "createdAt",
+            "modifiedAt",
+            "individuals",
+            "proceedings")
         .isEqualTo(actual);
+
+    // Compare individuals by id to correlate them, then compare fields recursively
+    assertThat(actual.getIndividuals())
+        .as("individuals")
+        .usingRecursiveFieldByFieldElementComparator()
+        .usingRecursiveFieldByFieldElementComparatorIgnoringFields("createdAt", "modifiedAt", "applications")
+        .containsExactlyInAnyOrderElementsOf(expected.getIndividuals());
+
+    assertThat(actual.getProceedings())
+        .as("proceedings")
+        .usingRecursiveFieldByFieldElementComparator()
+        .usingRecursiveFieldByFieldElementComparatorIgnoringFields("createdAt", "modifiedAt")
+        .containsExactlyInAnyOrderElementsOf(expected.getProceedings());
+
     assertThat(expected.getModifiedAt()).isNotNull();
   }
 }

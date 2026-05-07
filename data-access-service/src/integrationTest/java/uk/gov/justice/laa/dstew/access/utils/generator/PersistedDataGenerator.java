@@ -218,36 +218,6 @@ public class PersistedDataGenerator extends DataGenerator {
   }
 
   /**
-   * Adds a new ProceedingEntity to an existing application's proceedings set and saves the
-   * aggregate via ApplicationRepository. Returns the persisted ProceedingEntity (with its
-   * DB-generated ID populated).
-   */
-  @Transactional
-  public uk.gov.justice.laa.dstew.access.entity.ProceedingEntity addProceedingToApplication(
-      ApplicationEntity application,
-      Consumer<uk.gov.justice.laa.dstew.access.entity.ProceedingEntity.ProceedingEntityBuilder>
-          customiser) {
-    uk.gov.justice.laa.dstew.access.entity.ProceedingEntity proceeding =
-        DataGenerator.createDefault(ProceedingsEntityGenerator.class, customiser);
-    ApplicationRepository appRepo = applicationContext.getBean(ApplicationRepository.class);
-    ApplicationEntity managed = appRepo.findById(application.getId()).orElseThrow();
-    managed.getProceedings().add(proceeding);
-    ApplicationEntity saved = appRepo.saveAndFlush(managed);
-    // Return the just-persisted proceeding by finding it in saved.getProceedings()
-    return saved.getProceedings().stream()
-        .filter(p -> p.getApplyProceedingId().equals(proceeding.getApplyProceedingId()))
-        .findFirst()
-        .orElseThrow();
-  }
-
-  /** Convenience overload with no customiser. */
-  @Transactional
-  public uk.gov.justice.laa.dstew.access.entity.ProceedingEntity addProceedingToApplication(
-      ApplicationEntity application) {
-    return addProceedingToApplication(application, builder -> {});
-  }
-
-  /**
    * Creates and persists an ApplicationEntity where the individuals set contains already-persisted
    * (detached) IndividualEntity instances. Uses merge to re-attach them within the same transaction
    * so that CascadeType.PERSIST does not throw DetachedEntityPassedToPersist.
