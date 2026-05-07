@@ -148,6 +148,7 @@ dependencyManagement {
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     imports {
         mavenBom 'tools.jackson:jackson-bom:3.1.1'
+        mavenBom 'io.netty:netty-bom:4.2.13.Final'
     }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
