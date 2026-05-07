@@ -194,10 +194,8 @@ dependencies {
         exclude group: 'com.google.code.gson', module: 'gson'
     }
 
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789756
-    implementation 'io.netty:netty-codec-http:4.2.12.Final'
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789758
-    implementation 'io.netty:netty-codec-http2:4.2.12.Final'
+    implementation 'io.netty:netty-codec-http:4.2.13.Final'
+    implementation 'io.netty:netty-codec-http2:4.2.13.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-15307781
     implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.54'
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
