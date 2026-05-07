@@ -436,9 +436,9 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
         .startsWith("application/problem+json");
     assertEquals(0L, applicationEntity.getVersion());
     ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
-    // Both "not found" and "not linked to this application" now collapse to "No proceeding found"
     assertThat(problemDetail.getDetail())
         .contains("No proceeding found with id:")
+        .contains("Not linked to application:")
         .contains(proceedingIdNotFound.toString())
         .contains(proceedingNotLinkedToApplication.getId().toString());
   }

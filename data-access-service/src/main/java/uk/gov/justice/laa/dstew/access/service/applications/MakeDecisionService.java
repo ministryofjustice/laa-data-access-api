@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.service.applications;
 
 import jakarta.transaction.Transactional;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
+import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
 import uk.gov.justice.laa.dstew.access.utils.ApplicationServiceHelper;
@@ -37,6 +39,7 @@ public class MakeDecisionService {
   private final ApplicationValidations applicationValidations;
   private final SaveDomainEventService saveDomainEventService;
   private final CertificateRepository certificateRepository;
+  private final ProceedingRepository proceedingRepository;
 
   /**
    * Update an existing application to add the decision details.
@@ -141,32 +144,58 @@ public class MakeDecisionService {
   }
 
   /**
-   * Validates that all proceedings in the request belong to the given application by checking the
-   * application's in-memory proceedings set. Returns a map of proceeding ID to entity.
+   * Validates that all proceedings in the request belong to the given application. First checks
+   * proceedings linked to the application; for any not found there, checks whether they exist in
+   * the database to produce appropriate error messages.
+   *
+   * @return a map of proceeding ID to entity for all requested proceedings
    */
   private Map<UUID, ProceedingEntity> validateAndMapProceedingsFromAggregate(
       ApplicationEntity application, MakeDecisionRequest request) {
-    Map<UUID, ProceedingEntity> map =
+    List<UUID> idsToFetch =
+        request.getProceedings().stream()
+            .map(MakeDecisionProceedingRequest::getProceedingId)
+            .distinct()
+            .toList();
+
+    Map<UUID, ProceedingEntity> linkedMap =
         application.getProceedings() == null
             ? Map.of()
             : application.getProceedings().stream()
                 .collect(Collectors.toMap(ProceedingEntity::getId, p -> p));
 
-    List<UUID> requestedIds =
-        request.getProceedings().stream()
-            .map(MakeDecisionProceedingRequest::getProceedingId)
-            .toList();
+    // IDs not linked to this application
+    List<UUID> notLinkedIds = idsToFetch.stream().filter(id -> !linkedMap.containsKey(id)).toList();
 
-    String notFound =
-        requestedIds.stream()
-            .filter(id -> !map.containsKey(id))
-            .map(UUID::toString)
-            .collect(Collectors.joining(","));
+    List<String> errors = new ArrayList<>();
 
-    if (!notFound.isEmpty()) {
-      throw new ResourceNotFoundException("Not linked to application: " + notFound);
+    if (!notLinkedIds.isEmpty()) {
+      // Check which of the not-linked IDs actually exist in the database
+      List<ProceedingEntity> foundInDb = proceedingRepository.findAllById(notLinkedIds);
+      List<UUID> foundInDbIds = foundInDb.stream().map(ProceedingEntity::getId).toList();
+
+      String proceedingIdsNotFound =
+          notLinkedIds.stream()
+              .filter(id -> !foundInDbIds.contains(id))
+              .map(UUID::toString)
+              .collect(Collectors.joining(","));
+
+      String proceedingIdsNotLinkedToApplication =
+          foundInDbIds.stream().map(UUID::toString).collect(Collectors.joining(","));
+
+      if (!proceedingIdsNotFound.isEmpty()) {
+        errors.add("No proceeding found with id: " + proceedingIdsNotFound);
+      }
+      if (!proceedingIdsNotLinkedToApplication.isEmpty()) {
+        errors.add("Not linked to application: " + proceedingIdsNotLinkedToApplication);
+      }
+
+      if (!errors.isEmpty()) {
+        throw new ResourceNotFoundException(String.join("; ", errors));
+      }
     }
-    return map;
+
+    return linkedMap;
   }
 
   /**

@@ -31,6 +31,8 @@ public class AccessAppTests {
 
   @MockitoBean private LinkedApplicationRepository linkedApplicationRepository;
 
+  @MockitoBean private ProceedingRepository proceedingRepository;
+
   @Test
   void contextLoads() {}
 }

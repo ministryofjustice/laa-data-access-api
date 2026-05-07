@@ -48,6 +48,8 @@ public class BaseServiceTest {
 
   @MockitoBean protected LinkedApplicationRepository linkedApplicationRepository;
 
+  @MockitoBean protected ProceedingRepository proceedingRepository;
+
   @MockitoBean protected ServiceNameContext serviceNameContext;
 
   @Autowired protected ObjectMapper objectMapper;

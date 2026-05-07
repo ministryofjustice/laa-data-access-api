@@ -580,7 +580,7 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
         // Arguments.of("NO_CASEWORKER",  appId2, proceedingId, "Caseworker not found for
         // application id: " + appId2),
         Arguments.of(
-            "NO_PROCEEDING", appId3, proceedingId, "Not linked to application: " + proceedingId));
+            "NO_PROCEEDING", appId3, proceedingId, "No proceeding found with id: " + proceedingId));
   }
 
   @ParameterizedTest(name = "{0}")
@@ -652,6 +652,10 @@ public class MakeDecisionForApplicationTest extends BaseServiceTest {
     // when
     when(applicationRepository.findById(applicationId))
         .thenReturn(Optional.of(expectedApplicationEntity));
+
+    when(proceedingRepository.findAllById(List.of(proceedingId)))
+        .thenReturn(List.of(DataGenerator.createDefault(ProceedingsEntityGenerator.class,
+            builder -> builder.id(proceedingId))));
 
     Throwable thrown =
         catchThrowable(() -> serviceUnderTest.makeDecision(applicationId, makeDecisionRequest));
