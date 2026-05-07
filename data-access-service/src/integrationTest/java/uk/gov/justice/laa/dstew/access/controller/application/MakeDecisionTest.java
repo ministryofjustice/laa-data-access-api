@@ -133,6 +133,7 @@ public class MakeDecisionTest extends BaseHarnessTest {
         applicationRepository.findById(applicationEntity.getId()).orElseThrow();
     assertEquals(ApplicationStatus.APPLICATION_SUBMITTED, actualApplication.getStatus());
     assertEquals(true, actualApplication.getIsAutoGranted());
+    verifyDecisionSavedCorrectly(applicationEntity.getId(), makeDecisionRequest);
   }
 
   @Test

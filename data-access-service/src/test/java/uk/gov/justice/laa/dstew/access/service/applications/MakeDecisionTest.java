@@ -867,6 +867,60 @@ public class MakeDecisionTest extends BaseServiceTest {
   }
 
   @Test
+  void givenPreviouslyGrantedDecision_whenMakeDecisionRefused_thenCertificateDeleted() {
+    // given
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    CaseworkerEntity caseworker = DataGenerator.createDefault(CaseworkerGenerator.class);
+
+    MakeDecisionRequest makeDecisionRequest =
+        DataGenerator.createDefault(
+            ApplicationMakeDecisionRequestGenerator.class,
+            requestBuilder ->
+                requestBuilder
+                    .overallDecision(DecisionStatus.REFUSED)
+                    .eventHistory(
+                        EventHistoryRequest.builder().eventDescription("refusal event").build())
+                    .proceedings(
+                        List.of(
+                            createMakeDecisionProceedingDetails(
+                                proceedingId,
+                                MeritsDecisionStatus.REFUSED,
+                                "justification",
+                                "reason")))
+                    .certificate(null));
+
+    ProceedingEntity proceedingEntity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class, builder -> builder.id(proceedingId));
+
+    ApplicationEntity applicationEntity =
+        getApplicationEntity(applicationId, caseworker, "content");
+    applicationEntity.setProceedings(new HashSet<>(Set.of(proceedingEntity)));
+
+    // simulate a previously GRANTED decision on the application
+    DecisionEntity existingGrantedDecision =
+        DataGenerator.createDefault(
+            DecisionEntityGenerator.class,
+            builder -> builder.overallDecision(DecisionStatus.GRANTED));
+    applicationEntity.setDecision(existingGrantedDecision);
+
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(applicationEntity));
+    when(certificateRepository.existsByApplicationId(applicationId)).thenReturn(true);
+
+    // when
+    serviceUnderTest.makeDecision(applicationId, makeDecisionRequest);
+
+    // then — certificate must be deleted because the decision changed from GRANTED to REFUSED
+    verify(certificateRepository, times(1)).deleteByApplicationId(applicationId);
+    verify(certificateRepository, never()).save(any());
+    verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
+    verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
+  }
+
+  @Test
   void givenRefusedDecisionWithoutCertificate_whenMakeDecision_thenNoCertificateSaved() {
     // given
     UUID applicationId = UUID.randomUUID();
