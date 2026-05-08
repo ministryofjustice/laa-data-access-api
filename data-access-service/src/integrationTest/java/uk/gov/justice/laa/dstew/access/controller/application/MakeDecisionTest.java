@@ -42,6 +42,8 @@ import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMakeDecisionRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateContentGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
 import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
@@ -275,8 +277,7 @@ public class MakeDecisionTest extends BaseHarnessTest {
     // Build the initial state: application → proceedings → meritsDecision + decision
     MeritsDecisionEntity meritsDecisionEntityOne =
         DataGenerator.createDefault(
-            uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator
-                .class,
+            MeritsDecisionsEntityGenerator.class,
             builder -> builder.decision(MeritsDecisionStatus.REFUSED));
 
     ProceedingEntity proceedingEntityOneTemplate =
@@ -289,7 +290,7 @@ public class MakeDecisionTest extends BaseHarnessTest {
 
     DecisionEntity decisionTemplate =
         DataGenerator.createDefault(
-            uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator.class,
+            DecisionEntityGenerator.class,
             builder -> builder.overallDecision(DecisionStatus.REFUSED));
 
     ApplicationEntity initialApplicationEntity =
