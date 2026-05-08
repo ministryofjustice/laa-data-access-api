@@ -10,7 +10,7 @@ const APPLICATION_CONTENT_TEMPLATE = JSON.parse(open('./fixtures/applicationCont
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:9080';
 const VUS = parseInt(__ENV.VUS || '5', 10);
 const ITERATIONS = parseInt(__ENV.ITERATIONS || '100', 10);
 const THINK_TIME_MIN_MS = parseInt(__ENV.THINK_TIME_MIN_MS || '0', 10);
