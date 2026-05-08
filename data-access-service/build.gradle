@@ -148,6 +148,7 @@ dependencyManagement {
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     imports {
         mavenBom 'tools.jackson:jackson-bom:3.1.1'
+        mavenBom 'io.netty:netty-bom:4.2.13.Final'
     }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
@@ -211,7 +212,7 @@ dependencies {
 
     // Source: https://mvnrepository.com/artifact/com.azure.spring/spring-cloud-azure-starter-active-directory
     // Note: Version 7.0.0 may not be compatible with Spring Boot 4, check for updated version
-    implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.0.0'
+    implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.2.0'
     implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
 
     implementation 'io.micrometer:micrometer-registry-prometheus'
