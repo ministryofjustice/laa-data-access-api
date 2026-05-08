@@ -24,6 +24,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.ProblemDetail;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
@@ -75,7 +76,7 @@ public class GetApplicationTest extends BaseHarnessTest {
       throws Exception {
     // given
     // Build the full aggregate: proceeding → meritsDecision, application → proceeding + decision
-    uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity meritsDecision =
+    MeritsDecisionEntity meritsDecision =
         DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class);
 
     ProceedingEntity proceeding =
@@ -99,6 +100,9 @@ public class GetApplicationTest extends BaseHarnessTest {
         applicationRepository.findById(application.getId()).orElseThrow();
     ProceedingEntity savedProceeding = savedApplication.getProceedings().iterator().next();
 
+    ApplicationResponse expectedApplication =
+        createApplication(savedApplication, savedProceeding, savedApplication.getDecision());
+
     // when
     HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
     ApplicationResponse actualApplication = deserialise(result, ApplicationResponse.class);
@@ -108,8 +112,7 @@ public class GetApplicationTest extends BaseHarnessTest {
     assertSecurityHeaders(result);
     assertNoCacheHeaders(result);
     assertOK(result);
-    ApplicationResponse expectedApplication =
-        createApplication(savedApplication, savedProceeding, savedApplication.getDecision());
+
     Assertions.assertThat(actualApplication)
         .usingRecursiveComparison()
         .ignoringFields("lastUpdated")
