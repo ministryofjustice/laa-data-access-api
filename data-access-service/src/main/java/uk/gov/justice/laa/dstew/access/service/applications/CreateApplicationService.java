@@ -70,7 +70,6 @@ public class CreateApplicationService {
 
     linkToLeadApplicationIfApplicable(applicationContent, saved);
     saveDomainEventService.saveCreateApplicationDomainEvent(saved, req, null);
-    createAndSendHistoricRecord(saved, null);
 
     return saved.getId();
   }
@@ -184,16 +183,5 @@ public class CreateApplicationService {
       throw new ValidationException(
           List.of("Application already exists for Apply Application Id: " + applyApplicationId));
     }
-  }
-
-  /**
-   * Placeholder for historic/audit record creation.
-   *
-   * @param entity application entity
-   * @param actionType optional action type
-   */
-  protected void createAndSendHistoricRecord(
-      final ApplicationEntity entity, final Object actionType) {
-    // Implement audit/history publishing if required
   }
 }
