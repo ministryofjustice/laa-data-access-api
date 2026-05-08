@@ -5,6 +5,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -57,43 +59,17 @@ public class MakeDecisionService {
     final UUID caseworkerId = getCaseworkerId(application);
     applicationValidations.checkApplicationMakeDecisionRequest(request);
 
-    // Validate proceedings belong to this application using in-memory set
     Map<UUID, ProceedingEntity> proceedingEntityMap =
         validateAndMapProceedingsFromAggregate(application, request);
 
-    // Build/update DecisionEntity
-    DecisionEntity decision =
-        application.getDecision() != null
-            ? application.getDecision()
-            : DecisionEntity.builder().build();
-    decision.setOverallDecision(DecisionStatus.valueOf(request.getOverallDecision().getValue()));
-    decision.setModifiedAt(Instant.now());
-
-    // Update meritsDecision on each proceeding
-    request
-        .getProceedings()
-        .forEach(
-            proceedingReq -> {
-              ProceedingEntity proceedingEntity =
-                  proceedingEntityMap.get(proceedingReq.getProceedingId());
-              MeritsDecisionEntity meritsDecision =
-                  proceedingEntity.getMeritsDecision() != null
-                      ? proceedingEntity.getMeritsDecision()
-                      : new MeritsDecisionEntity();
-              meritsDecision.setDecision(
-                  MeritsDecisionStatus.valueOf(
-                      proceedingReq.getMeritsDecision().getDecision().toString()));
-              meritsDecision.setReason(proceedingReq.getMeritsDecision().getReason());
-              meritsDecision.setJustification(proceedingReq.getMeritsDecision().getJustification());
-              meritsDecision.setModifiedAt(Instant.now());
-              proceedingEntity.setMeritsDecision(meritsDecision);
-            });
+    DecisionEntity decision = buildOrUpdateDecision(application, request);
+    request.getProceedings().forEach(req -> updateMeritsDecision(proceedingEntityMap, req));
 
     application.setDecision(decision);
     application.setModifiedAt(Instant.now());
     application.setIsAutoGranted(request.getAutoGranted());
+    applicationRepository.save(application);
 
-    // Persist or remove certificate based on overallDecision
     switch (decision.getOverallDecision()) {
       case GRANTED -> {
         if (request.getCertificate() != null) {
@@ -113,34 +89,48 @@ public class MakeDecisionService {
                               .build());
           certificateRepository.save(certificate);
         }
+        saveDomainEventService.saveMakeDecisionDomainEvent(
+            applicationId,
+            request,
+            caseworkerId,
+            DomainEventType.APPLICATION_MAKE_DECISION_GRANTED);
       }
       case REFUSED -> {
-        if (certificateRepository.existsByApplicationId(applicationId)) {
-          certificateRepository.deleteByApplicationId(applicationId);
-        }
+        certificateRepository.deleteByApplicationId(applicationId);
+        saveDomainEventService.saveMakeDecisionDomainEvent(
+            applicationId,
+            request,
+            caseworkerId,
+            DomainEventType.APPLICATION_MAKE_DECISION_REFUSED);
       }
       default ->
           throw new IllegalStateException("Unexpected value: " + decision.getOverallDecision());
     }
+  }
 
-    applicationRepository.save(application);
+  private DecisionEntity buildOrUpdateDecision(
+      ApplicationEntity application, MakeDecisionRequest request) {
+    DecisionEntity decision =
+        Optional.ofNullable(application.getDecision())
+            .orElseGet(() -> DecisionEntity.builder().build());
+    decision.setOverallDecision(DecisionStatus.valueOf(request.getOverallDecision().getValue()));
+    decision.setModifiedAt(Instant.now());
+    return decision;
+  }
 
-    switch (decision.getOverallDecision()) {
-      case GRANTED ->
-          saveDomainEventService.saveMakeDecisionDomainEvent(
-              applicationId,
-              request,
-              caseworkerId,
-              DomainEventType.APPLICATION_MAKE_DECISION_GRANTED);
-      case REFUSED ->
-          saveDomainEventService.saveMakeDecisionDomainEvent(
-              applicationId,
-              request,
-              caseworkerId,
-              DomainEventType.APPLICATION_MAKE_DECISION_REFUSED);
-      default ->
-          throw new IllegalStateException("Unexpected value: " + decision.getOverallDecision());
-    }
+  private void updateMeritsDecision(
+      Map<UUID, ProceedingEntity> proceedingEntityMap,
+      MakeDecisionProceedingRequest proceedingReq) {
+    ProceedingEntity proceedingEntity = proceedingEntityMap.get(proceedingReq.getProceedingId());
+    MeritsDecisionEntity meritsDecision =
+        Optional.ofNullable(proceedingEntity.getMeritsDecision())
+            .orElseGet(MeritsDecisionEntity::new);
+    meritsDecision.setDecision(
+        MeritsDecisionStatus.valueOf(proceedingReq.getMeritsDecision().getDecision().toString()));
+    meritsDecision.setReason(proceedingReq.getMeritsDecision().getReason());
+    meritsDecision.setJustification(proceedingReq.getMeritsDecision().getJustification());
+    meritsDecision.setModifiedAt(Instant.now());
+    proceedingEntity.setMeritsDecision(meritsDecision);
   }
 
   /**
@@ -152,47 +142,42 @@ public class MakeDecisionService {
    */
   private Map<UUID, ProceedingEntity> validateAndMapProceedingsFromAggregate(
       ApplicationEntity application, MakeDecisionRequest request) {
-    List<UUID> idsToFetch =
+
+    Map<UUID, ProceedingEntity> linkedMap =
+        Optional.ofNullable(application.getProceedings()).orElse(Set.of()).stream()
+            .collect(Collectors.toMap(ProceedingEntity::getId, p -> p));
+
+    List<UUID> notLinkedIds =
         request.getProceedings().stream()
             .map(MakeDecisionProceedingRequest::getProceedingId)
             .distinct()
+            .filter(id -> !linkedMap.containsKey(id))
             .toList();
 
-    Map<UUID, ProceedingEntity> linkedMap =
-        application.getProceedings() == null
-            ? Map.of()
-            : application.getProceedings().stream()
-                .collect(Collectors.toMap(ProceedingEntity::getId, p -> p));
+    if (notLinkedIds.isEmpty()) {
+      return linkedMap;
+    }
 
-    // IDs not linked to this application
-    List<UUID> notLinkedIds = idsToFetch.stream().filter(id -> !linkedMap.containsKey(id)).toList();
+    Set<UUID> foundInDbIds =
+        proceedingRepository.findAllById(notLinkedIds).stream()
+            .map(ProceedingEntity::getId)
+            .collect(Collectors.toSet());
 
     List<String> errors = new ArrayList<>();
 
-    if (!notLinkedIds.isEmpty()) {
-      // Check which of the not-linked IDs actually exist in the database
-      List<ProceedingEntity> foundInDb = proceedingRepository.findAllById(notLinkedIds);
-      List<UUID> foundInDbIds = foundInDb.stream().map(ProceedingEntity::getId).toList();
+    notLinkedIds.stream()
+        .filter(id -> !foundInDbIds.contains(id))
+        .map(UUID::toString)
+        .reduce((a, b) -> a + "," + b)
+        .ifPresent(ids -> errors.add("No proceeding found with id: " + ids));
 
-      String proceedingIdsNotFound =
-          notLinkedIds.stream()
-              .filter(id -> !foundInDbIds.contains(id))
-              .map(UUID::toString)
-              .collect(Collectors.joining(","));
+    foundInDbIds.stream()
+        .map(UUID::toString)
+        .reduce((a, b) -> a + "," + b)
+        .ifPresent(ids -> errors.add("Not linked to application: " + ids));
 
-      String proceedingIdsNotLinkedToApplication =
-          foundInDbIds.stream().map(UUID::toString).collect(Collectors.joining(","));
-
-      if (!proceedingIdsNotFound.isEmpty()) {
-        errors.add("No proceeding found with id: " + proceedingIdsNotFound);
-      }
-      if (!proceedingIdsNotLinkedToApplication.isEmpty()) {
-        errors.add("Not linked to application: " + proceedingIdsNotLinkedToApplication);
-      }
-
-      if (!errors.isEmpty()) {
-        throw new ResourceNotFoundException(String.join("; ", errors));
-      }
+    if (!errors.isEmpty()) {
+      throw new ResourceNotFoundException(String.join("; ", errors));
     }
 
     return linkedMap;

@@ -79,13 +79,14 @@ public class CreateApplicationService {
    * by JPA via @JoinColumn on ApplicationEntity.proceedings).
    */
   private Set<ProceedingEntity> buildProceedingEntities(ApplicationContent applicationContent) {
-    if (applicationContent.getProceedings() == null
-        || applicationContent.getProceedings().isEmpty()) {
-      return Set.of();
-    }
-    return applicationContent.getProceedings().stream()
-        .map(p -> proceedingMapper.toProceedingEntity(p))
-        .collect(Collectors.toCollection(LinkedHashSet::new));
+    return Optional.ofNullable(applicationContent.getProceedings())
+        .filter(p -> !p.isEmpty())
+        .map(
+            proceedings ->
+                proceedings.stream()
+                    .map(proceedingMapper::toProceedingEntity)
+                    .collect(Collectors.toCollection(LinkedHashSet::new)))
+        .orElse(new LinkedHashSet<>());
   }
 
   /**
@@ -109,16 +110,14 @@ public class CreateApplicationService {
 
   private void linkToLeadApplicationIfApplicable(
       ApplicationContent appContent, ApplicationEntity entityToAdd) {
-    final Optional<ApplicationEntity> leadApplication = getLeadApplication(appContent);
-    leadApplication.ifPresent(
-        leadApp -> {
-          var link =
-              LinkedApplicationEntity.builder()
-                  .leadApplicationId(leadApp.getId())
-                  .associatedApplicationId(entityToAdd.getId())
-                  .build();
-          linkedApplicationRepository.save(link);
-        });
+    getLeadApplication(appContent)
+        .ifPresent(
+            leadApp ->
+                linkedApplicationRepository.save(
+                    LinkedApplicationEntity.builder()
+                        .leadApplicationId(leadApp.getId())
+                        .associatedApplicationId(entityToAdd.getId())
+                        .build()));
   }
 
   private Optional<ApplicationEntity> getLeadApplication(ApplicationContent requestContent) {
