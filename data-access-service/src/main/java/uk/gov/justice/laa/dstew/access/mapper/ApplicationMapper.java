@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.mapper;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -114,23 +113,6 @@ public interface ApplicationMapper {
     application.setOpponents(extractOpponents(entity.getApplicationContent()));
     application.setProvider(extractProvider(entity));
     application.setVersion(entity.getVersion());
-
-    if (entity.getProceedings() != null) {
-      List<ApplicationProceedingResponse> proceedingResponses = new ArrayList<>();
-      entity
-          .getProceedings()
-          .forEach(
-              proceeding -> {
-                ApplicationProceedingResponse proceedingResponse =
-                    proceedingMapper.toApplicationProceeding(proceeding);
-                if (proceeding.getMeritsDecision() != null) {
-                  proceedingResponse.setMeritsDecision(
-                      proceeding.getMeritsDecision().getDecision());
-                }
-                proceedingResponses.add(proceedingResponse);
-              });
-      application.setProceedings(proceedingResponses);
-    }
 
     if (entity.getProceedings() != null) {
       application.setProceedings(

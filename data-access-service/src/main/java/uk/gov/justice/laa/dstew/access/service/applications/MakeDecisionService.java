@@ -165,16 +165,20 @@ public class MakeDecisionService {
 
     List<String> errors = new ArrayList<>();
 
-    notLinkedIds.stream()
-        .filter(id -> !foundInDbIds.contains(id))
-        .map(UUID::toString)
-        .reduce((a, b) -> a + "," + b)
-        .ifPresent(ids -> errors.add("No proceeding found with id: " + ids));
+    String notFoundIds =
+        notLinkedIds.stream()
+            .filter(id -> !foundInDbIds.contains(id))
+            .map(UUID::toString)
+            .collect(Collectors.joining(","));
+    if (!notFoundIds.isEmpty()) {
+      errors.add("No proceeding found with id: " + notFoundIds);
+    }
 
-    foundInDbIds.stream()
-        .map(UUID::toString)
-        .reduce((a, b) -> a + "," + b)
-        .ifPresent(ids -> errors.add("Not linked to application: " + ids));
+    String notLinkedInDbIds =
+        foundInDbIds.stream().map(UUID::toString).collect(Collectors.joining(","));
+    if (!notLinkedInDbIds.isEmpty()) {
+      errors.add("Not linked to application: " + notLinkedInDbIds);
+    }
 
     if (!errors.isEmpty()) {
       throw new ResourceNotFoundException(String.join("; ", errors));
@@ -183,12 +187,6 @@ public class MakeDecisionService {
     return linkedMap;
   }
 
-  /**
-   * Gets the caseworker id from an application.
-   *
-   * @param application application entity
-   * @return caseworker id
-   */
   private static UUID getCaseworkerId(ApplicationEntity application) {
     final CaseworkerEntity caseworker = application.getCaseworker();
     return caseworker != null ? caseworker.getId() : null;

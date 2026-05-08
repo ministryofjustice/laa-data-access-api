@@ -25,7 +25,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -171,10 +170,9 @@ public class MakeDecisionTest extends BaseServiceTest {
     verify(applicationRepository, never()).save(any());
   }
 
-  @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved(
-      boolean certificateExists) throws JacksonException {
+  @Test
+  void givenMakeDecisionRequestWithTwoProceedings_whenAssignDecision_thenDecisionSaved()
+      throws JacksonException {
     UUID applicationId = UUID.randomUUID();
     UUID grantedProceedingId = UUID.randomUUID();
     UUID refusedProceedingId = UUID.randomUUID();
@@ -245,7 +243,6 @@ public class MakeDecisionTest extends BaseServiceTest {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     // when
-    when(certificateRepository.existsByApplicationId(applicationId)).thenReturn(certificateExists);
     when(applicationRepository.findById(expectedApplicationEntity.getId()))
         .thenReturn(Optional.of(expectedApplicationEntity));
 
@@ -255,8 +252,7 @@ public class MakeDecisionTest extends BaseServiceTest {
     verify(applicationRepository, times(1)).findById(expectedApplicationEntity.getId());
     verify(applicationRepository, times(1)).save(any(ApplicationEntity.class));
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
-    verify(certificateRepository, times((certificateExists) ? 1 : 0))
-        .deleteByApplicationId(applicationId);
+    verify(certificateRepository, times(1)).deleteByApplicationId(applicationId);
     verifyThatDomainEventSaved(domainEventRepository, objectMapper, expectedDomainEvent, 1);
     verifyDecisionSavedCorrectly(makeDecisionRequest, expectedApplicationEntity, 2);
   }
