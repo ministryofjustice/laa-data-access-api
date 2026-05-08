@@ -280,15 +280,15 @@ public class MakeDecisionTest extends BaseHarnessTest {
             MeritsDecisionsEntityGenerator.class,
             builder -> builder.decision(MeritsDecisionStatus.REFUSED));
 
-    ProceedingEntity proceedingEntityOneTemplate =
+    ProceedingEntity proceedingEntityOne =
         DataGenerator.createDefault(
             ProceedingsEntityGenerator.class,
             builder -> builder.meritsDecision(meritsDecisionEntityOne));
 
-    ProceedingEntity proceedingEntityTwoTemplate =
+    ProceedingEntity proceedingEntityTwo =
         DataGenerator.createDefault(ProceedingsEntityGenerator.class);
 
-    DecisionEntity decisionTemplate =
+    DecisionEntity decision =
         DataGenerator.createDefault(
             DecisionEntityGenerator.class,
             builder -> builder.overallDecision(DecisionStatus.REFUSED));
@@ -302,31 +302,14 @@ public class MakeDecisionTest extends BaseHarnessTest {
                     .status(ApplicationStatus.APPLICATION_SUBMITTED)
                     .caseworker(CaseworkerJohnDoe)
                     .proceedings(
-                        new java.util.HashSet<>(
-                            Set.of(proceedingEntityOneTemplate, proceedingEntityTwoTemplate)))
-                    .decision(decisionTemplate));
+                        new java.util.HashSet<>(Set.of(proceedingEntityOne, proceedingEntityTwo)))
+                    .decision(decision));
 
-    // Retrieve the persisted proceedings by matching on applyProceedingId
-    ApplicationEntity refreshed =
+    // Retrieve the application to get the proceeding IDs
+    ApplicationEntity applicationEntity =
         applicationRepository.findById(initialApplicationEntity.getId()).orElseThrow();
-    ProceedingEntity proceedingEntityOne =
-        refreshed.getProceedings().stream()
-            .filter(
-                p ->
-                    p.getApplyProceedingId()
-                        .equals(proceedingEntityOneTemplate.getApplyProceedingId()))
-            .findFirst()
-            .orElseThrow();
-    ProceedingEntity proceedingEntityTwo =
-        refreshed.getProceedings().stream()
-            .filter(
-                p ->
-                    p.getApplyProceedingId()
-                        .equals(proceedingEntityTwoTemplate.getApplyProceedingId()))
-            .findFirst()
-            .orElseThrow();
+    Iterator<ProceedingEntity> existingProceedings = applicationEntity.getProceedings().iterator();
 
-    ApplicationEntity applicationEntity = refreshed;
     Long currentVersion = applicationEntity.getVersion();
 
     MakeDecisionRequest assignDecisionRequest =
@@ -340,15 +323,15 @@ public class MakeDecisionTest extends BaseHarnessTest {
                     .proceedings(
                         List.of(
                             createMakeDecisionProceeding(
-                                proceedingEntityTwo.getId(),
-                                MeritsDecisionStatus.REFUSED,
-                                "justification new",
-                                "reason new"),
-                            createMakeDecisionProceeding(
-                                proceedingEntityOne.getId(),
+                                existingProceedings.next().getId(),
                                 MeritsDecisionStatus.GRANTED,
                                 "justification update",
-                                "reason update")))
+                                "reason update"),
+                            createMakeDecisionProceeding(
+                                existingProceedings.next().getId(),
+                                MeritsDecisionStatus.REFUSED,
+                                "justification new",
+                                "reason new")))
                     .applicationVersion(currentVersion)
                     .autoGranted(true));
 
