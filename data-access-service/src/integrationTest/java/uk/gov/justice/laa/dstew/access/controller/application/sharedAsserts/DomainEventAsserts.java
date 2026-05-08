@@ -72,7 +72,7 @@ public class DomainEventAsserts {
       ApplicationEntity application, DomainEventType expectedType, ServiceName expectedServiceName)
       throws Exception {
 
-    List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
+    List<DomainEventEntity> domainEvents = domainEventRepository.findByApplicationId(application.getId());
 
     DomainEventEntity event = domainEvents.getFirst();
 
