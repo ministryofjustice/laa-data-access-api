@@ -160,9 +160,7 @@ is intentional — it forces an explicit decision to accept the new set of resol
 
 **To regenerate lock files** after changing dependencies, run:
 
-```bash
-./gradlew resolveAndLockAll
-```
+- `./gradlew resolveAndLockAll` 
 
 This resolves all configurations across every subproject and writes updated lock files automatically. The updated
 `gradle.lockfile` files should be committed alongside the dependency change.
