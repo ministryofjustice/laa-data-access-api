@@ -148,6 +148,7 @@ dependencyManagement {
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     imports {
         mavenBom 'tools.jackson:jackson-bom:3.1.1'
+        mavenBom 'io.netty:netty-bom:4.2.13.Final'
     }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
@@ -195,9 +196,9 @@ dependencies {
     }
 
     //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789756
-    implementation 'io.netty:netty-codec-http:4.2.12.Final'
+    implementation 'io.netty:netty-codec-http:4.2.13.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789758
-    implementation 'io.netty:netty-codec-http2:4.2.12.Final'
+    implementation 'io.netty:netty-codec-http2:4.2.13.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-15307781
     implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.54'
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
@@ -211,7 +212,7 @@ dependencies {
 
     // Source: https://mvnrepository.com/artifact/com.azure.spring/spring-cloud-azure-starter-active-directory
     // Note: Version 7.0.0 may not be compatible with Spring Boot 4, check for updated version
-    implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.0.0'
+    implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.2.0'
     implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
 
     implementation 'io.micrometer:micrometer-registry-prometheus'
