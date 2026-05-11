@@ -1,0 +1,69 @@
+name: "Port forward to pod"
+description: "kubectl port-forward to a pod resolved by label selector. Stores the background PID in GITHUB_ENV so a later step can stop it."
+
+inputs:
+  kube_namespace:
+    description: "Namespace that contains the target pod"
+    required: true
+  pod_selector:
+    description: "Label selector used to resolve the pod (e.g. 'run=port-forward-pod')"
+    required: true
+  local_port:
+    description: "Local port to bind"
+    required: true
+  remote_port:
+    description: "Remote pod port to forward to (defaults to local_port)"
+    required: false
+    default: ""
+  pid_env_var:
+    description: "Environment variable name that will hold the port-forward PID"
+    required: false
+    default: "PORT_FORWARD_PID"
+  wait_timeout_seconds:
+    description: "How long to wait for the local port to accept connections before failing"
+    required: false
+    default: "60"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Port forward
+      shell: bash
+      env:
+        KUBE_NAMESPACE: ${{ inputs.kube_namespace }}
+        POD_SELECTOR: ${{ inputs.pod_selector }}
+        LOCAL_PORT: ${{ inputs.local_port }}
+        REMOTE_PORT_INPUT: ${{ inputs.remote_port }}
+        PID_ENV_VAR: ${{ inputs.pid_env_var }}
+        WAIT_TIMEOUT: ${{ inputs.wait_timeout_seconds }}
+      run: |
+        set -euo pipefail
+
+        REMOTE_PORT="${REMOTE_PORT_INPUT:-$LOCAL_PORT}"
+
+        POD_NAME=$(kubectl get pod -n "$KUBE_NAMESPACE" -l "$POD_SELECTOR" \
+          -o jsonpath='{.items[0].metadata.name}')
+        if [ -z "$POD_NAME" ]; then
+          echo "Unable to resolve pod for selector '$POD_SELECTOR' in namespace '$KUBE_NAMESPACE'." >&2
+          exit 1
+        fi
+
+        LOG_FILE="pf-${LOCAL_PORT}.log"
+        kubectl port-forward -n "$KUBE_NAMESPACE" "pod/$POD_NAME" \
+          "${LOCAL_PORT}:${REMOTE_PORT}" > "$LOG_FILE" 2>&1 &
+        PF_PID=$!
+        echo "${PID_ENV_VAR}=${PF_PID}" >> "$GITHUB_ENV"
+        echo "Port-forward started: pod=$POD_NAME ${LOCAL_PORT}:${REMOTE_PORT} pid=$PF_PID log=$LOG_FILE"
+
+        for _ in $(seq 1 "$WAIT_TIMEOUT"); do
+          if (echo > /dev/tcp/127.0.0.1/"$LOCAL_PORT") >/dev/null 2>&1; then
+            echo "Port-forward ready on localhost:${LOCAL_PORT}"
+            exit 0
+          fi
+          sleep 1
+        done
+
+        echo "Port-forward did not become ready within ${WAIT_TIMEOUT}s. Log follows:" >&2
+        cat "$LOG_FILE" >&2 || true
+        kill "$PF_PID" 2>/dev/null || true
+        exit 1

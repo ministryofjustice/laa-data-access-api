@@ -1,0 +1,24 @@
+package uk.gov.justice.laa.dstew.access.service.caseworkers;
+
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import uk.gov.justice.laa.dstew.access.mapper.CaseworkerMapper;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerResponse;
+import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
+import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
+
+/** Service for providing caseworkers. */
+@Service
+@RequiredArgsConstructor
+public class GetAllCaseworkersService {
+
+  private final CaseworkerRepository caseworkerRepository;
+  private final CaseworkerMapper caseworkerMapper;
+
+  /** Provides a list of all caseworkers. */
+  @AllowApiCaseworker
+  public List<CaseworkerResponse> getAllCaseworkers() {
+    return caseworkerRepository.findAll().stream().map(caseworkerMapper::toCaseworker).toList();
+  }
+}
