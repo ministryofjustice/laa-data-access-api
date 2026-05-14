@@ -8,6 +8,7 @@ plugins {
     id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin'
     id 'com.avast.gradle.docker-compose' version '0.17.12'
     id 'io.sentry.jvm.gradle' version '5.12.2'
+    id 'au.com.dius.pact' version '4.6.19'
 }
 
 def versions = [
@@ -33,11 +34,19 @@ sourceSets {
         compileClasspath += sourceSets.testUtilities.output
         runtimeClasspath += sourceSets.testUtilities.output
     }
+    pactTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+        }
+    }
 }
 
 configurations {
     testUtilitiesImplementation.extendsFrom testImplementation
     testUtilitiesRuntimeOnly.extendsFrom testRuntimeOnly
+    pactTestImplementation.extendsFrom testImplementation
+    pactTestRuntimeOnly.extendsFrom testRuntimeOnly
 
     testUtilitiesRuntimeElements {
         canBeConsumed = true
@@ -327,4 +336,42 @@ dependencies {
     implementation 'co.elastic.logging:logback-ecs-encoder:1.6.0'
     implementation 'ch.qos.logback:logback-classic'
     implementation 'ch.qos.logback:logback-core'
+
+    // Pact provider verification — runs in the dedicated `pactTest` source set
+    pactTestImplementation 'au.com.dius.pact.provider:spring7:4.7.0-beta.3'
+    pactTestImplementation 'org.springframework.boot:spring-boot-starter-test'
+    pactTestImplementation 'org.apache.httpcomponents:httpclient:4.5.14'
+}
+
+tasks.register('pactTest', Test) {
+    description = 'Runs Pact provider verification tests against contracts pulled from the broker.'
+    group = 'verification'
+    useJUnitPlatform()
+
+    testClassesDirs = sourceSets.pactTest.output.classesDirs
+    classpath = sourceSets.pactTest.runtimeClasspath
+
+    // Publish verification results back to the broker only when broker creds are present.
+    def canPublish =
+            providers.environmentVariable('PACT_BROKER_USERNAME').isPresent() &&
+            providers.environmentVariable('PACT_BROKER_PASSWORD').isPresent()
+    if (canPublish) {
+        systemProperty 'pact.verifier.publishResults', 'true'
+    }
+
+    // Broker connection — env-driven, with sensible defaults so it still parses locally.
+    systemProperty 'pact.provider.version',     providers.environmentVariable('GIT_SHA').getOrElse('1.0.0')
+    systemProperty 'pactbroker.url',            providers.environmentVariable('PACT_BROKER_URL').getOrElse('https://laa-data-pact-broker.apps.live.cloud-platform.service.justice.gov.uk/')
+    systemProperty 'pactbroker.auth.username',  providers.environmentVariable('PACT_BROKER_USERNAME').getOrElse('ABC')
+    systemProperty 'pactbroker.auth.password',  providers.environmentVariable('PACT_BROKER_PASSWORD').getOrElse('ABC')
+
+    // Consumer-version selectors: filter by name + branch when the webhook supplies them.
+    def consumerName = providers.environmentVariable('PACT_CONSUMER_NAME').orNull
+    if (consumerName) {
+        systemProperty 'pact.filter.consumers', consumerName
+    }
+    def branch = providers.environmentVariable('PACT_CONSUMER_BRANCH').getOrElse('main')
+    systemProperty 'pactbroker.consumerversionselectors.rawjson', "[{\"branch\":\"${branch}\"}]"
+
+    systemProperty 'pact.rootDir', layout.buildDirectory.dir("pacts").get().asFile.path
 }

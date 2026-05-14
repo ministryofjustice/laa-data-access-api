@@ -1,0 +1,18 @@
+spring:
+  jpa:
+    open-in-view: false
+  data:
+    jpa:
+      repositories:
+        enabled: false
+  flyway:
+    enabled: false
+  sql:
+    init:
+      mode: never
+
+# Bypass the OAuth2 / Entra filter chain during Pact verification.
+# Activates NoSecurityConfig (see data-access-service/src/main/java/.../config/NoSecurityConfig.java).
+feature:
+  disable-security: true
+  enable-dev-token: false
