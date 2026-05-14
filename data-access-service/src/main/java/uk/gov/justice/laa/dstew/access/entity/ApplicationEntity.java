@@ -153,7 +153,11 @@ public class ApplicationEntity implements AuditableEntity {
   /** Returns the IDs of associated applications linked to this lead application. */
   @Transient
   public Set<UUID> getLinkedApplicationIds() {
-    return Optional.ofNullable(linkedApplications).orElse(Set.of()).stream()
+    if (linkedApplications == null) {
+      return Set.of();
+    }
+
+    return linkedApplications.stream()
         .map(LinkedApplicationEntity::getAssociatedApplicationId)
         .collect(Collectors.toSet());
   }
