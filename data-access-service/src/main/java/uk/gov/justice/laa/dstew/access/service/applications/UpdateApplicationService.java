@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.service.applications;
 
+import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class UpdateApplicationService {
    * @param req DTO with update fields
    */
   @AllowApiCaseworker
+  @Transactional
   public void updateApplication(final UUID id, final ApplicationUpdateRequest req) {
     final ApplicationEntity entity =
         ApplicationServiceHelper.getExistingApplication(id, applicationRepository);
