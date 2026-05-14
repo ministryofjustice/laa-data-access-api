@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.service.applications;
 import jakarta.transaction.Transactional;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -84,6 +85,7 @@ public class CreateApplicationService {
     }
 
     return applicationContent.getProceedings().stream()
+        .filter(Objects::nonNull)
         .map(proceedingMapper::toProceedingEntity)
         .collect(Collectors.toCollection(LinkedHashSet::new));
   }
