@@ -96,7 +96,10 @@ public class GetAllApplicationsService {
                 userId,
                 matterType,
                 isAutoGranted),
-            pageDetails);
+            pageDetails,
+            clientFirstName,
+            clientLastName,
+            clientDateOfBirth);
 
     Map<UUID, List<LinkedApplicationSummaryDto>> linkedApplications =
         retrieveLinkedApplications(resultPage.getContent());

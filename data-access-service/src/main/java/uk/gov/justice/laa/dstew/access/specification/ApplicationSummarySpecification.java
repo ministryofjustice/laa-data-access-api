@@ -58,7 +58,8 @@ public class ApplicationSummarySpecification {
     if (reference != null && !reference.isBlank()) {
       return (root, query, builder) ->
           builder.like(
-              builder.lower(root.get("laaReference")), "%" + reference.toLowerCase() + "%");
+              builder.lower(root.get("laaReference")),
+              builder.literal("%" + reference.toLowerCase() + "%"));
     }
 
     return Specification.unrestricted();
@@ -77,8 +78,14 @@ public class ApplicationSummarySpecification {
     return Specification.unrestricted();
   }
 
+  /**
+   * Encapsulates the logic for filtering by individual-related criteria (first name, last name,
+   * date of birth). This is extracted into a separate class to keep the main specification method
+   * cleaner and more focused on combining different filters. It also allows for potential reuse of
+   * individual filtering logic in other contexts where a join to individuals already exists.
+   */
   @ExcludeFromGeneratedCodeCoverage
-  private static class IndividualFilterSpecification {
+  public static class IndividualFilterSpecification {
 
     /**
      * Builds a single JOIN to the individuals table and applies all individual-related predicates
@@ -95,25 +102,39 @@ public class ApplicationSummarySpecification {
       return (root, query, builder) -> {
         Join<ApplicationEntity, IndividualEntity> individualsJoin =
             root.join("individuals", JoinType.INNER);
-        List<Predicate> predicates = new ArrayList<>();
-        predicates.add(builder.equal(individualsJoin.get("type"), IndividualType.CLIENT));
-        if (isPopulated(firstName)) {
-          predicates.add(
-              builder.like(
-                  builder.lower(individualsJoin.get("firstName")),
-                  "%" + firstName.toLowerCase() + "%"));
-        }
-        if (isPopulated(lastName)) {
-          predicates.add(
-              builder.like(
-                  builder.lower(individualsJoin.get("lastName")),
-                  "%" + lastName.toLowerCase() + "%"));
-        }
-        if (dateOfBirth != null) {
-          predicates.add(builder.equal(individualsJoin.get("dateOfBirth"), dateOfBirth));
-        }
-        return builder.and(predicates.toArray(new Predicate[0]));
+        return buildIndividualPredicates(
+            individualsJoin, firstName, lastName, dateOfBirth, builder);
       };
+    }
+
+    /**
+     * Builds individual-related predicates on a provided join. This method can be reused in
+     * contexts where a join to individuals already exists, avoiding duplicate joins.
+     */
+    public static Predicate buildIndividualPredicates(
+        Join<ApplicationEntity, IndividualEntity> individualsJoin,
+        String firstName,
+        String lastName,
+        LocalDate dateOfBirth,
+        jakarta.persistence.criteria.CriteriaBuilder builder) {
+      List<Predicate> predicates = new ArrayList<>();
+      predicates.add(builder.equal(individualsJoin.get("type"), IndividualType.CLIENT));
+      if (isPopulated(firstName)) {
+        predicates.add(
+            builder.like(
+                builder.lower(individualsJoin.get("firstName")),
+                builder.literal("%" + firstName.toLowerCase() + "%")));
+      }
+      if (isPopulated(lastName)) {
+        predicates.add(
+            builder.like(
+                builder.lower(individualsJoin.get("lastName")),
+                builder.literal("%" + lastName.toLowerCase() + "%")));
+      }
+      if (dateOfBirth != null) {
+        predicates.add(builder.equal(individualsJoin.get("dateOfBirth"), dateOfBirth));
+      }
+      return builder.and(predicates.toArray(new Predicate[0]));
     }
   }
 

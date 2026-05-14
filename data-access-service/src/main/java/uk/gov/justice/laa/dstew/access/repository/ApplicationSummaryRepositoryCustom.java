@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.repository;
 
+import java.time.LocalDate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -10,5 +11,9 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryDto;
 public interface ApplicationSummaryRepositoryCustom {
 
   Page<ApplicationSummaryDto> findAllAsDtos(
-      Specification<ApplicationEntity> spec, Pageable pageable);
+      Specification<ApplicationEntity> spec,
+      Pageable pageable,
+      String firstName,
+      String lastName,
+      LocalDate dateOfBirth);
 }

@@ -51,7 +51,8 @@ public class GetAllApplicationsTest extends BaseServiceTest {
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    when(applicationRepository.findAllAsDtos(any(Specification.class), any(Pageable.class)))
+    when(applicationRepository.findAllAsDtos(
+            any(Specification.class), any(Pageable.class), any(), any(), any()))
         .thenReturn(pageResult);
 
     // when
@@ -63,7 +64,8 @@ public class GetAllApplicationsTest extends BaseServiceTest {
             .toList();
 
     // then
-    verify(applicationRepository, times(1)).findAllAsDtos(any(Specification.class), eq(pageable));
+    verify(applicationRepository, times(1))
+        .findAllAsDtos(any(Specification.class), eq(pageable), any(), any(), any());
     assertApplicationSummaryListsEqual(actualApplications, expectedApplications);
   }
 
@@ -88,7 +90,8 @@ public class GetAllApplicationsTest extends BaseServiceTest {
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    when(applicationRepository.findAllAsDtos(any(Specification.class), any(Pageable.class)))
+    when(applicationRepository.findAllAsDtos(
+            any(Specification.class), any(Pageable.class), any(), any(), any()))
         .thenReturn(pageResult);
 
     // when
@@ -101,7 +104,8 @@ public class GetAllApplicationsTest extends BaseServiceTest {
             .toList();
 
     // then
-    verify(applicationRepository, times(1)).findAllAsDtos(any(Specification.class), eq(pageable));
+    verify(applicationRepository, times(1))
+        .findAllAsDtos(any(Specification.class), eq(pageable), any(), any(), any());
     assertApplicationSummaryListsEqual(actualApplications, expectedApplications);
   }
 
@@ -139,7 +143,7 @@ public class GetAllApplicationsTest extends BaseServiceTest {
         .isEqualTo(validationException);
 
     verify(applicationRepository, never())
-        .findAllAsDtos(any(Specification.class), any(Pageable.class));
+        .findAllAsDtos(any(Specification.class), any(Pageable.class), any(), any(), any());
   }
 
   @Test
@@ -156,7 +160,7 @@ public class GetAllApplicationsTest extends BaseServiceTest {
                     null, null, null, null, null, null, null, null, null, null, null, null))
         .withMessageContaining("Access Denied");
     verify(applicationRepository, never())
-        .findAllAsDtos(any(Specification.class), any(Pageable.class));
+        .findAllAsDtos(any(Specification.class), any(Pageable.class), any(), any(), any());
   }
 
   @Test
@@ -171,7 +175,7 @@ public class GetAllApplicationsTest extends BaseServiceTest {
                     null, null, null, null, null, null, null, null, null, null, null, null))
         .withMessageContaining("Access Denied");
     verify(applicationRepository, never())
-        .findAllAsDtos(any(Specification.class), any(Pageable.class));
+        .findAllAsDtos(any(Specification.class), any(Pageable.class), any(), any(), any());
   }
 
   @Test
@@ -183,7 +187,8 @@ public class GetAllApplicationsTest extends BaseServiceTest {
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    when(applicationRepository.findAllAsDtos(any(Specification.class), any(Pageable.class)))
+    when(applicationRepository.findAllAsDtos(
+            any(Specification.class), any(Pageable.class), any(), any(), any()))
         .thenReturn(pageResult);
 
     // when
@@ -193,7 +198,7 @@ public class GetAllApplicationsTest extends BaseServiceTest {
 
     // then
     verify(applicationRepository, times(1))
-        .findAllAsDtos(any(Specification.class), any(Pageable.class));
+        .findAllAsDtos(any(Specification.class), any(Pageable.class), any(), any(), any());
 
     assertThat(result.requestedPage()).isEqualTo(1); // one-based
     assertThat(result.requestedPageSize()).isEqualTo(20); // default
@@ -209,7 +214,8 @@ public class GetAllApplicationsTest extends BaseServiceTest {
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    when(applicationRepository.findAllAsDtos(any(Specification.class), any(Pageable.class)))
+    when(applicationRepository.findAllAsDtos(
+            any(Specification.class), any(Pageable.class), any(), any(), any()))
         .thenReturn(pageResult);
 
     // when
@@ -219,7 +225,7 @@ public class GetAllApplicationsTest extends BaseServiceTest {
 
     // then
     verify(applicationRepository, times(1))
-        .findAllAsDtos(any(Specification.class), any(Pageable.class));
+        .findAllAsDtos(any(Specification.class), any(Pageable.class), any(), any(), any());
 
     assertThat(result.requestedPage()).isEqualTo(2); // one-based
     assertThat(result.requestedPageSize()).isEqualTo(10);
@@ -240,7 +246,7 @@ public class GetAllApplicationsTest extends BaseServiceTest {
         .withMessageContaining("page must be greater than or equal to 1");
 
     verify(applicationRepository, never())
-        .findAllAsDtos(any(Specification.class), any(Pageable.class));
+        .findAllAsDtos(any(Specification.class), any(Pageable.class), any(), any(), any());
   }
 
   @Test
@@ -257,7 +263,7 @@ public class GetAllApplicationsTest extends BaseServiceTest {
         .withMessageContaining("pageSize must be greater than or equal to 1");
 
     verify(applicationRepository, never())
-        .findAllAsDtos(any(Specification.class), any(Pageable.class));
+        .findAllAsDtos(any(Specification.class), any(Pageable.class), any(), any(), any());
   }
 
   @Test
@@ -274,7 +280,7 @@ public class GetAllApplicationsTest extends BaseServiceTest {
         .withMessageContaining("pageSize cannot be more than 100");
 
     verify(applicationRepository, never())
-        .findAllAsDtos(any(Specification.class), any(Pageable.class));
+        .findAllAsDtos(any(Specification.class), any(Pageable.class), any(), any(), any());
   }
 
   @Test
@@ -286,7 +292,8 @@ public class GetAllApplicationsTest extends BaseServiceTest {
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    when(applicationRepository.findAllAsDtos(any(Specification.class), any(Pageable.class)))
+    when(applicationRepository.findAllAsDtos(
+            any(Specification.class), any(Pageable.class), any(), any(), any()))
         .thenReturn(pageResult);
 
     // when
@@ -296,7 +303,7 @@ public class GetAllApplicationsTest extends BaseServiceTest {
 
     // then
     verify(applicationRepository, times(1))
-        .findAllAsDtos(any(Specification.class), any(Pageable.class));
+        .findAllAsDtos(any(Specification.class), any(Pageable.class), any(), any(), any());
 
     assertThat(result.requestedPageSize()).isEqualTo(100);
     assertThat(result.page().getContent()).hasSize(5);
@@ -323,7 +330,8 @@ public class GetAllApplicationsTest extends BaseServiceTest {
                 true,
                 leadApplication.getId()));
 
-    when(applicationRepository.findAllAsDtos(any(Specification.class), any(Pageable.class)))
+    when(applicationRepository.findAllAsDtos(
+            any(Specification.class), any(Pageable.class), any(), any(), any()))
         .thenReturn(new PageImpl<>(expectedApplications));
     when(applicationRepository.findAllLinkedApplicationsForPageIds(any())).thenReturn(linkedDtos);
 
@@ -382,7 +390,8 @@ public class GetAllApplicationsTest extends BaseServiceTest {
                         .isLead(true)
                         .leadApplicationId(leadId)));
 
-    when(applicationRepository.findAllAsDtos(any(Specification.class), any(Pageable.class)))
+    when(applicationRepository.findAllAsDtos(
+            any(Specification.class), any(Pageable.class), any(), any(), any()))
         .thenReturn(new PageImpl<>(List.of(firstAssociateApplication, secondAssociateApplication)));
     when(applicationRepository.findAllLinkedApplicationsForPageIds(any()))
         .thenReturn(linkedApplicationSummaryDtos);
@@ -437,7 +446,8 @@ public class GetAllApplicationsTest extends BaseServiceTest {
                 secondLeadId),
             new LinkedApplicationSummaryDto(secondLeadId, "LEAD-REF-2", true, secondLeadId));
 
-    when(applicationRepository.findAllAsDtos(any(Specification.class), any(Pageable.class)))
+    when(applicationRepository.findAllAsDtos(
+            any(Specification.class), any(Pageable.class), any(), any(), any()))
         .thenReturn(new PageImpl<>(List.of(firstAssociateApplication, secondAssociateApplication)));
     when(applicationRepository.findAllLinkedApplicationsForPageIds(any())).thenReturn(linkedDtos);
 
@@ -472,7 +482,8 @@ public class GetAllApplicationsTest extends BaseServiceTest {
     ApplicationSummaryDto standaloneApplication =
         DataGenerator.createDefault(ApplicationSummaryDtoGenerator.class);
 
-    when(applicationRepository.findAllAsDtos(any(Specification.class), any(Pageable.class)))
+    when(applicationRepository.findAllAsDtos(
+            any(Specification.class), any(Pageable.class), any(), any(), any()))
         .thenReturn(new PageImpl<>(List.of(standaloneApplication)));
     when(applicationRepository.findAllLinkedApplicationsForPageIds(any())).thenReturn(List.of());
 

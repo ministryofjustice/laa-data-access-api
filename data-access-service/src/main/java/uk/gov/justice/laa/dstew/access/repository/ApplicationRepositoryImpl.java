@@ -39,6 +39,7 @@ import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.IndividualSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
+import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
 
 /** Implementation of custom application summary repository using CriteriaBuilder. */
 @ExcludeFromGeneratedCodeCoverage
@@ -52,7 +53,11 @@ public class ApplicationRepositoryImpl implements ApplicationSummaryRepositoryCu
 
   @Override
   public Page<ApplicationSummaryDto> findAllAsDtos(
-      Specification<ApplicationEntity> spec, Pageable pageable) {
+      Specification<ApplicationEntity> spec,
+      Pageable pageable,
+      String firstName,
+      String lastName,
+      LocalDate dateOfBirth) {
     long count = executeCountQuery(spec);
     if (count == 0) {
       return new PageImpl<>(List.of(), pageable, 0);
@@ -63,7 +68,8 @@ public class ApplicationRepositoryImpl implements ApplicationSummaryRepositoryCu
       return new PageImpl<>(List.of(), pageable, count);
     }
 
-    List<ApplicationSummaryDto> results = executeDataQuery(ids, pageable);
+    List<ApplicationSummaryDto> results =
+        executeDataQuery(ids, firstName, lastName, dateOfBirth, pageable);
 
     return new PageImpl<>(results, pageable, count);
   }
@@ -162,8 +168,10 @@ public class ApplicationRepositoryImpl implements ApplicationSummaryRepositoryCu
    * Fetches application data with caseworker and all individuals in a single query using
    * CriteriaQuery&lt;Tuple&gt;. Rows are grouped in Java to produce one {@link
    * ApplicationSummaryDto} per application, each holding a list of {@link IndividualSummaryDto}.
+   * Applies individual filtering on the existing join to avoid duplicate joins.
    */
-  private List<ApplicationSummaryDto> executeDataQuery(List<UUID> ids, Pageable pageable) {
+  private List<ApplicationSummaryDto> executeDataQuery(
+      List<UUID> ids, String firstName, String lastName, LocalDate dateOfBirth, Pageable pageable) {
     CriteriaBuilder cb = entityManager.getCriteriaBuilder();
     CriteriaQuery<Tuple> query = cb.createTupleQuery();
     Root<ApplicationEntity> root = query.from(ApplicationEntity.class);
@@ -197,7 +205,22 @@ public class ApplicationRepositoryImpl implements ApplicationSummaryRepositoryCu
             /* Col.INDIVIDUAL_DATE_OF_BIRTH */ individualJoin.get(IndividualEntity_.dateOfBirth),
             /* Col.INDIVIDUAL_TYPE          */ individualJoin.get(IndividualEntity_.type)));
 
-    query.where(root.get(ApplicationEntity_.id).in(ids));
+    // Apply ID filter and individual predicates to the existing individual join
+    Predicate idPredicate = root.get(ApplicationEntity_.id).in(ids);
+
+    boolean hasIndividualFilter =
+        (firstName != null && !firstName.isBlank())
+            || (lastName != null && !lastName.isBlank())
+            || dateOfBirth != null;
+
+    if (hasIndividualFilter) {
+      Predicate individualPredicate =
+          ApplicationSummarySpecification.IndividualFilterSpecification.buildIndividualPredicates(
+              individualJoin, firstName, lastName, dateOfBirth, cb);
+      query.where(cb.and(idPredicate, individualPredicate));
+    } else {
+      query.where(idPredicate);
+    }
 
     applySort(cb, root, query, pageable);
 
