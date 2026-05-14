@@ -40,6 +40,7 @@ public interface ApplicationSummaryMapper {
     app.setOfficeCode(dto.getOfficeCode());
     app.setStatus(dto.getStatus());
     app.setAssignedTo(dto.getCaseworkerId());
+    // TODO: This should be removed once CreateApplication is implemented
     IndividualSummaryDto client =
         dto.getIndividuals().stream()
             .filter(i -> IndividualType.CLIENT.equals(i.getType()))
