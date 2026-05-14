@@ -5,7 +5,6 @@ import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -15,6 +14,7 @@ import org.mapstruct.factory.Mappers;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
@@ -117,20 +117,28 @@ public interface ApplicationMapper {
     if (entity.getProceedings() != null) {
       application.setProceedings(
           entity.getProceedings().stream()
-              .map(
-                  proceeding -> {
-                    ApplicationProceedingResponse proceedingResponse =
-                        proceedingMapper.toApplicationProceeding(proceeding);
-                    proceedingResponse.setMeritsDecision(
-                        Optional.ofNullable(proceeding.getMeritsDecision())
-                            .map(MeritsDecisionEntity::getDecision)
-                            .orElse(null));
-                    return proceedingResponse;
-                  })
+              .map(ApplicationMapper::toApplicationProceeding)
               .toList());
     }
 
     return application;
+  }
+
+  private static ApplicationProceedingResponse toApplicationProceeding(
+      ProceedingEntity proceeding) {
+
+    if (proceeding == null) {
+      return null;
+    }
+
+    ApplicationProceedingResponse proceedingResponse =
+        proceedingMapper.toApplicationProceeding(proceeding);
+
+    MeritsDecisionEntity meritsDecision = proceeding.getMeritsDecision();
+    proceedingResponse.setMeritsDecision(
+        meritsDecision != null ? meritsDecision.getDecision() : null);
+
+    return proceedingResponse;
   }
 
   private static ProviderResponse extractProvider(ApplicationEntity entity) {

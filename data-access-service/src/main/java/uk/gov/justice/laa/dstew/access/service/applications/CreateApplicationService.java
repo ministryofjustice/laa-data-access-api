@@ -79,14 +79,13 @@ public class CreateApplicationService {
    * by JPA via @JoinColumn on ApplicationEntity.proceedings).
    */
   private Set<ProceedingEntity> buildProceedingEntities(ApplicationContent applicationContent) {
-    return Optional.ofNullable(applicationContent.getProceedings())
-        .filter(p -> !p.isEmpty())
-        .map(
-            proceedings ->
-                proceedings.stream()
-                    .map(proceedingMapper::toProceedingEntity)
-                    .collect(Collectors.toCollection(LinkedHashSet::new)))
-        .orElse(new LinkedHashSet<>());
+    if (applicationContent.getProceedings() == null) {
+      return new LinkedHashSet<>();
+    }
+
+    return applicationContent.getProceedings().stream()
+        .map(proceedingMapper::toProceedingEntity)
+        .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
   /**

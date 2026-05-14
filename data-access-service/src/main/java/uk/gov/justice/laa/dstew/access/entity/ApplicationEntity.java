@@ -20,7 +20,6 @@ import jakarta.persistence.Transient;
 import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -153,7 +152,11 @@ public class ApplicationEntity implements AuditableEntity {
   /** Returns the IDs of associated applications linked to this lead application. */
   @Transient
   public Set<UUID> getLinkedApplicationIds() {
-    return Optional.ofNullable(linkedApplications).orElse(Set.of()).stream()
+    if (linkedApplications == null) {
+      return Set.of();
+    }
+
+    return linkedApplications.stream()
         .map(LinkedApplicationEntity::getAssociatedApplicationId)
         .collect(Collectors.toSet());
   }

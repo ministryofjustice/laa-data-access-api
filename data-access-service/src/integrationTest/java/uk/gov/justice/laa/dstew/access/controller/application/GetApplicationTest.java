@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -92,7 +93,7 @@ public class GetApplicationTest extends BaseHarnessTest {
                 builder
                     .caseworker(CaseworkerJohnDoe)
                     .linkedApplications(Set.of())
-                    .proceedings(new java.util.HashSet<>(Set.of(proceeding)))
+                    .proceedings(new HashSet<>(Set.of(proceeding)))
                     .decision(decision));
 
     // Refresh to get DB-generated IDs on proceedings

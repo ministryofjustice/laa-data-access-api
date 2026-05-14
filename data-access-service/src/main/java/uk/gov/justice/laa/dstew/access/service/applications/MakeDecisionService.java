@@ -71,41 +71,41 @@ public class MakeDecisionService {
     applicationRepository.save(application);
 
     switch (decision.getOverallDecision()) {
-      case GRANTED -> {
-        if (request.getCertificate() != null) {
-          CertificateEntity certificate =
-              certificateRepository
-                  .findByApplicationId(applicationId)
-                  .map(
-                      existing -> {
-                        existing.setCertificateContent(request.getCertificate());
-                        return existing;
-                      })
-                  .orElseGet(
-                      () ->
-                          CertificateEntity.builder()
-                              .applicationId(applicationId)
-                              .certificateContent(request.getCertificate())
-                              .build());
-          certificateRepository.save(certificate);
-        }
-        saveDomainEventService.saveMakeDecisionDomainEvent(
-            applicationId,
-            request,
-            caseworkerId,
-            DomainEventType.APPLICATION_MAKE_DECISION_GRANTED);
-      }
-      case REFUSED -> {
-        certificateRepository.deleteByApplicationId(applicationId);
-        saveDomainEventService.saveMakeDecisionDomainEvent(
-            applicationId,
-            request,
-            caseworkerId,
-            DomainEventType.APPLICATION_MAKE_DECISION_REFUSED);
-      }
+      case GRANTED -> handleGrantedDecision(applicationId, caseworkerId, request);
+      case REFUSED -> handleRefusedDecision(applicationId, caseworkerId, request);
       default ->
           throw new IllegalStateException("Unexpected value: " + decision.getOverallDecision());
     }
+  }
+
+  private void handleGrantedDecision(
+      UUID applicationId, UUID caseworkerId, MakeDecisionRequest request) {
+    if (request.getCertificate() != null) {
+      CertificateEntity certificate =
+          certificateRepository
+              .findByApplicationId(applicationId)
+              .map(
+                  existing -> {
+                    existing.setCertificateContent(request.getCertificate());
+                    return existing;
+                  })
+              .orElseGet(
+                  () ->
+                      CertificateEntity.builder()
+                          .applicationId(applicationId)
+                          .certificateContent(request.getCertificate())
+                          .build());
+      certificateRepository.save(certificate);
+    }
+    saveDomainEventService.saveMakeDecisionDomainEvent(
+        applicationId, request, caseworkerId, DomainEventType.APPLICATION_MAKE_DECISION_GRANTED);
+  }
+
+  private void handleRefusedDecision(
+      UUID applicationId, UUID caseworkerId, MakeDecisionRequest request) {
+    certificateRepository.deleteByApplicationId(applicationId);
+    saveDomainEventService.saveMakeDecisionDomainEvent(
+        applicationId, request, caseworkerId, DomainEventType.APPLICATION_MAKE_DECISION_REFUSED);
   }
 
   private DecisionEntity buildOrUpdateDecision(
