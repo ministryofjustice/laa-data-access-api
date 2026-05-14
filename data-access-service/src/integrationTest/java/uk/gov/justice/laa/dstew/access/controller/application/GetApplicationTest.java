@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,6 +25,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.ProblemDetail;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
@@ -74,34 +76,33 @@ public class GetApplicationTest extends BaseHarnessTest {
   public void givenExistingApplication_whenGetApplication_thenReturnOKWithCorrectData()
       throws Exception {
     // given
+    // Build the full aggregate: proceeding → meritsDecision, application → proceeding + decision
+    MeritsDecisionEntity meritsDecision =
+        DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class);
+
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class, builder -> builder.meritsDecision(meritsDecision));
+
+    DecisionEntity decision = DataGenerator.createDefault(DecisionEntityGenerator.class);
+
     ApplicationEntity application =
         persistedDataGenerator.createAndPersist(
             ApplicationEntityGenerator.class,
-            builder -> builder.caseworker(CaseworkerJohnDoe).linkedApplications(Set.of()));
+            builder ->
+                builder
+                    .caseworker(CaseworkerJohnDoe)
+                    .linkedApplications(Set.of())
+                    .proceedings(new HashSet<>(Set.of(proceeding)))
+                    .decision(decision));
 
-    ProceedingEntity proceeding =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> {
-              builder.applicationId(application.getId());
-            });
+    // Refresh to get DB-generated IDs on proceedings
+    ApplicationEntity savedApplication =
+        applicationRepository.findById(application.getId()).orElseThrow();
+    ProceedingEntity savedProceeding = savedApplication.getProceedings().iterator().next();
 
-    DecisionEntity decision =
-        persistedDataGenerator.createAndPersist(
-            DecisionEntityGenerator.class,
-            builder -> {
-              builder.meritsDecisions(
-                  Set.of(
-                      DataGenerator.createDefault(
-                          MeritsDecisionsEntityGenerator.class,
-                          mBuilder -> {
-                            mBuilder.proceeding(proceeding);
-                          })));
-            });
-
-    application.setDecision(decision);
-    ApplicationEntity savedApplication = persistedDataGenerator.updateAndFlush(application);
-    savedApplication.setVersion(1L); // now changed..
+    ApplicationResponse expectedApplication =
+        createApplication(savedApplication, savedProceeding, savedApplication.getDecision());
 
     // when
     HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
@@ -112,8 +113,7 @@ public class GetApplicationTest extends BaseHarnessTest {
     assertSecurityHeaders(result);
     assertNoCacheHeaders(result);
     assertOK(result);
-    ApplicationResponse expectedApplication =
-        createApplication(savedApplication, proceeding, decision);
+
     Assertions.assertThat(actualApplication)
         .usingRecursiveComparison()
         .ignoringFields("lastUpdated")
@@ -404,7 +404,10 @@ public class GetApplicationTest extends BaseHarnessTest {
                             .getProceedingContent()
                             .get("usedDelegatedFunctionsOn")
                             .toString()))
-                .meritsDecision(decision.getMeritsDecisions().iterator().next().getDecision())
+                .meritsDecision(
+                    proceeding.getMeritsDecision() != null
+                        ? proceeding.getMeritsDecision().getDecision()
+                        : null)
                 // .involvedChildren((List<Object>) applicationMerits.get("involvedChildren"))
                 .scopeLimitations(scopeLimitations)
                 .build()));

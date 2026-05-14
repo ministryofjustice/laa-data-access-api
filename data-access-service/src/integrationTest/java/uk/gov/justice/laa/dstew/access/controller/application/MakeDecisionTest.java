@@ -9,6 +9,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,13 +42,14 @@ import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMakeDecisionRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateContentGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
 import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
 import uk.gov.justice.laa.dstew.access.utils.testDto.certificate.CertificateContent;
 
-public class ApplicationMakeDecisionTest extends BaseHarnessTest {
+public class MakeDecisionTest extends BaseHarnessTest {
 
   static Stream<String> invalidServiceNameHeaders() {
     return Stream.of("", "invalid-header", "CIVIL-APPLY", "civil_apply", null);
@@ -101,12 +103,12 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
               builder.isAutoGranted(false);
               builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
               builder.caseworker(CaseworkerJohnDoe);
+              builder.proceedings(
+                  Set.of(DataGenerator.createDefault(ProceedingsEntityGenerator.class)));
             });
 
-    ProceedingEntity grantedProceedingEntity =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(applicationEntity.getId()));
+    // givenMakeDecisionRequest test
+    ProceedingEntity grantedProceedingEntity = applicationEntity.getProceedings().iterator().next();
 
     MakeDecisionRequest makeDecisionRequest =
         DataGenerator.createDefault(
@@ -133,6 +135,7 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
         applicationRepository.findById(applicationEntity.getId()).orElseThrow();
     assertEquals(ApplicationStatus.APPLICATION_SUBMITTED, actualApplication.getStatus());
     assertEquals(true, actualApplication.getIsAutoGranted());
+    verifyDecisionSavedCorrectly(applicationEntity.getId(), makeDecisionRequest);
   }
 
   @Test
@@ -148,12 +151,11 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
               builder.applicationContent(new HashMap<>(Map.of("test", "content")));
               builder.status(ApplicationStatus.APPLICATION_IN_PROGRESS);
               builder.caseworker(CaseworkerJohnDoe);
+              builder.proceedings(
+                  Set.of(DataGenerator.createDefault(ProceedingsEntityGenerator.class)));
             });
 
-    ProceedingEntity proceedingEntity =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(applicationEntity.getId()));
+    ProceedingEntity proceedingEntity = applicationEntity.getProceedings().iterator().next();
 
     CertificateContent expectedCertificateContent =
         DataGenerator.createDefault(CertificateContentGenerator.class);
@@ -174,7 +176,8 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
                               "justification 1",
                               "reason 1")))
                   .certificate(objectMapper.convertValue(expectedCertificateContent, Map.class))
-                  .autoGranted(false);
+                  .autoGranted(false)
+                  .applicationVersion(0L);
             });
 
     MakeDecisionRequest secondMakeDecisionRequest =
@@ -213,18 +216,13 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
             builder -> {
               builder.applicationContent(new HashMap<>(Map.of("test", "content")));
               builder.caseworker(CaseworkerJohnDoe);
+              builder.proceedings(
+                  Set.of(
+                      DataGenerator.createDefault(ProceedingsEntityGenerator.class),
+                      DataGenerator.createDefault(ProceedingsEntityGenerator.class)));
             });
 
-    ProceedingEntity refusedProceedingEntity =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(applicationEntity.getId()));
-
-    ProceedingEntity grantedProceedingEntity =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(applicationEntity.getId()));
-
+    Iterator<ProceedingEntity> existingProceedings = applicationEntity.getProceedings().iterator();
     MakeDecisionRequest makeDecisionRequest =
         DataGenerator.createDefault(
             ApplicationMakeDecisionRequestGenerator.class,
@@ -236,16 +234,17 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
                     .proceedings(
                         List.of(
                             createMakeDecisionProceeding(
-                                grantedProceedingEntity.getId(),
+                                existingProceedings.next().getId(),
                                 MeritsDecisionStatus.GRANTED,
                                 "justification 1",
                                 "reason 1"),
                             createMakeDecisionProceeding(
-                                refusedProceedingEntity.getId(),
+                                existingProceedings.next().getId(),
                                 MeritsDecisionStatus.REFUSED,
                                 "justification 2",
                                 "reason 2")))
-                    .autoGranted(true));
+                    .autoGranted(true)
+                    .applicationVersion(0L));
 
     // when
     HarnessResult result =
@@ -259,10 +258,7 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
     ApplicationEntity actualApplication =
         applicationRepository.findById(applicationEntity.getId()).orElseThrow();
     assertEquals(ApplicationStatus.APPLICATION_IN_PROGRESS, actualApplication.getStatus());
-    ApplicationEntity updatedApplicationEntity =
-        applicationRepository.findById(applicationEntity.getId()).orElseThrow();
-    assertThat(decisionRepository.countById(updatedApplicationEntity.getDecision().getId()))
-        .isEqualTo(1);
+    assertThat(actualApplication.getDecision()).isNotNull();
 
     domainEventAsserts.assertDomainEventsCreatedForApplications(
         List.of(applicationEntity),
@@ -278,43 +274,44 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
       givenMakeDecisionRequestWithExistingContentAndNewContent_whenMakeDecision_thenReturnNoContent_andDecisionUpdated()
           throws Exception {
     // given
+    // Build the initial state: application → proceedings → meritsDecision + decision
+    MeritsDecisionEntity meritsDecisionEntityOne =
+        DataGenerator.createDefault(
+            MeritsDecisionsEntityGenerator.class,
+            builder -> builder.decision(MeritsDecisionStatus.REFUSED));
+
+    ProceedingEntity proceedingEntityOne =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.meritsDecision(meritsDecisionEntityOne));
+
+    ProceedingEntity proceedingEntityTwo =
+        DataGenerator.createDefault(ProceedingsEntityGenerator.class);
+
+    DecisionEntity decision =
+        DataGenerator.createDefault(
+            DecisionEntityGenerator.class,
+            builder -> builder.overallDecision(DecisionStatus.REFUSED));
+
     ApplicationEntity initialApplicationEntity =
         persistedDataGenerator.createAndPersist(
             ApplicationEntityGenerator.class,
-            builder -> {
-              builder.applicationContent(new HashMap<>(Map.of("test", "content")));
-              builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
-              builder.caseworker(CaseworkerJohnDoe);
-            });
-
-    ProceedingEntity proceedingEntityOne =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(initialApplicationEntity.getId()));
-
-    MeritsDecisionEntity meritsDecisionEntityOne =
-        persistedDataGenerator.createAndPersist(
-            MeritsDecisionsEntityGenerator.class,
-            builder ->
-                builder.proceeding(proceedingEntityOne).decision(MeritsDecisionStatus.REFUSED));
-
-    ProceedingEntity proceedingEntityTwo =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(initialApplicationEntity.getId()));
-
-    DecisionEntity decision =
-        persistedDataGenerator.createAndPersistWithPersistedMeritsDecisions(
             builder ->
                 builder
-                    .meritsDecisions(Set.of(meritsDecisionEntityOne))
-                    .overallDecision(DecisionStatus.REFUSED));
+                    .applicationContent(new HashMap<>(Map.of("test", "content")))
+                    .status(ApplicationStatus.APPLICATION_SUBMITTED)
+                    .caseworker(CaseworkerJohnDoe)
+                    .proceedings(
+                        new java.util.HashSet<>(Set.of(proceedingEntityOne, proceedingEntityTwo)))
+                    .decision(decision));
 
-    initialApplicationEntity.setDecision(decision);
+    // Retrieve the application to get the proceeding IDs
     ApplicationEntity applicationEntity =
-        applicationRepository.saveAndFlush(initialApplicationEntity);
+        applicationRepository.findById(initialApplicationEntity.getId()).orElseThrow();
+    Iterator<ProceedingEntity> existingProceedings = applicationEntity.getProceedings().iterator();
 
     Long currentVersion = applicationEntity.getVersion();
+
     MakeDecisionRequest assignDecisionRequest =
         DataGenerator.createDefault(
             ApplicationMakeDecisionRequestGenerator.class,
@@ -326,15 +323,15 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
                     .proceedings(
                         List.of(
                             createMakeDecisionProceeding(
-                                proceedingEntityTwo.getId(),
-                                MeritsDecisionStatus.REFUSED,
-                                "justification new",
-                                "reason new"),
-                            createMakeDecisionProceeding(
-                                proceedingEntityOne.getId(),
+                                existingProceedings.next().getId(),
                                 MeritsDecisionStatus.GRANTED,
                                 "justification update",
-                                "reason update")))
+                                "reason update"),
+                            createMakeDecisionProceeding(
+                                existingProceedings.next().getId(),
+                                MeritsDecisionStatus.REFUSED,
+                                "justification new",
+                                "reason new")))
                     .applicationVersion(currentVersion)
                     .autoGranted(true));
 
@@ -350,7 +347,9 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
 
     assertEquals(ApplicationStatus.APPLICATION_SUBMITTED, applicationEntity.getStatus());
 
-    assertThat(decisionRepository.countById(applicationEntity.getDecision().getId())).isEqualTo(1);
+    ApplicationEntity updatedApplicationEntity =
+        applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+    assertThat(updatedApplicationEntity.getDecision()).isNotNull();
 
     domainEventAsserts.assertDomainEventsCreatedForApplications(
         List.of(applicationEntity),
@@ -377,12 +376,14 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
     ApplicationEntity unrelatedApplicationEntity =
         persistedDataGenerator.createAndPersist(
             ApplicationEntityGenerator.class,
-            builder -> builder.applicationContent(new HashMap<>(Map.of("test", "other"))));
+            builder ->
+                builder
+                    .applicationContent(new HashMap<>(Map.of("test", "other")))
+                    .proceedings(
+                        Set.of(DataGenerator.createDefault(ProceedingsEntityGenerator.class))));
 
     ProceedingEntity proceedingNotLinkedToApplication =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(unrelatedApplicationEntity.getId()));
+        unrelatedApplicationEntity.getProceedings().iterator().next();
 
     UUID proceedingIdNotFound = UUID.randomUUID();
 
@@ -422,8 +423,8 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
     ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
     assertThat(problemDetail.getDetail())
         .contains("No proceeding found with id:")
-        .contains(proceedingIdNotFound.toString())
         .contains("Not linked to application:")
+        .contains(proceedingIdNotFound.toString())
         .contains(proceedingNotLinkedToApplication.getId().toString());
   }
 
@@ -486,7 +487,8 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
                                 MeritsDecisionStatus.REFUSED,
                                 "justification",
                                 "reason")))
-                    .autoGranted(true));
+                    .autoGranted(true)
+                    .applicationVersion(1L));
 
     // when
     HarnessResult result =
@@ -516,17 +518,15 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
             ApplicationEntityGenerator.class,
             builder -> {
               builder.applicationContent(new HashMap<>(Map.of("test", "content")));
+              builder.proceedings(
+                  Set.of(
+                      DataGenerator.createDefault(ProceedingsEntityGenerator.class),
+                      DataGenerator.createDefault(ProceedingsEntityGenerator.class)));
             });
 
-    ProceedingEntity refusedProceedingEntity =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(applicationEntity.getId()));
-
-    ProceedingEntity grantedProceedingEntity =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(applicationEntity.getId()));
+    Iterator<ProceedingEntity> existingProceedings = applicationEntity.getProceedings().iterator();
+    ProceedingEntity refusedProceedingEntity = existingProceedings.next();
+    ProceedingEntity grantedProceedingEntity = existingProceedings.next();
 
     MakeDecisionRequest makeDecisionRequest =
         DataGenerator.createDefault(
@@ -564,8 +564,7 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
     assertEquals(ApplicationStatus.APPLICATION_IN_PROGRESS, actualApplication.getStatus());
     ApplicationEntity updatedApplicationEntity =
         applicationRepository.findById(applicationEntity.getId()).orElseThrow();
-    assertThat(decisionRepository.countById(updatedApplicationEntity.getDecision().getId()))
-        .isEqualTo(1);
+    assertThat(updatedApplicationEntity.getDecision()).isNotNull();
 
     domainEventAsserts.assertDomainEventsCreatedForApplications(
         List.of(applicationEntity),
@@ -679,12 +678,11 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
               builder.applicationContent(new HashMap<>(Map.of("test", "content")));
               builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
               builder.caseworker(CaseworkerJohnDoe);
+              builder.proceedings(
+                  Set.of(DataGenerator.createDefault(ProceedingsEntityGenerator.class)));
             });
 
-    ProceedingEntity proceedingEntity =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(applicationEntity.getId()));
+    ProceedingEntity proceedingEntity = applicationEntity.getProceedings().iterator().next();
 
     MakeDecisionRequest makeDecisionRequest = requestFactory.apply(proceedingEntity);
     String expectedError =
@@ -719,12 +717,11 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
             builder -> {
               builder.applicationContent(new HashMap<>(Map.of("test", "content")));
               builder.caseworker(CaseworkerJohnDoe);
+              builder.proceedings(
+                  Set.of(DataGenerator.createDefault(ProceedingsEntityGenerator.class)));
             });
 
-    ProceedingEntity proceedingEntity =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(applicationEntity.getId()));
+    ProceedingEntity proceedingEntity = applicationEntity.getProceedings().iterator().next();
 
     MakeDecisionRequest makeDecisionRequest =
         DataGenerator.createDefault(
@@ -768,12 +765,11 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
               builder.applicationContent(new HashMap<>(Map.of("test", "content")));
               builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
               builder.caseworker(CaseworkerJohnDoe);
+              builder.proceedings(
+                  Set.of(DataGenerator.createDefault(ProceedingsEntityGenerator.class)));
             });
 
-    ProceedingEntity proceedingEntity =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(applicationEntity.getId()));
+    ProceedingEntity proceedingEntity = applicationEntity.getProceedings().iterator().next();
 
     CertificateContent expectedCertificateContent =
         DataGenerator.createDefault(CertificateContentGenerator.class);
@@ -810,8 +806,7 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
         applicationRepository.findById(applicationEntity.getId()).orElseThrow();
     assertEquals(ApplicationStatus.APPLICATION_SUBMITTED, updatedApplicationEntity.getStatus());
     assertEquals(false, updatedApplicationEntity.getIsAutoGranted());
-    assertThat(decisionRepository.countById(updatedApplicationEntity.getDecision().getId()))
-        .isEqualTo(1);
+    assertThat(updatedApplicationEntity.getDecision()).isNotNull();
 
     verifyDecisionSavedCorrectly(applicationEntity.getId(), makeDecisionRequest);
 
@@ -830,12 +825,11 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
               builder.applicationContent(new HashMap<>(Map.of("test", "content")));
               builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
               builder.caseworker(CaseworkerJohnDoe);
+              builder.proceedings(
+                  Set.of(DataGenerator.createDefault(ProceedingsEntityGenerator.class)));
             });
 
-    ProceedingEntity proceedingEntity =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(applicationEntity.getId()));
+    ProceedingEntity proceedingEntity = applicationEntity.getProceedings().iterator().next();
 
     CertificateContent originalCertificateContent =
         DataGenerator.createDefault(CertificateContentGenerator.class);
@@ -904,7 +898,8 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
                               "reason 2")))
                   .certificate(updatedCertificateData)
                   .applicationVersion(currentVersion)
-                  .autoGranted(false);
+                  .autoGranted(false)
+                  .applicationVersion(1L);
             });
 
     // Second call - should update the existing certificate
@@ -928,8 +923,6 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
         .isEqualTo(updatedCertificateContent.getIssueDate());
     assertThat(updatedCertificate.getCertificateContent().get("validUntil"))
         .isEqualTo(updatedCertificateContent.getValidUntil());
-    // updatedBy logic will be reverted once security is in place
-    // assertThat(updatedCertificate.getUpdatedBy()).isEqualTo(CaseworkerJohnDoe.getId().toString());
   }
 
   private void verifyCertificateSavedCorrectly(UUID applicationId) {
@@ -943,9 +936,6 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
         .isEqualTo("TESTCERT001");
     assertThat(certificate.getCertificateContent().get("issueDate")).isEqualTo("2026-03-03");
     assertThat(certificate.getCertificateContent().get("validUntil")).isEqualTo("2027-03-03");
-    // createdBy and updatedBy logic will be reverted once security is in place
-    // assertThat(certificate.getCreatedBy()).isEqualTo(CaseworkerJohnDoe.getId().toString());
-    // assertThat(certificate.getUpdatedBy()).isEqualTo(CaseworkerJohnDoe.getId().toString());
     assertThat(certificate.getCreatedAt()).isNotNull();
     assertThat(certificate.getModifiedAt()).isNotNull();
   }
@@ -961,12 +951,11 @@ public class ApplicationMakeDecisionTest extends BaseHarnessTest {
               builder.applicationContent(new HashMap<>(Map.of("test", "content")));
               builder.status(ApplicationStatus.APPLICATION_SUBMITTED);
               builder.caseworker(CaseworkerJohnDoe);
+              builder.proceedings(
+                  Set.of(DataGenerator.createDefault(ProceedingsEntityGenerator.class)));
             });
 
-    ProceedingEntity proceedingEntity =
-        persistedDataGenerator.createAndPersist(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applicationId(applicationEntity.getId()));
+    ProceedingEntity proceedingEntity = applicationEntity.getProceedings().iterator().next();
 
     MakeDecisionRequest makeDecisionRequest =
         DataGenerator.createDefault(

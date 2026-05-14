@@ -23,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
-import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -45,7 +44,6 @@ public abstract class BaseHarnessTest {
   protected CaseworkerRepository caseworkerRepository;
   protected DomainEventRepository domainEventRepository;
   protected CertificateRepository certificateRepository;
-  protected DecisionRepository decisionRepository;
   protected NoteRepository noteRepository;
   protected DomainEventAsserts domainEventAsserts;
   protected ApplicationAsserts applicationAsserts;
@@ -90,7 +88,6 @@ public abstract class BaseHarnessTest {
     caseworkerRepository = harnessProvider.getBean(CaseworkerRepository.class);
     domainEventRepository = harnessProvider.getBean(DomainEventRepository.class);
     certificateRepository = harnessProvider.getBean(CertificateRepository.class);
-    decisionRepository = harnessProvider.getBean(DecisionRepository.class);
     noteRepository = harnessProvider.getBean(NoteRepository.class);
     domainEventAsserts = harnessProvider.getBean(DomainEventAsserts.class);
     applicationAsserts = harnessProvider.getBean(ApplicationAsserts.class);

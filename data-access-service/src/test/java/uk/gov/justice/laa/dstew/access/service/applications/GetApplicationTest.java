@@ -15,8 +15,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
-import org.springframework.web.client.RestClient;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
@@ -35,32 +35,26 @@ import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEnt
 public class GetApplicationTest extends BaseServiceTest {
 
   @Autowired private GetApplicationService serviceUnderTest;
-  @Autowired private RestClient.Builder builder;
 
   @Test
   public void givenApplicationEntityAndRoleReader_whenGetApplication_thenReturnMappedApplication() {
     // given
+    MeritsDecisionEntity meritsDecision =
+        DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class);
+
     ProceedingEntity proceeding =
         DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class, builder -> builder.id(UUID.randomUUID()));
+            ProceedingsEntityGenerator.class, builder -> builder.meritsDecision(meritsDecision));
     Set<ProceedingEntity> proceedings = Set.of(proceeding);
 
     ApplicationEntity expectedApplication =
         DataGenerator.createDefault(
             ApplicationEntityGenerator.class,
-            applicationEntityBuilder -> applicationEntityBuilder.version(0L));
+            applicationEntityBuilder ->
+                applicationEntityBuilder.version(0L).proceedings(proceedings));
 
     expectedApplication.setDecision(DataGenerator.createDefault(DecisionEntityGenerator.class));
-    expectedApplication
-        .getDecision()
-        .setMeritsDecisions(
-            Set.of(
-                DataGenerator.createDefault(
-                    MeritsDecisionsEntityGenerator.class,
-                    builder -> builder.proceeding(proceeding))));
 
-    when(proceedingRepository.findAllByApplicationId(expectedApplication.getId()))
-        .thenReturn(proceedings);
     when(applicationRepository.findById(expectedApplication.getId()))
         .thenReturn(Optional.of(expectedApplication));
 
@@ -74,11 +68,7 @@ public class GetApplicationTest extends BaseServiceTest {
     assertApplicationEqual(expectedApplication, actualApplication);
     assertApplicationProceedingsEqual(
         proceedings, actualApplication.getProceedings(), MeritsDecisionStatus.REFUSED);
-    // assertThat(actualApplication.getProceedings().getFirst().getInvolvedChildren()).hasSize(1);
 
-    // Map<String, Object> actualApplicationInvolvedChild =
-    //
-    // objectMapper.convertValue(actualApplication.getProceedings().getFirst().getInvolvedChildren().getFirst(), Map.class);
     ApplicationContent expectedApplicationContent =
         objectMapper.convertValue(
             expectedApplication.getApplicationContent(), ApplicationContent.class);
