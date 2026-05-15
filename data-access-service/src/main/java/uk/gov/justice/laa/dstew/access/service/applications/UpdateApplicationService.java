@@ -1,10 +1,10 @@
 package uk.gov.justice.laa.dstew.access.service.applications;
 
+import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
@@ -30,8 +30,8 @@ public class UpdateApplicationService {
    * @param id application UUID
    * @param req DTO with update fields
    */
-  @Transactional
   @AllowApiCaseworker
+  @Transactional
   public void updateApplication(final UUID id, final ApplicationUpdateRequest req) {
     final ApplicationEntity entity =
         ApplicationServiceHelper.getExistingApplication(id, applicationRepository);

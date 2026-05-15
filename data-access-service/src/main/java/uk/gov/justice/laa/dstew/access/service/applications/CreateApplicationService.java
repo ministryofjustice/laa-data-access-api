@@ -1,18 +1,26 @@
 package uk.gov.justice.laa.dstew.access.service.applications;
 
 import jakarta.transaction.Transactional;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.LinkedApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.ApplicationMapper;
+import uk.gov.justice.laa.dstew.access.mapper.ProceedingMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
 import uk.gov.justice.laa.dstew.access.validation.ApplicationValidations;
@@ -30,11 +38,12 @@ public class CreateApplicationService {
   private final int applicationVersion = 1;
   private final ApplicationRepository applicationRepository;
   private final ApplicationMapper applicationMapper;
+  private final ProceedingMapper proceedingMapper;
   private final ApplicationValidations applicationValidations;
   private final SaveDomainEventService saveDomainEventService;
   private final ApplicationContentParserService applicationContentParser;
-  private final ProceedingsService proceedingsService;
   private final PayloadValidationService payloadValidationService;
+  private final LinkedApplicationRepository linkedApplicationRepository;
 
   /**
    * Create a new application.
@@ -53,13 +62,32 @@ public class CreateApplicationService {
     checkForDuplicateApplication(entity.getApplyApplicationId());
     entity.setSchemaVersion(applicationVersion);
 
+    Set<ProceedingEntity> proceedingEntities = buildProceedingEntities(applicationContent);
+    if (!proceedingEntities.isEmpty()) {
+      entity.setProceedings(proceedingEntities);
+    }
+
     final ApplicationEntity saved = applicationRepository.save(entity);
 
     linkToLeadApplicationIfApplicable(applicationContent, saved);
-    proceedingsService.saveProceedings(applicationContent, saved.getId());
     saveDomainEventService.saveCreateApplicationDomainEvent(saved, req, null);
 
     return saved.getId();
+  }
+
+  /**
+   * Builds ProceedingEntity objects from ApplicationContent without setting applicationId (managed
+   * by JPA via @JoinColumn on ApplicationEntity.proceedings).
+   */
+  private Set<ProceedingEntity> buildProceedingEntities(ApplicationContent applicationContent) {
+    if (applicationContent.getProceedings() == null) {
+      return new LinkedHashSet<>();
+    }
+
+    return applicationContent.getProceedings().stream()
+        .filter(Objects::nonNull)
+        .map(proceedingMapper::toProceedingEntity)
+        .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
   /**
@@ -83,12 +111,14 @@ public class CreateApplicationService {
 
   private void linkToLeadApplicationIfApplicable(
       ApplicationContent appContent, ApplicationEntity entityToAdd) {
-    final Optional<ApplicationEntity> leadApplication = getLeadApplication(appContent);
-    leadApplication.ifPresent(
-        leadApp -> {
-          leadApp.addLinkedApplication(entityToAdd);
-          applicationRepository.save(leadApp);
-        });
+    getLeadApplication(appContent)
+        .ifPresent(
+            leadApp ->
+                linkedApplicationRepository.save(
+                    LinkedApplicationEntity.builder()
+                        .leadApplicationId(leadApp.getId())
+                        .associatedApplicationId(entityToAdd.getId())
+                        .build()));
   }
 
   private Optional<ApplicationEntity> getLeadApplication(ApplicationContent requestContent) {

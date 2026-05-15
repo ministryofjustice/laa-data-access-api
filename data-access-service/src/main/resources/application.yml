@@ -59,7 +59,7 @@ jdbc:
     slow-query:
       enable-logging: true
       log-level: WARN
-      threshold: 0  # seconds; overridden per environment
+      threshold: 1  # seconds; overridden per environment
 
 management:
   endpoints.web.exposure.include: health,info,prometheus,metrics
