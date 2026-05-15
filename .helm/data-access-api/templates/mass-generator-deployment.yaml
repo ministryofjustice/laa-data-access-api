@@ -1,0 +1,43 @@
+{{- if .Values.massGenerator.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "data-access-api.fullname" . }}-mass-generator
+  labels:
+    {{- include "data-access-api.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mass-generator
+spec:
+  replicas: {{ .Values.massGenerator.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "data-access-api.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: mass-generator
+  template:
+    metadata:
+      labels:
+        {{- include "data-access-api.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: mass-generator
+    spec:
+      serviceAccountName: "{{ .Values.service_account.name }}"
+      containers:
+        - name: mass-generator
+          image: "{{ .Values.massGenerator.image.repository }}:{{ .Values.massGenerator.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          command: ["sleep", "infinity"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            {{- toYaml .Values.massGenerator.resources | nindent 12 }}
+          env:
+            {{ include "dbConnectionDetails" . | nindent 12 }}
+            - name: DB_URL
+              value: "jdbc:postgresql://$(DB_HOST):5432/$(DB_NAME)"
+{{- end }}
+

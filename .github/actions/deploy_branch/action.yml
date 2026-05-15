@@ -114,6 +114,8 @@ runs:
           --set ingressInternal.hosts="{$internal_host}" \
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
+          --set massGenerator.image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
+          --set massGenerator.image.tag="${GIT_SHA}-mass-generator" \
           --values ${VALUES_FILE} \
           --install \
           --wait
