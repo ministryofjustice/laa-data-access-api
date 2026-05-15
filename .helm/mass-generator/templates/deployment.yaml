@@ -18,7 +18,6 @@ spec:
         app.kubernetes.io/name: mass-generator
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
-      serviceAccountName: {{ .Values.serviceAccountName | quote }}
       containers:
         - name: mass-generator
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"

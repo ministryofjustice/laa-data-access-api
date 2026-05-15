@@ -4,7 +4,6 @@ image:
   repository: null
   tag: null
 
-serviceAccountName: null
 
 spring:
   profile: preview
