@@ -89,25 +89,92 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
   @Override
   public void run(String... args) {
     int count = parseCount(args);
-
     long startTime = System.currentTimeMillis();
     System.out.printf("Mass generation started at %s%n", Instant.now());
 
     Faker faker = new Faker();
 
-    // Pre-generate pools using random variants in one saveAllAndFlush each (Option D)
+    List<CaseworkerEntity> caseworkers = generateCaseworkers();
+    List<UUID> individualPool = generateIndividualPool(faker, count);
+
+    System.out.printf("Generating %d application records...%n", count);
+
+    CategoryOfLawTypeConvertor colConvertor = new CategoryOfLawTypeConvertor();
+    MatterTypeConvertor mtConvertor = new MatterTypeConvertor();
+
+    int decidedCount = 0;
+    int linkedCount = 0;
+    List<UUID> persistedAppIds = new ArrayList<>();
+    List<UUID[]> pendingLinks = new ArrayList<>();
+
+    for (int i = 0; i < count; i++) {
+      ApplicationContent content = jsonGenerator.createDefault();
+      CaseworkerEntity caseworker =
+          caseworkers.get(faker.number().numberBetween(0, caseworkers.size()));
+      UUID individualId =
+          individualPool.get(faker.number().numberBetween(0, individualPool.size()));
+
+      Proceeding leadProceeding = extractLeadProceeding(content);
+      CategoryOfLaw categoryOfLaw =
+          colConvertor.lenientEnumConversion(leadProceeding.getCategoryOfLaw());
+      MatterType matterType = mtConvertor.lenientEnumConversion(leadProceeding.getMatterType());
+      boolean hasUsedDelegatedFunctions = hasUsedDelegatedFunctions(content);
+
+      boolean hasDecision = faker.number().randomDouble(2, 0, 1) < DECISION_RATE;
+      DecisionStatus overallDecision = hasDecision ? pickDecisionStatus(faker) : null;
+
+      if (hasDecision) decidedCount++;
+
+      Set<ProceedingEntity> proceedingSet = buildProceedings(content, hasDecision);
+      DecisionEntity decision = hasDecision ? buildDecision(overallDecision) : null;
+
+      ApplicationEntity app =
+          persistApplication(
+              content,
+              caseworker,
+              categoryOfLaw,
+              matterType,
+              hasUsedDelegatedFunctions,
+              faker,
+              proceedingSet,
+              decision,
+              hasDecision,
+              overallDecision);
+
+      persistedAppIds.add(app.getId());
+      pendingLinks.add(new UUID[] {app.getId(), individualId});
+
+      if (hasDecision && overallDecision == DecisionStatus.GRANTED) {
+        persistCertificate(app);
+      }
+
+      if ((i + 1) % BATCH_SIZE == 0) {
+        flushBatch(pendingLinks);
+        System.out.printf("Persisted %d / %d applications%n", i + 1, count);
+      }
+    }
+
+    flushBatch(pendingLinks);
+
+    linkedCount = linkApplications(faker, persistedAppIds);
+
+    printReport(count, decidedCount, linkedCount, startTime);
+  }
+
+  private List<CaseworkerEntity> generateCaseworkers() {
     List<CaseworkerEntity> caseworkers =
         persistedDataGenerator.createAndPersistMultipleRandom(CaseworkerGenerator.class, 100);
     System.out.printf("Created %d caseworkers%n", caseworkers.size());
+    return caseworkers;
+  }
 
-    // Pre-generate individual pool. Uses uniform sampling later which gives an exponential-ish
-    // distribution of apps-per-client (Poisson), rather than the 1:1 shape we had before.
-    int individualPoolSize =
+  private List<UUID> generateIndividualPool(Faker faker, int count) {
+    int poolSize =
         Math.min(
             INDIVIDUAL_POOL_MAX, Math.max(INDIVIDUAL_POOL_MIN, count / INDIVIDUAL_POOL_DIVISOR));
-    System.out.printf("Building individual pool of %d entries...%n", individualPoolSize);
-    List<UUID> individualPool = new ArrayList<>(individualPoolSize);
-    for (int k = 0; k < individualPoolSize; k++) {
+    System.out.printf("Building individual pool of %d entries...%n", poolSize);
+    List<UUID> pool = new ArrayList<>(poolSize);
+    for (int k = 0; k < poolSize; k++) {
       IndividualEntity indiv =
           persistedDataGenerator.createAndPersist(
               IndividualEntityGenerator.class,
@@ -116,169 +183,132 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
                       .firstName(faker.name().firstName())
                       .dateOfBirth(faker.timeAndDate().birthday())
                       .individualContent(Map.of("test", faker.text().text(10, 35, true))));
-      individualPool.add(indiv.getId());
+      pool.add(indiv.getId());
       if ((k + 1) % BATCH_SIZE == 0) {
         persistedDataGenerator.flushAndClear();
       }
     }
     persistedDataGenerator.flushAndClear();
-    System.out.printf("Created %d individuals%n", individualPool.size());
+    System.out.printf("Created %d individuals%n", pool.size());
+    return pool;
+  }
 
-    System.out.printf("Generating %d application records...%n", count);
+  private Proceeding extractLeadProceeding(ApplicationContent content) {
+    return content.getProceedings().stream()
+        .filter(p -> Boolean.TRUE.equals(p.getLeadProceeding()))
+        .findFirst()
+        .orElseThrow(
+            () -> new IllegalStateException("No lead proceeding found in generated content"));
+  }
 
-    CategoryOfLawTypeConvertor colConvertor = new CategoryOfLawTypeConvertor();
-    MatterTypeConvertor mtConvertor = new MatterTypeConvertor();
+  private boolean hasUsedDelegatedFunctions(ApplicationContent content) {
+    return content.getProceedings().stream()
+        .anyMatch(p -> Boolean.TRUE.equals(p.getUsedDelegatedFunctions()));
+  }
 
-    int decidedCount = 0;
+  private ApplicationStatus pickApplicationStatus(Faker faker) {
+    return faker.options().option(STATUS_WEIGHTED);
+  }
 
-    int linkedCount = 0;
-    List<UUID> persistedAppIds = new ArrayList<>();
+  private DecisionStatus pickDecisionStatus(Faker faker) {
+    return faker
+        .options()
+        .option(
+            DecisionStatus.REFUSED,
+            DecisionStatus.REFUSED,
+            DecisionStatus.REFUSED,
+            DecisionStatus.GRANTED,
+            DecisionStatus.GRANTED,
+            DecisionStatus.REFUSED);
+  }
 
-    // Buffer for (applicationId, individualId) pairs — flushed to DB at batch boundaries
-    // after Hibernate has written the application rows.
-    List<UUID[]> pendingLinks = new ArrayList<>();
-
-    for (int i = 0; i < count; i++) {
-
-      // 1. Generate full rich application content
-      ApplicationContent content = jsonGenerator.createDefault();
-
-      // 2. Pick a random caseworker and individual ID from the pre-generated pools.
-      CaseworkerEntity cw = caseworkers.get(faker.number().numberBetween(0, caseworkers.size()));
-      UUID indivId = individualPool.get(faker.number().numberBetween(0, individualPool.size()));
-
-      // 3. Derive entity-level columns from the content (mirrors ApplicationContentParserService)
-      Proceeding lead =
-          content.getProceedings().stream()
-              .filter(p -> Boolean.TRUE.equals(p.getLeadProceeding()))
-              .findFirst()
-              .orElseThrow(
-                  () -> new IllegalStateException("No lead proceeding found in generated content"));
-
-      CategoryOfLaw col = colConvertor.lenientEnumConversion(lead.getCategoryOfLaw());
-      MatterType mt = mtConvertor.lenientEnumConversion(lead.getMatterType());
-      boolean udf =
-          content.getProceedings().stream()
-              .anyMatch(p -> Boolean.TRUE.equals(p.getUsedDelegatedFunctions()));
-
-      // 4. Decide upfront whether this application will have a decision
-      final boolean hasDecision = faker.number().randomDouble(2, 0, 1) < DECISION_RATE;
-      final DecisionStatus overallDecision =
-          !hasDecision
-              ? null
-              : faker
-                  .options()
-                  .option(
-                      DecisionStatus.REFUSED, // 50 %
-                      DecisionStatus.REFUSED,
-                      DecisionStatus.REFUSED,
-                      DecisionStatus.GRANTED, // 30 %
-                      DecisionStatus.GRANTED,
-                      DecisionStatus.REFUSED // 20 %
-                      );
-
-      if (hasDecision) {
-        decidedCount++;
-      }
-
-      // 5. Build proceedings in memory, each with a MeritsDecisionEntity already attached
-      // (only when a decision exists). CascadeType.ALL on ApplicationEntity.proceedings and
-      // ProceedingEntity.meritsDecision means a single createAndPersist call persists everything.
-      Set<ProceedingEntity> proceedingSet = new HashSet<>();
-      for (Proceeding p : content.getProceedings()) {
-        MeritsDecisionEntity merit = hasDecision ? meritsDecisionGenerator.createDefault() : null;
-        proceedingSet.add(
-            DataGenerator.createDefault(
-                ProceedingsEntityGenerator.class,
-                b ->
-                    b.applyProceedingId(p.getId())
-                        .description(p.getDescription())
-                        .isLead(Boolean.TRUE.equals(p.getLeadProceeding()))
-                        .createdBy("mass-generator")
-                        .updatedBy("mass-generator")
-                        .proceedingContent(objectMapper.convertValue(p, Map.class))
-                        .meritsDecision(merit)));
-      }
-
-      // 6. Build DecisionEntity in memory (when applicable)
-      DecisionEntity decision =
-          hasDecision
-              ? DataGenerator.createDefault(
-                  DecisionEntityGenerator.class, b -> b.overallDecision(overallDecision))
-              : null;
-
-      // 7. Persist the full aggregate in one transaction — the EntityManager is used to load
-      // the individual as a managed entity within that same transaction, avoiding
-      // "Detached entity passed to persist" on the CascadeType.PERSIST individuals collection.
-      final CategoryOfLaw finalCol = col;
-      final MatterType finalMt = mt;
-      final boolean finalUdf = udf;
-      final Set<ProceedingEntity> finalProceedingSet = proceedingSet;
-      final DecisionEntity finalDecision = decision;
-      ApplicationEntity app =
-          persistedDataGenerator.createAndPersist(
-              ApplicationEntityGenerator.class,
-              b -> {
-                b.applyApplicationId(content.getId())
-                    .laaReference(content.getLaaReference())
-                    .submittedAt(Instant.parse(content.getSubmittedAt()))
-                    .officeCode(content.getOffice() != null ? content.getOffice().getCode() : null)
-                    .status(faker.options().option(STATUS_WEIGHTED))
-                    .categoryOfLaw(finalCol)
-                    .matterType(finalMt)
-                    .usedDelegatedFunctions(finalUdf)
-                    .applicationContent(objectMapper.convertValue(content, Map.class))
-                    .caseworker(cw)
-                    .individuals(Collections.EMPTY_SET)
-                    .proceedings(finalProceedingSet)
-                    .decision(finalDecision)
-                    .isAutoGranted(hasDecision && overallDecision == DecisionStatus.GRANTED);
-                // individuals intentionally omitted — set via native query below to
-                // avoid CascadeType.PERSIST attempting to re-persist pool entities
-              });
-
-      persistedAppIds.add(app.getId());
-      pendingLinks.add(new UUID[] {app.getId(), indivId});
-
-      // 8. Certificate (GRANTED only) — persisted separately as it is not part of the aggregate
-      if (hasDecision && overallDecision == DecisionStatus.GRANTED) {
-        CertificateEntity cert =
-            certificateGenerator.createDefault(b -> b.applicationId(app.getId()));
-        persistedDataGenerator.persist(FullCertificateGenerator.class, cert);
-      }
-
-      // 9. Flush + clear Hibernate session every BATCH_SIZE applications
-      if ((i + 1) % BATCH_SIZE == 0) {
-        persistedDataGenerator.flush();
-        linkedIndividualWriter.linkAll(pendingLinks);
-        pendingLinks.clear();
-        persistedDataGenerator.clear();
-        System.out.printf("Persisted %d / %d applications%n", i + 1, count);
-      }
+  private Set<ProceedingEntity> buildProceedings(ApplicationContent content, boolean hasDecision) {
+    Set<ProceedingEntity> proceedingSet = new HashSet<>();
+    for (Proceeding p : content.getProceedings()) {
+      MeritsDecisionEntity merit = hasDecision ? meritsDecisionGenerator.createDefault() : null;
+      proceedingSet.add(
+          DataGenerator.createDefault(
+              ProceedingsEntityGenerator.class,
+              b ->
+                  b.applyProceedingId(p.getId())
+                      .description(p.getDescription())
+                      .isLead(Boolean.TRUE.equals(p.getLeadProceeding()))
+                      .createdBy("mass-generator")
+                      .updatedBy("mass-generator")
+                      .proceedingContent(objectMapper.convertValue(p, Map.class))
+                      .meritsDecision(merit)));
     }
+    return proceedingSet;
+  }
 
-    // flush any remaining partial batch
+  private DecisionEntity buildDecision(DecisionStatus overallDecision) {
+    return DataGenerator.createDefault(
+        DecisionEntityGenerator.class, b -> b.overallDecision(overallDecision));
+  }
+
+  private ApplicationEntity persistApplication(
+      ApplicationContent content,
+      CaseworkerEntity caseworker,
+      CategoryOfLaw categoryOfLaw,
+      MatterType matterType,
+      boolean hasUsedDelegatedFunctions,
+      Faker faker,
+      Set<ProceedingEntity> proceedingSet,
+      DecisionEntity decision,
+      boolean hasDecision,
+      DecisionStatus overallDecision) {
+    return persistedDataGenerator.createAndPersist(
+        ApplicationEntityGenerator.class,
+        b ->
+            b.applyApplicationId(content.getId())
+                .laaReference(content.getLaaReference())
+                .submittedAt(Instant.parse(content.getSubmittedAt()))
+                .officeCode(content.getOffice() != null ? content.getOffice().getCode() : null)
+                .status(pickApplicationStatus(faker))
+                .categoryOfLaw(categoryOfLaw)
+                .matterType(matterType)
+                .usedDelegatedFunctions(hasUsedDelegatedFunctions)
+                .applicationContent(objectMapper.convertValue(content, Map.class))
+                .caseworker(caseworker)
+                .individuals(Collections.EMPTY_SET)
+                .proceedings(proceedingSet)
+                .decision(decision)
+                .isAutoGranted(hasDecision && overallDecision == DecisionStatus.GRANTED));
+  }
+
+  private void persistCertificate(ApplicationEntity app) {
+    CertificateEntity cert = certificateGenerator.createDefault(b -> b.applicationId(app.getId()));
+    persistedDataGenerator.persist(FullCertificateGenerator.class, cert);
+  }
+
+  private void flushBatch(List<UUID[]> pendingLinks) {
     persistedDataGenerator.flush();
     linkedIndividualWriter.linkAll(pendingLinks);
     pendingLinks.clear();
     persistedDataGenerator.clear();
+  }
 
+  private int linkApplications(Faker faker, List<UUID> persistedAppIds) {
+    int linkedCount = 0;
     int i = 0;
     while (i < persistedAppIds.size()) {
       if (faker.number().randomDouble(2, 0, 1) < LINK_RATE && i + 1 < persistedAppIds.size()) {
         UUID leadId = persistedAppIds.get(i);
         i++;
-        int associateCount = faker.number().numberBetween(1, 4); // 1 to 3 associates
+        int associateCount = faker.number().numberBetween(1, 4);
         for (int j = 0; j < associateCount && i < persistedAppIds.size(); j++) {
           persistedDataGenerator.linkApplications(leadId, persistedAppIds.get(i));
           i++;
           linkedCount++;
         }
       } else {
-        i++; // standalone — skip without linking
+        i++;
       }
     }
+    return linkedCount;
+  }
 
+  private void printReport(int count, int decidedCount, int linkedCount, long startTime) {
     long elapsedMs = System.currentTimeMillis() - startTime;
     long minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedMs);
     long seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedMs) % 60;
@@ -290,7 +320,7 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
     System.out.printf("  Records generated  : %d%n", count);
     System.out.printf(
         "  Decided applications: %d (%.0f%%)%n", decidedCount, 100.0 * decidedCount / count);
-    System.out.println("  Linked applications : %d pairs%n" + linkedCount);
+    System.out.printf("  Linked applications : %d pairs%n", linkedCount);
     System.out.printf("  Total time         : %d min %02d sec%n", minutes, seconds);
     System.out.printf("  Throughput         : %.1f records/sec%n", recordsPerSecond);
     System.out.println("========================================");
