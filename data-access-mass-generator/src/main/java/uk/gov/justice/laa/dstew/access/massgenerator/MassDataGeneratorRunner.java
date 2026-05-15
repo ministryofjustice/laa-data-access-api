@@ -223,12 +223,7 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
                     .laaReference(content.getLaaReference())
                     .submittedAt(Instant.parse(content.getSubmittedAt()))
                     .officeCode(content.getOffice() != null ? content.getOffice().getCode() : null)
-                    .status(
-                        faker
-                            .options()
-                            .option(
-                                ApplicationStatus.APPLICATION_IN_PROGRESS,
-                                ApplicationStatus.APPLICATION_SUBMITTED))
+                    .status(faker.options().option(STATUS_WEIGHTED))
                     .categoryOfLaw(finalCol)
                     .matterType(finalMt)
                     .usedDelegatedFunctions(finalUdf)
@@ -269,14 +264,18 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
     persistedDataGenerator.clear();
 
     int i = 0;
-    while (i + 1 < persistedAppIds.size()) {
-      UUID leadId = persistedAppIds.get(i);
-      i++;
-      int associateCount = faker.number().numberBetween(1, 4); // 1 or 3 associates
-      for (int j = 0; j < associateCount && i < persistedAppIds.size(); j++) {
-        persistedDataGenerator.linkApplications(leadId, persistedAppIds.get(i));
+    while (i < persistedAppIds.size()) {
+      if (faker.number().randomDouble(2, 0, 1) < LINK_RATE && i + 1 < persistedAppIds.size()) {
+        UUID leadId = persistedAppIds.get(i);
         i++;
-        linkedCount++;
+        int associateCount = faker.number().numberBetween(1, 4); // 1 to 3 associates
+        for (int j = 0; j < associateCount && i < persistedAppIds.size(); j++) {
+          persistedDataGenerator.linkApplications(leadId, persistedAppIds.get(i));
+          i++;
+          linkedCount++;
+        }
+      } else {
+        i++; // standalone — skip without linking
       }
     }
 
