@@ -38,8 +38,6 @@ public class BaseServiceTest {
 
   @MockitoBean protected CaseworkerRepository caseworkerRepository;
 
-  @MockitoBean protected ApplicationSummaryRepository applicationSummaryRepository;
-
   @MockitoBean protected CertificateRepository certificateRepository;
 
   @MockitoBean protected IndividualRepository individualRepository;
