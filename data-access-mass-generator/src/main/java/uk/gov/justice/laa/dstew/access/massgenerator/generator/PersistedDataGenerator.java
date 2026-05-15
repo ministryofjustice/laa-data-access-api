@@ -53,37 +53,6 @@ public class PersistedDataGenerator extends DataGenerator {
     generatorRepoMap.put(generatorType, repositoryType);
   }
 
-  public <TEntity, TBuilder, TGenerator extends BaseGenerator<TEntity, TBuilder>>
-      TEntity createAndPersist(Class<TGenerator> generatorType) {
-    TEntity entity = DataGenerator.createDefault(generatorType);
-    return persist(generatorType, entity);
-  }
-
-  public <TEntity, TBuilder, TGenerator extends BaseGenerator<TEntity, TBuilder>>
-      TEntity createAndPersist(Class<TGenerator> generatorType, Consumer<TBuilder> customiser) {
-    TEntity entity = DataGenerator.createDefault(generatorType, customiser);
-    return persist(generatorType, entity);
-  }
-
-  public <TEntity, TBuilder, TGenerator extends BaseGenerator<TEntity, TBuilder>>
-      List<TEntity> createAndPersistMultiple(Class<TGenerator> generatorType, int count) {
-    List<TEntity> entities = DataGenerator.createMultipleDefault(generatorType, count);
-    if (entities.isEmpty()) {
-      return entities;
-    }
-    return persist(generatorType, entities);
-  }
-
-  public <TEntity, TBuilder, TGenerator extends BaseGenerator<TEntity, TBuilder>>
-      List<TEntity> createAndPersistMultiple(
-          Class<TGenerator> generatorType, int count, Consumer<TBuilder> customiser) {
-    List<TEntity> entities = DataGenerator.createMultipleDefault(generatorType, count, customiser);
-    if (entities.isEmpty()) {
-      return entities;
-    }
-    return persist(generatorType, entities);
-  }
-
   @SuppressWarnings("unchecked")
   private <TEntity, TGenerator> JpaRepository<TEntity, ?> getRepository(
       Class<TGenerator> generatorType) {
@@ -108,37 +77,10 @@ public class PersistedDataGenerator extends DataGenerator {
     return entities;
   }
 
-  /**
-   * Persist without flushing — allows Hibernate to batch inserts. Call flushAndClear() at batch
-   * boundaries.
-   */
-  public <TEntity, TGenerator> TEntity persistNoFlush(
-      Class<TGenerator> generatorType, TEntity entity) {
-    JpaRepository<TEntity, ?> repository = getRepository(generatorType);
-    repository.save(entity);
-    return entity;
-  }
-
-  /**
-   * Persist a list without flushing — allows Hibernate to batch inserts. Call flushAndClear() at
-   * batch boundaries.
-   */
-  public <TEntity, TGenerator> List<TEntity> persistAllNoFlush(
-      Class<TGenerator> generatorType, List<TEntity> entities) {
-    JpaRepository<TEntity, ?> repository = getRepository(generatorType);
-    repository.saveAll(entities);
-    return entities;
-  }
-
   @Transactional
   public void flushAndClear() {
     entityManager.flush();
     entityManager.clear();
-  }
-
-  @Transactional
-  public <TEntity> List<TEntity> reattach(List<TEntity> entities) {
-    return entities.stream().map(entityManager::merge).toList();
   }
 
   /**
