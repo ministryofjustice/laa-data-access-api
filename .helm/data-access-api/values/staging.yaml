@@ -63,5 +63,3 @@ grafana:
 
 slowQueryThresholdSeconds: 1
 
-massGenerator:
-  enabled: false

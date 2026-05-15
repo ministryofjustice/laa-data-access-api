@@ -72,6 +72,7 @@ runs:
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
         RELEASE_NAME: ${{ steps.extract_release_name.outputs.release-name }}
+        APP_ENVIRONMENT: ${{ inputs.app-environment }}
       run: |
         ingress_name="$RELEASE_NAME-data-access-api"
         external_host="$RELEASE_NAME-$KUBE_NAMESPACE.cloud-platform.service.justice.gov.uk"
@@ -103,11 +104,6 @@ runs:
             --install --wait
         fi
 
-        # always set true for ephemeral branches
-        if [ "$branch_name" != "main" ]; then
-          mass_generator_enabled="true"
-        fi
-
         helm upgrade $RELEASE_NAME .helm/data-access-api \
           --namespace ${KUBE_NAMESPACE} \
           --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
@@ -119,9 +115,19 @@ runs:
           --set ingressInternal.hosts="{$internal_host}" \
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
-          --set massGenerator.enabled="${mass_generator_enabled}" \
-          --set massGenerator.image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
-          --set massGenerator.image.tag="${GIT_SHA}-mass-generator" \
           --values ${VALUES_FILE} \
           --install \
           --wait
+
+        if [ "$APP_ENVIRONMENT" == "uat" ]; then
+          SERVICE_ACCOUNT=$(grep -A1 'service_account:' "${VALUES_FILE}" | grep 'name:' | awk '{print $2}')
+          helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
+            --namespace ${KUBE_NAMESPACE} \
+            --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
+            --set image.tag="${GIT_SHA}-mass-generator" \
+            --set serviceAccountName="${SERVICE_ACCOUNT}" \
+            --set spring.profile="${SPRING_PROFILE}" \
+            --install \
+            --wait
+        fi
+

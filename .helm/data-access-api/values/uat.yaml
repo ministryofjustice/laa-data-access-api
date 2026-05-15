@@ -62,16 +62,3 @@ slowQueryThresholdSeconds: 1
 portForward:
   enabled: true
 
-massGenerator:
-  enabled: true
-  replicaCount: 0
-  image:
-    repository: null
-    tag: null
-  resources:
-    limits:
-      cpu: 500m
-      memory: 1G
-    requests:
-      cpu: 25m
-      memory: 512Mi
