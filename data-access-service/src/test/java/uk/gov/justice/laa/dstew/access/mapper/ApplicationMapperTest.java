@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -30,6 +31,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEn
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationUpdateRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
 @ExtendWith(MockitoExtension.class)
 public class ApplicationMapperTest extends BaseMapperTest {
@@ -350,5 +352,29 @@ public class ApplicationMapperTest extends BaseMapperTest {
       assertThat(actual.getOfficeCode()).isEqualTo(expectedOfficeCode);
       assertThat(actual.getContactEmail()).isEqualTo(expectedContactEmail);
     }
+  }
+
+  @Test
+  void givenApplicationWithProceedings_whenToApplication_thenProceedingsListIsPopulated() {
+    ProceedingEntity proceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class);
+
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.proceedings(Set.of(proceeding)));
+
+    ApplicationResponse result = applicationMapper.toApplication(entity);
+
+    assertThat(result.getProceedings()).isNotNull().hasSize(1);
+  }
+
+  @Test
+  void givenApplicationWithNullProceedings_whenToApplication_thenProceedingsNotSet() {
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.proceedings(null));
+
+    ApplicationResponse result = applicationMapper.toApplication(entity);
+
+    assertThat(result.getProceedings()).isNullOrEmpty();
   }
 }

@@ -3,7 +3,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 plugins {
     id 'java'
     id 'jacoco'
-    id 'io.freefair.lombok' version '9.2.0'
+    id 'io.freefair.lombok' version '9.4.0'
     id "com.gorylenko.gradle-git-properties" version "2.4.2"
     id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin'
     id 'com.avast.gradle.docker-compose' version '0.17.12'
@@ -17,8 +17,6 @@ def versions = [
 configurations.all {
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
-    // Fix for Spring Boot security vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16198880 (Insecure Temporary File)
-    // Fix for Spring Boot security vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16191774 (Missing Authorization)
     // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
     // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
     resolutionStrategy {
@@ -27,19 +25,8 @@ configurations.all {
         force 'tools.jackson.core:jackson-core:3.1.1'
         force 'tools.jackson.core:jackson-databind:3.1.1'
         force 'tools.jackson:jackson-bom:3.1.1'
-        force 'org.springframework:spring-webmvc:6.2.17'
-        force 'org.springframework:spring-web:7.0.7'
         force 'org.springframework.security:spring-security-config:7.0.5'
         force 'org.springframework.security:spring-security-web:7.0.5'
-        force 'org.postgresql:postgresql:42.7.11'
-
-        // Force all Spring Boot modules to 4.0.6
-        eachDependency { details ->
-            if (details.requested.group == 'org.springframework.boot') {
-                details.useVersion '4.0.6'
-                details.because 'Security fixes: SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16198880, SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16191774'
-            }
-        }
     }
 }
 
@@ -68,24 +55,24 @@ configurations {
     testUtilitiesImplementation.extendsFrom testImplementation
     testUtilitiesRuntimeOnly.extendsFrom testRuntimeOnly
 
-    // Expose testUtilities classes as a consumable variant so other modules
-    // (e.g. data-access-mass-generator) can depend on them via:
-    //   project(path: ':data-access-service', configuration: 'testUtilitiesRuntimeElements')
     testUtilitiesRuntimeElements {
         canBeConsumed = true
         canBeResolved = false
         extendsFrom testUtilitiesImplementation, testUtilitiesRuntimeOnly
+        attributes {
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME))
+            attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.JAR))
+        }
     }
 }
 
-// Jar containing compiled testUtilities classes (must be declared before the artifact wiring below)
-def testUtilitiesJarTask = tasks.register('testUtilitiesJar', Jar) {
-    archiveClassifier = 'testUtilities'
+tasks.register('testUtilitiesJar', Jar) {
+    archiveClassifier = 'test-utilities'
     from sourceSets.testUtilities.output
 }
 
 artifacts {
-    testUtilitiesRuntimeElements testUtilitiesJarTask
+    testUtilitiesRuntimeElements(tasks.named('testUtilitiesJar'))
 }
 
 dockerCompose {
@@ -175,14 +162,12 @@ jacocoTestReport {
         }))
     }
 }
-jacocoTestCoverageVerification {
-    enabled = false
-}
 
 dependencyManagement {
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     imports {
         mavenBom 'tools.jackson:jackson-bom:3.1.1'
+        mavenBom 'io.netty:netty-bom:4.2.13.Final'
     }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
@@ -219,8 +204,8 @@ dependencies {
     implementation('org.springframework.boot:spring-boot-starter-oauth2-resource-server') {
         exclude group: 'org.springframework.security', module: 'spring-security-web'
     }
-    implementation 'org.springframework.security:spring-security-config:7.0.5'
-    implementation 'org.springframework.security:spring-security-web:7.0.5'
+    implementation 'org.springframework.security:spring-security-config'
+    implementation 'org.springframework.security:spring-security-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation('org.springframework.boot:spring-boot-starter-web') {
         exclude group: 'com.google.code.gson', module: 'gson'
@@ -230,11 +215,11 @@ dependencies {
     }
 
     //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789756
-    implementation 'io.netty:netty-codec-http:4.2.12.Final'
+    implementation 'io.netty:netty-codec-http:4.2.13.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789758
-    implementation 'io.netty:netty-codec-http2:4.2.12.Final'
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-15307781
-    implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.54'
+    implementation 'io.netty:netty-codec-http2:4.2.13.Final'
+    //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-16643259
+    implementation 'org.apache.tomcat.embed:tomcat-embed-core:11.0.22'
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
     implementation 'com.fasterxml.jackson.core:jackson-core:2.21.2'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
@@ -243,11 +228,10 @@ dependencies {
     }
     implementation("org.springframework.boot:spring-boot-starter-flyway:4.0.6")
     implementation("org.flywaydb:flyway-database-postgresql")
-    implementation 'org.springframework:spring-web:7.0.7'
 
     // Source: https://mvnrepository.com/artifact/com.azure.spring/spring-cloud-azure-starter-active-directory
     // Note: Version 7.0.0 may not be compatible with Spring Boot 4, check for updated version
-    implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.0.0'
+    implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.2.0'
     implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
 
     implementation 'io.micrometer:micrometer-registry-prometheus'
@@ -274,8 +258,6 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
-    testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.1'
 
     // Security fix for SNYK-JAVA-ORGAPACHECOMMONS-10734078 (CVE-2025-48924)
     implementation 'org.apache.commons:commons-lang3:3.18.0'

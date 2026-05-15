@@ -7,8 +7,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -39,10 +37,6 @@ public class MeritsDecisionEntity implements AuditableEntity {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(columnDefinition = "UUID")
   private UUID id;
-
-  @OneToOne()
-  @JoinColumn(name = "proceeding_id", nullable = false)
-  private ProceedingEntity proceeding;
 
   @Column(name = "created_at")
   @CreationTimestamp

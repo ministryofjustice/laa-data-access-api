@@ -25,17 +25,15 @@ public class AccessAppTests {
 
   @MockitoBean private DomainEventRepository domainEventRepository;
 
-  @MockitoBean private DecisionRepository decisionRepository;
-
-  @MockitoBean private ProceedingRepository proceedingRepository;
-
-  @MockitoBean private MeritsDecisionRepository meritsDecisionRepository;
-
   @MockitoBean private CertificateRepository certificateRepository;
 
   @MockitoBean private IndividualRepository individualRepository;
 
   @MockitoBean private NoteRepository noteRepository;
+
+  @MockitoBean private LinkedApplicationRepository linkedApplicationRepository;
+
+  @MockitoBean private ProceedingRepository proceedingRepository;
 
   @Test
   void contextLoads() {}

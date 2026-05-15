@@ -58,3 +58,6 @@ grafana:
   enabled: true
 
 slowQueryThresholdSeconds: 1
+
+portForward:
+  enabled: true

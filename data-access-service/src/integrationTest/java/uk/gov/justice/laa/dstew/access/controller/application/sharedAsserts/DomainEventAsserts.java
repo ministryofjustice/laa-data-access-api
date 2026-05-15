@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
@@ -44,12 +43,11 @@ public class DomainEventAsserts {
       EventHistoryRequest expectedEventHistoryRequest,
       ServiceName expectedServiceName) {
 
-    List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
+    List<UUID> applicationIds = applications.stream().map(ApplicationEntity::getId).toList();
+    List<DomainEventEntity> domainEvents =
+        domainEventRepository.findAllByApplicationIdIn(applicationIds);
 
     assertEquals(applications.size(), domainEvents.size());
-
-    List<UUID> applicationIds =
-        applications.stream().map(ApplicationEntity::getId).collect(Collectors.toList());
 
     for (DomainEventEntity domainEvent : domainEvents) {
       assertEquals(expectedDomainEventType, domainEvent.getType());
@@ -74,7 +72,8 @@ public class DomainEventAsserts {
       ApplicationEntity application, DomainEventType expectedType, ServiceName expectedServiceName)
       throws Exception {
 
-    List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
+    List<DomainEventEntity> domainEvents =
+        domainEventRepository.findByApplicationId(application.getId());
 
     DomainEventEntity event = domainEvents.getFirst();
 
