@@ -4,9 +4,9 @@ spring:
 
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?reWriteBatchedInserts=true}
-    username: ${SPRING_DATASOURCE_USERNAME:laa_user}
-    password: ${SPRING_DATASOURCE_PASSWORD:laa_password}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?reWriteBatchedInserts=true}
+    username: ${DB_NAME:laa_user}
+    password: ${DB_PASSWORD:laa_password}
 
   jpa:
     hibernate.ddl-auto: none

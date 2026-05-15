@@ -26,7 +26,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo ""
-echo "==> Execing into ${POD}. Run: java -jar mass-generator.jar"
+echo "==> Execing into ${POD}. Run: java -jar mass-generator.jar <number_of_applications>"
 echo "==> The pod will be scaled down automatically when you exit."
 echo ""
 kubectl -n "$NAMESPACE" exec -it "$POD" -- /bin/sh
