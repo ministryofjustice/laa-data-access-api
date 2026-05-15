@@ -8,6 +8,9 @@ image:
 spring:
   profile: preview
 
+db:
+  postgresqlReleaseName: null
+
 resources:
   limits:
     cpu: 500m

@@ -2,9 +2,9 @@
 set -euo pipefail
 
 NAMESPACE="${KUBE_NAMESPACE:?Must set KUBE_NAMESPACE}"
-RELEASE="${RELEASE_NAME:-laa-data-access-api}"
-DEPLOYMENT="${RELEASE}-mass-generator"
-LABEL_SELECTOR="app.kubernetes.io/component=mass-generator,app.kubernetes.io/instance=${RELEASE}"
+RELEASE="${RELEASE_NAME:? Must set RELEASE_NAME}"
+DEPLOYMENT="${RELEASE_NAME}-mass-generator"
+LABEL_SELECTOR="app.kubernetes.io/name=mass-generator,app.kubernetes.io/instance=${RELEASE}"
 
 echo "==> Scaling up ${DEPLOYMENT} in namespace ${NAMESPACE}..."
 kubectl -n "$NAMESPACE" scale deployment "$DEPLOYMENT" --replicas=1

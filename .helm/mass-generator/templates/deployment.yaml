@@ -39,11 +39,11 @@ spec:
             - name: DB_NAME
               value: "postgres"
             - name: DB_HOST
-              value: {{ .Release.Name }}-postgresql
+              value: {{ .Values.db.postgresqlReleaseName }}
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-postgresql
+                  name: {{ .Values.db.postgresqlReleaseName }}
                   key: postgres-password
             {{- else }}
             - name: DB_NAME
