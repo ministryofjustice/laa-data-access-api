@@ -36,14 +36,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
         @ComponentScan.Filter(
             type = org.springframework.context.annotation.FilterType.REGEX,
             pattern = "uk\\.gov\\.justice\\.laa\\.dstew\\.access\\.config\\..*"))
-@EnableJpaRepositories(
-    basePackages = {
-      "uk.gov.justice.laa.dstew.access.repository"
-    })
-@EntityScan(
-    basePackages = {
-      "uk.gov.justice.laa.dstew.access.entity"
-    })
+@EnableJpaRepositories(basePackages = {"uk.gov.justice.laa.dstew.access.repository"})
+@EntityScan(basePackages = {"uk.gov.justice.laa.dstew.access.entity"})
 @ConfigurationPropertiesScan
 public class MassGeneratorApp {
 

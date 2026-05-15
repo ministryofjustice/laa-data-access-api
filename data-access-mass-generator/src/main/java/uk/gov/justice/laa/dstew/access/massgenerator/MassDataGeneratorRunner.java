@@ -11,7 +11,6 @@ import java.util.concurrent.TimeUnit;
 import net.datafaker.Faker;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.convertors.CategoryOfLawTypeConvertor;
 import uk.gov.justice.laa.dstew.access.convertors.MatterTypeConvertor;
