@@ -4,7 +4,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
-import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.convertors.CategoryOfLawTypeConvertor;
 import uk.gov.justice.laa.dstew.access.convertors.MatterTypeConvertor;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
@@ -12,7 +11,6 @@ import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
-import uk.gov.justice.laa.dstew.access.validation.PayloadValidationService;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Service class for parsing and normalising application content. */
@@ -22,15 +20,6 @@ public class ApplicationContentParserService {
   private static final MatterTypeConvertor matterTypeDeserializer = new MatterTypeConvertor();
   private static final CategoryOfLawTypeConvertor categoryOfLawTypeDeserializer =
       new CategoryOfLawTypeConvertor();
-
-  private final ObjectMapper objectMapper;
-  private final PayloadValidationService payloadValidationService;
-
-  public ApplicationContentParserService(
-      ObjectMapper objectMapper, PayloadValidationService payloadValidationService) {
-    this.objectMapper = objectMapper;
-    this.payloadValidationService = payloadValidationService;
-  }
 
   /**
    * Normalises application content details from the create request.

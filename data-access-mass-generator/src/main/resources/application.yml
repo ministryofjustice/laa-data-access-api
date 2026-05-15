@@ -26,22 +26,6 @@ spring:
   flyway:
     enabled: false
 
-server:
-  port: ${SERVER_PORT:8080}
-  error:
-    include-message: always
-    include-stacktrace: always
-    include-exception: true
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health
-  endpoint:
-    health:
-      show-details: always
-
 logging:
   level:
     root: WARN
