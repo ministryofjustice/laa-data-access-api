@@ -2,11 +2,11 @@ package uk.gov.justice.laa.dstew.access.massgenerator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import net.datafaker.Faker;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +22,6 @@ import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
-import uk.gov.justice.laa.dstew.access.massgenerator.generator.LinkedIndividualWriter;
 import uk.gov.justice.laa.dstew.access.massgenerator.generator.PersistedDataGenerator;
 import uk.gov.justice.laa.dstew.access.massgenerator.generator.application.FullCertificateGenerator;
 import uk.gov.justice.laa.dstew.access.massgenerator.generator.application.FullJsonGenerator;
@@ -40,7 +39,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGe
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
-@Profile("db & !web")
 @Component
 public class MassDataGeneratorRunner implements CommandLineRunner {
 
@@ -49,8 +47,6 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
   private static final double DECISION_RATE = 0.4;
 
   @Autowired private PersistedDataGenerator persistedDataGenerator;
-
-  @Autowired private LinkedIndividualWriter linkedIndividualWriter;
 
   @Autowired private ObjectMapper objectMapper;
 
@@ -77,6 +73,9 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
             IndividualEntityGenerator.class, 1000);
     System.out.printf("Created %d individuals%n", individuals.size());
 
+    // Store IDs only — the in-memory entities will be detached after flushAndClear()
+    List<UUID> individualIds = individuals.stream().map(IndividualEntity::getId).toList();
+
     System.out.printf("Generating %d application records...%n", count);
 
     CategoryOfLawTypeConvertor colConvertor = new CategoryOfLawTypeConvertor();
@@ -89,9 +88,10 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
       // 1. Generate full rich application content
       ApplicationContent content = new FullJsonGenerator().createDefault();
 
-      // 2. Pick a random caseworker and individual from the pre-generated pools
+      // 2. Pick a random caseworker and individual ID from the pre-generated pools.
       CaseworkerEntity cw = caseworkers.get(faker.number().numberBetween(0, caseworkers.size()));
-      IndividualEntity indiv = individuals.get(faker.number().numberBetween(0, individuals.size()));
+      UUID selectedIndividualId =
+          individualIds.get(faker.number().numberBetween(0, individualIds.size()));
 
       // 3. Derive entity-level columns from the content (mirrors ApplicationContentParserService)
       Proceeding lead =
@@ -107,97 +107,92 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
           content.getProceedings().stream()
               .anyMatch(p -> Boolean.TRUE.equals(p.getUsedDelegatedFunctions()));
 
-      // 4. Persist ApplicationEntity with all required columns populated
-      ApplicationEntity app =
-          persistedDataGenerator.createAndPersist(
-              ApplicationEntityGenerator.class,
-              b ->
-                  b.applyApplicationId(content.getId())
-                      .laaReference(content.getLaaReference())
-                      .submittedAt(Instant.parse(content.getSubmittedAt()))
-                      .officeCode(
-                          content.getOffice() != null ? content.getOffice().getCode() : null)
-                      .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
-                      .categoryOfLaw(col)
-                      .matterType(mt)
-                      .usedDelegatedFunctions(udf)
-                      .applicationContent(objectMapper.convertValue(content, Map.class))
-                      .caseworker(cw)
-              // individuals intentionally omitted — set via native query below to
-              // avoid CascadeType.PERSIST attempting to re-persist pool entities
-              );
+      // 4. Decide upfront whether this application will have a decision
+      final boolean hasDecision = faker.number().randomDouble(2, 0, 1) < DECISION_RATE;
+      final DecisionStatus overallDecision =
+          !hasDecision
+              ? null
+              : faker
+                  .options()
+                  .option(
+                      DecisionStatus.REFUSED, // 50 %
+                      DecisionStatus.REFUSED,
+                      DecisionStatus.REFUSED,
+                      DecisionStatus.GRANTED, // 30 %
+                      DecisionStatus.GRANTED,
+                      DecisionStatus.REFUSED // 20 %
+                      );
 
-      // 4a. Link individual via native INSERT to bypass CascadeType.PERSIST
-      linkedIndividualWriter.link(app.getId(), indiv.getId());
+      if (hasDecision) {
+        decidedCount++;
+      }
 
-      // 5. Accumulate proceedings then persist as a single saveAllAndFlush (Option C)
-      List<ProceedingEntity> proceedingBatch = new ArrayList<>();
+      // 5. Build proceedings in memory, each with a MeritsDecisionEntity already attached
+      // (only when a decision exists). CascadeType.ALL on ApplicationEntity.proceedings and
+      // ProceedingEntity.meritsDecision means a single createAndPersist call persists everything.
+      Set<ProceedingEntity> proceedingSet = new HashSet<>();
       for (Proceeding p : content.getProceedings()) {
-        proceedingBatch.add(
+        MeritsDecisionEntity merit = hasDecision ? meritsDecisionGenerator.createDefault() : null;
+        proceedingSet.add(
             DataGenerator.createDefault(
                 ProceedingsEntityGenerator.class,
                 b ->
-                    b.applicationId(app.getId())
-                        .applyProceedingId(p.getId())
+                    b.applyProceedingId(p.getId())
                         .description(p.getDescription())
                         .isLead(Boolean.TRUE.equals(p.getLeadProceeding()))
                         .createdBy("mass-generator")
                         .updatedBy("mass-generator")
-                        .proceedingContent(objectMapper.convertValue(p, Map.class))));
-      }
-      persistedDataGenerator.persist(ProceedingsEntityGenerator.class, proceedingBatch);
-
-      // 6. Optionally generate a decision for this application (~DECISION_RATE of applications)
-      if (faker.number().randomDouble(2, 0, 1) < DECISION_RATE) {
-        decidedCount++;
-
-        DecisionStatus overallDecision =
-            faker
-                .options()
-                .option(
-                    DecisionStatus.REFUSED, // 50 %
-                    DecisionStatus.REFUSED,
-                    DecisionStatus.REFUSED,
-                    DecisionStatus.GRANTED, // 30 %
-                    DecisionStatus.GRANTED,
-                    DecisionStatus.REFUSED // 20 %
-                    );
-
-        // Re-attach proceedings and application in case the session was cleared mid-batch
-        List<ProceedingEntity> attachedProceedings =
-            persistedDataGenerator.reattach(proceedingBatch);
-        ApplicationEntity attachedApp = persistedDataGenerator.reattach(List.of(app)).get(0);
-
-        // 6a. One MeritsDecisionEntity per proceeding
-        Set<MeritsDecisionEntity> merits = new LinkedHashSet<>();
-        for (ProceedingEntity pe : attachedProceedings) {
-          MeritsDecisionEntity merit = meritsDecisionGenerator.createDefault(b -> b.proceeding(pe));
-          persistedDataGenerator.persist(FullMeritsDecisionGenerator.class, merit);
-          merits.add(merit);
-        }
-
-        // 6b. DecisionEntity — persist without merits first to avoid CascadeType.PERSIST
-        // re-persisting already-saved MeritsDecisionEntity objects
-        DecisionEntity decision = DecisionEntity.builder().overallDecision(overallDecision).build();
-        persistedDataGenerator.persist(DecisionEntityGenerator.class, decision);
-        // Now attach the merits via merge (join table populated, no re-persist attempted)
-        decision.setMeritsDecisions(merits);
-        persistedDataGenerator.mergeDecision(decision);
-
-        // 6c. Certificate (GRANTED only)
-        if (overallDecision == DecisionStatus.GRANTED) {
-          CertificateEntity cert =
-              certificateGenerator.createDefault(b -> b.applicationId(attachedApp.getId()));
-          persistedDataGenerator.persist(FullCertificateGenerator.class, cert);
-        }
-
-        // 6d. Link decision back to application
-        attachedApp.setDecision(decision);
-        attachedApp.setIsAutoGranted(overallDecision == DecisionStatus.GRANTED);
-        persistedDataGenerator.saveApplication(attachedApp);
+                        .proceedingContent(objectMapper.convertValue(p, Map.class))
+                        .meritsDecision(merit)));
       }
 
-      // 7. Flush + clear Hibernate session every BATCH_SIZE applications (Option B)
+      // 6. Build DecisionEntity in memory (when applicable)
+      DecisionEntity decision =
+          hasDecision
+              ? DataGenerator.createDefault(
+                  DecisionEntityGenerator.class, b -> b.overallDecision(overallDecision))
+              : null;
+
+      // 7. Persist the full aggregate in one transaction — the EntityManager is used to load
+      // the individual as a managed entity within that same transaction, avoiding
+      // "Detached entity passed to persist" on the CascadeType.PERSIST individuals collection.
+      final CategoryOfLaw finalCol = col;
+      final MatterType finalMt = mt;
+      final boolean finalUdf = udf;
+      final Set<ProceedingEntity> finalProceedingSet = proceedingSet;
+      final DecisionEntity finalDecision = decision;
+      ApplicationEntity app =
+          persistedDataGenerator.createAndPersistInTransaction(
+              ApplicationEntityGenerator.class,
+              em -> {
+                IndividualEntity managedIndiv =
+                    em.find(IndividualEntity.class, selectedIndividualId);
+                return b ->
+                    b.applyApplicationId(content.getId())
+                        .laaReference(content.getLaaReference())
+                        .submittedAt(Instant.parse(content.getSubmittedAt()))
+                        .officeCode(
+                            content.getOffice() != null ? content.getOffice().getCode() : null)
+                        .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+                        .categoryOfLaw(finalCol)
+                        .matterType(finalMt)
+                        .usedDelegatedFunctions(finalUdf)
+                        .applicationContent(objectMapper.convertValue(content, Map.class))
+                        .caseworker(cw)
+                        .individuals(new HashSet<>(Set.of(managedIndiv)))
+                        .proceedings(finalProceedingSet)
+                        .decision(finalDecision)
+                        .isAutoGranted(hasDecision && overallDecision == DecisionStatus.GRANTED);
+              });
+
+      // 8. Certificate (GRANTED only) — persisted separately as it is not part of the aggregate
+      if (hasDecision && overallDecision == DecisionStatus.GRANTED) {
+        CertificateEntity cert =
+            certificateGenerator.createDefault(b -> b.applicationId(app.getId()));
+        persistedDataGenerator.persist(FullCertificateGenerator.class, cert);
+      }
+
+      // 9. Flush + clear Hibernate session every BATCH_SIZE applications
       if ((i + 1) % BATCH_SIZE == 0) {
         persistedDataGenerator.flushAndClear();
         System.out.printf("Persisted %d / %d applications%n", i + 1, count);

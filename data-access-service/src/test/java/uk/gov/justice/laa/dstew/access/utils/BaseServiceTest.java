@@ -34,8 +34,6 @@ public class BaseServiceTest {
 
   @MockitoBean protected ApplicationRepository applicationRepository;
 
-  @MockitoBean protected ApplicationRepositoryV2 applicationRepositoryV2;
-
   @MockitoBean protected DomainEventRepository domainEventRepository;
 
   @MockitoBean protected CaseworkerRepository caseworkerRepository;

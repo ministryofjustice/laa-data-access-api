@@ -38,29 +38,18 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
             pattern = "uk\\.gov\\.justice\\.laa\\.dstew\\.access\\.config\\..*"))
 @EnableJpaRepositories(
     basePackages = {
-      "uk.gov.justice.laa.dstew.access.repository",
-      "uk.gov.justice.laa.dstew.access.massgenerator.job"
+      "uk.gov.justice.laa.dstew.access.repository"
     })
 @EntityScan(
     basePackages = {
-      "uk.gov.justice.laa.dstew.access.entity",
-      "uk.gov.justice.laa.dstew.access.massgenerator.job"
+      "uk.gov.justice.laa.dstew.access.entity"
     })
 @ConfigurationPropertiesScan
 public class MassGeneratorApp {
 
   public static void main(String[] args) {
     SpringApplication app = new SpringApplication(MassGeneratorApp.class);
-
-    // Check if running in web mode (--web flag)
-    boolean webMode = args.length > 0 && "--web".equals(args[0]);
-
-    if (webMode) {
-      app.setWebApplicationType(WebApplicationType.SERVLET);
-      app.run(args);
-    } else {
-      app.setWebApplicationType(WebApplicationType.NONE);
-      System.exit(SpringApplication.exit(app.run(args)));
-    }
+    app.setWebApplicationType(WebApplicationType.NONE);
+    System.exit(SpringApplication.exit(app.run(args)));
   }
 }
