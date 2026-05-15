@@ -103,6 +103,11 @@ runs:
             --install --wait
         fi
 
+        # always set true for ephemeral branches
+        if [ "$branch_name" != "main" ]; then
+          mass_generator_enabled="true"
+        fi
+
         helm upgrade $RELEASE_NAME .helm/data-access-api \
           --namespace ${KUBE_NAMESPACE} \
           --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
@@ -114,6 +119,7 @@ runs:
           --set ingressInternal.hosts="{$internal_host}" \
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
+          --set massGenerator.enabled="${mass_generator_enabled}" \
           --set massGenerator.image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
           --set massGenerator.image.tag="${GIT_SHA}-mass-generator" \
           --values ${VALUES_FILE} \
