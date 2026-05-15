@@ -6,12 +6,14 @@ import jakarta.transaction.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.LinkedApplicationEntity;
 import uk.gov.justice.laa.dstew.access.massgenerator.generator.application.FullCertificateGenerator;
 import uk.gov.justice.laa.dstew.access.repository.*;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
@@ -83,20 +85,14 @@ public class PersistedDataGenerator extends DataGenerator {
     entityManager.clear();
   }
 
-  /**
-   * Creates and persists an entity in a single transaction, supplying the EntityManager to the
-   * customiser factory so that related entities can be loaded as managed instances within the same
-   * transaction (avoiding "Detached entity passed to persist" on cascade associations).
-   */
   @Transactional
-  public <TEntity, TBuilder, TGenerator extends BaseGenerator<TEntity, TBuilder>>
-      TEntity createAndPersistInTransaction(
-          Class<TGenerator> generatorType,
-          Function<EntityManager, Consumer<TBuilder>> customiserFactory) {
-    Consumer<TBuilder> customiser = customiserFactory.apply(entityManager);
-    TEntity entity = DataGenerator.createDefault(generatorType, customiser);
-    JpaRepository<TEntity, ?> repository = getRepository(generatorType);
-    return repository.save(entity);
+  public void flush() {
+    entityManager.flush();
+  }
+
+  @Transactional
+  public void clear() {
+    entityManager.clear();
   }
 
   public <TEntity, TBuilder, TGenerator extends BaseGenerator<TEntity, TBuilder>>
@@ -106,5 +102,37 @@ public class PersistedDataGenerator extends DataGenerator {
       return entities;
     }
     return persist(generatorType, entities);
+  }
+
+  public <TEntity, TBuilder, TGenerator extends BaseGenerator<TEntity, TBuilder>>
+      TEntity createAndPersist(Class<TGenerator> generatorType, Consumer<TBuilder> customiser) {
+    TEntity entity = DataGenerator.createDefault(generatorType, customiser);
+    return persist(generatorType, entity);
+  }
+
+  /**
+   * Links two existing applications together by establishing a relationship where one application
+   * is associated with another lead application.
+   *
+   * <p>This method retrieves both applications by their IDs, adds the associated application to the
+   * lead application's linked applications collection, and persists the relationship to the
+   * database.
+   *
+   * @param leadId the UUID of the lead application to which the associated application will be
+   *     linked
+   * @param associatedId the UUID of the application to be linked as an associated application
+   * @throws IllegalArgumentException if either application ID is not found in the database
+   */
+  @Transactional
+  public void linkApplications(UUID leadId, UUID associatedId) {
+    ApplicationEntity lead = entityManager.find(ApplicationEntity.class, leadId);
+    ApplicationEntity associated = entityManager.find(ApplicationEntity.class, associatedId);
+    LinkedApplicationRepository linkedApplicationRepository =
+        applicationContext.getBean(LinkedApplicationRepository.class);
+    linkedApplicationRepository.save(
+        LinkedApplicationEntity.builder()
+            .leadApplicationId(lead.getId())
+            .associatedApplicationId(associated.getId())
+            .build());
   }
 }

@@ -2,6 +2,8 @@ package uk.gov.justice.laa.dstew.access.massgenerator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
+import uk.gov.justice.laa.dstew.access.massgenerator.generator.LinkedIndividualWriter;
 import uk.gov.justice.laa.dstew.access.massgenerator.generator.PersistedDataGenerator;
 import uk.gov.justice.laa.dstew.access.massgenerator.generator.application.FullCertificateGenerator;
 import uk.gov.justice.laa.dstew.access.massgenerator.generator.application.FullJsonGenerator;
@@ -45,13 +48,43 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
   private static final int BATCH_SIZE = 500;
   private static final double DECISION_RATE = 0.4;
 
+  private static final double LINK_RATE = 0.1; // ~10% of applications will form a linked group
+
+  // Pool of individuals shared across applications. In production one client is associated with
+  // many applications; creating a fresh individual per application (1:1) produces artificially
+  // uniform cardinality in linked_individuals and inflates individuals row counts. Pool size is
+  // tuned so that on average ~10 applications share an individual.
+  private static final int INDIVIDUAL_POOL_DIVISOR = 10; // target apps per individual
+  private static final int INDIVIDUAL_POOL_MIN = 100;
+  private static final int INDIVIDUAL_POOL_MAX = 20_000; // cap to keep memory bounded
+
+  // Weighted status distribution — approx. production shape (most applications progress past
+  // IN_PROGRESS). Repeat-entry weighting is cheap and readable; faker.options() picks uniformly
+  // across the varargs, so duplicates increase that value's probability.
+  private static final ApplicationStatus[] STATUS_WEIGHTED =
+      new ApplicationStatus[] {
+        ApplicationStatus.APPLICATION_SUBMITTED,
+        ApplicationStatus.APPLICATION_SUBMITTED,
+        ApplicationStatus.APPLICATION_SUBMITTED,
+        ApplicationStatus.APPLICATION_SUBMITTED,
+        ApplicationStatus.APPLICATION_SUBMITTED,
+        ApplicationStatus.APPLICATION_SUBMITTED,
+        ApplicationStatus.APPLICATION_SUBMITTED,
+        ApplicationStatus.APPLICATION_SUBMITTED,
+        ApplicationStatus.APPLICATION_SUBMITTED, // 9/10 ≈ 90%
+        ApplicationStatus.APPLICATION_IN_PROGRESS // 1/10 ≈ 10%
+      };
+
   @Autowired private PersistedDataGenerator persistedDataGenerator;
+
+  @Autowired private LinkedIndividualWriter linkedIndividualWriter;
 
   @Autowired private ObjectMapper objectMapper;
 
   private final FullMeritsDecisionGenerator meritsDecisionGenerator =
       new FullMeritsDecisionGenerator();
   private final FullCertificateGenerator certificateGenerator = new FullCertificateGenerator();
+  private final FullJsonGenerator jsonGenerator = new FullJsonGenerator();
 
   @Override
   public void run(String... args) {
@@ -67,13 +100,29 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
         persistedDataGenerator.createAndPersistMultipleRandom(CaseworkerGenerator.class, 100);
     System.out.printf("Created %d caseworkers%n", caseworkers.size());
 
-    List<IndividualEntity> individuals =
-        persistedDataGenerator.createAndPersistMultipleRandom(
-            IndividualEntityGenerator.class, 1000);
-    System.out.printf("Created %d individuals%n", individuals.size());
-
-    // Store IDs only — the in-memory entities will be detached after flushAndClear()
-    List<UUID> individualIds = individuals.stream().map(IndividualEntity::getId).toList();
+    // Pre-generate individual pool. Uses uniform sampling later which gives an exponential-ish
+    // distribution of apps-per-client (Poisson), rather than the 1:1 shape we had before.
+    int individualPoolSize =
+        Math.min(
+            INDIVIDUAL_POOL_MAX, Math.max(INDIVIDUAL_POOL_MIN, count / INDIVIDUAL_POOL_DIVISOR));
+    System.out.printf("Building individual pool of %d entries...%n", individualPoolSize);
+    List<UUID> individualPool = new ArrayList<>(individualPoolSize);
+    for (int k = 0; k < individualPoolSize; k++) {
+      IndividualEntity indiv =
+          persistedDataGenerator.createAndPersist(
+              IndividualEntityGenerator.class,
+              b ->
+                  b.lastName(faker.name().lastName())
+                      .firstName(faker.name().firstName())
+                      .dateOfBirth(faker.timeAndDate().birthday())
+                      .individualContent(Map.of("test", faker.text().text(10, 35, true))));
+      individualPool.add(indiv.getId());
+      if ((k + 1) % BATCH_SIZE == 0) {
+        persistedDataGenerator.flushAndClear();
+      }
+    }
+    persistedDataGenerator.flushAndClear();
+    System.out.printf("Created %d individuals%n", individualPool.size());
 
     System.out.printf("Generating %d application records...%n", count);
 
@@ -82,15 +131,21 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
 
     int decidedCount = 0;
 
+    int linkedCount = 0;
+    List<UUID> persistedAppIds = new ArrayList<>();
+
+    // Buffer for (applicationId, individualId) pairs — flushed to DB at batch boundaries
+    // after Hibernate has written the application rows.
+    List<UUID[]> pendingLinks = new ArrayList<>();
+
     for (int i = 0; i < count; i++) {
 
       // 1. Generate full rich application content
-      ApplicationContent content = new FullJsonGenerator().createDefault();
+      ApplicationContent content = jsonGenerator.createDefault();
 
       // 2. Pick a random caseworker and individual ID from the pre-generated pools.
       CaseworkerEntity cw = caseworkers.get(faker.number().numberBetween(0, caseworkers.size()));
-      UUID selectedIndividualId =
-          individualIds.get(faker.number().numberBetween(0, individualIds.size()));
+      UUID indivId = individualPool.get(faker.number().numberBetween(0, individualPool.size()));
 
       // 3. Derive entity-level columns from the content (mirrors ApplicationContentParserService)
       Proceeding lead =
@@ -161,28 +216,34 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
       final Set<ProceedingEntity> finalProceedingSet = proceedingSet;
       final DecisionEntity finalDecision = decision;
       ApplicationEntity app =
-          persistedDataGenerator.createAndPersistInTransaction(
+          persistedDataGenerator.createAndPersist(
               ApplicationEntityGenerator.class,
-              em -> {
-                IndividualEntity managedIndiv =
-                    em.find(IndividualEntity.class, selectedIndividualId);
-                return b ->
-                    b.applyApplicationId(content.getId())
-                        .laaReference(content.getLaaReference())
-                        .submittedAt(Instant.parse(content.getSubmittedAt()))
-                        .officeCode(
-                            content.getOffice() != null ? content.getOffice().getCode() : null)
-                        .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
-                        .categoryOfLaw(finalCol)
-                        .matterType(finalMt)
-                        .usedDelegatedFunctions(finalUdf)
-                        .applicationContent(objectMapper.convertValue(content, Map.class))
-                        .caseworker(cw)
-                        .individuals(new HashSet<>(Set.of(managedIndiv)))
-                        .proceedings(finalProceedingSet)
-                        .decision(finalDecision)
-                        .isAutoGranted(hasDecision && overallDecision == DecisionStatus.GRANTED);
+              b -> {
+                b.applyApplicationId(content.getId())
+                    .laaReference(content.getLaaReference())
+                    .submittedAt(Instant.parse(content.getSubmittedAt()))
+                    .officeCode(content.getOffice() != null ? content.getOffice().getCode() : null)
+                    .status(
+                        faker
+                            .options()
+                            .option(
+                                ApplicationStatus.APPLICATION_IN_PROGRESS,
+                                ApplicationStatus.APPLICATION_SUBMITTED))
+                    .categoryOfLaw(finalCol)
+                    .matterType(finalMt)
+                    .usedDelegatedFunctions(finalUdf)
+                    .applicationContent(objectMapper.convertValue(content, Map.class))
+                    .caseworker(cw)
+                    .individuals(Collections.EMPTY_SET)
+                    .proceedings(finalProceedingSet)
+                    .decision(finalDecision)
+                    .isAutoGranted(hasDecision && overallDecision == DecisionStatus.GRANTED);
+                // individuals intentionally omitted — set via native query below to
+                // avoid CascadeType.PERSIST attempting to re-persist pool entities
               });
+
+      persistedAppIds.add(app.getId());
+      pendingLinks.add(new UUID[] {app.getId(), indivId});
 
       // 8. Certificate (GRANTED only) — persisted separately as it is not part of the aggregate
       if (hasDecision && overallDecision == DecisionStatus.GRANTED) {
@@ -193,13 +254,31 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
 
       // 9. Flush + clear Hibernate session every BATCH_SIZE applications
       if ((i + 1) % BATCH_SIZE == 0) {
-        persistedDataGenerator.flushAndClear();
+        persistedDataGenerator.flush();
+        linkedIndividualWriter.linkAll(pendingLinks);
+        pendingLinks.clear();
+        persistedDataGenerator.clear();
         System.out.printf("Persisted %d / %d applications%n", i + 1, count);
       }
     }
 
     // flush any remaining partial batch
-    persistedDataGenerator.flushAndClear();
+    persistedDataGenerator.flush();
+    linkedIndividualWriter.linkAll(pendingLinks);
+    pendingLinks.clear();
+    persistedDataGenerator.clear();
+
+    int i = 0;
+    while (i + 1 < persistedAppIds.size()) {
+      UUID leadId = persistedAppIds.get(i);
+      i++;
+      int associateCount = faker.number().numberBetween(1, 4); // 1 or 3 associates
+      for (int j = 0; j < associateCount && i < persistedAppIds.size(); j++) {
+        persistedDataGenerator.linkApplications(leadId, persistedAppIds.get(i));
+        i++;
+        linkedCount++;
+      }
+    }
 
     long elapsedMs = System.currentTimeMillis() - startTime;
     long minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedMs);
@@ -212,6 +291,7 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
     System.out.printf("  Records generated  : %d%n", count);
     System.out.printf(
         "  Decided applications: %d (%.0f%%)%n", decidedCount, 100.0 * decidedCount / count);
+    System.out.println("  Linked applications : %d pairs%n" + linkedCount);
     System.out.printf("  Total time         : %d min %02d sec%n", minutes, seconds);
     System.out.printf("  Throughput         : %.1f records/sec%n", recordsPerSecond);
     System.out.println("========================================");
