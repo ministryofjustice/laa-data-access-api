@@ -61,3 +61,4 @@ slowQueryThresholdSeconds: 1
 
 portForward:
   enabled: true
+

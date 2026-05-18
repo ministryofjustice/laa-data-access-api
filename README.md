@@ -207,6 +207,27 @@ The following actuator endpoints have been configured:
 - http://localhost:8080/actuator/health
 - http://localhost:8080/actuator/info
 
+### Run the data generator
+
+Each deployment to UAT will also deploy data-access-mass-generator as a separate pod. Initially it is scaled to 0, 
+however you can start the pod and connect to it via kubectl to be able to create performance testing data in that PR's database.
+
+This is also available for the main deployment in UAT.
+
+To start the pod, run the following command:
+
+```bash
+export KUBE_NAMESPACE=<uat namespace>
+export RELEASE_NAME=<release name for the pod - you can find this in the deployment action>
+
+./scripts/run-mass-generator-pod.sh <-- this will scale up the generator pod. When it is available it will connect to its shell
+
+(in the shell run) java -jar mass-generator.jar <number of applications>
+```
+
+Once the command is complete, exit the shell and the pod will be scaled back to 0. 
+You can check the database to see the generated data or use swagger to execute endpoints.
+
 ## Additional information
 
 ### Libraries used

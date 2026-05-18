@@ -1,0 +1,21 @@
+FROM amazoncorretto:25-alpine
+
+#update all packages
+RUN apk update
+RUN apk upgrade
+
+#mount volume
+WORKDIR /mass-generator
+VOLUME /tmp
+COPY data-access-mass-generator/build/libs/data-access-mass-generator-*.jar mass-generator.jar
+
+#create custom user, give it uid 1001 which is same as deployment security runAsUser attribute
+RUN addgroup --system --gid 1001 customgroup && adduser --system --uid 1001 --ingroup customgroup --shell /bin/sh customuser
+RUN chown customuser:customgroup mass-generator.jar
+USER 1001
+
+ENV TZ=Europe/London
+ENV JAVA_TOOL_OPTIONS="-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=80.0"
+
+CMD ["sleep", "infinity"]
+
