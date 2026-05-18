@@ -77,14 +77,17 @@ public class ApplicationRepositoryImpl implements ApplicationSummaryRepositoryCu
   /**
    * Fetches application IDs matching the spec, with pagination and sorting. Uses a subquery to
    * isolate filtering joins from the outer sort/pagination, avoiding duplicate rows from joins
-   * affecting OFFSET/FETCH results. Example generated SQL for a spec filtering on application
-   * status, individual type, individual name and auto granted select ae1_0.id from applications
-   * ae1_0 where ae1_0.id in ( (select distinct ae2_0.id from applications ae2_0 join
-   * linked_individuals i1_0 on ae2_0.id=i1_0.application_id join individuals i1_1 on
-   * i1_1.id=i1_0.individual_id where ae2_0.status=? and i1_1.individual_type=? and
-   * lower(i1_1.first_name) like '%john%' escape '' and lower(i1_1.last_name) like '%j%' escape ''
-   * and ae2_0.is_auto_granted=?)) order by ae1_0.submitted_at, ae1_0.created_at offset ? rows fetch
-   * first ? rows only
+   * affecting OFFSET/FETCH results.
+   *
+   * <p>Example generated SQL for a spec filtering on application status, individual type,
+   * individual name and auto granted
+   *
+   * <p>select ae1_0.id from applications ae1_0 where ae1_0.id in ( (select distinct ae2_0.id from
+   * applications ae2_0 join linked_individuals i1_0 on ae2_0.id=i1_0.application_id join
+   * individuals i1_1 on i1_1.id=i1_0.individual_id where ae2_0.status=? and i1_1.individual_type=?
+   * and lower(i1_1.first_name) like '%john%' escape '' and lower(i1_1.last_name) like '%j%' escape
+   * '' and ae2_0.is_auto_granted=?)) order by ae1_0.submitted_at, ae1_0.created_at offset ? rows
+   * fetch first ? rows only
    */
   private List<UUID> executeIdQuery(Specification<ApplicationEntity> spec, Pageable pageable) {
     CriteriaBuilder cb = entityManager.getCriteriaBuilder();
