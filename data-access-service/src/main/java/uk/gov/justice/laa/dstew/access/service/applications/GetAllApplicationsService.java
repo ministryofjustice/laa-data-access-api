@@ -108,10 +108,10 @@ public class GetAllApplicationsService {
         page,
         pageSize,
         resultPage.map(
-            dto -> {
-              ApplicationSummary summary = mapper.toApplicationSummary(dto);
+            summaryDTO -> {
+              ApplicationSummary summary = mapper.toApplicationSummary(summaryDTO);
               summary.setLinkedApplications(
-                  linkedApplications.getOrDefault(dto.getId(), List.of()).stream()
+                  linkedApplications.getOrDefault(summaryDTO.getId(), List.of()).stream()
                       .map(mapper::toLinkedApplicationSummary)
                       .toList());
               return summary;
