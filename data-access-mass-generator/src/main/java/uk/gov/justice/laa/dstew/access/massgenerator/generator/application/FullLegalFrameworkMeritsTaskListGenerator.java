@@ -12,21 +12,23 @@ public class FullLegalFrameworkMeritsTaskListGenerator
         FullLegalFrameworkMeritsTaskList.FullLegalFrameworkMeritsTaskListBuilder> {
 
   private static final String SERIALIZED_DATA =
-      "---\n"
-          + "- :name: :involved_children\n"
-          + "  :state: :complete\n"
-          + "- :name: :opponents_application\n"
-          + "  :state: :complete\n"
-          + "- :name: :domestic_abuse_summary\n"
-          + "  :state: :not_applicable\n"
-          + "- :name: :statement_of_case\n"
-          + "  :state: :complete\n"
-          + "- :name: :attempts_to_settle\n"
-          + "  :state: :complete\n"
-          + "- :name: :urgency\n"
-          + "  :state: :complete\n"
-          + "- :name: :children_proceeding_brought_by_LA\n"
-          + "  :state: :complete\n";
+      """
+      ---
+      - :name: :involved_children
+        :state: :complete
+      - :name: :opponents_application
+        :state: :complete
+      - :name: :domestic_abuse_summary
+        :state: :not_applicable
+      - :name: :statement_of_case
+        :state: :complete
+      - :name: :attempts_to_settle
+        :state: :complete
+      - :name: :urgency
+        :state: :complete
+      - :name: :children_proceeding_brought_by_LA
+        :state: :complete
+      """;
 
   public FullLegalFrameworkMeritsTaskListGenerator() {
     super(
