@@ -19,7 +19,6 @@ import uk.gov.justice.laa.dstew.access.repository.*;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationSummaryGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
@@ -41,7 +40,6 @@ public class PersistedDataGenerator extends DataGenerator {
   public void init() {
     registerRepository(DomainEventGenerator.class, DomainEventRepository.class);
     registerRepository(ApplicationEntityGenerator.class, ApplicationRepository.class);
-    registerRepository(ApplicationSummaryGenerator.class, ApplicationSummaryRepository.class);
     registerRepository(CaseworkerGenerator.class, CaseworkerRepository.class);
     registerRepository(ProceedingsEntityGenerator.class, ProceedingRepository.class);
     registerRepository(CertificateEntityGenerator.class, CertificateRepository.class);
