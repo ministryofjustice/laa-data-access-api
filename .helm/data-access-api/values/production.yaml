@@ -51,3 +51,6 @@ grafana:
   enabled: true
 
 slowQueryThresholdSeconds: 1
+
+massGenerator:
+  enabled: false
