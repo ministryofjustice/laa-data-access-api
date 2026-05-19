@@ -8,10 +8,14 @@ import au.com.dius.pact.provider.junit5.PactVerificationContext;
 import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
 import au.com.dius.pact.provider.junitsupport.Provider;
 import au.com.dius.pact.provider.junitsupport.State;
+import au.com.dius.pact.provider.junitsupport.TargetRequestFilter;
 import au.com.dius.pact.provider.junitsupport.loader.PactBroker;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.core5.http.HttpRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +28,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
+import uk.gov.justice.laa.dstew.access.model.ApplicationType;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
 /**
@@ -59,6 +66,17 @@ public class DataAccessApiProviderTests extends AbstractProviderPactTests {
     context.verifyInteraction();
   }
 
+  /**
+   * Injects the headers the BFF consumer sends on every request. The consumer's pact asserts these
+   * are present, so verification needs them on the replayed request even though we run with
+   * {@code feature.disable-security=true}.
+   */
+  @TargetRequestFilter
+  public void requestFilter(HttpRequest request) {
+    request.setHeader("Authorization", "Bearer swagger-caseworker-token");
+    request.setHeader("X-Service-Name", "CIVIL_DECIDE");
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // GET /api/v0/applications — happy path
   // Consumer: laa-civil-decide-api
@@ -73,8 +91,18 @@ public class DataAccessApiProviderTests extends AbstractProviderPactTests {
             .applicationId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
             .laaReference("LAA-REF-0001")
             .status(ApplicationStatus.APPLICATION_SUBMITTED)
+            .applicationType(ApplicationType.INITIAL)
+            .categoryOfLaw(CategoryOfLaw.FAMILY)
+            .matterType(MatterType.SPECIAL_CHILDREN_ACT)
+            .isLead(true)
+            .autoGrant(false)
+            .usedDelegatedFunctions(false)
+            .submittedAt(OffsetDateTime.parse("2026-01-15T10:00:00Z"))
+            .lastUpdated(OffsetDateTime.parse("2026-01-16T12:30:00Z"))
             .clientFirstName("Test")
-            .clientLastName("Client");
+            .clientLastName("Client")
+            .clientDateOfBirth(LocalDate.parse("1980-01-01"))
+            .officeCode("0A001D");
 
     Page<ApplicationSummary> page = new PageImpl<>(List.of(sample), PageRequest.of(0, 10), 1L);
     PaginatedResult<ApplicationSummary> result = new PaginatedResult<>(page, 1, 10);
