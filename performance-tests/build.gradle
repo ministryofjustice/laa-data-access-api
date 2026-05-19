@@ -1,0 +1,117 @@
+// performance-tests subproject.
+//
+// k6 is a Go binary that runs JavaScript test scripts — there is no JVM
+// involvement at test execution time. This gradle subproject exists so the
+// performance tests are first-class citizens of the build (alongside unit,
+// integration, smoke, and pact tests) and so a developer can run
+// `./gradlew :performance-tests:smoke` instead of remembering a k6 invocation.
+//
+// Tasks delegate to a locally-installed `k6` binary, falling back to the
+// `grafana/k6:latest` Docker image when k6 is not on the PATH. Cluster runs
+// are driven by the K6 Operator via the helm chart in `.helm/k6-perf/` and
+// do NOT use this gradle subproject.
+
+import org.gradle.api.tasks.Exec
+
+plugins {
+    id 'base'
+}
+
+ext {
+    scriptsDir = file("$projectDir/tests")
+    reportsDir = file("$projectDir/build/reports/k6")
+    defaultScript = 'get-applications.js'
+}
+
+reportsDir.mkdirs()
+
+// Resolve a runner: prefer local `k6` binary, fall back to docker.
+def resolveK6Runner = { ->
+    def candidates = ['/usr/local/bin/k6', '/opt/homebrew/bin/k6', '/usr/bin/k6']
+    def found = candidates.find { new File(it).exists() }
+    if (found) {
+        return [type: 'binary', path: found]
+    }
+    return [type: 'docker', path: 'docker']
+}
+
+// Build the command line for a k6 run.
+def buildK6Command = { Map opts ->
+    def runner = resolveK6Runner()
+    def scenario = opts.scenario ?: 'smoke'
+    def script = opts.script ?: defaultScript
+    def scriptFile = new File(scriptsDir, script)
+    if (!scriptFile.exists()) {
+        throw new GradleException("k6 script not found: ${scriptFile}")
+    }
+
+    def envFlags = [
+        "K6_SCENARIO=${scenario}",
+        "K6_TARGET_URL=${project.findProperty('targetUrl') ?: System.getenv('K6_TARGET_URL') ?: 'http://localhost:8080'}",
+        "K6_SERVICE_NAME=${project.findProperty('serviceName') ?: System.getenv('K6_SERVICE_NAME') ?: 'CIVIL_DECIDE'}",
+    ]
+    def token = project.findProperty('token') ?: System.getenv('K6_TOKEN')
+    if (token) envFlags << "K6_TOKEN=${token}"
+
+    def vusOverride = project.findProperty('vus') ?: System.getenv('K6_VUS_OVERRIDE')
+    if (vusOverride) envFlags << "K6_VUS_OVERRIDE=${vusOverride}"
+
+    def durationOverride = project.findProperty('duration') ?: System.getenv('K6_DURATION_OVERRIDE')
+    if (durationOverride) envFlags << "K6_DURATION_OVERRIDE=${durationOverride}"
+
+    def summaryFile = new File(reportsDir, "${scenario}-summary.json")
+    envFlags << "K6_SUMMARY_OUT=${summaryFile.absolutePath}"
+
+    if (runner.type == 'binary') {
+        def cmd = [runner.path, 'run']
+        envFlags.each { cmd << '--env' << it }
+        cmd << scriptFile.absolutePath
+        return cmd
+    }
+
+    // Docker fallback. Mount the project dir so `open()` resolves fixture files.
+    def cmd = ['docker', 'run', '--rm', '-i', '--network', 'host',
+               '-v', "${projectDir}:/perf",
+               '-w', '/perf']
+    envFlags.each { cmd << '-e' << it }
+    cmd << 'grafana/k6:latest' << 'run' << "tests/${script}"
+    return cmd
+}
+
+['smoke', 'load', 'stress', 'soak', 'spike'].each { scenarioName ->
+    tasks.register(scenarioName, Exec) {
+        group = 'verification'
+        description = "Run k6 ${scenarioName} scenario locally (defaults to ${defaultScript})."
+        doFirst {
+            commandLine buildK6Command(scenario: scenarioName, script: project.findProperty('script') ?: defaultScript)
+            logger.lifecycle("k6 ${scenarioName}: ${commandLine.join(' ')}")
+        }
+    }
+}
+
+tasks.register('run', Exec) {
+    group = 'verification'
+    description = "Run any k6 scenario locally. Use -Pscenario=smoke -Pscript=get-applications.js."
+    doFirst {
+        commandLine buildK6Command(
+            scenario: project.findProperty('scenario') ?: 'smoke',
+            script: project.findProperty('script') ?: defaultScript
+        )
+        logger.lifecycle("k6 run: ${commandLine.join(' ')}")
+    }
+}
+
+tasks.register('lint', Exec) {
+    group = 'verification'
+    description = 'Run ESLint over the JS framework sources.'
+    workingDir = projectDir
+    commandLine 'npx', '--yes', 'eslint', 'src', 'tests'
+    // Lint requires `npm install` to have been run; skip silently if node_modules is missing.
+    onlyIf { new File(projectDir, 'node_modules').exists() }
+}
+
+tasks.named('check') {
+    // Local convenience: `./gradlew :performance-tests:check` runs the smoke scenario.
+    // Cluster runs are handled by the K6 Operator and are NOT triggered from here.
+    dependsOn 'smoke'
+}

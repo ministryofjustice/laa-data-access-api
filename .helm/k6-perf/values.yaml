@@ -1,0 +1,51 @@
+# K6 Operator TestRun values.
+#
+# PREREQUISITE: the K6 Operator (grafana/k6-operator) must already be
+# installed in the cluster. This chart only renders the TestRun CR + the
+# ConfigMap holding the JS sources. Operator install is a separate CP ticket.
+
+# Test identification.
+testRun:
+  name: data-access-api-perf
+  parallelism: 1
+
+# Which scenario to run + how to talk to the API under test.
+scenario: smoke
+script: get-applications.js
+targetUrl: http://laa-data-access-api.laa-data-access-api-uat.svc.cluster.local:8080
+serviceName: CIVIL_DECIDE
+
+# Override knobs — leave blank to use the scenario defaults from src/scenarios/.
+vusOverride: ""
+durationOverride: ""
+
+# Bearer token. In a real cluster run this should come from a secret
+# (e.g. external secrets operator) — DO NOT commit a real token here.
+token:
+  # If `existingSecret` is set, the chart wires K6_TOKEN to that secret's `token` key.
+  # Otherwise the literal `value` is used (handy for sandbox runs only).
+  existingSecret: ""
+  value: "swagger-caseworker-token"
+
+# Prometheus remote-write output. Points at the cluster's Prometheus.
+prometheus:
+  enabled: true
+  remoteWriteUrl: http://prometheus-operated.monitoring.svc.cluster.local:9090/api/v1/write
+  # Trend stats to emit. Native histograms is the modern approach; keep
+  # percentiles too so existing dashboards keep working.
+  trendStats: "p(95),p(99),avg,min,max"
+
+# Runner pod resources. Adjust if you bump parallelism or run heavier scenarios.
+runner:
+  image: grafana/k6:0.55.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+serviceAccount:
+  create: true
+  name: k6-perf-runner
