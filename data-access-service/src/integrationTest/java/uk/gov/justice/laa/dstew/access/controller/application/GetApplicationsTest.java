@@ -27,6 +27,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -193,6 +194,36 @@ public class GetApplicationsTest extends BaseHarnessTest {
 
     // then
     assertNull(actual.getApplications().getFirst().getAutoGrant());
+  }
+
+  @Test
+  void
+      givenApplicationsFilteredByFirstNameAndStatus_MultipleIndividuals_whenGetApplications_thenReturnExpectedApplicationsCorrectly()
+          throws Exception {
+    // given
+
+    IndividualEntity jane =
+        DataGenerator.createDefault(IndividualEntityGenerator.class, i -> i.firstName("Jane"));
+    IndividualEntity alice =
+        DataGenerator.createDefault(IndividualEntityGenerator.class, i -> i.firstName("Alice"));
+    persistedDataGenerator.createAndPersist(
+        ApplicationEntityGenerator.class,
+        builder ->
+            builder
+                .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+                .individuals(Set.of(jane, alice)));
+
+    // when
+    HarnessResult result =
+        getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_FIRSTNAME_PARAM + "Alice");
+    ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
+
+    // then
+    assertContentHeaders(result);
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertOK(result);
+    assertThat(actual.getApplications().size()).isEqualTo(1);
   }
 
   @Test

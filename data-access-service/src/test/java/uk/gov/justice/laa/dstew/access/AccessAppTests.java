@@ -17,8 +17,6 @@ import uk.gov.justice.laa.dstew.access.repository.*;
 public class AccessAppTests {
   @MockitoBean private ApplicationRepository applicationRepository;
 
-  @MockitoBean private ApplicationSummaryRepository applicationSummaryRepository;
-
   @MockitoBean private CaseworkerRepository caseworkerRepository;
 
   @MockitoBean private DomainEventRepository domainEventRepository;
