@@ -149,18 +149,6 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-  revonate:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      issues: write
-      pull-requests: write
-    needs: build-test
-    steps:
-      - uses: ./.github/actions/renovate
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
   build-push-docker:
     name: build and push docker image
     runs-on: ubuntu-latest
