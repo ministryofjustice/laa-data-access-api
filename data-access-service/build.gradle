@@ -196,6 +196,7 @@ dependencies {
     // Remove explicit Spring Security and Spring Core versions - let Spring Boot 4 manage them
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation('org.springframework.boot:spring-boot-starter-security') {
         exclude group: 'org.springframework.security', module: 'spring-security-config'

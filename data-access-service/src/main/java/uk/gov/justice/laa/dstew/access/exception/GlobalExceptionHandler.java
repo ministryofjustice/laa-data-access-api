@@ -116,4 +116,18 @@ public class GlobalExceptionHandler {
     return ResponseEntity.internalServerError()
         .body(getCustomProblemDetail(INTERNAL_SERVER_ERROR, responseMessage));
   }
+
+  /**
+   * The handler for FileConflictException.
+   *
+   * @param ex the exception.
+   * @return the response with the exception message.
+   */
+  @ExceptionHandler(FileConflictException.class)
+  public ResponseEntity<ProblemDetail> handleFileConflictException(FileConflictException ex) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    problemDetail.setTitle("Conflict");
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
+  }
 }

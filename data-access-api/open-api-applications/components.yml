@@ -361,3 +361,31 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationNoteResponse"
+
+    DocumentUploadResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        success:
+          type: string
+        checksum:
+          type: string
+
+    DocumentDownloadResponse:
+      type: object
+      properties:
+        fileURL:
+          type: string
+
+    DocumentUpdateResponse:
+      type: object
+      properties:
+        fileURL:
+          type: string
+
+    SdsHealthResponse:
+      type: object
+      properties:
+        Health:
+          type: string
