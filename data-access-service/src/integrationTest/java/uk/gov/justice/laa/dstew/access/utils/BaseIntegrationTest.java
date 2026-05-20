@@ -29,7 +29,6 @@ import uk.gov.justice.laa.dstew.access.repository.*;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
-import uk.gov.justice.laa.dstew.access.repository.DecisionRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
@@ -57,8 +56,6 @@ public abstract class BaseIntegrationTest {
   @Autowired protected CaseworkerRepository caseworkerRepository;
 
   @Autowired protected DomainEventRepository domainEventRepository;
-
-  @Autowired protected DecisionRepository decisionRepository;
 
   @Autowired protected CertificateRepository certificateRepository;
 

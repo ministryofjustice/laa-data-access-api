@@ -13,9 +13,12 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.factory.Mappers;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
@@ -29,10 +32,11 @@ import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
  */
 @Mapper(
     componentModel = "spring",
-    uses = {IndividualMapper.class})
+    uses = {IndividualMapper.class, ProceedingMapper.class})
 public interface ApplicationMapper {
 
   IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
+  ProceedingMapper proceedingMapper = Mappers.getMapper(ProceedingMapper.class);
 
   /**
    * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
@@ -110,7 +114,31 @@ public interface ApplicationMapper {
     application.setProvider(extractProvider(entity));
     application.setVersion(entity.getVersion());
 
+    if (entity.getProceedings() != null) {
+      application.setProceedings(
+          entity.getProceedings().stream()
+              .map(ApplicationMapper::toApplicationProceeding)
+              .toList());
+    }
+
     return application;
+  }
+
+  private static ApplicationProceedingResponse toApplicationProceeding(
+      ProceedingEntity proceeding) {
+
+    if (proceeding == null) {
+      return null;
+    }
+
+    ApplicationProceedingResponse proceedingResponse =
+        proceedingMapper.toApplicationProceeding(proceeding);
+
+    MeritsDecisionEntity meritsDecision = proceeding.getMeritsDecision();
+    proceedingResponse.setMeritsDecision(
+        meritsDecision != null ? meritsDecision.getDecision() : null);
+
+    return proceedingResponse;
   }
 
   private static ProviderResponse extractProvider(ApplicationEntity entity) {

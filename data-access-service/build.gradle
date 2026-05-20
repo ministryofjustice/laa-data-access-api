@@ -3,7 +3,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 plugins {
     id 'java'
     id 'jacoco'
-    id 'io.freefair.lombok' version '9.2.0'
+    id 'io.freefair.lombok' version '9.4.0'
     id "com.gorylenko.gradle-git-properties" version "2.4.2"
     id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin'
     id 'com.avast.gradle.docker-compose' version '0.17.12'
@@ -17,32 +17,16 @@ def versions = [
 configurations.all {
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
-    // Fix for Spring Boot security vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16198880 (Insecure Temporary File)
-    // Fix for Spring Boot security vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16191774 (Missing Authorization)
     // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
     // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
-    // Fix for SNYK-JAVA-ORGPOSTGRESQL-16321668 (Allocation of Resources Without Limits or Throttling) - updated to 42.7.11
-    // Fix for SNYK-JAVA-ORGSPRINGFRAMEWORK-16109615 (Incomplete Cleanup) - updated spring-web to 7.0.7
     resolutionStrategy {
         force 'com.fasterxml.jackson.core:jackson-core:2.21.2'
         force 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
         force 'tools.jackson.core:jackson-core:3.1.1'
         force 'tools.jackson.core:jackson-databind:3.1.1'
         force 'tools.jackson:jackson-bom:3.1.1'
-        force 'org.springframework:spring-web:7.0.7'
-        force 'org.springframework:spring-webflux:7.0.7'
-        force 'org.springframework:spring-webmvc:7.0.7'
         force 'org.springframework.security:spring-security-config:7.0.5'
         force 'org.springframework.security:spring-security-web:7.0.5'
-        force 'org.postgresql:postgresql:42.7.11'
-
-        // Force all Spring Boot modules to 4.0.6
-        eachDependency { details ->
-            if (details.requested.group == 'org.springframework.boot') {
-                details.useVersion '4.0.6'
-                details.because 'Security fixes: SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16198880, SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16191774'
-            }
-        }
     }
 }
 
@@ -70,6 +54,25 @@ sourceSets {
 configurations {
     testUtilitiesImplementation.extendsFrom testImplementation
     testUtilitiesRuntimeOnly.extendsFrom testRuntimeOnly
+
+    testUtilitiesRuntimeElements {
+        canBeConsumed = true
+        canBeResolved = false
+        extendsFrom testUtilitiesImplementation, testUtilitiesRuntimeOnly
+        attributes {
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME))
+            attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.JAR))
+        }
+    }
+}
+
+tasks.register('testUtilitiesJar', Jar) {
+    archiveClassifier = 'test-utilities'
+    from sourceSets.testUtilities.output
+}
+
+artifacts {
+    testUtilitiesRuntimeElements(tasks.named('testUtilitiesJar'))
 }
 
 dockerCompose {
@@ -120,7 +123,8 @@ tasks.register('infrastructureTest', Test) {
      'LAA_SMOKE_ACCESS_DB_URL',
      'LAA_SMOKE_ACCESS_DB_USERNAME',
      'LAA_SMOKE_ACCESS_DB_PASSWORD',
-     'LAA_SMOKE_OAUTH_TOKEN_URL'].each { key ->
+     'FEATURE_DISABLE_SECURITY',
+     'FEATURE_ENABLE_DEV_TOKENS'].each { key ->
         def value = System.getenv(key)
         if (value) environment key, value
     }
@@ -159,54 +163,11 @@ jacocoTestReport {
     }
 }
 
-// Automatically start mock-oauth2-server for local development
-tasks.register('startMockOAuthServer') {
-    group = 'application'
-    description = 'Starts mock-oauth2-server via docker compose for local development'
-
-    doLast {
-        def composeFile = project.rootProject.file('docker-compose.yml')
-
-        // Check if mock server is already running
-        def checkRunning = "docker ps --filter name=laa-mock-oauth2 --format '{{.Names}}'".execute()
-        checkRunning.waitFor()
-        def isRunning = checkRunning.text.trim()
-
-        if (isRunning) {
-            println "✓ mock-oauth2-server is already running"
-        } else {
-            println "Starting mock-oauth2-server..."
-            def startCommand = "docker compose -f ${composeFile.absolutePath} up -d mock-oauth2-server"
-            def process = startCommand.execute()
-            process.waitForProcessOutput(System.out, System.err)
-
-            if (process.exitValue() == 0) {
-                println "✓ mock-oauth2-server started successfully"
-                println "  Token URL: http://localhost:9999/entra/token"
-
-                // Wait a moment for server to be ready
-                Thread.sleep(2000)
-            } else {
-                throw new GradleException("Failed to start mock-oauth2-server. Run 'docker compose up -d mock-oauth2-server' manually.")
-            }
-        }
-    }
-}
-
-// Make bootRun depend on starting the mock server
-tasks.named('bootRun') {
-    dependsOn startMockOAuthServer
-
-    // Set the local profile by default
-    if (!project.hasProperty('args')) {
-        args = ['--spring.profiles.active=local']
-    }
-}
-
 dependencyManagement {
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     imports {
         mavenBom 'tools.jackson:jackson-bom:3.1.1'
+        mavenBom 'io.netty:netty-bom:4.2.13.Final'
     }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
@@ -243,8 +204,8 @@ dependencies {
     implementation('org.springframework.boot:spring-boot-starter-oauth2-resource-server') {
         exclude group: 'org.springframework.security', module: 'spring-security-web'
     }
-    implementation 'org.springframework.security:spring-security-config:7.0.5'
-    implementation 'org.springframework.security:spring-security-web:7.0.5'
+    implementation 'org.springframework.security:spring-security-config'
+    implementation 'org.springframework.security:spring-security-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation('org.springframework.boot:spring-boot-starter-web') {
         exclude group: 'com.google.code.gson', module: 'gson'
@@ -254,11 +215,11 @@ dependencies {
     }
 
     //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789756
-    implementation 'io.netty:netty-codec-http:4.2.12.Final'
+    implementation 'io.netty:netty-codec-http:4.2.13.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789758
-    implementation 'io.netty:netty-codec-http2:4.2.12.Final'
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-15307781
-    implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.54'
+    implementation 'io.netty:netty-codec-http2:4.2.13.Final'
+    //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-16643259
+    implementation 'org.apache.tomcat.embed:tomcat-embed-core:11.0.22'
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
     implementation 'com.fasterxml.jackson.core:jackson-core:2.21.2'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
@@ -270,7 +231,7 @@ dependencies {
 
     // Source: https://mvnrepository.com/artifact/com.azure.spring/spring-cloud-azure-starter-active-directory
     // Note: Version 7.0.0 may not be compatible with Spring Boot 4, check for updated version
-    implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.0.0'
+    implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.2.0'
     implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
 
     implementation 'io.micrometer:micrometer-registry-prometheus'
@@ -278,6 +239,7 @@ dependencies {
 
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+    annotationProcessor 'org.hibernate.orm:hibernate-processor:7.3.2.Final'
     implementation 'org.javers:javers-core:7.10.0'
 
     runtimeOnly 'org.postgresql:postgresql:42.7.11'
@@ -295,8 +257,6 @@ dependencies {
     // https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide#test-code
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
-
-    testImplementation 'no.nav.security:mock-oauth2-server:2.1.10'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 

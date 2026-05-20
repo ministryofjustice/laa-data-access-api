@@ -12,6 +12,7 @@
   "commitMessagePrefix": "chore(deps):",
   "prTitle": "chore(deps): {{{groupName}}}",
   "minimumReleaseAge": "7 days",
+  "allowedCommands": ["gradlew"],
   "postUpgradeTasks": {
     "commands": ["./gradlew resolveAndLockAll"],
     "fileFilters": ["**/*.lockfile"],

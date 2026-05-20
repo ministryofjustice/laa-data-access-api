@@ -36,7 +36,6 @@ class ProceedingMapperTest extends BaseMapperTest {
     ProceedingEntity result = proceedingMapper.toProceedingEntity(proceeding, applicationId);
 
     assertThat(result.getApplyProceedingId()).isEqualTo(proceeding.getId());
-    assertThat(result.getApplicationId()).isEqualTo(applicationId);
     assertThat(result.getProceedingContent())
         .isEqualTo(objectMapper.convertValue(proceeding, Map.class));
     assertThat(result.isLead()).isEqualTo(proceeding.getLeadProceeding());
@@ -52,7 +51,6 @@ class ProceedingMapperTest extends BaseMapperTest {
 
     ProceedingEntity result = proceedingMapper.toProceedingEntity(proceeding, null);
 
-    assertThat(result.getApplicationId()).isNull();
     assertThat(result.getApplyProceedingId()).isNull();
     assertThat(result.isLead()).isFalse();
     assertThat(result.getDescription()).isNull();

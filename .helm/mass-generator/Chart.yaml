@@ -1,0 +1,6 @@
+apiVersion: v2
+name: mass-generator
+description: Helm chart for the LAA Data Access mass-generator job pod
+type: application
+version: 0.1.0
+

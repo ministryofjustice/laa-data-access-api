@@ -75,7 +75,8 @@ public class CreateNoteTest extends BaseHarnessTest {
     assertThat(createdNotes.getFirst().getNotes()).isEqualTo(request.getNotes());
 
     // then — verify domain event was persisted
-    List<DomainEventEntity> domainEvents = domainEventRepository.findAll();
+    List<DomainEventEntity> domainEvents =
+        domainEventRepository.findByApplicationId(application.getId());
     assertThat(domainEvents.size()).isEqualTo(1);
 
     DomainEventEntity event = domainEvents.getFirst();

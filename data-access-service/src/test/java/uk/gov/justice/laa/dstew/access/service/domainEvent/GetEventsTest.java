@@ -17,7 +17,7 @@ import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.service.DomainEventService;
+import uk.gov.justice.laa.dstew.access.service.domainevents.GetDomainEventService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -25,7 +25,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGe
 
 public class GetEventsTest extends BaseServiceTest {
 
-  @Autowired private DomainEventService serviceUnderTest;
+  @Autowired private GetDomainEventService serviceUnderTest;
 
   @Test
   void givenExpectedDomainEvents_whenGetEvents_thenReturnDomainEventsInCreatedAtOrder() {
@@ -76,7 +76,7 @@ public class GetEventsTest extends BaseServiceTest {
     assertThatExceptionOfType(AuthorizationDeniedException.class)
         .isThrownBy(() -> serviceUnderTest.getEvents(null, null))
         .withMessageContaining("Access Denied");
-    verify(applicationSummaryRepository, never()).findAll();
+    verify(applicationRepository, never()).findAll();
   }
 
   private void assertDomainEventsEqual(
