@@ -74,7 +74,7 @@ public class SecurityConfig {
   String scope;
 
   @Value("${spring.security.oauth2.client.provider.moj-identity.token-uri}")
-  String tokenUri;
+  String oauth2TokenUri;
 
   @Value("${app.sds-api.client-registration-id}")
   private String clientRegistrationId;
@@ -244,7 +244,7 @@ public class SecurityConfig {
             .clientSecret(clientSecret)
             .scope(scope)
             .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-            .tokenUri(tokenUri)
+            .tokenUri(oauth2TokenUri)
             .build();
 
     ClientRegistrationRepository clientRegistrationRepository =
