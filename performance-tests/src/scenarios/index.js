@@ -7,8 +7,9 @@ import { load } from './load.js';
 import { stress } from './stress.js';
 import { soak } from './soak.js';
 import { spike } from './spike.js';
+import { throughput } from './throughput.js';
 
-const scenarios = { smoke, load, stress, soak, spike };
+const scenarios = { smoke, load, stress, soak, spike, throughput };
 
 export const selectScenario = (name) => {
   const chosen = name ?? env.scenario;

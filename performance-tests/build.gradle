@@ -78,7 +78,7 @@ def buildK6Command = { Map opts ->
     return cmd
 }
 
-['smoke', 'load', 'stress', 'soak', 'spike'].each { scenarioName ->
+['smoke', 'load', 'stress', 'soak', 'spike', 'throughput'].each { scenarioName ->
     tasks.register(scenarioName, Exec) {
         group = 'verification'
         description = "Run k6 ${scenarioName} scenario locally (defaults to ${defaultScript})."

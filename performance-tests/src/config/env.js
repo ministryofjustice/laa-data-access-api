@@ -42,6 +42,19 @@ export const env = {
 
   // Where handleSummary() writes its JSON report.
   summaryOut: optional('K6_SUMMARY_OUT', '/tmp/k6-summary.json'),
+
+  // Where handleSummary() writes its JUnit XML report (CI reporter friendly).
+  junitOut: optional('K6_JUNIT_OUT', '/tmp/k6-junit.xml'),
+
+  // Default per-request timeout. Overridable per-call via the http wrapper.
+  requestTimeout: optional('K6_REQUEST_TIMEOUT', '10s'),
+
+  // Optional health check URL. If unset, preflight uses targetUrl + /actuator/health.
+  healthUrl: optional('K6_HEALTH_URL', null),
+
+  // Token refresh endpoint. If set, auth refreshes the bearer on TTL expiry.
+  tokenRefreshUrl: optional('K6_TOKEN_REFRESH_URL', null),
+  tokenTtlSeconds: optionalInt('K6_TOKEN_TTL_SECONDS', 3600),
 };
 
 export const requireEnv = required;
