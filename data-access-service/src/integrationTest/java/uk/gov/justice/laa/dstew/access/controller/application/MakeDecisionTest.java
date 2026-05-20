@@ -463,7 +463,6 @@ public class MakeDecisionTest extends BaseHarnessTest {
   }
 
   @Test
-  @Disabled("Temporarily disabled until security is implemented")
   public void
       givenApplicationWithNoCaseworker_whenAssignDecisionApplication_thenReturnNotFoundAndMessage()
           throws Exception {
@@ -488,7 +487,7 @@ public class MakeDecisionTest extends BaseHarnessTest {
                                 "justification",
                                 "reason")))
                     .autoGranted(true)
-                    .applicationVersion(1L));
+                    .applicationVersion(0L));
 
     // when
     HarnessResult result =
@@ -507,8 +506,9 @@ public class MakeDecisionTest extends BaseHarnessTest {
         problemDetail.getDetail());
   }
 
-  // This Test will be removed once security is implemented within the service
+  // This Test can be removed now that the caseworker check is implemented
   @Test
+  @Disabled("Caseworker check is now implemented - this scenario now returns 404")
   public void
       givenApplicationWithNoCaseworker_whenAssignDecision_thenReturnNoContent_andDecisionSaved()
           throws Exception {

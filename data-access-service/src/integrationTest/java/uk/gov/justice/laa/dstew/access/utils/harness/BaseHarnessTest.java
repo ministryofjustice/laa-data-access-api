@@ -154,6 +154,12 @@ public abstract class BaseHarnessTest {
 
   // ── Auth helpers ──────────────────────────────────────────────────────────
 
+  private String freshCaseworkerToken() {
+    return HarnessMode.isInfrastructure()
+        ? SmokeTestTokenProvider.getCaseworkerToken()
+        : tokenFactory.caseworkerToken();
+  }
+
   protected void withToken(String token) {
     this.currentToken = token;
     this.omitToken = false;
@@ -194,7 +200,7 @@ public abstract class BaseHarnessTest {
     }
 
     // Reset token state after each use
-    currentToken = tokenFactory.caseworkerToken();
+    currentToken = freshCaseworkerToken();
     omitToken = false;
 
     EntityExchangeResult<byte[]> raw = spec.exchange().expectBody().returnResult();
@@ -266,7 +272,7 @@ public abstract class BaseHarnessTest {
     }
 
     // Reset token state after each use
-    currentToken = tokenFactory.caseworkerToken();
+    currentToken = freshCaseworkerToken();
     omitToken = false;
 
     EntityExchangeResult<byte[]> raw = spec.bodyValue(body).exchange().expectBody().returnResult();
@@ -333,7 +339,7 @@ public abstract class BaseHarnessTest {
     }
 
     // Reset token state after each use
-    currentToken = tokenFactory.caseworkerToken();
+    currentToken = freshCaseworkerToken();
     omitToken = false;
 
     EntityExchangeResult<byte[]> raw = spec.bodyValue(body).exchange().expectBody().returnResult();
