@@ -102,7 +102,13 @@ public abstract class BaseHarnessTest {
     // In infrastructure mode, obtain tokens from the mock server running in Docker.
     // In integration mode, use the in-process mock server via TestTokenFactory.
     if (HarnessMode.isInfrastructure()) {
-      currentToken = SmokeTestTokenProvider.getCaseworkerToken();
+      try {
+        currentToken = SmokeTestTokenProvider.getCaseworkerToken();
+      } catch (RuntimeException e) {
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+            false,
+            "Skipping infrastructure test — mock OAuth server unavailable: " + e.getMessage());
+      }
       tokenFactory = null; // Not available in infrastructure mode
     } else {
       tokenFactory = new TestTokenFactory(IntegrationTestContextProvider.mockOAuth2Server());
