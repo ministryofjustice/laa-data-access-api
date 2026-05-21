@@ -15,13 +15,11 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.JsonNode;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.utils.JsonUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGenerator;
@@ -251,27 +249,14 @@ public class GetDomainEventTest extends BaseHarnessTest {
                 .type(eventType));
   }
 
-  private static ApplicationDomainEventResponse toEvent(DomainEventEntity entity)
-      throws JacksonException {
+  private static ApplicationDomainEventResponse toEvent(DomainEventEntity entity) {
     return ApplicationDomainEventResponse.builder()
         .applicationId(entity.getApplicationId())
         .createdAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC))
         .domainEventType(entity.getType())
-        .eventDescription(extractEventDescription(entity.getData()))
+        .eventDescription(JsonUtils.extractStringField(entity.getData(), "eventDescription"))
         .caseworkerId(entity.getCaseworkerId())
         .createdBy(entity.getCreatedBy())
         .build();
-  }
-
-  private static String extractEventDescription(String json) throws JacksonException {
-    if (json == null || json.isBlank()) {
-      return null;
-    }
-    JsonNode node = MapperUtil.getObjectMapper().readTree(json);
-    JsonNode descriptionNode = node.get("eventDescription");
-    if (descriptionNode == null || descriptionNode.isNull()) {
-      return null;
-    }
-    return descriptionNode.textValue();
   }
 }

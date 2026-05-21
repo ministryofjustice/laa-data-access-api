@@ -107,7 +107,7 @@ public class DomainEventMapperTest extends BaseMapperTest {
 
     assertThatThrownBy(() -> mapper.toDomainEvent(entity))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Failed to parse domain event data field as JSON");
+        .hasMessageContaining("Failed to parse JSON when extracting field 'eventDescription'");
   }
 
   @Test
