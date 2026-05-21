@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -40,7 +41,8 @@ public class DomainEventMapperTest extends BaseMapperTest {
     OffsetDateTime expectedCreatedDateTime =
         OffsetDateTime.of(1970, 1, 12, 13, 46, 39, 0, ZoneOffset.UTC);
     String createdBy = "John.Doe";
-    String eventDescription = "{ \"eventDescription\" : \"eventDescription\" }";
+    String expectedDescription = "test event description";
+    String dataJson = "{ \"eventDescription\" : \"" + expectedDescription + "\" }";
     DomainEventType eventType = DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER;
 
     DomainEventEntity entity =
@@ -50,7 +52,7 @@ public class DomainEventMapperTest extends BaseMapperTest {
             .caseworkerId(caseworkerId)
             .createdAt(createdAt)
             .createdBy(createdBy)
-            .data(eventDescription)
+            .data(dataJson)
             .type(eventType)
             .build();
 
@@ -61,7 +63,7 @@ public class DomainEventMapperTest extends BaseMapperTest {
     assertThat(result.getCreatedAt()).isEqualTo(expectedCreatedDateTime);
     assertThat(result.getCreatedBy()).isEqualTo(createdBy);
     assertThat(result.getDomainEventType()).isEqualTo(eventType);
-    assertThat(result.getEventDescription()).isEqualTo(eventDescription);
+    assertThat(result.getEventDescription()).isEqualTo(expectedDescription);
   }
 
   @Test
@@ -84,5 +86,38 @@ public class DomainEventMapperTest extends BaseMapperTest {
     assertThat(result.getCreatedBy()).isNull();
     assertThat(result.getEventDescription()).isNull();
     assertThat(result.getDomainEventType()).isNull();
+  }
+
+  @Test
+  void givenDataJsonWithNoEventDescriptionKey_whenToDomainEvent_thenEventDescriptionIsNull() {
+    DomainEventEntity entity =
+        DataGenerator.createDefault(
+            DomainEventGenerator.class, builder -> builder.data("{\"otherField\": \"someValue\"}"));
+
+    ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
+
+    assertThat(result.getEventDescription()).isNull();
+  }
+
+  @Test
+  void givenMalformedDataJson_whenToDomainEvent_thenThrowIllegalArgumentException() {
+    DomainEventEntity entity =
+        DataGenerator.createDefault(
+            DomainEventGenerator.class, builder -> builder.data("not-valid-json"));
+
+    assertThatThrownBy(() -> mapper.toDomainEvent(entity))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Failed to parse domain event data field as JSON");
+  }
+
+  @Test
+  void givenDataJsonWithNullEventDescriptionValue_whenToDomainEvent_thenEventDescriptionIsNull() {
+    DomainEventEntity entity =
+        DataGenerator.createDefault(
+            DomainEventGenerator.class, builder -> builder.data("{\"eventDescription\": null}"));
+
+    ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
+
+    assertThat(result.getEventDescription()).isNull();
   }
 }

@@ -15,7 +15,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
+import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
@@ -154,6 +157,59 @@ public class GetDomainEventTest extends BaseHarnessTest {
     assertTrue(actualResponse.getEvents().containsAll(expectedAssignDomainEvents));
   }
 
+  @Test
+  public void
+      givenDomainEventWithEventDescription_whenApplicationHistorySearch_thenEventDescriptionIsExtractedFromJson()
+          throws Exception {
+    var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
+    String expectedDescription = "Assigned to caseworker";
+
+    persistedDataGenerator.createAndPersist(
+        DomainEventGenerator.class,
+        builder ->
+            builder
+                .applicationId(appId)
+                .caseworkerId(CaseworkerJohnDoe.getId())
+                .createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds())
+                .data("{\"eventDescription\": \"" + expectedDescription + "\"}")
+                .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER));
+
+    HarnessResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
+    ApplicationHistoryResponse actualResponse =
+        deserialise(result, ApplicationHistoryResponse.class);
+
+    assertOK(result);
+    assertThat(actualResponse).isNotNull();
+    assertThat(actualResponse.getEvents().getFirst().getEventDescription())
+        .isEqualTo(expectedDescription);
+  }
+
+  @Test
+  public void
+      givenDomainEventWithNoEventDescriptionInData_whenApplicationHistorySearch_thenEventDescriptionIsNull()
+          throws Exception {
+    var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
+
+    persistedDataGenerator.createAndPersist(
+        DomainEventGenerator.class,
+        builder ->
+            builder
+                .applicationId(appId)
+                .caseworkerId(CaseworkerJohnDoe.getId())
+                .createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds())
+                .data("{\"otherField\": \"someValue\"}")
+                .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER));
+
+    HarnessResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
+    ApplicationHistoryResponse actualResponse =
+        deserialise(result, ApplicationHistoryResponse.class);
+
+    assertOK(result);
+    assertThat(actualResponse).isNotNull();
+    assertThat(actualResponse.getEvents()).isNotNull();
+    assertThat(actualResponse.getEvents().getFirst().getEventDescription()).isNull();
+  }
+
   @SmokeTest
   @Test
   public void givenNoUser_whenApplicationHistorySearch_thenReturnUnauthorised() throws Exception {
@@ -195,14 +251,27 @@ public class GetDomainEventTest extends BaseHarnessTest {
                 .type(eventType));
   }
 
-  private static ApplicationDomainEventResponse toEvent(DomainEventEntity entity) {
+  private static ApplicationDomainEventResponse toEvent(DomainEventEntity entity)
+      throws JacksonException {
     return ApplicationDomainEventResponse.builder()
         .applicationId(entity.getApplicationId())
         .createdAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC))
         .domainEventType(entity.getType())
-        .eventDescription(entity.getData())
+        .eventDescription(extractEventDescription(entity.getData()))
         .caseworkerId(entity.getCaseworkerId())
         .createdBy(entity.getCreatedBy())
         .build();
+  }
+
+  private static String extractEventDescription(String json) throws JacksonException {
+    if (json == null || json.isBlank()) {
+      return null;
+    }
+    JsonNode node = MapperUtil.getObjectMapper().readTree(json);
+    JsonNode descriptionNode = node.get("eventDescription");
+    if (descriptionNode == null || descriptionNode.isNull()) {
+      return null;
+    }
+    return descriptionNode.textValue();
   }
 }
