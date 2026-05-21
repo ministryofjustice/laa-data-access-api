@@ -1,0 +1,70 @@
+# Release Candidate (RC) Environment Values
+# This is a YAML-formatted file for Helm deployment.
+# Declare variables to be passed into templates.
+
+# RC Configuration - Higher resources than preview branches for client load testing
+# Source: https://github.com/[repo]/IMPLEMENTATION_PLAN.md#phase-1-infrastructure-setup
+
+replicaCount: 2
+
+image:
+  repository: null  # Set by GitHub Actions
+  tag: null         # Set by GitHub Actions (git commit SHA)
+
+service_account:
+  name: laa-data-access-uat-service-account
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: modsec-non-prod
+  annotations:
+    external-dns.alpha.kubernetes.io/aws-weight: "100"
+    nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+    nginx.ingress.kubernetes.io/modsecurity-snippet: |
+      SecRuleEngine On
+      SecAction "id:900200,phase:1,nolog,pass,t:none,setvar:tx.allowed_methods=GET HEAD POST OPTIONS PUT PATCH DELETE"
+      SecDefaultAction "phase:2,pass,log,tag:github_team=laa-data-stewardship-access-team,tag:namespace=laa-data-access-api-uat"
+  hosts: []  # Set by deployment action to: <rc-release-name>-uat.cloud-platform.service.justice.gov.uk
+
+ingressInternal:
+  enabled: true
+  className: internal-non-prod
+  annotations:
+    external-dns.alpha.kubernetes.io/aws-weight: "100"
+  hosts: []  # Set by deployment action
+
+# Resources: Higher than preview branches (1G) for client load testing stability
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2G
+  requests:
+    cpu: 100m
+    memory: 2G
+
+# Autoscaling: More generous than preview branches to handle client testing load
+autoscaling:
+  enabled: true
+  minReplicas: 2      # Always run 2 pods for availability
+  maxReplicas: 8      # Allow significant scaling for client load
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+sentry:
+  enabled: true
+  environment: rc
+  tracesSampleRate: 1
+
+grafana:
+  enabled: true
+
+# Slow query threshold - same as UAT
+slowQueryThresholdSeconds: 1
+
+# Port forwarding - for debugging if needed
+portForward:
+  enabled: true
