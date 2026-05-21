@@ -6,28 +6,27 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2Error;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
 import uk.gov.justice.laa.dstew.access.exception.TokenProviderException;
 
-@SpringBootTest
 @ExtendWith(MockitoExtension.class)
 class TokenProviderTest {
 
-  @MockitoBean OAuth2AuthorizedClientManager oAuth2AuthorizedClientManager;
+  @Mock OAuth2AuthorizedClientManager authorizedClientManager;
 
   @Mock OAuth2AuthorizedClient oAuth2AuthorizedClient;
 
@@ -35,8 +34,13 @@ class TokenProviderTest {
 
   @Captor ArgumentCaptor<OAuth2AuthorizeRequest> oAuth2AuthorizedRequestCaptor;
 
-  @Autowired TokenProvider tokenProvider;
-  @Autowired private OAuth2AuthorizedClientManager authorizedClientManager;
+  @InjectMocks TokenProvider tokenProvider;
+
+  @BeforeEach
+  void setUp() {
+    ReflectionTestUtils.setField(tokenProvider, "clientRegistrationId", "test-sds-client-id");
+    ReflectionTestUtils.setField(tokenProvider, "principalName", "test-principal");
+  }
 
   @Test
   void givenValidAuthorizedClient_whenGetTokenFromProvider_thenReturnAccessToken() {
