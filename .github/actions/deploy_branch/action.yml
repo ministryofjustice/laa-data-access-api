@@ -101,8 +101,11 @@ runs:
         else
           ingress_name="$RELEASE_NAME-data-access-api"
         fi
-        external_host="$RELEASE_NAME-$KUBE_NAMESPACE.cloud-platform.service.justice.gov.uk"
-        internal_host="$RELEASE_NAME-internal-$KUBE_NAMESPACE.internal-non-prod.cloud-platform.service.justice.gov.uk"
+        # Extract environment suffix from namespace to create shorter, more readable URLs
+        # e.g., "laa-data-access-api-uat" -> "uat", "laa-data-access-api-staging" -> "staging"
+        ENV_SUFFIX=$(echo "$KUBE_NAMESPACE" | sed 's/^laa-data-access-api-//')
+        external_host="$RELEASE_NAME-$ENV_SUFFIX.cloud-platform.service.justice.gov.uk"
+        internal_host="$RELEASE_NAME-internal-$ENV_SUFFIX.internal-non-prod.cloud-platform.service.justice.gov.uk"
         external_identifier="$ingress_name-$KUBE_NAMESPACE-green"
         internal_identifier="$ingress_name-internal-$KUBE_NAMESPACE-green"
         branch_name=${{ steps.extract_release_name.outputs.branch-name }}
