@@ -12,13 +12,11 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
-import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
+import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapperImpl;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
@@ -32,15 +30,9 @@ import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
 
 public class GetDomainEventTest extends BaseHarnessTest {
 
-  private DomainEventMapper domainEventMapper;
+  private final DomainEventMapperImpl domainEventMapper = new DomainEventMapperImpl();
 
   private final String SEARCH_EVENT_TYPE_PARAM = "eventType=";
-
-  @Order(2)
-  @BeforeEach
-  void setUp() {
-    domainEventMapper = harnessProvider.getBean(DomainEventMapper.class);
-  }
 
   @SmokeTest
   @ParameterizedTest
