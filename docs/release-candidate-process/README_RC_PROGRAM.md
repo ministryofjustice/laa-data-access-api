@@ -1,263 +1,95 @@
-# Release Candidate (RC) Program: Documentation Index
+# Release Candidate (RC) Process
 
-**Quick Navigation** | **Status**: Ready for Implementation  
-**Last Updated**: 21 May 2026
-
----
-
-## 📋 Main Documents
-
-### 1. **[IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md)** — Master Plan
-Start here if you're new to the RC program.
-
-**Contains**:
-- Executive summary
-- Problem statement and solution
-- 4-phase implementation timeline
-- Resource requirements and effort estimates
-- Risk assessment and mitigation
-- Success metrics
-- Decision log
-
-**For**: Project managers, tech leads, stakeholders  
-**Read time**: 20-30 minutes
+**Last Updated**: 22 May 2026
 
 ---
 
-## 👥 Role-Specific Guides
+## Overview
 
-### 2. **[docs/RC_WORKFLOW.md](./docs/RC_WORKFLOW.md)** — Team Operations
-How to create, manage, and promote RCs.
+Release Candidates are stable snapshots of `main` deployed to a dedicated environment in the UAT
+cluster, giving external clients a chance to test against an upcoming release before it reaches
+Staging. An RC is triggered by pushing a tag matching `v*-rc.*` (e.g. `v1.2.3-rc.1`) from `main`.
 
-**Contains**:
-- Decision criteria: "Should we create an RC?"
-- Step-by-step RC creation process
-- Client notification templates
-- Issue triage and response procedures
-- RC promotion to Staging
-- Troubleshooting guide
-- FAQ and checklists
+The RC environment:
+- Runs at a fixed Helm release name (`laa-data-access-api-rc`) alongside PR preview deployments
+- Gets its own dedicated Bitnami PostgreSQL instance (ephemeral, isolated from UAT RDS)
+- Uses the `rc` Spring profile — see `application-rc.yaml` for the configuration
+- Scales more generously than PR previews (see `rc.yaml` values)
+- Is deployed only when the tag originates from `main`
 
-**For**: Tech leads, developers, DevOps engineers  
-**Read time**: 15-20 minutes
-
-**Key task**: Creating your first RC? Follow the checklist in Step 1.
+For how this fits into the full release pipeline, see [`release-process.md`](./release-process.md).
 
 ---
 
-### 3. **[docs/CLIENT_INTEGRATION_GUIDE.md](./docs/CLIENT_INTEGRATION_GUIDE.md)** — For Clients
-How external clients test against RC environments.
+## Documents
 
-**Contains**:
-- What is an RC?
-- Quick start (5-step process)
-- Testing recommendations
-- Release notes interpretation
-- How to report issues
-- Troubleshooting
-- FAQ
+### [`RC_WORKFLOW.md`](./RC_WORKFLOW.md) — How to create and manage an RC
+Step-by-step process for creating a tag, monitoring deployment, notifying clients, handling issues,
+and promoting to Staging. **Start here** if you're creating an RC.
 
-**For**: External clients, client success teams  
-**Read time**: 10-15 minutes
+### [`RC_OPERATIONS.md`](./RC_OPERATIONS.md) — Day-to-day operations
+Deployment commands, post-deployment verification, monitoring, troubleshooting, and emergency
+procedures. Keep this open during and after an RC deployment.
 
-**Key task**: Send this to clients when RC is available.
+### [`HELM_RC_VALUES.md`](./HELM_RC_VALUES.md) — Helm configuration reference
+Detailed explanation of every setting in `rc.yaml`, the Bitnami PostgreSQL configuration, and how
+RC compares to other environments. Includes known limitations of the ephemeral database and the
+future consideration for a persistent RDS instance.
 
----
+### [`CLIENT_INTEGRATION_GUIDE.md`](./CLIENT_INTEGRATION_GUIDE.md) — For external clients
+What RC is, how to connect, what to test, and how to report issues. Send this to clients when an RC
+is available.
 
-### 4. **[docs/RC_OPERATIONS.md](./docs/RC_OPERATIONS.md)** — Operational Procedures
-Day-to-day operations, monitoring, troubleshooting.
-
-**Contains**:
-- Deployment procedures (automatic and manual)
-- Post-deployment verification
-- Continuous monitoring checklist
-- Troubleshooting common issues
-- Operational tasks (scaling, restarts, cleanup)
-- Client issue response procedures
-- Emergency procedures
-- On-call handover template
-
-**For**: DevOps engineers, on-call engineers  
-**Read time**: 20-25 minutes
-
-**Key task**: Keep this open during RC deployment; follow verification steps.
+### [`release-process.md`](./release-process.md) — Full pipeline reference
+Documents every environment (UAT preview, RC, Staging, Production) — triggers, Spring profiles,
+database setup, and the environment summary table.
 
 ---
 
-### 5. **[docs/HELM_RC_VALUES.md](./docs/HELM_RC_VALUES.md)** — Technical Reference
-Detailed explanation of Helm values and configuration.
+## Configuration Files
 
-**Contains**:
-- Every values setting explained
-- Why RC settings differ from other environments
-- Comparison with preview/UAT/Staging
-- Advanced customization options
-- Resource adjustment guide
-- Verification procedures
-- Troubleshooting configuration issues
-
-**For**: Platform engineers, Kubernetes operators  
-**Read time**: 15-20 minutes
-
-**Key task**: Understand resource allocation before modifying rc.yaml.
+| File | Purpose |
+|------|---------|
+| `.helm/data-access-api/values/rc.yaml` | Helm values for the RC deployment (resources, scaling, ingress, Sentry) |
+| `.helm/bitnami_postgres/values.yaml` | Bitnami PostgreSQL configuration shared by RC and PR preview deployments |
+| `data-access-service/src/main/resources/application-rc.yaml` | Spring Boot profile for RC — connects to the Bitnami PostgreSQL instance via `DB_HOST`/`DB_NAME`/`DB_PASSWORD` |
+| `.github/actions/deploy_branch/action.yml` | Composite action that deploys RC and PR previews, sets `SPRING_PROFILE=rc` for RC tags |
+| `.github/workflows/build-test-deploy.yml` | Workflow — the `deploy-rc` job triggers on `v*-rc.*` tags pushed from `main` |
 
 ---
 
-## 🔧 Configuration Files
+## Key Behaviours
 
-### 6. **[.helm/data-access-api/values/rc.yaml](./.helm/data-access-api/values/rc.yaml)** — RC Values File
-Helm values for RC environment deployment.
+**Tag must originate from `main`**  
+The `deploy-rc` job condition checks `github.event.base_ref == 'refs/heads/main'`. Tags pushed from
+feature branches are ignored.
 
-**Created**: ✅ Ready to use  
-**Key settings**:
-- `replicaCount: 2` (higher than previews)
-- `resources.memory: 2G` (double UAT)
-- `autoscaling.maxReplicas: 8` (scales generously)
-- `spring.profile: "preview"` (set by `deploy_branch` action — same as all ephemeral branch environments)
-- `sentry.environment: "rc"` (for error tracking)
+**Fixed release name**  
+RC always deploys as `laa-data-access-api-rc` (via `release-name-override`). Re-deploying a new RC
+tag upgrades the existing release in place rather than creating a new one.
 
-**When to edit**: Only if adjusting resource allocation; see RC_OPERATIONS.md for guidance.
+**Dedicated ephemeral database**  
+Each RC deployment gets a fresh Bitnami PostgreSQL instance. Data does not persist between RC
+releases. See `HELM_RC_VALUES.md` for the known migration testing limitations this introduces and
+the future consideration for a persistent RDS instance.
 
----
-
-## 📊 Implementation Status
-
-| Phase | Task | Status | Owner | Duration |
-|-------|------|--------|-------|----------|
-| **Phase 1** | Create RC values file | ✅ Done | - | - |
-| **Phase 1** | Add deploy-rc job to workflow | ✅ Done | - | - |
-| **Phase 2** | Documentation complete | ✅ Done | - | - |
-| **Phase 3** | Deploy first RC to staging | ⏳ TODO | DevOps | 1h |
-| **Phase 3** | Smoke test RC | ⏳ TODO | QA | 30m |
-| **Phase 3** | Pilot with first client | ⏳ TODO | Product | 1-2w |
-| **Phase 4** | Expand to all clients | ⏳ TODO | Product | Ongoing |
+**No smoke tests**  
+Smoke tests run for UAT (PR and `main`) but not for RC. Manual verification is expected after
+deployment — see the post-deployment checklist in `RC_WORKFLOW.md`.
 
 ---
 
-## 🚀 Quick Start Paths
+## Quick Reference
 
-### For: Tech Lead / Project Manager
-1. Read: [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) (20 min)
-2. Review: Timeline and effort estimates (Phase 1)
-3. Schedule: Kick-off meeting with team
-4. Assign: Owners for each implementation phase
+```bash
+# Create and deploy an RC
+git checkout main && git pull
+git tag -a v1.2.3-rc.1 -m "Release candidate for v1.2.3"
+git push origin v1.2.3-rc.1
 
-### For: DevOps / Platform Engineer
-1. Read: [docs/RC_OPERATIONS.md](./docs/RC_OPERATIONS.md) (20 min)
-2. Review: [docs/HELM_RC_VALUES.md](./docs/HELM_RC_VALUES.md) (15 min)
-3. Verify: `.helm/data-access-api/values/rc.yaml` is in place
-4. Next: Implement Phase 1, Step 1.2 (add deploy-rc job to workflow)
+# Check deployment
+kubectl get pods -n laa-data-access-api-uat -l app.kubernetes.io/instance=laa-data-access-api-rc
 
-### For: Product Manager
-1. Read: [docs/CLIENT_INTEGRATION_GUIDE.md](./docs/CLIENT_INTEGRATION_GUIDE.md) (15 min)
-2. Identify: Pilot clients who should test first RC
-3. Plan: Client communication strategy
-4. Prepare: Draft release notes template
-
-### For: External Client
-1. Read: [docs/CLIENT_INTEGRATION_GUIDE.md](./docs/CLIENT_INTEGRATION_GUIDE.md) (15 min)
-2. Wait: For email notification of RC availability
-3. Follow: "Quick Start" section (5 steps)
-4. Test: Run integration tests against RC endpoint
-5. Report: Feedback to support team
-
----
-
-## 📞 Support & Escalation
-
-### Implementation Questions
-- **Contact**: Tech Lead
-- **Response time**: Same day
-- **Topics**: Design decisions, configuration, process questions
-
-### Operational Issues
-- **Contact**: On-call DevOps engineer
-- **Response time**: 2 hours (critical), 4 hours (high)
-- **Topics**: RC down, pod issues, deployment failures
-
-### Client Issues
-- **Contact**: Product Manager → Support Team
-- **Response time**: 2 hours (acknowledge), 24 hours (resolve)
-- **Topics**: API errors, integration questions, feature requests
-
----
-
-## 🎯 Success Metrics
-
-Track these metrics monthly to assess RC program success:
-
-| Metric | Target | Owner |
-|--------|--------|-------|
-| **Client participation** | >50% of eligible clients | Product |
-| **Issues caught early** | >50% of breaking changes found in RC | QA |
-| **RC stability** | >99% uptime | DevOps |
-| **Issue response** | 2h acknowledge, 24h resolve | Support |
-| **Client satisfaction** | >7/10 NPS | Product |
-
----
-
-## 📚 Additional Resources
-
-### Related Documentation in This Repo
-- `IMPLEMENTATION_PLAN.md` → Decision log (Appendix B)
-- `README.md` → Deployment and infrastructure overview
-- `docs/monitoring.md` → Prometheus/Grafana setup for RC
-- `.github/workflows/build-test-deploy.yml` → Where deploy-rc job will be added
-- `.github/actions/deploy_branch/action.yml` → Action used by deploy-rc
-
-### External Resources
-- [Helm Documentation](https://helm.sh/docs/) — Values files, deployment
-- [Kubernetes Documentation](https://kubernetes.io/docs/) — Pods, ingress, HPA
-- [Cloud Platform Docs](https://user-guide.cloud.service.justice.gov.uk/) — Cluster access, namespaces
-
----
-
-## 🔄 Document Maintenance
-
-### Updates
-- **Frequency**: After each phase completion, or when significant changes made
-- **Owner**: Tech Lead
-- **Process**: Update relevant doc, update status table above, commit to git
-
-### Feedback
-- Found an error or unclear section?
-- Feedback: [Create issue or PR with improvements]
-
-### Version History
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 21 May 2026 | David Stuart | Initial comprehensive documentation |
-
----
-
-## 🎓 Learning Path (Recommended Reading Order)
-
-**Day 1**: Orientation
-- [ ] This file (5 min)
-- [ ] [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) — Executive summary section (5 min)
-
-**Day 2-3**: Deep dive (based on your role)
-- [ ] Relevant guide from "Role-Specific Guides" section above
-
-**Day 4-5**: Implementation
-- [ ] Start Phase 1 tasks (see IMPLEMENTATION_PLAN.md)
-- [ ] Keep relevant operational guide open (Operations.md or Workflow.md)
-
-**Ongoing**: Reference
-- [ ] Bookmark these docs
-- [ ] Check relevant guide before performing task
-- [ ] Ask questions in team Slack if unclear
-
----
-
-## ✅ Next Steps
-
-1. **Read the relevant guide** for your role (see Quick Start Paths above)
-2. **Schedule team meeting** (if you're the project lead)
-3. **Assign Phase 1 tasks** (see IMPLEMENTATION_PLAN.md, Phase 1)
-4. **Start implementation** (follow the roadmap in IMPLEMENTATION_PLAN.md)
-
-**Questions?** Check the FAQ in the relevant guide, then reach out to your team lead.
-
-Good luck! 🚀
-
+# Clean up after promotion to Staging
+helm uninstall laa-data-access-api-rc -n laa-data-access-api-uat
+```
