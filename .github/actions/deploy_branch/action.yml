@@ -111,8 +111,10 @@ runs:
           # Main branch UAT: shared RDS, no ephemeral database
           export SPRING_PROFILE="unsecured"
         elif [ "$APP_ENVIRONMENT" == "rc" ]; then
-          # RC: own ephemeral Bitnami PostgreSQL (isolated like a PR branch), unsecured access
-          export SPRING_PROFILE="unsecured"
+          # RC: own ephemeral Bitnami PostgreSQL (isolated like a PR branch).
+          # Must use preview Spring profile so dbConnectionDetails points at the Bitnami
+          # instance (<release>-postgresql) rather than the RDS secret.
+          export SPRING_PROFILE="preview"
           helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
             -f .helm/bitnami_postgres/values.yaml \
             --namespace ${KUBE_NAMESPACE} \
