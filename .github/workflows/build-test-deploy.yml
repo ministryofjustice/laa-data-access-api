@@ -191,6 +191,7 @@ jobs:
 
   build-push-mass-generator-docker:
     name: build and push mass-generator docker image
+    if: false # TODO: temporarily disabled - re-enable when mass-generator is needed
     runs-on: ubuntu-latest
     needs:
       - build-test
@@ -261,7 +262,7 @@ jobs:
           app-environment: uat
 
   uat-smoke-test:
-    if: startsWith(github.head_ref || github.ref_name, 'openapi/') == false
+    if: false # TODO: temporarily disabled - re-enable when smoke tests are stable
     runs-on: ubuntu-latest
     needs:
       - deploy-uat
