@@ -1,0 +1,91 @@
+name: Deploy Mass Generator
+description: Deploy mass-generator to a target environment
+
+inputs:
+  environment:
+    description: Target environment (uat, staging, production)
+    required: true
+  release-name:
+    description: Helm release name
+    required: true
+  image-tag:
+    description: Docker image tag
+    required: true
+  ecr-region:
+    description: ECR region
+    required: true
+  ecr-role-to-assume:
+    description: ECR role to assume
+    required: true
+  ecr-repository:
+    description: ECR repository
+    required: true
+  kube-cert:
+    description: Kubernetes cluster certificate
+    required: true
+  kube-token:
+    description: Kubernetes cluster token
+    required: true
+  kube-cluster:
+    description: Kubernetes cluster name
+    required: true
+  kube-namespace:
+    description: Kubernetes namespace
+    required: true
+  spring-profile:
+    description: Spring profile (preview, unsecured, main)
+    required: true
+  db-postgresql-release:
+    description: PostgreSQL release name
+    required: true
+  records-count:
+    description: Optional number of records to generate
+    required: false
+    default: '300000'
+
+runs:
+  using: composite
+  steps:
+    - name: Authenticate to the cluster
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
+      with:
+        kube-cert: ${{ inputs.kube-cert }}
+        kube-token: ${{ inputs.kube-token }}
+        kube-cluster: ${{ inputs.kube-cluster }}
+        kube-namespace: ${{ inputs.kube-namespace }}
+
+    - name: Assume role in Cloud Platform
+      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+      with:
+        role-to-assume: ${{ inputs.ecr-role-to-assume }}
+        aws-region: ${{ inputs.ecr-region }}
+
+    - name: Docker login to ECR
+      uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
+      id: login-ecr
+      with:
+        mask-password: 'true'
+
+    - name: Deploy mass-generator via Helm
+      shell: bash
+      env:
+        ECR_REPOSITORY: ${{ inputs.ecr-repository }}
+        ECR_REGION: ${{ inputs.ecr-region }}
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        RELEASE_NAME: ${{ inputs.release-name }}
+        IMAGE_TAG: ${{ inputs.image-tag }}
+        KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+        SPRING_PROFILE: ${{ inputs.spring-profile }}
+        DB_POSTGRESQL_RELEASE: ${{ inputs.db-postgresql-release }}
+        RECORDS_COUNT: ${{ inputs.records-count }}
+      run: |
+        helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
+          --namespace ${KUBE_NAMESPACE} \
+          --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
+          --set image.tag="${IMAGE_TAG}-mass-generator" \
+          --set spring.profile="${SPRING_PROFILE}" \
+          --set db.postgresqlReleaseName="${DB_POSTGRESQL_RELEASE}" \
+          --set replicaCount=1 \
+          --install \
+          --wait
+

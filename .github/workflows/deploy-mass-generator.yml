@@ -15,6 +15,12 @@ on:
         description: 'Git reference (branch, tag, or commit SHA)'
         required: false
         default: main
+  pull_request:
+    types:
+      - labeled
+      - unlabeled
+      - opened
+      - reopened
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -24,9 +30,41 @@ permissions:
   contents: read
 
 jobs:
+  check-label:
+    name: Check if mass-generator-required label is present
+    runs-on: ubuntu-latest
+    outputs:
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
+    steps:
+      - name: Check label or manual trigger
+        id: check
+        shell: bash
+        run: |
+          # If manual dispatch, always deploy
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should-deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          # If PR event, check for label
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            if [[ "${{ github.event.pull_request.labels.*.name }}" == *"mass-generator-required"* ]]; then
+              echo "should-deploy=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "should-deploy=false" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+          
+          # Otherwise don't deploy
+          echo "should-deploy=false" >> "$GITHUB_OUTPUT"
+
   build-push-mass-generator-docker:
     name: Build and push mass-generator docker image
+    if: needs.check-label.outputs.should-deploy == 'true'
     runs-on: ubuntu-latest
+    needs:
+      - check-label
     permissions:
       id-token: write
       contents: read
@@ -79,10 +117,14 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
 
   deploy-mass-generator-uat:
-    if: github.event.inputs.environment == 'uat'
+    if: |
+      needs.check-label.outputs.should-deploy == 'true' &&
+      (github.event_name == 'pull_request' ||
+       github.event.inputs.environment == 'uat')
     name: Deploy mass-generator to UAT
     runs-on: ubuntu-latest
     needs:
+      - check-label
       - build-push-mass-generator-docker
     environment: uat
     permissions:
@@ -93,53 +135,35 @@ jobs:
         with:
           ref: ${{ github.event.inputs.git-ref }}
 
-      - name: Authenticate to the cluster
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
+      - name: Get release name for PR
+        id: get-release
+        uses: ./.github/actions/get_release_name
+        if: github.event_name == 'pull_request'
+
+      - name: Deploy mass-generator
+        uses: ./.github/actions/deploy_mass_generator
         with:
+          environment: uat
+          release-name: ${{ github.event_name == 'pull_request' && steps.get-release.outputs.release-name || 'laa-data-access-api-uat' }}
+          image-tag: ${{ github.sha }}
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
           kube-cert: ${{ secrets.KUBE_CERT }}
           kube-token: ${{ secrets.KUBE_TOKEN }}
           kube-cluster: ${{ secrets.KUBE_CLUSTER }}
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-
-      - name: Assume role in Cloud Platform
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
-        with:
-          role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-          aws-region: ${{ vars.ECR_REGION }}
-
-      - name: Docker login to ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
-        with:
-          mask-password: 'true'
-
-      - name: Deploy mass-generator to UAT
-        shell: bash
-        env:
-          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-          ECR_REGION: ${{ vars.ECR_REGION }}
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          GIT_SHA: ${{ github.sha }}
-          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
-        run: |
-          RELEASE_NAME="laa-data-access-api-uat"
-          SPRING_PROFILE="unsecured"
-          
-          helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
-            --namespace ${KUBE_NAMESPACE} \
-            --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
-            --set image.tag="${GIT_SHA}-mass-generator" \
-            --set spring.profile="${SPRING_PROFILE}" \
-            --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
-            --set replicaCount=1 \
-            --install \
-            --wait
+          spring-profile: ${{ github.event_name == 'pull_request' && 'preview' || 'unsecured' }}
+          db-postgresql-release: ${{ github.event_name == 'pull_request' && format('{0}-postgresql', steps.get-release.outputs.release-name) || 'laa-data-access-api-uat-postgresql' }}
 
   deploy-mass-generator-staging:
-    if: github.event.inputs.environment == 'staging'
+    if: |
+      needs.check-label.outputs.should-deploy == 'true' &&
+      github.event.inputs.environment == 'staging'
     name: Deploy mass-generator to Staging
     runs-on: ubuntu-latest
     needs:
+      - check-label
       - build-push-mass-generator-docker
     environment: staging
     permissions:
@@ -150,53 +174,30 @@ jobs:
         with:
           ref: ${{ github.event.inputs.git-ref }}
 
-      - name: Authenticate to the cluster
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
+      - name: Deploy mass-generator
+        uses: ./.github/actions/deploy_mass_generator
         with:
+          environment: staging
+          release-name: laa-data-access-api
+          image-tag: ${{ github.sha }}
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
           kube-cert: ${{ secrets.KUBE_CERT }}
           kube-token: ${{ secrets.KUBE_TOKEN }}
           kube-cluster: ${{ secrets.KUBE_CLUSTER }}
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-
-      - name: Assume role in Cloud Platform
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
-        with:
-          role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-          aws-region: ${{ vars.ECR_REGION }}
-
-      - name: Docker login to ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
-        with:
-          mask-password: 'true'
-
-      - name: Deploy mass-generator to Staging
-        shell: bash
-        env:
-          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-          ECR_REGION: ${{ vars.ECR_REGION }}
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          GIT_SHA: ${{ github.sha }}
-          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
-        run: |
-          RELEASE_NAME="laa-data-access-api"
-          SPRING_PROFILE="unsecured"
-          
-          helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
-            --namespace ${KUBE_NAMESPACE} \
-            --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
-            --set image.tag="${GIT_SHA}-mass-generator" \
-            --set spring.profile="${SPRING_PROFILE}" \
-            --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
-            --set replicaCount=1 \
-            --install \
-            --wait
+          spring-profile: unsecured
+          db-postgresql-release: laa-data-access-api-postgresql
 
   deploy-mass-generator-production:
-    if: github.event.inputs.environment == 'production'
+    if: |
+      needs.check-label.outputs.should-deploy == 'true' &&
+      github.event.inputs.environment == 'production'
     name: Deploy mass-generator to Production
     runs-on: ubuntu-latest
     needs:
+      - check-label
       - build-push-mass-generator-docker
     environment: production
     permissions:
@@ -207,45 +208,19 @@ jobs:
         with:
           ref: ${{ github.event.inputs.git-ref }}
 
-      - name: Authenticate to the cluster
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
+      - name: Deploy mass-generator
+        uses: ./.github/actions/deploy_mass_generator
         with:
+          environment: production
+          release-name: laa-data-access-api
+          image-tag: ${{ github.sha }}
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
           kube-cert: ${{ secrets.KUBE_CERT }}
           kube-token: ${{ secrets.KUBE_TOKEN }}
           kube-cluster: ${{ secrets.KUBE_CLUSTER }}
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-
-      - name: Assume role in Cloud Platform
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
-        with:
-          role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-          aws-region: ${{ vars.ECR_REGION }}
-
-      - name: Docker login to ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
-        with:
-          mask-password: 'true'
-
-      - name: Deploy mass-generator to Production
-        shell: bash
-        env:
-          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-          ECR_REGION: ${{ vars.ECR_REGION }}
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          GIT_SHA: ${{ github.sha }}
-          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
-        run: |
-          RELEASE_NAME="laa-data-access-api"
-          SPRING_PROFILE="main"
-          
-          helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
-            --namespace ${KUBE_NAMESPACE} \
-            --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
-            --set image.tag="${GIT_SHA}-mass-generator" \
-            --set spring.profile="${SPRING_PROFILE}" \
-            --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
-            --set replicaCount=1 \
-            --install \
-            --wait
+          spring-profile: main
+          db-postgresql-release: laa-data-access-api-postgresql
 

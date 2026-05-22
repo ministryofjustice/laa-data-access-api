@@ -24,14 +24,8 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - name: Set up JDK 25
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
-        with:
-          java-version: 25
-          distribution: 'corretto'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+      - name: Setup build environment
+        uses: ./.github/actions/setup_build_environment
 
       - name: Build and test
         run: ./gradlew build
@@ -124,17 +118,8 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - name: Set up JDK 25
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
-        with:
-          java-version: 25
-          distribution: 'corretto'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
-
-      - name: Build app jar with gradle
-        run: ./gradlew build
+      - name: Setup build environment
+        uses: ./.github/actions/setup_build_environment
 
       - name: Build local Docker image
         run: |
@@ -167,48 +152,82 @@ jobs:
           name: service-jar
           path: data-access-service/build/libs/
 
-        # ---------- AWS auth (OIDC) ----------
-      - name: Configure AWS creds
-        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
+      - name: Setup ECR authentication
+        uses: ./.github/actions/setup_build_environment
+        id: ecr-setup
         with:
-          role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-          aws-region: ${{  vars.ECR_REGION }}
+          setup-ecr: true
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
 
-      - name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
-        id: login-ecr
       - name: Build and push a Docker image for data-access-service
         run: |
           docker build --no-cache -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
         env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REGISTRY: ${{ steps.ecr-setup.outputs.registry }}
           REPOSITORY: ${{ vars.ECR_REPOSITORY }}
           IMAGE_TAG: ${{ github.sha }}
 
 
 
-  deploy-uat:
+  decide-deployment:
+    name: Determine deployment path
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy_ephemeral: ${{ steps.decide.outputs.should_deploy_ephemeral }}
+      should_deploy_uat: ${{ steps.decide.outputs.should_deploy_uat }}
+    steps:
+      - name: Determine deployment path
+        id: decide
+        shell: bash
+        run: |
+          # Initialize both to false
+          EPHEMERAL="false"
+          UAT="false"
+          
+          # Check event type
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # All PRs get ephemeral deployment (unless openapi/ branch)
+            if ! [[ "${{ github.head_ref }}" =~ ^openapi/ ]]; then
+              EPHEMERAL="true"
+            fi
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            # Main branch: Always deploy to UAT
+            UAT="true"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual trigger: Deploy to UAT
+            UAT="true"
+          fi
+          
+          echo "should_deploy_ephemeral=$EPHEMERAL" >> "$GITHUB_OUTPUT"
+          echo "should_deploy_uat=$UAT" >> "$GITHUB_OUTPUT"
+          
+          # Log the decision for clarity
+          echo "Deployment decision: Ephemeral=$EPHEMERAL, UAT=$UAT"
+
+  deploy-ephemeral:
+    name: Deploy ephemeral preview environment
+    if: needs.decide-deployment.outputs.should_deploy_ephemeral == 'true'
     runs-on: ubuntu-latest
     needs:
       - build-push-docker
       - vulnerability-scan-app
       - vulnerability-scan-docker
+      - decide-deployment
     environment: uat
     permissions:
       id-token: write
       contents: read
     outputs:
-      release-name: ${{ steps.deploy_uat_branch.outputs.release-name }}
-      branch-name: ${{ steps.deploy_uat_branch.outputs.branch-name }}
-
+      release-name: ${{ steps.deploy_ephemeral_branch.outputs.release-name }}
+      branch-name: ${{ steps.deploy_ephemeral_branch.outputs.branch-name }}
     steps:
-
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - name: Deploy UAT branch
-        id: deploy_uat_branch
+      - name: Deploy ephemeral branch preview
+        id: deploy_ephemeral_branch
         uses: ./.github/actions/deploy_branch
         with:
           ecr-region: ${{ vars.ECR_REGION }}
@@ -220,30 +239,62 @@ jobs:
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
           app-environment: uat
 
-  uat-smoke-test:
-    if: startsWith(github.head_ref || github.ref_name, 'openapi/') == false
+  deploy-uat:
+    name: Deploy to UAT environment
+    if: needs.decide-deployment.outputs.should_deploy_uat == 'true'
     runs-on: ubuntu-latest
     needs:
+      - build-push-docker
+      - vulnerability-scan-app
+      - vulnerability-scan-docker
+      - decide-deployment
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      release-name: ${{ steps.deploy_uat.outputs.release-name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Deploy to UAT environment
+        id: deploy_uat
+        uses: ./.github/actions/deploy
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          app-environment: uat
+
+  uat-smoke-test:
+    name: Run smoke tests
+    if: |
+      startsWith(github.head_ref || github.ref_name, 'openapi/') == false &&
+      (needs.decide-deployment.outputs.should_deploy_ephemeral == 'true' ||
+       needs.decide-deployment.outputs.should_deploy_uat == 'true')
+    runs-on: ubuntu-latest
+    needs:
+      - decide-deployment
+      - deploy-ephemeral
       - deploy-uat
     environment: uat
     permissions:
       id-token: write
       contents: read
     env:
-      RELEASE_NAME: ${{ needs.deploy-uat.outputs.release-name }}
-      BRANCH_NAME: ${{ needs.deploy-uat.outputs.branch-name }}
+      RELEASE_NAME: ${{ needs.deploy-ephemeral.outputs.release-name || needs.deploy-uat.outputs.release-name }}
+      BRANCH_NAME: ${{ needs.deploy-ephemeral.outputs.branch-name }}
       KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - name: Set up JDK 25
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
-        with:
-          java-version: 25
-          distribution: 'corretto'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+      - name: Setup build environment
+        uses: ./.github/actions/setup_build_environment
 
       - name: Authenticate to the cluster
         uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
