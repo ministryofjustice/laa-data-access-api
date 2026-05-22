@@ -63,4 +63,4 @@ grafana:
 slowQueryThresholdSeconds: 1
 
 portForward:
-  enabled: true
+  enabled: false  # RC uses Bitnami PostgreSQL, not RDS — no port-forward proxy needed
