@@ -5,7 +5,7 @@
 # RC Configuration - Higher resources than preview branches for client load testing
 # Source: https://github.com/[repo]/IMPLEMENTATION_PLAN.md#phase-1-infrastructure-setup
 
-replicaCount: 2
+replicaCount: 1
 
 image:
   repository: null  # Set by GitHub Actions
@@ -37,20 +37,18 @@ ingressInternal:
     external-dns.alpha.kubernetes.io/aws-weight: "100"
   hosts: []  # Set by deployment action
 
-# Resources: Higher than preview branches (1G) for client load testing stability
 resources:
   limits:
     cpu: 1000m
-    memory: 2G
+    memory: 1G
   requests:
-    cpu: 100m
-    memory: 2G
+    cpu: 25m
+    memory: 1G
 
-# Autoscaling: More generous than preview branches to handle client testing load
 autoscaling:
   enabled: true
-  minReplicas: 2      # Always run 2 pods for availability
-  maxReplicas: 8      # Allow significant scaling for client load
+  minReplicas: 1
+  maxReplicas: 5
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
 
@@ -62,9 +60,7 @@ sentry:
 grafana:
   enabled: true
 
-# Slow query threshold - same as UAT
 slowQueryThresholdSeconds: 1
 
-# Port forwarding - for debugging if needed
 portForward:
   enabled: true
