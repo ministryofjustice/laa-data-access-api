@@ -375,6 +375,33 @@ kubectl get secret -n laa-data-access-api-uat laa-data-access-api-rc-postgresql 
 psql -h <postgresql-svc> -U postgres -d postgres
 ```
 
+### Known Limitation: Ephemeral DB and Migration Testing
+
+Because the RC database is ephemeral and always starts empty, Flyway migrations are only ever tested
+against a clean schema. This does **not** validate that a migration will apply safely to a long-lived
+database with accumulated data, as production will have. Failure modes that won't be caught include:
+
+- A `NOT NULL` column added without a default — succeeds on an empty table, fails on a table with existing rows
+- An index created concurrently on a large table — timeout risk invisible on a fresh empty DB
+- A migration that drops or renames a column still referenced by application code running on the previous version
+
+### Future Consideration: Persistent RDS for RC
+
+To properly validate migrations the team should consider provisioning a **dedicated persistent RDS
+instance** for the RC environment, separate from the main UAT RDS. This would mean:
+
+- Schema history accumulates across RC releases, matching production conditions more closely
+- Clients can build up meaningful test datasets that survive between RC deployments
+- Multi-version migration chains (RC 1 → RC 2 → RC 3) can be tested end-to-end
+
+**What would need to change to implement this**:
+
+1. Add a dedicated RDS instance to the Cloud Platform namespace config for UAT
+2. The instance produces a secret (e.g. `rds-rc-postgresql-instance-output`) with the same keys as the existing `rds-postgresql-instance-output`
+3. Update `_envs.tpl` — add an `rc` profile block that reads `DB_HOST`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME` from that secret (same pattern as the `main`/`unsecured` block)
+4. Update `deploy_branch` — skip the Bitnami PostgreSQL install when `APP_ENVIRONMENT == "rc"`
+5. Update `application-rc.yaml` — switch to `${DB_USERNAME}` (from the secret) rather than the hardcoded `"postgres"` user
+
 ---
 
 ## Monitoring & Observability
@@ -420,14 +447,14 @@ Automatically created by Helm template:
 | **minReplicas (HPA)** | 1 | 1 | **2** | 2 |
 | **maxReplicas (HPA)** | 3 | 5 | **8** | 8 |
 | **Database** | **Ephemeral Bitnami** | RDS | **Ephemeral Bitnami** | RDS |
-| **Spring profile** | preview | unsecured | **preview** | main |
+| **Spring profile** | preview | unsecured | **rc** | main |
 | **Sentry** | Enabled | Enabled | **Enabled** | Enabled |
 
 **Key differences**:
 - RC has **more memory** than UAT/previews (for client load testing)
 - RC can scale **higher** than previews (up to 8 replicas)
-- RC uses **ephemeral DB** like previews (not persistent like Staging)
-- RC **Spring profile `preview`** (same as all ephemeral branch environments; `deploy_branch` sets this for any non-`main` branch name)
+- RC uses **ephemeral DB** like previews (not persistent like Staging) — see [Known Limitation: Ephemeral DB and Migration Testing](#known-limitation-ephemeral-db-and-migration-testing)
+- RC uses the dedicated **`rc` Spring profile** (`deploy_branch` sets `SPRING_PROFILE=rc` for RC tag deployments)
 
 ---
 
