@@ -84,33 +84,42 @@ runs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         GIT_SHA: ${{ github.sha }}
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+        APP_ENVIRONMENT: ${{ inputs.app-environment }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
         RELEASE_NAME: ${{ steps.resolve_release_name.outputs.release_name }}
       run: |
-        ingress_name="$RELEASE_NAME-data-access-api"
+        # Mirror Helm's fullname helper: if the release name already contains the chart name
+        # ("data-access-api"), the ingress resource is named after the release name alone;
+        # otherwise the chart name is appended. This must match or the gatekeeper will reject
+        # the external-dns set-identifier annotation.
+        if echo "$RELEASE_NAME" | grep -q "data-access-api"; then
+          ingress_name="$RELEASE_NAME"
+        else
+          ingress_name="$RELEASE_NAME-data-access-api"
+        fi
         external_host="$RELEASE_NAME-$KUBE_NAMESPACE.cloud-platform.service.justice.gov.uk"
         internal_host="$RELEASE_NAME-internal-$KUBE_NAMESPACE.internal-non-prod.cloud-platform.service.justice.gov.uk"
         external_identifier="$ingress_name-$KUBE_NAMESPACE-green"
-        internal_identifier="$RELEASE_NAME-data-access-api-internal-$KUBE_NAMESPACE-green"
+        internal_identifier="$ingress_name-internal-$KUBE_NAMESPACE-green"
         branch_name=${{ steps.extract_release_name.outputs.branch-name }}
         LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
 
         echo "Deploying commit: $GIT_SHA under release name: $RELEASE_NAME to $external_host and $internal_host..."
-
-        echo "branch name: $branch_name"
+        echo "branch name: $branch_name, environment: $APP_ENVIRONMENT"
 
         if [ "$branch_name" == "main" ]; then
-          case "${{ inputs.app-environment }}" in
-            production)
-              export SPRING_PROFILE="main"
-              ;;
-            *)
-              export SPRING_PROFILE="unsecured"
-              ;;
-          esac
+          # Main branch UAT: shared RDS, no ephemeral database
+          export SPRING_PROFILE="unsecured"
+        elif [ "$APP_ENVIRONMENT" == "rc" ]; then
+          # RC: own ephemeral Bitnami PostgreSQL (isolated like a PR branch), unsecured access
+          export SPRING_PROFILE="unsecured"
+          helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
+            -f .helm/bitnami_postgres/values.yaml \
+            --namespace ${KUBE_NAMESPACE} \
+            --install --wait
         else
+          # PR preview branch: own ephemeral Bitnami PostgreSQL, preview Spring profile
           export SPRING_PROFILE="preview"
-          # Using Bitnami legacy with PostgreSQL 17.2 (specified in values.yaml)
           helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
             -f .helm/bitnami_postgres/values.yaml \
             --namespace ${KUBE_NAMESPACE} \

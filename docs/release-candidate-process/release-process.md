@@ -91,8 +91,12 @@ down all resources created for that branch:
 - Deploys to the **`uat` GitHub environment** using the fixed Helm release name
   `laa-data-access-api-rc` (via `release-name-override`), so it sits alongside PR preview
   deployments without overwriting them.
-- Useful for validating a release candidate against the shared UAT infrastructure before
-  promoting to a full release tag.
+- Gets its own **dedicated Bitnami PostgreSQL** instance (`laa-data-access-api-rc-postgresql`),
+  isolated like a PR preview branch rather than sharing the UAT RDS instance.
+- Uses the `unsecured` Spring profile — the same open-access level as UAT/main, with no
+  production authentication enforced.
+- Uses the `rc` Helm values file (higher resource limits than preview branches, suitable for
+  client load testing).
 - No smoke tests are run as part of this job.
 
 ---
@@ -142,7 +146,7 @@ down all resources created for that branch:
 |-------------|---------|----------------|----------|---------|
 | **UAT (PR)** | Pull request opened/updated | `preview` | Bitnami PostgreSQL (per-PR) | Branch-specific URL |
 | **UAT (main)** | Push to `main` | `unsecured` | Shared RDS | Fixed `main-<namespace>` URL |
-| **RC** | Manual tag `v*-rc.*` | `unsecured` | Shared RDS | Fixed `laa-data-access-api-rc` |
+| **RC** | Manual tag `v*-rc.*` | `unsecured` | Bitnami PostgreSQL (dedicated) | Fixed `laa-data-access-api-rc` |
 | **Staging** | Manual tag `v*` (no `-rc.`) | `unsecured` | Shared RDS | Fixed `laa-data-access-api` |
 | **Production** | Manual tag `v*` (no `-rc.`) after staging | `main` | Shared RDS | Fixed `laa-data-access-api` |
 
