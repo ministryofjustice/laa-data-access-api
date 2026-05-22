@@ -56,6 +56,43 @@ public class GetEventsTest extends BaseServiceTest {
   }
 
   @Test
+  void
+      givenDomainEventsWithAndWithoutEventDescription_whenGetEvents_thenOnlyReturnEventsWithEventDescription() {
+    // given
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+    DomainEventEntity withDescription =
+        DataGenerator.createDefault(
+            DomainEventGenerator.class,
+            builder ->
+                builder
+                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
+                    .data(
+                        "{\"eventDescription\": \""
+                            + DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER.getValue()
+                            + "\"}"));
+    DomainEventEntity withoutDescription =
+        DataGenerator.createDefault(
+            DomainEventGenerator.class,
+            builder ->
+                builder
+                    .type(DomainEventType.APPLICATION_CREATED)
+                    .data("{\"laaReference\": \"LAA-123\"}"));
+
+    when(domainEventRepository.findAll(any(Specification.class)))
+        .thenReturn(List.of(withDescription, withoutDescription));
+
+    // when
+    List<ApplicationDomainEventResponse> actualDomainEvents =
+        serviceUnderTest.getEvents(
+            UUID.randomUUID(), List.of(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER));
+
+    // then
+    assertThat(actualDomainEvents.size()).isEqualTo(1);
+    assertThat(actualDomainEvents.get(0).getEventDescription())
+        .isEqualTo(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER.getValue());
+  }
+
+  @Test
   public void givenNotRoleReader_whenGetEvents_thenThrowUnauthorizedException() {
     // given
     setSecurityContext(TestConstants.Roles.NO_ROLE);
@@ -92,7 +129,8 @@ public class GetEventsTest extends BaseServiceTest {
     assertThat(expected.getApplicationId()).isEqualTo(actual.getApplicationId());
     assertThat(expected.getCaseworkerId()).isEqualTo(actual.getCaseworkerId());
     assertThat(expected.getType().name()).isEqualTo(actual.getDomainEventType().name());
-    assertThat(expected.getData()).isEqualTo(actual.getEventDescription());
+    assertThat(actual.getEventDescription())
+        .isEqualTo(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER.getValue());
     assertThat(expected.getCreatedAt()).isEqualTo(actual.getCreatedAt().toInstant());
     assertThat(expected.getCreatedBy()).isEqualTo(actual.getCreatedBy());
   }

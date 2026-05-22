@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class UpdateApplicationDomainEventDetails {
+public class UpdateApplicationDomainEventDetails implements DomainEventDetails {
 
   private UUID applicationId;
   private String applicationStatus;
