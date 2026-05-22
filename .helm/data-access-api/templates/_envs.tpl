@@ -2,9 +2,9 @@
   Define environment variables that can be "included" in deployment.yaml
 */}}
 {{- define "dbConnectionDetails" }}
-{{- if eq .Values.spring.profile "preview" }}
+{{- if or (eq .Values.spring.profile "preview") (eq .Values.spring.profile "rc") }}
 {{/*
-For the preview branches, set DB connection details to Bitnami Postgres specific values
+For preview branches and RC, set DB connection details to Bitnami Postgres specific values
 */}}
 - name: DB_NAME
   value: "postgres"
