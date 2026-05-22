@@ -6,13 +6,10 @@ import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
-import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
-import uk.gov.justice.laa.dstew.access.model.CreateApplicationNoteDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
-import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 
 /** Maps between domain event entity and domain event API model. */
 @Mapper(componentModel = "spring")
@@ -55,16 +52,19 @@ public interface DomainEventMapper {
     if (data == null || data.isBlank() || eventType == null) {
       return null;
     }
-    Class<? extends DomainEventDetails> detailsClass =
-        switch (eventType) {
-          case ASSIGN_APPLICATION_TO_CASEWORKER -> AssignApplicationDomainEventDetails.class;
-          case UNASSIGN_APPLICATION_TO_CASEWORKER -> UnassignApplicationDomainEventDetails.class;
-          case APPLICATION_MAKE_DECISION_GRANTED, APPLICATION_MAKE_DECISION_REFUSED ->
-              MakeDecisionDomainEventDetails.class;
-          case APPLICATION_CREATED -> CreateApplicationDomainEventDetails.class;
-          case APPLICATION_UPDATED -> UpdateApplicationDomainEventDetails.class;
-          case APPLICATION_NOTES -> CreateApplicationNoteDomainEventDetails.class;
-        };
+    return switch (eventType) {
+      case ASSIGN_APPLICATION_TO_CASEWORKER ->
+          getEventDescription(data, AssignApplicationDomainEventDetails.class);
+      case UNASSIGN_APPLICATION_TO_CASEWORKER ->
+          getEventDescription(data, UnassignApplicationDomainEventDetails.class);
+      case APPLICATION_MAKE_DECISION_GRANTED, APPLICATION_MAKE_DECISION_REFUSED ->
+          getEventDescription(data, MakeDecisionDomainEventDetails.class);
+      case APPLICATION_CREATED, APPLICATION_UPDATED, APPLICATION_NOTES -> null;
+    };
+  }
+
+  private static String getEventDescription(
+      String data, Class<? extends DomainEventDetails> detailsClass) {
     try {
       return MapperUtil.getObjectMapper().readValue(data, detailsClass).getEventDescription();
     } catch (Exception e) {

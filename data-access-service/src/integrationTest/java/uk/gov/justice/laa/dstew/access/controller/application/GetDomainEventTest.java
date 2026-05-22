@@ -186,7 +186,7 @@ public class GetDomainEventTest extends BaseHarnessTest {
 
   @Test
   public void
-      givenDomainEventWithNoEventDescriptionInData_whenApplicationHistorySearch_thenEventDescriptionIsNull()
+      givenDomainEventWithNoEventDescriptionInData_whenApplicationHistorySearch_thenEventIsExcludedFromResponse()
           throws Exception {
     var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
 
@@ -206,8 +206,7 @@ public class GetDomainEventTest extends BaseHarnessTest {
 
     assertOK(result);
     assertThat(actualResponse).isNotNull();
-    assertThat(actualResponse.getEvents()).isNotNull();
-    assertThat(actualResponse.getEvents().getFirst().getEventDescription()).isNull();
+    assertThat(actualResponse.getEvents().isEmpty()).isTrue();
   }
 
   @SmokeTest
