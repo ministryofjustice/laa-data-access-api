@@ -433,7 +433,11 @@ A: Create RC 2 with the fix (`v1.2.3-rc.2`). Follow same promotion process.
 A: Tech Lead + Product Manager (together). Consider feature risk and client readiness.
 
 **Q: Is RC data persistent between releases?**  
-A: No. When RC is deleted, PostgreSQL is also deleted. Next RC starts with fresh database.
+A: No. When RC is deleted, the Bitnami PostgreSQL pod is also deleted and all data is lost. The next RC starts with a fresh empty database and Flyway runs all migrations from scratch.
+
+This has an important implication for **migration testing**: because the database is always empty, migrations are only validated against a clean schema. A migration that works on an empty table may still fail on a production database with years of accumulated data (e.g. adding a `NOT NULL` column without a default, or a slow index creation that times out on large tables).
+
+The team should consider provisioning a dedicated persistent RDS instance for RC in future to address this — see `HELM_RC_VALUES.md` → "Future Consideration: Persistent RDS for RC" for the full detail.
 
 **Q: Can a client access both RC and Staging simultaneously?**  
 A: Yes. Give them both URLs. They can compare behavior.
