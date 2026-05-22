@@ -48,7 +48,9 @@ jobs:
           
           # If PR event, check for label
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            if [[ "${{ github.event.pull_request.labels.*.name }}" == *"mass-generator-required"* ]]; then
+            # Extract label names from PR event
+            labels="${{ toJson(github.event.pull_request.labels.*.name) }}"
+            if echo "$labels" | grep -q "mass-generator-required"; then
               echo "should-deploy=true" >> "$GITHUB_OUTPUT"
             else
               echo "should-deploy=false" >> "$GITHUB_OUTPUT"
