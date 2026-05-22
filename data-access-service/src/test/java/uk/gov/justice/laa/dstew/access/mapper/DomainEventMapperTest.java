@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -92,7 +91,11 @@ public class DomainEventMapperTest extends BaseMapperTest {
   void givenDataJsonWithNoEventDescriptionKey_whenToDomainEvent_thenEventDescriptionIsNull() {
     DomainEventEntity entity =
         DataGenerator.createDefault(
-            DomainEventGenerator.class, builder -> builder.data("{\"otherField\": \"someValue\"}"));
+            DomainEventGenerator.class,
+            builder ->
+                builder
+                    .data("{\"otherField\": \"someValue\"}")
+                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER));
 
     ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
 
@@ -100,24 +103,80 @@ public class DomainEventMapperTest extends BaseMapperTest {
   }
 
   @Test
-  void givenMalformedDataJson_whenToDomainEvent_thenThrowIllegalArgumentException() {
+  void givenMalformedDataJson_whenToDomainEvent_thenEventDescriptionIsNull() {
     DomainEventEntity entity =
         DataGenerator.createDefault(
-            DomainEventGenerator.class, builder -> builder.data("not-valid-json"));
+            DomainEventGenerator.class,
+            builder ->
+                builder
+                    .data("not-valid-json")
+                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER));
 
-    assertThatThrownBy(() -> mapper.toDomainEvent(entity))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Failed to parse JSON when extracting field 'eventDescription'");
+    ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
+
+    assertThat(result.getEventDescription()).isNull();
   }
 
   @Test
   void givenDataJsonWithNullEventDescriptionValue_whenToDomainEvent_thenEventDescriptionIsNull() {
     DomainEventEntity entity =
         DataGenerator.createDefault(
-            DomainEventGenerator.class, builder -> builder.data("{\"eventDescription\": null}"));
+            DomainEventGenerator.class,
+            builder ->
+                builder
+                    .data("{\"eventDescription\": null}")
+                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER));
 
     ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
 
     assertThat(result.getEventDescription()).isNull();
+  }
+
+  @Test
+  void givenEventTypeWithNoEventDescription_whenToDomainEvent_thenEventDescriptionIsNull() {
+    DomainEventEntity entity =
+        DataGenerator.createDefault(
+            DomainEventGenerator.class,
+            builder ->
+                builder
+                    .data("{\"applicationId\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\"}")
+                    .type(DomainEventType.APPLICATION_CREATED));
+
+    ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
+
+    assertThat(result.getEventDescription()).isNull();
+  }
+
+  @Test
+  void givenUnassignEventTypeWithEventDescription_whenToDomainEvent_thenEventDescriptionReturned() {
+    String expectedDescription = "Unassigned from caseworker";
+    DomainEventEntity entity =
+        DataGenerator.createDefault(
+            DomainEventGenerator.class,
+            builder ->
+                builder
+                    .data("{\"eventDescription\": \"" + expectedDescription + "\"}")
+                    .type(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER));
+
+    ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
+
+    assertThat(result.getEventDescription()).isEqualTo(expectedDescription);
+  }
+
+  @Test
+  void
+      givenMakeDecisionEventTypeWithEventDescription_whenToDomainEvent_thenEventDescriptionReturned() {
+    String expectedDescription = "Decision granted";
+    DomainEventEntity entity =
+        DataGenerator.createDefault(
+            DomainEventGenerator.class,
+            builder ->
+                builder
+                    .data("{\"eventDescription\": \"" + expectedDescription + "\"}")
+                    .type(DomainEventType.APPLICATION_MAKE_DECISION_GRANTED));
+
+    ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
+
+    assertThat(result.getEventDescription()).isEqualTo(expectedDescription);
   }
 }
