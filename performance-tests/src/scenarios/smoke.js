@@ -5,7 +5,7 @@ import { env } from '../config/env.js';
 
 export const smoke = {
   executor: 'constant-vus',
-  vus: env.vusOverride ?? 1,
-  duration: env.durationOverride ?? '30s',
+  vus: env.vusOverride || 1,
+  duration: env.durationOverride || '30s',
   tags: { scenario: 'smoke' },
 };

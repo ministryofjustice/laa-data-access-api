@@ -10,13 +10,13 @@
 
 import { env } from '../config/env.js';
 
-const targetRps = env.vusOverride ?? 50;
+const targetRps = env.vusOverride || 50;
 
 export const throughput = {
   executor: 'constant-arrival-rate',
   rate: targetRps,
   timeUnit: '1s',
-  duration: env.durationOverride ?? '2m',
+  duration: env.durationOverride || '2m',
   // Allocate enough VUs to cover a tail-latency spike. Rule of thumb: 2x rate
   // for sub-second endpoints; bump higher if your p99 is >1s.
   preAllocatedVUs: targetRps * 2,

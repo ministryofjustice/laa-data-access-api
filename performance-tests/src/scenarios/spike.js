@@ -8,13 +8,13 @@ export const spike = {
   startVUs: 0,
   stages: env.durationOverride
     ? [
-        { target: env.vusOverride ?? 200, duration: '30s' },
-        { target: env.vusOverride ?? 200, duration: env.durationOverride },
+        { target: env.vusOverride || 200, duration: '30s' },
+        { target: env.vusOverride || 200, duration: env.durationOverride },
         { target: 0, duration: '30s' },
       ]
     : [
-        { target: env.vusOverride ?? 200, duration: '30s' },
-        { target: env.vusOverride ?? 200, duration: '1m' },
+        { target: env.vusOverride || 200, duration: '30s' },
+        { target: env.vusOverride || 200, duration: '1m' },
         { target: 0, duration: '30s' },
       ],
   gracefulRampDown: '15s',

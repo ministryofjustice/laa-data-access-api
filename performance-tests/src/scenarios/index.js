@@ -12,7 +12,7 @@ import { throughput } from './throughput.js';
 const scenarios = { smoke, load, stress, soak, spike, throughput };
 
 export const selectScenario = (name) => {
-  const chosen = name ?? env.scenario;
+  const chosen = name || env.scenario;
   const config = scenarios[chosen];
   if (!config) {
     throw new Error(`Unknown scenario "${chosen}". Valid: ${Object.keys(scenarios).join(', ')}`);

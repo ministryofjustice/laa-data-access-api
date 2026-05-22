@@ -5,7 +5,7 @@ import { env } from '../config/env.js';
 
 export const soak = {
   executor: 'constant-vus',
-  vus: env.vusOverride ?? 20,
-  duration: env.durationOverride ?? '2h',
+  vus: env.vusOverride || 20,
+  duration: env.durationOverride || '2h',
   tags: { scenario: 'soak' },
 };

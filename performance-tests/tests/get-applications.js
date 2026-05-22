@@ -22,7 +22,7 @@ const REQUEST_NAME = 'GET /api/v0/applications';
 
 export const options = {
   scenarios: selectScenario(),
-  thresholds: { ...defaultThresholds, ...endpointThresholds },
+  thresholds: Object.assign({}, defaultThresholds, endpointThresholds),
   // Tag every metric with the test name so dashboards can filter by test.
   tags: { test: 'get-applications' },
 };

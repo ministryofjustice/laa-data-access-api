@@ -110,8 +110,9 @@ tasks.register('lint', Exec) {
     onlyIf { new File(projectDir, 'node_modules').exists() }
 }
 
-tasks.named('check') {
-    // Local convenience: `./gradlew :performance-tests:check` runs the smoke scenario.
-    // Cluster runs are handled by the K6 Operator and are NOT triggered from here.
-    dependsOn 'smoke'
-}
+// Deliberately NOT wired into `check` or `build`.
+//
+// Performance tests are opt-in: invoke explicitly by name
+// (`./gradlew :performance-tests:smoke`). Wiring them into `check` would force
+// CI — which has no k6 binary — to run them on every PR, which is exactly what
+// we want to avoid. Cluster runs go through the K6 Operator + helm chart.

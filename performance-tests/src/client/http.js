@@ -16,24 +16,27 @@ const failureCounts = new Map();
 
 const logIfFailed = (name, res) => {
   if (res.status >= 200 && res.status < 400) return;
-  const seen = failureCounts.get(name) ?? 0;
+  const seen = failureCounts.get(name) || 0;
   if (seen >= MAX_LOGGED_FAILURES_PER_NAME) return;
   failureCounts.set(name, seen + 1);
   const bodyExcerpt = typeof res.body === 'string' ? res.body.slice(0, 200) : '(non-text body)';
   console.warn(`[${name}] ${res.status} ${res.error || ''} — ${bodyExcerpt}`);
 };
 
-const mergeParams = (name, params = {}) => ({
-  timeout: env.requestTimeout,
-  ...params,
-  headers: { ...authHeaders(), ...(params.headers || {}) },
-  tags: { ...(params.tags || {}), name },
-});
+const mergeParams = (name, params) => {
+  const p = params || {};
+  return Object.assign({ timeout: env.requestTimeout }, p, {
+    headers: Object.assign({}, authHeaders(), p.headers || {}),
+    tags: Object.assign({}, p.tags || {}, { name: name }),
+  });
+};
 
-const withJsonBody = (params = {}) => ({
-  ...params,
-  headers: { 'Content-Type': 'application/json', ...(params.headers || {}) },
-});
+const withJsonBody = (params) => {
+  const p = params || {};
+  return Object.assign({}, p, {
+    headers: Object.assign({ 'Content-Type': 'application/json' }, p.headers || {}),
+  });
+};
 
 export const get = (name, url, params) => {
   const res = http.get(url, mergeParams(name, params));
