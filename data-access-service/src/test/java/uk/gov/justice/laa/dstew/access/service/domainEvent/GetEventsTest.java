@@ -56,43 +56,6 @@ public class GetEventsTest extends BaseServiceTest {
   }
 
   @Test
-  void
-      givenDomainEventsWithAndWithoutEventDescription_whenGetEvents_thenOnlyReturnEventsWithEventDescription() {
-    // given
-    setSecurityContext(TestConstants.Roles.CASEWORKER);
-    DomainEventEntity withDescription =
-        DataGenerator.createDefault(
-            DomainEventGenerator.class,
-            builder ->
-                builder
-                    .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
-                    .data(
-                        "{\"eventDescription\": \""
-                            + DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER.getValue()
-                            + "\"}"));
-    DomainEventEntity withoutDescription =
-        DataGenerator.createDefault(
-            DomainEventGenerator.class,
-            builder ->
-                builder
-                    .type(DomainEventType.APPLICATION_CREATED)
-                    .data("{\"laaReference\": \"LAA-123\"}"));
-
-    when(domainEventRepository.findAll(any(Specification.class)))
-        .thenReturn(List.of(withDescription, withoutDescription));
-
-    // when
-    List<ApplicationDomainEventResponse> actualDomainEvents =
-        serviceUnderTest.getEvents(
-            UUID.randomUUID(), List.of(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER));
-
-    // then
-    assertThat(actualDomainEvents.size()).isEqualTo(1);
-    assertThat(actualDomainEvents.get(0).getEventDescription())
-        .isEqualTo(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER.getValue());
-  }
-
-  @Test
   public void givenNotRoleReader_whenGetEvents_thenThrowUnauthorizedException() {
     // given
     setSecurityContext(TestConstants.Roles.NO_ROLE);

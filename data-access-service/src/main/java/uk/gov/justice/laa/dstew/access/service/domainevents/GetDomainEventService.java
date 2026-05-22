@@ -35,7 +35,6 @@ public class GetDomainEventService {
         Comparator.comparing(ApplicationDomainEventResponse::getCreatedAt);
     return domainEventRepository.findAll(filter).stream()
         .map(mapper::toDomainEvent)
-        .filter(event -> event.getEventDescription() != null)
         .sorted(comparer)
         .toList();
   }
