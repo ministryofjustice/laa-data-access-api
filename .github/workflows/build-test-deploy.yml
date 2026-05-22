@@ -186,49 +186,12 @@ jobs:
           REPOSITORY: ${{ vars.ECR_REPOSITORY }}
           IMAGE_TAG: ${{ github.sha }}
 
-  build-push-mass-generator-docker:
-    name: build and push mass-generator docker image
-    runs-on: ubuntu-latest
-    needs:
-      - build-test
-    permissions:
-      id-token: write
-      contents: read
-    steps:
 
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-
-      - name: Download mass-generator JAR artifact
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
-        with:
-          name: mass-generator-jar
-          path: data-access-mass-generator/build/libs/
-
-      - name: Configure AWS creds
-        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
-        with:
-          role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-          aws-region: ${{ vars.ECR_REGION }}
-
-      - name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
-        id: login-ecr
-
-      - name: Build and push mass-generator Docker image
-        run: |
-          docker build --no-cache -f Dockerfile.mass-generator \
-            -t $REGISTRY/$REPOSITORY:${IMAGE_TAG}-mass-generator .
-          docker push $REGISTRY/$REPOSITORY:${IMAGE_TAG}-mass-generator
-        env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-          IMAGE_TAG: ${{ github.sha }}
 
   deploy-uat:
     runs-on: ubuntu-latest
     needs:
       - build-push-docker
-      - build-push-mass-generator-docker
       - vulnerability-scan-app
       - vulnerability-scan-docker
     environment: uat
