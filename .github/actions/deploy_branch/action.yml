@@ -29,6 +29,10 @@ inputs:
     description: "Optional fixed Helm release name. If omitted, the name is derived from the branch name."
     required: false
     default: ''
+  deploy-mass-generator:
+    description: "Whether to deploy the mass-generator alongside the app. Defaults to false."
+    required: false
+    default: 'false'
 
 outputs:
   branch-name:
@@ -145,12 +149,14 @@ runs:
           --install \
           --wait
 
-        helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
-          --namespace ${KUBE_NAMESPACE} \
-          --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
-          --set image.tag="${GIT_SHA}-mass-generator" \
-          --set spring.profile="${SPRING_PROFILE}" \
-          --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
-          --install \
-          --wait
+        if [ "${{ inputs.deploy-mass-generator }}" = "true" ]; then
+          helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
+            --namespace ${KUBE_NAMESPACE} \
+            --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
+            --set image.tag="${GIT_SHA}-mass-generator" \
+            --set spring.profile="${SPRING_PROFILE}" \
+            --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
+            --install \
+            --wait
+        fi
 
