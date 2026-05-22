@@ -12,8 +12,11 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapperImpl;
@@ -157,12 +160,11 @@ public class GetDomainEventTest extends BaseHarnessTest {
     assertTrue(actualResponse.getEvents().containsAll(expectedAssignDomainEvents));
   }
 
-  @Test
-  public void
-      givenDomainEventWithEventDescription_whenApplicationHistorySearch_thenEventDescriptionIsExtractedFromJson()
-          throws Exception {
+  @ParameterizedTest
+  @MethodSource("eventDescriptionCases")
+  public void givenDomainEvent_whenApplicationHistorySearch_thenEventDescriptionIsReturnedCorrectly(
+      String data, String expectedDescription) throws Exception {
     var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
-    String expectedDescription = "Assigned to caseworker";
 
     persistedDataGenerator.createAndPersist(
         DomainEventGenerator.class,
@@ -171,7 +173,7 @@ public class GetDomainEventTest extends BaseHarnessTest {
                 .applicationId(appId)
                 .caseworkerId(CaseworkerJohnDoe.getId())
                 .createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds())
-                .data("{\"eventDescription\": \"" + expectedDescription + "\"}")
+                .data(data)
                 .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER));
 
     HarnessResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
@@ -184,29 +186,12 @@ public class GetDomainEventTest extends BaseHarnessTest {
         .isEqualTo(expectedDescription);
   }
 
-  @Test
-  public void
-      givenDomainEventWithNoEventDescriptionInData_whenApplicationHistorySearch_thenEventDescriptionIsNull()
-          throws Exception {
-    var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
-
-    persistedDataGenerator.createAndPersist(
-        DomainEventGenerator.class,
-        builder ->
-            builder
-                .applicationId(appId)
-                .caseworkerId(CaseworkerJohnDoe.getId())
-                .createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds())
-                .data("{\"otherField\": \"someValue\"}")
-                .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER));
-
-    HarnessResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
-    ApplicationHistoryResponse actualResponse =
-        deserialise(result, ApplicationHistoryResponse.class);
-
-    assertOK(result);
-    assertThat(actualResponse).isNotNull();
-    assertThat(actualResponse.getEvents().getFirst().getEventDescription()).isNull();
+  private static Stream<Arguments> eventDescriptionCases() {
+    return Stream.of(
+        Arguments.of(
+            "{\"otherField\": \"someValue\",\"eventDescription\": \"Assigned to caseworker\"}",
+            "Assigned to caseworker"),
+        Arguments.of("{\"otherField\": \"someValue\"}", null));
   }
 
   @SmokeTest
