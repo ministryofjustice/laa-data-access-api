@@ -93,9 +93,8 @@ down all resources created for that branch:
   deployments without overwriting them.
 - Gets its own **dedicated Bitnami PostgreSQL** instance (`laa-data-access-api-rc-postgresql`),
   isolated like a PR preview branch rather than sharing the UAT RDS instance.
-- Uses the `preview` Spring profile — this is required because the `preview` profile configures
-  the app to connect to the Bitnami PostgreSQL instance (`<release>-postgresql`). The `unsecured`
-  and `main` profiles connect to the RDS secret instead and would cause the pods to fail on start.
+- Uses the `rc` Spring profile (`application-rc.yaml`), which constructs the datasource URL from
+  `DB_HOST` and `DB_NAME` environment variables injected by the Helm `dbConnectionDetails` template.
 - Uses the `rc` Helm values file (higher resource limits than preview branches, suitable for
   client load testing).
 - No smoke tests are run as part of this job.
@@ -147,7 +146,7 @@ down all resources created for that branch:
 |-------------|---------|----------------|----------|---------|
 | **UAT (PR)** | Pull request opened/updated | `preview` | Bitnami PostgreSQL (per-PR) | Branch-specific URL |
 | **UAT (main)** | Push to `main` | `unsecured` | Shared RDS | Fixed `main-<namespace>` URL |
-| **RC** | Manual tag `v*-rc.*` | `preview` | Bitnami PostgreSQL (dedicated) | Fixed `laa-data-access-api-rc` |
+ **RC**  Manual tag `v*-rc.*`  `rc`  Bitnami PostgreSQL (dedicated)  Fixed `laa-data-access-api-rc` 
 | **Staging** | Manual tag `v*` (no `-rc.`) | `unsecured` | Shared RDS | Fixed `laa-data-access-api` |
 | **Production** | Manual tag `v*` (no `-rc.`) after staging | `main` | Shared RDS | Fixed `laa-data-access-api` |
 
