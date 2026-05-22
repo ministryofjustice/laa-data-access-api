@@ -10,9 +10,7 @@ auth:
 
 primary:
   persistence:
-    enabled: true
-    size: 8Gi
-    storageClass: ""
+    enabled: false
 
 serviceAccount:
   create: false            # Do not create a new service account
