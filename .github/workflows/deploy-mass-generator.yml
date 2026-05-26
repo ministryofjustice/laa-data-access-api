@@ -34,8 +34,11 @@ jobs:
             echo "should-deploy=true" >> "$GITHUB_OUTPUT"
             echo "target=uat" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event_name }}" = "pull_request" ]; then
-            labels='${{ toJson(github.event.pull_request.labels.*.name) }}'
-            if echo "$labels" | grep -q "mass-generator-required"; then
+            # Check if the mass-generator-required label was specifically added
+            added_label='${{ github.event.action }}'
+            label_name='${{ github.event.label.name }}'
+          
+            if [ "$added_label" = "labeled" ] && [ "$label_name" = "mass-generator-required" ]; then
               echo "should-deploy=true" >> "$GITHUB_OUTPUT"
               echo "target=ephemeral" >> "$GITHUB_OUTPUT"
             else
@@ -46,6 +49,7 @@ jobs:
             echo "should-deploy=false" >> "$GITHUB_OUTPUT"
             echo "target=none" >> "$GITHUB_OUTPUT"
           fi
+
 
   build-push-mass-generator-docker:
     name: Build and push mass-generator docker image
