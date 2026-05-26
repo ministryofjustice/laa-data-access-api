@@ -55,28 +55,28 @@ With feature flags:
 
 ```
 main (single source of truth)
-  └── git tag v1.3.0-rc.1-client-a
-        └── GitHub Actions detects tag matching *-client-a
-              └── Helm deploy to namespace: rc-client-a
-                    ├── values/rc-client-a.yaml
+  └── git tag v1.3.0-rc.1-apply
+        └── GitHub Actions detects tag matching *-apply
+              └── Helm deploy to namespace with release: laa-data-access-api-rc-apply
+                    ├── values/rc-apply.yaml
                     │     ├── featureFlags.schemaV2: true
-                    │     └── database.url: client-a-rc-db
-                    └── Own isolated database
+                    │     └── database: laa-data-access-api-rc-apply-postgresql
+                    └── Own isolated Bitnami PostgreSQL database
 ```
 
-- **Client A** tests against `rc-client-a.your-domain.com` with `schemaV2` flag enabled
-- **Client B** tests against the standard `rc.your-domain.com` with the flag disabled
+- **Apply client** tests against `laa-data-access-api-rc-apply-uat.cloud-platform.service.justice.gov.uk` with feature flags enabled
+- **Decide client** tests against `laa-data-access-api-rc-decide-uat.cloud-platform.service.justice.gov.uk` with feature flags disabled (or different flags)
 - Both environments run **identical code** from the same RC tag on main
 
 ### What Each Component Does
 
 | Component | Role |
 |---|---|
-| **Tag name** (`v1.3.0-rc.1-client-a`) | Triggers the correct GitHub Actions workflow and identifies the client and version |
-| **GitHub Actions tag pattern** (`*-client-a`) | Routes deployment to the correct client environment automatically |
-| **Helm values file** (`values/rc-client-a.yaml`) | Sets client-specific feature flags, DB connection string, access controls |
-| **Isolated database** | Client A's schema migrations run independently — no cross-client contamination |
-| **Kubernetes namespace** (`rc-client-a`) | Full environment isolation — networking, secrets, resources |
+| **Tag name** (`v1.3.0-rc.1-apply`) | Triggers the correct GitHub Actions workflow and identifies the client and version |
+| **GitHub Actions tag pattern** (`*-apply`, `*-decide`) | Routes deployment to the correct client environment automatically |
+| **Helm values file** (`values/rc-apply.yaml`, `values/rc-decide.yaml`) | Sets client-specific feature flags, Sentry environment, access controls |
+| **Isolated database** | Each client gets their own Bitnami PostgreSQL instance — schema migrations run independently |
+| **Kubernetes release name** (`laa-data-access-api-rc-apply`) | Full environment isolation — networking, secrets, resources |
 
 ---
 
@@ -119,17 +119,13 @@ Given the legal aid context, fixture data is the recommended approach:
 Feature flags should be implemented as **environment variables in per-client Helm values files**. This requires no new tooling and reuses existing Helm infrastructure.
 
 ```yaml
-# values/rc-client-a.yaml
+# .helm/data-access-api/values/rc-apply.yaml
 featureFlags:
   schemaV2: true
-database:
-  url: client-a-rc-db
 
-# values/rc-client-b.yaml
+# .helm/data-access-api/values/rc-decide.yaml
 featureFlags:
   schemaV2: false
-database:
-  url: client-b-rc-db
 ```
 
 The application code gates behaviour behind the flag:
@@ -227,12 +223,13 @@ The approach described in this document — **RC tags from main with per-client 
 
 For this approach to work reliably, the following must be in place:
 
-1. **Per-client Helm values files** — one per client, version controlled alongside the application
-2. **Per-client database provisioning** — automated or documented manual setup of an isolated DB instance per client env
+1. **Per-client Helm values files** — one per client, version controlled alongside the application (`.helm/data-access-api/values/rc-apply.yaml`, `.helm/data-access-api/values/rc-decide.yaml`)
+2. **Per-client database provisioning** — automated via Helm; each client gets their own Bitnami PostgreSQL instance deployed alongside the application
 3. **Tag naming convention** — agreed format for GitHub Actions routing to work consistently:
    - `v{version}-rc.{n}` → standard RC, promotable to Staging from main
-   - `v{version}-rc.{n}-{client-id}` → client-specific RC, NOT directly promotable
-4. **Environment TTL and cleanup policy** — explicit ownership of teardown; environment is removed when the feature is promoted to Staging
+   - `v{version}-rc.{n}-apply` → Apply client-specific RC, NOT directly promotable
+   - `v{version}-rc.{n}-decide` → Decide client-specific RC, NOT directly promotable
+4. **Environment TTL and cleanup policy** — explicit ownership of teardown; environment is removed when the feature is promoted to Staging (delete the Helm release: `helm uninstall laa-data-access-api-rc-apply -n laa-data-access-api-uat`)
 5. **Flag cleanup discipline** — flags are removed from the codebase as part of the definition of done when a feature is fully promoted
 
 ---
