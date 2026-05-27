@@ -224,6 +224,38 @@ jobs:
           REPOSITORY: ${{ vars.ECR_REPOSITORY }}
           IMAGE_TAG: ${{ github.sha }}
 
+  build-push-smoke-test-docker:
+    name: build and push smoke-test docker image
+    runs-on: ubuntu-latest
+    needs:
+      - build-test
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Configure AWS creds
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
+        with:
+          role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.ECR_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
+        id: login-ecr
+
+      - name: Build and push smoke-test Docker image
+        run: |
+          docker build --no-cache -f Dockerfile.smoke-test \
+            -t $REGISTRY/$REPOSITORY:${IMAGE_TAG}-smoke-test .
+          docker push $REGISTRY/$REPOSITORY:${IMAGE_TAG}-smoke-test
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+
   deploy-uat:
     runs-on: ubuntu-latest
     needs:
@@ -262,6 +294,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - deploy-uat
+      - build-push-smoke-test-docker
     environment: uat
     permissions:
       id-token: write
@@ -273,15 +306,6 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - name: Set up JDK 25
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
-        with:
-          java-version: 25
-          distribution: 'corretto'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
-
       - name: Authenticate to the cluster
         uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
         with:
@@ -290,71 +314,115 @@ jobs:
           kube-cluster: ${{ secrets.KUBE_CLUSTER }}
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
 
-      - name: Resolve smoke-test target
-        id: target
+      - name: Configure AWS creds
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
+        with:
+          role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.ECR_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
+        id: login-ecr
+
+      - name: Resolve smoke-test configuration
+        id: config
         shell: bash
         run: |
           set -euo pipefail
           if [ "$BRANCH_NAME" = "main" ]; then
-            echo "db_pod_selector=run=port-forward-pod" >> "$GITHUB_OUTPUT"
-            echo "db_secret=rds-postgresql-instance-output" >> "$GITHUB_OUTPUT"
             echo "db_flavour=rds" >> "$GITHUB_OUTPUT"
+            echo "spring_profile=main" >> "$GITHUB_OUTPUT"
           else
-            echo "db_pod_selector=app.kubernetes.io/instance=${RELEASE_NAME}-postgresql,app.kubernetes.io/name=postgresql" >> "$GITHUB_OUTPUT"
-            echo "db_secret=${RELEASE_NAME}-postgresql" >> "$GITHUB_OUTPUT"
             echo "db_flavour=bitnami" >> "$GITHUB_OUTPUT"
+            echo "db_postgresql_release=${RELEASE_NAME}-postgresql" >> "$GITHUB_OUTPUT"
+            echo "spring_profile=preview" >> "$GITHUB_OUTPUT"
           fi
-          echo "app_pod_selector=app.kubernetes.io/instance=${RELEASE_NAME},app.kubernetes.io/name=data-access-api" >> "$GITHUB_OUTPUT"
 
-      - name: Port forward to Postgres
-        uses: ./.github/actions/port-forward
-        with:
-          kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
-          pod_selector: ${{ steps.target.outputs.db_pod_selector }}
-          local_port: "5432"
-          remote_port: "5432"
-          pid_env_var: DB_PORT_FORWARD_PID
-
-      - name: Port forward to app
-        uses: ./.github/actions/port-forward
-        with:
-          kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
-          pod_selector: ${{ steps.target.outputs.app_pod_selector }}
-          local_port: "8080"
-          remote_port: "8080"
-          pid_env_var: APP_PORT_FORWARD_PID
-
-      - name: Configure smoke-test environment
+      - name: Deploy and run smoke tests in cluster
+        id: smoke-test
         shell: bash
         env:
-          DB_SECRET: ${{ steps.target.outputs.db_secret }}
-          DB_FLAVOUR: ${{ steps.target.outputs.db_flavour }}
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+          DB_FLAVOUR: ${{ steps.config.outputs.db_flavour }}
+          DB_POSTGRESQL_RELEASE: ${{ steps.config.outputs.db_postgresql_release }}
+          SPRING_PROFILE: ${{ steps.config.outputs.spring_profile }}
         run: |
           set -euo pipefail
-          decode() {
-            kubectl -n "$KUBE_NAMESPACE" get secret "$DB_SECRET" -o jsonpath="{.data.$1}" | base64 -d
-          }
-          if [ "$DB_FLAVOUR" = "rds" ]; then
-            DB_NAME=$(decode database_name)
-            DB_USER=$(decode database_username)
-            DB_PASS=$(decode database_password)
+          
+          JOB_NAME="${RELEASE_NAME}-smoke-test"
+          
+          # Delete any existing smoke test job from previous runs
+          kubectl -n "$KUBE_NAMESPACE" delete job "$JOB_NAME" --ignore-not-found
+          
+          # Deploy smoke test job via Helm
+          helm upgrade "$JOB_NAME" .helm/smoke-test \
+            --namespace "$KUBE_NAMESPACE" \
+            --set image.repository="${REGISTRY}/${REPOSITORY}" \
+            --set image.tag="${IMAGE_TAG}-smoke-test" \
+            --set appReleaseName="${RELEASE_NAME}" \
+            --set db.flavour="${DB_FLAVOUR}" \
+            --set db.postgresqlReleaseName="${DB_POSTGRESQL_RELEASE}" \
+            --set spring.profile="${SPRING_PROFILE}" \
+            --install \
+            --wait
+          
+          # Wait for the job pod to be created and start running
+          echo "Waiting for smoke test pod to start..."
+          kubectl -n "$KUBE_NAMESPACE" wait --for=condition=Ready pod \
+            -l "app.kubernetes.io/name=smoke-test,app.kubernetes.io/instance=${JOB_NAME}" \
+            --timeout=120s || true
+          
+          # Get the pod name
+          POD_NAME=$(kubectl -n "$KUBE_NAMESPACE" get pod \
+            -l "app.kubernetes.io/name=smoke-test,app.kubernetes.io/instance=${JOB_NAME}" \
+            -o jsonpath='{.items[0].metadata.name}')
+          
+          echo "Streaming logs from pod: $POD_NAME"
+          
+          # Stream logs - this will follow until the container exits
+          kubectl -n "$KUBE_NAMESPACE" logs -f "$POD_NAME" || true
+          
+          # Wait for job completion and capture exit status
+          echo "Waiting for job to complete..."
+          if kubectl -n "$KUBE_NAMESPACE" wait --for=condition=complete job/"$JOB_NAME" --timeout=1200s; then
+            echo "smoke_test_passed=true" >> "$GITHUB_OUTPUT"
+            echo "Smoke tests PASSED"
           else
-            DB_NAME="postgres"
-            DB_USER="postgres"
-            DB_PASS=$(decode postgres-password)
+            # Check if it failed rather than timed out
+            FAILED=$(kubectl -n "$KUBE_NAMESPACE" get job "$JOB_NAME" -o jsonpath='{.status.failed}')
+            if [ "$FAILED" = "1" ]; then
+              echo "smoke_test_passed=false" >> "$GITHUB_OUTPUT"
+              echo "Smoke tests FAILED"
+            else
+              echo "smoke_test_passed=false" >> "$GITHUB_OUTPUT"
+              echo "Smoke tests TIMED OUT"
+            fi
           fi
-          echo "::add-mask::$DB_PASS"
-          {
-            echo "LAA_SMOKE_ACCESS_API_URL=http://localhost:8080"
-            echo "LAA_SMOKE_ACCESS_DB_URL=jdbc:postgresql://localhost:5432/$DB_NAME"
-            echo "LAA_SMOKE_ACCESS_DB_USERNAME=$DB_USER"
-            echo "LAA_SMOKE_ACCESS_DB_PASSWORD=$DB_PASS"
-          } >> "$GITHUB_ENV"
 
-      - name: Run UAT smoke tests
-        run: ./gradlew :data-access-service:infrastructureTest --continue --console=plain
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract test reports from pod
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          JOB_NAME="${RELEASE_NAME}-smoke-test"
+          
+          # Get the pod name (may have completed by now)
+          POD_NAME=$(kubectl -n "$KUBE_NAMESPACE" get pod \
+            -l "app.kubernetes.io/name=smoke-test,app.kubernetes.io/instance=${JOB_NAME}" \
+            -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+          
+          if [ -n "$POD_NAME" ]; then
+            echo "Extracting test reports from pod: $POD_NAME"
+            mkdir -p data-access-service/build/reports/tests
+            kubectl -n "$KUBE_NAMESPACE" cp \
+              "$POD_NAME:/smoke-test/data-access-service/build/reports/tests/infrastructureTest" \
+              "data-access-service/build/reports/tests/infrastructureTest" 2>/dev/null || echo "Could not extract reports (pod may have been cleaned up)"
+          else
+            echo "Pod not found - reports not available"
+          fi
 
       - name: Upload smoke test report
         if: always()
@@ -363,21 +431,20 @@ jobs:
           name: uat-smoke-test-report
           path: data-access-service/build/reports/tests/infrastructureTest
           retention-days: 14
+          if-no-files-found: warn
 
-      - name: Stop port-forwards
+      - name: Cleanup smoke test job
         if: always()
         shell: bash
         run: |
-          for pid in "${DB_PORT_FORWARD_PID:-}" "${APP_PORT_FORWARD_PID:-}"; do
-            [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
-          done
+          JOB_NAME="${RELEASE_NAME}-smoke-test"
+          helm uninstall "$JOB_NAME" --namespace "$KUBE_NAMESPACE" --ignore-not-found || true
 
-      - name: Delete in-cluster port-forward resources
-        if: always()
-        shell: bash
+      - name: Fail if smoke tests failed
+        if: steps.smoke-test.outputs.smoke_test_passed != 'true'
         run: |
-          kubectl -n "$KUBE_NAMESPACE" delete deployment port-forward-pod --ignore-not-found
-          kubectl -n "$KUBE_NAMESPACE" delete service laa-data-access-api-uat-postgresql-portforward --ignore-not-found
+          echo "Smoke tests did not pass"
+          exit 1
 
   deploy-staging:
     if: github.ref == 'refs/heads/main'

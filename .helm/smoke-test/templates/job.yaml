@@ -1,0 +1,83 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app.kubernetes.io/name: smoke-test
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  backoffLimit: {{ .Values.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: {{ .Values.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: smoke-test
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+        - name: smoke-test
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            # App URL - uses in-cluster DNS
+            - name: LAA_SMOKE_ACCESS_API_URL
+              value: "http://{{ .Values.appReleaseName }}-data-access-api:8080"
+
+            {{- if eq .Values.db.flavour "rds" }}
+            # RDS database configuration (main branch)
+            # Note: LAA_SMOKE_ACCESS_DB_URL is constructed by the entrypoint wrapper
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key: rds_instance_address
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key: database_name
+            - name: LAA_SMOKE_ACCESS_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key: database_username
+            - name: LAA_SMOKE_ACCESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rds-postgresql-instance-output
+                  key: database_password
+            - name: DB_FLAVOUR
+              value: "rds"
+            {{- else }}
+            # Bitnami PostgreSQL configuration (preview branches)
+            - name: LAA_SMOKE_ACCESS_DB_URL
+              value: "jdbc:postgresql://{{ .Values.db.postgresqlReleaseName }}:5432/postgres"
+            - name: LAA_SMOKE_ACCESS_DB_USERNAME
+              value: "postgres"
+            - name: LAA_SMOKE_ACCESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.db.postgresqlReleaseName }}
+                  key: postgres-password
+            - name: DB_FLAVOUR
+              value: "bitnami"
+            {{- end }}
+
+
+

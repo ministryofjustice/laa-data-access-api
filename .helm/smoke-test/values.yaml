@@ -1,0 +1,31 @@
+image:
+  repository: null
+  tag: null
+
+# Name of the app release to test against
+appReleaseName: null
+
+# Database configuration
+db:
+  # For preview branches: bitnami PostgreSQL release name
+  postgresqlReleaseName: null
+  # For main branch: use RDS
+  flavour: bitnami  # or "rds"
+
+# Spring profile (determines DB connection strategy)
+spring:
+  profile: preview
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2G
+  requests:
+    cpu: 100m
+    memory: 1G
+
+# Job configuration
+backoffLimit: 0
+activeDeadlineSeconds: 1200  # 20 minute timeout
+ttlSecondsAfterFinished: 300  # Clean up job 5 mins after completion
+

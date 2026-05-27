@@ -1,0 +1,59 @@
+FROM amazoncorretto:25-alpine
+
+# Update all packages
+RUN apk update && apk upgrade && apk add --no-cache curl
+
+# Create working directory
+WORKDIR /smoke-test
+
+# Copy the entire project for Gradle to run tests
+# We need: gradle wrapper, build files, and compiled test classes
+COPY gradlew gradlew
+COPY gradle gradle
+COPY build.gradle build.gradle
+COPY settings.gradle settings.gradle
+COPY gradle.properties gradle.properties
+
+# Copy subproject build files
+COPY data-access-api/build.gradle data-access-api/build.gradle
+COPY data-access-service/build.gradle data-access-service/build.gradle
+COPY data-access-service/lombok.config data-access-service/lombok.config
+COPY data-access-shared/build.gradle data-access-shared/build.gradle
+COPY data-access-shared/lombok.config data-access-shared/lombok.config
+
+# Copy OpenAPI specs (needed for code generation)
+COPY data-access-api/open-api-specification.yml data-access-api/open-api-specification.yml
+COPY data-access-api/open-api-common data-access-api/open-api-common
+COPY data-access-api/open-api-applications data-access-api/open-api-applications
+COPY data-access-api/open-api-individuals data-access-api/open-api-individuals
+COPY data-access-api/open-api-caseworkers data-access-api/open-api-caseworkers
+
+# Copy source code
+COPY data-access-api/src data-access-api/src
+COPY data-access-service/src data-access-service/src
+COPY data-access-shared/src data-access-shared/src
+
+# Create custom user for security
+RUN addgroup --system --gid 1001 testgroup && \
+    adduser --system --uid 1001 --ingroup testgroup --shell /bin/sh testuser
+
+# Pre-download Gradle wrapper and dependencies to speed up test execution
+RUN chmod +x gradlew && \
+    ./gradlew --no-daemon dependencies --quiet || true
+
+# Change ownership
+RUN chown -R testuser:testgroup /smoke-test
+USER 1001
+
+ENV TZ=Europe/London
+ENV JAVA_TOOL_OPTIONS="-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=80.0"
+
+# Copy the entrypoint script
+COPY --chown=testuser:testgroup scripts/run-smoke-tests.sh /smoke-test/run-smoke-tests.sh
+RUN chmod +x /smoke-test/run-smoke-tests.sh
+
+# Default command runs infrastructure tests via wrapper script
+# The wrapper handles constructing LAA_SMOKE_ACCESS_DB_URL for RDS deployments
+ENTRYPOINT ["/smoke-test/run-smoke-tests.sh"]
+
+
