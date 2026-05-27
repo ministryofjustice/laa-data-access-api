@@ -28,8 +28,6 @@ COPY data-access-api/open-api-applications data-access-api/open-api-applications
 COPY data-access-api/open-api-individuals data-access-api/open-api-individuals
 COPY data-access-api/open-api-caseworkers data-access-api/open-api-caseworkers
 
-# Copy source code
-COPY data-access-api/src data-access-api/src
 COPY data-access-service/src data-access-service/src
 COPY data-access-shared/src data-access-shared/src
 
