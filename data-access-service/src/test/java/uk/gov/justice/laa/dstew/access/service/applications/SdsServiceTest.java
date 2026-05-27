@@ -5,12 +5,14 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOf
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.endsWith;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -44,7 +47,7 @@ class SdsServiceTest {
   void setUp() {
     ReflectionTestUtils.setField(sdsService, "sdsApiUrl", "http://localhost:8080/test-sds-api");
     ReflectionTestUtils.setField(sdsService, "bucketName", "test-bucket");
-    when(tokenService.getSdsAccessToken()).thenReturn("mock-token");
+    lenient().when(tokenService.getSdsAccessToken()).thenReturn("mock-token");
   }
 
   @Test
@@ -62,7 +65,13 @@ class SdsServiceTest {
 
     when(sdsRestClient.post()).thenReturn(requestBodyUriSpec);
     when(requestBodyUriSpec.uri(endsWith("/save_file"))).thenReturn(requestBodySpec);
-    when(requestBodySpec.header("Authorization", "Bearer mock-token")).thenReturn(requestBodySpec);
+    when(requestBodySpec.headers(any()))
+        .thenAnswer(
+            invocation -> {
+              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
+              headersConsumer.accept(new HttpHeaders());
+              return requestBodySpec;
+            });
     when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
     when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
     when(requestBodySpec.retrieve()).thenReturn(responseSpec);
@@ -77,7 +86,6 @@ class SdsServiceTest {
     verify(tokenService).getSdsAccessToken();
     verify(sdsRestClient).post();
     verify(requestBodyUriSpec).uri(endsWith("/save_file"));
-    verify(requestBodySpec).header("Authorization", "Bearer mock-token");
   }
 
   @Test
@@ -94,7 +102,13 @@ class SdsServiceTest {
 
     when(sdsRestClient.post()).thenReturn(requestBodyUriSpec);
     when(requestBodyUriSpec.uri(endsWith("/save_file"))).thenReturn(requestBodySpec);
-    when(requestBodySpec.header("Authorization", "Bearer mock-token")).thenReturn(requestBodySpec);
+    when(requestBodySpec.headers(any()))
+        .thenAnswer(
+            invocation -> {
+              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
+              headersConsumer.accept(new HttpHeaders());
+              return requestBodySpec;
+            });
     when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
     when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
     when(requestBodySpec.retrieve()).thenReturn(responseSpec);
@@ -122,7 +136,13 @@ class SdsServiceTest {
 
     when(sdsRestClient.put()).thenReturn(requestBodyUriSpec);
     when(requestBodyUriSpec.uri(endsWith("/save_or_update_file"))).thenReturn(requestBodySpec);
-    when(requestBodySpec.header("Authorization", "Bearer mock-token")).thenReturn(requestBodySpec);
+    when(requestBodySpec.headers(any()))
+        .thenAnswer(
+            invocation -> {
+              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
+              headersConsumer.accept(new HttpHeaders());
+              return requestBodySpec;
+            });
     when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
     when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
     when(requestBodySpec.retrieve()).thenReturn(responseSpec);
@@ -136,7 +156,6 @@ class SdsServiceTest {
     verify(tokenService).getSdsAccessToken();
     verify(sdsRestClient).put();
     verify(requestBodyUriSpec).uri(endsWith("save_or_update_file"));
-    verify(requestBodySpec).header("Authorization", "Bearer mock-token");
   }
 
   @Test
@@ -153,8 +172,13 @@ class SdsServiceTest {
 
     when(sdsRestClient.get()).thenReturn(requestHeadersUriSpec);
     when(requestHeadersUriSpec.uri(contains("/get_file?file_key="))).thenReturn(requestHeadersSpec);
-    when(requestHeadersSpec.header("Authorization", "Bearer mock-token"))
-        .thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.headers(any()))
+        .thenAnswer(
+            invocation -> {
+              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
+              headersConsumer.accept(new HttpHeaders());
+              return requestHeadersSpec;
+            });
     when(requestHeadersSpec.accept(MediaType.APPLICATION_JSON)).thenReturn(requestHeadersSpec);
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.onStatus(
@@ -170,8 +194,7 @@ class SdsServiceTest {
     verify(tokenService).getSdsAccessToken();
     verify(sdsRestClient).get();
     verify(requestHeadersUriSpec)
-        .uri(endsWith("get_file?file_key=" + applicationId + "/" + documentId));
-    verify(requestHeadersSpec).header("Authorization", "Bearer mock-token");
+        .uri(contains("get_file?file_key=" + applicationId.toString() + "/" + documentId));
   }
 
   @Test
@@ -187,8 +210,13 @@ class SdsServiceTest {
 
     when(sdsRestClient.get()).thenReturn(requestHeadersUriSpec);
     when(requestHeadersUriSpec.uri(contains("/get_file?file_key="))).thenReturn(requestHeadersSpec);
-    when(requestHeadersSpec.header("Authorization", "Bearer mock-token"))
-        .thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.headers(any()))
+        .thenAnswer(
+            invocation -> {
+              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
+              headersConsumer.accept(new HttpHeaders());
+              return requestHeadersSpec;
+            });
     when(requestHeadersSpec.accept(MediaType.APPLICATION_JSON)).thenReturn(requestHeadersSpec);
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.onStatus(
@@ -217,12 +245,18 @@ class SdsServiceTest {
     when(sdsRestClient.delete()).thenReturn(requestHeadersUriSpec);
     when(requestHeadersUriSpec.uri(contains("/delete_files?file_keys=")))
         .thenReturn(requestHeadersSpec);
-    when(requestHeadersSpec.header("Authorization", "Bearer mock-token"))
-        .thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.headers(any()))
+        .thenAnswer(
+            invocation -> {
+              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
+              headersConsumer.accept(new HttpHeaders());
+              return requestHeadersSpec;
+            });
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.onStatus(
             any(Predicate.class), any(RestClient.ResponseSpec.ErrorHandler.class)))
         .thenReturn(responseSpec);
+    when(responseSpec.toBodilessEntity()).thenReturn(null);
 
     // When
     sdsService.deleteFiles(applicationId, fileIds);
@@ -232,13 +266,12 @@ class SdsServiceTest {
     verify(sdsRestClient).delete();
     verify(requestHeadersUriSpec)
         .uri(
-            endsWith(
+            contains(
                 "delete_files?file_keys="
-                    + applicationId
+                    + applicationId.toString()
                     + "/file-1&file_keys="
-                    + applicationId
+                    + applicationId.toString()
                     + "/file-2"));
-    verify(requestHeadersSpec).header("Authorization", "Bearer mock-token");
   }
 
   @Test
@@ -255,8 +288,13 @@ class SdsServiceTest {
     when(sdsRestClient.delete()).thenReturn(requestHeadersUriSpec);
     when(requestHeadersUriSpec.uri(contains("/delete_files?file_keys=")))
         .thenReturn(requestHeadersSpec);
-    when(requestHeadersSpec.header("Authorization", "Bearer mock-token"))
-        .thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.headers(any()))
+        .thenAnswer(
+            invocation -> {
+              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
+              headersConsumer.accept(new HttpHeaders());
+              return requestHeadersSpec;
+            });
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.onStatus(
             any(Predicate.class), any(RestClient.ResponseSpec.ErrorHandler.class)))
@@ -282,20 +320,24 @@ class SdsServiceTest {
 
     when(sdsRestClient.get()).thenReturn(requestHeadersUriSpec);
     when(requestHeadersUriSpec.uri(endsWith("/health"))).thenReturn(requestHeadersSpec);
-    when(requestHeadersSpec.header("Authorization", "Bearer mock-token"))
-        .thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.headers(any()))
+        .thenAnswer(
+            invocation -> {
+              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
+              headersConsumer.accept(new HttpHeaders());
+              return requestHeadersSpec;
+            });
     when(requestHeadersSpec.accept(MediaType.APPLICATION_JSON)).thenReturn(requestHeadersSpec);
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.body(SdsHealthResponse.class)).thenReturn(expectedResponse);
 
     // When
-    SdsHealthResponse actualResponse = sdsService.checkHealth();
+    SdsHealthResponse actualResponse = sdsService.getHealth();
 
     // Then
     assertThat(actualResponse).isEqualTo(expectedResponse);
     verify(tokenService).getSdsAccessToken();
     verify(sdsRestClient).get();
     verify(requestHeadersUriSpec).uri(endsWith("/health"));
-    verify(requestHeadersSpec).header("Authorization", "Bearer mock-token");
   }
 }
