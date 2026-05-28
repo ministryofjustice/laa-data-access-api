@@ -17,17 +17,23 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
+import uk.gov.justice.laa.dstew.access.model.ProceedingLinkedChild;
+import uk.gov.justice.laa.dstew.access.model.ProceedingMerits;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCreateRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMeritsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationUpdateRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
@@ -376,5 +382,95 @@ public class ApplicationMapperTest extends BaseMapperTest {
     ApplicationResponse result = applicationMapper.toApplication(entity);
 
     assertThat(result.getProceedings()).isNullOrEmpty();
+  }
+
+  @Test
+  void
+      givenApplicationWithMatchedInvolvedChild_whenToApplication_thenProceedingContainsInvolvedChild() {
+    UUID applyProceedingId = UUID.randomUUID();
+    UUID childId = ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_ID;
+
+    ApplicationContent applicationContent =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            builder ->
+                builder.proceedingMerits(
+                    List.of(
+                        ProceedingMerits.builder()
+                            .proceedingId(applyProceedingId)
+                            .proceedingLinkedChildren(
+                                List.of(
+                                    ProceedingLinkedChild.builder()
+                                        .involvedChildId(childId)
+                                        .build()))
+                            .build())));
+
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .proceedings(Set.of(proceeding))
+                    .applicationContent(
+                        (Map<String, Object>)
+                            objectMapper.convertValue(applicationContent, Map.class)));
+
+    ApplicationResponse result = applicationMapper.toApplication(entity);
+
+    assertThat(result.getProceedings()).isNotNull().hasSize(1);
+    ApplicationProceedingResponse proceedingResponse = result.getProceedings().getFirst();
+    assertThat(proceedingResponse.getInvolvedChildren()).isNotNull().hasSize(1);
+    InvolvedChildResponse involvedChild = proceedingResponse.getInvolvedChildren().getFirst();
+    assertThat(involvedChild.getFullName())
+        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_FULL_NAME);
+    assertThat(involvedChild.getDateOfBirth())
+        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_DATE_OF_BIRTH);
+  }
+
+  @Test
+  void
+      givenApplicationWithUnresolvableChildId_whenToApplication_thenProceedingInvolvedChildrenIsEmpty() {
+    UUID applyProceedingId = UUID.randomUUID();
+    UUID nonExistentChildId = UUID.randomUUID();
+
+    ApplicationContent applicationContent =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            builder ->
+                builder.proceedingMerits(
+                    List.of(
+                        ProceedingMerits.builder()
+                            .proceedingId(applyProceedingId)
+                            .proceedingLinkedChildren(
+                                List.of(
+                                    ProceedingLinkedChild.builder()
+                                        .involvedChildId(nonExistentChildId)
+                                        .build()))
+                            .build())));
+
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .proceedings(Set.of(proceeding))
+                    .applicationContent(
+                        (Map<String, Object>)
+                            objectMapper.convertValue(applicationContent, Map.class)));
+
+    ApplicationResponse result = applicationMapper.toApplication(entity);
+
+    assertThat(result.getProceedings()).isNotNull().hasSize(1);
+    assertThat(result.getProceedings().getFirst().getInvolvedChildren()).isEmpty();
   }
 }

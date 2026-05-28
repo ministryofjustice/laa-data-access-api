@@ -72,6 +72,11 @@ public class ApplicationContent implements Serializable {
   @Nullable private ApplicationMerits applicationMerits;
 
   @Nullable
+  @Valid
+  @Schema(name = "proceedingMerits", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+  private List<ProceedingMerits> proceedingMerits = new ArrayList<>();
+
+  @Nullable
   @Schema(name = "submitterEmail", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   private String submitterEmail;
 

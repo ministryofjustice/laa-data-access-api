@@ -22,8 +22,10 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.InvolvedChild;
 import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
+import uk.gov.justice.laa.dstew.access.model.ProceedingMerits;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 
 /**
@@ -110,14 +112,22 @@ public interface ApplicationMapper {
       application.setDecisionStatus(entity.getDecision().getOverallDecision());
     }
     application.setApplicationType(ApplicationType.INITIAL);
-    application.setOpponents(extractOpponents(entity.getApplicationContent()));
-    application.setProvider(extractProvider(entity));
+
+    ApplicationContent applicationContent =
+        extractApplicationContent(entity.getApplicationContent());
+
+    application.setOpponents(extractOpponents(applicationContent));
+    application.setProvider(extractProvider(entity, applicationContent));
     application.setVersion(entity.getVersion());
 
     if (entity.getProceedings() != null) {
+      List<ProceedingMerits> proceedingMeritsList =
+          applicationContent != null ? applicationContent.getProceedingMerits() : null;
+      List<InvolvedChild> involvedChildren = extractInvolvedChildren(applicationContent);
+
       application.setProceedings(
           entity.getProceedings().stream()
-              .map(ApplicationMapper::toApplicationProceeding)
+              .map(p -> toApplicationProceeding(p, proceedingMeritsList, involvedChildren))
               .toList());
     }
 
@@ -125,14 +135,17 @@ public interface ApplicationMapper {
   }
 
   private static ApplicationProceedingResponse toApplicationProceeding(
-      ProceedingEntity proceeding) {
+      ProceedingEntity proceeding,
+      List<ProceedingMerits> proceedingMeritsList,
+      List<InvolvedChild> involvedChildren) {
 
     if (proceeding == null) {
       return null;
     }
 
     ApplicationProceedingResponse proceedingResponse =
-        proceedingMapper.toApplicationProceeding(proceeding);
+        proceedingMapper.toApplicationProceeding(
+            proceeding, proceedingMeritsList, involvedChildren);
 
     MeritsDecisionEntity meritsDecision = proceeding.getMeritsDecision();
     proceedingResponse.setMeritsDecision(
@@ -141,9 +154,11 @@ public interface ApplicationMapper {
     return proceedingResponse;
   }
 
-  private static ProviderResponse extractProvider(ApplicationEntity entity) {
+  private static ProviderResponse extractProvider(
+      ApplicationEntity entity, ApplicationContent applicationContent) {
     String officeCode = entity.getOfficeCode();
-    String contactEmail = extractContactEmail(entity.getApplicationContent());
+    String contactEmail =
+        applicationContent != null ? applicationContent.getSubmitterEmail() : null;
 
     if (officeCode == null && contactEmail == null) {
       return null;
@@ -155,25 +170,32 @@ public interface ApplicationMapper {
     return providerResponse;
   }
 
-  private static String extractContactEmail(Map<String, Object> content) {
+  private static ApplicationContent extractApplicationContent(Map<String, Object> content) {
     if (content == null) {
       return null;
     }
-
-    ApplicationContent applicationContent =
-        MapperUtil.getObjectMapper().convertValue(content, ApplicationContent.class);
-
-    return applicationContent.getSubmitterEmail();
+    return MapperUtil.getObjectMapper().convertValue(content, ApplicationContent.class);
   }
 
-  private static List<OpponentResponse> extractOpponents(Map<String, Object> content) {
+  private static List<InvolvedChild> extractInvolvedChildren(
+      ApplicationContent applicationContent) {
+    if (applicationContent == null) {
+      return Collections.emptyList();
+    }
+    ApplicationMerits meritsObj = applicationContent.getApplicationMerits();
+    if (meritsObj == null) {
+      return Collections.emptyList();
+    }
+    List<InvolvedChild> children = meritsObj.getInvolvedChildren();
+    return children != null ? children : Collections.emptyList();
+  }
 
-    if (content == null) {
+  private static List<OpponentResponse> extractOpponents(ApplicationContent applicationContent) {
+
+    if (applicationContent == null) {
       return Collections.emptyList();
     }
 
-    ApplicationContent applicationContent =
-        MapperUtil.getObjectMapper().convertValue(content, ApplicationContent.class);
     ApplicationMerits meritsObj = applicationContent.getApplicationMerits();
     if (meritsObj == null) {
       return Collections.emptyList();

@@ -22,12 +22,17 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
+import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.ProceedingLinkedChild;
+import uk.gov.justice.laa.dstew.access.model.ProceedingMerits;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMeritsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
@@ -69,13 +74,150 @@ public class GetApplicationTest extends BaseServiceTest {
     assertApplicationProceedingsEqual(
         proceedings, actualApplication.getProceedings(), MeritsDecisionStatus.REFUSED);
 
-    ApplicationContent expectedApplicationContent =
-        objectMapper.convertValue(
-            expectedApplication.getApplicationContent(), ApplicationContent.class);
-
-    // assertThat(expectedApplicationContent.getApplicationMerits().getInvolvedChildren().getFirst())
-    //        .isEqualTo(actualApplicationInvolvedChild);
     verify(applicationRepository, times(1)).findById(expectedApplication.getId());
+  }
+
+  @Test
+  public void
+      givenApplicationWithInvolvedChildren_whenGetApplication_thenInvolvedChildrenResolvedInProceedings() {
+    // given
+    UUID applyProceedingId = UUID.randomUUID();
+    UUID childId = ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_ID;
+
+    // Build applicationContent with proceedingMerits linking applyProceedingId -> childId
+    ApplicationContent applicationContent =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            builder ->
+                builder.proceedingMerits(
+                    List.of(
+                        ProceedingMerits.builder()
+                            .proceedingId(applyProceedingId)
+                            .proceedingLinkedChildren(
+                                List.of(
+                                    ProceedingLinkedChild.builder()
+                                        .involvedChildId(childId)
+                                        .build()))
+                            .build())));
+
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+
+    ApplicationEntity application =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .version(0L)
+                    .proceedings(Set.of(proceeding))
+                    .applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
+
+    when(applicationRepository.findById(application.getId())).thenReturn(Optional.of(application));
+
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+    // when
+    ApplicationResponse response = serviceUnderTest.getApplication(application.getId());
+
+    // then
+    assertThat(response.getProceedings()).isNotNull().hasSize(1);
+    ApplicationProceedingResponse proceedingResponse = response.getProceedings().get(0);
+    assertThat(proceedingResponse.getInvolvedChildren()).isNotNull().hasSize(1);
+    InvolvedChildResponse involvedChild = proceedingResponse.getInvolvedChildren().get(0);
+    assertThat(involvedChild.getFullName())
+        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_FULL_NAME);
+    assertThat(involvedChild.getDateOfBirth())
+        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_DATE_OF_BIRTH);
+
+    verify(applicationRepository, times(1)).findById(application.getId());
+  }
+
+  @Test
+  public void
+      givenApplicationWithUnresolvableChildId_whenGetApplication_thenInvolvedChildrenIsEmpty() {
+    // given
+    UUID applyProceedingId = UUID.randomUUID();
+    UUID nonExistentChildId = UUID.randomUUID(); // does NOT match any child in applicationMerits
+
+    ApplicationContent applicationContent =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            builder ->
+                builder.proceedingMerits(
+                    List.of(
+                        ProceedingMerits.builder()
+                            .proceedingId(applyProceedingId)
+                            .proceedingLinkedChildren(
+                                List.of(
+                                    ProceedingLinkedChild.builder()
+                                        .involvedChildId(nonExistentChildId)
+                                        .build()))
+                            .build())));
+
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+
+    ApplicationEntity application =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .version(0L)
+                    .proceedings(Set.of(proceeding))
+                    .applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
+
+    when(applicationRepository.findById(application.getId())).thenReturn(Optional.of(application));
+
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+    // when
+    ApplicationResponse response = serviceUnderTest.getApplication(application.getId());
+
+    // then
+    assertThat(response.getProceedings()).isNotNull().hasSize(1);
+    ApplicationProceedingResponse proceedingResponse = response.getProceedings().get(0);
+    assertThat(proceedingResponse.getInvolvedChildren()).isEmpty();
+
+    verify(applicationRepository, times(1)).findById(application.getId());
+  }
+
+  @Test
+  public void
+      givenApplicationWithNoProceedingMerits_whenGetApplication_thenInvolvedChildrenIsEmpty() {
+    // given
+    ProceedingEntity proceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class);
+
+    // applicationContent with no proceedingMerits (uses default which has empty list)
+    ApplicationContent applicationContent =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class, builder -> builder.proceedingMerits(List.of()));
+
+    ApplicationEntity application =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .version(0L)
+                    .proceedings(Set.of(proceeding))
+                    .applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
+
+    when(applicationRepository.findById(application.getId())).thenReturn(Optional.of(application));
+
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+
+    // when
+    ApplicationResponse response = serviceUnderTest.getApplication(application.getId());
+
+    // then
+    assertThat(response.getProceedings()).isNotNull().hasSize(1);
+    ApplicationProceedingResponse proceedingResponse = response.getProceedings().get(0);
+    assertThat(proceedingResponse.getInvolvedChildren()).isEmpty();
+
+    verify(applicationRepository, times(1)).findById(application.getId());
   }
 
   @Test
