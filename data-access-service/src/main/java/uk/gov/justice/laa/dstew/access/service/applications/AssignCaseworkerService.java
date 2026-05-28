@@ -53,8 +53,10 @@ public class AssignCaseworkerService {
             applicationRepository.save(app);
           }
 
+          String eventDescription =
+              eventHistoryRequest != null ? eventHistoryRequest.getEventDescription() : null;
           saveDomainEventService.saveAssignApplicationDomainEvent(
-              app.getId(), caseworker.getId(), eventHistoryRequest.getEventDescription());
+              app.getId(), caseworker.getId(), eventDescription);
         });
   }
 
