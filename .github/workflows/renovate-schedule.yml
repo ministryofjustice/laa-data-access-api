@@ -1,12 +1,7 @@
 name: renovate-schedule.yml
 on:
   schedule:
-    - cron: '0 3 * * 1-5'
-  pull_request:
-    paths:
-      - 'renovate.json'
-      - '.github/actions/renovate/**'
-      - '.github/workflows/renovate-schedule.yml'
+    - cron: '0 3 * * 1'  # Weekly on Monday at 3am
   workflow_dispatch:
     inputs:
       dryRun:
@@ -31,4 +26,4 @@ jobs:
       - uses: ./.github/actions/renovate
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          dry-run: ${{ github.event_name == 'pull_request' && 'full' || inputs.dryRun || 'false' }}
+          dry-run: ${{ inputs.dryRun || 'false' }}
