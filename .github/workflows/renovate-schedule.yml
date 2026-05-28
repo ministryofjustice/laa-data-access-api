@@ -2,11 +2,25 @@ name: renovate-schedule.yml
 on:
   schedule:
     - cron: '0 3 * * 1-5'
+  pull_request:
+    paths:
+      - 'renovate.json'
+      - '.github/actions/renovate/**'
+      - '.github/workflows/renovate-schedule.yml'
   workflow_dispatch:
+    inputs:
+      dryRun:
+        description: 'Run in dry-run mode (no PRs created)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'full'
+          - 'lookup'
 
 jobs:
-  revonate:
-    if: github.ref == 'refs/heads/main'
+  renovate:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -17,3 +31,4 @@ jobs:
       - uses: ./.github/actions/renovate
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          dry-run: ${{ github.event_name == 'pull_request' && 'full' || inputs.dryRun || 'false' }}
