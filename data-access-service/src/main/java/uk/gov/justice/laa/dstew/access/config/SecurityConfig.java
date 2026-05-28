@@ -34,11 +34,9 @@ import org.springframework.security.oauth2.server.resource.web.authentication.Be
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.filter.OncePerRequestFilter;
-import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 /** Spring Security configuration if security is not disabled. */
-@ExcludeFromGeneratedCodeCoverage
 @Configuration
 @EnableMethodSecurity
 @EnableWebSecurity

@@ -14,6 +14,7 @@ import org.hibernate.event.spi.PreInsertEventListener;
 import org.hibernate.event.spi.PreUpdateEvent;
 import org.hibernate.event.spi.PreUpdateEventListener;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * Listens to Hibernate entity lifecycle events and records metrics.
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 @RequiredArgsConstructor
+@ExcludeFromGeneratedCodeCoverage
 public class EntityOperationMetricsListener
     implements PostLoadEventListener,
         PreInsertEventListener,
