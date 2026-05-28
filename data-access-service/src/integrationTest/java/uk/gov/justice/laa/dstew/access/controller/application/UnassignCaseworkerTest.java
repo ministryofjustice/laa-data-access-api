@@ -11,8 +11,11 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
@@ -46,18 +49,16 @@ public class UnassignCaseworkerTest extends BaseHarnessTest {
   private void verifyBadServiceNameHeader(String serviceName) throws Exception {
     ApplicationEntity toUnassignedApplication =
         persistedDataGenerator.createAndPersist(
-            ApplicationEntityGenerator.class,
-            builder -> {
-              builder.caseworker(CaseworkerJohnDoe);
-            });
+            ApplicationEntityGenerator.class, builder -> builder.caseworker(CaseworkerJohnDoe));
 
     CaseworkerUnassignRequest caseworkerUnassignRequest =
         DataGenerator.createDefault(
             CaseworkerUnassignRequestGenerator.class,
-            builder -> {
-              builder.eventHistory(
-                  EventHistoryRequest.builder().eventDescription("Unassigned Caseworker").build());
-            });
+            builder ->
+                builder.eventHistory(
+                    EventHistoryRequest.builder()
+                        .eventDescription("Unassigned Caseworker")
+                        .build()));
     ApplicationEntity expectedUnassignedApplication =
         toUnassignedApplication.toBuilder().caseworker(null).build();
 
@@ -71,27 +72,42 @@ public class UnassignCaseworkerTest extends BaseHarnessTest {
     applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
   }
 
-  @Test
-  public void givenValidUnassignRequest_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker()
-      throws Exception {
-    // given
-    ApplicationEntity toUnassignedApplication =
-        persistedDataGenerator.createAndPersist(
-            ApplicationEntityGenerator.class,
-            builder -> {
-              builder.caseworker(CaseworkerJohnDoe);
-            });
+  @ParameterizedTest
+  @MethodSource({"validUnassignEventHistoryRequestBody"})
+  public void givenValidUnassignRequest_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker(
+      EventHistoryRequest eventHistoryRequest) throws Exception {
 
-    ApplicationEntity expectedUnassignedApplication =
-        toUnassignedApplication.toBuilder().caseworker(null).build();
+    // given
 
     CaseworkerUnassignRequest caseworkerUnassignRequest =
         DataGenerator.createDefault(
             CaseworkerUnassignRequestGenerator.class,
-            builder -> {
-              builder.eventHistory(
-                  EventHistoryRequest.builder().eventDescription("Unassigned Caseworker").build());
-            });
+            builder -> builder.eventHistory(eventHistoryRequest));
+
+    validScenarios(caseworkerUnassignRequest);
+  }
+
+  @Test
+  public void
+      givenValidUnassignRequest_MissingEventHistory_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker()
+          throws Exception {
+    // given
+
+    CaseworkerUnassignRequest caseworkerUnassignRequest =
+        DataGenerator.createDefault(
+            CaseworkerUnassignRequestGenerator.class, builder -> builder.eventHistory(null));
+
+    validScenarios(caseworkerUnassignRequest);
+  }
+
+  private void validScenarios(CaseworkerUnassignRequest caseworkerUnassignRequest)
+      throws Exception {
+    ApplicationEntity toUnassignedApplication =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class, builder -> builder.caseworker(CaseworkerJohnDoe));
+
+    ApplicationEntity expectedUnassignedApplication =
+        toUnassignedApplication.toBuilder().caseworker(null).build();
 
     // when
     HarnessResult result =
@@ -119,6 +135,14 @@ public class UnassignCaseworkerTest extends BaseHarnessTest {
         caseworkerUnassignRequest.getEventHistory());
   }
 
+  private static Stream<Arguments> validUnassignEventHistoryRequestBody() {
+    return Stream.of(
+        Arguments.of(
+            EventHistoryRequest.builder().eventDescription("Unassigned Caseworker").build()),
+        Arguments.of(EventHistoryRequest.builder().eventDescription("").build()),
+        Arguments.of(EventHistoryRequest.builder().eventDescription(null).build()));
+  }
+
   @Test
   public void
       givenValidUnassignRequestWithBlankEventDescription_whenUnassignCaseworker_thenReturnOK_andUnassignCaseworker()
@@ -126,10 +150,7 @@ public class UnassignCaseworkerTest extends BaseHarnessTest {
     // given
     ApplicationEntity toUnassignedApplication =
         persistedDataGenerator.createAndPersist(
-            ApplicationEntityGenerator.class,
-            builder -> {
-              builder.caseworker(CaseworkerJohnDoe);
-            });
+            ApplicationEntityGenerator.class, builder -> builder.caseworker(CaseworkerJohnDoe));
 
     ApplicationEntity expectedUnassignedApplication =
         toUnassignedApplication.toBuilder().caseworker(null).build();
@@ -137,9 +158,8 @@ public class UnassignCaseworkerTest extends BaseHarnessTest {
     CaseworkerUnassignRequest caseworkerUnassignRequest =
         DataGenerator.createDefault(
             CaseworkerUnassignRequestGenerator.class,
-            builder -> {
-              builder.eventHistory(EventHistoryRequest.builder().eventDescription("").build());
-            });
+            builder ->
+                builder.eventHistory(EventHistoryRequest.builder().eventDescription("").build()));
 
     // when
     HarnessResult result =
@@ -174,17 +194,13 @@ public class UnassignCaseworkerTest extends BaseHarnessTest {
     // given
     ApplicationEntity expectedUnassignedApplication =
         persistedDataGenerator.createAndPersist(
-            ApplicationEntityGenerator.class,
-            builder -> {
-              builder.caseworker(CaseworkerJohnDoe);
-            });
+            ApplicationEntityGenerator.class, builder -> builder.caseworker(CaseworkerJohnDoe));
 
     CaseworkerUnassignRequest caseworkerUnassignRequest =
         DataGenerator.createDefault(
             CaseworkerUnassignRequestGenerator.class,
-            builder -> {
-              builder.eventHistory(EventHistoryRequest.builder().eventDescription(null).build());
-            });
+            builder ->
+                builder.eventHistory(EventHistoryRequest.builder().eventDescription(null).build()));
 
     // when
     HarnessResult result =
@@ -225,18 +241,16 @@ public class UnassignCaseworkerTest extends BaseHarnessTest {
     // given
     ApplicationEntity expectedUnassignedApplication =
         persistedDataGenerator.createAndPersist(
-            ApplicationEntityGenerator.class,
-            builder -> {
-              builder.caseworker(null);
-            });
+            ApplicationEntityGenerator.class, builder -> builder.caseworker(null));
 
     CaseworkerUnassignRequest caseworkerUnassignRequest =
         DataGenerator.createDefault(
             CaseworkerUnassignRequestGenerator.class,
-            builder -> {
-              builder.eventHistory(
-                  EventHistoryRequest.builder().eventDescription("Unassigned Caseworker").build());
-            });
+            builder ->
+                builder.eventHistory(
+                    EventHistoryRequest.builder()
+                        .eventDescription("Unassigned Caseworker")
+                        .build()));
 
     // when
     HarnessResult result =
