@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:17
+    image: postgres:18
     mem_limit: 16834m        # limit RAM to 512 MB
     cpus: 4
     container_name: laa-postgres
@@ -26,7 +26,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   grafana:
-    image: grafana/grafana:11.6.0
+    image: grafana/grafana:13.0.1
     container_name: laa-grafana
     restart: unless-stopped
     ports:
