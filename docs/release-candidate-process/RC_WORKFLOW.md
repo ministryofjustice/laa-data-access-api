@@ -11,6 +11,62 @@ This guide explains how to create, manage, and promote Release Candidate (RC) en
 
 ---
 
+## Prerequisite: Trunk-Based Development and Feature Flag Discipline
+
+The RC model only works safely if one practice is followed consistently: **any change that is not ready for the current release cycle must be behind a feature flag before it merges to main.**
+
+This is a trunk-based development principle. Main should always be in a releasable state. When a new RC tag is cut — whether for an initial RC or to deliver a client-reported fix — it is cut from main HEAD and includes every commit on main at that point. Feature flags are what make this safe when other work-in-progress has already landed on main.
+
+### Why This Matters for the Fix Flow
+
+When a client reports a bug against `v1.2.3-rc.1`, the fix is merged to main and a new RC `v1.2.3-rc.2` is cut from main HEAD. That new RC includes the fix **and** any other commits that landed on main since `rc.1`.
+
+```
+main: [rc.1 commit] ──→ [other WIP commit] ──→ [fix commit]
+                               ↑
+                         already on main,
+                         not in rc.1 yet
+```
+
+**Without feature flag discipline**: the WIP commit is exposed to clients via `rc.2` unexpectedly.  
+**With feature flag discipline**: the WIP commit is inert — its flag is off in `rc.yaml`, clients see only the fix.
+
+### The Rule
+
+> If a change is not ready to be in the next RC, it must be behind a feature flag before it merges to main. No exceptions.
+
+This applies to:
+- Work-in-progress features that span multiple PRs
+- Experimental changes under active development
+- Schema additions whose API behaviour is not yet ready to expose to clients
+
+It does **not** apply to:
+- Internal refactoring with no client-facing API changes
+- Bug fixes that are ready to ship
+- Changes behind existing flags that are already off
+
+### How to Gate Work Behind a Flag
+
+Add the flag to the relevant Helm values file **before** the feature PR merges to main:
+
+```yaml
+# .helm/data-access-api/values/rc.yaml
+featureFlags:
+  myNewFeature: false  # off until ready for client testing
+```
+
+Application code gates the behaviour:
+
+```java
+if (featureFlags.isMyNewFeatureEnabled()) {
+    // new behaviour — inert until flag is turned on in rc.yaml
+}
+```
+
+The flag is set to `true` in `rc.yaml` when the feature is ready for client testing, and removed from the codebase entirely once promoted to Staging.
+
+---
+
 ## Decision: Should We Create an RC?
 
 Create an RC when **all of the following are true**:
@@ -223,11 +279,15 @@ Thanks,
    - **Low**: Edge case, nice to have (document, fix in next version)
    
 4. **Fix the bug**
-   - Create PR with fix
+   - Create PR with fix — it gets its own UAT preview environment for internal validation before merge
    - Merge to main
-   - Tag new RC: `v1.2.3-rc.2`
+   - Tag new RC: `v1.2.3-rc.2` from main HEAD
    - Deploy RC (see Step 3)
    - Notify client: "Fix deployed to RC v1.2.3-rc.2"
+
+   > **New RC scope**: `rc.2` is cut from main HEAD and includes all commits that landed on main since `rc.1` — not only the fix. This is safe provided [feature flag discipline](#prerequisite-trunk-based-development-and-feature-flag-discipline) is in place: any work-in-progress on main that is not ready for clients must be behind a flag set to `false` in `rc.yaml`. Those commits are present in the new RC but are inert to clients.
+   >
+   > **Client re-test scope**: clients do not need to re-test their full integration from scratch. The `rc.2` release notes should clearly state what changed. Clients should verify the reported issue is resolved, run their automation suite as a smoke test, and review the release notes for any other changes.
    
 5. **Verify client's fix**
    - Client re-tests on new RC
