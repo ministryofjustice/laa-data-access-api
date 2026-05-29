@@ -41,21 +41,24 @@ class NoSecurityConfig {
 
   @Bean("entra")
   EffectiveAuthorizationProvider authProvider() {
-    return new EffectiveAuthorizationProvider() {
-      @Override
-      public boolean hasAppRole(String name) {
-        return true;
-      }
+    return new NoSecurityAuthProvider();
+  }
 
-      @Override
-      public boolean hasAnyAppRole(String... names) {
-        return true;
-      }
+  @ExcludeFromGeneratedCodeCoverage
+  private static class NoSecurityAuthProvider implements EffectiveAuthorizationProvider {
+    @Override
+    public boolean hasAppRole(String name) {
+      return true;
+    }
 
-      @Override
-      public boolean hasName() {
-        return true;
-      }
-    };
+    @Override
+    public boolean hasAnyAppRole(String... names) {
+      return true;
+    }
+
+    @Override
+    public boolean hasName() {
+      return true;
+    }
   }
 }
