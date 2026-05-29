@@ -20,7 +20,10 @@ import uk.gov.justice.laa.dstew.access.model.ProceedingLinkedChild;
 import uk.gov.justice.laa.dstew.access.model.ProceedingMerits;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMeritsGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.application.InvolvedChildGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingMeritsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
 @ExtendWith(MockitoExtension.class)
@@ -184,23 +187,23 @@ class ProceedingMapperTest extends BaseMapperTest {
   void
       givenMatchingProceedingMerits_whenToApplicationProceedingWithChildren_thenMapsInvolvedChildrenCorrectly() {
     UUID applyProceedingId = UUID.randomUUID();
-    UUID childId = UUID.randomUUID();
-    LocalDate dob = LocalDate.of(2020, 1, 15);
+    UUID childId = ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_ID;
 
     ProceedingEntity entity =
         DataGenerator.createDefault(
             ProceedingsEntityGenerator.class,
             builder -> builder.applyProceedingId(applyProceedingId));
 
-    InvolvedChild child =
-        InvolvedChild.builder().id(childId).fullName("Jane Doe").dateOfBirth(dob).build();
+    InvolvedChild child = DataGenerator.createDefault(InvolvedChildGenerator.class);
 
     ProceedingMerits merits =
-        ProceedingMerits.builder()
-            .proceedingId(applyProceedingId)
-            .proceedingLinkedChildren(
-                List.of(ProceedingLinkedChild.builder().involvedChildId(childId).build()))
-            .build();
+        DataGenerator.createDefault(
+            ProceedingMeritsGenerator.class,
+            builder ->
+                builder
+                    .proceedingId(applyProceedingId)
+                    .proceedingLinkedChildren(
+                        List.of(ProceedingLinkedChild.builder().involvedChildId(childId).build())));
 
     ApplicationProceedingResponse result =
         proceedingMapper.toApplicationProceeding(entity, List.of(merits), List.of(child));
@@ -208,8 +211,10 @@ class ProceedingMapperTest extends BaseMapperTest {
     assertThat(result).isNotNull();
     assertThat(result.getInvolvedChildren()).isNotNull().hasSize(1);
     InvolvedChildResponse involvedChild = result.getInvolvedChildren().get(0);
-    assertThat(involvedChild.getFullName()).isEqualTo("Jane Doe");
-    assertThat(involvedChild.getDateOfBirth()).isEqualTo(dob);
+    assertThat(involvedChild.getFullName())
+        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_FULL_NAME);
+    assertThat(involvedChild.getDateOfBirth())
+        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_DATE_OF_BIRTH);
   }
 
   @Test
@@ -222,19 +227,12 @@ class ProceedingMapperTest extends BaseMapperTest {
             ProceedingsEntityGenerator.class,
             builder -> builder.applyProceedingId(applyProceedingId));
 
+    // merits reference a different proceedingId — no match expected
     ProceedingMerits meritsForOtherProceeding =
-        ProceedingMerits.builder()
-            .proceedingId(UUID.randomUUID()) // different proceedingId
-            .proceedingLinkedChildren(
-                List.of(ProceedingLinkedChild.builder().involvedChildId(UUID.randomUUID()).build()))
-            .build();
+        DataGenerator.createDefault(
+            ProceedingMeritsGenerator.class, builder -> builder.proceedingId(UUID.randomUUID()));
 
-    InvolvedChild child =
-        InvolvedChild.builder()
-            .id(UUID.randomUUID())
-            .fullName("John Smith")
-            .dateOfBirth(LocalDate.of(2019, 5, 10))
-            .build();
+    InvolvedChild child = DataGenerator.createDefault(InvolvedChildGenerator.class);
 
     ApplicationProceedingResponse result =
         proceedingMapper.toApplicationProceeding(
@@ -253,7 +251,6 @@ class ProceedingMapperTest extends BaseMapperTest {
         proceedingMapper.toApplicationProceeding(entity, null, Collections.emptyList());
 
     assertThat(result).isNotNull();
-    // involvedChildren not set when proceedingMeritsList is null
     assertThat(result.getInvolvedChildren()).isEmpty();
   }
 
@@ -269,19 +266,19 @@ class ProceedingMapperTest extends BaseMapperTest {
             builder -> builder.applyProceedingId(applyProceedingId));
 
     ProceedingMerits merits =
-        ProceedingMerits.builder()
-            .proceedingId(applyProceedingId)
-            .proceedingLinkedChildren(
-                List.of(ProceedingLinkedChild.builder().involvedChildId(unknownChildId).build()))
-            .build();
+        DataGenerator.createDefault(
+            ProceedingMeritsGenerator.class,
+            builder ->
+                builder
+                    .proceedingId(applyProceedingId)
+                    .proceedingLinkedChildren(
+                        List.of(
+                            ProceedingLinkedChild.builder()
+                                .involvedChildId(unknownChildId)
+                                .build())));
 
     // involvedChildren list does not contain unknownChildId
-    InvolvedChild otherChild =
-        InvolvedChild.builder()
-            .id(UUID.randomUUID())
-            .fullName("Other Child")
-            .dateOfBirth(LocalDate.of(2021, 3, 5))
-            .build();
+    InvolvedChild otherChild = DataGenerator.createDefault(InvolvedChildGenerator.class);
 
     ApplicationProceedingResponse result =
         proceedingMapper.toApplicationProceeding(entity, List.of(merits), List.of(otherChild));
