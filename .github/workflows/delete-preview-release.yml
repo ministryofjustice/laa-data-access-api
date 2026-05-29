@@ -1,4 +1,4 @@
-name: Delete UAT deployment for a branch after its PR is merged or closed
+name: Delete preview deployment for a branch after its PR is merged or closed
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
 
-  cleanup-uat:
+  cleanup-preview:
     runs-on: ubuntu-latest
     environment: uat
     permissions:
@@ -22,13 +22,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - name: Cleanup uat
-        id: cleanup_uat
+      - name: Cleanup preview environment
+        id: cleanup_preview
         uses: ./.github/actions/cleanup_branch
         with:
           kube-cert: ${{ secrets.KUBE_CERT }}
           kube-token: ${{ secrets.KUBE_TOKEN }}
           kube-cluster: ${{ secrets.KUBE_CLUSTER }}
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-          app-environment: uat
-
+          app-environment: preview

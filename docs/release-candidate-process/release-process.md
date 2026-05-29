@@ -147,10 +147,10 @@ down all resources created for that branch:
 
 | Environment | Trigger | Spring Profile | Database | Ingress |
 |-------------|---------|----------------|----------|---------|
-| **UAT (PR)** | Pull request opened/updated | `preview` | Bitnami PostgreSQL (per-PR) | Branch-specific URL |
+| **Preview (PR)** | Pull request opened/updated | `preview` | Bitnami PostgreSQL (per-PR, ephemeral) | Branch-derived URL, torn down on PR close |
 | **UAT (main)** | Push to `main` | `unsecured` | Shared RDS | Fixed `main-<namespace>` URL |
-| **RC (feature)** | `workflow_dispatch` with `feature-name` | `rc-feature` | Bitnami PostgreSQL (per-feature) | `laa-data-access-api-rc-{feature}-uat...` |
-| **RC (common)** | Manual tag `v*-rc.*` | `rc` | Bitnami PostgreSQL (dedicated) | Fixed `laa-data-access-api-rc` |
+| **RC (feature)** | `workflow_dispatch` with `feature-name` | `rc-feature` | Bitnami PostgreSQL (per-feature, ephemeral) | `laa-data-access-api-rc-{feature}-uat...` |
+| **RC (common)** | Manual tag `v*-rc.*` | `rc` | Bitnami PostgreSQL (dedicated, ephemeral) | Fixed `laa-data-access-api-rc` |
 | **Staging** | Manual tag `v*` (no `-rc.`) | `unsecured` | Shared RDS | Fixed `laa-data-access-api` |
 | **Production** | Manual tag `v*` (no `-rc.`) after staging | `main` | Shared RDS | Fixed `laa-data-access-api` |
 

@@ -34,7 +34,7 @@ inputs:
     required: false
     default: 'false'
   feature-flags:
-    description: "Optional key=value feature flag to pass to Helm (e.g. schemaV2=true). Sets featureFlags.<key>=<value> via --set."
+    description: "Optional comma-separated key=value feature flags (e.g. schemaV2=true,newEndpoint=false). Each pair becomes --set featureFlags.<key>=<value> in the helm upgrade call."
     required: false
     default: ''
 
@@ -72,30 +72,62 @@ runs:
         kube-cluster: ${{ inputs.kube-cluster }}
         kube-namespace: ${{ inputs.kube-namespace }}
 
-    - name: Assume role in Cloud Platform
-      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+    - name: Setup ECR
+      id: setup-ecr
+      uses: ./.github/actions/setup-ecr
       with:
-        role-to-assume: ${{ inputs.ecr-role-to-assume }}
-        aws-region: ${{ inputs.ecr-region }}
+        ecr-role-to-assume: ${{ inputs.ecr-role-to-assume }}
+        ecr-region: ${{ inputs.ecr-region }}
 
-    - name: Docker login to ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
+    - name: Fetch LAA IP allowlist
+      id: laa-ips
+      uses: ./.github/actions/fetch-laa-ips
+
+    - name: Provision ephemeral database and resolve Spring profile
+      id: db
+      uses: ./.github/actions/provision-ephemeral-db
       with:
-        mask-password: 'true'
+        app-environment: ${{ inputs.app-environment }}
+        branch-name: ${{ steps.extract_release_name.outputs.branch-name }}
+        release-name: ${{ steps.resolve_release_name.outputs.release_name }}
+        kube-namespace: ${{ inputs.kube-namespace }}
+
+    - name: Build feature flag Helm args
+      id: feature-flags
+      shell: bash
+      run: |
+        FEATURE_FLAG_ARGS=""
+        if [ -n "${{ inputs.feature-flags }}" ]; then
+          # Parse comma-separated key=value pairs into individual --set featureFlags.<key>=<value> args
+          # e.g. "schemaV2=true,newEndpoint=false" →
+          #      "--set featureFlags.schemaV2=true --set featureFlags.newEndpoint=false"
+          IFS=',' read -ra FLAGS <<< "${{ inputs.feature-flags }}"
+          for flag in "${FLAGS[@]}"; do
+            KEY=$(echo "$flag" | cut -d= -f1)
+            VAL=$(echo "$flag" | cut -d= -f2-)
+            FEATURE_FLAG_ARGS="$FEATURE_FLAG_ARGS --set featureFlags.${KEY}=${VAL}"
+          done
+        fi
+        echo "args=$FEATURE_FLAG_ARGS" >> $GITHUB_OUTPUT
 
     - name: Helm deployment of branch
       shell: bash
       env:
         ECR_REPOSITORY: ${{ inputs.ecr-repository }}
         ECR_REGION: ${{ inputs.ecr-region }}
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REGISTRY: ${{ steps.setup-ecr.outputs.registry }}
         GIT_SHA: ${{ github.sha }}
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
-        APP_ENVIRONMENT: ${{ inputs.app-environment }}
-        VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
         RELEASE_NAME: ${{ steps.resolve_release_name.outputs.release_name }}
+        SPRING_PROFILE: ${{ steps.db.outputs.spring-profile }}
+        LAA_IPS: ${{ steps.laa-ips.outputs.ips }}
+        FEATURE_FLAG_ARGS: ${{ steps.feature-flags.outputs.args }}
+        VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
       run: |
+        set -euo pipefail
+
+        branch_name="${{ steps.extract_release_name.outputs.branch-name }}"
+
         # Mirror Helm's fullname helper: if the release name already contains the chart name
         # ("data-access-api"), the ingress resource is named after the release name alone;
         # otherwise the chart name is appended. This must match or the gatekeeper will reject
@@ -105,6 +137,7 @@ runs:
         else
           ingress_name="$RELEASE_NAME-data-access-api"
         fi
+
         # Extract environment suffix from namespace to create shorter, more readable URLs
         # e.g., "laa-data-access-api-uat" -> "uat", "laa-data-access-api-staging" -> "staging"
         ENV_SUFFIX=$(echo "$KUBE_NAMESPACE" | sed 's/^laa-data-access-api-//')
@@ -112,52 +145,13 @@ runs:
         internal_host="$RELEASE_NAME-internal-$ENV_SUFFIX.internal-non-prod.cloud-platform.service.justice.gov.uk"
         external_identifier="$ingress_name-$KUBE_NAMESPACE-green"
         internal_identifier="$ingress_name-internal-$KUBE_NAMESPACE-green"
-        branch_name=${{ steps.extract_release_name.outputs.branch-name }}
-        LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
 
-        echo "Deploying commit: $GIT_SHA under release name: $RELEASE_NAME to $external_host and $internal_host..."
-        echo "branch name: $branch_name, environment: $APP_ENVIRONMENT"
+        echo "Deploying commit: $GIT_SHA under release name: $RELEASE_NAME"
+        echo "Hosts: $external_host | $internal_host"
+        echo "Spring profile: $SPRING_PROFILE | Branch: $branch_name"
 
-        FEATURE_FLAG_ARG=""
-        if [ -n "${{ inputs.feature-flags }}" ]; then
-          KEY=$(echo "${{ inputs.feature-flags }}" | cut -d= -f1)
-          VAL=$(echo "${{ inputs.feature-flags }}" | cut -d= -f2)
-          FEATURE_FLAG_ARG="--set featureFlags.${KEY}=${VAL}"
-        fi
-
-        if [ "$branch_name" == "main" ]; then
-          # Main branch UAT: shared RDS, no ephemeral database
-          export SPRING_PROFILE="unsecured"
-        elif [ "$APP_ENVIRONMENT" == "rc" ]; then
-          # RC: own ephemeral Bitnami PostgreSQL (isolated like a PR branch).
-          # Uses the dedicated rc Spring profile so it is clearly distinguishable
-          # from preview branches while still pointing at the Bitnami instance.
-          export SPRING_PROFILE="rc"
-          helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
-            -f .helm/bitnami_postgres/values.yaml \
-            --namespace ${KUBE_NAMESPACE} \
-            --install --wait
-        elif [[ "$APP_ENVIRONMENT" == rc-* ]]; then
-          # Per-feature RC: own ephemeral Bitnami PostgreSQL with feature-specific flags.
-          # APP_ENVIRONMENT is always "rc-feature"; feature flags are passed via --set featureFlags.*
-          # See: docs/release-candidate-process/feature-environments.md
-          export SPRING_PROFILE="$APP_ENVIRONMENT"
-          helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
-            -f .helm/bitnami_postgres/values.yaml \
-            --namespace ${KUBE_NAMESPACE} \
-            --install --wait
-        else
-          # PR preview branch: own ephemeral Bitnami PostgreSQL, preview Spring profile
-          export SPRING_PROFILE="preview"
-          helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
-            -f .helm/bitnami_postgres/values.yaml \
-            --namespace ${KUBE_NAMESPACE} \
-            --install --wait
-        fi
-        
-
-        helm upgrade $RELEASE_NAME .helm/data-access-api \
-          --namespace ${KUBE_NAMESPACE} \
+        helm upgrade "$RELEASE_NAME" .helm/data-access-api \
+          --namespace "${KUBE_NAMESPACE}" \
           --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
           --set image.tag="${GIT_SHA}" \
           --set ingress.annotations."external-dns\.alpha\.kubernetes\.io/set-identifier"="$external_identifier" \
@@ -168,19 +162,27 @@ runs:
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
           --set autoscaling.enabled="$([ "$branch_name" = "main" ] && echo true || echo false)" \
-          $FEATURE_FLAG_ARG \
-          --values ${VALUES_FILE} \
+          ${FEATURE_FLAG_ARGS} \
+          --values "${VALUES_FILE}" \
           --install \
           --wait
 
-        if [ "${{ inputs.deploy-mass-generator }}" = "true" ]; then
-          helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
-            --namespace ${KUBE_NAMESPACE} \
-            --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
-            --set image.tag="${GIT_SHA}-mass-generator" \
-            --set spring.profile="${SPRING_PROFILE}" \
-            --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
-            --install \
-            --wait
-        fi
-
+    - name: Helm deployment of mass-generator
+      if: inputs.deploy-mass-generator == 'true'
+      shell: bash
+      env:
+        ECR_REPOSITORY: ${{ inputs.ecr-repository }}
+        ECR_REGISTRY: ${{ steps.setup-ecr.outputs.registry }}
+        GIT_SHA: ${{ github.sha }}
+        KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+        RELEASE_NAME: ${{ steps.resolve_release_name.outputs.release_name }}
+        SPRING_PROFILE: ${{ steps.db.outputs.spring-profile }}
+      run: |
+        helm upgrade "${RELEASE_NAME}-mass-generator" .helm/mass-generator \
+          --namespace "${KUBE_NAMESPACE}" \
+          --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
+          --set image.tag="${GIT_SHA}-mass-generator" \
+          --set spring.profile="${SPRING_PROFILE}" \
+          --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
+          --install \
+          --wait

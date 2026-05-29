@@ -1,0 +1,78 @@
+name: "Provision ephemeral database"
+description: >
+  Resolves the correct Spring profile for the deployment context and provisions
+  an ephemeral Bitnami PostgreSQL instance when required (all environments except
+  the persistent UAT main-branch deployment).
+
+  Profile mapping:
+    main branch  → unsecured  (uses shared RDS, no Bitnami)
+    rc           → rc         (common RC, own Bitnami)
+    rc-*         → <app-environment> e.g. rc-feature  (per-feature RC, own Bitnami)
+    everything else → preview (PR branches, own Bitnami)
+
+inputs:
+  app-environment:
+    description: "Helm values environment key (e.g. uat, rc, rc-feature)"
+    required: true
+  branch-name:
+    description: "Git branch name. When 'main', the shared RDS is used and no Bitnami is provisioned."
+    required: true
+  release-name:
+    description: "Helm release name for the application (used to name the PostgreSQL release)"
+    required: true
+  kube-namespace:
+    description: "Kubernetes namespace to deploy the PostgreSQL instance into"
+    required: true
+
+outputs:
+  spring-profile:
+    description: "Spring profile to activate for this deployment"
+    value: ${{ steps.resolve.outputs.spring_profile }}
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: Resolve Spring profile and provision database
+      id: resolve
+      shell: bash
+      env:
+        APP_ENVIRONMENT: ${{ inputs.app-environment }}
+        BRANCH_NAME: ${{ inputs.branch-name }}
+        RELEASE_NAME: ${{ inputs.release-name }}
+        KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+      run: |
+        set -euo pipefail
+
+        provision_bitnami() {
+          echo "Provisioning Bitnami PostgreSQL for release ${RELEASE_NAME}-postgresql in ${KUBE_NAMESPACE}..."
+          helm upgrade "${RELEASE_NAME}-postgresql" oci://registry-1.docker.io/bitnamicharts/postgresql \
+            -f .helm/bitnami_postgres/values.yaml \
+            --namespace "${KUBE_NAMESPACE}" \
+            --install --wait
+        }
+
+        if [ "$BRANCH_NAME" == "main" ]; then
+          # Main branch UAT: shared RDS — no ephemeral database needed.
+          echo "spring_profile=unsecured" >> $GITHUB_OUTPUT
+
+        elif [ "$APP_ENVIRONMENT" == "rc" ]; then
+          # Common RC: own ephemeral Bitnami PostgreSQL.
+          # Uses the dedicated 'rc' Spring profile, clearly distinct from preview branches.
+          echo "spring_profile=rc" >> $GITHUB_OUTPUT
+          provision_bitnami
+
+        elif [[ "$APP_ENVIRONMENT" == rc-* ]]; then
+          # Per-feature RC: own ephemeral Bitnami PostgreSQL.
+          # Spring profile matches the environment key (e.g. "rc-feature").
+          # Feature flags are passed separately via --set featureFlags.* at deploy time.
+          # See: docs/release-candidate-process/feature-environments.md
+          echo "spring_profile=${APP_ENVIRONMENT}" >> $GITHUB_OUTPUT
+          provision_bitnami
+
+        else
+          # PR preview branch: own ephemeral Bitnami PostgreSQL, 'preview' Spring profile.
+          echo "spring_profile=preview" >> $GITHUB_OUTPUT
+          provision_bitnami
+        fi
+

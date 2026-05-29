@@ -1,0 +1,20 @@
+name: "Fetch LAA IP allowlist"
+description: "Downloads the LAA IP allowlist and formats it as a Helm-compatible nginx whitelist annotation value (backslash-escaped commas)."
+
+outputs:
+  ips:
+    description: "Comma-separated CIDR list formatted for use in nginx.ingress.kubernetes.io/whitelist-source-range (e.g. 1.2.3.4/32\\,5.6.7.8/32)"
+    value: ${{ steps.fetch.outputs.laa_ips }}
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: Fetch IPs
+      id: fetch
+      shell: bash
+      run: |
+        LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt \
+          | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
+        echo "laa_ips=$LAA_IPS" >> $GITHUB_OUTPUT
+

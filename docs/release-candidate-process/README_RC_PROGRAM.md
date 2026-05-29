@@ -107,9 +107,8 @@ kubectl get pods -n laa-data-access-api-uat -l app.kubernetes.io/instance=laa-da
 
 # Deploy a per-feature environment (via GitHub Actions UI)
 # Actions → Deploy with Helm → Run workflow
-# feature-name: schema-v2
-# feature-flag: schemaV2
-# feature-flag-value: true
+# feature-name:  schema-v2
+# feature-flags: schemaV2=true,newEndpoint=false
 
 # Clean up a feature environment after testing
 helm uninstall laa-data-access-api-rc-schema-v2 -n laa-data-access-api-uat

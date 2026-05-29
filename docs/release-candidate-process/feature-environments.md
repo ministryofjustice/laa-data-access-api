@@ -35,17 +35,15 @@ button). No tag is needed.
 | Input | Required | Description | Example |
 |---|---|---|---|
 | `feature-name` | ✅ | Unique name for this environment. Becomes the Helm release name suffix and part of the URL. | `schema-v2` |
-| `feature-flag` | ❌ | A single feature flag key to enable for this environment. | `schemaV2` |
-| `feature-flag-value` | ❌ | Value for the flag above. Defaults to `true`. | `true` / `false` |
+| `feature-flags` | ❌ | Comma-separated `key=value` feature flag pairs to enable for this environment. | `schemaV2=true,newEndpoint=false` |
 
 ### Example
 
-Deploying a feature environment for a new schema with the `schemaV2` flag enabled:
+Deploying a feature environment for a new schema with multiple flags:
 
 ```
-feature-name:       schema-v2
-feature-flag:       schemaV2
-feature-flag-value: true
+feature-name:  schema-v2
+feature-flags: schemaV2=true,newEndpoint=false
 ```
 
 This deploys to:
@@ -53,7 +51,7 @@ This deploys to:
 - **External URL**: `laa-data-access-api-rc-schema-v2-uat.cloud-platform.service.justice.gov.uk`
 - **Internal URL**: `laa-data-access-api-rc-schema-v2-internal-uat.internal-non-prod.cloud-platform.service.justice.gov.uk`
 - **Spring profile**: `rc-feature`
-- **Env var in pod**: `FEATURE_SCHEMAV2=true`
+- **Env vars in pod**: `FEATURE_SCHEMAV2=true`, `FEATURE_NEWENDPOINT=false`
 
 ---
 
@@ -63,20 +61,21 @@ Feature flags are passed through the deployment pipeline as follows:
 
 ```
 workflow_dispatch input
-  feature-flag=schemaV2, feature-flag-value=true
+  feature-flags=schemaV2=true,newEndpoint=false
       │
       ▼
 deploy_branch action
-  helm upgrade ... --set featureFlags.schemaV2=true
+  helm upgrade ... --set featureFlags.schemaV2=true --set featureFlags.newEndpoint=false
       │
       ▼
 _envs.tpl (Helm template)
   iterates .Values.featureFlags map
-  → FEATURE_SCHEMAV2=true (env var in pod)
+  → FEATURE_SCHEMAV2=true,FEATURE_NEWENDPOINT=false (env vars in pod)
       │
       ▼
 Spring application
   feature.schema-v2: ${FEATURE_SCHEMAV2:false}
+  feature.new-endpoint: ${FEATURE_NEWENDPOINT:false}
 ```
 
 The `featureFlags` values block in `rc-feature.yaml` is intentionally left empty (`{}`).
@@ -91,6 +90,7 @@ For a flag to be readable by Spring, it must be declared in `application.yml`:
 feature:
   disable-security: ${FEATURE_DISABLE_SECURITY:false}
   schema-v2: ${FEATURE_SCHEMAV2:false}   # ← add your flag here with a safe default
+  new-endpoint: ${FEATURE_NEWENDPOINT:false} # ← add your flag here with a safe default
 ```
 
 The flag key passed to `workflow_dispatch` (`schemaV2`) is uppercased and prefixed with
@@ -154,4 +154,3 @@ helm uninstall laa-data-access-api-rc-schema-v2-postgresql -n <namespace>
 
 Or trigger the existing `cleanup_branch` action if it has been extended to support RC feature
 release names.
-

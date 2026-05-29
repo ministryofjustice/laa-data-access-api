@@ -1,0 +1,72 @@
+# Helm values for ephemeral PR preview environments.
+#
+# These environments are spun up automatically when a pull request is opened and
+# torn down when the PR is merged or closed. Each preview gets:
+#   - Its own Bitnami PostgreSQL instance (isolated, ephemeral)
+#   - A branch-derived ingress URL
+#   - The 'preview' Spring profile
+#
+# This file is intentionally separate from uat.yaml (the persistent UAT environment
+# deployed from the main branch) so the two are clearly distinguishable.
+
+replicaCount: 1
+
+image:
+  repository: null  # Set by GitHub Actions
+  tag: null         # Set by GitHub Actions (git commit SHA)
+
+service_account:
+  name: laa-data-access-uat-service-account
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: modsec-non-prod
+  annotations:
+    external-dns.alpha.kubernetes.io/aws-weight: "100"
+    nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+    nginx.ingress.kubernetes.io/modsecurity-snippet: |
+      SecRuleEngine On
+      SecAction "id:900200,phase:1,nolog,pass,t:none,setvar:tx.allowed_methods=GET HEAD POST OPTIONS PUT PATCH DELETE"
+      SecDefaultAction "phase:2,pass,log,tag:github_team=laa-data-stewardship-access-team,tag:namespace=laa-data-access-api-uat"
+  hosts: []  # Set dynamically by deploy_branch action
+
+ingressInternal:
+  enabled: true
+  className: internal-non-prod
+  annotations:
+    external-dns.alpha.kubernetes.io/aws-weight: "100"
+  hosts: []  # Set dynamically by deploy_branch action
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1G
+  requests:
+    cpu: 25m
+    memory: 1G
+
+# Autoscaling is disabled for ephemeral preview environments — single replica is sufficient
+# for PR integration testing. The deploy_branch action also enforces this via --set.
+autoscaling:
+  enabled: false
+
+sentry:
+  enabled: true
+  environment: preview
+  tracesSampleRate: 1
+
+grafana:
+  enabled: true
+
+slowQueryThresholdSeconds: 1
+
+# No port-forward proxy needed: preview branches use Bitnami PostgreSQL running in-cluster,
+# not the shared RDS instance. The port-forward proxy is only needed for the main-branch UAT
+# environment which connects to RDS.
+portForward:
+  enabled: false
+

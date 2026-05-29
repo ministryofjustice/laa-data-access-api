@@ -7,14 +7,10 @@ on:
         description: 'Feature environment name (e.g. schema-v2). Leave blank to skip deploying a feature environment.'
         required: false
         default: ''
-      feature-flag:
-        description: 'Feature flag key to enable (e.g. schemaV2). Leave blank if no flag needed.'
+      feature-flags:
+        description: 'Comma-separated feature flags as key=value pairs (e.g. schemaV2=true,newEndpoint=false). Leave blank for no flags.'
         required: false
         default: ''
-      feature-flag-value:
-        description: 'Feature flag value (true/false)'
-        required: false
-        default: 'true'
   pull_request:
   push:
     branches:
@@ -241,8 +237,8 @@ jobs:
           REPOSITORY: ${{ vars.ECR_REPOSITORY }}
           IMAGE_TAG: ${{ github.sha }}
 
-  deploy-uat:
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+  deploy-preview:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     needs:
       - build-push-docker
@@ -253,16 +249,49 @@ jobs:
       id-token: write
       contents: read
     outputs:
-      release-name: ${{ steps.deploy_uat_branch.outputs.release-name }}
-      branch-name: ${{ steps.deploy_uat_branch.outputs.branch-name }}
+      release-name: ${{ steps.deploy.outputs.release-name }}
+      branch-name: ${{ steps.deploy.outputs.branch-name }}
 
     steps:
 
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - name: Deploy UAT branch
-        id: deploy_uat_branch
+      - name: Deploy PR preview environment
+        id: deploy
+        uses: ./.github/actions/deploy_branch
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          app-environment: preview
+
+  deploy-uat:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs:
+      - build-push-docker
+      - vulnerability-scan-app
+      - vulnerability-scan-docker
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      release-name: ${{ steps.deploy.outputs.release-name }}
+      branch-name: ${{ steps.deploy.outputs.branch-name }}
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Deploy UAT (main branch)
+        id: deploy
         uses: ./.github/actions/deploy_branch
         with:
           ecr-region: ${{ vars.ECR_REGION }}
@@ -433,9 +462,9 @@ jobs:
   # Triggered manually via workflow_dispatch — no tag convention required.
   #
   # Inputs:
-  #   feature-name:       e.g. schema-v2  → release: laa-data-access-api-rc-schema-v2
-  #   feature-flag:       e.g. schemaV2   → Helm --set featureFlags.schemaV2=true
-  #   feature-flag-value: true/false (default: true)
+  #   feature-name:  e.g. schema-v2  → release: laa-data-access-api-rc-schema-v2
+  #   feature-flags: e.g. schemaV2=true,newEndpoint=false
+  #                  → Helm --set featureFlags.schemaV2=true --set featureFlags.newEndpoint=false
   #
   # The common tag-triggered RC environment (deploy-rc) remains unchanged for
   # final pre-staging validation with the full feature set.
@@ -469,7 +498,7 @@ jobs:
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
           app-environment: rc-feature
           release-name-override: laa-data-access-api-rc-${{ inputs.feature-name }}
-          feature-flags: ${{ inputs.feature-flag != '' && format('{0}={1}', inputs.feature-flag, inputs.feature-flag-value) || '' }}
+          feature-flags: ${{ inputs.feature-flags }}
 
   validate-release-on-main:
     if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-rc.')

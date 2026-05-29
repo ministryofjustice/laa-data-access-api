@@ -607,9 +607,17 @@ kubectl get servicemonitor -n laa-data-access-api-uat -l app.kubernetes.io/insta
 
 ## Feature Flags (Per-Feature RC Only)
 
-Feature flags are not set in either values file. They are passed dynamically at deploy time
-by the `workflow_dispatch` inputs and appended to the `helm upgrade` call as
-`--set featureFlags.{key}={value}`.
+Feature flags are not set in either values file. They are passed as a comma-separated
+`key=value` string via the `workflow_dispatch` `feature-flags` input, and the `deploy_branch`
+action parses them into individual `--set featureFlags.<key>=<value>` arguments:
+
+```bash
+# Input: schemaV2=true,newEndpoint=false
+# Produces:
+helm upgrade ... \
+  --set featureFlags.schemaV2=true \
+  --set featureFlags.newEndpoint=false
+```
 
 The `featureFlags: {}` block in `rc-feature.yaml` is intentionally empty — it acts as
 documentation of intent and provides the correct type hint for Helm templating.
@@ -623,7 +631,8 @@ The `_envs.tpl` template iterates this map:
 {{- end }}
 ```
 
-So `--set featureFlags.schemaV2=true` results in `FEATURE_SCHEMAV2=true` in the pod.
+So `--set featureFlags.schemaV2=true` results in `FEATURE_SCHEMAV2=true` in the pod,
+and `--set featureFlags.newEndpoint=false` results in `FEATURE_NEWENDPOINT=false`.
 
 See [`feature-environments.md`](./feature-environments.md) for the full flag wiring walkthrough.
 
