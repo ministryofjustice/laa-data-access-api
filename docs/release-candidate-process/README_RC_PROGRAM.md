@@ -66,7 +66,8 @@ database setup, and the environment summary table.
 | `.helm/bitnami_postgres/values.yaml` | Bitnami PostgreSQL configuration shared by RC and PR preview deployments |
 | `data-access-service/src/main/resources/application-rc.yaml` | Spring Boot profile for RC — connects to the Bitnami PostgreSQL instance via `DB_HOST`/`DB_NAME`/`DB_PASSWORD` |
 | `.github/actions/deploy_branch/action.yml` | Composite action that deploys RC and PR previews; sets `SPRING_PROFILE=rc` for common RC tags, `rc-feature` for feature environments |
-| `.github/workflows/build-test-deploy.yml` | Workflow — `deploy-rc` triggers on `v*-rc.*` tags from `main`; `deploy-rc-feature` triggers on `workflow_dispatch` with a `feature-name` input |
+| `.github/workflows/deploy-rc.yml` | Workflow triggered by `v*-rc.*` tags — builds, deploys RC, and runs smoke tests |
+| `.github/workflows/ci.yml` | CI workflow — `deploy-rc-feature` and `smoke-test-rc-feature` jobs handle per-feature RC environments via `workflow_dispatch` |
 
 ---
 
@@ -88,9 +89,12 @@ derived from the `workflow_dispatch` input.
 Each RC deployment (common and feature) gets a fresh Bitnami PostgreSQL instance. Data does not
 persist between RC releases.
 
-**No smoke tests**  
-Smoke tests run for UAT (PR and `main`) but not for RC or feature environments. Manual
-verification is expected after deployment — see the post-deployment checklist in `RC_WORKFLOW.md`.
+**Smoke tests run automatically**  
+After every RC deployment (common and feature), the reusable `smoke-test.yml` workflow runs
+infrastructure smoke tests against the live environment. Results are uploaded as
+`smoke-test-report-rc` and `smoke-test-report-rc-feature` artifacts. Manual post-deployment
+verification is still recommended for client-facing behaviour, but basic connectivity and
+DB health are validated automatically.
 
 ---
 
@@ -101,14 +105,16 @@ verification is expected after deployment — see the post-deployment checklist 
 git checkout main && git pull
 git tag -a v1.2.3-rc.1 -m "Release candidate for v1.2.3"
 git push origin v1.2.3-rc.1
+# → triggers: Deploy Release Candidate workflow → build → deploy → smoke tests
 
 # Check common RC deployment
 kubectl get pods -n laa-data-access-api-uat -l app.kubernetes.io/instance=laa-data-access-api-rc
 
 # Deploy a per-feature environment (via GitHub Actions UI)
-# Actions → Deploy with Helm → Run workflow
+# Actions → CI → Run workflow
 # feature-name:  schema-v2
 # feature-flags: schemaV2=true,newEndpoint=false
+# → triggers: CI workflow → build → deploy → smoke tests
 
 # Clean up a feature environment after testing
 helm uninstall laa-data-access-api-rc-schema-v2 -n laa-data-access-api-uat

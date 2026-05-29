@@ -52,11 +52,7 @@ runs:
             --install --wait
         }
 
-        if [ "$BRANCH_NAME" == "main" ]; then
-          # Main branch UAT: shared RDS — no ephemeral database needed.
-          echo "spring_profile=unsecured" >> $GITHUB_OUTPUT
-
-        elif [ "$APP_ENVIRONMENT" == "rc" ]; then
+        if [ "$APP_ENVIRONMENT" == "rc" ]; then
           # Common RC: own ephemeral Bitnami PostgreSQL.
           # Uses the dedicated 'rc' Spring profile, clearly distinct from preview branches.
           echo "spring_profile=rc" >> $GITHUB_OUTPUT
@@ -69,6 +65,12 @@ runs:
           # See: docs/release-candidate-process/feature-environments.md
           echo "spring_profile=${APP_ENVIRONMENT}" >> $GITHUB_OUTPUT
           provision_bitnami
+
+        elif [ "$BRANCH_NAME" == "main" ]; then
+          # Main branch UAT: shared RDS — no ephemeral database needed.
+          # This check comes AFTER rc/* checks so that a workflow_dispatch triggered
+          # from main with app-environment=rc-feature still gets Bitnami, not RDS.
+          echo "spring_profile=unsecured" >> $GITHUB_OUTPUT
 
         else
           # PR preview branch: own ephemeral Bitnami PostgreSQL, 'preview' Spring profile.

@@ -1,4 +1,11 @@
-name: Deploy with Helm
+name: CI
+
+# Runs on every pull request, every push to main, and manually via workflow_dispatch.
+# Responsible for: build, test, security scans, Docker image push, and deployment to
+# preview (PR branches) and UAT (main branch) environments.
+#
+# For release candidate deployment see deploy-rc.yml.
+# For staging and production deployment see deploy-release.yml.
 
 on:
   workflow_dispatch:
@@ -15,8 +22,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -80,7 +85,7 @@ jobs:
           path: data-access-mass-generator/build/libs/*.jar
           retention-days: 1
 
-      - name: Upload checkstyle report for data-access-service
+      - name: Upload checkstyle report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -88,7 +93,7 @@ jobs:
           path: data-access-service/build/reports/checkstyle
           retention-days: 14
 
-      - name: Upload test report for data-access-service
+      - name: Upload test report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -96,7 +101,7 @@ jobs:
           path: data-access-service/build/reports/tests
           retention-days: 14
 
-      - name: Upload jacoco coverage report for data-access-service
+      - name: Upload jacoco coverage report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -162,7 +167,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
   build-push-docker:
-    name: build and push docker image
+    name: Build and push Docker image
     runs-on: ubuntu-latest
     needs:
       - build-test
@@ -179,17 +184,17 @@ jobs:
           name: service-jar
           path: data-access-service/build/libs/
 
-        # ---------- AWS auth (OIDC) ----------
       - name: Configure AWS creds
         uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
         with:
           role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-          aws-region: ${{  vars.ECR_REGION }}
+          aws-region: ${{ vars.ECR_REGION }}
 
       - name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
         id: login-ecr
-      - name: Build and push a Docker image for data-access-service
+        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
+
+      - name: Build and push Docker image
         run: |
           docker build --no-cache -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
@@ -199,7 +204,7 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
 
   build-push-mass-generator-docker:
-    name: build and push mass-generator docker image
+    name: Build and push mass-generator Docker image
     if: false # TODO: temporarily disabled - re-enable when mass-generator is needed
     runs-on: ubuntu-latest
     needs:
@@ -224,8 +229,8 @@ jobs:
           aws-region: ${{ vars.ECR_REGION }}
 
       - name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
         id: login-ecr
+        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
 
       - name: Build and push mass-generator Docker image
         run: |
@@ -251,7 +256,6 @@ jobs:
     outputs:
       release-name: ${{ steps.deploy.outputs.release-name }}
       branch-name: ${{ steps.deploy.outputs.branch-name }}
-
     steps:
 
       - name: Checkout
@@ -284,7 +288,6 @@ jobs:
     outputs:
       release-name: ${{ steps.deploy.outputs.release-name }}
       branch-name: ${{ steps.deploy.outputs.branch-name }}
-
     steps:
 
       - name: Checkout
@@ -303,171 +306,38 @@ jobs:
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
           app-environment: uat
 
-  uat-smoke-test:
-    if: false # TODO: temporarily disabled - re-enable when smoke tests are stable
-    runs-on: ubuntu-latest
-    needs:
-      - deploy-uat
-    environment: uat
-    permissions:
-      id-token: write
-      contents: read
-    env:
-      RELEASE_NAME: ${{ needs.deploy-uat.outputs.release-name }}
-      BRANCH_NAME: ${{ needs.deploy-uat.outputs.branch-name }}
+  smoke-test-preview:
+    needs: [deploy-preview]
+    uses: ./.github/workflows/smoke-test.yml
+    with:
+      release-name: ${{ needs.deploy-preview.outputs.release-name }}
+      app-environment: preview
+    secrets:
+      KUBE_CERT: ${{ secrets.KUBE_CERT }}
+      KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
+      KUBE_CLUSTER: ${{ secrets.KUBE_CLUSTER }}
       KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - name: Set up JDK 25
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
-        with:
-          java-version: 25
-          distribution: 'corretto'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
-
-      - name: Authenticate to the cluster
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
-        with:
-          kube-cert: ${{ secrets.KUBE_CERT }}
-          kube-token: ${{ secrets.KUBE_TOKEN }}
-          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
-          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-
-      - name: Resolve smoke-test target
-        id: target
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "$BRANCH_NAME" = "main" ]; then
-            echo "db_pod_selector=run=port-forward-pod" >> "$GITHUB_OUTPUT"
-            echo "db_secret=rds-postgresql-instance-output" >> "$GITHUB_OUTPUT"
-            echo "db_flavour=rds" >> "$GITHUB_OUTPUT"
-          else
-            echo "db_pod_selector=app.kubernetes.io/instance=${RELEASE_NAME}-postgresql,app.kubernetes.io/name=postgresql" >> "$GITHUB_OUTPUT"
-            echo "db_secret=${RELEASE_NAME}-postgresql" >> "$GITHUB_OUTPUT"
-            echo "db_flavour=bitnami" >> "$GITHUB_OUTPUT"
-          fi
-          echo "app_pod_selector=app.kubernetes.io/instance=${RELEASE_NAME},app.kubernetes.io/name=data-access-api" >> "$GITHUB_OUTPUT"
-
-      - name: Port forward to Postgres
-        uses: ./.github/actions/port-forward
-        with:
-          kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
-          pod_selector: ${{ steps.target.outputs.db_pod_selector }}
-          local_port: "5432"
-          remote_port: "5432"
-          pid_env_var: DB_PORT_FORWARD_PID
-
-      - name: Port forward to app
-        uses: ./.github/actions/port-forward
-        with:
-          kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
-          pod_selector: ${{ steps.target.outputs.app_pod_selector }}
-          local_port: "8080"
-          remote_port: "8080"
-          pid_env_var: APP_PORT_FORWARD_PID
-
-      - name: Configure smoke-test environment
-        shell: bash
-        env:
-          DB_SECRET: ${{ steps.target.outputs.db_secret }}
-          DB_FLAVOUR: ${{ steps.target.outputs.db_flavour }}
-        run: |
-          set -euo pipefail
-          decode() {
-            kubectl -n "$KUBE_NAMESPACE" get secret "$DB_SECRET" -o jsonpath="{.data.$1}" | base64 -d
-          }
-          if [ "$DB_FLAVOUR" = "rds" ]; then
-            DB_NAME=$(decode database_name)
-            DB_USER=$(decode database_username)
-            DB_PASS=$(decode database_password)
-          else
-            DB_NAME="postgres"
-            DB_USER="postgres"
-            DB_PASS=$(decode postgres-password)
-          fi
-          echo "::add-mask::$DB_PASS"
-          {
-            echo "LAA_SMOKE_ACCESS_API_URL=http://localhost:8080"
-            echo "LAA_SMOKE_ACCESS_DB_URL=jdbc:postgresql://localhost:5432/$DB_NAME"
-            echo "LAA_SMOKE_ACCESS_DB_USERNAME=$DB_USER"
-            echo "LAA_SMOKE_ACCESS_DB_PASSWORD=$DB_PASS"
-          } >> "$GITHUB_ENV"
-
-      - name: Run UAT smoke tests
-        run: ./gradlew :data-access-service:infrastructureTest --continue --console=plain
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload smoke test report
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: uat-smoke-test-report
-          path: data-access-service/build/reports/tests/infrastructureTest
-          retention-days: 14
-
-      - name: Stop port-forwards
-        if: always()
-        shell: bash
-        run: |
-          for pid in "${DB_PORT_FORWARD_PID:-}" "${APP_PORT_FORWARD_PID:-}"; do
-            [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
-          done
-
-      - name: Delete in-cluster port-forward resources
-        if: always()
-        shell: bash
-        run: |
-          kubectl -n "$KUBE_NAMESPACE" delete deployment port-forward-pod --ignore-not-found
-          kubectl -n "$KUBE_NAMESPACE" delete service laa-data-access-api-uat-postgresql-portforward --ignore-not-found
-
-  deploy-rc:
-    if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-rc.') && github.event.base_ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    needs:
-      - build-push-docker
-      - vulnerability-scan-app
-      - vulnerability-scan-docker
-    environment: uat
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-
-      - name: Deploy RC
-        uses: ./.github/actions/deploy_branch
-        with:
-          ecr-region: ${{ vars.ECR_REGION }}
-          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-          ecr-repository: ${{ vars.ECR_REPOSITORY }}
-          kube-cert: ${{ secrets.KUBE_CERT }}
-          kube-token: ${{ secrets.KUBE_TOKEN }}
-          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
-          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-          app-environment: rc
-          release-name-override: laa-data-access-api-rc
+  smoke-test-uat:
+    needs: [deploy-uat]
+    uses: ./.github/workflows/smoke-test.yml
+    with:
+      release-name: ${{ needs.deploy-uat.outputs.release-name }}
+      app-environment: uat
+    secrets:
+      KUBE_CERT: ${{ secrets.KUBE_CERT }}
+      KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
+      KUBE_CLUSTER: ${{ secrets.KUBE_CLUSTER }}
+      KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
 
   # ---------------------------------------------------------------------------
-  # Per-Feature RC Deployments
+  # Per-Feature RC Deployments (workflow_dispatch only)
   # ---------------------------------------------------------------------------
-  # This job deploys an isolated RC environment for a named feature, with its
-  # own ephemeral database and optional feature flags passed at dispatch time.
-  # Triggered manually via workflow_dispatch — no tag convention required.
-  #
+  # Triggered manually via the Actions tab — not by any tag or branch push.
   # Inputs:
   #   feature-name:  e.g. schema-v2  → release: laa-data-access-api-rc-schema-v2
   #   feature-flags: e.g. schemaV2=true,newEndpoint=false
-  #                  → Helm --set featureFlags.schemaV2=true --set featureFlags.newEndpoint=false
-  #
-  # The common tag-triggered RC environment (deploy-rc) remains unchanged for
-  # final pre-staging validation with the full feature set.
+  # See: docs/release-candidate-process/feature-environments.md
   # ---------------------------------------------------------------------------
 
   deploy-rc-feature:
@@ -481,12 +351,15 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    outputs:
+      release-name: ${{ steps.deploy.outputs.release-name }}
     steps:
 
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Deploy RC feature environment
+        id: deploy
         uses: ./.github/actions/deploy_branch
         with:
           ecr-region: ${{ vars.ECR_REGION }}
@@ -500,100 +373,14 @@ jobs:
           release-name-override: laa-data-access-api-rc-${{ inputs.feature-name }}
           feature-flags: ${{ inputs.feature-flags }}
 
-  validate-release-on-main:
-    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-rc.')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-        with:
-          fetch-depth: 0  # Full history needed to check if commit is on main
-
-      - name: Verify tag is on main branch
-        run: |
-          set -euo pipefail
-          
-          # Get the commit SHA of the tag
-          TAG_COMMIT=$(git rev-list -n 1 ${{ github.ref }})
-          echo "Tag commit: $TAG_COMMIT"
-          
-          # Check if this commit is reachable from main
-          if git merge-base --is-ancestor "$TAG_COMMIT" origin/main; then
-            echo "✓ Tag is on main branch - safe to deploy to staging"
-            exit 0
-          else
-            echo "✗ ERROR: Tag commit is NOT on main branch!"
-            echo "Tag: ${{ github.ref }}"
-            echo "Commit: $TAG_COMMIT"
-            echo ""
-            echo "Release tags must be created on commits that are already merged to main."
-            echo "This ensures the release has gone through the standard CI/CD gates."
-            echo ""
-            echo "To fix:"
-            echo "  1. Delete the tag: git tag -d ${{ github.ref_name }}"
-            echo "  2. Push deletion: git push origin :${{ github.ref_name }}"
-            echo "  3. Merge your commit to main and run smoke tests"
-            echo "  4. Then re-tag from the commit on main"
-            exit 1
-          fi
-
-  deploy-staging:
-    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-rc.')
-    runs-on: ubuntu-latest
-    needs:
-      - build-push-docker
-      - vulnerability-scan-app
-      - vulnerability-scan-docker
-      - validate-release-on-main
-    environment: staging
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-
-      - name: Deploy staging
-        id: deploy_staging
-        uses: ./.github/actions/deploy
-        with:
-          ecr-region: ${{ vars.ECR_REGION }}
-          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-          ecr-repository: ${{ vars.ECR_REPOSITORY }}
-          kube-cert: ${{ secrets.KUBE_CERT }}
-          kube-token: ${{ secrets.KUBE_TOKEN }}
-          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
-          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-          app-environment: staging
-
-  deploy-production:
-    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-rc.')
-    runs-on: ubuntu-latest
-    needs: deploy-staging
-    environment: production
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-
-      - name: Deploy production
-        id: deploy_production
-        uses: ./.github/actions/deploy
-        with:
-          ecr-region: ${{ vars.ECR_REGION }}
-          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-          ecr-repository: ${{ vars.ECR_REPOSITORY }}
-          kube-cert: ${{ secrets.KUBE_CERT }}
-          kube-token: ${{ secrets.KUBE_TOKEN }}
-          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
-          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-          app-environment: production
+  smoke-test-rc-feature:
+    needs: [deploy-rc-feature]
+    uses: ./.github/workflows/smoke-test.yml
+    with:
+      release-name: ${{ needs.deploy-rc-feature.outputs.release-name }}
+      app-environment: rc-feature
+    secrets:
+      KUBE_CERT: ${{ secrets.KUBE_CERT }}
+      KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
+      KUBE_CLUSTER: ${{ secrets.KUBE_CLUSTER }}
+      KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
