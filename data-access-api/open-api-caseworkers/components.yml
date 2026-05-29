@@ -34,8 +34,6 @@ components:
 
     CaseworkerUnassignRequest:
       type: object
-      required:
-        - eventHistory
       properties:
         eventHistory:
           $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"

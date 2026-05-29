@@ -54,7 +54,8 @@ public class DomainEventAsserts {
       assertTrue(applicationIds.contains(domainEvent.getApplicationId()));
       assertEquals(caseWorkerId, domainEvent.getCaseworkerId());
       assertThat(domainEvent.getServiceName()).isEqualTo(expectedServiceName);
-      if (expectedEventHistoryRequest.getEventDescription() != null) {
+      if (expectedEventHistoryRequest != null
+          && expectedEventHistoryRequest.getEventDescription() != null) {
         assertTrue(
             domainEvent.getData().contains(expectedEventHistoryRequest.getEventDescription()));
       } else {
@@ -64,13 +65,14 @@ public class DomainEventAsserts {
   }
 
   public void assertDomainEventForApplication(
-      ApplicationEntity application, DomainEventType expectedType) throws Exception {
+      ApplicationEntity application, DomainEventType expectedType) {
     assertDomainEventForApplication(application, expectedType, ServiceName.CIVIL_APPLY);
   }
 
   public void assertDomainEventForApplication(
-      ApplicationEntity application, DomainEventType expectedType, ServiceName expectedServiceName)
-      throws Exception {
+      ApplicationEntity application,
+      DomainEventType expectedType,
+      ServiceName expectedServiceName) {
 
     List<DomainEventEntity> domainEvents =
         domainEventRepository.findByApplicationId(application.getId());
