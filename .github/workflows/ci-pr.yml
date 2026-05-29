@@ -1,0 +1,100 @@
+name: CI - Pull Request
+
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    if: startsWith(github.head_ref || github.ref_name, 'openapi/') == false
+    uses: ./.github/workflows/build-and-test.yml
+    with:
+      publish-models: true
+    secrets: inherit
+
+  build-push-mass-generator-docker:
+    name: Build and push mass-generator Docker image
+    if: false # TODO: temporarily disabled - re-enable when mass-generator is needed
+    runs-on: ubuntu-latest
+    needs:
+      - build-and-test
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Download mass-generator JAR artifact
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: mass-generator-jar
+          path: data-access-mass-generator/build/libs/
+
+      - name: Configure AWS creds
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
+        with:
+          role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.ECR_REGION }}
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
+
+      - name: Build and push mass-generator Docker image
+        run: |
+          docker build --no-cache -f Dockerfile.mass-generator \
+            -t $REGISTRY/$REPOSITORY:${IMAGE_TAG}-mass-generator .
+          docker push $REGISTRY/$REPOSITORY:${IMAGE_TAG}-mass-generator
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+
+  deploy-preview:
+    runs-on: ubuntu-latest
+    needs:
+      - build-and-test
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      release-name: ${{ steps.deploy.outputs.release-name }}
+      branch-name: ${{ steps.deploy.outputs.branch-name }}
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Deploy PR preview environment
+        id: deploy
+        uses: ./.github/actions/deploy_branch
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          app-environment: preview
+
+  smoke-test-preview:
+    needs: [deploy-preview]
+    uses: ./.github/workflows/smoke-test.yml
+    with:
+      release-name: ${{ needs.deploy-preview.outputs.release-name }}
+      app-environment: preview
+    secrets:
+      KUBE_CERT: ${{ secrets.KUBE_CERT }}
+      KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
+      KUBE_CLUSTER: ${{ secrets.KUBE_CLUSTER }}
+      KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+
