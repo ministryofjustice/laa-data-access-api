@@ -1,5 +1,9 @@
 package uk.gov.justice.laa.dstew.access.service.applications;
 
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.http.MediaType.APPLICATION_OCTET_STREAM;
+import static org.springframework.http.MediaType.MULTIPART_FORM_DATA;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -69,7 +72,7 @@ public class SdsService {
             .post()
             .uri(sdsApiUrl + SAVE_FILE_ENDPOINT)
             .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
-            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .contentType(MULTIPART_FORM_DATA)
             .body(builder.build())
             .retrieve()
             .onStatus(
@@ -98,7 +101,7 @@ public class SdsService {
             .put()
             .uri(sdsApiUrl + SAVE_OR_UPDATE_FILE_ENDPOINT)
             .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
-            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .contentType(MULTIPART_FORM_DATA)
             .body(builder.build())
             .retrieve()
             .body(DocumentUpdateResponse.class);
@@ -126,7 +129,7 @@ public class SdsService {
             .get()
             .uri(uri)
             .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
-            .accept(MediaType.APPLICATION_JSON)
+            .accept(APPLICATION_JSON)
             .retrieve()
             .onStatus(
                 status -> status.value() == HttpStatus.NOT_FOUND.value(),
@@ -180,7 +183,7 @@ public class SdsService {
             .get()
             .uri(sdsApiUrl + HEALTH_ENDPOINT)
             .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
-            .accept(MediaType.APPLICATION_JSON)
+            .accept(APPLICATION_JSON)
             .retrieve()
             .body(SdsHealthResponse.class);
 
@@ -209,7 +212,7 @@ public class SdsService {
   private MultipartBodyBuilder buildMultipartBody(
       MultipartFile file, Map<String, String> bodyFields) {
     MultipartBodyBuilder builder = new MultipartBodyBuilder();
-    builder.part("file", file.getResource()).contentType(MediaType.APPLICATION_OCTET_STREAM);
+    builder.part("file", file.getResource()).contentType(APPLICATION_OCTET_STREAM);
 
     // Convert map to JSON string manually (simple format)
     StringBuilder jsonBody = new StringBuilder("{");

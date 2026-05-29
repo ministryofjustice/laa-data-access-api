@@ -7,6 +7,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import org.testcontainers.containers.PostgreSQLContainer;
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.Constants;
+import uk.gov.justice.laa.dstew.access.config.SdsTestConfiguration;
 
 public class IntegrationTestContextProvider implements TestContextProvider {
 
@@ -23,7 +24,7 @@ public class IntegrationTestContextProvider implements TestContextProvider {
   public IntegrationTestContextProvider() {
 
     applicationContext =
-        new SpringApplicationBuilder(AccessApp.class)
+        new SpringApplicationBuilder(AccessApp.class, SdsTestConfiguration.class)
             .web(org.springframework.boot.WebApplicationType.SERVLET)
             .run(
                 "--server.port=0",
