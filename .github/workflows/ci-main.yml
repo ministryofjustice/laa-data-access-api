@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build-and-test:
-    if: startsWith(github.head_ref || github.ref_name, 'openapi/') == false
+    if: ${{ !startsWith(github.head_ref, 'openapi/') && !startsWith(github.ref_name, 'openapi/') }}
     uses: ./.github/workflows/build-and-test.yml
     with:
       publish-models: true
@@ -99,4 +99,3 @@ jobs:
       KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
       KUBE_CLUSTER: ${{ secrets.KUBE_CLUSTER }}
       KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
-
