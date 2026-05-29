@@ -317,6 +317,7 @@ components:
           type: string
         substantiveCostLimitation:
           type: string
+          format: decimal
         scopeLimitations:
           type: array
           items:

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -177,8 +178,11 @@ public class GetApplicationTest extends BaseServiceTest {
                 "substantiveLevelOfServiceName", expectedProceedingEntity.getProceedingContent()))
         .isEqualTo(actualApplicationProceedingResponse.getLevelOfService());
     assertThat(
-            getValueFromProceedingContent(
-                "substantiveCostLimitation", expectedProceedingEntity.getProceedingContent()))
+            BigDecimal.valueOf(
+                Double.parseDouble(
+                    getValueFromProceedingContent(
+                        "substantiveCostLimitation",
+                        expectedProceedingEntity.getProceedingContent()))))
         .isEqualTo(actualApplicationProceedingResponse.getSubstantiveCostLimitation());
     assertThat(actualApplicationProceedingResponse.getScopeLimitations()).isNotNull();
     ScopeLimitationResponse scopeLimitation =

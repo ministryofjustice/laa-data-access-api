@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.massgenerator.generator.application;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -38,7 +39,8 @@ public class FullProceedingGenerator
                     "Parental responsibility",
                     "Emergency protection order - discharge"))
         .usedDelegatedFunctionsOn(getRandomDate())
-        .substantiveCostLimitation(faker.number().numberBetween(1000, 50000) + ".0")
+        .substantiveCostLimitation(
+            BigDecimal.valueOf(faker.number().numberBetween(1000.00, 50000.00)))
         .substantiveLevelOfServiceName(
             faker.options().option("Full Representation", "Limited Case Work"))
         .build()

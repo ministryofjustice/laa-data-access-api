@@ -9,6 +9,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -396,8 +397,7 @@ public class GetApplicationTest extends BaseHarnessTest {
                         .getProceedingContent()
                         .get("substantiveLevelOfServiceName")
                         .toString())
-                .substantiveCostLimitation(
-                    proceeding.getProceedingContent().get("substantiveCostLimitation").toString())
+                .substantiveCostLimitation(getSubstantiveCostLimitation(proceeding))
                 .delegatedFunctionsDate(
                     LocalDate.parse(
                         proceeding
@@ -421,6 +421,16 @@ public class GetApplicationTest extends BaseHarnessTest {
 
     application.setVersion(applicationEntity.getVersion());
     return application;
+  }
+
+  private static BigDecimal getSubstantiveCostLimitation(ProceedingEntity proceeding) {
+    Object substantiveCostLimitation =
+        proceeding.getProceedingContent().get("substantiveCostLimitation");
+    if (substantiveCostLimitation == null) {
+      return null;
+    }
+
+    return BigDecimal.valueOf(Double.parseDouble(substantiveCostLimitation.toString()));
   }
 
   private List<OpponentResponse> extractOpponents(Map<String, Object> applicationContent) {

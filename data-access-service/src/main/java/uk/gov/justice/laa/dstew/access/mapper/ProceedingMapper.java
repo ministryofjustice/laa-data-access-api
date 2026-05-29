@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.lang3.BooleanUtils;
@@ -78,7 +79,7 @@ public interface ProceedingMapper {
         EnumParsingUtils.convertToMatterType(proceeding.getMatterType()));
     applicationProceedingResponse.setLevelOfService(proceeding.getSubstantiveLevelOfServiceName());
     applicationProceedingResponse.setSubstantiveCostLimitation(
-        proceeding.getSubstantiveCostLimitation());
+        getSubstantiveCostLimitation(proceeding));
     if (proceeding.getScopeLimitations() != null) {
       List<ScopeLimitationResponse> scopeLimitations =
           proceeding.getScopeLimitations().stream()
@@ -97,5 +98,12 @@ public interface ProceedingMapper {
     }
 
     return applicationProceedingResponse;
+  }
+
+  private static BigDecimal getSubstantiveCostLimitation(Proceeding proceeding) {
+    if (proceeding == null || proceeding.getSubstantiveCostLimitation() == null) {
+      return null;
+    }
+    return proceeding.getSubstantiveCostLimitation();
   }
 }

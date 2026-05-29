@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.io.Serial;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -58,7 +59,7 @@ public class Proceeding implements Serializable {
 
   @Nullable private String substantiveLevelOfServiceName;
 
-  @Nullable private String substantiveCostLimitation;
+  @Nullable private BigDecimal substantiveCostLimitation;
 
   @Nullable private List<Map<String, Object>> scopeLimitations;
 
