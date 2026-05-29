@@ -102,6 +102,7 @@ runs:
             --namespace ${KUBE_NAMESPACE} \
             --install --wait
         fi
+        
 
         helm upgrade $RELEASE_NAME .helm/data-access-api \
           --namespace ${KUBE_NAMESPACE} \
@@ -114,6 +115,7 @@ runs:
           --set ingressInternal.hosts="{$internal_host}" \
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
+          --set autoscaling.enabled="$([ "$branch_name" = "main" ] && echo true || echo false)" \
           --values ${VALUES_FILE} \
           --install \
           --wait
