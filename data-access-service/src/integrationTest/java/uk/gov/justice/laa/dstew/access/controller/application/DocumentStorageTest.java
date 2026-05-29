@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.CREATED;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertBadRequest;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoContent;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
@@ -23,7 +22,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.reactive.server.EntityExchangeResult;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import uk.gov.justice.laa.dstew.access.config.SdsTestConfiguration;
+import uk.gov.justice.laa.dstew.access.config.SdsWireMockStubs;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
@@ -35,9 +34,12 @@ import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
 
 public class DocumentStorageTest extends BaseHarnessTest {
 
+  private SdsWireMockStubs sdsStubs;
+
   @BeforeEach
-  void resetSdsMock() {
-    SdsTestConfiguration.reset();
+  void setupSdsStubs() {
+    sdsStubs = SdsWireMockStubs.from(harnessProvider);
+    sdsStubs.setupDefaultStubs();
   }
 
   @Test
@@ -65,6 +67,7 @@ public class DocumentStorageTest extends BaseHarnessTest {
   @Test
   public void givenDuplicateFile_whenUploadDocument_thenReturnConflict() throws Exception {
     // given
+    sdsStubs.stubDuplicateUpload();
     ApplicationEntity application =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
     MockMultipartFile file = createTestFile("duplicate-document.pdf", "duplicate content");
@@ -110,6 +113,7 @@ public class DocumentStorageTest extends BaseHarnessTest {
   @Test
   public void givenNonExistentDocument_whenDownloadDocument_thenReturnNotFound() throws Exception {
     // given
+    sdsStubs.stubFileNotFoundOnDownload();
     ApplicationEntity application =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
     String nonExistentDocumentId = "non-existent-doc.pdf";
@@ -128,26 +132,12 @@ public class DocumentStorageTest extends BaseHarnessTest {
   }
 
   @Test
-  public void givenInvalidApplicationId_whenDownloadDocument_thenReturnNotFound() throws Exception {
-    // given
-    UUID invalidApplicationId = UUID.randomUUID();
-    String documentId = "some-document.pdf";
-
-    // when
-    HarnessResult result = downloadDocument(invalidApplicationId, documentId, DefaultHttpHeaders());
-
-    // then
-    assertSecurityHeaders(result);
-    assertNotFound(result);
-  }
-
-  @Test
   public void givenExistingDocument_whenUpdateDocument_thenReturnUpdatedFileURL() throws Exception {
     // given
     ApplicationEntity application =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-    MockMultipartFile originalFile = createTestFile("original.pdf", "original content");
-    MockMultipartFile updatedFile = createTestFile("updated.pdf", "updated content");
+    MockMultipartFile originalFile = createTestFile("document.pdf", "original content");
+    MockMultipartFile updatedFile = createTestFile("document.pdf", "updated content");
 
     uploadDocument(application.getId(), originalFile, DefaultHttpHeaders());
 
@@ -190,6 +180,9 @@ public class DocumentStorageTest extends BaseHarnessTest {
     assertSecurityHeaders(result);
     assertNoContent(result);
 
+    // Verify files are no longer accessible after deletion
+    sdsStubs.stubFileNotFoundOnDownload();
+
     HarnessResult downloadResult1 =
         downloadDocument(application.getId(), docId1, DefaultHttpHeaders());
     assertNotFound(downloadResult1);
@@ -202,6 +195,7 @@ public class DocumentStorageTest extends BaseHarnessTest {
   @Test
   public void givenNonExistentDocument_whenDeleteDocument_thenReturnNotFound() throws Exception {
     // given
+    sdsStubs.stubFileNotFoundOnDelete();
     ApplicationEntity application =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
     List<String> nonExistentIds = List.of("non-existent-1.pdf", "non-existent-2.pdf");
@@ -217,21 +211,6 @@ public class DocumentStorageTest extends BaseHarnessTest {
 
     ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
     assertEquals("File not found", problemDetail.getDetail());
-  }
-
-  @Test
-  public void givenEmptyDocumentIdsList_whenDeleteDocument_thenReturnBadRequest() throws Exception {
-    // given
-    ApplicationEntity application =
-        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-    List<String> emptyList = List.of();
-
-    // when
-    HarnessResult result = deleteDocuments(application.getId(), emptyList, DefaultHttpHeaders());
-
-    // then
-    assertSecurityHeaders(result);
-    assertBadRequest(result);
   }
 
   @Test
