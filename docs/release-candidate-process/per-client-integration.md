@@ -51,6 +51,8 @@ With feature flags:
 
 ## The Approach: RC Tags from Main + Per-Client Environments + Feature Flags
 
+> Per-client RC environments exist to give each client a **stable, isolated space** to run their automation tests against the exact code that will be promoted to Staging. They are not demo environments, not exploratory testing environments, and not a mechanism for clients to have permanently different feature sets. The code deployed is identical across all client environments — it is the same code that will eventually reach Production.
+
 ### How It Works
 
 ```
@@ -138,9 +140,92 @@ if (featureFlags.isSchemaV2Enabled()) {
 }
 ```
 
+### What Feature Flags Are and Are Not For
+
+Feature flags enable the staggered access model described in this document: **Client A tests a feature first, Client B tests it before release, and both must have validated it before promotion to Staging.** Flags are the mechanism that allows one codebase on trunk to serve multiple clients at different points in the same testing cycle — without branching.
+
+| Use | Safe? |
+|---|---|
+| Client A wants early access — flag on in Client A's RC environment while Client B's is still off. Client B will test with the flag on before promotion to Staging. This is the intended staggered access model. | ✅ Primary use case |
+| Client B is unaffected by the change and does not use the changed endpoint. Client B runs automation tests against the same RC deployment; their contract is unchanged. | ✅ |
+| Client A has the feature on in production; Client B has it off indefinitely. Flag is never cleaned up. | ❌ Anti-pattern |
+
+**Why permanent per-client divergence via feature flags is the wrong model**: flags should be a temporary testing gate, not a substitute for compatibility work. The feature is going to production regardless. If it breaks Client B, a flag does not defer that problem — it hides it. Client B will still hit the breaking change when the flag is turned on in Staging and Production. Running RC testing with Client B's flag permanently set to `false` means Client B has never validated what will actually be deployed to them.
+
+The staggered model works precisely because it is temporary. The discipline required is that Client B must test with the flag on before any promotion proceeds — not that both clients test simultaneously from day one.
+
+### Before Promoting to Staging
+
+When a feature is complete and ready to promote:
+
+1. The feature flag must be set to `true` in **every** client RC environment.
+   *Note: Since we do not use a runtime feature flag service, this requires updating the per-client Helm values files on main and creating a new RC tag so that all client environments deploy the updated flag state.*
+   **Operational Impact:** Because toggling a flag requires a pull request to `main` and a full pipeline run, it is a heavyweight operation. This enforces GitOps discipline but adds friction. Client teams should map out their readiness and consolidate flag toggles rather than rapidly flipping them back and forth.
+2. Every client must run their automation tests with the flag on
+3. If any client's tests fail, the feature is not ready to promote — fix the incompatibility first
+
+```
+Staggered (correct — intended model):
+  Apply RC:  flag=true  → automation tests pass ✅  ← Client A tests first
+  Decide RC: flag=false → not yet tested            ← Client B still pending
+  → Decide RC: flag=true → automation tests pass ✅ ← Client B catches up
+  → Promote to Staging ✅
+
+Wrong — promoting before Client B has tested:
+  Apply RC:  flag=true  → automation tests pass ✅
+  Decide RC: flag=false → automation tests pass ✅ (change untested)
+  → Promote to Staging: flag=true → Decide breaks ❌
+```
+
+Client B having `flag=false` during the staggered testing period is expected and correct. The failure mode is treating that intermediate state as a completed test and promoting from it.
+
 ### Flag Debt
 
 Flags must be removed once a feature is fully promoted to Staging. Accumulating flags that are never cleaned up adds code complexity and testing burden over time. Flag cleanup should be part of the definition of done for each promoted feature.
+
+---
+
+## Cross-Client Breaking Changes: The Apply/Decide Scenario
+
+The most complex per-client case is a schema change requested by one client that would also affect another client's API contract. For example: Apply want a new schema on an endpoint that Decide also uses.
+
+### The Core Rule
+
+**Both clients must test the change with the feature flag on. Neither can go to Staging until the change works for both.**
+
+A feature flag does not resolve a cross-client incompatibility — it defers it to a point where it cannot be avoided. Staging and Production have a single configuration. The moment the flag is turned on in Staging, every client is affected.
+
+```
+Wrong:
+  Apply RC: flag=true → tests pass ✅
+  Decide RC: flag=false → tests pass ✅ (change untested)
+  → Promote to Staging: flag=true → Decide breaks ❌
+
+Correct:
+  Apply RC: flag=true → tests pass ✅
+  Decide RC: flag=true → tests fail → fix the incompatibility → tests pass ✅
+  → Promote to Staging ✅
+```
+
+### The Special Case: Only One Client Uses the Changed Endpoint
+
+If the schema change affects an endpoint that one client uses but the other does not — for example, Apply sends a new field via POST and Decide only uses a GET that does not return it — the problem reduces to a **mapping problem**, not a breaking change:
+
+- The schema migration runs on both clients' isolated databases (same codebase on main)
+- The unaffected client's API contract is unchanged — they simply do not interact with the new field
+- Both clients still run automation tests against the new RC deployment, but no cross-client coordination is needed
+
+In this case the change is additive from the unaffected client's perspective and the delivery is straightforward.
+
+### If the Change Is Genuinely Breaking for the Other Client
+
+If the schema change cannot be made non-breaking for all clients without full API versioning:
+
+1. The change must be held until all affected clients are ready to accept it
+2. Or the team must implement versioned API endpoints (`/v1/`, `/v2/`) — a larger commitment (see [API Versioning](#api-versioning-v1-and-v2) in alternatives)
+3. Expand and Contract remains available for database-level changes that can be introduced additively before the old structure is removed
+
+There is no shortcut that allows one client to be on a permanently different API version without accepting the full cost of API versioning.
 
 ---
 

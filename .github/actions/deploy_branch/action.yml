@@ -33,6 +33,10 @@ inputs:
     description: "Whether to deploy the mass-generator alongside the app. Defaults to false."
     required: false
     default: 'false'
+  feature-flags:
+    description: "Optional key=value feature flag to pass to Helm (e.g. schemaV2=true). Sets featureFlags.<key>=<value> via --set."
+    required: false
+    default: ''
 
 outputs:
   branch-name:
@@ -114,6 +118,13 @@ runs:
         echo "Deploying commit: $GIT_SHA under release name: $RELEASE_NAME to $external_host and $internal_host..."
         echo "branch name: $branch_name, environment: $APP_ENVIRONMENT"
 
+        FEATURE_FLAG_ARG=""
+        if [ -n "${{ inputs.feature-flags }}" ]; then
+          KEY=$(echo "${{ inputs.feature-flags }}" | cut -d= -f1)
+          VAL=$(echo "${{ inputs.feature-flags }}" | cut -d= -f2)
+          FEATURE_FLAG_ARG="--set featureFlags.${KEY}=${VAL}"
+        fi
+
         if [ "$branch_name" == "main" ]; then
           # Main branch UAT: shared RDS, no ephemeral database
           export SPRING_PROFILE="unsecured"
@@ -157,6 +168,7 @@ runs:
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
           --set autoscaling.enabled="$([ "$branch_name" = "main" ] && echo true || echo false)" \
+          $FEATURE_FLAG_ARG \
           --values ${VALUES_FILE} \
           --install \
           --wait

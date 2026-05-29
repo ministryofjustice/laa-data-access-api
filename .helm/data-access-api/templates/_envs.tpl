@@ -2,9 +2,9 @@
   Define environment variables that can be "included" in deployment.yaml
 */}}
 {{- define "dbConnectionDetails" }}
-{{- if or (eq .Values.spring.profile "preview") (eq .Values.spring.profile "rc") }}
+{{- if or (eq .Values.spring.profile "preview") (eq .Values.spring.profile "rc") (hasPrefix "rc-" .Values.spring.profile) }}
 {{/*
-For preview branches and RC, set DB connection details to Bitnami Postgres specific values
+For preview branches, RC, and per-feature RC environments, set DB connection details to Bitnami Postgres specific values
 */}}
 - name: DB_NAME
   value: "postgres"
@@ -99,4 +99,8 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
     secretKeyRef:
       name: laa-data-access-api-secrets
       key: FEATURE_DISABLE_SECURITY
+{{- range $key, $val := .Values.featureFlags }}
+- name: FEATURE_{{ $key | upper | replace "-" "_" }}
+  value: {{ $val | quote }}
+{{- end }}
 {{- end }}
