@@ -1,0 +1,67 @@
+name: Deploy Feature RC
+
+on:
+  workflow_dispatch:
+    inputs:
+      feature-name:
+        description: 'Feature environment name (e.g. schema-v2).'
+        required: true
+      feature-flags:
+        description: 'Comma-separated feature flags as key=value pairs (e.g. schemaV2=true,newEndpoint=false). Leave blank for no flags.'
+        required: false
+        default: ''
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.feature-name || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    uses: ./.github/workflows/build-and-test.yml
+    secrets: inherit
+
+  deploy-rc-feature:
+    runs-on: ubuntu-latest
+    needs:
+      - build-and-test
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      release-name: ${{ steps.deploy.outputs.release-name }}
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Deploy RC feature environment
+        id: deploy
+        uses: ./.github/actions/deploy_branch
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          app-environment: rc-feature
+          release-name-override: laa-data-access-api-rc-${{ inputs.feature-name }}
+          feature-flags: ${{ inputs.feature-flags }}
+
+  smoke-test-rc-feature:
+    needs: [deploy-rc-feature]
+    uses: ./.github/workflows/smoke-test.yml
+    with:
+      release-name: ${{ needs.deploy-rc-feature.outputs.release-name }}
+      app-environment: rc-feature
+    secrets:
+      KUBE_CERT: ${{ secrets.KUBE_CERT }}
+      KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
+      KUBE_CLUSTER: ${{ secrets.KUBE_CLUSTER }}
+      KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+
