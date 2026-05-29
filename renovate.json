@@ -10,13 +10,12 @@
   "labels": ["dependencies"],
   "semanticCommits": "enabled",
   "commitMessagePrefix": "chore(deps):",
-  "prTitle": "chore(deps): {{{groupName}}}",
   "minimumReleaseAge": "7 days",
-  "allowedCommands": ["gradlew"],
-  "postUpgradeTasks": {
-    "commands": ["./gradlew resolveAndLockAll"],
-    "fileFilters": ["**/*.lockfile"],
-    "executionMode": "branch"
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 5am on monday"],
+    "commitMessageAction": "update",
+    "labels": ["dependencies", "lockfile-maintenance"]
   },
   "packageRules": [
     {

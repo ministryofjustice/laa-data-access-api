@@ -206,7 +206,6 @@ components:
         - domainEventType
         - createdAt
         - createdBy
-        - eventDescription
       properties:
         applicationId:
           type: string

@@ -17,10 +17,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /** Spring configuration to allow dev tokens. */
 @Configuration
 @ConditionalOnProperty(prefix = "feature", name = "enable-dev-token", havingValue = "true")
+@ExcludeFromGeneratedCodeCoverage
 public class DevTokenConfig {
 
   private static final Map<String, List<String>> DEV_TOKENS =
@@ -47,40 +49,43 @@ public class DevTokenConfig {
    * @return a filter that injects Authentication for valid dev tokens
    */
   @Bean
+  @ExcludeFromGeneratedCodeCoverage
   public OncePerRequestFilter devTokenFilter() {
-    return new OncePerRequestFilter() {
+    return new DevTokenFilter();
+  }
 
-      @Override
-      protected void doFilterInternal(
-          HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-          throws ServletException, IOException {
+  @ExcludeFromGeneratedCodeCoverage
+  private class DevTokenFilter extends OncePerRequestFilter {
 
-        // 2️⃣ Extract bearer token
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-          filterChain.doFilter(request, response);
-          return;
-        }
+    @Override
+    protected void doFilterInternal(
+        HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+        throws ServletException, IOException {
 
-        String token = authHeader.substring(7);
-
-        // 3️⃣ Only allow explicitly configured tokens
-        if (!DEV_TOKENS.containsKey(token)) {
-          filterChain.doFilter(request, response);
-          return;
-        }
-
-        // 4️⃣ Inject role-based Authentication
-        List<SimpleGrantedAuthority> authorities =
-            DEV_TOKENS.get(token).stream().map(SimpleGrantedAuthority::new).toList();
-
-        Authentication auth =
-            new UsernamePasswordAuthenticationToken("dev-user", null, authorities);
-
-        SecurityContextHolder.getContext().setAuthentication(auth);
-
+      // 2️⃣ Extract bearer token
+      String authHeader = request.getHeader("Authorization");
+      if (authHeader == null || !authHeader.startsWith("Bearer ")) {
         filterChain.doFilter(request, response);
+        return;
       }
-    };
+
+      String token = authHeader.substring(7);
+
+      // 3️⃣ Only allow explicitly configured tokens
+      if (!DEV_TOKENS.containsKey(token)) {
+        filterChain.doFilter(request, response);
+        return;
+      }
+
+      // 4️⃣ Inject role-based Authentication
+      List<SimpleGrantedAuthority> authorities =
+          DEV_TOKENS.get(token).stream().map(SimpleGrantedAuthority::new).toList();
+
+      Authentication auth = new UsernamePasswordAuthenticationToken("dev-user", null, authorities);
+
+      SecurityContextHolder.getContext().setAuthentication(auth);
+
+      filterChain.doFilter(request, response);
+    }
   }
 }

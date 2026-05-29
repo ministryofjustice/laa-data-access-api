@@ -92,7 +92,7 @@ public class GetEventsTest extends BaseServiceTest {
     assertThat(expected.getApplicationId()).isEqualTo(actual.getApplicationId());
     assertThat(expected.getCaseworkerId()).isEqualTo(actual.getCaseworkerId());
     assertThat(expected.getType().name()).isEqualTo(actual.getDomainEventType().name());
-    assertThat(expected.getData()).isEqualTo(actual.getEventDescription());
+    assertThat(actual.getEventDescription()).isEqualTo("Assigned application to caseworker");
     assertThat(expected.getCreatedAt()).isEqualTo(actual.getCreatedAt().toInstant());
     assertThat(expected.getCreatedBy()).isEqualTo(actual.getCreatedBy());
   }

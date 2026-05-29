@@ -62,8 +62,13 @@ inputs:
   token:
     required: true
     description: "GitHub repository token with read and write permissions for contents, pull requests, and issues, plus read-only access to security events."
+  dry-run:
+    required: false
+    default: 'false'
+    description: "Run in dry-run mode. Options: 'false' (disabled), 'full' (simulate everything), 'lookup' (check updates only)"
 
 runs:
+  using: composite
   steps:
     - name: Scan
       uses: renovatebot/github-action@7b4b65bf31e07d4e3e51708d07700fb41bc03166 # v46.1.3
@@ -74,4 +79,4 @@ runs:
         RENOVATE_REPOSITORIES: ${{ github.repository }}
         RENOVATE_MINIMUM_RELEASE_AGE_BEHAVIOUR: "timestamp-required"
         RENOVATE_MINIMUM_RELEASE_AGE: 3
-  using: composite
+        RENOVATE_DRY_RUN: ${{ inputs.dry-run }}

@@ -22,10 +22,7 @@ public class DomainEventGenerator
         .createdAt(Instant.now())
         .createdBy("")
         .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
-        .data(
-            "{\"eventDescription\": \""
-                + DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER.getValue()
-                + "\"}")
+        .data("{\"eventDescription\": \"Assigned application to caseworker\"}")
         .serviceName(ServiceName.CIVIL_APPLY)
         .build();
   }

@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import java.io.Serializable;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -15,7 +14,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class MakeDecisionDomainEventDetails implements Serializable {
+public class MakeDecisionDomainEventDetails implements DomainEventDetails {
   private UUID applicationId;
   private UUID caseworkerId;
   private String request;
