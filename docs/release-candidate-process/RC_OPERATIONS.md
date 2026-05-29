@@ -2,7 +2,12 @@
 
 **For**: Internal Team Operating RC Environment  
 **Audience**: DevOps, Platform Engineers, On-Call Engineers  
-**Last Updated**: 21 May 2026
+**Last Updated**: 29 May 2026
+
+> **This runbook covers the common RC environment** (`laa-data-access-api-rc`), deployed by
+> pushing a `v*-rc.*` tag. For per-feature environments deployed via `workflow_dispatch`, the
+> same `kubectl` and `helm` commands apply — substitute `laa-data-access-api-rc-{feature}` for
+> `laa-data-access-api-rc` throughout. See [`feature-environments.md`](./feature-environments.md).
 
 ---
 
@@ -111,8 +116,8 @@ NAMESPACE="laa-data-access-api-uat"
 kubectl get all -n $NAMESPACE -l app.kubernetes.io/instance=laa-data-access-api-rc
 
 # Expected output:
-# - Deployment: laa-data-access-api-rc, READY 2/2
-# - Pods: 2 running (laa-data-access-api-rc-xxxxx)
+# - Deployment: laa-data-access-api-rc, READY 1/1 (or more if auto-scaled)
+# - Pods: 1+ running (laa-data-access-api-rc-xxxxx)
 # - Service: laa-data-access-api-rc, ClusterIP
 # - Ingress: laa-data-access-api-rc, ingress-class=modsec-non-prod
 ```

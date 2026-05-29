@@ -6,6 +6,9 @@ The release process is managed entirely through GitHub Actions. Pull requests ge
 isolated preview environment in UAT. Promotion to staging and production is gated behind
 **manually pushed release tags** — nothing beyond UAT deploys automatically.
 
+For feature-specific testing before tagging an RC, see
+[Per-Feature RC Environments](feature-environments.md).
+
 ---
 
 ## 1. Developer Workflow (Pull Requests)
@@ -146,7 +149,8 @@ down all resources created for that branch:
 |-------------|---------|----------------|----------|---------|
 | **UAT (PR)** | Pull request opened/updated | `preview` | Bitnami PostgreSQL (per-PR) | Branch-specific URL |
 | **UAT (main)** | Push to `main` | `unsecured` | Shared RDS | Fixed `main-<namespace>` URL |
- **RC**  Manual tag `v*-rc.*`  `rc`  Bitnami PostgreSQL (dedicated)  Fixed `laa-data-access-api-rc` 
+| **RC (feature)** | `workflow_dispatch` with `feature-name` | `rc-feature` | Bitnami PostgreSQL (per-feature) | `laa-data-access-api-rc-{feature}-uat...` |
+| **RC (common)** | Manual tag `v*-rc.*` | `rc` | Bitnami PostgreSQL (dedicated) | Fixed `laa-data-access-api-rc` |
 | **Staging** | Manual tag `v*` (no `-rc.`) | `unsecured` | Shared RDS | Fixed `laa-data-access-api` |
 | **Production** | Manual tag `v*` (no `-rc.`) after staging | `main` | Shared RDS | Fixed `laa-data-access-api` |
 
@@ -156,8 +160,11 @@ down all resources created for that branch:
 
 | Pattern | Target |
 |---------|--------|
-| `v1.2.0-rc.1` | RC → UAT environment |
+| `v1.2.0-rc.1` | Common RC → UAT environment (fixed release name `laa-data-access-api-rc`) |
 | `v1.2.0` | Staging, then Production |
+
+Per-feature RC environments are **not tag-triggered** — they are deployed via `workflow_dispatch`.
+See [Per-Feature RC Environments](feature-environments.md).
 
 ---
 

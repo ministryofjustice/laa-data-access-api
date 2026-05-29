@@ -1,249 +1,147 @@
-# Per-Client Integration: Early Access Strategy
+# Per-Feature Integration: Early Access Strategy
 
-## The Problem
+## Overview
 
-Some clients may want early access to validate a specific feature — for example, a breaking schema change — while other clients need to remain on the current stable schema. This requires a strategy that provides **per-client isolation** without introducing long-running branch complexity or undermining the existing RC workflow.
+When a feature under development needs to be tested in isolation — before the common RC is tagged
+and without affecting other in-flight work — a **per-feature RC environment** can be deployed
+on demand via `workflow_dispatch`.
+
+This replaces the previous per-client approach (which required client-specific tag suffixes and
+hardcoded `rc-apply.yaml` / `rc-decide.yaml` values files) with a more flexible model where any
+named feature can get its own isolated environment.
+
+For a step-by-step guide and full technical reference, see
+[**`feature-environments.md`**](./feature-environments.md).
 
 ---
 
 ## Foundational Constraints
 
-Before evaluating options, two constraints define what is and isn't viable:
+These constraints apply regardless of how feature environments are triggered.
 
 ### 1. Code Must Already Be on Main (Post-UAT Merge)
 
-Per-client environments are only safe if the code being tested has **already merged to main and deployed to UAT**. If a per-client environment is created from a feature branch that has not yet merged to main:
+Feature environments are only safe if the code being tested has **already merged to main and
+deployed to UAT**. If a feature environment is created from a branch that has not yet merged:
 
-- The branch must be kept alive while the client tests
+- The branch must be kept alive while testing continues
 - Main continues to move forward, causing divergence
-- Rebase is required to keep the branch current, but rebasing invalidates the client's testing surface
-- Merging back to main risks cherry-pick complexity or large, conflict-heavy merge diffs
+- Rebasing invalidates the testing surface
+- Merging back to main risks large conflict-heavy diffs
 
 ```
 Safe:
-feature branch → merge to main → deploy to UAT → tag for client RC ✅
+feature branch → merge to main → deploy to UAT → trigger feature environment ✅
 
 Unsafe:
-feature branch → tag for client RC (branch still open, not merged) ❌
+feature branch → trigger feature environment (branch still open, not merged) ❌
 ```
 
-**The RC tag must only ever be created from a commit already on main.**
+### 2. Feature Flags Are Required for Per-Feature Behaviour Differences
 
-### 2. Feature Flags Are Required for Per-Client Behaviour Differences
+When all feature environments deploy the same code from `main`, the only way to give Environment A
+different behaviour from Environment B is **feature flags**. Without them, different behaviour
+requires different code, which requires different branches, which reintroduces all the divergence
+problems above.
 
-If all clients are testing the same RC tag (same commit on main), the **only** way to give Client A schema v2 and Client B schema v1 without branching is feature flags. Without them:
-
-- Different behaviour for different clients requires different code
-- Different code requires different branches
-- Different branches reintroduce all the divergence and cherry-pick problems
-
-Feature flags are what make it possible for **one codebase on main** to serve multiple clients with different behaviours simultaneously.
-
-```
-Without feature flags:
-  Per-client env → needs different code → needs different branch → rebase/cherry-pick problems ❌
-
-With feature flags:
-  Per-client env → same code on main → different Helm values → no branch, no divergence ✅
-```
+Feature flags are what make it possible for **one codebase on `main`** to exhibit different
+behaviours in different environments simultaneously.
 
 ---
 
-## The Approach: RC Tags from Main + Per-Client Environments + Feature Flags
-
-> Per-client RC environments exist to give each client a **stable, isolated space** to run their automation tests against the exact code that will be promoted to Staging. They are not demo environments, not exploratory testing environments, and not a mechanism for clients to have permanently different feature sets. The code deployed is identical across all client environments — it is the same code that will eventually reach Production.
-
-### How It Works
+## The Approach: workflow_dispatch + Feature Flags
 
 ```
 main (single source of truth)
-  └── git tag v1.3.0-rc.1-apply
-        └── GitHub Actions detects tag matching *-apply
-              └── Helm deploy to namespace with release: laa-data-access-api-rc-apply
-                    ├── values/rc-apply.yaml
-                    │     ├── featureFlags.schemaV2: true
-                    │     └── database: laa-data-access-api-rc-apply-postgresql
-                    └── Own isolated Bitnami PostgreSQL database
+  └── workflow_dispatch
+        feature-name=schema-v2, feature-flag=schemaV2, feature-flag-value=true
+              └── Helm deploy to namespace
+                    release: laa-data-access-api-rc-schema-v2
+                    env var: FEATURE_SCHEMAV2=true
+                    database: laa-data-access-api-rc-schema-v2-postgresql (isolated)
 ```
 
-- **Apply client** tests against `laa-data-access-api-rc-apply-uat.cloud-platform.service.justice.gov.uk` with feature flags enabled
-- **Decide client** tests against `laa-data-access-api-rc-decide-uat.cloud-platform.service.justice.gov.uk` with feature flags disabled (or different flags)
-- Both environments run **identical code** from the same RC tag on main
-
-### What Each Component Does
-
-| Component | Role |
-|---|---|
-| **Tag name** (`v1.3.0-rc.1-apply`) | Triggers the correct GitHub Actions workflow and identifies the client and version |
-| **GitHub Actions tag pattern** (`*-apply`, `*-decide`) | Routes deployment to the correct client environment automatically |
-| **Helm values file** (`values/rc-apply.yaml`, `values/rc-decide.yaml`) | Sets client-specific feature flags, Sentry environment, access controls |
-| **Isolated database** | Each client gets their own Bitnami PostgreSQL instance — schema migrations run independently |
-| **Kubernetes release name** (`laa-data-access-api-rc-apply`) | Full environment isolation — networking, secrets, resources |
+- The environment is accessible at
+  `laa-data-access-api-rc-schema-v2-uat.cloud-platform.service.justice.gov.uk`
+- The feature flag is passed at deploy time via `--set featureFlags.schemaV2=true` — no
+  per-feature values file required
+- The isolated Bitnami PostgreSQL database ensures schema migrations run independently of any
+  other environment
 
 ---
 
 ## Why Individual Databases Are Non-Negotiable
 
-If clients share a database in the RC environment, a schema migration triggered by Client A's test run will structurally alter the database — breaking Client B entirely. This is not just best practice; it is a hard requirement when schema changes are being validated.
+If feature environments share a database, a schema migration in one environment alters the
+database structure for all others. This is a hard requirement when schema changes are being
+validated.
 
 ```
 Shared DB (unsafe):
-Client A tests schema v2 migration → DB schema changes → Client B's tests break ❌
+Feature A runs schema v2 migration → DB schema changes → Feature B's tests break ❌
 
 Individual DBs (safe):
-Client A tests schema v2 migration → Client A's DB only → Client B's DB untouched ✅
+Feature A runs schema v2 migration → Feature A's DB only → Feature B's DB untouched ✅
 ```
-
-**Each client RC environment must have its own isolated database instance.**
 
 ### Handling Database Migrations (Expand and Contract)
 
-Because both environments deploy the same codebase from `main`, any database migration scripts (e.g., Flyway/Liquibase) on `main` will execute in **both** clients' isolated databases on startup. 
+Because all feature environments deploy the same codebase from `main`, any migration scripts
+will execute in all feature databases on startup. Therefore, schema changes managed by feature
+flags should follow the **Expand and Contract pattern**:
 
-Therefore, schema changes managed by feature flags must follow the **Expand and Contract pattern**:
-1. **Expand**: Add new columns/tables in a non-breaking way. Both clients get the database structure, but only Client A's feature flag makes the API use it.
-2. **Contract**: Only once the feature is fully promoted to Staging/Production and the feature flag is removed for all clients, can you safely write a migration to drop the old columns.
-
-### Data Strategy
-
-Given the legal aid context, fixture data is the recommended approach:
-
-| Approach | Suitability |
-|---|---|
-| **Fixture data** (predefined, version-controlled test records) | ✅ Recommended — consistent, repeatable, no compliance risk |
-| Empty database + seed scripts | ✅ Acceptable — simple and clean |
-| Anonymised production snapshot | ⚠️ GDPR/data handling risk — avoid |
+1. **Expand**: Add new columns/tables non-destructively. All environments get the schema
+   change; only the environments with the flag enabled use the new structure in the API.
+2. **Contract**: Once the feature is promoted to Staging/Production and the flag is removed,
+   write a migration to clean up the old columns.
 
 ---
 
-## Feature Flags Implementation
+## Feature Flags
 
-Feature flags should be implemented as **environment variables in per-client Helm values files**. This requires no new tooling and reuses existing Helm infrastructure.
+Feature flags in per-feature environments are passed dynamically at dispatch time — there is no
+per-feature values file. The flag flows through the pipeline as:
 
-```yaml
-# .helm/data-access-api/values/rc-apply.yaml
-featureFlags:
-  schemaV2: true
-
-# .helm/data-access-api/values/rc-decide.yaml
-featureFlags:
-  schemaV2: false
+```
+workflow_dispatch input
+  → helm --set featureFlags.schemaV2=true
+  → _envs.tpl iterates featureFlags map
+  → FEATURE_SCHEMAV2=true env var in pod
+  → Spring reads ${FEATURE_SCHEMAV2:false}
 ```
 
-The application code gates behaviour behind the flag:
+For a flag to be readable by Spring, declare it in `application.yml` with a safe default:
 
-```java
-if (featureFlags.isSchemaV2Enabled()) {
-    // new schema behaviour
-} else {
-    // old schema behaviour
-}
+```yaml
+feature:
+  schema-v2: ${FEATURE_SCHEMAV2:false}
 ```
 
 ### What Feature Flags Are and Are Not For
 
-Feature flags enable the staggered access model described in this document: **Client A tests a feature first, Client B tests it before release, and both must have validated it before promotion to Staging.** Flags are the mechanism that allows one codebase on trunk to serve multiple clients at different points in the same testing cycle — without branching.
-
 | Use | Safe? |
 |---|---|
-| Client A wants early access — flag on in Client A's RC environment while Client B's is still off. Client B will test with the flag on before promotion to Staging. This is the intended staggered access model. | ✅ Primary use case |
-| Client B is unaffected by the change and does not use the changed endpoint. Client B runs automation tests against the same RC deployment; their contract is unchanged. | ✅ |
-| Client A has the feature on in production; Client B has it off indefinitely. Flag is never cleaned up. | ❌ Anti-pattern |
+| Deploying a feature environment to validate behaviour with the flag on | ✅ Primary use case |
+| Keeping a flag permanently off in one environment while on in another indefinitely | ❌ Anti-pattern — hides a breaking change rather than resolving it |
 
-**Why permanent per-client divergence via feature flags is the wrong model**: flags should be a temporary testing gate, not a substitute for compatibility work. The feature is going to production regardless. If it breaks Client B, a flag does not defer that problem — it hides it. Client B will still hit the breaking change when the flag is turned on in Staging and Production. Running RC testing with Client B's flag permanently set to `false` means Client B has never validated what will actually be deployed to them.
-
-The staggered model works precisely because it is temporary. The discipline required is that Client B must test with the flag on before any promotion proceeds — not that both clients test simultaneously from day one.
+Flags are a **temporary testing gate**, not a substitute for compatibility work. When the feature
+promotes to Staging and Production, all environments are affected regardless of what the flag was
+set to during RC testing.
 
 ### Before Promoting to Staging
 
-When a feature is complete and ready to promote:
-
-1. The feature flag must be set to `true` in **every** client RC environment.
-   *Note: Since we do not use a runtime feature flag service, this requires updating the per-client Helm values files on main and creating a new RC tag so that all client environments deploy the updated flag state.*
-   **Operational Impact:** Because toggling a flag requires a pull request to `main` and a full pipeline run, it is a heavyweight operation. This enforces GitOps discipline but adds friction. Client teams should map out their readiness and consolidate flag toggles rather than rapidly flipping them back and forth.
-2. Every client must run their automation tests with the flag on
-3. If any client's tests fail, the feature is not ready to promote — fix the incompatibility first
-
-```
-Staggered (correct — intended model):
-  Apply RC:  flag=true  → automation tests pass ✅  ← Client A tests first
-  Decide RC: flag=false → not yet tested            ← Client B still pending
-  → Decide RC: flag=true → automation tests pass ✅ ← Client B catches up
-  → Promote to Staging ✅
-
-Wrong — promoting before Client B has tested:
-  Apply RC:  flag=true  → automation tests pass ✅
-  Decide RC: flag=false → automation tests pass ✅ (change untested)
-  → Promote to Staging: flag=true → Decide breaks ❌
-```
-
-Client B having `flag=false` during the staggered testing period is expected and correct. The failure mode is treating that intermediate state as a completed test and promoting from it.
-
-### Flag Debt
-
-Flags must be removed once a feature is fully promoted to Staging. Accumulating flags that are never cleaned up adds code complexity and testing burden over time. Flag cleanup should be part of the definition of done for each promoted feature.
+1. Validate the feature works with the flag on in a feature environment
+2. Validate the common RC environment (all features enabled, no flags) passes client tests
+3. Promote only when all validation is complete
 
 ---
 
-## Cross-Client Breaking Changes: The Apply/Decide Scenario
+## Common RC Environment
 
-The most complex per-client case is a schema change requested by one client that would also affect another client's API contract. For example: Apply want a new schema on an endpoint that Decide also uses.
+The per-feature approach sits alongside — not replacing — the existing common RC environment.
+That environment is triggered by `v{version}-rc.{n}` tags and is unchanged.
 
-### The Core Rule
-
-**Both clients must test the change with the feature flag on. Neither can go to Staging until the change works for both.**
-
-A feature flag does not resolve a cross-client incompatibility — it defers it to a point where it cannot be avoided. Staging and Production have a single configuration. The moment the flag is turned on in Staging, every client is affected.
-
-```
-Wrong:
-  Apply RC: flag=true → tests pass ✅
-  Decide RC: flag=false → tests pass ✅ (change untested)
-  → Promote to Staging: flag=true → Decide breaks ❌
-
-Correct:
-  Apply RC: flag=true → tests pass ✅
-  Decide RC: flag=true → tests fail → fix the incompatibility → tests pass ✅
-  → Promote to Staging ✅
-```
-
-### The Special Case: Only One Client Uses the Changed Endpoint
-
-If the schema change affects an endpoint that one client uses but the other does not — for example, Apply sends a new field via POST and Decide only uses a GET that does not return it — the problem reduces to a **mapping problem**, not a breaking change:
-
-- The schema migration runs on both clients' isolated databases (same codebase on main)
-- The unaffected client's API contract is unchanged — they simply do not interact with the new field
-- Both clients still run automation tests against the new RC deployment, but no cross-client coordination is needed
-
-In this case the change is additive from the unaffected client's perspective and the delivery is straightforward.
-
-### If the Change Is Genuinely Breaking for the Other Client
-
-If the schema change cannot be made non-breaking for all clients without full API versioning:
-
-1. The change must be held until all affected clients are ready to accept it
-2. Or the team must implement versioned API endpoints (`/v1/`, `/v2/`) — a larger commitment (see [API Versioning](#api-versioning-v1-and-v2) in alternatives)
-3. Expand and Contract remains available for database-level changes that can be introduced additively before the old structure is removed
-
-There is no shortcut that allows one client to be on a permanently different API version without accepting the full cost of API versioning.
-
----
-
-## The Unavoidable Convergence Point
-
-Per-client environments give clients **independent early access testing**, but they do not give clients **independent production timelines**. There is always a point where:
-
-```
-RC (per-client flags) → Staging → Production
-                                      ↑
-                           ALL clients hit this
-                           ALL flags are permanently ON
-                           Breaking change affects everyone
-```
-
-When the feature promotes to Staging and ultimately Production, **every client is on the same code, same schema, same behaviour**. The RC strategy solves the problem of clients being surprised by breaking changes — it does not defer the change indefinitely.
-
-**All clients must be ready before promotion to Staging.** The RC exists to ensure no client is unprepared, not to enable permanent per-client divergence.
+See [**`feature-environments.md`**](./feature-environments.md) for the full comparison table.
 
 ---
 
@@ -251,78 +149,30 @@ When the feature promotes to Staging and ultimately Production, **every client i
 
 ### Long-Running Per-Client Feature Branches
 
-Creating a dedicated branch per client (e.g. `feature/schema-v2-client-a`) and tagging that branch for deployment.
+Creating a dedicated branch per client/feature and tagging that branch for deployment.
 
-**Why this was ruled out:**
-
-| Problem | Detail |
-|---|---|
-| **Branch divergence** | Main continues to move; the client branch falls further behind with every passing day |
-| **Rebase burden** | Regular rebasing from main is required to keep the branch valid — but each rebase is a new deployment that invalidates the client's testing surface |
-| **Cherry-pick complexity** | Cherry-picking back to main creates duplicate commit SHAs, causes re-application of changes on future merges, and loses surrounding context |
-| **Schema migration risk** | Migrations on a branch cannot safely coexist with main's migration history without explicit ordering |
-| **CI false confidence** | Tests pass on the branch but may fail once rebased onto current main |
-
-**Verdict**: Only viable for very short-lived branches (days, not weeks). Not a sustainable per-client strategy.
+**Why ruled out**: Branch divergence, rebase burden, cherry-pick complexity, CI false confidence.
+Only viable for very short-lived branches (hours, not days). Not a sustainable strategy.
 
 ### API Versioning (`/v1/` and `/v2/`)
 
-Running multiple API versions simultaneously within a single deployment.
+Running multiple API versions simultaneously.
 
-**Why this was not chosen now:**
+**Why not chosen now**: High code maintenance burden, permanent commitment, significant retrofit
+effort. Worth revisiting if clients persistently require different API versions indefinitely.
 
-- High code maintenance burden — two versions of the API must be maintained simultaneously
-- Only works for schema changes that can be versioned cleanly
-- Becomes a permanent commitment, not an early-access mechanism
-- Significant effort to retrofit
+### Feature Flag Service (Unleash, LaunchDarkly)
 
-**Verdict**: The correct long-term answer if clients persistently require different API versions indefinitely. Not the right approach for early-access RC testing. Revisit if per-client version divergence becomes a recurring long-term need.
+A dedicated flag management service with a runtime UI.
 
-### Simple Feature Flag Service (Unleash, LaunchDarkly)
-
-A dedicated flag management service with a UI for runtime flag toggling.
-
-**Why this was not chosen now:**
-
-- Introduces a new infrastructure dependency
-- Adds operational overhead for a small team
-- Per-client Helm values files achieve the same per-client flag toggling with no new tooling
-
-**Verdict**: Worth revisiting if the number of clients or flag combinations grows significantly.
+**Why not chosen now**: Introduces infrastructure dependency and operational overhead.
+Per-environment Helm `--set` achieves the same result with no new tooling. Worth revisiting if
+flag complexity grows significantly.
 
 ---
 
-## Industry Standards
+## Related Documentation
 
-For context, the two recognised industry standard approaches for this class of problem are:
-
-**Feature flags** — the canonical Continuous Delivery / Trunk-Based Development solution for decoupling deployment from release. Endorsed by Martin Fowler, Dave Farley, and used at scale by Netflix, Facebook, and Google to ship to subsets of users independently.
-
-**API versioning** — the standard contract-level solution, used by major public APIs (GitHub, Stripe, Twilio) to allow clients to opt into new versions on their own timeline.
-
-The approach described in this document — **RC tags from main with per-client Helm-controlled feature flags** — is a pragmatic, right-sized alternative that achieves the same client isolation goal without the overhead those standards carry at the current team size and client scale. If client volume or release frequency increases significantly, feature flags backed by a dedicated flag service or full API versioning would be the natural next steps.
-
----
-
-## Operational Requirements
-
-For this approach to work reliably, the following must be in place:
-
-1. **Per-client Helm values files** — one per client, version controlled alongside the application (`.helm/data-access-api/values/rc-apply.yaml`, `.helm/data-access-api/values/rc-decide.yaml`)
-2. **Per-client database provisioning** — automated via Helm; each client gets their own Bitnami PostgreSQL instance deployed alongside the application
-3. **Tag naming convention** — agreed format for GitHub Actions routing to work consistently:
-   - `v{version}-rc.{n}` → standard RC, promotable to Staging from main
-   - `v{version}-rc.{n}-apply` → Apply client-specific RC, NOT directly promotable
-   - `v{version}-rc.{n}-decide` → Decide client-specific RC, NOT directly promotable
-4. **Environment TTL and cleanup policy** — explicit ownership of teardown; environment is removed when the feature is promoted to Staging (delete the Helm release: `helm uninstall laa-data-access-api-rc-apply -n laa-data-access-api-uat`)
-5. **Flag cleanup discipline** — flags are removed from the codebase as part of the definition of done when a feature is fully promoted
-
----
-
-## Summary
-
-> To give Client A early access to a new feature (such as a breaking schema change or new application functionality) while Client B remains on the current stable behaviour — without long-running branches, cherry-picks, or rebase complexity — the correct approach is:
->
-> **Merge to main → deploy to UAT → create a client-specific RC tag → auto-deploy to a client-named environment with an isolated database and a per-client Helm values file that enables the relevant feature flag.**
->
-> Feature flags are not optional in this model. They are the mechanism that allows one codebase on trunk to serve different clients differently. Without them, per-client behaviour differences require per-client branches — and per-client branches reintroduce all the divergence and merge complexity this approach is designed to avoid.
+- [Per-Feature RC Environments](./feature-environments.md) — Full technical guide
+- [RC Operations](./RC_OPERATIONS.md) — Common RC operations runbook
+- [Release Process](./release-process.md) — Full pipeline reference

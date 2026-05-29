@@ -1,13 +1,24 @@
 # RC Workflow Guide
 
 **For**: Team Members Creating and Managing Release Candidates  
-**Last Updated**: 21 May 2026
+**Last Updated**: 29 May 2026
 
 ---
 
 ## Overview
 
 This guide explains how to create, manage, and promote Release Candidate (RC) environments. RCs are stable snapshots of the codebase deployed to a dedicated environment for client testing before the Staging release.
+
+There are two kinds of RC environment:
+
+| | **Per-Feature RC** | **Common RC** |
+|---|---|---|
+| **Trigger** | `workflow_dispatch` (GitHub Actions UI) | `git tag v{n}-rc.{n}` |
+| **Purpose** | Isolate a single feature with a specific flag during development | Final pre-staging gate with all features merged |
+| **Release name** | `laa-data-access-api-rc-{feature}` | `laa-data-access-api-rc` |
+
+**This document covers the common RC workflow.** For per-feature environments, see
+[`feature-environments.md`](./feature-environments.md).
 
 ---
 
@@ -134,11 +145,11 @@ KUBE_NAMESPACE="laa-data-access-api-uat"
 
 # Check pods are running
 kubectl get pods -n $KUBE_NAMESPACE -l app.kubernetes.io/instance=laa-data-access-api-rc
-# Expected: 2 Running pods (or more if auto-scaled)
+# Expected: 1+ Running pods (HPA may scale up under load)
 
 # Check deployment status
 kubectl get deployment -n $KUBE_NAMESPACE -l app.kubernetes.io/instance=laa-data-access-api-rc
-# Expected: READY 2/2 (or more)
+# Expected: READY 1/1 (or more if auto-scaled)
 
 # View recent logs (troubleshoot if not running)
 kubectl logs -n $KUBE_NAMESPACE -l app.kubernetes.io/instance=laa-data-access-api-rc -f --tail=50

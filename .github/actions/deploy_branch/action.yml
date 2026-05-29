@@ -138,9 +138,9 @@ runs:
             --namespace ${KUBE_NAMESPACE} \
             --install --wait
         elif [[ "$APP_ENVIRONMENT" == rc-* ]]; then
-          # Per-client RC: own ephemeral Bitnami PostgreSQL with client-specific feature flags.
-          # Uses a client-specific Spring profile (e.g., rc-apply, rc-decide).
-          # See: docs/release-candidate-process/per-client-integration.md
+          # Per-feature RC: own ephemeral Bitnami PostgreSQL with feature-specific flags.
+          # APP_ENVIRONMENT is always "rc-feature"; feature flags are passed via --set featureFlags.*
+          # See: docs/release-candidate-process/feature-environments.md
           export SPRING_PROFILE="$APP_ENVIRONMENT"
           helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
             -f .helm/bitnami_postgres/values.yaml \

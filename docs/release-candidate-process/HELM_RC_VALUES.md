@@ -1,15 +1,21 @@
 # Helm RC Values Configuration
 
 **Technical Reference for Release Candidate Helm Deployment**  
-**Last Updated**: 21 May 2026
+**Last Updated**: 29 May 2026
 
 ---
 
 ## Overview
 
-This document explains the Helm values configuration for the RC environment. The RC uses environment-specific values to define resources, scaling, monitoring, and networking.
+This document explains the Helm values configuration for RC environments. There are two RC values files:
 
-**File location**: `.helm/data-access-api/values/rc.yaml`
+| File | Used by |
+|------|---------|
+| `.helm/data-access-api/values/rc.yaml` | Common RC — tag-triggered, fixed release name `laa-data-access-api-rc` |
+| `.helm/data-access-api/values/rc-feature.yaml` | Per-feature RC — `workflow_dispatch`-triggered, dynamic release name `laa-data-access-api-rc-{feature}` |
+
+Both files share the same structure and most settings. Key differences are noted in each section.
+See [`feature-environments.md`](./feature-environments.md) for the per-feature workflow.
 
 ---
 
@@ -18,17 +24,16 @@ This document explains the Helm values configuration for the RC environment. The
 ### Replica Count
 
 ```yaml
-replicaCount: 2
+replicaCount: 1
 ```
 
 **Explanation**:
 - Number of initial application pods to run
-- RC runs 2 by default (higher stability than preview branches' 1 pod)
-- HPA will scale this up/down based on load
+- RC runs 1 by default; HPA will scale up based on load (common RC) or stays at 1 (feature RC which has autoscaling disabled)
 
 **When to change**:
-- If RC experiences high load immediately: Increase to 3 or 4
-- If RC underutilized: Can decrease to 1 (but 2 recommended for availability)
+- If RC experiences high load immediately: Increase to 2 or 3
+- Feature environments use a single replica by design — no autoscaling
 
 ---
 
@@ -151,10 +156,10 @@ ingressInternal:
 resources:
   limits:
     cpu: 1000m        # Max CPU per pod (1 core)
-    memory: 2G        # Max memory per pod (2 GB)
+    memory: 1G        # Max memory per pod (1 GB)
   requests:
-    cpu: 100m         # Baseline CPU reservation
-    memory: 2G        # Memory reservation
+    cpu: 25m          # Baseline CPU reservation
+    memory: 1G        # Memory reservation
 ```
 
 **Explanation**:
@@ -162,14 +167,12 @@ resources:
 | Setting | Meaning | Default | Rationale |
 |---------|---------|---------|-----------|
 | **limits.cpu** | Hard limit; pod throttled or killed if exceeded | 1000m | Same as UAT; adequate for typical workload |
-| **limits.memory** | Hard limit; pod OOMKilled if exceeded | 2G | **Higher than preview branches (1G)** for stability under client load |
-| **requests.cpu** | Minimum guaranteed; scheduler reserves this | 100m | **Higher than UAT (25m)**; RC should be responsive |
-| **requests.memory** | Minimum guaranteed; scheduler reserves this | 2G | Matches limit; no over-commitment |
+| **limits.memory** | Hard limit; pod OOMKilled if exceeded | 1G | Same as UAT/preview branches |
+| **requests.cpu** | Minimum guaranteed; scheduler reserves this | 25m | Same as UAT; low baseline reservation |
+| **requests.memory** | Minimum guaranteed; scheduler reserves this | 1G | Matches limit; no over-commitment |
 
-**Why RC has higher resources**:
-- Clients will load-test RC
-- Need stability for multi-client simultaneous testing
-- Prevent OOMKill or CPU throttling under realistic client load
+> Both `rc.yaml` and `rc-feature.yaml` use the same resource settings. If a feature environment
+> needs more resources for load testing, pass `--set resources.limits.memory=2G` at deploy time.
 
 **When to adjust**:
 - **Increase if**: RC slow under client load, OOMKilled, high CPU throttling
@@ -314,21 +317,22 @@ kubectl port-forward -n laa-data-access-api-uat <port-forward-pod> 5432:5432
 
 ```yaml
 # Set by deploy_branch action, not in values file
-spring.profile: "preview"
+# Common RC tags:   SPRING_PROFILE=rc
+# Feature environments: SPRING_PROFILE=rc-feature
 ```
 
 **Explanation**:
-- RC deploys via `deploy_branch`, which determines the Spring profile from the branch name
-- For a tag push (`v1.2.3-rc.1`), `GITHUB_REF` is `refs/tags/v1.2.3-rc.1`; the extracted branch name is not `main`
-- Any branch name other than `main` causes `deploy_branch` to set `SPRING_PROFILE="preview"` and provision Bitnami PostgreSQL
-- `preview` = same security posture as all ephemeral feature branch environments
+- RC is deployed via `deploy_branch`, which determines the Spring profile from `APP_ENVIRONMENT`
+- For common RC tags (`v1.2.3-rc.1`), `APP_ENVIRONMENT=rc` → `SPRING_PROFILE=rc` → provisions Bitnami PostgreSQL
+- For feature environments, `APP_ENVIRONMENT=rc-feature` → `SPRING_PROFILE=rc-feature` → also provisions Bitnami PostgreSQL (the `[[ "$APP_ENVIRONMENT" == rc-* ]]` branch in `deploy_branch`)
 
-**Available profiles**:
-- `preview`: RC and all ephemeral branch environments (no auth enforcement)
-- `unsecured`: UAT main deployment (non-main branches also use `preview`, not this)
+**Available profiles relevant to RC**:
+- `rc`: Common RC environment — `application-rc.yaml` configures the Bitnami PostgreSQL datasource
+- `rc-feature`: Per-feature RC environment — inherits `rc` datasource config; flags set via env vars
+- `preview`: All other ephemeral branch environments
+- `unsecured`: UAT main deployment
 - `main`: Staging/production (auth enforced)
 
-**Why `preview` and not `unsecured`**: The `deploy_branch` action branches on `branch_name == "main"` to choose between `unsecured` (for the UAT persistent deployment) and `preview` (for all ephemeral deployments including RC). Since RC tags are not `main`, they always get `preview`.
 
 ---
 
@@ -438,23 +442,23 @@ Automatically created by Helm template:
 
 ## Comparing with Other Environments
 
-| Setting | Preview | UAT | RC | Staging |
-|---------|---------|-----|----|----|
-| **replicaCount** | 1 | 1 | **2** | 2 |
-| **memory.requests** | 1G | 1G | **2G** | 1G |
-| **memory.limits** | 1G | 1G | **2G** | 1G |
-| **cpu.requests** | 25m | 25m | **100m** | 25m |
-| **minReplicas (HPA)** | 1 | 1 | **2** | 2 |
-| **maxReplicas (HPA)** | 3 | 5 | **8** | 8 |
-| **Database** | **Ephemeral Bitnami** | RDS | **Ephemeral Bitnami** | RDS |
-| **Spring profile** | preview | unsecured | **rc** | main |
-| **Sentry** | Enabled | Enabled | **Enabled** | Enabled |
+| Setting | Preview | UAT | RC | RC Feature | Staging |
+|---------|---------|-----|----|------------|---------|
+| **replicaCount** | 1 | 1 | 1 | 1 | 2 |
+| **memory.requests** | 1G | 1G | 1G | 1G | 1G |
+| **memory.limits** | 1G | 1G | 1G | 1G | 1G |
+| **cpu.requests** | 25m | 25m | 25m | 25m | 25m |
+| **autoscaling.enabled** | false | false | **true** | false | true |
+| **minReplicas (HPA)** | — | — | 1 | — | 2 |
+| **maxReplicas (HPA)** | — | — | 5 | — | 8 |
+| **Database** | Ephemeral Bitnami | RDS | Ephemeral Bitnami | **Ephemeral Bitnami** | RDS |
+| **Spring profile** | preview | unsecured | **rc** | **rc-feature** | main |
+| **Sentry** | Enabled | Enabled | Enabled | Enabled | Enabled |
+| **Feature flags** | — | — | — | **Via `--set featureFlags.*`** | — |
 
-**Key differences**:
-- RC has **more memory** than UAT/previews (for client load testing)
-- RC can scale **higher** than previews (up to 8 replicas)
-- RC uses **ephemeral DB** like previews (not persistent like Staging) — see [Known Limitation: Ephemeral DB and Migration Testing](#known-limitation-ephemeral-db-and-migration-testing)
-- RC uses the dedicated **`rc` Spring profile** (`deploy_branch` sets `SPRING_PROFILE=rc` for RC tag deployments)
+**Key differences from preview branches**:
+- Common RC has autoscaling enabled (up to 5 replicas)
+- Feature environments use the dedicated `rc-feature` Spring profile and can receive feature flags dynamically at deploy time
 
 ---
 
@@ -601,11 +605,36 @@ kubectl get servicemonitor -n laa-data-access-api-uat -l app.kubernetes.io/insta
 
 ---
 
+## Feature Flags (Per-Feature RC Only)
+
+Feature flags are not set in either values file. They are passed dynamically at deploy time
+by the `workflow_dispatch` inputs and appended to the `helm upgrade` call as
+`--set featureFlags.{key}={value}`.
+
+The `featureFlags: {}` block in `rc-feature.yaml` is intentionally empty — it acts as
+documentation of intent and provides the correct type hint for Helm templating.
+
+The `_envs.tpl` template iterates this map:
+
+```yaml
+{{- range $key, $val := .Values.featureFlags }}
+- name: FEATURE_{{ $key | upper | replace "-" "_" }}
+  value: {{ $val | quote }}
+{{- end }}
+```
+
+So `--set featureFlags.schemaV2=true` results in `FEATURE_SCHEMAV2=true` in the pod.
+
+See [`feature-environments.md`](./feature-environments.md) for the full flag wiring walkthrough.
+
+---
+
 ## Document History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 21 May 2026 | Platform Team | Initial values documentation |
+| 1.1 | 29 May 2026 | Platform Team | Added rc-feature.yaml; corrected values to match actual rc.yaml; fixed Spring profile; added feature flags section |
 
 ---
 
@@ -613,5 +642,6 @@ kubectl get servicemonitor -n laa-data-access-api-uat -l app.kubernetes.io/insta
 
 - [RC Workflow Guide](./RC_WORKFLOW.md)
 - [RC Operations Runbook](./RC_OPERATIONS.md)
-- [Helm Chart](../.helm/data-access-api/Chart.yaml)
-- [RC Values File](../.helm/data-access-api/values/rc.yaml) (to be created)
+- [Per-Feature RC Environments](./feature-environments.md)
+- [RC Values File](../../.helm/data-access-api/values/rc.yaml)
+- [RC Feature Values File](../../.helm/data-access-api/values/rc-feature.yaml)

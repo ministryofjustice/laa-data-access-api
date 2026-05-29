@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       feature-name:
-        description: 'Feature environment name (e.g. schema-v2). Leave blank for a standard manual run.'
-        required: true
+        description: 'Feature environment name (e.g. schema-v2). Leave blank to skip deploying a feature environment.'
+        required: false
         default: ''
       feature-flag:
         description: 'Feature flag key to enable (e.g. schemaV2). Leave blank if no flag needed.'
