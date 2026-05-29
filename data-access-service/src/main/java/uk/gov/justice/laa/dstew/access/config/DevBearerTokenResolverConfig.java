@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * Spring configuration to allow certain dev tokens to bypass the JWT filter and be handled by the
@@ -12,6 +13,7 @@ import org.springframework.security.oauth2.server.resource.web.BearerTokenResolv
  */
 @Configuration
 @ConditionalOnProperty(prefix = "feature", name = "enable-dev-token", havingValue = "true")
+@ExcludeFromGeneratedCodeCoverage
 public class DevBearerTokenResolverConfig {
 
   private static final Set<String> DEV_TOKENS = Set.of("swagger-caseworker-token", "unknown-token");
