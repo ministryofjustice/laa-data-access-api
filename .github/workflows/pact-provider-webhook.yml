@@ -22,5 +22,5 @@ jobs:
     secrets:
       gh_token: ${{ secrets.GITHUB_TOKEN }}
       pact_broker_url: ${{ secrets.PACT_BROKER_URL }}
-      pact_broker_username: ${{ secrets.PACT_BROKER_USERNAME }}
-      pact_broker_password: ${{ secrets.PACT_BROKER_PASSWORD }}
+      pact_broker_username: ${{ secrets.PACTBROKER_USERNAME }}
+      pact_broker_password: ${{ secrets.PACTBROKER_PASSWORD }}

@@ -16,3 +16,7 @@ spring:
 feature:
   disable-security: true
   enable-dev-token: false
+  # Skip JpaAuditingConfig (and its @EnableJpaAuditing) — JPA infra is mocked in
+  # AbstractProviderPactTests, so the JpaMappingContext metamodel is null and the
+  # auditing wiring would fail Spring startup.
+  disable-jpa-auditing: true
