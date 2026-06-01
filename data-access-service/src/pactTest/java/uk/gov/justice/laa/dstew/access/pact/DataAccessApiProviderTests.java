@@ -30,6 +30,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
@@ -113,6 +115,29 @@ public class DataAccessApiProviderTests extends AbstractProviderPactTests {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // GET /api/v0/individuals — happy path (client enrichment lookup)
+  // Consumer: laa-civil-decide-api
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  @State("a client individual exists for application 00000000-0000-0000-0000-000000000001")
+  public void aClientIndividualExistsForApplication() {
+    log.info("Setting up state: a client individual exists for application");
+
+    IndividualResponse sample =
+        new IndividualResponse()
+            .clientId(UUID.fromString("00000000-0000-0000-0000-000000000099"))
+            .firstName("Alice")
+            .lastName("Anderson")
+            .type(IndividualType.CLIENT);
+
+    Page<IndividualResponse> page = new PageImpl<>(List.of(sample), PageRequest.of(0, 10), 1L);
+    PaginatedResult<IndividualResponse> result = new PaginatedResult<>(page, 1, 10);
+
+    when(individualsService.getIndividuals(any(), any(), any(), any(), any()))
+        .thenReturn(result);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // Placeholders — implement when consumer publishes pacts that need these.
   //
   // Each @State string must literally match what the consumer writes in
@@ -129,16 +154,10 @@ public class DataAccessApiProviderTests extends AbstractProviderPactTests {
   //       .thenReturn(new PaginatedResult<>(empty, 1, 10));
   // }
 
-  // @State("individuals exist for an application")
-  // public void individualsExistForAnApplication() {
-  //   log.info("Setting up state: individuals exist for an application");
-  //   // when(individualsService.getIndividuals(any(), any(), any())).thenReturn(...);
-  // }
-
   // @State("no individuals exist for an application")
   // public void noIndividualsExistForAnApplication() {
   //   log.info("Setting up state: no individuals exist for an application");
-  //   // when(individualsService.getIndividuals(any(), any(), any())).thenReturn(empty);
+  //   // when(individualsService.getIndividuals(any(), any(), any(), any(), any())).thenReturn(empty);
   // }
 
   // @State("an application exists by id")
