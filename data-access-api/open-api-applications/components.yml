@@ -321,8 +321,21 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ScopeLimitationResponse"
+        involvedChildren:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvolvedChildResponse"
         meritsDecision:
           $ref: "#/components/schemas/MeritsDecisionStatus"
+
+    InvolvedChildResponse:
+      type: object
+      properties:
+        fullName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
 
     ScopeLimitationResponse:
       type: object
