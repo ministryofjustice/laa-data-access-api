@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
@@ -218,6 +219,7 @@ public class ApplicationController implements ApplicationApi {
     return ResponseEntity.ok(certificateService.getCertificate(applicationId));
   }
 
+  @Hidden
   @LogMethodArguments
   @LogMethodResponse
   @Override
@@ -227,6 +229,7 @@ public class ApplicationController implements ApplicationApi {
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
+  @Hidden
   @LogMethodArguments
   @LogMethodResponse
   @Override
@@ -235,6 +238,7 @@ public class ApplicationController implements ApplicationApi {
     return ResponseEntity.ok(sdsService.getFile(id, documentId));
   }
 
+  @Hidden
   @LogMethodArguments
   @LogMethodResponse
   @Override
@@ -244,6 +248,7 @@ public class ApplicationController implements ApplicationApi {
     return ResponseEntity.ok(response);
   }
 
+  @Hidden
   @LogMethodArguments
   @LogMethodResponse
   @Override
