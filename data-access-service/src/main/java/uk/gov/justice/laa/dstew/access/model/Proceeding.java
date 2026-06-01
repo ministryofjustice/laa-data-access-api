@@ -58,7 +58,7 @@ public class Proceeding implements Serializable {
 
   @Nullable private String substantiveLevelOfServiceName;
 
-  @Nullable private String substantiveCostLimitation;
+  @Nullable private Double substantiveCostLimitation;
 
   @Nullable private List<Map<String, Object>> scopeLimitations;
 

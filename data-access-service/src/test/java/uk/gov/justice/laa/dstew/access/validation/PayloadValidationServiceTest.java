@@ -91,7 +91,7 @@ class PayloadValidationServiceTest {
 
     assertThat(validationException.errors())
         .isInstanceOf(List.class)
-        .anyMatch(message -> message.contains("Cannot deserialize value of type `java.util.UUID`"));
+        .anyMatch(message -> message.contains("Invalid data type for field 'id'. Expected: UUID."));
   }
 
   @Test

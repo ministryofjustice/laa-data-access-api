@@ -534,7 +534,11 @@ public class GetApplicationTest extends BaseHarnessTest {
                         .get("substantiveLevelOfServiceName")
                         .toString())
                 .substantiveCostLimitation(
-                    proceeding.getProceedingContent().get("substantiveCostLimitation").toString())
+                    Double.parseDouble(
+                        proceeding
+                            .getProceedingContent()
+                            .get("substantiveCostLimitation")
+                            .toString()))
                 .delegatedFunctionsDate(
                     LocalDate.parse(
                         proceeding

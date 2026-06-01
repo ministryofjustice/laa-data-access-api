@@ -38,7 +38,7 @@ public class FullProceedingGenerator
                     "Parental responsibility",
                     "Emergency protection order - discharge"))
         .usedDelegatedFunctionsOn(getRandomDate())
-        .substantiveCostLimitation(faker.number().numberBetween(1000, 50000) + ".0")
+        .substantiveCostLimitation(faker.number().numberBetween(1000, 50000) + 0.99)
         .substantiveLevelOfServiceName(
             faker.options().option("Full Representation", "Limited Case Work"))
         .build()

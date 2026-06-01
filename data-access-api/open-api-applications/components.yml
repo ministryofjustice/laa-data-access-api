@@ -316,7 +316,8 @@ components:
         levelOfService:
           type: string
         substantiveCostLimitation:
-          type: string
+          type: number
+          format: double
         scopeLimitations:
           type: array
           items:
