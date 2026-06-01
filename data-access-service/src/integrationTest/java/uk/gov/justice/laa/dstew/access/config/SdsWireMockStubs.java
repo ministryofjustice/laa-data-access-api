@@ -13,13 +13,8 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import uk.gov.justice.laa.dstew.access.utils.harness.TestContextProvider;
 
 /**
- * Wrapper around WireMock stub configuration for SDS API integration tests.
- *
- * <p>Obtain an instance via {@link #from(TestContextProvider)} so that test classes have no direct
- * dependency on the WireMock package.
- *
- * <p>Default stubs are registered at priority 5. Override stubs (for conflict and not-found
- * scenarios) are registered at priority 1 and take precedence over the defaults.
+ * WireMock stub configuration for SDS API integration tests. Obtain via {@link
+ * #from(TestContextProvider)}. Default stubs run at priority 5; override stubs at priority 1.
  */
 public class SdsWireMockStubs {
 

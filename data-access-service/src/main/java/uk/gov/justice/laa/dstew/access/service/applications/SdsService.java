@@ -82,7 +82,6 @@ public class SdsService {
                 })
             .body(DocumentUploadResponse.class);
 
-    log.info("File saved to SDS: {}", response);
     return response;
   }
 
@@ -106,7 +105,6 @@ public class SdsService {
             .retrieve()
             .body(DocumentUpdateResponse.class);
 
-    log.info("File updated in SDS: {}", response);
     return response;
   }
 
@@ -138,7 +136,6 @@ public class SdsService {
                 })
             .body(DocumentDownloadResponse.class);
 
-    log.info("File retrieved from SDS: {}", response);
     return response;
   }
 
@@ -168,8 +165,6 @@ public class SdsService {
               throw new ResourceNotFoundException("File not found");
             })
         .toBodilessEntity();
-
-    log.info("Files deleted from SDS: {}", fileKeys);
   }
 
   /**
@@ -187,7 +182,6 @@ public class SdsService {
             .retrieve()
             .body(SdsHealthResponse.class);
 
-    log.info("SDS health check: {}", response);
     return response;
   }
 
