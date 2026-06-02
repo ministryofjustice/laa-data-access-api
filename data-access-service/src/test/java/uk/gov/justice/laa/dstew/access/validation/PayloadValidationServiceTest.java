@@ -35,6 +35,28 @@ class PayloadValidationServiceTest {
     return Stream.of(Arguments.of(ApplicationContent.class), Arguments.of(Proceeding.class));
   }
 
+  public static Stream<Arguments> invalidProceedingPayloads() {
+    return Stream.of(
+        Arguments.of(
+            "Unexpected end-of-input within/between Object entries",
+            """
+            {"id": null,
+            """),
+        Arguments.of(
+            "Invalid data type for field 'id'. Expected: UUID.",
+            """
+            {"id": 2 }
+            """),
+        Arguments.of(
+            "Invalid data type for field 'substantiveCostLimitation'. Expected: Double.",
+            """
+            {"id": "550e8400-e29b-41d4-a716-446655440000",
+            "leadProceeding": true,
+            "description": "Test proceeding",
+            "substantiveCostLimitation": "test"}
+            """));
+  }
+
   @Test
   public void validateProceedingPayloadFromJsonString() {
 
@@ -58,13 +80,10 @@ class PayloadValidationServiceTest {
         .contains("id: must not be null", "leadProceeding: must not be null");
   }
 
-  @Test
-  public void illegalArgumentExceptionOnInvalidPayload() {
-
-    final String json =
-        """
-        {"id": null,
-        """;
+  @ParameterizedTest
+  @MethodSource("invalidProceedingPayloads")
+  public void illegalArgumentExceptionOnInvalidPayload_Proceedings(
+      String expectedErrorMessage, String json) {
 
     ValidationException validationException =
         Assertions.assertThrows(
@@ -73,25 +92,7 @@ class PayloadValidationServiceTest {
 
     assertThat(validationException.errors())
         .isInstanceOf(List.class)
-        .contains("Unexpected end-of-input within/between Object entries");
-  }
-
-  @Test
-  public void illegalArgumentExceptionOnInvalidPayload2() {
-
-    final String json =
-        """
-        {"id": 2 }
-        """;
-
-    ValidationException validationException =
-        Assertions.assertThrows(
-            ValidationException.class,
-            () -> serviceUnderTest.convertAndValidate(json, Proceeding.class));
-
-    assertThat(validationException.errors())
-        .isInstanceOf(List.class)
-        .anyMatch(message -> message.contains("Cannot deserialize value of type `java.util.UUID`"));
+        .anyMatch(message -> message.contains(expectedErrorMessage));
   }
 
   @Test

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.beans.PropertyChangeEvent;
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,7 @@ import org.springframework.web.context.request.WebRequest;
 import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.exc.MismatchedInputException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 
 class ResponseEntityExceptionHandlerAdviceTest {
 
@@ -60,9 +62,10 @@ class ResponseEntityExceptionHandlerAdviceTest {
   public static Stream<Arguments> getPathAndErrors() {
     return Stream.of(
         Arguments.of(
-            "uk.gov.justice.laa.dstew.access.model.ApplicationStatus",
+            ApplicationStatus.class,
             "PROGRESS. Valid values are: APPLICATION_IN_PROGRESS, APPLICATION_SUBMITTED"),
-        Arguments.of("uk.gov.justice.laa.dstew.access.model.AnotherEnumClass", "PROGRESS"));
+        Arguments.of(CategoryOfLaw.class, "PROGRESS. Valid values are: FAMILY"),
+        Arguments.of(null, "PROGRESS"));
   }
 
   @ParameterizedTest
@@ -99,15 +102,31 @@ class ResponseEntityExceptionHandlerAdviceTest {
 
   @ParameterizedTest
   @MethodSource("getPathAndErrors")
-  void handleHttpMessageNotReadable_IllegalArgument(String classPath, String expectedMessage) {
+  void handleHttpMessageNotReadable_IllegalArgument(
+      @Nullable Class<?> enumClass, String expectedMessage) {
     HttpMessageNotReadableException exception =
-        getHttpMessageNotReadableExceptionIllegalArgumentException(classPath);
+        getHttpMessageNotReadableExceptionIllegalArgumentException(enumClass);
     ResponseEntity<Object> objectResponseEntity = getResponseEntity(exception);
     assertThat(objectResponseEntity).isNotNull();
     assertInstanceOf(ProblemDetail.class, objectResponseEntity.getBody());
     ProblemDetail problemDetail = (ProblemDetail) objectResponseEntity.getBody();
     assertEquals(400, problemDetail.getStatus());
     assertEquals("Unexpected value : %s".formatted(expectedMessage), problemDetail.getDetail());
+  }
+
+  @Test
+  void handleHttpMessageNotReadable_WithArrayIndex() {
+    HttpMessageNotReadableException exception =
+        getHttpMessageNotReadableExceptionWithArrayIndex(
+            BigDecimal.class, "proceedings", 0, "substantiveCostLimitation");
+    ResponseEntity<Object> objectResponseEntity = getResponseEntity(exception);
+    assertThat(objectResponseEntity).isNotNull();
+    assertInstanceOf(ProblemDetail.class, objectResponseEntity.getBody());
+    ProblemDetail problemDetail = (ProblemDetail) objectResponseEntity.getBody();
+    assertEquals(400, problemDetail.getStatus());
+    assertEquals(
+        "Invalid data type for field 'proceedings[0].substantiveCostLimitation'. Expected: BigDecimal.",
+        problemDetail.getDetail());
   }
 
   @ParameterizedTest
@@ -209,6 +228,7 @@ class ResponseEntityExceptionHandlerAdviceTest {
     MismatchedInputException mismatchedInputException = mock(MismatchedInputException.class);
     DatabindException.Reference reference = mock(DatabindException.Reference.class);
     when(reference.getPropertyName()).thenReturn(null);
+    when(reference.getIndex()).thenReturn(-1); // No index
     when(mismatchedInputException.getPath()).thenReturn(List.of(reference));
     Class clazz = classExpected;
     when(mismatchedInputException.getTargetType()).thenReturn(clazz);
@@ -217,14 +237,48 @@ class ResponseEntityExceptionHandlerAdviceTest {
   }
 
   private static @NonNull HttpMessageNotReadableException
-      getHttpMessageNotReadableExceptionIllegalArgumentException(String classPath) {
+      getHttpMessageNotReadableExceptionIllegalArgumentException(@Nullable Class<?> enumClass) {
     HttpMessageNotReadableException exception = mock(HttpMessageNotReadableException.class);
     IllegalArgumentException illegalArgumentException = mock(IllegalArgumentException.class);
-    StackTraceElement stacktrace = mock(StackTraceElement.class);
-    when(stacktrace.getClassName()).thenReturn(classPath);
-    when(illegalArgumentException.getStackTrace()).thenReturn(new StackTraceElement[] {stacktrace});
-    when(exception.getRootCause()).thenReturn(illegalArgumentException);
     when(illegalArgumentException.getLocalizedMessage()).thenReturn("Unexpected value : PROGRESS");
+    when(exception.getRootCause()).thenReturn(illegalArgumentException);
+    if (enumClass != null) {
+      MismatchedInputException mismatchedInputException = mock(MismatchedInputException.class);
+      @SuppressWarnings("rawtypes")
+      Class rawClass = enumClass;
+      when(mismatchedInputException.getTargetType()).thenReturn(rawClass);
+      when(exception.getCause()).thenReturn(mismatchedInputException);
+    }
+    return exception;
+  }
+
+  private static @NonNull HttpMessageNotReadableException
+      getHttpMessageNotReadableExceptionWithArrayIndex(
+          Class<?> classExpected, String arrayFieldName, int arrayIndex, String nestedFieldName) {
+    HttpMessageNotReadableException exception = mock(HttpMessageNotReadableException.class);
+    MismatchedInputException mismatchedInputException = mock(MismatchedInputException.class);
+
+    // Create reference for the array field (e.g., "proceedings")
+    DatabindException.Reference arrayReference = mock(DatabindException.Reference.class);
+    when(arrayReference.getPropertyName()).thenReturn(arrayFieldName);
+    when(arrayReference.getIndex()).thenReturn(-1); // Not an array index itself
+
+    // Create reference for the array index (e.g., [0])
+    DatabindException.Reference indexReference = mock(DatabindException.Reference.class);
+    when(indexReference.getPropertyName())
+        .thenReturn(null); // Array indices don't have property names
+    when(indexReference.getIndex()).thenReturn(arrayIndex);
+
+    // Create reference for the nested field (e.g., "substantiveCostLimitation")
+    DatabindException.Reference fieldReference = mock(DatabindException.Reference.class);
+    when(fieldReference.getPropertyName()).thenReturn(nestedFieldName);
+    when(fieldReference.getIndex()).thenReturn(-1); // Not an array index
+
+    when(mismatchedInputException.getPath())
+        .thenReturn(List.of(arrayReference, indexReference, fieldReference));
+    Class clazz = classExpected;
+    when(mismatchedInputException.getTargetType()).thenReturn(clazz);
+    when(exception.getRootCause()).thenReturn(mismatchedInputException);
     return exception;
   }
 }

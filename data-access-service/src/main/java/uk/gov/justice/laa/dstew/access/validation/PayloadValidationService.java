@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.exc.MismatchedInputException;
+import uk.gov.justice.laa.dstew.access.exception.JacksonExceptionMessageBuilder;
 
 /**
  * Utility service to convert arbitrary payloads into typed POJOs and validate them using Bean
@@ -39,12 +41,15 @@ public class PayloadValidationService {
       target = mapSource(source, targetType);
     } catch (IllegalArgumentException ex) {
       String message = "Invalid request payload";
-      if (ex.getCause() instanceof DatabindException jsonMappingException) {
+      if (ex.getCause() instanceof MismatchedInputException mie) {
+        message = JacksonExceptionMessageBuilder.buildMessageForInvalidEnum(ex, mie);
+      } else if (ex.getCause() instanceof DatabindException jsonMappingException) {
         message = jsonMappingException.getOriginalMessage();
       }
       throw new ValidationException(List.of(message));
     } catch (JacksonException ex) {
-      throw new ValidationException(List.of(ex.getOriginalMessage()));
+      String message = JacksonExceptionMessageBuilder.buildMessage(ex);
+      throw new ValidationException(List.of(message));
     }
 
     Set<ConstraintViolation<T>> violations = validator.validate(target);
