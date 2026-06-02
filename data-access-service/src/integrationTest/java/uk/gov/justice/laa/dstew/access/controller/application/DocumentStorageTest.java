@@ -6,8 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.springframework.http.HttpStatus.LENGTH_REQUIRED;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
@@ -259,6 +262,79 @@ public class DocumentStorageTest extends BaseHarnessTest {
     assertOK(downloadDocument(application.getId(), docId1, DefaultHttpHeaders()));
     assertOK(downloadDocument(application.getId(), docId2, DefaultHttpHeaders()));
     assertOK(downloadDocument(application.getId(), docId3, DefaultHttpHeaders()));
+  }
+
+  @Test
+  public void givenFileLengthNotProvided_whenUploadDocument_thenReturnLengthRequired()
+      throws Exception {
+    // given
+    sdsStubs.stubFileLengthRequired();
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+    MockMultipartFile file = createTestFile("test-document.pdf", "test content");
+
+    // when
+    HarnessResult result = uploadDocument(application.getId(), file, DefaultHttpHeaders());
+
+    // then
+    assertSecurityHeaders(result);
+    assertEquals(LENGTH_REQUIRED.value(), result.getResponse().getStatus());
+    assertEquals("application/problem+json", result.getResponse().getHeader("Content-Type"));
+    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+    assertEquals("File content length is required", problemDetail.getDetail());
+  }
+
+  @Test
+  public void givenVirusDetected_whenUploadDocument_thenReturnBadRequest() throws Exception {
+    // given
+    sdsStubs.stubVirusDetectedOnUpload();
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+    MockMultipartFile file = createTestFile("infected-document.pdf", "malicious content");
+
+    // when
+    HarnessResult result = uploadDocument(application.getId(), file, DefaultHttpHeaders());
+
+    // then
+    assertSecurityHeaders(result);
+    assertEquals(BAD_REQUEST.value(), result.getResponse().getStatus());
+    assertEquals("application/problem+json", result.getResponse().getHeader("Content-Type"));
+    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+    assertEquals("Virus detected in uploaded file", problemDetail.getDetail());
+  }
+
+  @Test
+  public void givenVirusScanError_whenUploadDocument_thenReturnInternalServerError()
+      throws Exception {
+    // given
+    sdsStubs.stubVirusScanError();
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+    MockMultipartFile file = createTestFile("scan-error-document.pdf", "scan error content");
+
+    // when
+    HarnessResult result = uploadDocument(application.getId(), file, DefaultHttpHeaders());
+
+    // then
+    assertSecurityHeaders(result);
+    assertEquals(INTERNAL_SERVER_ERROR.value(), result.getResponse().getStatus());
+    assertEquals("application/problem+json", result.getResponse().getHeader("Content-Type"));
+    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+    assertEquals("Virus scan gave a non-standard result", problemDetail.getDetail());
+  }
+
+  @Test
+  public void givenEmptyDocumentIdList_whenDeleteDocuments_thenReturnBadRequest() throws Exception {
+    // given
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+
+    // when
+    HarnessResult result = deleteDocuments(application.getId(), List.of(), DefaultHttpHeaders());
+
+    // then
+    assertSecurityHeaders(result);
+    assertEquals(BAD_REQUEST.value(), result.getResponse().getStatus());
   }
 
   private MockMultipartFile createTestFile(String filename, String content) {

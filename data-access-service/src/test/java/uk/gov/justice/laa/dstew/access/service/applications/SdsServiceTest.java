@@ -29,7 +29,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
+import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
+import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
 import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResult;
 import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
@@ -123,6 +126,108 @@ class SdsServiceTest {
     assertThatExceptionOfType(FileConflictException.class)
         .isThrownBy(() -> sdsService.saveFile(applicationId, file))
         .withMessage("File already exists");
+  }
+
+  @Test
+  void givenSdsReturnsLengthRequired_whenSaveFile_thenThrowFileLengthRequiredException() {
+    // Given
+    UUID applicationId = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "test-file.pdf", "application/pdf", "test content".getBytes());
+
+    RestClient.RequestBodyUriSpec requestBodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
+    RestClient.RequestBodySpec requestBodySpec = mock(RestClient.RequestBodySpec.class);
+    RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+
+    when(sdsRestClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(endsWith("/save_file"))).thenReturn(requestBodySpec);
+    when(requestBodySpec.headers(any()))
+        .thenAnswer(
+            invocation -> {
+              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
+              headersConsumer.accept(new HttpHeaders());
+              return requestBodySpec;
+            });
+    when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
+    when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
+    when(requestBodySpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.onStatus(any(Predicate.class), any())).thenReturn(responseSpec);
+    when(responseSpec.body(DocumentUploadResponse.class))
+        .thenThrow(new FileLengthRequiredException("File content length is required"));
+
+    // When & Then
+    assertThatExceptionOfType(FileLengthRequiredException.class)
+        .isThrownBy(() -> sdsService.saveFile(applicationId, file))
+        .withMessage("File content length is required");
+  }
+
+  @Test
+  void givenSdsReturnsVirusDetected_whenSaveFile_thenThrowVirusDetectedException() {
+    // Given
+    UUID applicationId = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "test-file.pdf", "application/pdf", "test content".getBytes());
+
+    RestClient.RequestBodyUriSpec requestBodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
+    RestClient.RequestBodySpec requestBodySpec = mock(RestClient.RequestBodySpec.class);
+    RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+
+    when(sdsRestClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(endsWith("/save_file"))).thenReturn(requestBodySpec);
+    when(requestBodySpec.headers(any()))
+        .thenAnswer(
+            invocation -> {
+              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
+              headersConsumer.accept(new HttpHeaders());
+              return requestBodySpec;
+            });
+    when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
+    when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
+    when(requestBodySpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.onStatus(any(Predicate.class), any())).thenReturn(responseSpec);
+    when(responseSpec.body(DocumentUploadResponse.class))
+        .thenThrow(new VirusDetectedException("Virus detected in uploaded file"));
+
+    // When & Then
+    assertThatExceptionOfType(VirusDetectedException.class)
+        .isThrownBy(() -> sdsService.saveFile(applicationId, file))
+        .withMessage("Virus detected in uploaded file");
+  }
+
+  @Test
+  void givenSdsReturnsVirusScanError_whenSaveFile_thenThrowVirusScanException() {
+    // Given
+    UUID applicationId = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "test-file.pdf", "application/pdf", "test content".getBytes());
+
+    RestClient.RequestBodyUriSpec requestBodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
+    RestClient.RequestBodySpec requestBodySpec = mock(RestClient.RequestBodySpec.class);
+    RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+
+    when(sdsRestClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(endsWith("/save_file"))).thenReturn(requestBodySpec);
+    when(requestBodySpec.headers(any()))
+        .thenAnswer(
+            invocation -> {
+              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
+              headersConsumer.accept(new HttpHeaders());
+              return requestBodySpec;
+            });
+    when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
+    when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
+    when(requestBodySpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.onStatus(any(Predicate.class), any())).thenReturn(responseSpec);
+    when(responseSpec.body(DocumentUploadResponse.class))
+        .thenThrow(new VirusScanException("Virus scan gave a non-standard result"));
+
+    // When & Then
+    assertThatExceptionOfType(VirusScanException.class)
+        .isThrownBy(() -> sdsService.saveFile(applicationId, file))
+        .withMessage("Virus scan gave a non-standard result");
   }
 
   @Test

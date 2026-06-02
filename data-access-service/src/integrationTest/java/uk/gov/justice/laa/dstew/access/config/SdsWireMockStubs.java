@@ -58,6 +58,18 @@ public class SdsWireMockStubs {
       """
       {"title":"Not Found","detail":"File not found","status":404}
       """;
+  private static final String LENGTH_REQUIRED_BODY =
+      """
+      {"title":"Length Required","detail":"File content length is required","status":411}
+      """;
+  private static final String VIRUS_DETECTED_BODY =
+      """
+      {"title":"Virus Detected","detail":"Virus detected in uploaded file","status":400}
+      """;
+  private static final String VIRUS_SCAN_ERROR_BODY =
+      """
+      {"title":"Virus Scan Error","detail":"Virus scan gave a non-standard result","status":500}
+      """;
 
   private final WireMockServer server;
 
@@ -184,5 +196,50 @@ public class SdsWireMockStubs {
                     .withBody(
                         "{ {{#each request.query.file_keys}}\"{{this}}\": 404{{#unless @last}},{{/unless}}{{/each}} }")
                     .withTransformers("response-template")));
+  }
+
+  /**
+   * Overrides the default upload stub to return 411 Length Required. Use this to simulate SDS
+   * requiring a Content-Length header.
+   */
+  public void stubFileLengthRequired() {
+    server.stubFor(
+        post(urlEqualTo(SAVE_FILE))
+            .atPriority(OVERRIDE_PRIORITY)
+            .willReturn(
+                aResponse()
+                    .withStatus(411)
+                    .withHeader("Content-Type", PROBLEM_CONTENT_TYPE)
+                    .withBody(LENGTH_REQUIRED_BODY)));
+  }
+
+  /**
+   * Overrides the default upload stub to return 400 Bad Request. Use this to simulate SDS detecting
+   * a virus in the uploaded file.
+   */
+  public void stubVirusDetectedOnUpload() {
+    server.stubFor(
+        post(urlEqualTo(SAVE_FILE))
+            .atPriority(OVERRIDE_PRIORITY)
+            .willReturn(
+                aResponse()
+                    .withStatus(400)
+                    .withHeader("Content-Type", PROBLEM_CONTENT_TYPE)
+                    .withBody(VIRUS_DETECTED_BODY)));
+  }
+
+  /**
+   * Overrides the default upload stub to return 500 Internal Server Error. Use this to simulate a
+   * non-standard result from the virus scanner.
+   */
+  public void stubVirusScanError() {
+    server.stubFor(
+        post(urlEqualTo(SAVE_FILE))
+            .atPriority(OVERRIDE_PRIORITY)
+            .willReturn(
+                aResponse()
+                    .withStatus(500)
+                    .withHeader("Content-Type", PROBLEM_CONTENT_TYPE)
+                    .withBody(VIRUS_SCAN_ERROR_BODY)));
   }
 }
