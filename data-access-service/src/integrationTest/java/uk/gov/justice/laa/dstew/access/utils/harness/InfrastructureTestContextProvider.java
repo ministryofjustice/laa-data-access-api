@@ -1,5 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.harness;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import jakarta.persistence.EntityManagerFactory;
 import java.util.Properties;
 import javax.sql.DataSource;
@@ -11,7 +13,6 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
@@ -26,6 +27,7 @@ public class InfrastructureTestContextProvider implements TestContextProvider {
 
   private final AnnotationConfigApplicationContext applicationContext;
   private final WebTestClient webTestClient;
+  private final HikariDataSource hikariDataSource;
 
   public InfrastructureTestContextProvider() {
     log.info("InfrastructureTestContextProvider: initialising (infrastructure mode)");
@@ -38,17 +40,21 @@ public class InfrastructureTestContextProvider implements TestContextProvider {
     log.info("InfrastructureTestContextProvider: connecting to API at {}", apiUrl);
     log.info("InfrastructureTestContextProvider: connecting to database at {}", dbUrl);
 
+    // Use HikariCP for connection pooling - significantly reduces latency
+    // by reusing connections instead of creating new ones for each operation
+    var hikariConfig = new HikariConfig();
+    hikariConfig.setJdbcUrl(dbUrl);
+    hikariConfig.setUsername(dbUsername);
+    hikariConfig.setPassword(dbPassword);
+    hikariConfig.setMaximumPoolSize(5);
+    hikariConfig.setMinimumIdle(2);
+    hikariConfig.setConnectionTimeout(30000);
+    hikariConfig.setIdleTimeout(600000);
+    hikariConfig.setPoolName("InfrastructureTestPool");
+    this.hikariDataSource = new HikariDataSource(hikariConfig);
+
     applicationContext = new AnnotationConfigApplicationContext();
-    applicationContext.registerBean(
-        "dataSource",
-        DataSource.class,
-        () -> {
-          var ds = new DriverManagerDataSource();
-          ds.setUrl(dbUrl);
-          ds.setUsername(dbUsername);
-          ds.setPassword(dbPassword);
-          return ds;
-        });
+    applicationContext.registerBean("dataSource", DataSource.class, () -> hikariDataSource);
     applicationContext.register(InfrastructureJpaConfig.class);
     log.info("InfrastructureTestContextProvider: refreshing JPA application context...");
     applicationContext.refresh();
@@ -73,6 +79,10 @@ public class InfrastructureTestContextProvider implements TestContextProvider {
   public void close() {
     log.info("InfrastructureTestContextProvider: closing JPA application context");
     applicationContext.close();
+    if (hikariDataSource != null && !hikariDataSource.isClosed()) {
+      log.info("InfrastructureTestContextProvider: closing HikariCP connection pool");
+      hikariDataSource.close();
+    }
   }
 
   private static String requireEnv(String name) {

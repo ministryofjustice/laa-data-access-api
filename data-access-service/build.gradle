@@ -93,6 +93,9 @@ test {
 
 tasks.named('integrationTest') {
     useJUnitPlatform()
+    jacoco {
+        destinationFile = layout.buildDirectory.file("jacoco/integrationTest.exec").get().asFile
+    }
 
     testLogging {
         events TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED
@@ -158,9 +161,51 @@ jacocoTestReport {
     }
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it, exclude: ['**/AccessApp.class'])
+            fileTree(dir: it, exclude: ['**/AccessApp.class', '**/generated/**', '**/*Generated*.*', '**/export/generated/**', '**/*_.class'])
         }))
     }
+}
+
+jacocoTestCoverageVerification {
+    dependsOn integrationTest
+
+    executionData(
+        layout.buildDirectory.file("jacoco/test.exec"),
+        layout.buildDirectory.file("jacoco/integrationTest.exec")
+    )
+
+    afterEvaluate {
+        classDirectories.setFrom(files(sourceSets.main.output.classesDirs.collect {
+            fileTree(dir: it, exclude: ['**/AccessApp.class', '**/generated/**', '**/*Generated*.*', '**/export/generated/**', '**/*_.class'])
+        }))
+    }
+
+    violationRules {
+        failOnViolation = true
+
+        rule {
+            element = 'CLASS'
+            limit {
+                counter = 'LINE'
+                minimum = 0.9
+            }
+            limit {
+                counter = 'BRANCH'
+                minimum = 0.9
+            }
+        }
+    }
+}
+
+spotlessApply.mustRunAfter clean
+build.mustRunAfter spotlessApply
+tasks.named('integrationTest').configure { mustRunAfter build }
+jacocoTestCoverageVerification.mustRunAfter tasks.named('integrationTest')
+
+tasks.register('preflightCheck') {
+    description = 'Runs clean, spotlessApply, build, integrationTest and jacocoTestCoverageVerification'
+    group = 'verification'
+    dependsOn clean, spotlessApply, build, tasks.named('integrationTest'), jacocoTestCoverageVerification
 }
 
 dependencyManagement {

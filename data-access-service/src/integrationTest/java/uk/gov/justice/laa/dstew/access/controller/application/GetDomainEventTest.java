@@ -12,10 +12,14 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
+import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapperImpl;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
@@ -28,6 +32,8 @@ import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 import uk.gov.justice.laa.dstew.access.utils.helpers.DateTimeHelper;
 
 public class GetDomainEventTest extends BaseHarnessTest {
+
+  private final DomainEventMapperImpl domainEventMapper = new DomainEventMapperImpl();
 
   private final String SEARCH_EVENT_TYPE_PARAM = "eventType=";
 
@@ -63,7 +69,7 @@ public class GetDomainEventTest extends BaseHarnessTest {
     var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
     // given
     var domainEvents = setUpDomainEvents(appId);
-    var expectedDomainEvents = domainEvents.stream().map(GetDomainEventTest::toEvent).toList();
+    var expectedDomainEvents = domainEvents.stream().map(this::toEvent).toList();
 
     // when
     HarnessResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
@@ -90,7 +96,7 @@ public class GetDomainEventTest extends BaseHarnessTest {
     var expectedAssignDomainEvents =
         domainEvents.stream()
             .filter(s -> s.getType().equals(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER))
-            .map(GetDomainEventTest::toEvent)
+            .map(this::toEvent)
             .toList();
 
     // when
@@ -127,7 +133,7 @@ public class GetDomainEventTest extends BaseHarnessTest {
                 s ->
                     s.getType().equals(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
                         || s.getType().equals(DomainEventType.UNASSIGN_APPLICATION_TO_CASEWORKER))
-            .map(GetDomainEventTest::toEvent)
+            .map(this::toEvent)
             .toList();
 
     // when
@@ -152,6 +158,40 @@ public class GetDomainEventTest extends BaseHarnessTest {
 
     assertThat(actualResponse).isNotNull();
     assertTrue(actualResponse.getEvents().containsAll(expectedAssignDomainEvents));
+  }
+
+  @ParameterizedTest
+  @MethodSource("eventDescriptionCases")
+  public void givenDomainEvent_whenApplicationHistorySearch_thenEventDescriptionIsReturnedCorrectly(
+      String data, String expectedDescription) throws Exception {
+    var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
+
+    persistedDataGenerator.createAndPersist(
+        DomainEventGenerator.class,
+        builder ->
+            builder
+                .applicationId(appId)
+                .caseworkerId(CaseworkerJohnDoe.getId())
+                .createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds())
+                .data(data)
+                .type(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER));
+
+    HarnessResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
+    ApplicationHistoryResponse actualResponse =
+        deserialise(result, ApplicationHistoryResponse.class);
+
+    assertOK(result);
+    assertThat(actualResponse).isNotNull();
+    assertThat(actualResponse.getEvents().getFirst().getEventDescription())
+        .isEqualTo(expectedDescription);
+  }
+
+  private static Stream<Arguments> eventDescriptionCases() {
+    return Stream.of(
+        Arguments.of(
+            "{\"otherField\": \"someValue\",\"eventDescription\": \"Assigned to caseworker\"}",
+            "Assigned to caseworker"),
+        Arguments.of("{\"otherField\": \"someValue\"}", null));
   }
 
   @SmokeTest
@@ -195,12 +235,13 @@ public class GetDomainEventTest extends BaseHarnessTest {
                 .type(eventType));
   }
 
-  private static ApplicationDomainEventResponse toEvent(DomainEventEntity entity) {
+  private ApplicationDomainEventResponse toEvent(DomainEventEntity entity) {
     return ApplicationDomainEventResponse.builder()
         .applicationId(entity.getApplicationId())
         .createdAt(entity.getCreatedAt().atOffset(ZoneOffset.UTC))
         .domainEventType(entity.getType())
-        .eventDescription(entity.getData())
+        .eventDescription(
+            domainEventMapper.deserialiseEventDescription(entity.getData(), entity.getType()))
         .caseworkerId(entity.getCaseworkerId())
         .createdBy(entity.getCreatedBy())
         .build();

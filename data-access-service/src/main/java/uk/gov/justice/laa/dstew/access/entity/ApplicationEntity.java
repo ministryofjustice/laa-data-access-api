@@ -131,7 +131,7 @@ public class ApplicationEntity implements AuditableEntity {
   private Set<LinkedApplicationEntity> linkedApplications;
 
   @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
-  @JoinColumn(name = "application_id")
+  @JoinColumn(name = "application_id", nullable = false)
   @Fetch(FetchMode.SUBSELECT)
   private Set<ProceedingEntity> proceedings;
 

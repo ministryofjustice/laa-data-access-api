@@ -114,7 +114,7 @@ tasks.register('jacocoAggregatedReport', JacocoReport) {
     description = 'Generates JaCoCo report from data-access-service module'
     group = 'verification'
 
-    dependsOn ':data-access-service:test'
+    dependsOn ':data-access-service:test', ':data-access-service:integrationTest'
 
     jacocoClasspath = configurations.jacocoAnt
 

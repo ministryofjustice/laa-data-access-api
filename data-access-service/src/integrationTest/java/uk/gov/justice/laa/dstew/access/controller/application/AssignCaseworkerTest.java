@@ -62,15 +62,14 @@ public class AssignCaseworkerTest extends BaseHarnessTest {
     CaseworkerAssignRequest caseworkerAssignRequest =
         DataGenerator.createDefault(
             CaseworkerAssignRequestGenerator.class,
-            builder -> {
-              builder
-                  .caseworkerId(CaseworkerJohnDoe.getId())
-                  .applicationIds(List.of(UUID.randomUUID()))
-                  .eventHistory(
-                      EventHistoryRequest.builder()
-                          .eventDescription("Assigning caseworker")
-                          .build());
-            });
+            builder ->
+                builder
+                    .caseworkerId(CaseworkerJohnDoe.getId())
+                    .applicationIds(List.of(UUID.randomUUID()))
+                    .eventHistory(
+                        EventHistoryRequest.builder()
+                            .eventDescription("Assigning caseworker")
+                            .build()));
 
     HarnessResult result =
         postUri(
@@ -123,6 +122,68 @@ public class AssignCaseworkerTest extends BaseHarnessTest {
                       EventHistoryRequest.builder()
                           .eventDescription("Assigning caseworker")
                           .build());
+            });
+
+    // when
+    HarnessResult result = postUri(TestConstants.URIs.ASSIGN_CASEWORKER, caseworkerAssignRequest);
+
+    // then
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertOK(result);
+
+    applicationAsserts.assertApplicationsMatchInRepositoryIgnoringLastUpdated(
+        expectedAssignedApplications);
+    applicationAsserts.assertApplicationsMatchInRepository(expectedAlreadyAssignedApplications);
+    applicationAsserts.assertApplicationsMatchInRepository(expectedUnassignedApplications);
+    domainEventAsserts.assertDomainEventsCreatedForApplications(
+        expectedAssignedApplications,
+        CaseworkerJohnDoe.getId(),
+        DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER,
+        caseworkerAssignRequest.getEventHistory());
+  }
+
+  @Test
+  public void
+      givenValidAssignRequestWithoutEventHistory_whenAssignCaseworker_thenReturnOK_andAssignCaseworker()
+          throws Exception {
+    // given
+    AssignCaseworkerCase assignCaseworkerCase = new AssignCaseworkerCase(3, 3, 2);
+    List<ApplicationEntity> toAssignApplications =
+        persistedDataGenerator.createAndPersistMultiple(
+            ApplicationEntityGenerator.class,
+            assignCaseworkerCase.numberOfApplicationsToAssign,
+            builder -> builder.caseworker(null));
+
+    List<ApplicationEntity> expectedAssignedApplications =
+        toAssignApplications.stream()
+            .peek(application -> application.setCaseworker(CaseworkerJohnDoe))
+            .toList();
+
+    List<ApplicationEntity> expectedAlreadyAssignedApplications =
+        persistedDataGenerator.createAndPersistMultiple(
+            ApplicationEntityGenerator.class,
+            assignCaseworkerCase.numberOfApplicationsAlreadyAssigned,
+            builder -> builder.caseworker(CaseworkerJohnDoe));
+
+    List<ApplicationEntity> expectedUnassignedApplications =
+        persistedDataGenerator.createAndPersistMultiple(
+            ApplicationEntityGenerator.class,
+            assignCaseworkerCase.numberOfApplicationsNotAssigned,
+            builder -> builder.caseworker(null));
+
+    CaseworkerAssignRequest caseworkerAssignRequest =
+        DataGenerator.createDefault(
+            CaseworkerAssignRequestGenerator.class,
+            builder -> {
+              builder
+                  .caseworkerId(CaseworkerJohnDoe.getId())
+                  .applicationIds(
+                      expectedAssignedApplications.stream()
+                          .map(ApplicationEntity::getId)
+                          .collect(Collectors.toList())
+                          .reversed())
+                  .eventHistory(null);
             });
 
     // when

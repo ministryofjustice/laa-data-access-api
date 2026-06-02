@@ -1,4 +1,4 @@
-{{- if .Values.portForward.enabled }}
+{{- if and .Values.portForward .Values.portForward.enabled }}
 {{- if not (lookup "v1" "Service" .Release.Namespace "laa-data-access-api-uat-postgresql-portforward") }}
 apiVersion: v1
 kind: Service

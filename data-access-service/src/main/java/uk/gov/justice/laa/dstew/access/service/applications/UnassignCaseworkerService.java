@@ -42,6 +42,6 @@ public class UnassignCaseworkerService {
     applicationRepository.save(entity);
 
     saveDomainEventService.saveUnassignApplicationDomainEvent(
-        entity.getId(), null, history.getEventDescription());
+        entity.getId(), null, history != null ? history.getEventDescription() : null);
   }
 }
