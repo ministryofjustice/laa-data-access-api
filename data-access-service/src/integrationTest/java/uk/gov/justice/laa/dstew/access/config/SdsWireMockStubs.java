@@ -40,7 +40,7 @@ public class SdsWireMockStubs {
       """;
   private static final String UPDATE_SUCCESS_BODY =
       """
-      {"fileURL":"https://sds-mock.example.com/files/updated/test-file.pdf"}
+      {"success":"File updated successfully","checksum":"mock-checksum-abc123"}
       """;
   private static final String DELETE_SUCCESS_BODY_TEMPLATE =
       """

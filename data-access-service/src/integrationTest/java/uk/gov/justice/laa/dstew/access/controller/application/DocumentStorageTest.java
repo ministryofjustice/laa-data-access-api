@@ -133,7 +133,8 @@ public class DocumentStorageTest extends BaseHarnessTest {
   }
 
   @Test
-  public void givenExistingDocument_whenUpdateDocument_thenReturnUpdatedFileURL() throws Exception {
+  public void givenExistingDocument_whenUpdateDocument_thenReturnSuccessWithChecksum()
+      throws Exception {
     // given
     ApplicationEntity application =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
@@ -151,8 +152,9 @@ public class DocumentStorageTest extends BaseHarnessTest {
 
     DocumentUpdateResponse response = deserialise(result, DocumentUpdateResponse.class);
     assertNotNull(response);
-    assertNotNull(response.getFileURL());
-    assertFalse(response.getFileURL().isEmpty());
+    assertNotNull(response.getSuccess());
+    assertFalse(response.getSuccess().isEmpty());
+    assertNotNull(response.getChecksum());
   }
 
   @Test

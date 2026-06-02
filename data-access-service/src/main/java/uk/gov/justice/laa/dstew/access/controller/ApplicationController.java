@@ -245,7 +245,7 @@ public class ApplicationController implements ApplicationApi {
   @Override
   public ResponseEntity<DocumentUpdateResponse> updateDocument(
       @NotNull ServiceName serviceName, UUID id, MultipartFile file) {
-    DocumentUpdateResponse response = sdsService.saveOrUpdateFile(file);
+    DocumentUpdateResponse response = sdsService.saveOrUpdateFile(id, file);
     return ResponseEntity.ok(response);
   }
 

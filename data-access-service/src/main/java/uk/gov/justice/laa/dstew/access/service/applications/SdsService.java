@@ -91,25 +91,24 @@ public class SdsService {
   /**
    * Save or update a file in the SDS service.
    *
+   * @param applicationId the application ID used as folder name
    * @param file the file to be saved or updated
    * @return the file URL response from SDS
    */
-  public DocumentUpdateResponse saveOrUpdateFile(MultipartFile file) {
-    Map<String, String> bodyMap = Map.of(BUCKET_NAME_FIELD, bucketName);
+  public DocumentUpdateResponse saveOrUpdateFile(UUID applicationId, MultipartFile file) {
+    Map<String, String> bodyMap =
+        Map.of(BUCKET_NAME_FIELD, bucketName, FOLDER_FIELD, applicationId.toString());
     MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap);
 
-    DocumentUpdateResponse response =
-        handleUploadErrors(
-                sdsRestClient
-                    .put()
-                    .uri(SAVE_OR_UPDATE_FILE_ENDPOINT)
-                    .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
-                    .contentType(MULTIPART_FORM_DATA)
-                    .body(builder.build())
-                    .retrieve())
-            .body(DocumentUpdateResponse.class);
-
-    return response;
+    return handleUploadErrors(
+            sdsRestClient
+                .put()
+                .uri(SAVE_OR_UPDATE_FILE_ENDPOINT)
+                .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
+                .contentType(MULTIPART_FORM_DATA)
+                .body(builder.build())
+                .retrieve())
+        .body(DocumentUpdateResponse.class);
   }
 
   /**
@@ -210,7 +209,7 @@ public class SdsService {
    * @return the file key
    */
   private String buildFileKey(UUID applicationId, String documentId) {
-    return bucketName + PATH_SEPARATOR + applicationId.toString() + PATH_SEPARATOR + documentId;
+    return applicationId.toString() + PATH_SEPARATOR + documentId;
   }
 
   private RestClient.ResponseSpec handleUploadErrors(RestClient.ResponseSpec spec) {

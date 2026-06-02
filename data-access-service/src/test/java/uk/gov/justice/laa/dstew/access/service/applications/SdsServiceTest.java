@@ -154,7 +154,7 @@ class SdsServiceTest {
     when(responseSpec.body(DocumentUpdateResponse.class)).thenReturn(expectedResponse);
 
     // When
-    DocumentUpdateResponse actualResponse = sdsService.saveOrUpdateFile(file);
+    DocumentUpdateResponse actualResponse = sdsService.saveOrUpdateFile(applicationId, file);
 
     // Then
     assertThat(actualResponse).isEqualTo(expectedResponse);
@@ -242,8 +242,8 @@ class SdsServiceTest {
     List<String> fileIds = List.of("file-1.pdf", "file-2.pdf");
     Map<String, Integer> sdsResults =
         Map.of(
-            "test-bucket/" + applicationId + "/file-1.pdf", 204,
-            "test-bucket/" + applicationId + "/file-2.pdf", 204);
+            applicationId + "/file-1.pdf", 204,
+            applicationId + "/file-2.pdf", 204);
 
     RestClient.RequestHeadersUriSpec requestHeadersUriSpec =
         mock(RestClient.RequestHeadersUriSpec.class);
@@ -280,8 +280,8 @@ class SdsServiceTest {
     List<String> fileIds = List.of("file-1.pdf", "missing.pdf");
     Map<String, Integer> sdsResults =
         Map.of(
-            "test-bucket/" + applicationId + "/file-1.pdf", 204,
-            "test-bucket/" + applicationId + "/missing.pdf", 404);
+            applicationId + "/file-1.pdf", 204,
+            applicationId + "/missing.pdf", 404);
 
     RestClient.RequestHeadersUriSpec requestHeadersUriSpec =
         mock(RestClient.RequestHeadersUriSpec.class);

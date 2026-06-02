@@ -393,7 +393,9 @@ components:
     DocumentUpdateResponse:
       type: object
       properties:
-        fileURL:
+        success:
+          type: string
+        checksum:
           type: string
 
     DocumentDeleteResult:
