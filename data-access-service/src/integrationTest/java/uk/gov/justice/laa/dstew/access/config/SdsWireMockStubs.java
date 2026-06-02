@@ -42,6 +42,10 @@ public class SdsWireMockStubs {
       """
       {"fileURL":"https://sds-mock.example.com/files/updated/test-file.pdf"}
       """;
+  private static final String DELETE_SUCCESS_BODY_TEMPLATE =
+      """
+      { {{#each request.query.file_keys}}"{{this}}": 204{{#unless @last}},{{/unless}}{{/each}} }
+      """;
   private static final String HEALTH_SUCCESS_BODY =
       """
       {"Health":"UP"}
@@ -103,7 +107,12 @@ public class SdsWireMockStubs {
     server.stubFor(
         delete(urlPathEqualTo(DELETE_FILES))
             .atPriority(DEFAULT_PRIORITY)
-            .willReturn(aResponse().withStatus(204)));
+            .willReturn(
+                aResponse()
+                    .withStatus(200)
+                    .withHeader("Content-Type", JSON_CONTENT_TYPE)
+                    .withBody(DELETE_SUCCESS_BODY_TEMPLATE)
+                    .withTransformers("response-template")));
 
     server.stubFor(
         get(urlEqualTo(HEALTH))
@@ -170,8 +179,10 @@ public class SdsWireMockStubs {
             .atPriority(OVERRIDE_PRIORITY)
             .willReturn(
                 aResponse()
-                    .withStatus(404)
-                    .withHeader("Content-Type", PROBLEM_CONTENT_TYPE)
-                    .withBody(NOT_FOUND_BODY)));
+                    .withStatus(200)
+                    .withHeader("Content-Type", JSON_CONTENT_TYPE)
+                    .withBody(
+                        "{ {{#each request.query.file_keys}}\"{{this}}\": 404{{#unless @last}},{{/unless}}{{/each}} }")
+                    .withTransformers("response-template")));
   }
 }

@@ -1,13 +1,13 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.CREATED;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoContent;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
@@ -24,6 +24,7 @@ import org.springframework.test.web.reactive.server.EntityExchangeResult;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import uk.gov.justice.laa.dstew.access.config.SdsWireMockStubs;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
@@ -155,7 +156,8 @@ public class DocumentStorageTest extends BaseHarnessTest {
   }
 
   @Test
-  public void givenUploadedDocuments_whenDeleteDocuments_thenReturnNoContent() throws Exception {
+  public void givenUploadedDocuments_whenDeleteDocuments_thenReturnOKWithDeleteResponse()
+      throws Exception {
     // given
     ApplicationEntity application =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
@@ -178,7 +180,13 @@ public class DocumentStorageTest extends BaseHarnessTest {
 
     // then
     assertSecurityHeaders(result);
-    assertNoContent(result);
+    assertOK(result);
+    assertEquals("application/json", result.getResponse().getHeader("Content-Type"));
+
+    DocumentDeleteResponse response = deserialise(result, DocumentDeleteResponse.class);
+    assertNotNull(response);
+    assertNotNull(response.getResults());
+    assertThat(response.getResults()).allMatch(r -> r.getStatus() == 204);
 
     // Verify files are no longer accessible after deletion
     sdsStubs.stubFileNotFoundOnDownload();
@@ -193,7 +201,8 @@ public class DocumentStorageTest extends BaseHarnessTest {
   }
 
   @Test
-  public void givenNonExistentDocument_whenDeleteDocument_thenReturnNotFound() throws Exception {
+  public void givenNonExistentDocument_whenDeleteDocument_thenReturnOKWithNotFoundStatus()
+      throws Exception {
     // given
     sdsStubs.stubFileNotFoundOnDelete();
     ApplicationEntity application =
@@ -206,11 +215,13 @@ public class DocumentStorageTest extends BaseHarnessTest {
 
     // then
     assertSecurityHeaders(result);
-    assertNotFound(result);
-    assertEquals("application/problem+json", result.getResponse().getHeader("Content-Type"));
+    assertOK(result);
+    assertEquals("application/json", result.getResponse().getHeader("Content-Type"));
 
-    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
-    assertEquals("File not found", problemDetail.getDetail());
+    DocumentDeleteResponse response = deserialise(result, DocumentDeleteResponse.class);
+    assertNotNull(response);
+    assertNotNull(response.getResults());
+    assertThat(response.getResults()).allMatch(r -> r.getStatus() == 404);
   }
 
   @Test
