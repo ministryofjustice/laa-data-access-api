@@ -212,7 +212,8 @@ public class GetIndividualsTest extends BaseHarnessTest {
         DataGenerator.createDefault(IndividualEntityGenerator.class);
     var application =
         persistedDataGenerator.createAndPersist(
-            ApplicationEntityGenerator.class, builder -> builder.individuals(Set.of(individual, secondIndividual)));
+            ApplicationEntityGenerator.class,
+            builder -> builder.individuals(Set.of(individual, secondIndividual)));
     persistedDataGenerator.createAndPersist(
         IndividualEntityGenerator.class); // unrelated individual
 
