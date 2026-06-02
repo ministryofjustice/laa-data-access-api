@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.service.applications;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.endsWith;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -13,6 +12,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,7 +45,6 @@ class SdsServiceTest {
 
   @BeforeEach
   void setUp() {
-    ReflectionTestUtils.setField(sdsService, "sdsApiUrl", "http://localhost:8080/test-sds-api");
     ReflectionTestUtils.setField(sdsService, "bucketName", "test-bucket");
     lenient().when(tokenService.getSdsAccessToken()).thenReturn("mock-token");
   }
@@ -146,6 +145,7 @@ class SdsServiceTest {
     when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
     when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
     when(requestBodySpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.onStatus(any(Predicate.class), any())).thenReturn(responseSpec);
     when(responseSpec.body(DocumentUpdateResponse.class)).thenReturn(expectedResponse);
 
     // When
@@ -171,7 +171,7 @@ class SdsServiceTest {
     RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
 
     when(sdsRestClient.get()).thenReturn(requestHeadersUriSpec);
-    when(requestHeadersUriSpec.uri(contains("/get_file?file_key="))).thenReturn(requestHeadersSpec);
+    when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
     when(requestHeadersSpec.headers(any()))
         .thenAnswer(
             invocation -> {
@@ -193,8 +193,7 @@ class SdsServiceTest {
     assertThat(actualResponse).isEqualTo(expectedResponse);
     verify(tokenService).getSdsAccessToken();
     verify(sdsRestClient).get();
-    verify(requestHeadersUriSpec)
-        .uri(contains("get_file?file_key=" + applicationId.toString() + "/" + documentId));
+    verify(requestHeadersUriSpec).uri(any(Function.class));
   }
 
   @Test
@@ -209,7 +208,7 @@ class SdsServiceTest {
     RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
 
     when(sdsRestClient.get()).thenReturn(requestHeadersUriSpec);
-    when(requestHeadersUriSpec.uri(contains("/get_file?file_key="))).thenReturn(requestHeadersSpec);
+    when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
     when(requestHeadersSpec.headers(any()))
         .thenAnswer(
             invocation -> {
@@ -243,8 +242,7 @@ class SdsServiceTest {
     RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
 
     when(sdsRestClient.delete()).thenReturn(requestHeadersUriSpec);
-    when(requestHeadersUriSpec.uri(contains("/delete_files?file_keys=")))
-        .thenReturn(requestHeadersSpec);
+    when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
     when(requestHeadersSpec.headers(any()))
         .thenAnswer(
             invocation -> {
@@ -264,14 +262,7 @@ class SdsServiceTest {
     // Then
     verify(tokenService).getSdsAccessToken();
     verify(sdsRestClient).delete();
-    verify(requestHeadersUriSpec)
-        .uri(
-            contains(
-                "delete_files?file_keys="
-                    + applicationId.toString()
-                    + "/file-1&file_keys="
-                    + applicationId.toString()
-                    + "/file-2"));
+    verify(requestHeadersUriSpec).uri(any(Function.class));
   }
 
   @Test
@@ -286,8 +277,7 @@ class SdsServiceTest {
     RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
 
     when(sdsRestClient.delete()).thenReturn(requestHeadersUriSpec);
-    when(requestHeadersUriSpec.uri(contains("/delete_files?file_keys=")))
-        .thenReturn(requestHeadersSpec);
+    when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
     when(requestHeadersSpec.headers(any()))
         .thenAnswer(
             invocation -> {

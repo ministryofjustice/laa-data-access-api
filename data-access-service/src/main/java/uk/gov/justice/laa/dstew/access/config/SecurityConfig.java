@@ -109,8 +109,6 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**")
                     .permitAll()
-                    .requestMatchers("/sds/**")
-                    .permitAll()
                     .requestMatchers("/api/**")
                     .authenticated()
                     .anyRequest()

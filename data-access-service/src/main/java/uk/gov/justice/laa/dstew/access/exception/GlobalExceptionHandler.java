@@ -1,7 +1,9 @@
 package uk.gov.justice.laa.dstew.access.exception;
 
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.springframework.http.HttpStatus.LENGTH_REQUIRED;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static uk.gov.justice.laa.dstew.access.exception.ProblemDetailUtility.getCustomProblemDetail;
 
@@ -129,5 +131,47 @@ public class GlobalExceptionHandler {
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     problemDetail.setTitle("Conflict");
     return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
+  }
+
+  /**
+   * The handler for FileLengthRequiredException.
+   *
+   * @param ex the exception.
+   * @return the response with the exception message.
+   */
+  @ExceptionHandler(FileLengthRequiredException.class)
+  public ResponseEntity<ProblemDetail> handleFileLengthRequiredException(
+      FileLengthRequiredException ex) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(LENGTH_REQUIRED, ex.getMessage());
+    problemDetail.setTitle("Length Required");
+    return ResponseEntity.status(LENGTH_REQUIRED).body(problemDetail);
+  }
+
+  /**
+   * The handler for VirusDetectedException.
+   *
+   * @param ex the exception.
+   * @return the response with the exception message.
+   */
+  @ExceptionHandler(VirusDetectedException.class)
+  public ResponseEntity<ProblemDetail> handleVirusDetectedException(VirusDetectedException ex) {
+    ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(BAD_REQUEST, ex.getMessage());
+    problemDetail.setTitle("Virus Detected");
+    return ResponseEntity.status(BAD_REQUEST).body(problemDetail);
+  }
+
+  /**
+   * The handler for VirusScanException.
+   *
+   * @param ex the exception.
+   * @return the response with the exception message.
+   */
+  @ExceptionHandler(VirusScanException.class)
+  public ResponseEntity<ProblemDetail> handleVirusScanException(VirusScanException ex) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(INTERNAL_SERVER_ERROR, ex.getMessage());
+    problemDetail.setTitle("Virus Scan Error");
+    return ResponseEntity.status(INTERNAL_SERVER_ERROR).body(problemDetail);
   }
 }

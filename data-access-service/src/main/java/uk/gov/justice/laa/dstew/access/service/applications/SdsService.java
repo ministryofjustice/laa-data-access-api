@@ -16,9 +16,12 @@ import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.util.UriBuilder;
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
+import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
+import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
 import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
@@ -46,9 +49,6 @@ public class SdsService {
   private final RestClient sdsRestClient;
   private final TokenService tokenService;
 
-  @Value("${app.sds-api.url}")
-  private String sdsApiUrl;
-
   @Value("${app.sds-api.bucket-name}")
   private String bucketName;
 
@@ -68,18 +68,19 @@ public class SdsService {
     MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap);
 
     DocumentUploadResponse response =
-        sdsRestClient
-            .post()
-            .uri(sdsApiUrl + SAVE_FILE_ENDPOINT)
-            .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
-            .contentType(MULTIPART_FORM_DATA)
-            .body(builder.build())
-            .retrieve()
-            .onStatus(
-                status -> status.value() == HttpStatus.CONFLICT.value(),
-                (request, response1) -> {
-                  throw new FileConflictException("File already exists in SDS");
-                })
+        handleUploadErrors(
+                sdsRestClient
+                    .post()
+                    .uri(SAVE_FILE_ENDPOINT)
+                    .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
+                    .contentType(MULTIPART_FORM_DATA)
+                    .body(builder.build())
+                    .retrieve()
+                    .onStatus(
+                        status -> status.isSameCodeAs(HttpStatus.CONFLICT),
+                        (request, response1) -> {
+                          throw new FileConflictException("File already exists in SDS");
+                        }))
             .body(DocumentUploadResponse.class);
 
     return response;
@@ -96,13 +97,14 @@ public class SdsService {
     MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap);
 
     DocumentUpdateResponse response =
-        sdsRestClient
-            .put()
-            .uri(sdsApiUrl + SAVE_OR_UPDATE_FILE_ENDPOINT)
-            .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
-            .contentType(MULTIPART_FORM_DATA)
-            .body(builder.build())
-            .retrieve()
+        handleUploadErrors(
+                sdsRestClient
+                    .put()
+                    .uri(SAVE_OR_UPDATE_FILE_ENDPOINT)
+                    .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
+                    .contentType(MULTIPART_FORM_DATA)
+                    .body(builder.build())
+                    .retrieve())
             .body(DocumentUpdateResponse.class);
 
     return response;
@@ -117,15 +119,13 @@ public class SdsService {
    */
   public DocumentDownloadResponse getFile(UUID applicationId, String documentId) {
     String fileKey = buildFileKey(applicationId, documentId);
-    String uri =
-        UriComponentsBuilder.fromUriString(sdsApiUrl + GET_FILE_ENDPOINT)
-            .queryParam(FILE_KEY_PARAM, fileKey)
-            .toUriString();
 
     DocumentDownloadResponse response =
         sdsRestClient
             .get()
-            .uri(uri)
+            .uri(
+                uriBuilder ->
+                    uriBuilder.path(GET_FILE_ENDPOINT).queryParam(FILE_KEY_PARAM, fileKey).build())
             .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
             .accept(APPLICATION_JSON)
             .retrieve()
@@ -149,14 +149,14 @@ public class SdsService {
     List<String> fileKeys =
         fileIds.stream().map(fileId -> buildFileKey(applicationId, fileId)).toList();
 
-    UriComponentsBuilder builder =
-        UriComponentsBuilder.fromUriString(sdsApiUrl + DELETE_FILES_ENDPOINT);
-    fileKeys.forEach(key -> builder.queryParam(FILE_KEYS_PARAM, key));
-    String uri = builder.toUriString();
-
     sdsRestClient
         .delete()
-        .uri(uri)
+        .uri(
+            uriBuilder -> {
+              UriBuilder deleteFilesUri = uriBuilder.path(DELETE_FILES_ENDPOINT);
+              fileKeys.forEach(key -> deleteFilesUri.queryParam(FILE_KEYS_PARAM, key));
+              return deleteFilesUri.build();
+            })
         .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
         .retrieve()
         .onStatus(
@@ -176,7 +176,7 @@ public class SdsService {
     SdsHealthResponse response =
         sdsRestClient
             .get()
-            .uri(sdsApiUrl + HEALTH_ENDPOINT)
+            .uri(HEALTH_ENDPOINT)
             .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
             .accept(APPLICATION_JSON)
             .retrieve()
@@ -194,6 +194,24 @@ public class SdsService {
    */
   private String buildFileKey(UUID applicationId, String documentId) {
     return applicationId.toString() + PATH_SEPARATOR + documentId;
+  }
+
+  private RestClient.ResponseSpec handleUploadErrors(RestClient.ResponseSpec spec) {
+    return spec.onStatus(
+            status -> status.isSameCodeAs(HttpStatus.LENGTH_REQUIRED),
+            (req, res) -> {
+              throw new FileLengthRequiredException("File content length is required");
+            })
+        .onStatus(
+            status -> status.isSameCodeAs(HttpStatus.BAD_REQUEST),
+            (req, res) -> {
+              throw new VirusDetectedException("Virus detected in uploaded file");
+            })
+        .onStatus(
+            status -> status.isSameCodeAs(HttpStatus.INTERNAL_SERVER_ERROR),
+            (req, res) -> {
+              throw new VirusScanException("Virus scan gave a non-standard result");
+            });
   }
 
   /**
