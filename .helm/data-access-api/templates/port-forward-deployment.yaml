@@ -1,4 +1,4 @@
-{{- if .Values.portForward.enabled }}
+{{- if and .Values.portForward .Values.portForward.enabled }}
 {{- if (not (lookup "apps/v1" "Deployment" .Release.Namespace "port-forward-pod")) }}
 apiVersion: apps/v1
 kind: Deployment
