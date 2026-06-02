@@ -10,7 +10,7 @@ related to applications, proceedings, delegated functions, scope limitations, co
 ### Add GitHub Token
 Generate a Github PAT (Personal Access Token) to access the required plugin, via https://github.com/settings/tokens
 
-Specify the Note field, e.g. “Token to allow access to LAA Gradle plugin”
+Specify the Note field, e.g. “Token to allow access to LAA Gradle plugin”.
 
 If you don't already have one, create a `gradle.properties` file in your home directory at `~/.gradle/gradle.properties`.
 
