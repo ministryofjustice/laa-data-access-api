@@ -25,22 +25,14 @@ inputs:
   app-environment:
     description: "environment to which the app is being deployed [staging, production, etc]"
     required: true
-  release-name-override:
-    description: "Override the release name derived from the branch (e.g. laa-data-access-api-rc-schema-v2)"
-    required: false
-    default: ''
-  feature-flags:
-    description: "Comma-separated feature flags as key=value pairs (e.g. schemaV2=true,newEndpoint=false)"
-    required: false
-    default: ''
 
 outputs:
   branch-name:
     description: "Extracted branch name"
-    value: ${{ steps.extract_release_name.outputs.branch-name || steps.override_release_name.outputs.branch-name }}
+    value: ${{ steps.extract_release_name.outputs.branch-name }}
   release-name:
     description: "Extracted release name"
-    value: ${{ steps.extract_release_name.outputs.release-name || steps.override_release_name.outputs.release-name }}
+    value: ${{ steps.extract_release_name.outputs.release-name }}
 
 runs:
   using: "composite"
@@ -48,16 +40,7 @@ runs:
 
     - name: Extract release name
       id: extract_release_name
-      if: inputs.release-name-override == ''
       uses: ./.github/actions/get_release_name
-
-    - name: Use release name override
-      id: override_release_name
-      if: inputs.release-name-override != ''
-      shell: bash
-      run: |
-        echo "branch-name=${{ inputs.release-name-override }}" >> $GITHUB_OUTPUT
-        echo "release-name=${{ inputs.release-name-override }}" >> $GITHUB_OUTPUT
 
     - name: Authenticate to the cluster
       uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
@@ -88,15 +71,14 @@ runs:
         GIT_SHA: ${{ github.sha }}
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
-        RELEASE_NAME: ${{ steps.extract_release_name.outputs.release-name || steps.override_release_name.outputs.release-name }}
-        FEATURE_FLAGS: ${{ inputs.feature-flags }}
+        RELEASE_NAME: ${{ steps.extract_release_name.outputs.release-name }}
       run: |
         ingress_name="$RELEASE_NAME-data-access-api"
         external_host="$RELEASE_NAME-$KUBE_NAMESPACE.cloud-platform.service.justice.gov.uk"
         internal_host="$RELEASE_NAME-internal-$KUBE_NAMESPACE.internal-non-prod.cloud-platform.service.justice.gov.uk"
         external_identifier="$ingress_name-$KUBE_NAMESPACE-green"
         internal_identifier="$RELEASE_NAME-data-access-api-internal-$KUBE_NAMESPACE-green"
-        branch_name=${{ steps.extract_release_name.outputs.branch-name || steps.override_release_name.outputs.branch-name }}
+        branch_name=${{ steps.extract_release_name.outputs.branch-name }}
         LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
 
         echo "Deploying commit: $GIT_SHA under release name: $RELEASE_NAME to $external_host and $internal_host..."
@@ -112,12 +94,6 @@ runs:
               export SPRING_PROFILE="unsecured"
               ;;
           esac
-        elif [ "${{ inputs.app-environment }}" == "rc-feature" ]; then
-          export SPRING_PROFILE="rc-feature"
-          helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
-            -f .helm/bitnami_postgres/values.yaml \
-            --namespace ${KUBE_NAMESPACE} \
-            --install --wait
         else
           export SPRING_PROFILE="preview"
           # Using Bitnami legacy with PostgreSQL 17.2 (specified in values.yaml)
@@ -126,17 +102,7 @@ runs:
             --namespace ${KUBE_NAMESPACE} \
             --install --wait
         fi
-
-        # Build --set args for feature flags (e.g. "schemaV2=true,newEndpoint=false")
-        FEATURE_FLAG_ARGS=""
-        if [ -n "$FEATURE_FLAGS" ]; then
-          IFS=',' read -ra FLAGS <<< "$FEATURE_FLAGS"
-          for flag in "${FLAGS[@]}"; do
-            key="${flag%%=*}"
-            value="${flag#*=}"
-            FEATURE_FLAG_ARGS="$FEATURE_FLAG_ARGS --set featureFlags.${key}=${value}"
-          done
-        fi
+        
 
         helm upgrade $RELEASE_NAME .helm/data-access-api \
           --namespace ${KUBE_NAMESPACE} \
@@ -151,7 +117,6 @@ runs:
           --set aws.region="${ECR_REGION}" \
           --set autoscaling.enabled="$([ "$branch_name" = "main" ] && echo true || echo false)" \
           --values ${VALUES_FILE} \
-          $FEATURE_FLAG_ARGS \
           --install \
           --wait
 
