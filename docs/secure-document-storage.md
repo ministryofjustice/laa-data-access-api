@@ -131,4 +131,22 @@ curl -X DELETE "http://localhost:8080/api/v0/applications/123e4567-e89b-12d3-a45
 | Status | Meaning |
 |---|---|
 | `204` | All documents deleted |
-| `404` | One or more documents not found |
+| `400` | `documentIds` query parameter is empty |
+
+---
+
+## Local setup
+
+To run the service locally with SDS enabled, set the following environment variables (e.g. in your IDE run configuration or a `.env` file):
+
+```bash
+# SDS service
+SDS_API_URL=<sds-base-url>           # e.g. https://sds.dev.example.justice.gov.uk
+SDS_API_BUCKET=<bucket-name>         # bucket name provided by the SDS team
+
+# OAuth2 client credentials used to authenticate with SDS
+SDS_API_CLIENT_REGISTRATION_ID=moj-identity   # matches the registration key in application.yml
+SDS_API_PRINCIPAL_NAME=<principal>            # OAuth2 principal name provided by the SDS team
+```
+
+These values can be retrieved from the UAT key vault.

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
@@ -28,6 +30,8 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
+import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResult;
 import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
@@ -124,6 +128,7 @@ class SdsServiceTest {
   @Test
   void givenValidFile_whenSaveOrUpdateFile_thenReturnDocumentUpdateResponse() {
     // Given
+    UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
         new MockMultipartFile(
             "file", "test-file.pdf", "application/pdf", "test content".getBytes());
@@ -231,10 +236,14 @@ class SdsServiceTest {
   }
 
   @Test
-  void givenValidApplicationIdAndFileIds_whenDeleteFiles_thenDeleteSuccessfully() {
+  void givenValidApplicationIdAndFileIds_whenDeleteFiles_thenReturnDeleteResponse() {
     // Given
     UUID applicationId = UUID.randomUUID();
-    List<String> fileIds = List.of("file-1", "file-2");
+    List<String> fileIds = List.of("file-1.pdf", "file-2.pdf");
+    Map<String, Integer> sdsResults =
+        Map.of(
+            "test-bucket/" + applicationId + "/file-1.pdf", 204,
+            "test-bucket/" + applicationId + "/file-2.pdf", 204);
 
     RestClient.RequestHeadersUriSpec requestHeadersUriSpec =
         mock(RestClient.RequestHeadersUriSpec.class);
@@ -251,25 +260,28 @@ class SdsServiceTest {
               return requestHeadersSpec;
             });
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-    when(responseSpec.onStatus(
-            any(Predicate.class), any(RestClient.ResponseSpec.ErrorHandler.class)))
-        .thenReturn(responseSpec);
-    when(responseSpec.toBodilessEntity()).thenReturn(null);
+    when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(sdsResults);
 
     // When
-    sdsService.deleteFiles(applicationId, fileIds);
+    DocumentDeleteResponse response = sdsService.deleteFiles(applicationId, fileIds);
 
     // Then
+    assertThat(response.getResults()).isNotNull();
+    assertThat(response.getResults().size()).isEqualTo(2);
+    assertThat(response.getResults().stream().allMatch(r -> r.getStatus() == 204)).isTrue();
     verify(tokenService).getSdsAccessToken();
     verify(sdsRestClient).delete();
-    verify(requestHeadersUriSpec).uri(any(Function.class));
   }
 
   @Test
-  void givenFileNotFound_whenDeleteFiles_thenThrowResourceNotFoundException() {
+  void givenOneFileMissing_whenDeleteFiles_thenReturnPartialResults() {
     // Given
     UUID applicationId = UUID.randomUUID();
-    List<String> fileIds = List.of("file-1");
+    List<String> fileIds = List.of("file-1.pdf", "missing.pdf");
+    Map<String, Integer> sdsResults =
+        Map.of(
+            "test-bucket/" + applicationId + "/file-1.pdf", 204,
+            "test-bucket/" + applicationId + "/missing.pdf", 404);
 
     RestClient.RequestHeadersUriSpec requestHeadersUriSpec =
         mock(RestClient.RequestHeadersUriSpec.class);
@@ -286,16 +298,20 @@ class SdsServiceTest {
               return requestHeadersSpec;
             });
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-    when(responseSpec.onStatus(
-            any(Predicate.class), any(RestClient.ResponseSpec.ErrorHandler.class)))
-        .thenReturn(responseSpec);
-    when(responseSpec.toBodilessEntity())
-        .thenThrow(new ResourceNotFoundException("File not found"));
+    when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(sdsResults);
 
-    // When & Then
-    assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(() -> sdsService.deleteFiles(applicationId, fileIds))
-        .withMessage("File not found");
+    // When
+    DocumentDeleteResponse response = sdsService.deleteFiles(applicationId, fileIds);
+
+    // Then
+    assertThat(response.getResults().stream().anyMatch(r -> r.getStatus() == 404)).isTrue();
+    assertThat(
+            response.getResults().stream()
+                .filter(r -> r.getStatus() == 404)
+                .findFirst()
+                .map(DocumentDeleteResult::getDocumentId)
+                .orElse(null))
+        .isEqualTo("missing.pdf");
   }
 
   @Test

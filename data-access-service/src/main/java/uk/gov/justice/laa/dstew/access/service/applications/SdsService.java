@@ -22,6 +22,8 @@ import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
 import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
+import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
+import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResult;
 import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
@@ -144,27 +146,42 @@ public class SdsService {
    *
    * @param applicationId the application ID
    * @param fileIds the list of file IDs to be deleted
+   * @return per-file deletion results
    */
-  public void deleteFiles(UUID applicationId, List<String> fileIds) {
+  public DocumentDeleteResponse deleteFiles(UUID applicationId, List<String> fileIds) {
     List<String> fileKeys =
         fileIds.stream().map(fileId -> buildFileKey(applicationId, fileId)).toList();
 
-    sdsRestClient
-        .delete()
-        .uri(
-            uriBuilder -> {
-              UriBuilder deleteFilesUri = uriBuilder.path(DELETE_FILES_ENDPOINT);
-              fileKeys.forEach(key -> deleteFilesUri.queryParam(FILE_KEYS_PARAM, key));
-              return deleteFilesUri.build();
-            })
-        .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
-        .retrieve()
-        .onStatus(
-            status -> status.value() == HttpStatus.NOT_FOUND.value(),
-            (request, response) -> {
-              throw new ResourceNotFoundException("File not found");
-            })
-        .toBodilessEntity();
+    Map<String, Integer> sdsResults =
+        sdsRestClient
+            .delete()
+            .uri(
+                uriBuilder -> {
+                  UriBuilder deleteFilesUri = uriBuilder.path(DELETE_FILES_ENDPOINT);
+                  fileKeys.forEach(key -> deleteFilesUri.queryParam(FILE_KEYS_PARAM, key));
+                  return deleteFilesUri.build();
+                })
+            .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
+            .retrieve()
+            .body(
+                new org.springframework.core.ParameterizedTypeReference<Map<String, Integer>>() {});
+
+    List<DocumentDeleteResult> results =
+        sdsResults == null
+            ? List.of()
+            : fileIds.stream()
+                .map(
+                    fileId -> {
+                      var result = new DocumentDeleteResult();
+                      result.setDocumentId(fileId);
+                      result.setStatus(sdsResults.get(buildFileKey(applicationId, fileId)));
+                      return result;
+                    })
+                .toList();
+
+    var response = new DocumentDeleteResponse();
+    response.setResults(results);
+    return response;
   }
 
   /**
@@ -193,7 +210,7 @@ public class SdsService {
    * @return the file key
    */
   private String buildFileKey(UUID applicationId, String documentId) {
-    return applicationId.toString() + PATH_SEPARATOR + documentId;
+    return bucketName + PATH_SEPARATOR + applicationId.toString() + PATH_SEPARATOR + documentId;
   }
 
   private RestClient.ResponseSpec handleUploadErrors(RestClient.ResponseSpec spec) {

@@ -29,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
+import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
@@ -252,9 +253,9 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodArguments
   @LogMethodResponse
   @Override
-  public ResponseEntity<Void> deleteDocument(
+  public ResponseEntity<DocumentDeleteResponse> deleteDocument(
       ServiceName serviceName, UUID id, List<String> fileKeys) {
-    sdsService.deleteFiles(id, fileKeys);
-    return ResponseEntity.noContent().build();
+    DocumentDeleteResponse response = sdsService.deleteFiles(id, fileKeys);
+    return ResponseEntity.ok(response);
   }
 }

@@ -490,7 +490,12 @@ paths:
             items:
               type: string
       responses:
-        '204': { description: Document(s) deleted successfully }
+        '200':
+          description: Deletion results per document
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/DocumentDeleteResponse"
         '400': { description: Bad request - documentIds must not be empty }
         '401': { description: Unauthorized }
         '403': { description: Forbidden }

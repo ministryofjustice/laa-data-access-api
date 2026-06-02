@@ -396,6 +396,24 @@ components:
         fileURL:
           type: string
 
+    DocumentDeleteResult:
+      type: object
+      properties:
+        documentId:
+          type: string
+          description: The document ID that was requested for deletion
+        status:
+          type: integer
+          description: Per-file status code returned by SDS (204 deleted, 404 not found, 500 error)
+
+    DocumentDeleteResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentDeleteResult"
+
     SdsHealthResponse:
       type: object
       properties:
