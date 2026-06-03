@@ -531,7 +531,7 @@ public class GetApplicationTest extends BaseHarnessTest {
                 .levelOfService(
                     proceeding
                         .getProceedingContent()
-                        .get("substantiveLevelOfServiceName")
+                        .get("substantiveLevelOfServiceNameEnum")
                         .toString())
                 .substantiveCostLimitation(
                     Double.parseDouble(
