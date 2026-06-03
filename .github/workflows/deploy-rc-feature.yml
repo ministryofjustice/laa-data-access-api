@@ -26,9 +26,78 @@ permissions:
   id-token: write
 
 jobs:
-  build-test:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'deploy-rc-feature')) }}
+  check-label:
+    name: Check if RC feature deployment is required
     runs-on: ubuntu-latest
+    outputs:
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
+      release-name-override: ${{ steps.check.outputs.release-name-override }}
+      feature-flags: ${{ steps.check.outputs.feature-flags }}
+    steps:
+      - name: Determine RC deployment target
+        id: check
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          LABEL_NAME: ${{ github.event.label.name }}
+          CURRENT_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          FEATURE_NAME: ${{ inputs.feature-name }}
+          FEATURE_FLAGS_INPUT: ${{ inputs.feature-flags }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          echo "RC feature deploy check"
+          echo "  event_name=$EVENT_NAME"
+          echo "  event_action=${EVENT_ACTION:-}"
+          echo "  label_name=${LABEL_NAME:-}"
+          echo "  current_labels=${CURRENT_LABELS:-}"
+          echo "  pr_number=${PR_NUMBER:-}"
+          echo "  head_repo=${HEAD_REPO:-}"
+          echo "  base_repo=${BASE_REPO:-}"
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "Manual dispatch detected; enabling RC deploy"
+            echo "should-deploy=true" >> "$GITHUB_OUTPUT"
+            echo "release-name-override=laa-data-access-api-rc-${FEATURE_NAME}" >> "$GITHUB_OUTPUT"
+            echo "feature-flags=${FEATURE_FLAGS_INPUT}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            has_label=false
+
+            if [ "$EVENT_ACTION" = "labeled" ] && [ "$LABEL_NAME" = "enhancement" ]; then
+              has_label=true
+            elif [ "$EVENT_ACTION" = "synchronize" ] || [ "$EVENT_ACTION" = "reopened" ]; then
+              if echo ",${CURRENT_LABELS}," | grep -q ",enhancement,"; then
+                has_label=true
+              fi
+            fi
+
+            echo "  has_label=$has_label"
+
+            if [ "$has_label" = true ]; then
+              echo "PR deploy label detected; enabling RC deploy"
+              echo "should-deploy=true" >> "$GITHUB_OUTPUT"
+              echo "release-name-override=laa-data-access-api-rc-pr-${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+              echo "feature-flags=exampleFeatureFlag=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          echo "RC deploy not enabled for this event"
+          echo "should-deploy=false" >> "$GITHUB_OUTPUT"
+          echo "release-name-override=" >> "$GITHUB_OUTPUT"
+          echo "feature-flags=" >> "$GITHUB_OUTPUT"
+
+  build-test:
+    if: ${{ needs.check-label.outputs.should-deploy == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    runs-on: ubuntu-latest
+    needs: check-label
     permissions:
       contents: read
       packages: write
@@ -67,9 +136,11 @@ jobs:
           retention-days: 1
 
   build-push-docker:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'deploy-rc-feature')) }}
+    if: ${{ needs.check-label.outputs.should-deploy == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
-    needs: build-test
+    needs:
+      - check-label
+      - build-test
     permissions:
       id-token: write
       contents: read
@@ -102,9 +173,11 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
 
   build-push-mass-generator-docker:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'deploy-rc-feature')) }}
+    if: ${{ needs.check-label.outputs.should-deploy == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
-    needs: build-test
+    needs:
+      - check-label
+      - build-test
     permissions:
       id-token: write
       contents: read
@@ -138,9 +211,10 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
 
   deploy-rc-feature:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'deploy-rc-feature')) }}
+    if: ${{ needs.check-label.outputs.should-deploy == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
     needs:
+      - check-label
       - build-push-docker
       - build-push-mass-generator-docker
     environment: uat
@@ -165,13 +239,15 @@ jobs:
           kube-cluster: ${{ secrets.KUBE_CLUSTER }}
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
           app-environment: rc-feature
-          release-name-override: laa-data-access-api-rc-${{ github.event_name == 'workflow_dispatch' && inputs.feature-name || format('pr-{0}', github.event.pull_request.number) }}
-          feature-flags: ${{ github.event_name == 'workflow_dispatch' && inputs.feature-flags || '' }}
+          release-name-override: ${{ needs.check-label.outputs.release-name-override }}
+          feature-flags: ${{ needs.check-label.outputs.feature-flags }}
 
   smoke-test-rc-feature:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'deploy-rc-feature')) }}
+    if: ${{ needs.check-label.outputs.should-deploy == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
-    needs: deploy-rc-feature
+    needs:
+      - check-label
+      - deploy-rc-feature
     environment: uat
     permissions:
       id-token: write
