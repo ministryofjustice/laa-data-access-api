@@ -343,9 +343,11 @@ public class GetApplicationTest extends BaseServiceTest {
             getValueFromProceedingContent(
                 "substantiveLevelOfServiceName", expectedProceedingEntity.getProceedingContent()))
         .isEqualTo(actualApplicationProceedingResponse.getLevelOfService());
-    assertThat(
+    Double substantiveCostLimitation =
+        Double.valueOf(
             getValueFromProceedingContent(
-                "substantiveCostLimitation", expectedProceedingEntity.getProceedingContent()))
+                "substantiveCostLimitation", expectedProceedingEntity.getProceedingContent()));
+    assertThat(substantiveCostLimitation)
         .isEqualTo(actualApplicationProceedingResponse.getSubstantiveCostLimitation());
     assertThat(actualApplicationProceedingResponse.getScopeLimitations()).isNotNull();
     ScopeLimitationResponse scopeLimitation =
