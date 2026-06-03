@@ -85,8 +85,17 @@ runs:
           RELEASE_NAME="laa-data-access-api"
         fi
 
-        INGRESS_NAME="$RELEASE_NAME"
-        INTERNAL_INGRESS_NAME="$RELEASE_NAME-internal"
+        # Mirror Helm _helpers.tpl fullname logic:
+        # if release name contains "data-access-api", fullname = release name
+        # otherwise, fullname = release-name + "-data-access-api"
+        CHART_NAME="data-access-api"
+        if echo "$RELEASE_NAME" | grep -q "$CHART_NAME"; then
+          FULLNAME="$RELEASE_NAME"
+        else
+          FULLNAME="$RELEASE_NAME-$CHART_NAME"
+        fi
+        INGRESS_NAME="$FULLNAME"
+        INTERNAL_INGRESS_NAME="$FULLNAME-internal"
         external_identifier="$INGRESS_NAME-$KUBE_NAMESPACE-green"
         internal_identifier="$INTERNAL_INGRESS_NAME-$KUBE_NAMESPACE-green"
 
