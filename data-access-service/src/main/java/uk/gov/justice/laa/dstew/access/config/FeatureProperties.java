@@ -25,14 +25,8 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
  *     `@SpringBootTest` tests.
  * @param disableSecurity whether Spring Security is disabled (e.g. for development). Spring
  *     property: `feature.disable-security`. Environment variable: `FEATURE_DISABLE_SECURITY`.
- * @param exampleFeatureFlag an example feature flag used to validate the per-feature RC environment
- *     pipeline end-to-end. Spring property: `feature.example-feature-flag`. Environment variable:
- *     `FEATURE_EXAMPLEFEATUREFLAG`.
  */
 @ExcludeFromGeneratedCodeCoverage
 @ConfigurationProperties(prefix = "feature")
 public record FeatureProperties(
-    boolean enableDevToken,
-    boolean disableJpaAuditing,
-    boolean disableSecurity,
-    boolean exampleFeatureFlag) {}
+    boolean enableDevToken, boolean disableJpaAuditing, boolean disableSecurity) {}
