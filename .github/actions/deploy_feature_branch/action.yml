@@ -25,6 +25,19 @@ inputs:
   app-environment:
     description: "environment to which the app is being deployed [staging, production, etc]"
     required: true
+  release-name-override:
+    description: "Optional Helm release name override"
+    required: false
+    default: ""
+  feature-flags:
+    description: "Comma-separated feature flags key=value"
+    required: false
+    default: ""
+
+outputs:
+  release-name:
+    description: "Release name used for deployment"
+    value: ${{ steps.helm_deploy.outputs.release-name }}
 
 runs:
   using: "composite"
@@ -51,6 +64,7 @@ runs:
         mask-password: 'true'
 
     - name: Helm deployment
+      id: helm_deploy
       shell: bash
       env:
         ECR_REPOSITORY: ${{ inputs.ecr-repository }}
@@ -58,26 +72,90 @@ runs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         GIT_SHA: ${{ github.sha }}
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+        APP_ENVIRONMENT: ${{ inputs.app-environment }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
+        RELEASE_NAME_OVERRIDE: ${{ inputs.release-name-override }}
+        FEATURE_FLAGS: ${{ inputs.feature-flags }}
       run: |
+        set -euo pipefail
+
+        if [ -n "${RELEASE_NAME_OVERRIDE}" ]; then
+          RELEASE_NAME="${RELEASE_NAME_OVERRIDE}"
+        else
+          RELEASE_NAME="laa-data-access-api"
+        fi
+
+        external_host="$RELEASE_NAME-$KUBE_NAMESPACE.cloud-platform.service.justice.gov.uk"
+        internal_host="$RELEASE_NAME-internal-$KUBE_NAMESPACE.internal-non-prod.cloud-platform.service.justice.gov.uk"
+        external_identifier="$RELEASE_NAME-data-access-api-$KUBE_NAMESPACE-green"
+        internal_identifier="$RELEASE_NAME-data-access-api-internal-$KUBE_NAMESPACE-green"
+
         LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
         echo "Environment: ${APP_ENVIRONMENT}"
 
         if [ "${APP_ENVIRONMENT}" = "production" ]; then
           SPRING_PROFILE="main"
         else
-          SPRING_PROFILE="unsecured"
+          SPRING_PROFILE="preview"
         fi
 
-        helm upgrade laa-data-access-api .helm/data-access-api \
+        FEATURE_FLAG_ARGS=()
+        if [ -n "${FEATURE_FLAGS}" ]; then
+          IFS=',' read -r -a pairs <<< "${FEATURE_FLAGS}"
+          for pair in "${pairs[@]}"; do
+            pair=$(echo "$pair" | xargs)
+            [ -z "$pair" ] && continue
+            if [[ "$pair" != *=* ]]; then
+              echo "Invalid feature flag '$pair'. Expected key=value format."
+              exit 1
+            fi
+
+            key=${pair%%=*}
+            value=${pair#*=}
+            key=$(echo "$key" | xargs)
+            value=$(echo "$value" | xargs)
+
+            if [ -z "$key" ]; then
+              echo "Invalid feature flag '$pair'. Key cannot be empty."
+              exit 1
+            fi
+
+            FEATURE_FLAG_ARGS+=(--set "featureFlags.${key}=${value}")
+          done
+        fi
+
+        helm upgrade "${RELEASE_NAME}-postgresql" oci://registry-1.docker.io/bitnamicharts/postgresql \
+          -f .helm/bitnami_postgres/values.yaml \
+          --namespace ${KUBE_NAMESPACE} \
+          --install \
+          --wait
+
+        helm upgrade ${RELEASE_NAME} .helm/data-access-api \
           --namespace ${KUBE_NAMESPACE} \
           --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
           --set image.tag="${GIT_SHA}" \
+          --set ingress.annotations."external-dns\.alpha\.kubernetes\.io/set-identifier"="$external_identifier" \
           --set ingress.annotations."nginx\.ingress\.kubernetes\.io/whitelist-source-range"="$LAA_IPS" \
+          --set ingress.hosts="{$external_host}" \
+          --set ingressInternal.annotations."external-dns\.alpha\.kubernetes\.io/set-identifier"="$internal_identifier" \
+          --set ingressInternal.hosts="{$internal_host}" \
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
+          --set autoscaling.enabled=false \
           --set massGenerator.image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
           --set massGenerator.image.tag="${GIT_SHA}-mass-generator" \
+          "${FEATURE_FLAG_ARGS[@]}" \
           --values ${VALUES_FILE} \
           --install \
           --wait
+
+        helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
+          --namespace ${KUBE_NAMESPACE} \
+          --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
+          --set image.tag="${GIT_SHA}-mass-generator" \
+          --set spring.profile="${SPRING_PROFILE}" \
+          --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
+          --install \
+          --wait
+
+        echo "release-name=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"
