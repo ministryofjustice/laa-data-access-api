@@ -20,6 +20,16 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProvider;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProviderBuilder;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
@@ -52,6 +62,21 @@ public class SecurityConfig {
   @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
   private String jwkSetUri;
 
+  @Value("${spring.security.oauth2.client.registration.moj-identity.client-id}")
+  String clientId;
+
+  @Value("${spring.security.oauth2.client.registration.moj-identity.client-secret}")
+  String clientSecret;
+
+  @Value("${spring.security.oauth2.client.registration.moj-identity.scope}")
+  String scope;
+
+  @Value("${spring.security.oauth2.client.provider.moj-identity.token-uri}")
+  String oauth2TokenUri;
+
+  @Value("${app.sds-api.client-registration-id}")
+  private String clientRegistrationId;
+
   private static final String AUTHORITY_PREFIX = "APPROLE_";
 
   private static final String APP_ROLES_CLAIM = "LAA_APP_ROLES";
@@ -80,6 +105,7 @@ public class SecurityConfig {
                         "/actuator/health",
                         "/actuator/info",
                         "/actuator/prometheus",
+                        "/actuator/configprops/**",
                         "/actuator/metrics/**")
                     .permitAll()
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**")
@@ -200,5 +226,38 @@ public class SecurityConfig {
             : Set.of();
       }
     };
+  }
+
+  /**
+   * OAuth2AuthorizedClientManager bean for managing OAuth2 clients.
+   *
+   * @return the OAuth2AuthorizedClientManager
+   */
+  @Bean
+  public OAuth2AuthorizedClientManager oauth2AuthorizedClientManager() {
+    ClientRegistration identity =
+        ClientRegistration.withRegistrationId(clientRegistrationId)
+            .clientId(clientId)
+            .clientSecret(clientSecret)
+            .scope(scope)
+            .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+            .tokenUri(oauth2TokenUri)
+            .build();
+
+    ClientRegistrationRepository clientRegistrationRepository =
+        new InMemoryClientRegistrationRepository(identity);
+
+    OAuth2AuthorizedClientService clientService =
+        new InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository);
+
+    OAuth2AuthorizedClientProvider authorizedClientProvider =
+        OAuth2AuthorizedClientProviderBuilder.builder().clientCredentials().build();
+
+    AuthorizedClientServiceOAuth2AuthorizedClientManager authorizedClientManager =
+        new AuthorizedClientServiceOAuth2AuthorizedClientManager(
+            clientRegistrationRepository, clientService);
+    authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
+
+    return authorizedClientManager;
   }
 }

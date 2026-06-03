@@ -85,7 +85,7 @@ class ProceedingMapperTest extends BaseMapperTest {
     assertThat(result.getCategoryOfLaw().getValue()).isEqualToIgnoringCase("Family");
     assertThat(result.getMatterType().getValue()).isEqualToIgnoringCase("SPECIAL_CHILDREN_ACT");
     assertThat(result.getLevelOfService()).isEqualTo("service");
-    assertThat(result.getSubstantiveCostLimitation()).isEqualTo("23.45");
+    assertThat(result.getSubstantiveCostLimitation()).isEqualTo(23.45);
     assertThat(result.getDelegatedFunctionsDate()).isEqualTo(LocalDate.parse("2025-05-06"));
     assertThat(result.getScopeLimitations()).isNotNull().hasSize(1);
   }

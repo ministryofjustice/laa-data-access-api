@@ -16,6 +16,7 @@ import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.ProblemDetail;
@@ -71,10 +72,14 @@ public class GetIndividualsTest extends BaseHarnessTest {
 
   @Test
   void givenIncludeParametersAndAppId_whenGetIndividuals_thenProcessCorrectly() throws Exception {
+    IndividualEntity expectedIndividual =
+        DataGenerator.createDefault(IndividualEntityGenerator.class);
+
     ApplicationEntity application =
-        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-    persistedDataGenerator.createAndPersist(
-        IndividualEntityGenerator.class, builder -> builder.applications(Set.of(application)));
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder -> builder.individuals(Set.of(expectedIndividual)));
+
     HarnessResult result =
         getUri(
             TestConstants.URIs.GET_INDIVIDUALS
@@ -118,7 +123,7 @@ public class GetIndividualsTest extends BaseHarnessTest {
     assertThat(response.getPaging().getTotalRecords()).isEqualTo(expectedTotalRecords);
   }
 
-  static Stream<org.junit.jupiter.params.provider.Arguments> pagingParameters() {
+  static Stream<Arguments> pagingParameters() {
     return Stream.of(
         // page, pageSize, expectedPage, expectedPageSize, totalEntities, expectedReturned,
         // expectedTotalRecords
@@ -137,7 +142,7 @@ public class GetIndividualsTest extends BaseHarnessTest {
     assertBadRequest(result);
   }
 
-  static Stream<org.junit.jupiter.params.provider.Arguments> invalidPagingParameters() {
+  static Stream<Arguments> invalidPagingParameters() {
     return Stream.of(of(0, 10), of(-1, 10), of(1, 0), of(1, -74), of(1, 101), of(0, 0));
   }
 
@@ -203,18 +208,23 @@ public class GetIndividualsTest extends BaseHarnessTest {
   void givenApplicationId_whenGetIndividuals_thenFiltersByApplicationId() throws Exception {
     // given
     IndividualEntity individual = DataGenerator.createDefault(IndividualEntityGenerator.class);
+    IndividualEntity secondIndividual =
+        DataGenerator.createDefault(IndividualEntityGenerator.class);
     var application =
         persistedDataGenerator.createAndPersist(
-            ApplicationEntityGenerator.class, builder -> builder.individuals(Set.of(individual)));
+            ApplicationEntityGenerator.class,
+            builder -> builder.individuals(Set.of(individual, secondIndividual)));
     persistedDataGenerator.createAndPersist(
         IndividualEntityGenerator.class); // unrelated individual
+
     // when
     HarnessResult result =
         getUri(TestConstants.URIs.GET_INDIVIDUALS + "?applicationId=" + application.getId());
     IndividualsResponse response = deserialise(result, IndividualsResponse.class);
+
     // then
     assertOK(result);
-    assertThat(response.getIndividuals()).hasSize(1);
+    assertThat(response.getIndividuals()).hasSize(2);
     assertThat(response.getIndividuals().getFirst().getFirstName())
         .isEqualTo(individual.getFirstName());
     assertThat(response.getIndividuals().getFirst().getLastName())

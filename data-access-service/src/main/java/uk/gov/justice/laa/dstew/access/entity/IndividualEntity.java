@@ -8,12 +8,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -71,9 +69,6 @@ public class IndividualEntity implements AuditableEntity {
   @Column(name = "modified_at")
   @UpdateTimestamp
   private Instant modifiedAt;
-
-  @ManyToMany(mappedBy = "individuals")
-  private Set<ApplicationEntity> applications;
 
   @Override
   public Instant getCreatedAt() {

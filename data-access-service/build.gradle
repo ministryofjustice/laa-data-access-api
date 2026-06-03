@@ -241,6 +241,7 @@ dependencies {
     // Remove explicit Spring Security and Spring Core versions - let Spring Boot 4 manage them
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation('org.springframework.boot:spring-boot-starter-security') {
         exclude group: 'org.springframework.security', module: 'spring-security-config'
@@ -302,6 +303,7 @@ dependencies {
     // https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide#test-code
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+    testImplementation 'org.wiremock:wiremock-standalone:3.12.1'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 

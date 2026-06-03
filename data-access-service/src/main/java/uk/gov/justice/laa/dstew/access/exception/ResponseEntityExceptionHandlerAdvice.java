@@ -2,12 +2,8 @@ package uk.gov.justice.laa.dstew.access.exception;
 
 import static uk.gov.justice.laa.dstew.access.exception.ProblemDetailUtility.getCustomProblemDetail;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.TypeMismatchException;
@@ -24,7 +20,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.exc.MismatchedInputException;
 
 /**
@@ -72,80 +67,25 @@ public class ResponseEntityExceptionHandlerAdvice extends ResponseEntityExceptio
       @NonNull HttpStatusCode status,
       @NonNull WebRequest request) {
     Throwable root = ex.getRootCause();
-    String message = "Invalid request payload";
+    Throwable cause = ex.getCause();
 
-    if (root instanceof MismatchedInputException mie) {
-      message = getMessageForMismatchedInputException(ex, mie);
-    }
-    if (root instanceof IllegalArgumentException illegalArgumentException) {
-      message = getMessageForIllegalArgumentException(illegalArgumentException);
-
-    } else {
-      log.error("Failed to read request body", ex);
-    }
+    String message =
+        switch (root) {
+          case IllegalArgumentException iae
+              when cause instanceof MismatchedInputException mie
+                  && mie.getTargetType() != null
+                  && mie.getTargetType().isEnum() ->
+              JacksonExceptionMessageBuilder.buildMessageForInvalidEnum(iae, mie);
+          case IllegalArgumentException iae -> iae.getLocalizedMessage();
+          case MismatchedInputException mie -> JacksonExceptionMessageBuilder.buildMessage(mie);
+          case null, default -> {
+            log.error("Failed to read request body", ex);
+            yield "Invalid request payload";
+          }
+        };
 
     ProblemDetail problemDetail = getCustomProblemDetail(HttpStatus.BAD_REQUEST, message);
     return ResponseEntity.badRequest().body(problemDetail);
-  }
-
-  private static String getMessageForIllegalArgumentException(
-      IllegalArgumentException illegalArgumentException) {
-    // OpenAI generated enums throw IllegalArgumentException with message "Unexpected value 'XYZ'"
-    // when an invalid enum value is provided.
-    return illegalArgumentException.getLocalizedMessage().contains("Unexpected value")
-        ? getMessageWhenInvalidEnum(illegalArgumentException)
-        : illegalArgumentException.getLocalizedMessage();
-  }
-
-  private static @NonNull String getMessageForMismatchedInputException(
-      HttpMessageNotReadableException ex, MismatchedInputException mie) {
-    String field =
-        mie.getPath().stream()
-            .map(JacksonException.Reference::getPropertyName)
-            .filter(Objects::nonNull)
-            .collect(Collectors.joining("."));
-
-    if (field.isEmpty()) {
-      field = "unknown";
-    }
-
-    String expectedType =
-        mie.getTargetType() != null ? mie.getTargetType().getSimpleName() : "unknown";
-    Object[] args = {field};
-    log.warn("Type mismatch for field {}: expected {}", field, expectedType, ex);
-
-    return getMessage(args, mie.getTargetType());
-  }
-
-  private static @NonNull String getMessage(Object[] args, Class<?> requiredType) {
-
-    Class<?> classToCheck = requiredType != null ? requiredType : Object.class;
-    return "Invalid data type for field '%s'. Expected: %s."
-        .formatted(
-            args[0],
-            !classToCheck.isEnum()
-                ? classToCheck.getSimpleName()
-                : List.of(classToCheck.getEnumConstants()));
-  }
-
-  private static String getMessageWhenInvalidEnum(
-      IllegalArgumentException illegalArgumentException) {
-    String message;
-    StackTraceElement[] stackTraceElements = illegalArgumentException.getStackTrace();
-    String classPath = stackTraceElements[0].getClassName();
-    try {
-      Class<? extends Enum> enumClass = (Class<? extends Enum>) Class.forName(classPath);
-      String validValues =
-          Arrays.stream(enumClass.getEnumConstants())
-              .map(Enum::name)
-              .collect(Collectors.joining(", "));
-      message =
-          "%s. Valid values are: %s"
-              .formatted(illegalArgumentException.getLocalizedMessage(), validValues);
-    } catch (ClassNotFoundException e) {
-      message = illegalArgumentException.getLocalizedMessage();
-    }
-    return message;
   }
 
   /**
@@ -159,13 +99,23 @@ public class ResponseEntityExceptionHandlerAdvice extends ResponseEntityExceptio
       @NonNull HttpStatusCode status,
       @NonNull WebRequest request) {
 
-    Object[] args = {ex.getPropertyName(), ex.getValue()};
-    String message =
-        ex.getRequiredType() == null
-            ? "Failed to convert '" + args[0] + "' with value: '" + args[1] + "'"
-            : getMessage(args, ex.getRequiredType());
+    Class<?> classToCheck = ex.getRequiredType();
+    String message;
+    if (classToCheck == null) {
+      message =
+          "Failed to convert '" + ex.getPropertyName() + "' with value: '" + ex.getValue() + "'";
+    } else {
+      String expectedType =
+          !classToCheck.isEnum()
+              ? classToCheck.getSimpleName()
+              : java.util.List.of(classToCheck.getEnumConstants()).toString();
+      message =
+          "Invalid data type for field '%s'. Expected: %s."
+              .formatted(ex.getPropertyName(), expectedType);
+    }
     String messageCode =
         ErrorResponse.getDefaultDetailMessageCode(TypeMismatchException.class, null);
+    Object[] args = {ex.getPropertyName(), ex.getValue()};
     ProblemDetail body = createProblemDetail(ex, status, message, messageCode, args, request);
     body.setType(null);
     return handleExceptionInternal(ex, body, headers, status, request);

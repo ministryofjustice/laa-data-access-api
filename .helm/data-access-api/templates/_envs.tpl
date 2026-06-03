@@ -2,9 +2,9 @@
   Define environment variables that can be "included" in deployment.yaml
 */}}
 {{- define "dbConnectionDetails" }}
-{{- if eq .Values.spring.profile "preview" }}
+{{- if or (eq .Values.spring.profile "preview") (eq .Values.spring.profile "rc-feature") }}
 {{/*
-For the preview branches, set DB connection details to Bitnami Postgres specific values
+For preview branches and rc-feature environments, use Bitnami Postgres-specific values
 */}}
 - name: DB_NAME
   value: "postgres"
@@ -83,6 +83,26 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
     secretKeyRef:
       name: laa-data-access-api-secrets
       key: ENTRA_AUD
+- name: AUTH_CLIENT_ID
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_CLIENT_ID
+- name: AUTH_CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_CLIENT_SECRET
+- name: AUTH_SCOPE
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_SCOPE
+- name: AUTH_TENANT_ID
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_TENANT_ID
 {{- end }}
 
 {{/*
@@ -99,4 +119,34 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
     secretKeyRef:
       name: laa-data-access-api-secrets
       key: FEATURE_DISABLE_SECURITY
+{{- range $key, $value := .Values.featureFlags }}
+- name: FEATURE_{{ $key | upper }}
+  value: {{ $value | quote }}
+{{- end }}
+{{- end }}
+
+{{/*
+  Define SDS API environment variables
+*/}}
+{{- define "sdsApiConfig" }}
+- name: SDS_API_URL
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_URL
+- name: SDS_API_BUCKET
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_BUCKET
+- name: SDS_API_CLIENT_REGISTRATION_ID
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_CLIENT_REGISTRATION_ID
+- name: SDS_API_PRINCIPAL_NAME
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_PRINCIPAL_NAME
 {{- end }}
