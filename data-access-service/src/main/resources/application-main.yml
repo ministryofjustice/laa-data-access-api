@@ -37,8 +37,9 @@ logging:
                   SecurityConfig: WARN
 
 management:
-  endpoints.web.exposure.include: health,info,prometheus,metrics
+  endpoints.web.exposure.include: health,info,prometheus,metrics,configprops
   endpoint.health.show-details: always
+  endpoint.configprops.show-details: always
   info.env.enabled: true
 
 jdbc:
