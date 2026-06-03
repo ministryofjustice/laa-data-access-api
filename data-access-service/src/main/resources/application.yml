@@ -72,11 +72,18 @@ jdbc:
       threshold: 1  # seconds; overridden per environment
 
 management:
-  endpoints.web.exposure.include: health,info,prometheus,metrics,configprops
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,configprops
   endpoint:
-    health.show-details: always
-    configprops.show-values: always
-  info.env.enabled: true
+    health:
+      show-details: always
+    configprops:
+      show-values: always
+  info:
+    env:
+      enabled: true
   metrics:
     tags:
       release: ${METRICS_RELEASE_TAG:local}

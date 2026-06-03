@@ -109,7 +109,8 @@ runs:
           if [ $prefix_length -lt 1 ]; then
             prefix_length=1
           fi
-          host_base="$(printf "%s" "$safe_release_name" | cut -c1-$prefix_length)-$hash_suffix"
+          trimmed_prefix="$(printf "%s" "$safe_release_name" | cut -c1-$prefix_length | sed 's/-*$//')"
+          host_base="${trimmed_prefix}-$hash_suffix"
         else
           host_base="$safe_release_name"
         fi
