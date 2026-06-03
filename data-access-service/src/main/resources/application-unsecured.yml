@@ -30,9 +30,8 @@ logging:
     com.azure.spring: INFO
 
 management:
-  endpoints.web.exposure.include: health,info,prometheus,metrics,configprops
+  endpoints.web.exposure.include: health,info,prometheus,metrics
   endpoint.health.show-details: always
-  endpoint.configprops.show-details: always
   info.env.enabled: true
 
 feature:
