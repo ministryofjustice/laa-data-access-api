@@ -105,6 +105,7 @@ public class SecurityConfig {
                         "/actuator/health",
                         "/actuator/info",
                         "/actuator/prometheus",
+                        "/actuator/configprops/**",
                         "/actuator/metrics/**")
                     .permitAll()
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**")
