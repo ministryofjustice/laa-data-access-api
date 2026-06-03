@@ -47,7 +47,6 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO: ${{ github.repository }}
-          RC_RELEASE_PREFIX: laa-daa-feat
         run: |
           set -euo pipefail
 
@@ -63,7 +62,7 @@ jobs:
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             echo "Manual dispatch detected; enabling RC deploy"
             echo "should-deploy=true" >> "$GITHUB_OUTPUT"
-            echo "release-name-override=${RC_RELEASE_PREFIX}-${FEATURE_NAME}" >> "$GITHUB_OUTPUT"
+            echo "release-name-override=${FEATURE_NAME}" >> "$GITHUB_OUTPUT"
             echo "feature-flags=${FEATURE_FLAGS_INPUT}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -84,7 +83,7 @@ jobs:
             if [ "$has_label" = true ]; then
               echo "PR deploy label detected; enabling RC deploy"
               echo "should-deploy=true" >> "$GITHUB_OUTPUT"
-              echo "release-name-override=${RC_RELEASE_PREFIX}-pr-${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+              echo "release-name-override=pr-${PR_NUMBER}" >> "$GITHUB_OUTPUT"
               echo "feature-flags=exampleFeatureFlag=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi

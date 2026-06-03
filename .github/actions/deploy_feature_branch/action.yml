@@ -102,7 +102,9 @@ runs:
         safe_release_name=$(echo "$RELEASE_NAME" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9-' '-')
         safe_release_name=$(echo "$safe_release_name" | sed 's/^-*//; s/-*$//; s/--*/-/g')
         hash_suffix=$(printf "%s" "$RELEASE_NAME" | shasum | cut -c1-8)
-        max_host_base_length=$((50 - ${#KUBE_NAMESPACE} - 10))
+        # Gatekeeper enforces a 57-char max per hostname label.
+        # Internal host label is the strictest: <host_base>-internal-<namespace>
+        max_host_base_length=$((57 - ${#KUBE_NAMESPACE} - 10))
 
         if [ ${#safe_release_name} -gt $max_host_base_length ]; then
           prefix_length=$((max_host_base_length - 9))
@@ -110,7 +112,11 @@ runs:
             prefix_length=1
           fi
           trimmed_prefix="$(printf "%s" "$safe_release_name" | cut -c1-$prefix_length | sed 's/-*$//')"
-          host_base="${trimmed_prefix}-$hash_suffix"
+          if [ -n "$trimmed_prefix" ]; then
+            host_base="${trimmed_prefix}-$hash_suffix"
+          else
+            host_base="$hash_suffix"
+          fi
         else
           host_base="$safe_release_name"
         fi
