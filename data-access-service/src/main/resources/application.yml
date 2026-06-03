@@ -24,6 +24,16 @@ spring:
 
   security:
     oauth2:
+      client:
+        registration:
+          moj-identity:
+            client-id: ${AUTH_CLIENT_ID}
+            client-secret: ${AUTH_CLIENT_SECRET}
+            scope: ${AUTH_SCOPE}
+            authorization-grant-type: client_credentials
+        provider:
+          moj-identity:
+            token-uri: https://login.microsoftonline.com/${AUTH_TENANT_ID}/oauth2/v2.0/token
       resourceserver:
         jwt:
           issuer-uri: ${ENTRA_ISSUER_URI}
@@ -89,6 +99,13 @@ sentry:
 feature:
   enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}
   disable-security: ${FEATURE_DISABLE_SECURITY:false}
+
+app:
+  sds-api:
+    url: ${SDS_API_URL}
+    bucket-name: ${SDS_API_BUCKET}
+    client-registration-id: ${SDS_API_CLIENT_REGISTRATION_ID}
+    principal-name: ${SDS_API_PRINCIPAL_NAME}
 
 server:
   forward-headers-strategy: framework

@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
@@ -8,8 +9,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
@@ -26,6 +29,10 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
+import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
+import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
+import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
+import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -39,6 +46,7 @@ import uk.gov.justice.laa.dstew.access.service.applications.GetAllNotesForApplic
 import uk.gov.justice.laa.dstew.access.service.applications.GetApplicationService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetCertificateService;
 import uk.gov.justice.laa.dstew.access.service.applications.MakeDecisionService;
+import uk.gov.justice.laa.dstew.access.service.applications.SdsService;
 import uk.gov.justice.laa.dstew.access.service.applications.UnassignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.service.applications.UpdateApplicationService;
 import uk.gov.justice.laa.dstew.access.service.domainevents.GetDomainEventService;
@@ -63,6 +71,7 @@ public class ApplicationController implements ApplicationApi {
   private final GetAllNotesForApplicationService getNotesService;
   private final CreateNoteService createNoteService;
   private final GetDomainEventService getDomainEventsService;
+  private final SdsService sdsService;
 
   @LogMethodArguments
   @LogMethodResponse
@@ -209,5 +218,44 @@ public class ApplicationController implements ApplicationApi {
   public ResponseEntity<Map<String, Object>> getCertificate(
       @NotNull ServiceName serviceName, UUID applicationId) {
     return ResponseEntity.ok(certificateService.getCertificate(applicationId));
+  }
+
+  @Hidden
+  @LogMethodArguments
+  @LogMethodResponse
+  @Override
+  public ResponseEntity<DocumentUploadResponse> uploadDocument(
+      @NotNull ServiceName serviceName, UUID id, MultipartFile file) {
+    DocumentUploadResponse response = sdsService.saveFile(id, file);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  @Hidden
+  @LogMethodArguments
+  @LogMethodResponse
+  @Override
+  public ResponseEntity<DocumentDownloadResponse> downloadDocument(
+      @NotNull ServiceName serviceName, UUID id, String documentId) {
+    return ResponseEntity.ok(sdsService.getFile(id, documentId));
+  }
+
+  @Hidden
+  @LogMethodArguments
+  @LogMethodResponse
+  @Override
+  public ResponseEntity<DocumentUpdateResponse> updateDocument(
+      @NotNull ServiceName serviceName, UUID id, MultipartFile file) {
+    DocumentUpdateResponse response = sdsService.saveOrUpdateFile(id, file);
+    return ResponseEntity.ok(response);
+  }
+
+  @Hidden
+  @LogMethodArguments
+  @LogMethodResponse
+  @Override
+  public ResponseEntity<DocumentDeleteResponse> deleteDocument(
+      ServiceName serviceName, UUID id, List<String> fileKeys) {
+    DocumentDeleteResponse response = sdsService.deleteFiles(id, fileKeys);
+    return ResponseEntity.ok(response);
   }
 }
