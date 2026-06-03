@@ -85,10 +85,28 @@ runs:
           RELEASE_NAME="laa-data-access-api"
         fi
 
-        external_host="$RELEASE_NAME-$KUBE_NAMESPACE.cloud-platform.service.justice.gov.uk"
-        internal_host="$RELEASE_NAME-internal-$KUBE_NAMESPACE.internal-non-prod.cloud-platform.service.justice.gov.uk"
-        external_identifier="$RELEASE_NAME-data-access-api-$KUBE_NAMESPACE-green"
-        internal_identifier="$RELEASE_NAME-data-access-api-internal-$KUBE_NAMESPACE-green"
+        INGRESS_NAME="$RELEASE_NAME"
+        INTERNAL_INGRESS_NAME="$RELEASE_NAME-internal"
+        external_identifier="$INGRESS_NAME-$KUBE_NAMESPACE-green"
+        internal_identifier="$INTERNAL_INGRESS_NAME-$KUBE_NAMESPACE-green"
+
+        safe_release_name=$(echo "$RELEASE_NAME" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9-' '-')
+        safe_release_name=$(echo "$safe_release_name" | sed 's/^-*//; s/-*$//; s/--*/-/g')
+        hash_suffix=$(printf "%s" "$RELEASE_NAME" | shasum | cut -c1-8)
+        max_host_base_length=$((50 - ${#KUBE_NAMESPACE} - 10))
+
+        if [ ${#safe_release_name} -gt $max_host_base_length ]; then
+          prefix_length=$((max_host_base_length - 9))
+          if [ $prefix_length -lt 1 ]; then
+            prefix_length=1
+          fi
+          host_base="$(printf "%s" "$safe_release_name" | cut -c1-$prefix_length)-$hash_suffix"
+        else
+          host_base="$safe_release_name"
+        fi
+
+        external_host="$host_base-$KUBE_NAMESPACE.cloud-platform.service.justice.gov.uk"
+        internal_host="$host_base-internal-$KUBE_NAMESPACE.internal-non-prod.cloud-platform.service.justice.gov.uk"
 
         LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
         echo "Environment: ${APP_ENVIRONMENT}"
