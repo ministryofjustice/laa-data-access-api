@@ -99,6 +99,7 @@ sentry:
 feature:
   enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}
   disable-security: ${FEATURE_DISABLE_SECURITY:false}
+  example-feature-flag: ${FEATURE_EXAMPLEFEATUREFLAG:false}
 
 app:
   sds-api:

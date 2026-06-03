@@ -63,3 +63,4 @@ grafana:
 
 slowQueryThresholdSeconds: 1
 
+featureFlags: {}

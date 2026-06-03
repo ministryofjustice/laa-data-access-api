@@ -119,6 +119,12 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
     secretKeyRef:
       name: laa-data-access-api-secrets
       key: FEATURE_DISABLE_SECURITY
+{{- if .Values.featureFlags }}
+{{- range $key, $value := .Values.featureFlags }}
+- name: FEATURE_{{ upper $key }}
+  value: {{ $value | quote }}
+{{- end }}
+{{- end }}
 {{- end }}
 
 {{/*
