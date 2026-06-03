@@ -70,33 +70,33 @@ public class MakeDecisionService {
     application.setIsAutoGranted(request.getAutoGranted());
     applicationRepository.save(application);
 
+    // no default because overallDecision is an enum and @NotNull
+    // CHECKSTYLE.SUPPRESS: MissingSwitchDefault
     switch (decision.getOverallDecision()) {
       case GRANTED -> handleGrantedDecision(applicationId, caseworkerId, request);
       case REFUSED -> handleRefusedDecision(applicationId, caseworkerId, request);
-      default ->
-          throw new IllegalStateException("Unexpected value: " + decision.getOverallDecision());
     }
   }
 
   private void handleGrantedDecision(
       UUID applicationId, UUID caseworkerId, MakeDecisionRequest request) {
-    if (request.getCertificate() != null) {
-      CertificateEntity certificate =
-          certificateRepository
-              .findByApplicationId(applicationId)
-              .map(
-                  existing -> {
-                    existing.setCertificateContent(request.getCertificate());
-                    return existing;
-                  })
-              .orElseGet(
-                  () ->
-                      CertificateEntity.builder()
-                          .applicationId(applicationId)
-                          .certificateContent(request.getCertificate())
-                          .build());
-      certificateRepository.save(certificate);
-    }
+
+    CertificateEntity certificate =
+        certificateRepository
+            .findByApplicationId(applicationId)
+            .map(
+                existing -> {
+                  existing.setCertificateContent(request.getCertificate());
+                  return existing;
+                })
+            .orElseGet(
+                () ->
+                    CertificateEntity.builder()
+                        .applicationId(applicationId)
+                        .certificateContent(request.getCertificate())
+                        .build());
+    certificateRepository.save(certificate);
+
     saveDomainEventService.saveMakeDecisionDomainEvent(
         applicationId, request, caseworkerId, DomainEventType.APPLICATION_MAKE_DECISION_GRANTED);
   }
@@ -156,35 +156,31 @@ public class MakeDecisionService {
 
     if (notLinkedIds.isEmpty()) {
       return linkedMap;
-    }
+    } else {
+      Set<UUID> foundInDbIds =
+          proceedingRepository.findAllById(notLinkedIds).stream()
+              .map(ProceedingEntity::getId)
+              .collect(Collectors.toSet());
 
-    Set<UUID> foundInDbIds =
-        proceedingRepository.findAllById(notLinkedIds).stream()
-            .map(ProceedingEntity::getId)
-            .collect(Collectors.toSet());
+      List<String> errors = new ArrayList<>();
 
-    List<String> errors = new ArrayList<>();
+      String notFoundIds =
+          notLinkedIds.stream()
+              .filter(id -> !foundInDbIds.contains(id))
+              .map(UUID::toString)
+              .collect(Collectors.joining(","));
+      if (!notFoundIds.isEmpty()) {
+        errors.add("No proceeding found with id: " + notFoundIds);
+      }
 
-    String notFoundIds =
-        notLinkedIds.stream()
-            .filter(id -> !foundInDbIds.contains(id))
-            .map(UUID::toString)
-            .collect(Collectors.joining(","));
-    if (!notFoundIds.isEmpty()) {
-      errors.add("No proceeding found with id: " + notFoundIds);
-    }
+      String notLinkedInDbIds =
+          foundInDbIds.stream().map(UUID::toString).collect(Collectors.joining(","));
+      if (!notLinkedInDbIds.isEmpty()) {
+        errors.add("Not linked to application: " + notLinkedInDbIds);
+      }
 
-    String notLinkedInDbIds =
-        foundInDbIds.stream().map(UUID::toString).collect(Collectors.joining(","));
-    if (!notLinkedInDbIds.isEmpty()) {
-      errors.add("Not linked to application: " + notLinkedInDbIds);
-    }
-
-    if (!errors.isEmpty()) {
       throw new ResourceNotFoundException(String.join("; ", errors));
     }
-
-    return linkedMap;
   }
 
   private static UUID getCaseworkerId(ApplicationEntity application) {

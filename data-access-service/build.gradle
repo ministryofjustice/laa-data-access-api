@@ -205,7 +205,35 @@ jacocoTestCoverageVerification.mustRunAfter tasks.named('integrationTest')
 tasks.register('preflightCheck') {
     description = 'Runs clean, spotlessApply, build, integrationTest and jacocoTestCoverageVerification'
     group = 'verification'
-    dependsOn clean, spotlessApply, build, tasks.named('integrationTest'), jacocoTestCoverageVerification
+    dependsOn clean, spotlessApply, build, tasks.named('integrationTest'), jacocoTestCoverageVerification, combinedCoverageReport
+}
+
+tasks.register('combinedCoverageReport', JacocoReport) {
+    description = 'Generates a combined JaCoCo coverage report for unit tests and integration tests'
+    group = 'verification'
+    dependsOn test, tasks.named('integrationTest')
+
+    executionData(
+        layout.buildDirectory.file('jacoco/test.exec'),
+        layout.buildDirectory.file('jacoco/integrationTest.exec')
+    )
+
+    sourceDirectories.from(sourceSets.main.allJava.srcDirs)
+    classDirectories.from(files(sourceSets.main.output.classesDirs).asFileTree.matching {
+        exclude '**/AccessApp.class', '**/generated/**', '**/*Generated*.*', '**/export/generated/**', '**/*_.class'
+    })
+
+    reports {
+        xml.required = true
+        xml.outputLocation = layout.buildDirectory.file('reports/jacoco/combined/combined.xml')
+        html.required = true
+        html.outputLocation = layout.buildDirectory.dir('reports/jacoco/combined/html')
+        csv.required = false
+    }
+
+    doLast {
+        logger.lifecycle("Combined coverage report written to: ${reports.html.outputLocation.get().asFile.toURI()}")
+    }
 }
 
 dependencyManagement {
