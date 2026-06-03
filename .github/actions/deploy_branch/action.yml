@@ -42,32 +42,27 @@ runs:
       id: extract_release_name
       uses: ./.github/actions/get_release_name
 
-    - name: Authenticate to the cluster
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
+    - name: Run deploy prerequisites
+      id: deploy_prerequisites
+      uses: ./.github/actions/deploy_prerequisites
       with:
         kube-cert: ${{ inputs.kube-cert }}
         kube-token: ${{ inputs.kube-token }}
         kube-cluster: ${{ inputs.kube-cluster }}
         kube-namespace: ${{ inputs.kube-namespace }}
+        ecr-role-to-assume: ${{ inputs.ecr-role-to-assume }}
+        ecr-region: ${{ inputs.ecr-region }}
 
-    - name: Assume role in Cloud Platform
-      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
-      with:
-        role-to-assume: ${{ inputs.ecr-role-to-assume }}
-        aws-region: ${{ inputs.ecr-region }}
-
-    - name: Docker login to ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
-      with:
-        mask-password: 'true'
+    - name: Get LAA IP allowlist
+      id: get_laa_ips
+      uses: ./.github/actions/get_laa_ips
 
     - name: Helm deployment of branch
       shell: bash
       env:
         ECR_REPOSITORY: ${{ inputs.ecr-repository }}
         ECR_REGION: ${{ inputs.ecr-region }}
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REGISTRY: ${{ steps.deploy_prerequisites.outputs.ecr-registry }}
         GIT_SHA: ${{ github.sha }}
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
@@ -79,7 +74,7 @@ runs:
         external_identifier="$ingress_name-$KUBE_NAMESPACE-green"
         internal_identifier="$RELEASE_NAME-data-access-api-internal-$KUBE_NAMESPACE-green"
         branch_name=${{ steps.extract_release_name.outputs.branch-name }}
-        LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
+        LAA_IPS="${{ steps.get_laa_ips.outputs.laa-ips }}"
 
         echo "Deploying commit: $GIT_SHA under release name: $RELEASE_NAME to $external_host and $internal_host..."
 
