@@ -351,7 +351,23 @@ public class CreateApplicationTest extends BaseServiceTest {
   @Test
   public void
       givenNewApplicationAndNotRoleReader_whenCreateApplication_thenThrowUnauthorizedException() {
+    // given
+    setSecurityContext(TestConstants.Roles.NO_ROLE);
+    // when
+    // then
+    assertThatExceptionOfType(AuthorizationDeniedException.class)
+        .isThrownBy(
+            () ->
+                serviceUnderTest.createApplication(
+                    DataGenerator.createDefault(ApplicationCreateRequestGenerator.class)))
+        .withMessageContaining("Access Denied");
 
+    verify(applicationRepository, times(0)).findById(any(UUID.class));
+    verify(domainEventRepository, never()).save(any());
+  }
+
+  @Test
+  public void givenNewApplicationAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
     assertThatExceptionOfType(AuthorizationDeniedException.class)
         .isThrownBy(
             () ->
