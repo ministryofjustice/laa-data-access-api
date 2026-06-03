@@ -25,8 +25,8 @@ public class FullProceedingGenerator
   public Proceeding createDefault() {
     return Proceeding.builder()
         .id(UUID.randomUUID())
-        .categoryOfLaw("FAMILY")
-        .matterType("SPECIAL_CHILDREN_ACT")
+        .categoryOfLawEnum("FAMILY")
+        .matterTypeEnum("SPECIAL_CHILDREN_ACT")
         .leadProceeding(faker.bool().bool())
         .usedDelegatedFunctions(faker.bool().bool())
         .description(faker.lorem().sentence(5))

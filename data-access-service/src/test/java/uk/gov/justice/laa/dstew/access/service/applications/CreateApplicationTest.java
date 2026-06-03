@@ -27,6 +27,8 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import tools.jackson.core.JacksonException;
+import uk.gov.justice.laa.dstew.access.convertors.CategoryOfLawTypeConvertor;
+import uk.gov.justice.laa.dstew.access.convertors.MatterTypeConvertor;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
@@ -350,24 +352,6 @@ public class CreateApplicationTest extends BaseServiceTest {
   @Test
   public void
       givenNewApplicationAndNotRoleReader_whenCreateApplication_thenThrowUnauthorizedException() {
-    // given
-    setSecurityContext(TestConstants.Roles.NO_ROLE);
-
-    // when
-    // then
-    assertThatExceptionOfType(AuthorizationDeniedException.class)
-        .isThrownBy(
-            () ->
-                serviceUnderTest.createApplication(
-                    DataGenerator.createDefault(ApplicationCreateRequestGenerator.class)))
-        .withMessageContaining("Access Denied");
-
-    verify(applicationRepository, times(0)).findById(any(UUID.class));
-    verify(domainEventRepository, never()).save(any());
-  }
-
-  @Test
-  public void givenNewApplicationAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
 
     assertThatExceptionOfType(AuthorizationDeniedException.class)
         .isThrownBy(
@@ -542,6 +526,16 @@ public class CreateApplicationTest extends BaseServiceTest {
     assertThat(actualApplicationEntity.getUsedDelegatedFunctions())
         .isEqualTo(
             applicationContentDetails.getProceedings().getFirst().getUsedDelegatedFunctions());
+    assertThat(actualApplicationEntity.getMatterType())
+        .isEqualTo(
+            new MatterTypeConvertor()
+                .lenientEnumConversion(
+                    applicationContentDetails.getProceedings().getFirst().getMatterTypeEnum()));
+    assertThat(actualApplicationEntity.getCategoryOfLaw())
+        .isEqualTo(
+            new CategoryOfLawTypeConvertor()
+                .lenientEnumConversion(
+                    applicationContentDetails.getProceedings().getFirst().getCategoryOfLawEnum()));
     assertThat(actualApplicationEntity.getApplicationContent())
         .usingRecursiveComparison()
         .ignoringCollectionOrder()

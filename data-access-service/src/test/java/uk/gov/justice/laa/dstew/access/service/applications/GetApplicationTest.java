@@ -333,11 +333,11 @@ public class GetApplicationTest extends BaseServiceTest {
         .isEqualTo(actualApplicationProceedingResponse.getDelegatedFunctionsDate().toString());
     assertThat(
             getValueFromProceedingContent(
-                "categoryOfLaw", expectedProceedingEntity.getProceedingContent()))
+                "categoryOfLawEnum", expectedProceedingEntity.getProceedingContent()))
         .isEqualToIgnoringCase(actualApplicationProceedingResponse.getCategoryOfLaw().getValue());
     assertThat(
             getValueFromProceedingContent(
-                "matterType", expectedProceedingEntity.getProceedingContent()))
+                "matterTypeEnum", expectedProceedingEntity.getProceedingContent()))
         .isEqualToIgnoringCase(actualApplicationProceedingResponse.getMatterType().getValue());
     assertThat(
             getValueFromProceedingContent(

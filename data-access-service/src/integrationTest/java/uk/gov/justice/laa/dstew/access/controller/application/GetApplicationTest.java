@@ -524,10 +524,10 @@ public class GetApplicationTest extends BaseHarnessTest {
                 .proceedingType(proceeding.getProceedingContent().get("meaning").toString())
                 .categoryOfLaw(
                     EnumParsingUtils.convertToCategoryOfLaw(
-                        (String) proceeding.getProceedingContent().get("categoryOfLaw")))
+                        (String) proceeding.getProceedingContent().get("categoryOfLawEnum")))
                 .matterType(
                     EnumParsingUtils.convertToMatterType(
-                        proceeding.getProceedingContent().get("matterType").toString()))
+                        proceeding.getProceedingContent().get("matterTypeEnum").toString()))
                 .levelOfService(
                     proceeding
                         .getProceedingContent()
