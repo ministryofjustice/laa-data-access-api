@@ -1,5 +1,6 @@
-name: "Deploy branch"
-description: 'Deploy docker image of branch to namespace with an ingress based on branch name'
+name: "Deploy branch main"
+description: 'Deploy main branch to namespace with autoscaling (no ephemeral database)'
+
 inputs:
   ecr-repository:
     description: "ECR repository"
@@ -58,7 +59,17 @@ runs:
         ecr-role-to-assume: ${{ inputs.ecr-role-to-assume }}
         ecr-repository: ${{ inputs.ecr-repository }}
 
-    - name: Helm deployment of branch
+    - name: Determine Spring profile
+      id: spring-profile
+      shell: bash
+      run: |
+        if [ "${{ inputs.app-environment }}" = "production" ]; then
+          echo "profile=main" >> $GITHUB_OUTPUT
+        else
+          echo "profile=unsecured" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Deploy main branch
       shell: bash
       env:
         ECR_REPOSITORY: ${{ inputs.ecr-repository }}
@@ -68,38 +79,22 @@ runs:
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
         RELEASE_NAME: ${{ steps.extract_release_name.outputs.release-name }}
+        SPRING_PROFILE: ${{ steps.spring-profile.outputs.profile }}
       run: |
         ingress_name="$RELEASE_NAME-data-access-api"
         external_host="$RELEASE_NAME-$KUBE_NAMESPACE.cloud-platform.service.justice.gov.uk"
         internal_host="$RELEASE_NAME-internal-$KUBE_NAMESPACE.internal-non-prod.cloud-platform.service.justice.gov.uk"
         external_identifier="$ingress_name-$KUBE_NAMESPACE-green"
         internal_identifier="$RELEASE_NAME-data-access-api-internal-$KUBE_NAMESPACE-green"
-        branch_name=${{ steps.extract_release_name.outputs.branch-name }}
         LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
 
-        echo "Deploying commit: $GIT_SHA under release name: $RELEASE_NAME to $external_host and $internal_host..."
+        echo "Deploying main branch: $RELEASE_NAME (commit $GIT_SHA)..."
+        echo "External: $external_host"
+        echo "Internal: $internal_host"
+        echo "Spring Profile: $SPRING_PROFILE"
+        echo "Autoscaling: enabled"
 
-        echo "branch name: $branch_name"
-
-        if [ "$branch_name" == "main" ]; then
-          case "${{ inputs.app-environment }}" in
-            production)
-              export SPRING_PROFILE="main"
-              ;;
-            *)
-              export SPRING_PROFILE="unsecured"
-              ;;
-          esac
-        else
-          export SPRING_PROFILE="preview"
-          # Using Bitnami legacy with PostgreSQL 17.2 (specified in values.yaml)
-          helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
-            -f .helm/bitnami_postgres/values.yaml \
-            --namespace ${KUBE_NAMESPACE} \
-            --install --wait
-        fi
-        
-
+        # Deploy main application with environment-specific profile
         helm upgrade $RELEASE_NAME .helm/data-access-api \
           --namespace ${KUBE_NAMESPACE} \
           --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
@@ -111,17 +106,18 @@ runs:
           --set ingressInternal.hosts="{$internal_host}" \
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
-          --set autoscaling.enabled="$([ "$branch_name" = "main" ] && echo true || echo false)" \
+          --set autoscaling.enabled="true" \
           --values ${VALUES_FILE} \
           --install \
           --wait
 
+        # Deploy mass-generator (no PostgreSQL reference for main)
         helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
           --namespace ${KUBE_NAMESPACE} \
           --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
           --set image.tag="${GIT_SHA}-mass-generator" \
           --set spring.profile="${SPRING_PROFILE}" \
-          --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
           --install \
           --wait
 
+        echo "Main branch deployed successfully!"

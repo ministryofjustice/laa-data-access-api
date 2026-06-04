@@ -23,7 +23,9 @@ runs:
 
     - name: Get merged release name
       id: extract_release_name_to_delete
-      uses: ./.github/actions/get_release_name_to_delete
+      uses: ./.github/actions/get-release-name
+      with:
+        event-type: 'delete'
 
     - name: Authenticate to the cluster
       uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6

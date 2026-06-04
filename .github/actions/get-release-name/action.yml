@@ -1,0 +1,61 @@
+name: "Get release name"
+description: 'Extract branch name and convert to Helm release name, supporting PR/delete/default events'
+
+inputs:
+  event-type:
+    description: "Event type to handle: 'pr', 'delete', or 'auto' to detect from context"
+    required: false
+    default: 'auto'
+
+outputs:
+  branch-name:
+    description: "Extracted branch name (for PR/default events)"
+    value: ${{ steps.get-branch.outputs.branch-name }}
+  release-name:
+    description: "Extracted release name (for PR/default events)"
+    value: ${{ steps.extract-release.outputs.release_name }}
+  merged-branch-name:
+    description: "Extracted merged branch name (for delete events)"
+    value: ${{ steps.get-branch.outputs.branch-name }}
+  release-name-to-delete:
+    description: "Extracted release name for deletion (for delete events)"
+    value: ${{ steps.extract-release.outputs.release_name }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Determine event type and extract branch
+      id: get-branch
+      shell: bash
+      run: |
+        EVENT_TYPE="${{ inputs.event-type }}"
+        
+        # Auto-detect event type if not specified
+        if [ "$EVENT_TYPE" = "auto" ]; then
+          if [ "${{ github.event_name }}" = "delete" ]; then
+            EVENT_TYPE="delete"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            EVENT_TYPE="pr"
+          else
+            EVENT_TYPE="default"
+          fi
+        fi
+        
+        # Extract branch based on event type
+        if [ "$EVENT_TYPE" = "delete" ]; then
+          BRANCH="${{ github.event.ref }}"
+        elif [ "$EVENT_TYPE" = "pr" ]; then
+          BRANCH="${{ github.head_ref }}"
+        else
+          BRANCH="${{ github.ref }}"
+          BRANCH="${BRANCH#refs/heads/}"
+        fi
+        
+        echo "branch-name=$BRANCH" >> $GITHUB_OUTPUT
+        echo "Extracted branch name: $BRANCH (event type: $EVENT_TYPE)"
+
+    - name: Extract release name from branch name
+      id: extract-release
+      uses: ./.github/actions/extract_release_name_from_branch
+      with:
+        branch_name: ${{ steps.get-branch.outputs.branch-name }}

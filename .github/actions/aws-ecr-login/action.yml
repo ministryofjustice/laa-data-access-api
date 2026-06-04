@@ -1,0 +1,33 @@
+name: "AWS ECR Login"
+description: 'Assume AWS role and authenticate to ECR'
+
+inputs:
+  ecr-region:
+    description: "ECR region"
+    required: true
+  ecr-role-to-assume:
+    description: "ECR role to assume"
+    required: true
+  ecr-repository:
+    description: "ECR repository"
+    required: true
+
+outputs:
+  registry:
+    description: "ECR registry URL"
+    value: ${{ steps.login-ecr.outputs.registry }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Assume role in Cloud Platform
+      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+      with:
+        role-to-assume: ${{ inputs.ecr-role-to-assume }}
+        aws-region: ${{ inputs.ecr-region }}
+
+    - name: Docker login to ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
+      with:
+        mask-password: 'true'

@@ -1,17 +1,11 @@
+name: Deploy to UAT, Staging, and Production
 
 on:
   workflow_dispatch:
-  pull_request:
   push:
     branches:
       - main
-name: Deploy with Helm
-# DEPRECATED: This workflow has been split into two workflows:
-#   - build-and-test-pr.yml: Runs on PRs (build, test, push docker only)
-#   - deploy-main.yml: Runs on merges to main (build, test, push, deploy UAT/staging/production)
-# 
-# This file is kept for reference only and should no longer be used.
-# Please use the new workflows instead. Can be deleted after verification period.
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -53,9 +47,6 @@ jobs:
       - name: Publish api models package
         run: |
           version=$(git rev-parse --short HEAD)
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            version=${version}-SNAPSHOT
-          fi
           ./gradlew :data-access-api:publish -Pversion=$version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -242,49 +233,16 @@ jobs:
       id-token: write
       contents: read
     outputs:
-      release-name: ${{ steps.deploy_uat_branch.outputs.release-name }}
-      branch-name: ${{ steps.deploy_uat_branch.outputs.branch-name }}
+      release-name: ${{ steps.deploy_uat_main.outputs.release-name }}
+      branch-name: ${{ steps.deploy_uat_main.outputs.branch-name }}
 
     steps:
 
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - name: Determine branch type
-        id: branch-info
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BRANCH=${{ github.head_ref }}
-          else
-            BRANCH=${{ github.ref }}
-            BRANCH="${BRANCH#refs/heads/}"
-          fi
-          
-          if [ "$BRANCH" = "main" ]; then
-            echo "is-main=true" >> $GITHUB_OUTPUT
-          else
-            echo "is-main=false" >> $GITHUB_OUTPUT
-          fi
-          echo "branch-name=$BRANCH" >> $GITHUB_OUTPUT
-
-      - name: Deploy ephemeral release (non-main branch)
-        id: deploy_uat_ephemeral
-        if: steps.branch-info.outputs.is-main != 'true'
-        uses: ./.github/actions/deploy-ephemeral-release
-        with:
-          ecr-region: ${{ vars.ECR_REGION }}
-          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-          ecr-repository: ${{ vars.ECR_REPOSITORY }}
-          kube-cert: ${{ secrets.KUBE_CERT }}
-          kube-token: ${{ secrets.KUBE_TOKEN }}
-          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
-          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-          app-environment: uat
-
-      - name: Deploy main branch
+      - name: Deploy main branch to UAT
         id: deploy_uat_main
-        if: steps.branch-info.outputs.is-main == 'true'
         uses: ./.github/actions/deploy-branch-main
         with:
           ecr-region: ${{ vars.ECR_REGION }}
@@ -296,20 +254,7 @@ jobs:
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
           app-environment: uat
 
-      - name: Consolidate deployment outputs
-        id: deploy_uat_branch
-        shell: bash
-        run: |
-          if [ "${{ steps.branch-info.outputs.is-main }}" = "true" ]; then
-            echo "release-name=${{ steps.deploy_uat_main.outputs.release-name }}" >> $GITHUB_OUTPUT
-            echo "branch-name=${{ steps.deploy_uat_main.outputs.branch-name }}" >> $GITHUB_OUTPUT
-          else
-            echo "release-name=${{ steps.deploy_uat_ephemeral.outputs.release-name }}" >> $GITHUB_OUTPUT
-            echo "branch-name=${{ steps.deploy_uat_ephemeral.outputs.branch-name }}" >> $GITHUB_OUTPUT
-          fi
-
   uat-smoke-test:
-    if: startsWith(github.head_ref || github.ref_name, 'openapi/') == false
     runs-on: ubuntu-latest
     needs:
       - deploy-uat
@@ -346,15 +291,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "$BRANCH_NAME" = "main" ]; then
-            echo "db_pod_selector=run=port-forward-pod" >> "$GITHUB_OUTPUT"
-            echo "db_secret=rds-postgresql-instance-output" >> "$GITHUB_OUTPUT"
-            echo "db_flavour=rds" >> "$GITHUB_OUTPUT"
-          else
-            echo "db_pod_selector=app.kubernetes.io/instance=${RELEASE_NAME}-postgresql,app.kubernetes.io/name=postgresql" >> "$GITHUB_OUTPUT"
-            echo "db_secret=${RELEASE_NAME}-postgresql" >> "$GITHUB_OUTPUT"
-            echo "db_flavour=bitnami" >> "$GITHUB_OUTPUT"
-          fi
+          # On main branch, use RDS; on branches, use ephemeral PostgreSQL
+          echo "db_pod_selector=run=port-forward-pod" >> "$GITHUB_OUTPUT"
+          echo "db_secret=rds-postgresql-instance-output" >> "$GITHUB_OUTPUT"
+          echo "db_flavour=rds" >> "$GITHUB_OUTPUT"
           echo "app_pod_selector=app.kubernetes.io/instance=${RELEASE_NAME},app.kubernetes.io/name=data-access-api" >> "$GITHUB_OUTPUT"
 
       - name: Port forward to Postgres
@@ -431,13 +371,13 @@ jobs:
           kubectl -n "$KUBE_NAMESPACE" delete service laa-data-access-api-uat-postgresql-portforward --ignore-not-found
 
   deploy-staging:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs:
       - build-push-docker
       - vulnerability-scan-app
       - vulnerability-scan-docker
       - deploy-uat
+      - uat-smoke-test
     environment: staging
     permissions:
       id-token: write
@@ -462,7 +402,6 @@ jobs:
           app-environment: staging
 
   deploy-production:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: deploy-staging
     environment: production

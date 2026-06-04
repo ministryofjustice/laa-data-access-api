@@ -1,5 +1,6 @@
-name: "Deploy branch"
-description: 'Deploy docker image of branch to namespace with an ingress based on branch name'
+name: "Deploy ephemeral release"
+description: 'Deploy branch with ephemeral PostgreSQL database to namespace (preview environment)'
+
 inputs:
   ecr-repository:
     description: "ECR repository"
@@ -58,7 +59,7 @@ runs:
         ecr-role-to-assume: ${{ inputs.ecr-role-to-assume }}
         ecr-repository: ${{ inputs.ecr-repository }}
 
-    - name: Helm deployment of branch
+    - name: Deploy ephemeral release with PostgreSQL
       shell: bash
       env:
         ECR_REPOSITORY: ${{ inputs.ecr-repository }}
@@ -68,38 +69,27 @@ runs:
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
         RELEASE_NAME: ${{ steps.extract_release_name.outputs.release-name }}
+        SPRING_PROFILE: "preview"
       run: |
         ingress_name="$RELEASE_NAME-data-access-api"
         external_host="$RELEASE_NAME-$KUBE_NAMESPACE.cloud-platform.service.justice.gov.uk"
         internal_host="$RELEASE_NAME-internal-$KUBE_NAMESPACE.internal-non-prod.cloud-platform.service.justice.gov.uk"
         external_identifier="$ingress_name-$KUBE_NAMESPACE-green"
         internal_identifier="$RELEASE_NAME-data-access-api-internal-$KUBE_NAMESPACE-green"
-        branch_name=${{ steps.extract_release_name.outputs.branch-name }}
         LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
 
-        echo "Deploying commit: $GIT_SHA under release name: $RELEASE_NAME to $external_host and $internal_host..."
+        echo "Deploying ephemeral release: $RELEASE_NAME (commit $GIT_SHA)..."
+        echo "External: $external_host"
+        echo "Internal: $internal_host"
 
-        echo "branch name: $branch_name"
+        # Deploy ephemeral PostgreSQL with Bitnami chart (PostgreSQL 17.2)
+        echo "Installing ephemeral PostgreSQL..."
+        helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
+          -f .helm/bitnami_postgres/values.yaml \
+          --namespace ${KUBE_NAMESPACE} \
+          --install --wait
 
-        if [ "$branch_name" == "main" ]; then
-          case "${{ inputs.app-environment }}" in
-            production)
-              export SPRING_PROFILE="main"
-              ;;
-            *)
-              export SPRING_PROFILE="unsecured"
-              ;;
-          esac
-        else
-          export SPRING_PROFILE="preview"
-          # Using Bitnami legacy with PostgreSQL 17.2 (specified in values.yaml)
-          helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
-            -f .helm/bitnami_postgres/values.yaml \
-            --namespace ${KUBE_NAMESPACE} \
-            --install --wait
-        fi
-        
-
+        # Deploy main application with preview profile
         helm upgrade $RELEASE_NAME .helm/data-access-api \
           --namespace ${KUBE_NAMESPACE} \
           --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
@@ -111,11 +101,12 @@ runs:
           --set ingressInternal.hosts="{$internal_host}" \
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
-          --set autoscaling.enabled="$([ "$branch_name" = "main" ] && echo true || echo false)" \
+          --set autoscaling.enabled="false" \
           --values ${VALUES_FILE} \
           --install \
           --wait
 
+        # Deploy mass-generator with PostgreSQL reference
         helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
           --namespace ${KUBE_NAMESPACE} \
           --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
@@ -125,3 +116,4 @@ runs:
           --install \
           --wait
 
+        echo "Ephemeral release deployed successfully!"
