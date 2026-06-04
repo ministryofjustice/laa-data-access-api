@@ -9,6 +9,14 @@ When a developer opens a Pull Request:
   - Pushes the Docker image to ECR (after scans pass)
   - Publishes a `-SNAPSHOT` API models package
 
+### Ephemeral PR Environments
+For non-main branches, an ephemeral preview environment is deployed to UAT:
+- `deploy-ephemeral-pr.yml` is triggered on PR open/sync
+- The workflow:
+  - Rebuilds and scans the app
+  - Pushes Docker images to ECR (after scans pass)
+  - Deploys an ephemeral PostgreSQL + app release via Helm
+
 ## Continuous Delivery/Deployment (CD)
 When code is merged to `main`:
 - `deploy-main.yml` is triggered

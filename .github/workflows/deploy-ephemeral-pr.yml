@@ -1,0 +1,218 @@
+name: Deploy Ephemeral PR Environment
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    # Skip OpenAPI-only branches (automated spec generation, no code changes)
+    if: startsWith(github.head_ref || github.ref_name, 'openapi/') == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Set up JDK 25
+        # JDK 25 is intentional for this project.
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with:
+          java-version: 25
+          distribution: 'corretto'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+        with:
+          gradle-home-cache-cleanup: true
+
+      - name: Build and test
+        run: ./gradlew build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Integration test
+        run: ./gradlew integrationTest
+
+# TODO: Re-enable once failing tests are fixed (tracked in backlog)
+#      - name: Test coverage verification
+#        run: ./gradlew jacocoTestCoverageVerification
+
+      - name: Publish api models package
+        run: |
+          version=$(git rev-parse --short HEAD)-SNAPSHOT
+          ./gradlew :data-access-api:publish -Pversion=$version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload service JAR artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: service-jar-${{ github.run_id }}
+          path: data-access-service/build/libs/*.jar
+          retention-days: 1
+
+      - name: Upload mass-generator JAR artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mass-generator-jar-${{ github.run_id }}
+          path: data-access-mass-generator/build/libs/*.jar
+          retention-days: 1
+
+  vulnerability-scan-app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs:
+      - build-test
+    permissions:
+      contents: read
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      SNYK_TEST_EXCLUDE: build,generated
+      SNYK_TARGET_REFERENCE: main
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Run Snyk to check app for vulnerabilities
+        uses: snyk/actions/gradle@9adf32b1121593767fc3c057af55b55db032dc04 # pinned SHA
+        with:
+          command: code test
+          args: --severity-threshold=high
+
+  vulnerability-scan-docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs:
+      - build-test
+    permissions:
+      contents: read
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Download service JAR artifact
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: service-jar-${{ github.run_id }}
+          path: data-access-service/build/libs/
+
+      - name: Build local Docker image
+        run: |
+          docker build -t data-access-service-scan .
+          docker save data-access-service-scan -o image.tar
+
+      - name: Run Snyk to scan Docker image from tarball
+        uses: snyk/actions/docker@9adf32b1121593767fc3c057af55b55db032dc04 # pinned SHA
+        with:
+          image: image.tar
+          args: --docker --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  build-push-docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs:
+      - build-test
+      - vulnerability-scan-app
+      - vulnerability-scan-docker
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Download service JAR artifact
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: service-jar-${{ github.run_id }}
+          path: data-access-service/build/libs/
+
+      - name: Build and push Docker image
+        uses: ./.github/actions/build_and_push
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+
+  build-push-mass-generator-docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs:
+      - build-test
+      - vulnerability-scan-app
+      - vulnerability-scan-docker
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Download mass-generator JAR artifact
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: mass-generator-jar-${{ github.run_id }}
+          path: data-access-mass-generator/build/libs/
+
+      - name: Configure AWS creds
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
+        with:
+          role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.ECR_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
+        id: login-ecr
+
+      - name: Build and push mass-generator Docker image
+        run: |
+          docker build --no-cache -f Dockerfile.mass-generator \
+            -t $REGISTRY/$REPOSITORY:${IMAGE_TAG}-mass-generator .
+          docker push $REGISTRY/$REPOSITORY:${IMAGE_TAG}-mass-generator
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+
+  deploy-ephemeral:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs:
+      - build-push-docker
+      - build-push-mass-generator-docker
+      - vulnerability-scan-app
+      - vulnerability-scan-docker
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Deploy ephemeral PR environment
+        id: deploy_ephemeral
+        uses: ./.github/actions/deploy-ephemeral-release
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          app-environment: uat
+
