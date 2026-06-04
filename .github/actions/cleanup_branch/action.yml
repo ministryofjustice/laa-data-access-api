@@ -37,11 +37,11 @@ runs:
 
     - name: Delete preview release
       shell: bash
-      run: helm uninstall ${{ steps.extract_release_name_to_delete.outputs.release-name-to-delete }} --namespace ${{ inputs.kube-namespace }}
+      run: helm uninstall ${{ steps.extract_release_name_to_delete.outputs.release-name-to-delete }} --namespace ${{ inputs.kube-namespace }} --ignore-not-found
 
     - name: Delete preview release's ephemeral postgres database
       shell: bash
-      run: helm uninstall ${{ steps.extract_release_name_to_delete.outputs.release-name-to-delete }}-postgresql --namespace ${{ inputs.kube-namespace }}
+      run: helm uninstall ${{ steps.extract_release_name_to_delete.outputs.release-name-to-delete }}-postgresql --namespace ${{ inputs.kube-namespace }} --ignore-not-found
 
     - name: Delete preview release's pvc (persistent volume claim)
       shell: bash
@@ -49,5 +49,4 @@ runs:
 
     - name: Delete preview release's mass-generator deployment
       shell: bash
-      run: helm uninstall ${{ steps.extract_release_name_to_delete.outputs.release-name-to-delete }}-mass-generator --namespace ${{ inputs.kube-namespace }}
-
+      run: helm uninstall ${{ steps.extract_release_name_to_delete.outputs.release-name-to-delete }}-mass-generator --namespace ${{ inputs.kube-namespace }} --ignore-not-found
