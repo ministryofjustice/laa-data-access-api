@@ -2,20 +2,15 @@
 
 ## Continuous Integration (CI)
 When a developer opens a Pull Request:
-- `build-and-test-pr.yml` is triggered
+- `deploy-ephemeral-pr.yml` is triggered
 - The workflow:
   - Builds the application and runs unit/integration tests
   - Runs Snyk vulnerability scans (code and Docker image)
-  - Pushes the Docker image to ECR (after scans pass)
-  - Publishes a `-SNAPSHOT` API models package
-
-### Ephemeral PR Environments
-For non-main branches, an ephemeral preview environment is deployed to UAT:
-- `deploy-ephemeral-pr.yml` is triggered on PR open/sync
-- The workflow:
-  - Rebuilds and scans the app
   - Pushes Docker images to ECR (after scans pass)
   - Deploys an ephemeral PostgreSQL + app release via Helm
+  - Runs smoke tests against the ephemeral release
+
+The standalone `build-and-test-pr.yml` workflow is kept for manual runs (workflow_dispatch).
 
 ## Continuous Delivery/Deployment (CD)
 When code is merged to `main`:
