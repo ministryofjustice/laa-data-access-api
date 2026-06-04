@@ -80,9 +80,9 @@ public interface ProceedingMapper {
     applicationProceedingResponse.setDelegatedFunctionsDate(
         proceeding.getUsedDelegatedFunctionsOn());
     applicationProceedingResponse.setCategoryOfLaw(
-        EnumParsingUtils.convertToCategoryOfLaw(proceeding.getCategoryOfLaw()));
+        EnumParsingUtils.convertToCategoryOfLaw(proceeding.getCategoryOfLawEnum()));
     applicationProceedingResponse.setMatterType(
-        EnumParsingUtils.convertToMatterType(proceeding.getMatterType()));
+        EnumParsingUtils.convertToMatterType(proceeding.getMatterTypeEnum()));
     applicationProceedingResponse.setLevelOfService(proceeding.getSubstantiveLevelOfServiceName());
     applicationProceedingResponse.setSubstantiveCostLimitation(
         proceeding.getSubstantiveCostLimitation());
