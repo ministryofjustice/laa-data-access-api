@@ -24,7 +24,6 @@ runs:
       with:
         ecr-region: ${{ inputs.ecr-region }}
         ecr-role-to-assume: ${{ inputs.ecr-role-to-assume }}
-        ecr-repository: ${{ inputs.ecr-repository }}
 
     - name: Extract release name
       id: extract_release_name

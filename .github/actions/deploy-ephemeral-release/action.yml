@@ -26,6 +26,10 @@ inputs:
   app-environment:
     description: "environment to which the app is being deployed [staging, production, etc]"
     required: true
+  spring-profile:
+    description: "Spring profile to use for the ephemeral deployment"
+    required: false
+    default: 'preview'
 
 outputs:
   branch-name:
@@ -57,7 +61,6 @@ runs:
       with:
         ecr-region: ${{ inputs.ecr-region }}
         ecr-role-to-assume: ${{ inputs.ecr-role-to-assume }}
-        ecr-repository: ${{ inputs.ecr-repository }}
 
     - name: Deploy ephemeral release with PostgreSQL
       shell: bash
@@ -69,25 +72,42 @@ runs:
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
         RELEASE_NAME: ${{ steps.extract_release_name.outputs.release-name }}
-        SPRING_PROFILE: "preview"
+        SPRING_PROFILE: ${{ inputs.spring-profile }}
       run: |
+        set -euo pipefail
+
         ingress_name="$RELEASE_NAME-data-access-api"
         external_host="$RELEASE_NAME-$KUBE_NAMESPACE.cloud-platform.service.justice.gov.uk"
         internal_host="$RELEASE_NAME-internal-$KUBE_NAMESPACE.internal-non-prod.cloud-platform.service.justice.gov.uk"
         external_identifier="$ingress_name-$KUBE_NAMESPACE-green"
         internal_identifier="$RELEASE_NAME-data-access-api-internal-$KUBE_NAMESPACE-green"
-        LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
+
+        # Fetch LAA IP allowlist with validation and retry
+        echo "Fetching LAA IP allowlist..."
+        LAA_IPS_RAW=$(curl -sSf --max-time 15 --retry 3 --retry-delay 5 \
+          https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt) || {
+          echo "ERROR: Failed to fetch LAA IP allowlist after 3 retries"
+          exit 1
+        }
+        if ! echo "$LAA_IPS_RAW" | grep -qE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[0-9]{1,2}'; then
+          echo "ERROR: IP allowlist response does not contain valid CIDRs"
+          exit 1
+        fi
+        LAA_IPS=$(echo "$LAA_IPS_RAW" | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
 
         echo "Deploying ephemeral release: $RELEASE_NAME (commit $GIT_SHA)..."
         echo "External: $external_host"
         echo "Internal: $internal_host"
+        echo "Spring Profile: $SPRING_PROFILE"
 
         # Deploy ephemeral PostgreSQL with Bitnami chart (PostgreSQL 17.2)
         echo "Installing ephemeral PostgreSQL..."
         helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
           -f .helm/bitnami_postgres/values.yaml \
           --namespace ${KUBE_NAMESPACE} \
-          --install --wait
+          --install \
+          --atomic \
+          --timeout 5m
 
         # Deploy main application with preview profile
         helm upgrade $RELEASE_NAME .helm/data-access-api \
@@ -104,7 +124,8 @@ runs:
           --set autoscaling.enabled="false" \
           --values ${VALUES_FILE} \
           --install \
-          --wait
+          --atomic \
+          --timeout 10m
 
         # Deploy mass-generator with PostgreSQL reference
         helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
@@ -114,6 +135,7 @@ runs:
           --set spring.profile="${SPRING_PROFILE}" \
           --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
           --install \
-          --wait
+          --atomic \
+          --timeout 10m
 
         echo "Ephemeral release deployed successfully!"

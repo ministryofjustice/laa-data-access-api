@@ -6,17 +6,21 @@ on:
     branches:
       - main
 
+# Queue deployments — do NOT cancel in-progress deployments mid-flight as that
+# could leave the environment in an inconsistent state.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
   build-test:
+    # Skip OpenAPI-only branches (automated spec generation, no code changes)
     if: startsWith(github.head_ref || github.ref_name, 'openapi/') == false
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
@@ -24,6 +28,7 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Set up JDK 25
+        # JDK 25 is intentional for this project.
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
           java-version: 25
@@ -31,6 +36,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+        with:
+          gradle-home-cache-cleanup: true
 
       - name: Build and test
         run: ./gradlew build
@@ -40,7 +47,7 @@ jobs:
       - name: Integration test
         run: ./gradlew integrationTest
 
-# disabled until failing tests are fixed
+# TODO: Re-enable once failing tests are fixed (tracked in backlog)
 #      - name: Test coverage verification
 #        run: ./gradlew jacocoTestCoverageVerification
 
@@ -54,22 +61,22 @@ jobs:
       - name: Upload service JAR artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: service-jar
+          name: service-jar-${{ github.run_id }}
           path: data-access-service/build/libs/*.jar
-          retention-days: 1
+          retention-days: 30
 
       - name: Upload mass-generator JAR artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: mass-generator-jar
+          name: mass-generator-jar-${{ github.run_id }}
           path: data-access-mass-generator/build/libs/*.jar
-          retention-days: 1
+          retention-days: 30
 
       - name: Upload checkstyle report for data-access-service
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: checkstyle-report
+          name: checkstyle-report-${{ github.run_id }}
           path: data-access-service/build/reports/checkstyle
           retention-days: 14
 
@@ -77,7 +84,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: test-report
+          name: test-report-${{ github.run_id }}
           path: data-access-service/build/reports/tests
           retention-days: 14
 
@@ -85,12 +92,13 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: jacoco-coverage-report
+          name: jacoco-coverage-report-${{ github.run_id }}
           path: data-access-service/build/reports/jacoco
           retention-days: 14
 
   vulnerability-scan-app:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs:
       - build-test
     permissions:
@@ -104,13 +112,14 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Run Snyk to check app for vulnerabilities
-        uses: snyk/actions/gradle@9adf32b1121593767fc3c057af55b55db032dc04 #master
+        uses: snyk/actions/gradle@9adf32b1121593767fc3c057af55b55db032dc04 # pinned SHA
         with:
           command: code test
           args: --severity-threshold=high
 
   vulnerability-scan-docker:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs:
       - build-test
     permissions:
@@ -121,17 +130,11 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - name: Set up JDK 25
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+      - name: Download service JAR artifact
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
-          java-version: 25
-          distribution: 'corretto'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
-
-      - name: Build app jar with gradle
-        run: ./gradlew build
+          name: service-jar-${{ github.run_id }}
+          path: data-access-service/build/libs/
 
       - name: Build local Docker image
         run: |
@@ -139,7 +142,7 @@ jobs:
           docker save data-access-service-scan -o image.tar
 
       - name: Run Snyk to scan Docker image from tarball
-        uses: snyk/actions/docker@9adf32b1121593767fc3c057af55b55db032dc04 #master
+        uses: snyk/actions/docker@9adf32b1121593767fc3c057af55b55db032dc04 # pinned SHA
         with:
           image: image.tar
           args: --docker --severity-threshold=high
@@ -149,8 +152,11 @@ jobs:
   build-push-docker:
     name: build and push docker image
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs:
       - build-test
+      - vulnerability-scan-app
+      - vulnerability-scan-docker
     permissions:
       id-token: write
       contents: read
@@ -161,22 +167,26 @@ jobs:
       - name: Download JAR artifact
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
-          name: service-jar
+          name: service-jar-${{ github.run_id }}
           path: data-access-service/build/libs/
 
-        # ---------- AWS auth (OIDC) ----------
       - name: Configure AWS creds
         uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
         with:
           role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-          aws-region: ${{  vars.ECR_REGION }}
+          aws-region: ${{ vars.ECR_REGION }}
 
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
         id: login-ecr
+
       - name: Build and push a Docker image for data-access-service
         run: |
-          docker build --no-cache -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
+          docker build --no-cache \
+            --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            --label "org.opencontainers.image.source=${{ github.repositoryUrl }}" \
+            --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -186,8 +196,11 @@ jobs:
   build-push-mass-generator-docker:
     name: build and push mass-generator docker image
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs:
       - build-test
+      - vulnerability-scan-app
+      - vulnerability-scan-docker
     permissions:
       id-token: write
       contents: read
@@ -198,7 +211,7 @@ jobs:
       - name: Download mass-generator JAR artifact
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
-          name: mass-generator-jar
+          name: mass-generator-jar-${{ github.run_id }}
           path: data-access-mass-generator/build/libs/
 
       - name: Configure AWS creds
@@ -213,7 +226,11 @@ jobs:
 
       - name: Build and push mass-generator Docker image
         run: |
-          docker build --no-cache -f Dockerfile.mass-generator \
+          docker build --no-cache \
+            --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            --label "org.opencontainers.image.source=${{ github.repositoryUrl }}" \
+            --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -f Dockerfile.mass-generator \
             -t $REGISTRY/$REPOSITORY:${IMAGE_TAG}-mass-generator .
           docker push $REGISTRY/$REPOSITORY:${IMAGE_TAG}-mass-generator
         env:
@@ -223,6 +240,7 @@ jobs:
 
   deploy-uat:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs:
       - build-push-docker
       - build-push-mass-generator-docker
@@ -256,6 +274,7 @@ jobs:
 
   uat-smoke-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs:
       - deploy-uat
     environment: uat
@@ -270,6 +289,7 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Set up JDK 25
+        # JDK 25 is intentional for this project.
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
           java-version: 25
@@ -277,6 +297,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+        with:
+          gradle-home-cache-cleanup: true
 
       - name: Authenticate to the cluster
         uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
@@ -351,7 +373,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: uat-smoke-test-report
+          name: uat-smoke-test-report-${{ github.run_id }}
           path: data-access-service/build/reports/tests/infrastructureTest
           retention-days: 14
 
@@ -360,7 +382,13 @@ jobs:
         shell: bash
         run: |
           for pid in "${DB_PORT_FORWARD_PID:-}" "${APP_PORT_FORWARD_PID:-}"; do
-            [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+            if [ -n "$pid" ]; then
+              if kill "$pid" 2>/dev/null; then
+                echo "Stopped port-forward PID $pid"
+              else
+                echo "Warning: Could not stop PID $pid (may already be stopped)"
+              fi
+            fi
           done
 
       - name: Delete in-cluster port-forward resources
@@ -372,6 +400,7 @@ jobs:
 
   deploy-staging:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs:
       - build-push-docker
       - vulnerability-scan-app
@@ -403,6 +432,7 @@ jobs:
 
   deploy-production:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: deploy-staging
     environment: production
     permissions:

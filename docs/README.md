@@ -32,3 +32,25 @@ The workflow triggers on merge to `main` when files in the `docs/` directory are
 
 1. [Enable GitHub Pages](https://docs.github.com/en/pages/quickstart) for the repo
 2. Under **Build and deployment**, select the **Source** to be **GitHub Actions**
+
+---
+
+## Additional Documentation
+
+### CI/CD & Deployment
+- **[deployment.md](./deployment.md)** — CI/CD overview and Helm deployment guide
+- **[workflow-refactor.md](./workflow-refactor.md)** — Documentation of the June 2026 GitHub Actions refactor (commit `315e1b41`)
+- **[github-actions-critical-evaluation.md](./github-actions-critical-evaluation.md)** — Critical evaluation of workflows (30 issues identified)
+- **[github-actions-remediation-checklist.md](./github-actions-remediation-checklist.md)** — Action items checklist for fixing identified issues
+- **[github-actions-quick-reference.md](./github-actions-quick-reference.md)** — Quick reference for workflow architecture and common tasks
+
+### Infrastructure & Operations
+- **[infrastructure-smoke-tests.md](./infrastructure-smoke-tests.md)** — Smoke testing guide
+- **[monitoring.md](./monitoring.md)** — Monitoring and observability
+- **[network-policies.md](./network-policies.md)** — Kubernetes network policies
+- **[secure-document-storage.md](./secure-document-storage.md)** — Document storage architecture
+
+### Development Process
+- **[conventional_commits.md](./conventional_commits.md)** — Commit message conventions
+- **[pre-commit-hooks.md](./pre-commit-hooks.md)** — Git hooks setup
+

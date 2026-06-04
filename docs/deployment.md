@@ -1,19 +1,27 @@
 # CI/CD - Deployment
 
 ## Continuous Integration (CI)
-When a developer pushes code to GitHub:
-- GitHub Actions triggers a workflow
+When a developer opens a Pull Request:
+- `build-and-test-pr.yml` is triggered
 - The workflow:
-  - Builds the application
-  - Runs unit tests and linting
-  - Pushes the Docker image to a container registry
+  - Builds the application and runs unit/integration tests
+  - Runs Snyk vulnerability scans (code and Docker image)
+  - Pushes the Docker image to ECR (after scans pass)
+  - Publishes a `-SNAPSHOT` API models package
 
 ## Continuous Delivery/Deployment (CD)
-Once the image is built and tested:
-- GitHub Actions triggers a deployment workflow
+When code is merged to `main`:
+- `deploy-main.yml` is triggered
 - The workflow:
-  - Uses Helm to upgrade or install the application in the Kubernetes cluster
-  - Passes values to the Helm chart
+  - Builds and tests the application
+  - Runs Snyk vulnerability scans (code and Docker image)
+  - Pushes Docker images to ECR (after scans pass)
+  - Deploys to **UAT** using Helm (with autoscaling enabled, no ephemeral DB)
+  - Runs smoke tests against UAT
+  - Deploys to **staging**
+  - Deploys to **production**
+
+See [workflow-refactor.md](./workflow-refactor.md) for full details of the refactor.
 
 # Helm
 

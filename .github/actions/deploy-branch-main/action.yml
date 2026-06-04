@@ -26,6 +26,10 @@ inputs:
   app-environment:
     description: "environment to which the app is being deployed [staging, production, etc]"
     required: true
+  spring-profile:
+    description: "Spring profile to use. If not set, auto-detected from app-environment (production → 'main', others → 'unsecured')"
+    required: false
+    default: ''
 
 outputs:
   branch-name:
@@ -57,16 +61,22 @@ runs:
       with:
         ecr-region: ${{ inputs.ecr-region }}
         ecr-role-to-assume: ${{ inputs.ecr-role-to-assume }}
-        ecr-repository: ${{ inputs.ecr-repository }}
 
     - name: Determine Spring profile
       id: spring-profile
       shell: bash
       run: |
-        if [ "${{ inputs.app-environment }}" = "production" ]; then
+        set -euo pipefail
+        # Use explicit override if provided, otherwise auto-detect from environment
+        if [ -n "${{ inputs.spring-profile }}" ]; then
+          echo "profile=${{ inputs.spring-profile }}" >> $GITHUB_OUTPUT
+          echo "Using overridden Spring profile: ${{ inputs.spring-profile }}"
+        elif [ "${{ inputs.app-environment }}" = "production" ]; then
           echo "profile=main" >> $GITHUB_OUTPUT
+          echo "Auto-detected Spring profile: main (production environment)"
         else
           echo "profile=unsecured" >> $GITHUB_OUTPUT
+          echo "Auto-detected Spring profile: unsecured (${{ inputs.app-environment }} environment)"
         fi
 
     - name: Deploy main branch
@@ -81,12 +91,26 @@ runs:
         RELEASE_NAME: ${{ steps.extract_release_name.outputs.release-name }}
         SPRING_PROFILE: ${{ steps.spring-profile.outputs.profile }}
       run: |
+        set -euo pipefail
+
         ingress_name="$RELEASE_NAME-data-access-api"
         external_host="$RELEASE_NAME-$KUBE_NAMESPACE.cloud-platform.service.justice.gov.uk"
         internal_host="$RELEASE_NAME-internal-$KUBE_NAMESPACE.internal-non-prod.cloud-platform.service.justice.gov.uk"
         external_identifier="$ingress_name-$KUBE_NAMESPACE-green"
         internal_identifier="$RELEASE_NAME-data-access-api-internal-$KUBE_NAMESPACE-green"
-        LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
+
+        # Fetch LAA IP allowlist with validation and retry
+        echo "Fetching LAA IP allowlist..."
+        LAA_IPS_RAW=$(curl -sSf --max-time 15 --retry 3 --retry-delay 5 \
+          https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt) || {
+          echo "ERROR: Failed to fetch LAA IP allowlist after 3 retries"
+          exit 1
+        }
+        if ! echo "$LAA_IPS_RAW" | grep -qE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[0-9]{1,2}'; then
+          echo "ERROR: IP allowlist response does not contain valid CIDRs"
+          exit 1
+        fi
+        LAA_IPS=$(echo "$LAA_IPS_RAW" | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
 
         echo "Deploying main branch: $RELEASE_NAME (commit $GIT_SHA)..."
         echo "External: $external_host"
@@ -109,7 +133,8 @@ runs:
           --set autoscaling.enabled="true" \
           --values ${VALUES_FILE} \
           --install \
-          --wait
+          --atomic \
+          --timeout 10m
 
         # Deploy mass-generator (no PostgreSQL reference for main)
         helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
@@ -118,6 +143,7 @@ runs:
           --set image.tag="${GIT_SHA}-mass-generator" \
           --set spring.profile="${SPRING_PROFILE}" \
           --install \
-          --wait
+          --atomic \
+          --timeout 10m
 
         echo "Main branch deployed successfully!"

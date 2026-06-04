@@ -28,8 +28,9 @@ runs:
       id: get-branch
       shell: bash
       run: |
+        set -euo pipefail
         EVENT_TYPE="${{ inputs.event-type }}"
-        
+
         # Auto-detect event type if not specified
         if [ "$EVENT_TYPE" = "auto" ]; then
           if [ "${{ github.event_name }}" = "delete" ]; then
@@ -40,7 +41,7 @@ runs:
             EVENT_TYPE="default"
           fi
         fi
-        
+
         # Extract branch based on event type
         if [ "$EVENT_TYPE" = "delete" ]; then
           BRANCH="${{ github.event.ref }}"
@@ -50,7 +51,7 @@ runs:
           BRANCH="${{ github.ref }}"
           BRANCH="${BRANCH#refs/heads/}"
         fi
-        
+
         echo "branch-name=$BRANCH" >> $GITHUB_OUTPUT
         echo "Extracted branch name: $BRANCH (event type: $EVENT_TYPE)"
 
@@ -59,3 +60,24 @@ runs:
       uses: ./.github/actions/extract_release_name_from_branch
       with:
         branch_name: ${{ steps.get-branch.outputs.branch-name }}
+
+    - name: Validate release name
+      id: validate-release
+      shell: bash
+      env:
+        RELEASE_NAME: ${{ steps.extract-release.outputs.release_name }}
+      run: |
+        set -euo pipefail
+        # Kubernetes resource names must be lowercase alphanumeric or hyphens, max 63 chars
+        # extract_release_name_from_branch truncates to 15 chars and lowercases, so we
+        # validate the output still conforms after any edge cases
+        if [ -z "$RELEASE_NAME" ]; then
+          echo "ERROR: Release name is empty"
+          exit 1
+        fi
+        if ! echo "$RELEASE_NAME" | grep -qE '^[a-z0-9][a-z0-9-]{0,62}[a-z0-9]$|^[a-z0-9]$'; then
+          echo "ERROR: Release name '$RELEASE_NAME' is not a valid Kubernetes resource name"
+          echo "Must be lowercase alphanumeric + hyphens, max 63 chars, no leading/trailing hyphens"
+          exit 1
+        fi
+        echo "Release name validated: $RELEASE_NAME"

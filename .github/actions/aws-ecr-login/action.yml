@@ -8,9 +8,6 @@ inputs:
   ecr-role-to-assume:
     description: "ECR role to assume"
     required: true
-  ecr-repository:
-    description: "ECR repository"
-    required: true
 
 outputs:
   registry:

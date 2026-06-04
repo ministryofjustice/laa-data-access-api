@@ -44,7 +44,6 @@ runs:
       with:
         ecr-region: ${{ inputs.ecr-region }}
         ecr-role-to-assume: ${{ inputs.ecr-role-to-assume }}
-        ecr-repository: ${{ inputs.ecr-repository }}
 
     - name: Helm deployment
       shell: bash
@@ -54,9 +53,24 @@ runs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         GIT_SHA: ${{ github.sha }}
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+        APP_ENVIRONMENT: ${{ inputs.app-environment }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
       run: |
-        LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
+        set -euo pipefail
+
+        # Fetch LAA IP allowlist with validation and retry
+        echo "Fetching LAA IP allowlist..."
+        LAA_IPS_RAW=$(curl -sSf --max-time 15 --retry 3 --retry-delay 5 \
+          https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt) || {
+          echo "ERROR: Failed to fetch LAA IP allowlist after 3 retries"
+          exit 1
+        }
+        if ! echo "$LAA_IPS_RAW" | grep -qE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[0-9]{1,2}'; then
+          echo "ERROR: IP allowlist response does not contain valid CIDRs"
+          exit 1
+        fi
+        LAA_IPS=$(echo "$LAA_IPS_RAW" | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
+
         echo "Environment: ${APP_ENVIRONMENT}"
 
         if [ "${APP_ENVIRONMENT}" = "production" ]; then
@@ -76,4 +90,5 @@ runs:
           --set massGenerator.image.tag="${GIT_SHA}-mass-generator" \
           --values ${VALUES_FILE} \
           --install \
-          --wait
+          --atomic \
+          --timeout 10m
