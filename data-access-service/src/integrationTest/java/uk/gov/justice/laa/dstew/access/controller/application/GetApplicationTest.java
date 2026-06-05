@@ -218,11 +218,11 @@ public class GetApplicationTest extends BaseHarnessTest {
                 builder.proceedingContent(
                     Map.of(
                         "meaning", "hearing",
-                        "matterType", "",
-                        "categoryOfLaw", "",
+                        "matterTypeEnum", "",
+                        "categoryOfLawEnum", "",
                         "usedDelegatedFunctionsOn", "2025-05-06",
                         "substantiveCostLimitation", "23.45",
-                        "substantiveLevelOfServiceName", "service")));
+                        "substantiveLevelOfServiceNameEnum", "service")));
 
     ApplicationEntity application =
         persistedDataGenerator.createAndPersist(
