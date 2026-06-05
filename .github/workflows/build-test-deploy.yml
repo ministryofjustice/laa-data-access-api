@@ -225,7 +225,38 @@ jobs:
           REPOSITORY: ${{ vars.ECR_REPOSITORY }}
           IMAGE_TAG: ${{ github.sha }}
 
+  deploy-ephemeral:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs:
+      - build-push-docker
+      - build-push-mass-generator-docker
+      - vulnerability-scan-app
+      - vulnerability-scan-docker
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Deploy ephemeral branch
+        uses: ./.github/actions/deploy_branch
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          app-environment: uat
+
   deploy-uat:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs:
       - build-push-docker
@@ -245,7 +276,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - name: Deploy UAT branch
+      - name: Deploy UAT
         id: deploy_uat_branch
         uses: ./.github/actions/deploy_branch
         with:
