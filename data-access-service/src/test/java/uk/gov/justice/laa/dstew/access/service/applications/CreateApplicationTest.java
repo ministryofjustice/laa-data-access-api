@@ -41,6 +41,7 @@ import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
+import uk.gov.justice.laa.dstew.access.utils.EnumParsingUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
@@ -358,7 +359,6 @@ public class CreateApplicationTest extends BaseServiceTest {
       givenNewApplicationAndNotRoleReader_whenCreateApplication_thenThrowUnauthorizedException() {
     // given
     setSecurityContext(TestConstants.Roles.NO_ROLE);
-
     // when
     // then
     assertThatExceptionOfType(AuthorizationDeniedException.class)
@@ -374,7 +374,6 @@ public class CreateApplicationTest extends BaseServiceTest {
 
   @Test
   public void givenNewApplicationAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
-
     assertThatExceptionOfType(AuthorizationDeniedException.class)
         .isThrownBy(
             () ->
@@ -557,6 +556,14 @@ public class CreateApplicationTest extends BaseServiceTest {
     assertThat(actualApplicationEntity.getUsedDelegatedFunctions())
         .isEqualTo(
             applicationContentDetails.getProceedings().getFirst().getUsedDelegatedFunctions());
+    assertThat(actualApplicationEntity.getMatterType())
+        .isEqualTo(
+            EnumParsingUtils.convertToMatterType(
+                applicationContentDetails.getProceedings().getFirst().getMatterTypeEnum()));
+    assertThat(actualApplicationEntity.getCategoryOfLaw())
+        .isEqualTo(
+            EnumParsingUtils.convertToCategoryOfLaw(
+                applicationContentDetails.getProceedings().getFirst().getCategoryOfLawEnum()));
     assertThat(actualApplicationEntity.getApplicationContent())
         .usingRecursiveComparison()
         .ignoringCollectionOrder()

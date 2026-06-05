@@ -20,8 +20,8 @@ public class ProceedingsEntityGenerator
         .proceedingContent(
             Map.of(
                 "meaning", "hearing",
-                "matterType", "SPECIAL_CHILDREN_ACT",
-                "categoryOfLaw", "Family",
+                "matterTypeEnum", "SPECIAL_CHILDREN_ACT",
+                "categoryOfLawEnum", "Family",
                 "usedDelegatedFunctionsOn", "2025-05-06",
                 "substantiveCostLimitation", "23.45",
                 "substantiveLevelOfServiceName", "service",

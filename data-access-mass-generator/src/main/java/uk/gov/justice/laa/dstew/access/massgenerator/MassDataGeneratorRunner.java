@@ -116,8 +116,8 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
 
       Proceeding leadProceeding = extractLeadProceeding(content);
       CategoryOfLaw categoryOfLaw =
-          colConvertor.lenientEnumConversion(leadProceeding.getCategoryOfLaw());
-      MatterType matterType = mtConvertor.lenientEnumConversion(leadProceeding.getMatterType());
+          colConvertor.lenientEnumConversion(leadProceeding.getCategoryOfLawEnum());
+      MatterType matterType = mtConvertor.lenientEnumConversion(leadProceeding.getMatterTypeEnum());
       boolean hasUsedDelegatedFunctions = hasUsedDelegatedFunctions(content);
 
       boolean hasDecision = faker.number().randomDouble(2, 0, 1) < DECISION_RATE;
