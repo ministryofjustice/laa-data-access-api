@@ -25,8 +25,15 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
  *     `@SpringBootTest` tests.
  * @param disableSecurity whether Spring Security is disabled (e.g. for development). Spring
  *     property: `feature.disable-security`. Environment variable: `FEATURE_DISABLE_SECURITY`.
+ * @param pocConfigmapEnabled whether Kubernetes ConfigMaps-based feature flags are enabled for
+ *     Phase 1 POC. Spring property: `feature.poc-configmap-enabled`. Environment variable:
+ *     `FEATURE_POC_CONFIGMAP_ENABLED`. Used to validate ConfigMap-based flag sourcing during manual
+ *     validation testing.
  */
 @ExcludeFromGeneratedCodeCoverage
 @ConfigurationProperties(prefix = "feature")
 public record FeatureProperties(
-    boolean enableDevToken, boolean disableJpaAuditing, boolean disableSecurity) {}
+    boolean enableDevToken,
+    boolean disableJpaAuditing,
+    boolean disableSecurity,
+    boolean pocConfigmapEnabled) {}

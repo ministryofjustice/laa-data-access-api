@@ -1,0 +1,22 @@
+# Spring profile for ConfigMaps-based feature flags POC (Phase 1 manual validation)
+#
+# This profile documents how feature flag values are sourced from Kubernetes ConfigMaps
+# during Phase 1 POC manual validation. It is not required for runtime; it is provided
+# for documentation purposes and can be enabled via SPRING_PROFILES_ACTIVE if desired.
+#
+# Feature flags are mounted as environment variables from the ConfigMap:
+# - Kubernetes ConfigMap: laa-data-access-api-flags (in POC namespace)
+# - Mounted as environment variables via Helm deployment template:
+#   FEATURE_ENABLE_DEV_TOKEN
+#   FEATURE_DISABLE_SECURITY
+#   FEATURE_DISABLE_JPAAUDITING
+#   FEATURE_POC_CONFIGMAP_ENABLED
+#
+# Pod restart (kubectl rollout restart or Lens) is required to pick up ConfigMap changes.
+# No container image rebuild is needed for flag-only changes.
+
+spring:
+  application:
+    name: data-access-service
+  jpa:
+    show-sql: false

@@ -107,18 +107,32 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
 
 {{/*
   Define feature environment variables for flags
+  
+  Phase 1 POC: Conditionally use ConfigMap for non-production namespaces if enableConfigMapFlags is true.
+  Otherwise, use Secrets (default behavior). Production always uses Secrets.
+  
+  Feature flags are defined once in .Values.featureFlags and iterated here for both ConfigMap and Secret sources.
 */}}
 {{- define "featureConfig" }}
-- name: FEATURE_ENABLE_DEV_TOKEN
+{{- if and .Values.enableConfigMapFlags (ne .Values.spring.profile "production") }}
+{{/* ConfigMap-based flags for Phase 1 POC (non-production only) */}}
+{{- range .Values.featureFlags }}
+- name: {{ .name }}
+  valueFrom:
+    configMapKeyRef:
+      name: laa-data-access-api-flags
+      key: {{ .name }}
+{{- end }}
+{{- else }}
+{{/* Secret-based flags (default and production) */}}
+{{- range .Values.featureFlags }}
+- name: {{ .name }}
   valueFrom:
     secretKeyRef:
       name: laa-data-access-api-secrets
-      key: FEATURE_ENABLE_DEV_TOKEN
-- name: FEATURE_DISABLE_SECURITY
-  valueFrom:
-    secretKeyRef:
-      name: laa-data-access-api-secrets
-      key: FEATURE_DISABLE_SECURITY
+      key: {{ .name }}
+{{- end }}
+{{- end }}
 {{- end }}
 
 {{/*

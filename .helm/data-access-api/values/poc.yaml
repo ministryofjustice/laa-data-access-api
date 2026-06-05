@@ -1,0 +1,83 @@
+# Phase 1 POC values for ConfigMaps-based feature flags
+# Use this values file to test the Phase 1 manual validation workflow
+# Deploy with: helm install/upgrade -f .helm/data-access-api/values/poc.yaml ...
+
+replicaCount: 1
+
+image:
+  repository: null
+  tag: null
+
+service_account:
+  name: laa-data-access-poc-service-account
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+
+ingressInternal:
+  enabled: false
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 512Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 1
+
+sentry:
+  enabled: false
+
+grafana:
+  enabled: false
+
+slowQueryThresholdSeconds: 5
+
+# Phase 1 POC specific configuration
+# Enable ConfigMap-based feature flags for manual validation testing
+enableConfigMapFlags: true
+
+# Spring Boot profile for POC (typically unsecured for easier local testing)
+spring:
+  profile: unsecured
+
+# AWS region for POC environment
+aws:
+  region: eu-west-1
+
+# Feature flags for Phase 1 POC
+# Defined once here and iterated in both _envs.tpl (env vars) and configmap-feature-flags.yaml (ConfigMap)
+# These flags are stored in the ConfigMap and can be manually updated via kubectl
+# Example manual update: kubectl patch configmap laa-data-access-api-flags -n <poc-namespace> -p '{"data":{"FEATURE_POC_CONFIGMAP_ENABLED":"true"}}'
+featureFlags:
+  - name: FEATURE_ENABLE_DEV_TOKEN
+    value: "false"
+  - name: FEATURE_DISABLE_JPAAUDITING
+    value: "false"
+  - name: FEATURE_DISABLE_SECURITY
+    value: "true"
+  - name: FEATURE_POC_CONFIGMAP_ENABLED
+    value: "false"
+
+# Phase 1 POC: Manual validation instructions
+# 1. Deploy POC: helm install data-access-api .helm/data-access-api -f .helm/data-access-api/values/poc.yaml -n poc-namespace
+# 2. Verify ConfigMap created: kubectl get configmap laa-data-access-api-flags -n poc-namespace
+# 3. Verify pod is running: kubectl get pods -n poc-namespace
+# 4. Port forward to pod: kubectl port-forward -n poc-namespace deployment/data-access-service 8080:8080
+# 5. Test /flags endpoint: curl http://localhost:8080/flags
+# 6. Update ConfigMap value: kubectl edit configmap laa-data-access-api-flags -n poc-namespace (change FEATURE_POC_CONFIGMAP_ENABLED to "true")
+# 7. Restart pod: kubectl rollout restart deployment/data-access-service -n poc-namespace
+# 8. Wait for rollout: kubectl rollout status deployment/data-access-service -n poc-namespace
+# 9. Test /flags endpoint again: curl http://localhost:8080/flags (should show pocConfigmapEnabled: true)
+# 10. Verify no image rebuild occurred: kubectl get pods -n poc-namespace (image tag should be the same)
+# 11. Rollback: kubectl patch configmap laa-data-access-api-flags -n poc-namespace -p '{"data":{"FEATURE_POC_CONFIGMAP_ENABLED":"false"}}'
+# 12. Restart pod again: kubectl rollout restart deployment/data-access-service -n poc-namespace

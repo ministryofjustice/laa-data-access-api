@@ -1,0 +1,37 @@
+{{/*
+  Phase 1 POC: ConfigMaps-based Feature Flags Manifest
+
+  This ConfigMap is used for Phase 1 POC validation of ConfigMaps-based feature flags.
+  Feature flags are updated manually via kubectl or Lens (Phase 1), and optionally
+  automated via GitHub Actions CI workflow in Phase 2.
+
+  Manual validation workflow:
+  1. Edit ConfigMap: kubectl edit configmap laa-data-access-api-flags -n <namespace>
+  2. Restart pod: kubectl rollout restart deployment/data-access-service -n <namespace>
+  3. Verify: kubectl port-forward -n <namespace> deployment/data-access-service 8080:8080
+             curl http://localhost:8080/flags
+  4. Pod restart picks up new ConfigMap values without image rebuild.
+
+  Rollback:
+  1. Restore previous ConfigMap: kubectl apply -f <previous-configmap>.yaml
+  2. Restart pod: kubectl rollout restart deployment/data-access-service -n <namespace>
+*/}}
+{{- if and .Values.enableConfigMapFlags (ne .Values.spring.profile "production") }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: laa-data-access-api-flags
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "data-access-api.labels" . | nindent 4 }}
+    app.kubernetes.io/component: feature-flags
+    app.kubernetes.io/stage: poc-phase-1
+  annotations:
+    description: "Phase 1 POC: Feature flags sourced from ConfigMap (manual updates via kubectl/Lens)"
+    poc-phase: "Phase 1 - Manual Validation"
+    note: "Pod restart required to pick up changes. No image rebuild needed for flag-only updates."
+data:
+{{- range .Values.featureFlags }}
+  {{ .name }}: {{ .value | quote }}
+{{- end }}
+{{- end }}
