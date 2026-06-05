@@ -21,16 +21,20 @@
     {
       "description": "Group Gradle Dependencies (excluding internal packages)",
       "matchManagers": ["gradle"],
-      "excludePackagePatterns": ["^uk\\.gov\\.justice\\.laa\\.dstew\\.access"],
       "groupName": "gradle-updates",
       "additionalBranchPrefix": "gradle-",
-      "labels": ["dependencies", "gradle"]
+      "labels": ["dependencies", "gradle"],
+      "matchPackageNames": [
+        "!/^uk\\.gov\\.justice\\.laa\\.dstew\\.access/"
+      ]
     },
     {
       "description": "Group internal Gradle packages separately",
-      "matchPackagePatterns": ["^uk\\.gov\\.justice\\.laa\\.dstew\\.access"],
       "groupName": "internal-packages",
-      "labels": ["dependencies", "gradle"]
+      "labels": ["dependencies", "gradle"],
+      "matchPackageNames": [
+        "/^uk\\.gov\\.justice\\.laa\\.dstew\\.access/"
+      ]
     },
     {
       "description": "Group GitHub Actions",
