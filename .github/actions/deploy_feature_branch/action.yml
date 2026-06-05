@@ -54,6 +54,10 @@ runs:
         ecr-role-to-assume: ${{ inputs.ecr-role-to-assume }}
         ecr-region: ${{ inputs.ecr-region }}
 
+    - name: Get LAA IP allowlist
+      id: get_laa_ips
+      uses: ./.github/actions/get_laa_ips
+
     - name: Helm deployment
       id: helm_deploy
       shell: bash
@@ -115,7 +119,7 @@ runs:
         external_host="$host_base-$KUBE_NAMESPACE.cloud-platform.service.justice.gov.uk"
         internal_host="$host_base-internal-$KUBE_NAMESPACE.internal-non-prod.cloud-platform.service.justice.gov.uk"
 
-        LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
+        LAA_IPS="${{ steps.get_laa_ips.outputs.laa-ips }}"
         echo "Environment: ${APP_ENVIRONMENT}"
 
         if [ "${APP_ENVIRONMENT}" = "production" ]; then
