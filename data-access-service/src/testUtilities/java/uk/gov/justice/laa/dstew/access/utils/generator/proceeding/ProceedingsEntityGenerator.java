@@ -24,7 +24,6 @@ public class ProceedingsEntityGenerator
                 "categoryOfLawEnum", "Family",
                 "usedDelegatedFunctionsOn", "2025-05-06",
                 "substantiveCostLimitation", "23.45",
-                "substantiveLevelOfServiceName", "service",
                 "substantiveLevelOfServiceNameEnum", "SERVICE",
                 "scopeLimitations",
                     List.of(

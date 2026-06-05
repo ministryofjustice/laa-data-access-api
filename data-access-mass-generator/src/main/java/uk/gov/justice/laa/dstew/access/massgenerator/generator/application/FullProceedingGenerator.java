@@ -39,8 +39,6 @@ public class FullProceedingGenerator
                     "Emergency protection order - discharge"))
         .usedDelegatedFunctionsOn(getRandomDate())
         .substantiveCostLimitation(faker.number().numberBetween(1000, 50000) + 0.99)
-        .substantiveLevelOfServiceName(
-            faker.options().option("Full Representation", "Limited Case Work"))
         .substantiveLevelOfServiceNameEnum(
             faker.options().option("FULL_REPRESENTATION", "LIMITED_CASE_WORK"))
         .build()

@@ -56,8 +56,6 @@ public class Proceeding implements Serializable {
 
   @Nullable private LocalDate usedDelegatedFunctionsOn;
 
-  @Nullable private String substantiveLevelOfServiceName;
-
   @Nullable private String substantiveLevelOfServiceNameEnum;
 
   @Nullable private Double substantiveCostLimitation;
