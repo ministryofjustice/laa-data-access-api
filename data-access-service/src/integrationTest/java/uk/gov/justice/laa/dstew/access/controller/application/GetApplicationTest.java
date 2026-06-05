@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
@@ -20,7 +21,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -121,11 +121,11 @@ public class GetApplicationTest extends BaseHarnessTest {
     assertNoCacheHeaders(result);
     assertOK(result);
 
-    Assertions.assertThat(actualApplication)
+    assertThat(actualApplication)
         .usingRecursiveComparison()
         .ignoringFields("lastUpdated")
         .isEqualTo(expectedApplication);
-    Assertions.assertThat(actualApplication.getLastUpdated()).isNotNull();
+    assertThat(actualApplication.getLastUpdated()).isNotNull();
   }
 
   @Test
@@ -197,14 +197,50 @@ public class GetApplicationTest extends BaseHarnessTest {
     assertNoCacheHeaders(result);
     assertOK(result);
 
-    Assertions.assertThat(response.getOpponents()).isNotNull();
-    Assertions.assertThat(response.getOpponents()).hasSize(1);
+    assertThat(response.getOpponents()).isNotNull();
+    assertThat(response.getOpponents()).hasSize(1);
 
     var mapped = response.getOpponents().get(0);
-    Assertions.assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
-    Assertions.assertThat(mapped.getFirstName()).isEqualTo("John");
-    Assertions.assertThat(mapped.getLastName()).isEqualTo("Smith");
-    Assertions.assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
+    assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
+    assertThat(mapped.getFirstName()).isEqualTo("John");
+    assertThat(mapped.getLastName()).isEqualTo("Smith");
+    assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
+  }
+
+  @Test
+  void givenApplicationWithEmptyStringEnums_whenGetApplication_thenCategoryOfLawIsNull()
+      throws Exception {
+
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder ->
+                builder.proceedingContent(
+                    Map.of(
+                        "meaning", "hearing",
+                        "matterType", "",
+                        "categoryOfLaw", "",
+                        "usedDelegatedFunctionsOn", "2025-05-06",
+                        "substantiveCostLimitation", "23.45",
+                        "substantiveLevelOfServiceName", "service")));
+
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .linkedApplications(Set.of())
+                    .proceedings(new HashSet<>(Set.of(proceeding))));
+
+    // when
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+
+    // then
+    assertOK(result);
+    assertThat(response.getProceedings()).hasSize(1);
+    assertThat(response.getProceedings().get(0).getCategoryOfLaw()).isNull();
+    assertThat(response.getProceedings().get(0).getMatterType()).isNull();
   }
 
   @Test
@@ -231,8 +267,8 @@ public class GetApplicationTest extends BaseHarnessTest {
     ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
     assertOK(result);
-    Assertions.assertThat(response.getOpponents()).isNotNull();
-    Assertions.assertThat(response.getOpponents()).isEmpty();
+    assertThat(response.getOpponents()).isNotNull();
+    assertThat(response.getOpponents()).isEmpty();
   }
 
   @Test
@@ -249,7 +285,7 @@ public class GetApplicationTest extends BaseHarnessTest {
     ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
     assertOK(result);
-    Assertions.assertThat(response.getOpponents()).isEmpty();
+    assertThat(response.getOpponents()).isEmpty();
   }
 
   @Test
@@ -282,14 +318,14 @@ public class GetApplicationTest extends BaseHarnessTest {
 
     assertOK(result);
 
-    Assertions.assertThat(response.getOpponents()).isNotNull();
-    Assertions.assertThat(response.getOpponents()).hasSize(1);
+    assertThat(response.getOpponents()).isNotNull();
+    assertThat(response.getOpponents()).hasSize(1);
 
     var mapped = response.getOpponents().get(0);
-    Assertions.assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
-    Assertions.assertThat(mapped.getFirstName()).isNull();
-    Assertions.assertThat(mapped.getLastName()).isEqualTo("Smith");
-    Assertions.assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
+    assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
+    assertThat(mapped.getFirstName()).isNull();
+    assertThat(mapped.getLastName()).isEqualTo("Smith");
+    assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
   }
 
   @Test
@@ -303,9 +339,9 @@ public class GetApplicationTest extends BaseHarnessTest {
     ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
     assertOK(result);
-    Assertions.assertThat(response.getProvider()).isNotNull();
-    Assertions.assertThat(response.getProvider().getOfficeCode()).isEqualTo("officeCode");
-    Assertions.assertThat(response.getProvider().getContactEmail()).isEqualTo("test@example.com");
+    assertThat(response.getProvider()).isNotNull();
+    assertThat(response.getProvider().getOfficeCode()).isEqualTo("officeCode");
+    assertThat(response.getProvider().getContactEmail()).isEqualTo("test@example.com");
   }
 
   @Test
@@ -322,9 +358,9 @@ public class GetApplicationTest extends BaseHarnessTest {
     ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
     assertOK(result);
-    Assertions.assertThat(response.getProvider()).isNotNull();
-    Assertions.assertThat(response.getProvider().getOfficeCode()).isEqualTo("officeCode");
-    Assertions.assertThat(response.getProvider().getContactEmail()).isNull();
+    assertThat(response.getProvider()).isNotNull();
+    assertThat(response.getProvider().getOfficeCode()).isEqualTo("officeCode");
+    assertThat(response.getProvider().getContactEmail()).isNull();
   }
 
   @Test
@@ -369,13 +405,13 @@ public class GetApplicationTest extends BaseHarnessTest {
 
     // then
     assertOK(result);
-    Assertions.assertThat(response.getProceedings()).isNotNull().hasSize(1);
+    assertThat(response.getProceedings()).isNotNull().hasSize(1);
     ApplicationProceedingResponse proceedingResponse = response.getProceedings().getFirst();
-    Assertions.assertThat(proceedingResponse.getInvolvedChildren()).isNotNull().hasSize(1);
+    assertThat(proceedingResponse.getInvolvedChildren()).isNotNull().hasSize(1);
     InvolvedChildResponse involvedChild = proceedingResponse.getInvolvedChildren().getFirst();
-    Assertions.assertThat(involvedChild.getFullName())
+    assertThat(involvedChild.getFullName())
         .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_FULL_NAME);
-    Assertions.assertThat(involvedChild.getDateOfBirth())
+    assertThat(involvedChild.getDateOfBirth())
         .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_DATE_OF_BIRTH);
   }
 
@@ -421,9 +457,9 @@ public class GetApplicationTest extends BaseHarnessTest {
 
     // then
     assertOK(result);
-    Assertions.assertThat(response.getProceedings()).isNotNull().hasSize(1);
+    assertThat(response.getProceedings()).isNotNull().hasSize(1);
     ApplicationProceedingResponse proceedingResponse = response.getProceedings().getFirst();
-    Assertions.assertThat(proceedingResponse.getInvolvedChildren()).isEmpty();
+    assertThat(proceedingResponse.getInvolvedChildren()).isEmpty();
   }
 
   @Test
@@ -452,9 +488,9 @@ public class GetApplicationTest extends BaseHarnessTest {
 
     // then
     assertOK(result);
-    Assertions.assertThat(response.getProceedings()).isNotNull().hasSize(1);
+    assertThat(response.getProceedings()).isNotNull().hasSize(1);
     ApplicationProceedingResponse proceedingResponse = response.getProceedings().getFirst();
-    Assertions.assertThat(proceedingResponse.getInvolvedChildren()).isEmpty();
+    assertThat(proceedingResponse.getInvolvedChildren()).isEmpty();
   }
 
   private ApplicationResponse createApplication(
