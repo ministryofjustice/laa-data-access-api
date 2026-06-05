@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /** Helper class for pagination validation. */
 public final class PaginationHelper {
@@ -14,6 +15,7 @@ public final class PaginationHelper {
   private static final int MIN_PAGE = 1;
   private static final int MIN_PAGE_SIZE = 1;
 
+  @ExcludeFromGeneratedCodeCoverage
   private PaginationHelper() {
     // Utility class, prevent instantiation
   }
