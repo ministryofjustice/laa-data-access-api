@@ -62,3 +62,14 @@ slowQueryThresholdSeconds: 1
 portForward:
   enabled: true
 
+enableConfigMapFlags: true
+
+featureFlags:
+  - name: FEATURE_ENABLE_DEV_TOKEN
+    value: "false"
+  - name: FEATURE_DISABLE_SECURITY
+    value: "false"
+  - name: FEATURE_DISABLE_JPAAUDITING
+    value: "false"
+  - name: FEATURE_POC_CONFIGMAP_ENABLED
+    value: "true"
