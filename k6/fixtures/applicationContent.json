@@ -47,8 +47,8 @@
   "proceedings": [
     {
       "id": "00000000-0000-0000-0000-000000000010",
-      "categoryOfLaw": "FAMILY",
-      "matterType": "SPECIAL_CHILDREN_ACT",
+      "categoryOfLawEnum": "FAMILY",
+      "matterTypeEnum": "SPECIAL_CHILDREN_ACT",
       "leadProceeding": true,
       "usedDelegatedFunctions": false,
       "description": "Application for a care order under the Children Act 1989.",
@@ -89,8 +89,8 @@
     },
     {
       "id": "00000000-0000-0000-0000-000000000020",
-      "categoryOfLaw": "FAMILY",
-      "matterType": "SPECIAL_CHILDREN_ACT",
+      "categoryOfLawEnum": "FAMILY",
+      "matterTypeEnum": "SPECIAL_CHILDREN_ACT",
       "leadProceeding": false,
       "usedDelegatedFunctions": true,
       "description": "Parental responsibility order.",
@@ -131,8 +131,8 @@
     },
     {
       "id": "00000000-0000-0000-0000-000000000030",
-      "categoryOfLaw": "FAMILY",
-      "matterType": "SPECIAL_CHILDREN_ACT",
+      "categoryOfLawEnum": "FAMILY",
+      "matterTypeEnum": "SPECIAL_CHILDREN_ACT",
       "leadProceeding": false,
       "usedDelegatedFunctions": false,
       "description": "Emergency protection order discharge.",
