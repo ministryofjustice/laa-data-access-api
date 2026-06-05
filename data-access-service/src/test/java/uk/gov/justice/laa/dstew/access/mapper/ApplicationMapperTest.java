@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,16 +21,21 @@ import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
+import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProceedingLinkedChild;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
@@ -40,6 +46,8 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEn
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationUpdateRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingMeritsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
@@ -352,6 +360,156 @@ public class ApplicationMapperTest extends BaseMapperTest {
     ApplicationResponse result = applicationMapper.toApplication(entity);
 
     assertProviderEquals(result.getProvider(), null, null);
+  }
+
+  @Test
+  void givenApplicationEntityWithNullSubmittedAt_whenToApplication_thenSubmittedAtIsNull() {
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.submittedAt(null));
+
+    ApplicationResponse result = applicationMapper.toApplication(entity);
+
+    assertThat(result.getSubmittedAt()).isNull();
+  }
+
+  @Test
+  void givenApplicationEntityWithSubmittedAt_whenToApplication_thenSubmittedAtIsMapped() {
+    Instant submittedAt = Instant.parse("2025-03-10T08:00:00Z");
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.submittedAt(submittedAt));
+
+    ApplicationResponse result = applicationMapper.toApplication(entity);
+
+    assertThat(result.getSubmittedAt())
+        .isEqualTo(OffsetDateTime.ofInstant(submittedAt, ZoneOffset.UTC));
+  }
+
+  @Test
+  void givenApplicationEntityWithNullDecision_whenToApplication_thenDecisionStatusIsNull() {
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.decision(null));
+
+    ApplicationResponse result = applicationMapper.toApplication(entity);
+
+    assertThat(result.getDecisionStatus()).isNull();
+  }
+
+  @Test
+  void givenApplicationEntityWithDecision_whenToApplication_thenDecisionStatusIsMapped() {
+    DecisionEntity decision =
+        DataGenerator.createDefault(
+            DecisionEntityGenerator.class,
+            builder -> builder.overallDecision(DecisionStatus.GRANTED));
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.decision(decision));
+
+    ApplicationResponse result = applicationMapper.toApplication(entity);
+
+    assertThat(result.getDecisionStatus()).isEqualTo(DecisionStatus.GRANTED);
+  }
+
+  @Test
+  void
+      givenApplicationWithProceedingWithNullMeritsDecision_whenToApplication_thenProceedingMeritsDecisionIsNull() {
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class, builder -> builder.meritsDecision(null));
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.proceedings(Set.of(proceeding)));
+
+    ApplicationResponse result = applicationMapper.toApplication(entity);
+
+    assertThat(result.getProceedings()).isNotNull().hasSize(1);
+    assertThat(result.getProceedings().getFirst().getMeritsDecision()).isNull();
+  }
+
+  @Test
+  void
+      givenApplicationWithProceedingWithMeritsDecision_whenToApplication_thenProceedingMeritsDecisionIsMapped() {
+    MeritsDecisionEntity meritsDecision =
+        DataGenerator.createDefault(
+            MeritsDecisionsEntityGenerator.class,
+            builder -> builder.decision(MeritsDecisionStatus.GRANTED));
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class, builder -> builder.meritsDecision(meritsDecision));
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.proceedings(Set.of(proceeding)));
+
+    ApplicationResponse result = applicationMapper.toApplication(entity);
+
+    assertThat(result.getProceedings()).isNotNull().hasSize(1);
+    assertThat(result.getProceedings().getFirst().getMeritsDecision())
+        .isEqualTo(MeritsDecisionStatus.GRANTED);
+  }
+
+  @Test
+  void givenApplicationMeritsWithNullOpponentsList_whenToApplication_thenOpponentsIsEmpty() {
+    Map<String, Object> meritsMap = new HashMap<>();
+    meritsMap.put("opponents", null);
+    Map<String, Object> content = Map.of("applicationMerits", meritsMap);
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class, builder -> builder.applicationContent(content));
+
+    ApplicationResponse result = applicationMapper.toApplication(entity);
+
+    assertThat(result.getOpponents()).isEmpty();
+  }
+
+  @Test
+  void
+      givenApplicationMeritsWithNullInvolvedChildren_whenToApplication_thenProceedingInvolvedChildrenIsEmpty() {
+    UUID applyProceedingId = UUID.randomUUID();
+    UUID childId = UUID.randomUUID();
+
+    ApplicationContent applicationContent =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            b ->
+                b.applicationMerits(
+                        ApplicationMerits.builder()
+                            .opponents(List.of())
+                            .involvedChildren(null)
+                            .build())
+                    .proceedingMerits(
+                        List.of(
+                            DataGenerator.createDefault(
+                                ProceedingMeritsGenerator.class,
+                                meritsBuilder ->
+                                    meritsBuilder
+                                        .proceedingId(applyProceedingId)
+                                        .proceedingLinkedChildren(
+                                            List.of(
+                                                ProceedingLinkedChild.builder()
+                                                    .involvedChildId(childId)
+                                                    .build()))))));
+
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+
+    ApplicationEntity entity =
+        DataGenerator.createDefault(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .proceedings(Set.of(proceeding))
+                    .applicationContent(
+                        (Map<String, Object>)
+                            objectMapper.convertValue(applicationContent, Map.class)));
+
+    ApplicationResponse result = applicationMapper.toApplication(entity);
+
+    assertThat(result.getProceedings()).isNotNull().hasSize(1);
+    assertThat(result.getProceedings().getFirst().getInvolvedChildren()).isEmpty();
   }
 
   private void assertProviderEquals(

@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
@@ -63,6 +64,22 @@ public class DomainEventMapperTest extends BaseMapperTest {
     assertThat(result.getCreatedBy()).isEqualTo(createdBy);
     assertThat(result.getDomainEventType()).isEqualTo(eventType);
     assertThat(result.getEventDescription()).isEqualTo(expectedDescription);
+  }
+
+  @ParameterizedTest
+  @EmptySource
+  @ValueSource(strings = {"   ", "\t", "\n"})
+  void givenBlankData_whenDeserialiseEventDescription_thenReturnsNull(String blankData) {
+    assertThat(
+            mapper.deserialiseEventDescription(
+                blankData, DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER))
+        .isNull();
+  }
+
+  @Test
+  void givenNullEventTypeWithNonBlankData_whenDeserialiseEventDescription_thenReturnsNull() {
+    assertThat(mapper.deserialiseEventDescription("{\"eventDescription\": \"test\"}", null))
+        .isNull();
   }
 
   @Test

@@ -289,6 +289,93 @@ class ProceedingMapperTest extends BaseMapperTest {
 
   @Test
   void
+      givenNullApplyProceedingId_whenToApplicationProceedingWithChildren_thenInvolvedChildrenIsEmpty() {
+    ProceedingEntity entity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class, builder -> builder.applyProceedingId(null));
+    InvolvedChild child = DataGenerator.createDefault(InvolvedChildGenerator.class);
+    ProceedingMerits merits = DataGenerator.createDefault(ProceedingMeritsGenerator.class);
+
+    ApplicationProceedingResponse result =
+        proceedingMapper.toApplicationProceeding(entity, List.of(merits), List.of(child));
+
+    assertThat(result).isNotNull();
+    assertThat(result.getInvolvedChildren()).isEmpty();
+  }
+
+  @Test
+  void
+      givenMatchingMeritsWithNullLinkedChildren_whenToApplicationProceedingWithChildren_thenInvolvedChildrenIsEmpty() {
+    UUID applyProceedingId = UUID.randomUUID();
+    ProceedingEntity entity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+    InvolvedChild child = DataGenerator.createDefault(InvolvedChildGenerator.class);
+    ProceedingMerits merits =
+        DataGenerator.createDefault(
+            ProceedingMeritsGenerator.class,
+            builder -> builder.proceedingId(applyProceedingId).proceedingLinkedChildren(null));
+
+    ApplicationProceedingResponse result =
+        proceedingMapper.toApplicationProceeding(entity, List.of(merits), List.of(child));
+
+    assertThat(result).isNotNull();
+    assertThat(result.getInvolvedChildren()).isEmpty();
+  }
+
+  @Test
+  void
+      givenNullAllInvolvedChildren_whenToApplicationProceedingWithChildren_thenInvolvedChildrenIsEmpty() {
+    UUID applyProceedingId = UUID.randomUUID();
+    UUID childId = UUID.randomUUID();
+    ProceedingEntity entity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+    ProceedingMerits merits =
+        DataGenerator.createDefault(
+            ProceedingMeritsGenerator.class,
+            builder ->
+                builder
+                    .proceedingId(applyProceedingId)
+                    .proceedingLinkedChildren(
+                        List.of(ProceedingLinkedChild.builder().involvedChildId(childId).build())));
+
+    ApplicationProceedingResponse result =
+        proceedingMapper.toApplicationProceeding(entity, List.of(merits), null);
+
+    assertThat(result).isNotNull();
+    assertThat(result.getInvolvedChildren()).isEmpty();
+  }
+
+  @Test
+  void
+      givenLinkedChildWithNullInvolvedChildId_whenToApplicationProceedingWithChildren_thenChildIsSkipped() {
+    UUID applyProceedingId = UUID.randomUUID();
+    ProceedingEntity entity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+    InvolvedChild child = DataGenerator.createDefault(InvolvedChildGenerator.class);
+    ProceedingMerits merits =
+        DataGenerator.createDefault(
+            ProceedingMeritsGenerator.class,
+            builder ->
+                builder
+                    .proceedingId(applyProceedingId)
+                    .proceedingLinkedChildren(
+                        List.of(ProceedingLinkedChild.builder().involvedChildId(null).build())));
+
+    ApplicationProceedingResponse result =
+        proceedingMapper.toApplicationProceeding(entity, List.of(merits), List.of(child));
+
+    assertThat(result).isNotNull();
+    assertThat(result.getInvolvedChildren()).isEmpty();
+  }
+
+  @Test
+  void
       givenMultipleMatchingChildren_whenToApplicationProceedingWithChildren_thenAllChildrenMapped() {
     UUID applyProceedingId = UUID.randomUUID();
     UUID childId1 = UUID.randomUUID();
