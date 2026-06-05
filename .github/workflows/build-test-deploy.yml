@@ -237,6 +237,9 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    outputs:
+      release-name: ${{ steps.deploy_ephemeral_branch.outputs.release-name }}
+      branch-name: ${{ steps.deploy_ephemeral_branch.outputs.branch-name }}
 
     steps:
 
@@ -244,6 +247,7 @@ jobs:
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Deploy ephemeral branch
+        id: deploy_ephemeral_branch
         uses: ./.github/actions/deploy_branch
         with:
           ecr-region: ${{ vars.ECR_REGION }}
@@ -254,6 +258,30 @@ jobs:
           kube-cluster: ${{ secrets.KUBE_CLUSTER }}
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
           app-environment: uat
+
+  ephemeral-smoke-test:
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref || github.ref_name, 'openapi/') == false
+    runs-on: ubuntu-latest
+    needs:
+      - deploy-ephemeral
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Run smoke tests
+        uses: ./.github/actions/smoke-test
+        with:
+          release-name: ${{ needs.deploy-ephemeral.outputs.release-name }}
+          branch-name: ${{ needs.deploy-ephemeral.outputs.branch-name }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          report-name: ephemeral-smoke-test-report
 
   deploy-uat:
     if: github.ref == 'refs/heads/main'
