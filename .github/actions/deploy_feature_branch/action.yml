@@ -161,6 +161,8 @@ runs:
           kubectl -n "${KUBE_NAMESPACE}" create secret generic "${PG_SECRET_NAME}" \
             --from-literal=postgres-password="${pg_password}" \
             --from-literal=password="${pg_password}"
+          # Wait for the secret to be fully available before proceeding
+          kubectl -n "${KUBE_NAMESPACE}" wait --for=condition=Synced secret/${PG_SECRET_NAME} --timeout=30s || true
         fi
 
         helm upgrade "${RELEASE_NAME}-postgresql" oci://registry-1.docker.io/bitnamicharts/postgresql \
