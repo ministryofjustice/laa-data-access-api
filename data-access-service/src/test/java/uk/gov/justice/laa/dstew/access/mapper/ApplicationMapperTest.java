@@ -260,7 +260,7 @@ public class ApplicationMapperTest extends BaseMapperTest {
     assertThat(result.getOpponents()).hasSize(1);
 
     OpponentResponse mapped = result.getOpponents().getFirst();
-    assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
+    assertThat(mapped.getOpponentType()).isEqualTo("ApplicationMeritsTask::Individual");
     assertThat(mapped.getFirstName()).isEqualTo("John");
     assertThat(mapped.getLastName()).isEqualTo("Smith");
     assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
@@ -301,7 +301,7 @@ public class ApplicationMapperTest extends BaseMapperTest {
 
     var mapped = result.getOpponents().getFirst();
 
-    assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
+    assertThat(mapped.getOpponentType()).isEqualTo("ApplicationMeritsTask::Individual");
     assertThat(mapped.getFirstName()).isNull();
     assertThat(mapped.getLastName()).isEqualTo("Smith");
     assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");

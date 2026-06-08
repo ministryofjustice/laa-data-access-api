@@ -201,7 +201,7 @@ public class GetApplicationTest extends BaseHarnessTest {
     Assertions.assertThat(response.getOpponents()).hasSize(1);
 
     var mapped = response.getOpponents().get(0);
-    Assertions.assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
+    Assertions.assertThat(mapped.getOpponentType()).isEqualTo("ApplicationMeritsTask::Individual");
     Assertions.assertThat(mapped.getFirstName()).isEqualTo("John");
     Assertions.assertThat(mapped.getLastName()).isEqualTo("Smith");
     Assertions.assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
@@ -286,7 +286,7 @@ public class GetApplicationTest extends BaseHarnessTest {
     Assertions.assertThat(response.getOpponents()).hasSize(1);
 
     var mapped = response.getOpponents().get(0);
-    Assertions.assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
+    Assertions.assertThat(mapped.getOpponentType()).isEqualTo("ApplicationMeritsTask::Individual");
     Assertions.assertThat(mapped.getFirstName()).isNull();
     Assertions.assertThat(mapped.getLastName()).isEqualTo("Smith");
     Assertions.assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
@@ -623,7 +623,7 @@ public class GetApplicationTest extends BaseHarnessTest {
             opponent -> {
               Map<String, Object> opposable = (Map<String, Object>) opponent.get("opposable");
               return OpponentResponse.builder()
-                  .opposableType(opposable.get("opposableType").toString())
+                  .opponentType(opposable.get("opposableType").toString())
                   .firstName(
                       opposable.get("firstName") != null
                           ? opposable.get("firstName").toString()

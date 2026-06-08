@@ -211,7 +211,7 @@ public interface ApplicationMapper {
         .map(
             opposableObj ->
                 OpponentResponse.builder()
-                    .opposableType(opposableObj.getOpposableType())
+                    .opponentType(opposableObj.getOpposableType())
                     .firstName(opposableObj.getFirstName())
                     .lastName(opposableObj.getLastName())
                     .organisationName(opposableObj.getName())
