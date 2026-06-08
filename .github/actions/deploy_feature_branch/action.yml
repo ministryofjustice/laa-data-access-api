@@ -29,6 +29,10 @@ inputs:
     description: "Optional Helm release name override"
     required: false
     default: ""
+  image-sha:
+    description: "Optional Docker image tag (defaults to current commit SHA)"
+    required: false
+    default: ""
   feature-flags:
     description: "Comma-separated feature flags key=value"
     required: false
