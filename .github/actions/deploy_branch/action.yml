@@ -25,9 +25,6 @@ inputs:
   app-environment:
     description: "environment to which the app is being deployed [staging, production, etc]"
     required: true
-  image-sha:
-    description: "Commit SHA-based Docker image tag to deploy (defaults to triggering commit SHA)"
-    required: false
 
 outputs:
   branch-name:
@@ -66,7 +63,7 @@ runs:
         ECR_REPOSITORY: ${{ inputs.ecr-repository }}
         ECR_REGION: ${{ inputs.ecr-region }}
         ECR_REGISTRY: ${{ steps.deploy_prerequisites.outputs.ecr-registry }}
-        GIT_SHA: ${{ inputs.image-sha != '' && inputs.image-sha || github.sha }}
+        GIT_SHA: ${{ github.sha }}
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
         RELEASE_NAME: ${{ steps.extract_release_name.outputs.release-name }}
