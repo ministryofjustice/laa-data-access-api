@@ -57,6 +57,15 @@ runs:
       id: get_laa_ips
       uses: ./.github/actions/get_laa_ips
 
+    - name: Deploy preview PostgreSQL
+      if: ${{ steps.extract_release_name.outputs.branch-name != 'main' }}
+      uses: ./.github/actions/deploy_ephemeral_postgres
+      with:
+        release-name: ${{ steps.extract_release_name.outputs.release-name }}
+        kube-namespace: ${{ inputs.kube-namespace }}
+        values-file: .helm/bitnami_postgres/values.yaml
+        cleanup-stale-pvc: "true"
+
     - name: Helm deployment of branch
       shell: bash
       env:
@@ -91,11 +100,6 @@ runs:
           esac
         else
           export SPRING_PROFILE="preview"
-          # Using Bitnami legacy with PostgreSQL 17.2 (specified in values.yaml)
-          helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
-            -f .helm/bitnami_postgres/values.yaml \
-            --namespace ${KUBE_NAMESPACE} \
-            --install --wait
         fi
         
 

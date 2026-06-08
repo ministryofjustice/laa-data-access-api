@@ -58,6 +58,29 @@ runs:
       id: get_laa_ips
       uses: ./.github/actions/get_laa_ips
 
+    - name: Resolve release name
+      id: resolve_release_name
+      shell: bash
+      env:
+        GIT_SHA: ${{ github.sha }}
+        RELEASE_NAME_OVERRIDE: ${{ inputs.release-name-override }}
+      run: |
+        set -euo pipefail
+        if [ -n "${RELEASE_NAME_OVERRIDE}" ]; then
+          RELEASE_NAME="${RELEASE_NAME_OVERRIDE}"
+        else
+          RELEASE_NAME="feat-env-${GIT_SHA:0:7}"
+        fi
+        echo "release-name=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"
+
+    - name: Deploy preview PostgreSQL
+      uses: ./.github/actions/deploy_ephemeral_postgres
+      with:
+        release-name: ${{ steps.resolve_release_name.outputs.release-name }}
+        kube-namespace: ${{ inputs.kube-namespace }}
+        values-file: .helm/bitnami_postgres/values.yaml
+        cleanup-stale-pvc: "true"
+
     - name: Helm deployment
       id: helm_deploy
       shell: bash
@@ -69,16 +92,10 @@ runs:
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
         APP_ENVIRONMENT: ${{ inputs.app-environment }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
-        RELEASE_NAME_OVERRIDE: ${{ inputs.release-name-override }}
+        RELEASE_NAME: ${{ steps.resolve_release_name.outputs.release-name }}
         FEATURE_FLAGS: ${{ inputs.feature-flags }}
       run: |
         set -euo pipefail
-
-        if [ -n "${RELEASE_NAME_OVERRIDE}" ]; then
-          RELEASE_NAME="${RELEASE_NAME_OVERRIDE}"
-        else
-          RELEASE_NAME="laa-data-access-api"
-        fi
 
         # Mirror Helm _helpers.tpl fullname logic:
         # if release name contains "data-access-api", fullname = release name
@@ -122,11 +139,9 @@ runs:
         LAA_IPS="${{ steps.get_laa_ips.outputs.laa-ips }}"
         echo "Environment: ${APP_ENVIRONMENT}"
 
-        if [ "${APP_ENVIRONMENT}" = "production" ]; then
-          SPRING_PROFILE="main"
-        else
-          SPRING_PROFILE="preview"
-        fi
+        
+        SPRING_PROFILE="preview"
+        
 
         FEATURE_FLAG_ARGS=()
         if [ -n "${FEATURE_FLAGS}" ]; then
@@ -153,11 +168,6 @@ runs:
           done
         fi
 
-        helm upgrade "${RELEASE_NAME}-postgresql" oci://registry-1.docker.io/bitnamicharts/postgresql \
-          -f .helm/bitnami_postgres/values.yaml \
-          --namespace ${KUBE_NAMESPACE} \
-          --install \
-          --wait
 
         helm upgrade ${RELEASE_NAME} .helm/data-access-api \
           --namespace ${KUBE_NAMESPACE} \
@@ -171,19 +181,8 @@ runs:
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
           --set autoscaling.enabled=false \
-          --set massGenerator.image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
-          --set massGenerator.image.tag="${GIT_SHA}-mass-generator" \
           "${FEATURE_FLAG_ARGS[@]}" \
           --values ${VALUES_FILE} \
-          --install \
-          --wait
-
-        helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
-          --namespace ${KUBE_NAMESPACE} \
-          --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
-          --set image.tag="${GIT_SHA}-mass-generator" \
-          --set spring.profile="${SPRING_PROFILE}" \
-          --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
           --install \
           --wait
 
