@@ -77,7 +77,7 @@ runs:
         if [ -n "${RELEASE_NAME_OVERRIDE}" ]; then
           RELEASE_NAME="${RELEASE_NAME_OVERRIDE}"
         else
-          RELEASE_NAME="laa-data-access-api"
+          RELEASE_NAME="feat-env-${GIT_SHA:0:7}"
         fi
 
         # Mirror Helm _helpers.tpl fullname logic:
@@ -122,11 +122,9 @@ runs:
         LAA_IPS="${{ steps.get_laa_ips.outputs.laa-ips }}"
         echo "Environment: ${APP_ENVIRONMENT}"
 
-        if [ "${APP_ENVIRONMENT}" = "production" ]; then
-          SPRING_PROFILE="main"
-        else
-          SPRING_PROFILE="preview"
-        fi
+        
+        SPRING_PROFILE="preview"
+        
 
         FEATURE_FLAG_ARGS=()
         if [ -n "${FEATURE_FLAGS}" ]; then
@@ -153,24 +151,10 @@ runs:
           done
         fi
 
-        # Keep a stable Postgres password secret per RC release so retries/rollbacks
-        # do not drift from database credentials stored on persistent volumes.
-        PG_SECRET_NAME="${RELEASE_NAME}-postgresql"
-        if ! kubectl -n "${KUBE_NAMESPACE}" get secret "${PG_SECRET_NAME}" >/dev/null 2>&1; then
-          pg_password=$(openssl rand -base64 24 | tr -d '\n')
-          kubectl -n "${KUBE_NAMESPACE}" create secret generic "${PG_SECRET_NAME}" \
-            --from-literal=postgres-password="${pg_password}" \
-            --from-literal=password="${pg_password}"
-          # Wait for the secret to be fully available before proceeding
-          kubectl -n "${KUBE_NAMESPACE}" wait --for=condition=Synced secret/${PG_SECRET_NAME} --timeout=30s || true
-        fi
-
-        helm upgrade "${RELEASE_NAME}-postgresql" oci://registry-1.docker.io/bitnamicharts/postgresql \
+        helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
           -f .helm/bitnami_postgres/values.yaml \
-          --set auth.existingSecret="${PG_SECRET_NAME}" \
           --namespace ${KUBE_NAMESPACE} \
-          --install \
-          --wait
+          --install --wait
 
         helm upgrade ${RELEASE_NAME} .helm/data-access-api \
           --namespace ${KUBE_NAMESPACE} \
@@ -184,19 +168,8 @@ runs:
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
           --set autoscaling.enabled=false \
-          --set massGenerator.image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
-          --set massGenerator.image.tag="${GIT_SHA}-mass-generator" \
           "${FEATURE_FLAG_ARGS[@]}" \
           --values ${VALUES_FILE} \
-          --install \
-          --wait
-
-        helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
-          --namespace ${KUBE_NAMESPACE} \
-          --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
-          --set image.tag="${GIT_SHA}-mass-generator" \
-          --set spring.profile="${SPRING_PROFILE}" \
-          --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
           --install \
           --wait
 
