@@ -23,8 +23,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChild;
-import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
+import uk.gov.justice.laa.dstew.access.model.Opposable;
 import uk.gov.justice.laa.dstew.access.model.ProceedingMerits;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 
@@ -191,31 +191,26 @@ public interface ApplicationMapper {
   }
 
   private static List<OpponentResponse> extractOpponents(ApplicationContent applicationContent) {
-
-    if (applicationContent == null) {
+    if (applicationContent == null || applicationContent.getApplicationMerits() == null) {
       return Collections.emptyList();
     }
 
-    ApplicationMerits meritsObj = applicationContent.getApplicationMerits();
-    if (meritsObj == null) {
+    ApplicationMerits merits = applicationContent.getApplicationMerits();
+    if (merits.getOpponents() == null) {
       return Collections.emptyList();
     }
 
-    List<OpponentDetails> opponentsList = meritsObj.getOpponents();
-    if (opponentsList == null) {
-      return Collections.emptyList();
-    }
-
-    return opponentsList.stream()
-        .map(OpponentDetails::getOpposable)
+    return merits.getOpponents().stream()
         .map(
-            opposableObj ->
-                OpponentResponse.builder()
-                    .opponentType(opposableObj.getOpposableType())
-                    .firstName(opposableObj.getFirstName())
-                    .lastName(opposableObj.getLastName())
-                    .organisationName(opposableObj.getName())
-                    .build())
+            opponentDetails -> {
+              Opposable opposable = opponentDetails.getOpposable();
+              return OpponentResponse.builder()
+                  .opponentType(opponentDetails.getOpposableType())
+                  .firstName(opposable != null ? opposable.getFirstName() : null)
+                  .lastName(opposable != null ? opposable.getLastName() : null)
+                  .organisationName(opposable != null ? opposable.getName() : null)
+                  .build();
+            })
         .toList();
   }
 }

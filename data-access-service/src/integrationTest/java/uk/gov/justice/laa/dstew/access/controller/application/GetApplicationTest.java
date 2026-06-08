@@ -262,12 +262,12 @@ public class GetApplicationTest extends BaseHarnessTest {
 
     Map<String, Object> opposable =
         Map.of(
-            "opposableType", "ApplicationMeritsTask::Individual",
             // firstName intentionally missing
             "lastName", "Smith",
             "name", "Acme Ltd");
 
-    Map<String, Object> opponent = Map.of("opposable", opposable);
+    Map<String, Object> opponent =
+        Map.of("opposableType", "ApplicationMeritsTask::Individual", "opposable", opposable);
 
     Map<String, Object> merits = Map.of("opponents", List.of(opponent));
 
@@ -623,7 +623,7 @@ public class GetApplicationTest extends BaseHarnessTest {
             opponent -> {
               Map<String, Object> opposable = (Map<String, Object>) opponent.get("opposable");
               return OpponentResponse.builder()
-                  .opponentType(opposable.get("opposableType").toString())
+                  .opponentType(opponent.get("opposableType").toString())
                   .firstName(
                       opposable.get("firstName") != null
                           ? opposable.get("firstName").toString()
