@@ -83,7 +83,8 @@ public interface ProceedingMapper {
         EnumParsingUtils.convertToCategoryOfLaw(proceeding.getCategoryOfLawEnum()));
     applicationProceedingResponse.setMatterType(
         EnumParsingUtils.convertToMatterType(proceeding.getMatterTypeEnum()));
-    applicationProceedingResponse.setLevelOfService(proceeding.getSubstantiveLevelOfServiceName());
+    applicationProceedingResponse.setLevelOfService(
+        proceeding.getSubstantiveLevelOfServiceNameEnum());
     applicationProceedingResponse.setSubstantiveCostLimitation(
         proceeding.getSubstantiveCostLimitation());
     if (proceeding.getScopeLimitations() != null) {
