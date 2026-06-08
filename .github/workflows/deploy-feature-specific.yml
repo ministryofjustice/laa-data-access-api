@@ -196,7 +196,6 @@ jobs:
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
           app-environment: rc-feature
           release-name-override: ${{ needs.check-label.outputs.release-name-override }}
-          image-sha: ${{ inputs.image-sha }}
           feature-flags: ${{ needs.check-label.outputs.feature-flags }}
 
   smoke-test-rc-feature:
