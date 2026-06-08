@@ -153,8 +153,19 @@ runs:
           done
         fi
 
+        # Keep a stable Postgres password secret per RC release so retries/rollbacks
+        # do not drift from database credentials stored on persistent volumes.
+        PG_SECRET_NAME="${RELEASE_NAME}-postgresql"
+        if ! kubectl -n "${KUBE_NAMESPACE}" get secret "${PG_SECRET_NAME}" >/dev/null 2>&1; then
+          pg_password=$(openssl rand -base64 24 | tr -d '\n')
+          kubectl -n "${KUBE_NAMESPACE}" create secret generic "${PG_SECRET_NAME}" \
+            --from-literal=postgres-password="${pg_password}" \
+            --from-literal=password="${pg_password}"
+        fi
+
         helm upgrade "${RELEASE_NAME}-postgresql" oci://registry-1.docker.io/bitnamicharts/postgresql \
           -f .helm/bitnami_postgres/values.yaml \
+          --set auth.existingSecret="${PG_SECRET_NAME}" \
           --namespace ${KUBE_NAMESPACE} \
           --install \
           --wait
