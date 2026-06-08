@@ -10,9 +10,6 @@ on:
         description: 'Comma-separated feature flags as key=value pairs (e.g. schemaV2=true,newEndpoint=false). Leave blank for no flags.'
         required: false
         default: 'exampleFeatureFlag=true'
-      image-sha:
-        description: "Commit SHA-based Docker image tag to deploy (defaults to triggering commit SHA)"
-        required: false
   pull_request:
     types:
       - labeled
