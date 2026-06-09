@@ -86,9 +86,13 @@ allprojects {
         }
 
         // Add global force for Spring Security CVE fix
+        // Add global force for Spring Framework vulnerabilities
         conf.resolutionStrategy {
             force 'org.springframework.security:spring-security-config:7.0.5'
             force 'org.springframework.security:spring-security-web:7.0.5'
+            force 'org.springframework:spring-expression:7.0.8'
+            force 'org.springframework:spring-web:7.0.8'
+            force 'org.springframework:spring-webmvc:7.0.8'
         }
     }
 }

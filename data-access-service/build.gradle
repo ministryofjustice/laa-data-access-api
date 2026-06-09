@@ -232,9 +232,11 @@ tasks.register('preflightCheck') {
 dependencyManagement {
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     // Fix for Netty vulnerabilities - updated to 4.2.15.Final
+    // Fix for Spring Framework vulnerabilities - updated to 7.0.8
     imports {
         mavenBom 'tools.jackson:jackson-bom:3.1.1'
         mavenBom 'io.netty:netty-bom:4.2.15.Final'
+        mavenBom 'org.springframework:spring-framework-bom:7.0.8'
     }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
