@@ -18,7 +18,8 @@ configurations.all {
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
-    // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
+    // Fix for Spring Framework vulnerabilities - updated to 7.0.8
+    // Fix for Netty vulnerabilities SNYK-JAVA-IONETTY-17254117 and SNYK-JAVA-IONETTY-17254120 - updated to 4.2.15.Final
     resolutionStrategy {
         force 'com.fasterxml.jackson.core:jackson-core:2.21.2'
         force 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
@@ -27,6 +28,9 @@ configurations.all {
         force 'tools.jackson:jackson-bom:3.1.1'
         force 'org.springframework.security:spring-security-config:7.0.5'
         force 'org.springframework.security:spring-security-web:7.0.5'
+        force 'org.springframework:spring-expression:7.0.8'
+        force 'org.springframework:spring-web:7.0.8'
+        force 'org.springframework:spring-webmvc:7.0.8'
     }
 }
 
@@ -227,9 +231,10 @@ tasks.register('preflightCheck') {
 
 dependencyManagement {
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
+    // Fix for Netty vulnerabilities - updated to 4.2.15.Final
     imports {
         mavenBom 'tools.jackson:jackson-bom:3.1.1'
-        mavenBom 'io.netty:netty-bom:4.2.13.Final'
+        mavenBom 'io.netty:netty-bom:4.2.15.Final'
     }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
@@ -278,9 +283,11 @@ dependencies {
     }
 
     //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789756
-    implementation 'io.netty:netty-codec-http:4.2.13.Final'
+    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-17254117 (Allocation of Resources Without Limits or Throttling)
+    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-17254120 (Incorrect Comparison)
+    implementation 'io.netty:netty-codec-http:4.2.15.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789758
-    implementation 'io.netty:netty-codec-http2:4.2.13.Final'
+    implementation 'io.netty:netty-codec-http2:4.2.15.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-16643259
     implementation 'org.apache.tomcat.embed:tomcat-embed-core:11.0.22'
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
