@@ -36,7 +36,6 @@ public class MockOAuth2Container extends GenericContainer<MockOAuth2Container> {
     String configPath =
         Paths.get(projectRoot, "..", "infra", "mock-oauth2", "config.json").toString();
     withCopyFileToContainer(MountableFile.forHostPath(configPath), CONFIG_CONTAINER_PATH);
-
     waitingFor(Wait.forHttp("/entra/.well-known/openid-configuration").forStatusCode(200));
   }
 

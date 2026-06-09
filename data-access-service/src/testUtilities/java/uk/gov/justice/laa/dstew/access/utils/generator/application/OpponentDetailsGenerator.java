@@ -14,6 +14,9 @@ public class OpponentDetailsGenerator
 
   @Override
   public OpponentDetails createDefault() {
-    return OpponentDetails.builder().opposable(opposableGenerator.createDefault()).build();
+    return OpponentDetails.builder()
+        .opposableType("ApplicationMeritsTask::Individual")
+        .opposable(opposableGenerator.createDefault())
+        .build();
   }
 }

@@ -16,15 +16,15 @@ public class ProceedingGenerator extends BaseGenerator<Proceeding, Proceeding.Pr
   public Proceeding createDefault() {
     return Proceeding.builder()
         .id(UUID.randomUUID())
-        .categoryOfLaw("Family")
-        .matterType("SPECIAL_CHILDREN_ACT")
+        .categoryOfLawEnum("Family")
+        .matterTypeEnum("SPECIAL_CHILDREN_ACT")
         .leadProceeding(true)
         .usedDelegatedFunctions(true)
         .description("Proceeding description")
         .meaning("hearing")
         .usedDelegatedFunctionsOn(LocalDate.parse("2025-05-06"))
-        .substantiveCostLimitation("23.45")
-        .substantiveLevelOfServiceName("service")
+        .substantiveCostLimitation(23.45)
+        .substantiveLevelOfServiceNameEnum("SERVICE")
         .scopeLimitations(
             List.of(
                 Map.of(

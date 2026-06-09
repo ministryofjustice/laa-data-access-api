@@ -86,13 +86,14 @@ public class ApplicationContentParserService {
     if (Objects.isNull(leadProceeding)) {
       return null;
     }
-    return matterTypeDeserializer.lenientEnumConversion(leadProceeding.getMatterType());
+    return matterTypeDeserializer.lenientEnumConversion(leadProceeding.getMatterTypeEnum());
   }
 
   private static CategoryOfLaw getCategoryOfLaw(Proceeding leadProceeding) {
     if (Objects.isNull(leadProceeding)) {
       return null;
     }
-    return categoryOfLawTypeDeserializer.lenientEnumConversion(leadProceeding.getCategoryOfLaw());
+    return categoryOfLawTypeDeserializer.lenientEnumConversion(
+        leadProceeding.getCategoryOfLawEnum());
   }
 }

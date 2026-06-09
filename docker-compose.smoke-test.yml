@@ -28,7 +28,7 @@ services:
       SERVER_PORT: 9999
       JSON_CONFIG_PATH: /etc/mock-oauth2/config.json
     volumes:
-      - ./infra/mock-oauth2/config.json:/etc/mock-oauth2/config.json:ro
+      - ./infra/mock-oauth2/config-smoke-test.json:/etc/mock-oauth2/config.json:ro
     healthcheck:
       # navikt/mock-oauth2-server uses a distroless JVM base image (no shell, no wget/curl).
       # CMD-SHELL is unavailable, so we probe the HTTP endpoint via /dev/tcp in bash-free sh.

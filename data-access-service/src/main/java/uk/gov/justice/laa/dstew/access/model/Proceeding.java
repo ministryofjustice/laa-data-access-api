@@ -38,9 +38,9 @@ public class Proceeding implements Serializable {
   @JsonProperty("id")
   private UUID id;
 
-  private @Nullable String categoryOfLaw;
+  private @Nullable String categoryOfLawEnum;
 
-  private @Nullable String matterType;
+  private @Nullable String matterTypeEnum;
 
   private @Nullable Boolean usedDelegatedFunctions;
 
@@ -56,9 +56,9 @@ public class Proceeding implements Serializable {
 
   @Nullable private LocalDate usedDelegatedFunctionsOn;
 
-  @Nullable private String substantiveLevelOfServiceName;
+  @Nullable private String substantiveLevelOfServiceNameEnum;
 
-  @Nullable private String substantiveCostLimitation;
+  @Nullable private Double substantiveCostLimitation;
 
   @Nullable private List<Map<String, Object>> scopeLimitations;
 

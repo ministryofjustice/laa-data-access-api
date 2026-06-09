@@ -1,8 +1,14 @@
+You can also use the Swagger UI to execute endpoints, which is described below in the
+[API documentation](#api-documentation) section.
+curl -X GET "http://localhost:8080/applications" -H "accept: application/json" -H "Authorization: Bearer {token}"
+```
+You can use a tool such as Postman or curl to execute endpoints. For example, to execute the `GET /applications`
+endpoint using curl:
 # laa-data-access-api
 
 ## Overview
 
-Source code for LAA Digital's Access Data Stewardship API, owned by the Access Data Stewardship team..
+Source code for LAA Digital's Access Data Stewardship API, owned by the Access Data Stewardship team.
 
 This API will provide a trusted API source of truth for the Civil Applications and Civil Decide projects for data
 related to applications, proceedings, delegated functions, scope limitations, cost limitations and level of service.
@@ -10,7 +16,7 @@ related to applications, proceedings, delegated functions, scope limitations, co
 ### Add GitHub Token
 Generate a Github PAT (Personal Access Token) to access the required plugin, via https://github.com/settings/tokens
 
-Specify the Note field, e.g. “Token to allow access to LAA Gradle plugin”
+Specify the Note field, e.g. “Token to allow access to LAA Gradle plugin”.
 
 If you don't already have one, create a `gradle.properties` file in your home directory at `~/.gradle/gradle.properties`.
 
@@ -257,7 +263,6 @@ export RELEASE_NAME=<release name for the pod - you can find this in the deploym
 
 Once the command is complete, exit the shell and the pod will be scaled back to 0. 
 You can check the database to see the generated data or use swagger to execute endpoints.
-
 ## Additional information
 
 ### Libraries used

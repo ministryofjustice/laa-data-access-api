@@ -9,7 +9,7 @@
           "requestParam": "grant_type",
           "match": "client_credentials",
           "claims": {
-            "sub": "test-user",
+            "sub": "local-dev-user",
             "aud": ["laa-data-access-api"],
             "roles": ["LAA_CASEWORKER"],
             "LAA_APP_ROLES": "LAA_CASEWORKER"

@@ -81,7 +81,7 @@ public abstract class BaseHarnessTest {
   /** Token factory for minting real signed JWTs from the mock OAuth2 server. */
   protected TestTokenFactory tokenFactory;
 
-  private String currentToken;
+  protected String currentToken;
   private boolean omitToken = false;
 
   @Order(1)
@@ -161,7 +161,7 @@ public abstract class BaseHarnessTest {
 
   // ── Auth helpers ──────────────────────────────────────────────────────────
 
-  private String freshCaseworkerToken() {
+  protected String freshCaseworkerToken() {
     return HarnessMode.isInfrastructure()
         ? SmokeTestTokenProvider.getCaseworkerToken()
         : tokenFactory.caseworkerToken();

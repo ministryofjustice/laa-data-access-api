@@ -25,8 +25,8 @@ public class FullProceedingGenerator
   public Proceeding createDefault() {
     return Proceeding.builder()
         .id(UUID.randomUUID())
-        .categoryOfLaw("FAMILY")
-        .matterType("SPECIAL_CHILDREN_ACT")
+        .categoryOfLawEnum("FAMILY")
+        .matterTypeEnum("SPECIAL_CHILDREN_ACT")
         .leadProceeding(faker.bool().bool())
         .usedDelegatedFunctions(faker.bool().bool())
         .description(faker.lorem().sentence(5))
@@ -38,9 +38,9 @@ public class FullProceedingGenerator
                     "Parental responsibility",
                     "Emergency protection order - discharge"))
         .usedDelegatedFunctionsOn(getRandomDate())
-        .substantiveCostLimitation(faker.number().numberBetween(1000, 50000) + ".0")
-        .substantiveLevelOfServiceName(
-            faker.options().option("Full Representation", "Limited Case Work"))
+        .substantiveCostLimitation(faker.number().numberBetween(1000, 50000) + 0.99)
+        .substantiveLevelOfServiceNameEnum(
+            faker.options().option("FULL_REPRESENTATION", "LIMITED_CASE_WORK"))
         .build()
         .putAdditionalProperty("legalAidApplicationId", UUID.randomUUID().toString())
         .putAdditionalProperty("proceedingCaseId", faker.number().numberBetween(50000000, 59999999))

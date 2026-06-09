@@ -1,5 +1,8 @@
 package uk.gov.justice.laa.dstew.access.utils.harness;
 
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
+
+import com.github.tomakehurst.wiremock.WireMockServer;
 import no.nav.security.mock.oauth2.MockOAuth2Server;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -8,6 +11,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import org.testcontainers.containers.PostgreSQLContainer;
 import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.Constants;
+import uk.gov.justice.laa.dstew.access.config.TokenTestConfiguration;
 
 public class IntegrationTestContextProvider implements TestContextProvider {
 
@@ -16,9 +20,12 @@ public class IntegrationTestContextProvider implements TestContextProvider {
 
   private static final MockOAuth2Server mockOAuth2Server = new MockOAuth2Server();
 
+  private static final WireMockServer wireMockServer = new WireMockServer(options().dynamicPort());
+
   static {
     postgreSQLContainer.start();
     mockOAuth2Server.start();
+    wireMockServer.start();
   }
 
   private final ConfigurableApplicationContext applicationContext;
@@ -30,7 +37,7 @@ public class IntegrationTestContextProvider implements TestContextProvider {
     String jwksUrl = mockOAuth2Server.jwksUrl("entra").toString();
 
     applicationContext =
-        new SpringApplicationBuilder(AccessApp.class)
+        new SpringApplicationBuilder(AccessApp.class, TokenTestConfiguration.class)
             .web(org.springframework.boot.WebApplicationType.SERVLET)
             .run(
                 "--server.port=0",
@@ -39,7 +46,13 @@ public class IntegrationTestContextProvider implements TestContextProvider {
                 "--spring.datasource.password=" + postgreSQLContainer.getPassword(),
                 "--spring.security.oauth2.resourceserver.jwt.issuer-uri=" + issuerUrl,
                 "--spring.security.oauth2.resourceserver.jwt.jwk-set-uri=" + jwksUrl,
-                "--spring.security.oauth2.resourceserver.jwt.audience=laa-data-access-api");
+                "--spring.security.oauth2.resourceserver.jwt.audience=laa-data-access-api",
+                "--feature.enable-dev-token=true",
+                "--feature.disable-security=false",
+                "--app.sds-api.url=http://localhost:" + wireMockServer.port(),
+                "--app.sds-api.bucket-name=test-bucket",
+                "--app.sds-api.client-registration-id=sds-test",
+                "--app.sds-api.principal-name=sds-service");
 
     int port =
         applicationContext
@@ -60,7 +73,11 @@ public class IntegrationTestContextProvider implements TestContextProvider {
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T> T getBean(Class<T> type) {
+    if (WireMockServer.class.equals(type)) {
+      return type.cast(wireMockServer);
+    }
     return applicationContext.getBean(type);
   }
 
