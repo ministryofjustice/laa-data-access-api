@@ -84,17 +84,9 @@ public class MakeDecisionService {
     CertificateEntity certificate =
         certificateRepository
             .findByApplicationId(applicationId)
-            .map(
-                existing -> {
-                  existing.setCertificateContent(request.getCertificate());
-                  return existing;
-                })
-            .orElseGet(
-                () ->
-                    CertificateEntity.builder()
-                        .applicationId(applicationId)
-                        .certificateContent(request.getCertificate())
-                        .build());
+            .orElseGet(() -> CertificateEntity.builder().applicationId(applicationId).build());
+
+    certificate.setCertificateContent(request.getCertificate());
     certificateRepository.save(certificate);
 
     saveDomainEventService.saveMakeDecisionDomainEvent(
@@ -156,31 +148,31 @@ public class MakeDecisionService {
 
     if (notLinkedIds.isEmpty()) {
       return linkedMap;
-    } else {
-      Set<UUID> foundInDbIds =
-          proceedingRepository.findAllById(notLinkedIds).stream()
-              .map(ProceedingEntity::getId)
-              .collect(Collectors.toSet());
-
-      List<String> errors = new ArrayList<>();
-
-      String notFoundIds =
-          notLinkedIds.stream()
-              .filter(id -> !foundInDbIds.contains(id))
-              .map(UUID::toString)
-              .collect(Collectors.joining(","));
-      if (!notFoundIds.isEmpty()) {
-        errors.add("No proceeding found with id: " + notFoundIds);
-      }
-
-      String notLinkedInDbIds =
-          foundInDbIds.stream().map(UUID::toString).collect(Collectors.joining(","));
-      if (!notLinkedInDbIds.isEmpty()) {
-        errors.add("Not linked to application: " + notLinkedInDbIds);
-      }
-
-      throw new ResourceNotFoundException(String.join("; ", errors));
     }
+
+    Set<UUID> foundInDbIds =
+        proceedingRepository.findAllById(notLinkedIds).stream()
+            .map(ProceedingEntity::getId)
+            .collect(Collectors.toSet());
+
+    List<String> errors = new ArrayList<>();
+
+    String notFoundIds =
+        notLinkedIds.stream()
+            .filter(id -> !foundInDbIds.contains(id))
+            .map(UUID::toString)
+            .collect(Collectors.joining(","));
+    if (!notFoundIds.isEmpty()) {
+      errors.add("No proceeding found with id: " + notFoundIds);
+    }
+
+    String notLinkedInDbIds =
+        foundInDbIds.stream().map(UUID::toString).collect(Collectors.joining(","));
+    if (!notLinkedInDbIds.isEmpty()) {
+      errors.add("Not linked to application: " + notLinkedInDbIds);
+    }
+
+    throw new ResourceNotFoundException(String.join("; ", errors));
   }
 
   private static UUID getCaseworkerId(ApplicationEntity application) {
