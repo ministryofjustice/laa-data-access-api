@@ -70,6 +70,3 @@ class FeatureFlagsControllerTest {
         .andExpect(jsonPath("$.pocVariant").value("control"));
   }
 }
-
-
-

@@ -101,7 +101,7 @@ feature:
   disable-security: ${FEATURE_DISABLE_SECURITY:false}
 
 flagd:
-  enabled: ${FLAGD_ENABLED:true}
+  enabled: ${FLAGD_ENABLED:false}
   host: ${FLAGD_HOST:localhost}
   port: ${FLAGD_PORT:8013}
 

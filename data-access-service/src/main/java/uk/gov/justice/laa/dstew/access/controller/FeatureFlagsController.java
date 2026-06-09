@@ -8,11 +8,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
+/** Temporary controller for feature flag management. */
+@ExcludeFromGeneratedCodeCoverage
 @RestController
 @RequestMapping("/flags")
 public class FeatureFlagsController {
 
+  /**
+   * Controller to check some feature flag values.
+   *
+   * @return Map
+   */
   @GetMapping
   public ResponseEntity<Map<String, Object>> flags() {
     Client client = OpenFeatureAPI.getInstance().getClient();
@@ -23,5 +31,3 @@ public class FeatureFlagsController {
     return ResponseEntity.ok(payload);
   }
 }
-
-
