@@ -11,11 +11,6 @@ public class OpposableGenerator extends BaseGenerator<Opposable, Opposable.Oppos
 
   @Override
   public Opposable createDefault() {
-    return Opposable.builder()
-        .opposableType("ApplicationMeritsTask::Individual")
-        .firstName("John")
-        .lastName("Smith")
-        .name("Acme Ltd")
-        .build();
+    return Opposable.builder().firstName("John").lastName("Smith").name("Acme Ltd").build();
   }
 }

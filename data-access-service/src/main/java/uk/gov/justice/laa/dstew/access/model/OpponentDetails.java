@@ -14,6 +14,6 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @Data
 @ExcludeFromGeneratedCodeCoverage
 public class OpponentDetails {
-
+  @Nullable private String opposableType;
   @Nullable private Opposable opposable;
 }
