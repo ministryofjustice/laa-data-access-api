@@ -100,6 +100,11 @@ feature:
   enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}
   disable-security: ${FEATURE_DISABLE_SECURITY:false}
 
+flagd:
+  enabled: ${FLAGD_ENABLED:true}
+  host: ${FLAGD_HOST:localhost}
+  port: ${FLAGD_PORT:8013}
+
 app:
   sds-api:
     url: ${SDS_API_URL}

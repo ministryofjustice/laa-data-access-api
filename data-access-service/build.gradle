@@ -287,6 +287,8 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
     annotationProcessor 'org.hibernate.orm:hibernate-processor:7.3.2.Final'
     implementation 'org.javers:javers-core:7.10.0'
+    implementation 'dev.openfeature:sdk:1.15.1'
+    implementation 'dev.openfeature.contrib.providers:flagd:0.11.11'
 
     runtimeOnly 'org.postgresql:postgresql:42.7.11'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
