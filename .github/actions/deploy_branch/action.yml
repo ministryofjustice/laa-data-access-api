@@ -115,6 +115,7 @@ runs:
           --set ingressInternal.hosts="{$internal_host}" \
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
+          --set flagd.enabled="$([ "$branch_name" = "main" ] && echo false || echo true)" \
           --set autoscaling.enabled="$([ "$branch_name" = "main" ] && echo true || echo false)" \
           --values ${VALUES_FILE} \
           --install \

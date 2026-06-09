@@ -62,3 +62,38 @@ slowQueryThresholdSeconds: 1
 portForward:
   enabled: true
 
+flagd:
+  enabled: false
+  image: ghcr.io/open-feature/flagd:latest
+  port: 8013
+  flagsJson: |
+    {
+      "$schema": "https://flagd.dev/schema/v0/flags.json",
+      "flags": {
+        "poc-enabled": {
+          "state": "ENABLED",
+          "variants": {
+            "on": true,
+            "off": false
+          },
+          "defaultVariant": "on"
+        },
+        "poc-variant": {
+          "state": "ENABLED",
+          "variants": {
+            "control": "control",
+            "treatment": "treatment"
+          },
+          "defaultVariant": "control"
+        },
+        "poc-variant-two": {
+          "state": "ENABLED",
+          "variants": {
+            "control": "control",
+            "treatment": "treatment"
+          },
+          "defaultVariant": "treatment"
+        }
+      }
+    }
+

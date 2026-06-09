@@ -1,0 +1,48 @@
+{{- if default false .Values.flagd.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "data-access-api.fullname" . }}-flagd
+  labels:
+    {{- include "data-access-api.labels" . | nindent 4 }}
+    app.kubernetes.io/component: flagd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: flagd
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: flagd
+    spec:
+      containers:
+        - name: flagd
+          image: {{ default "ghcr.io/open-feature/flagd:latest" .Values.flagd.image | quote }}
+          imagePullPolicy: IfNotPresent
+          command: ["start", "--uri", "file:/etc/flagd/flags.flagd.json"]
+          ports:
+            - name: grpc
+              containerPort: 8013
+          readinessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          volumeMounts:
+            - name: flagd-flags
+              mountPath: /etc/flagd
+              readOnly: true
+      volumes:
+        - name: flagd-flags
+          configMap:
+            name: {{ include "data-access-api.fullname" . }}-flagd-flags
+{{- end }}
+
