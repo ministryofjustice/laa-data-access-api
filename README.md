@@ -158,15 +158,29 @@ The token is pre-configured with the `LAA_CASEWORKER` role and a 1-hour expiry.
 
 ### Executing endpoints
 
-You can use a tool such as Postman or curl to execute endpoints. For example, to execute the `GET /applications` 
-endpoint using curl:
+#### Using curl
 
-```
-curl -X GET "http://localhost:8080/applications" -H "accept: application/json" -H "Authorization: Bearer {token}"
+```bash
+curl -X GET "http://localhost:8080/api/v0/applications" \
+  -H "accept: application/json" \
+  -H "Authorization: Bearer {token}" \
+  -H "X-Service-Name: CIVIL_APPLY"
 ```
 
-You can also use the Swagger UI to execute endpoints, which is described below in the 
-[API documentation](#api-documentation) section.
+#### Using Postman
+
+The `tools/postman/` directory contains a Postman collection with all endpoints and environment files for local and UAT.
+
+**Quick start:**
+1. Open Postman → **Import** → drag in `tools/postman/laa-data-access-api.postman_collection.json` and `tools/postman/local.postman_environment.json`
+2. Select the environment in the top-right dropdown (e.g. "LAA Data Access API — Local")
+3. Send any request — tokens are fetched automatically from mock-oauth2-server
+
+**For UAT:** Import `tools/postman/uat.postman_environment.json` and run `kubectl port-forward -n laa-data-access-uat svc/mock-oauth2-server 9999:9999` before making requests.
+
+#### Using Swagger UI
+
+See [API documentation](#api-documentation) below for Swagger UI usage.
 
 
 ### Dependency lock files

@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mock-oauth2-server
+  labels:
+    app: mock-oauth2-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mock-oauth2-server
+  template:
+    metadata:
+      labels:
+        app: mock-oauth2-server
+    spec:
+      containers:
+        - name: mock-oauth2-server
+          # Version: 2.1.10 — keep in sync with docker-compose.yml, build.gradle, and Constants.java
+          image: ghcr.io/navikt/mock-oauth2-server:2.1.10
+          ports:
+            - containerPort: 9999
+          env:
+            - name: SERVER_PORT
+              value: "9999"
+            - name: JSON_CONFIG_PATH
+              value: /etc/mock-oauth2/config.json
+          volumeMounts:
+            - name: mock-oauth2-config
+              mountPath: /etc/mock-oauth2
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /entra/.well-known/openid-configuration
+              port: 9999
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: mock-oauth2-config
+          configMap:
+            name: mock-oauth2-config

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -105,7 +106,7 @@ public abstract class BaseHarnessTest {
       try {
         currentToken = SmokeTestTokenProvider.getCaseworkerToken();
       } catch (RuntimeException e) {
-        org.junit.jupiter.api.Assumptions.assumeTrue(
+        Assumptions.assumeTrue(
             false,
             "Skipping infrastructure test — mock OAuth server unavailable: " + e.getMessage());
       }
