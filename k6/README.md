@@ -17,6 +17,7 @@ brew install k6
 ```
 k6/
   make-decision-performance-test.js          # main script
+  get-individuals-performance-test.js        # get applications -> get individuals flow
   README.md                    # this file
   fixtures/
     applicationContent.json    # base applicationContent template, mutated per iteration
@@ -35,6 +36,18 @@ k6/
 | `DECIDE_RATE`       | `0.5`                   | Probability (0–1) that a decision is made after each create |
 | `THINK_TIME_MIN_MS` | `0`                     | Minimum think-time sleep between calls (ms)  |
 | `THINK_TIME_MAX_MS` | `0`                     | Maximum think-time sleep between calls (ms); `0` = no sleep |
+
+Extra variables used by `get-individuals-performance-test.js`:
+
+| Variable               | Default          | Description |
+|------------------------|------------------|-------------|
+| `APPLICATIONS_PAGE_SIZE` | `20`          | `GET /api/v0/applications` page size used to source application IDs |
+| `CLIENT_FIRST_NAME`    | _empty_          | Optional filter used when fetching applications |
+| `CLIENT_LAST_NAME`     | _empty_          | Optional filter used when fetching applications |
+| `CLIENT_DATE_OF_BIRTH` | _empty_          | Optional `YYYY-MM-DD` filter used when fetching applications |
+| `STATUS`               | _empty_          | Optional application status filter |
+| `INCLUDE`              | `CLIENT_DETAILS` | Value passed to `GET /api/v0/individuals?include=...` |
+| `INDIVIDUAL_TYPE`      | `CLIENT`         | Value passed to `GET /api/v0/individuals?individualType=...` |
 
 ---
 
@@ -67,6 +80,20 @@ k6 run \
   k6/make-decision-performance-test.js
 ```
 
+**Get individuals flow** (fetch applications, pick an ID, then fetch individuals with client details):
+```bash
+k6 run \
+  -e BASE_URL=http://localhost:9080 \
+  -e BEARER_TOKEN=eyJ... \
+  -e VUS=10 \
+  -e ITERATIONS=50 \
+  -e CLIENT_FIRST_NAME=John \
+  -e CLIENT_LAST_NAME=Doe \
+  -e CLIENT_DATE_OF_BIRTH=1985-04-16 \
+  -e INCLUDE=CLIENT_DETAILS \
+  k6/get-individuals-performance-test.js
+```
+
 ---
 
 ## Output
@@ -77,6 +104,11 @@ broken down per tagged request name:
 - `POST /api/v0/applications`
 - `GET /api/v0/applications/{id}`
 - `PATCH /api/v0/applications/{id}/decision`
+
+The new script also reports:
+
+- `GET /api/v0/applications`
+- `GET /api/v0/individuals`
 
 ---
 

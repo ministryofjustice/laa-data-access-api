@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.model;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,9 +20,9 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @ExcludeFromGeneratedCodeCoverage
 public class ApplicationMerits {
 
-  @Nullable private List<OpponentDetails> opponents = new ArrayList<>();
+  @Nullable private List<OpponentDetails> opponents;
 
-  @Nullable private List<Map<String, Object>> involvedChildren;
+  @Nullable private List<InvolvedChild> involvedChildren;
 
   @JsonAnyGetter private Map<String, Object> additionalContent;
 

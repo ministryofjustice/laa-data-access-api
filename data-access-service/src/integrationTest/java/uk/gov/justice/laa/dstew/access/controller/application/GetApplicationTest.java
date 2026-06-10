@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
@@ -13,12 +14,13 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -28,10 +30,15 @@ import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.InvolvedChild;
+import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
+import uk.gov.justice.laa.dstew.access.model.ProceedingLinkedChild;
+import uk.gov.justice.laa.dstew.access.model.ProceedingMerits;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.utils.EnumParsingUtils;
@@ -114,11 +121,11 @@ public class GetApplicationTest extends BaseHarnessTest {
     assertNoCacheHeaders(result);
     assertOK(result);
 
-    Assertions.assertThat(actualApplication)
+    assertThat(actualApplication)
         .usingRecursiveComparison()
         .ignoringFields("lastUpdated")
         .isEqualTo(expectedApplication);
-    Assertions.assertThat(actualApplication.getLastUpdated()).isNotNull();
+    assertThat(actualApplication.getLastUpdated()).isNotNull();
   }
 
   @Test
@@ -190,14 +197,50 @@ public class GetApplicationTest extends BaseHarnessTest {
     assertNoCacheHeaders(result);
     assertOK(result);
 
-    Assertions.assertThat(response.getOpponents()).isNotNull();
-    Assertions.assertThat(response.getOpponents()).hasSize(1);
+    assertThat(response.getOpponents()).isNotNull();
+    assertThat(response.getOpponents()).hasSize(1);
 
     var mapped = response.getOpponents().get(0);
-    Assertions.assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
-    Assertions.assertThat(mapped.getFirstName()).isEqualTo("John");
-    Assertions.assertThat(mapped.getLastName()).isEqualTo("Smith");
-    Assertions.assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
+    assertThat(mapped.getOpponentType()).isEqualTo("ApplicationMeritsTask::Individual");
+    assertThat(mapped.getFirstName()).isEqualTo("John");
+    assertThat(mapped.getLastName()).isEqualTo("Smith");
+    assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
+  }
+
+  @Test
+  void givenApplicationWithEmptyStringEnums_whenGetApplication_thenCategoryOfLawIsNull()
+      throws Exception {
+
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder ->
+                builder.proceedingContent(
+                    Map.of(
+                        "meaning", "hearing",
+                        "matterTypeEnum", "",
+                        "categoryOfLawEnum", "",
+                        "usedDelegatedFunctionsOn", "2025-05-06",
+                        "substantiveCostLimitation", "23.45",
+                        "substantiveLevelOfServiceNameEnum", "service")));
+
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .linkedApplications(Set.of())
+                    .proceedings(new HashSet<>(Set.of(proceeding))));
+
+    // when
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+
+    // then
+    assertOK(result);
+    assertThat(response.getProceedings()).hasSize(1);
+    assertThat(response.getProceedings().get(0).getCategoryOfLaw()).isNull();
+    assertThat(response.getProceedings().get(0).getMatterType()).isNull();
   }
 
   @Test
@@ -224,8 +267,8 @@ public class GetApplicationTest extends BaseHarnessTest {
     ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
     assertOK(result);
-    Assertions.assertThat(response.getOpponents()).isNotNull();
-    Assertions.assertThat(response.getOpponents()).isEmpty();
+    assertThat(response.getOpponents()).isNotNull();
+    assertThat(response.getOpponents()).isEmpty();
   }
 
   @Test
@@ -242,7 +285,7 @@ public class GetApplicationTest extends BaseHarnessTest {
     ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
     assertOK(result);
-    Assertions.assertThat(response.getOpponents()).isEmpty();
+    assertThat(response.getOpponents()).isEmpty();
   }
 
   @Test
@@ -255,12 +298,12 @@ public class GetApplicationTest extends BaseHarnessTest {
 
     Map<String, Object> opposable =
         Map.of(
-            "opposableType", "ApplicationMeritsTask::Individual",
             // firstName intentionally missing
             "lastName", "Smith",
             "name", "Acme Ltd");
 
-    Map<String, Object> opponent = Map.of("opposable", opposable);
+    Map<String, Object> opponent =
+        Map.of("opposableType", "ApplicationMeritsTask::Individual", "opposable", opposable);
 
     Map<String, Object> merits = Map.of("opponents", List.of(opponent));
 
@@ -275,14 +318,14 @@ public class GetApplicationTest extends BaseHarnessTest {
 
     assertOK(result);
 
-    Assertions.assertThat(response.getOpponents()).isNotNull();
-    Assertions.assertThat(response.getOpponents()).hasSize(1);
+    assertThat(response.getOpponents()).isNotNull();
+    assertThat(response.getOpponents()).hasSize(1);
 
     var mapped = response.getOpponents().get(0);
-    Assertions.assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
-    Assertions.assertThat(mapped.getFirstName()).isNull();
-    Assertions.assertThat(mapped.getLastName()).isEqualTo("Smith");
-    Assertions.assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
+    assertThat(mapped.getOpponentType()).isEqualTo("ApplicationMeritsTask::Individual");
+    assertThat(mapped.getFirstName()).isNull();
+    assertThat(mapped.getLastName()).isEqualTo("Smith");
+    assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
   }
 
   @Test
@@ -296,9 +339,9 @@ public class GetApplicationTest extends BaseHarnessTest {
     ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
     assertOK(result);
-    Assertions.assertThat(response.getProvider()).isNotNull();
-    Assertions.assertThat(response.getProvider().getOfficeCode()).isEqualTo("officeCode");
-    Assertions.assertThat(response.getProvider().getContactEmail()).isEqualTo("test@example.com");
+    assertThat(response.getProvider()).isNotNull();
+    assertThat(response.getProvider().getOfficeCode()).isEqualTo("officeCode");
+    assertThat(response.getProvider().getContactEmail()).isEqualTo("test@example.com");
   }
 
   @Test
@@ -315,9 +358,139 @@ public class GetApplicationTest extends BaseHarnessTest {
     ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
     assertOK(result);
-    Assertions.assertThat(response.getProvider()).isNotNull();
-    Assertions.assertThat(response.getProvider().getOfficeCode()).isEqualTo("officeCode");
-    Assertions.assertThat(response.getProvider().getContactEmail()).isNull();
+    assertThat(response.getProvider()).isNotNull();
+    assertThat(response.getProvider().getOfficeCode()).isEqualTo("officeCode");
+    assertThat(response.getProvider().getContactEmail()).isNull();
+  }
+
+  @Test
+  void
+      givenApplicationWithInvolvedChildren_whenGetApplication_thenProceedingContainsInvolvedChildren()
+          throws Exception {
+    // given
+    UUID applyProceedingId = UUID.randomUUID();
+    UUID childId = ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_ID;
+
+    ApplicationContent applicationContent =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            builder ->
+                builder.proceedingMerits(
+                    List.of(
+                        ProceedingMerits.builder()
+                            .proceedingId(applyProceedingId)
+                            .proceedingLinkedChildren(
+                                List.of(
+                                    ProceedingLinkedChild.builder()
+                                        .involvedChildId(childId)
+                                        .build()))
+                            .build())));
+
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .proceedings(new HashSet<>(Set.of(proceeding)))
+                    .applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
+
+    // when
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+
+    // then
+    assertOK(result);
+    assertThat(response.getProceedings()).isNotNull().hasSize(1);
+    ApplicationProceedingResponse proceedingResponse = response.getProceedings().getFirst();
+    assertThat(proceedingResponse.getInvolvedChildren()).isNotNull().hasSize(1);
+    InvolvedChildResponse involvedChild = proceedingResponse.getInvolvedChildren().getFirst();
+    assertThat(involvedChild.getFullName())
+        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_FULL_NAME);
+    assertThat(involvedChild.getDateOfBirth())
+        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_DATE_OF_BIRTH);
+  }
+
+  @Test
+  void
+      givenApplicationWithUnresolvableChildId_whenGetApplication_thenProceedingHasEmptyInvolvedChildren()
+          throws Exception {
+    // given - proceedingMerits references a childId that does not exist in involvedChildren
+    UUID applyProceedingId = UUID.randomUUID();
+    UUID nonExistentChildId = UUID.randomUUID();
+
+    ApplicationContent applicationContent =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            builder ->
+                builder.proceedingMerits(
+                    List.of(
+                        ProceedingMerits.builder()
+                            .proceedingId(applyProceedingId)
+                            .proceedingLinkedChildren(
+                                List.of(
+                                    ProceedingLinkedChild.builder()
+                                        .involvedChildId(nonExistentChildId)
+                                        .build()))
+                            .build())));
+
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .proceedings(new HashSet<>(Set.of(proceeding)))
+                    .applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
+
+    // when
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+
+    // then
+    assertOK(result);
+    assertThat(response.getProceedings()).isNotNull().hasSize(1);
+    ApplicationProceedingResponse proceedingResponse = response.getProceedings().getFirst();
+    assertThat(proceedingResponse.getInvolvedChildren()).isEmpty();
+  }
+
+  @Test
+  void
+      givenApplicationWithNoProceedingMerits_whenGetApplication_thenProceedingHasEmptyInvolvedChildren()
+          throws Exception {
+    // given - default applicationContent has no proceedingMerits
+    ProceedingEntity proceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class);
+
+    ApplicationContent applicationContent =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            builder -> builder.proceedingMerits(Collections.emptyList()));
+
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .proceedings(new HashSet<>(Set.of(proceeding)))
+                    .applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
+
+    // when
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+
+    // then
+    assertOK(result);
+    assertThat(response.getProceedings()).isNotNull().hasSize(1);
+    ApplicationProceedingResponse proceedingResponse = response.getProceedings().getFirst();
+    assertThat(proceedingResponse.getInvolvedChildren()).isEmpty();
   }
 
   private ApplicationResponse createApplication(
@@ -387,17 +560,21 @@ public class GetApplicationTest extends BaseHarnessTest {
                 .proceedingType(proceeding.getProceedingContent().get("meaning").toString())
                 .categoryOfLaw(
                     EnumParsingUtils.convertToCategoryOfLaw(
-                        (String) proceeding.getProceedingContent().get("categoryOfLaw")))
+                        (String) proceeding.getProceedingContent().get("categoryOfLawEnum")))
                 .matterType(
                     EnumParsingUtils.convertToMatterType(
-                        proceeding.getProceedingContent().get("matterType").toString()))
+                        proceeding.getProceedingContent().get("matterTypeEnum").toString()))
                 .levelOfService(
                     proceeding
                         .getProceedingContent()
-                        .get("substantiveLevelOfServiceName")
+                        .get("substantiveLevelOfServiceNameEnum")
                         .toString())
                 .substantiveCostLimitation(
-                    proceeding.getProceedingContent().get("substantiveCostLimitation").toString())
+                    Double.parseDouble(
+                        proceeding
+                            .getProceedingContent()
+                            .get("substantiveCostLimitation")
+                            .toString()))
                 .delegatedFunctionsDate(
                     LocalDate.parse(
                         proceeding
@@ -408,7 +585,10 @@ public class GetApplicationTest extends BaseHarnessTest {
                     proceeding.getMeritsDecision() != null
                         ? proceeding.getMeritsDecision().getDecision()
                         : null)
-                // .involvedChildren((List<Object>) applicationMerits.get("involvedChildren"))
+                .involvedChildren(
+                    resolveInvolvedChildren(
+                        proceeding.getApplyProceedingId(),
+                        applicationEntity.getApplicationContent()))
                 .scopeLimitations(scopeLimitations)
                 .build()));
 
@@ -423,6 +603,53 @@ public class GetApplicationTest extends BaseHarnessTest {
     return application;
   }
 
+  private List<InvolvedChildResponse> resolveInvolvedChildren(
+      UUID applyProceedingId, Map<String, Object> applicationContent) {
+    if (applyProceedingId == null || applicationContent == null) {
+      return Collections.emptyList();
+    }
+    ApplicationContent content =
+        objectMapper.convertValue(applicationContent, ApplicationContent.class);
+
+    List<ProceedingMerits> proceedingMeritsList = content.getProceedingMerits();
+    if (proceedingMeritsList == null || proceedingMeritsList.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    ApplicationMerits merits = content.getApplicationMerits();
+    List<InvolvedChild> allChildren =
+        merits != null && merits.getInvolvedChildren() != null
+            ? merits.getInvolvedChildren()
+            : Collections.emptyList();
+
+    return proceedingMeritsList.stream()
+        .filter(pm -> applyProceedingId.equals(pm.getProceedingId()))
+        .findFirst()
+        .map(
+            pm -> {
+              if (pm.getProceedingLinkedChildren() == null) {
+                return Collections.<InvolvedChildResponse>emptyList();
+              }
+              return pm.getProceedingLinkedChildren().stream()
+                  .map(ProceedingLinkedChild::getInvolvedChildId)
+                  .filter(Objects::nonNull)
+                  .map(
+                      id ->
+                          allChildren.stream()
+                              .filter(c -> id.equals(c.getId()))
+                              .findFirst()
+                              .orElse(null))
+                  .filter(Objects::nonNull)
+                  .map(
+                      c ->
+                          new InvolvedChildResponse()
+                              .fullName(c.getFullName())
+                              .dateOfBirth(c.getDateOfBirth()))
+                  .toList();
+            })
+        .orElse(Collections.emptyList());
+  }
+
   private List<OpponentResponse> extractOpponents(Map<String, Object> applicationContent) {
     Map<String, Object> merits = (Map<String, Object>) applicationContent.get("applicationMerits");
     List<Map<String, Object>> opponents = (List<Map<String, Object>>) merits.get("opponents");
@@ -432,7 +659,7 @@ public class GetApplicationTest extends BaseHarnessTest {
             opponent -> {
               Map<String, Object> opposable = (Map<String, Object>) opponent.get("opposable");
               return OpponentResponse.builder()
-                  .opposableType(opposable.get("opposableType").toString())
+                  .opponentType(opponent.get("opposableType").toString())
                   .firstName(
                       opposable.get("firstName") != null
                           ? opposable.get("firstName").toString()

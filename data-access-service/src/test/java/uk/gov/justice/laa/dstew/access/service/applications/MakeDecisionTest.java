@@ -142,6 +142,26 @@ public class MakeDecisionTest extends BaseServiceTest {
             (Function<UUID, String>)
                 id ->
                     "The Make Decision request must contain a refusal justification for proceeding with id: "
+                        + id),
+        Arguments.of(
+            (Function<UUID, MakeDecisionRequest>)
+                proceedingId ->
+                    DataGenerator.createDefault(
+                        ApplicationMakeDecisionRequestGenerator.class,
+                        b ->
+                            b.overallDecision(DecisionStatus.REFUSED)
+                                .eventHistory(
+                                    EventHistoryRequest.builder().eventDescription("event").build())
+                                .proceedings(
+                                    List.of(
+                                        createMakeDecisionProceedingDetails(
+                                            proceedingId,
+                                            MeritsDecisionStatus.REFUSED,
+                                            "reason",
+                                            null)))),
+            (Function<UUID, String>)
+                id ->
+                    "The Make Decision request must contain a refusal justification for proceeding with id: "
                         + id));
   }
 

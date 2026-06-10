@@ -36,14 +36,13 @@ public class ApplicationContentParserService {
   /**
    * Processes application content to extract and set key fields in the entity.
    *
+   * <p>No null check - the endpoint will have already enforced this.
+   *
    * @param applicationContent the application content to process
    * @return the extracted application content details
    */
   private static ParsedAppContentDetails processingApplicationContent(
       ApplicationContent applicationContent) {
-    if (applicationContent == null) {
-      throw new ValidationException(List.of("Application content is null"));
-    }
     Proceeding leadProceeding = null;
     Boolean usedDelegatedFunction = null;
     if (applicationContent.getProceedings() != null
@@ -86,13 +85,14 @@ public class ApplicationContentParserService {
     if (Objects.isNull(leadProceeding)) {
       return null;
     }
-    return matterTypeDeserializer.lenientEnumConversion(leadProceeding.getMatterType());
+    return matterTypeDeserializer.lenientEnumConversion(leadProceeding.getMatterTypeEnum());
   }
 
   private static CategoryOfLaw getCategoryOfLaw(Proceeding leadProceeding) {
     if (Objects.isNull(leadProceeding)) {
       return null;
     }
-    return categoryOfLawTypeDeserializer.lenientEnumConversion(leadProceeding.getCategoryOfLaw());
+    return categoryOfLawTypeDeserializer.lenientEnumConversion(
+        leadProceeding.getCategoryOfLawEnum());
   }
 }

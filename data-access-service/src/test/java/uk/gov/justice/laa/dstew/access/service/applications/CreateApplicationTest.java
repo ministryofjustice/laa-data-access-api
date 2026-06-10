@@ -41,6 +41,7 @@ import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
+import uk.gov.justice.laa.dstew.access.utils.EnumParsingUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
@@ -308,15 +309,21 @@ public class CreateApplicationTest extends BaseServiceTest {
       ProceedingEntity actualProceedingEntity = actualProceedingEntities.get(index);
 
       assertThat(actualProceedingEntity.isLead()).isEqualTo(expectedProceeding.getLeadProceeding());
-      assertThat(actualProceedingEntity.getProceedingContent())
-          .isEqualTo(objectMapper.convertValue(expectedProceeding, Map.class));
+      var proceedingContentComparison =
+          assertThat(actualProceedingEntity.getProceedingContent()).usingRecursiveComparison();
+      if (expectedProceeding.getUsedDelegatedFunctions() == null) {
+        proceedingContentComparison =
+            proceedingContentComparison.ignoringFields("usedDelegatedFunctions");
+      }
+      proceedingContentComparison.isEqualTo(
+          objectMapper.convertValue(expectedProceeding, Map.class));
     }
   }
 
   @ParameterizedTest
   @MethodSource("provideProceedingsForMapping")
   void mapToApplicationEntity_SuccessfullyMapFromApplicationContentFields(
-      ApplicationCreateRequest application, boolean expectedUseDelegatedFunctions) {
+      ApplicationCreateRequest application, Boolean expectedUseDelegatedFunctions) {
     // Given
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
@@ -352,7 +359,6 @@ public class CreateApplicationTest extends BaseServiceTest {
       givenNewApplicationAndNotRoleReader_whenCreateApplication_thenThrowUnauthorizedException() {
     // given
     setSecurityContext(TestConstants.Roles.NO_ROLE);
-
     // when
     // then
     assertThatExceptionOfType(AuthorizationDeniedException.class)
@@ -368,7 +374,6 @@ public class CreateApplicationTest extends BaseServiceTest {
 
   @Test
   public void givenNewApplicationAndNoRole_whenCreateApplication_thenThrowUnauthorizedException() {
-
     assertThatExceptionOfType(AuthorizationDeniedException.class)
         .isThrownBy(
             () ->
@@ -437,10 +442,10 @@ public class CreateApplicationTest extends BaseServiceTest {
   }
 
   private Stream<Arguments> invalidApplicationRequests() {
-    ValidationException validationException =
-        new ValidationException(List.of("No lead proceeding found in application content"));
 
-    ApplicationContent applicationContent =
+    ValidationException noLeadProceedingValidationException =
+        new ValidationException(List.of("No lead proceeding found in application content"));
+    ApplicationContent noLeadProceedingApplicationContent =
         DataGenerator.createDefault(
             ApplicationContentGenerator.class,
             appContentBuilder ->
@@ -449,13 +454,14 @@ public class CreateApplicationTest extends BaseServiceTest {
                         DataGenerator.createDefault(
                             ProceedingGenerator.class,
                             proceedingBuilder -> proceedingBuilder.leadProceeding(false)))));
-    ApplicationCreateRequest createRequest =
+    ApplicationCreateRequest noLeadProceedingCreateRequest =
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class,
             builder ->
                 builder.applicationContent(
-                    objectMapper.convertValue(applicationContent, Map.class)));
-    return Stream.of(Arguments.of(createRequest, validationException));
+                    objectMapper.convertValue(noLeadProceedingApplicationContent, Map.class)));
+    return Stream.of(
+        Arguments.of(noLeadProceedingCreateRequest, noLeadProceedingValidationException));
   }
 
   private Map<String, Object> getAppContentParent(
@@ -484,6 +490,14 @@ public class CreateApplicationTest extends BaseServiceTest {
   private Stream<Arguments> provideProceedingsForMapping() {
     // App Content Map, expected usedDelegatedFunctions
     return Stream.of(
+        Arguments.of(
+            DataGenerator.createDefault(
+                ApplicationCreateRequestGenerator.class,
+                builder ->
+                    builder.applicationContent(
+                        getAppContentParent(
+                            List.of(getProceeding(null, true)), UUID.randomUUID().toString()))),
+            (Object) null),
         Arguments.of(
             DataGenerator.createDefault(
                 ApplicationCreateRequestGenerator.class,
@@ -542,6 +556,14 @@ public class CreateApplicationTest extends BaseServiceTest {
     assertThat(actualApplicationEntity.getUsedDelegatedFunctions())
         .isEqualTo(
             applicationContentDetails.getProceedings().getFirst().getUsedDelegatedFunctions());
+    assertThat(actualApplicationEntity.getMatterType())
+        .isEqualTo(
+            EnumParsingUtils.convertToMatterType(
+                applicationContentDetails.getProceedings().getFirst().getMatterTypeEnum()));
+    assertThat(actualApplicationEntity.getCategoryOfLaw())
+        .isEqualTo(
+            EnumParsingUtils.convertToCategoryOfLaw(
+                applicationContentDetails.getProceedings().getFirst().getCategoryOfLawEnum()));
     assertThat(actualApplicationEntity.getApplicationContent())
         .usingRecursiveComparison()
         .ignoringCollectionOrder()

@@ -1,7 +1,11 @@
 package uk.gov.justice.laa.dstew.access.specification;
 
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
+import java.util.Collection;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
@@ -13,8 +17,20 @@ public class IndividualSpecification {
       return Specification.unrestricted();
     }
     // Join to applications and filter by applicationId
-    return (root, query, builder) ->
-        builder.equal(root.join("applications").get("id"), applicationId);
+    // Subquery: SELECT 1 FROM ApplicationEntity a JOIN a.individuals i WHERE a.id = :applicationId
+    // AND i.id = individual.id
+    return (root, query, builder) -> {
+      Subquery<UUID> subquery = query.subquery(UUID.class);
+      Root<ApplicationEntity> appRoot = subquery.from(ApplicationEntity.class);
+      subquery
+          .select(appRoot.get("id"))
+          .where(
+              builder.and(
+                  builder.equal(appRoot.get("id"), applicationId),
+                  builder.isMember(
+                      root, appRoot.<Collection<IndividualEntity>>get("individuals"))));
+      return builder.exists(subquery);
+    };
   }
 
   /** Filters by individualType. */

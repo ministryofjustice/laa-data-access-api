@@ -180,6 +180,17 @@ public class UpdateApplicationTest extends BaseServiceTest {
     return Stream.of(
         Arguments.of(
             UUID.randomUUID(),
+            (Object) null,
+            new ValidationException(
+                List.of("ApplicationUpdateRequest and its content cannot be null"))),
+        Arguments.of(
+            UUID.randomUUID(),
+            DataGenerator.createDefault(
+                ApplicationUpdateRequestGenerator.class,
+                builder -> builder.applicationContent(null)),
+            new ValidationException(List.of("Application content cannot be null"))),
+        Arguments.of(
+            UUID.randomUUID(),
             DataGenerator.createDefault(
                 ApplicationUpdateRequestGenerator.class,
                 builder -> builder.applicationContent(new HashMap<>())),

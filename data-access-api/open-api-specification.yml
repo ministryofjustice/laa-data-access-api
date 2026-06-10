@@ -27,6 +27,16 @@ paths:
     $ref: "./open-api-individuals/resources.yml#/paths/~1api~1v0~1individuals"
   /api/v0/applications/{id}/notes:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1notes"
+  /api/v0/applications/{id}/upload-document:
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1upload-document"
+  /api/v0/applications/{id}/download-document/{documentId}:
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1download-document~1{documentId}"
+  /api/v0/applications/{id}/update-document:
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1update-document"
+  /api/v0/applications/{id}/delete-document:
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1delete-document"
+  /api/v0/sds/health:
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1sds~1health"
 
 components:
   securitySchemes:
@@ -67,3 +77,11 @@ components:
       $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationNoteResponse"
     ApplicationNotesResponse:
       $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationNotesResponse"
+    DocumentUploadResponse:
+      $ref: "./open-api-applications/components.yml#/components/schemas/DocumentUploadResponse"
+    DocumentDownloadResponse:
+      $ref: "./open-api-applications/components.yml#/components/schemas/DocumentDownloadResponse"
+    DocumentUpdateResponse:
+      $ref: "./open-api-applications/components.yml#/components/schemas/DocumentUpdateResponse"
+    SdsHealthResponse:
+      $ref: "./open-api-applications/components.yml#/components/schemas/SdsHealthResponse"

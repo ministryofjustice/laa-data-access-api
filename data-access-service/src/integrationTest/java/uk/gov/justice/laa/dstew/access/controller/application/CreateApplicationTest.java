@@ -34,7 +34,9 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOffice;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
+import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.utils.EnumParsingUtils;
 import uk.gov.justice.laa.dstew.access.utils.HeaderUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.builders.ProblemDetailBuilder;
@@ -340,7 +342,7 @@ public class CreateApplicationTest extends BaseHarnessTest {
           throws Exception {
     // given - two proceedings
     ProceedingGenerator proceedingGenerator = new ProceedingGenerator();
-    List<uk.gov.justice.laa.dstew.access.model.Proceeding> proceedings =
+    List<Proceeding> proceedings =
         List.of(proceedingGenerator.createDefault(), proceedingGenerator.createDefault());
 
     ApplicationContent content =
@@ -711,6 +713,22 @@ public class CreateApplicationTest extends BaseHarnessTest {
     assertEquals(applicationVersion, actual.getSchemaVersion());
     assertNull(actual.getIsAutoGranted());
     assertNotNull(actual.getSubmittedAt());
+
+    ApplicationContent applicationContent =
+        objectMapper.convertValue(expected.getApplicationContent(), ApplicationContent.class);
+    if (applicationContent.getProceedings() != null) {
+      Proceeding leadProceeding =
+          applicationContent.getProceedings().stream()
+              .filter(p -> Boolean.TRUE.equals(p.getLeadProceeding()))
+              .findFirst()
+              .orElseThrow();
+      assertEquals(
+          EnumParsingUtils.convertToMatterType(leadProceeding.getMatterTypeEnum()),
+          actual.getMatterType());
+      assertEquals(
+          EnumParsingUtils.convertToCategoryOfLaw(leadProceeding.getCategoryOfLawEnum()),
+          actual.getCategoryOfLaw());
+    }
   }
 
   private void assertLinkedApplicationCorrectlyApplied(

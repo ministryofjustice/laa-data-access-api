@@ -2,7 +2,7 @@
 
 ## Overview
 
-Source code for LAA Digital's Access Data Stewardship API, owned by the Access Data Stewardship team..
+Source code for LAA Digital's Access Data Stewardship API, owned by the Access Data Stewardship team.
 
 This API will provide a trusted API source of truth for the Civil Applications and Civil Decide projects for data
 related to applications, proceedings, delegated functions, scope limitations, cost limitations and level of service.
@@ -10,7 +10,7 @@ related to applications, proceedings, delegated functions, scope limitations, co
 ### Add GitHub Token
 Generate a Github PAT (Personal Access Token) to access the required plugin, via https://github.com/settings/tokens
 
-Specify the Note field, e.g. “Token to allow access to LAA Gradle plugin”
+Specify the Note field, e.g. “Token to allow access to LAA Gradle plugin”.
 
 If you don't already have one, create a `gradle.properties` file in your home directory at `~/.gradle/gradle.properties`.
 
@@ -60,6 +60,10 @@ export ENTRA_JWK_SET_URI=https://dummy-jwk-set-uri
 export ENTRA_AUD=dummy-aud
 export FEATURE_ENABLE_DEV_TOKEN=true
 export FEATURE_DISABLE_SECURITY=true
+export SDS_API_URL=https://dummy-sds-api-url
+export SDS_API_BUCKET=dummy-sds-api-bucket-name
+export SDS_API_CLIENT_REGISTRATION_ID=dummy-sds-api-client-registration-id
+export SDS_API_PRINCIPAL_NAME=dummy-sds-api-principal-name
 ```
 
 This will ensure that where-ever you run the application from locally (IntelliJ, any terminal window, etc)
