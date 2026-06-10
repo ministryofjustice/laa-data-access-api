@@ -120,9 +120,8 @@ public interface ApplicationMapper {
     application.setProvider(extractProvider(entity, applicationContent));
     application.setVersion(entity.getVersion());
 
-    if (entity.getProceedings() != null) {
-      List<ProceedingMerits> proceedingMeritsList =
-          applicationContent != null ? applicationContent.getProceedingMerits() : null;
+    if (applicationContent != null && entity.getProceedings() != null) {
+      List<ProceedingMerits> proceedingMeritsList = applicationContent.getProceedingMerits();
       List<InvolvedChild> involvedChildren = extractInvolvedChildren(applicationContent);
 
       application.setProceedings(
@@ -179,9 +178,7 @@ public interface ApplicationMapper {
 
   private static List<InvolvedChild> extractInvolvedChildren(
       ApplicationContent applicationContent) {
-    if (applicationContent == null) {
-      return Collections.emptyList();
-    }
+
     ApplicationMerits meritsObj = applicationContent.getApplicationMerits();
     if (meritsObj == null) {
       return Collections.emptyList();

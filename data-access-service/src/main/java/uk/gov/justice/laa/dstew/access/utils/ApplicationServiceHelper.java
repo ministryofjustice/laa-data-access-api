@@ -1,12 +1,16 @@
 package uk.gov.justice.laa.dstew.access.utils;
 
 import java.util.UUID;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 
 /** Shared logic for checking an application exists. */
 public class ApplicationServiceHelper {
+
+  @ExcludeFromGeneratedCodeCoverage
+  private ApplicationServiceHelper() {}
 
   /**
    * Check existence of an application by ID.

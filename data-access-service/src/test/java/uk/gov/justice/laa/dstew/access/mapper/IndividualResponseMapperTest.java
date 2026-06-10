@@ -31,6 +31,11 @@ class IndividualResponseMapperTest extends BaseMapperTest {
     assertThat(individualMapper.toIndividual(null)).isNull();
   }
 
+  @Test
+  void givenNullIndividualEntity_whenToExtendedIndividual_thenReturnNull() {
+    assertThat(individualMapper.toExtendedIndividual(null, null, null, null)).isNull();
+  }
+
   public static Stream<Arguments> getExtendedIndividualsData() {
     return Stream.of(
         Arguments.of(
@@ -191,6 +196,41 @@ class IndividualResponseMapperTest extends BaseMapperTest {
     assertThat(result.getDateOfBirth()).isNull();
     assertThat(result.getDetails()).isNull();
     assertThat(result.getType()).isNull();
+  }
+
+  @Test
+  void
+      givenClientEntityWithNullApplicant_whenToExtendedIndividual_thenApplicantDerivedFieldsAreNull() {
+    IndividualEntity entity = IndividualEntity.builder().type(IndividualType.CLIENT).build();
+
+    ApplicationContent applicationContent =
+        ApplicationContent.builder()
+            .lastNameAtBirth("Smith")
+            .correspondenceAddressType("home")
+            .previousApplicationId("prevRef")
+            .applicant(null)
+            .build();
+
+    IndividualResponse result =
+        individualMapper.toExtendedIndividual(
+            entity,
+            IndividualType.CLIENT,
+            IncludedAdditionalData.CLIENT_DETAILS,
+            applicationContent);
+
+    assertThat(result).isNotNull();
+    assertThat(result.getRelationshipToInvolvedChildren()).isNull();
+    assertThat(result.getAppliedPreviously()).isNull();
+    assertThat(result.getCorrespondenceAddress()).isNull();
+    // Fields sourced directly from applicationContent (not applicant) are still populated
+    assertThat(result.getLastNameAtBirth()).isEqualTo("Smith");
+    assertThat(result.getCorrespondenceAddressType()).isEqualTo("home");
+    assertThat(result.getPreviousApplicationId()).isEqualTo("prevRef");
+  }
+
+  @Test
+  void givenNullIndividualCreateRequest_whenToIndividualEntity_thenReturnNull() {
+    assertThat(individualMapper.toIndividualEntity((IndividualCreateRequest) null)).isNull();
   }
 
   @Test

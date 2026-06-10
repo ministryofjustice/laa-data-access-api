@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils;
 
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.convertors.CategoryOfLawTypeConvertor;
 import uk.gov.justice.laa.dstew.access.convertors.MatterTypeConvertor;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
@@ -11,6 +12,9 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
  * allowing for case-insensitive matching and handling of null or empty.
  */
 public class EnumParsingUtils {
+
+  @ExcludeFromGeneratedCodeCoverage
+  private EnumParsingUtils() {}
 
   /**
    * Converts to enum with lenient parsing, allowing for case-insensitive matching and handling of

@@ -70,33 +70,25 @@ public class MakeDecisionService {
     application.setIsAutoGranted(request.getAutoGranted());
     applicationRepository.save(application);
 
+    // no default because overallDecision is an enum and @NotNull
+    // CHECKSTYLE.SUPPRESS: MissingSwitchDefault
     switch (decision.getOverallDecision()) {
       case GRANTED -> handleGrantedDecision(applicationId, caseworkerId, request);
       case REFUSED -> handleRefusedDecision(applicationId, caseworkerId, request);
-      default ->
-          throw new IllegalStateException("Unexpected value: " + decision.getOverallDecision());
     }
   }
 
   private void handleGrantedDecision(
       UUID applicationId, UUID caseworkerId, MakeDecisionRequest request) {
-    if (request.getCertificate() != null) {
-      CertificateEntity certificate =
-          certificateRepository
-              .findByApplicationId(applicationId)
-              .map(
-                  existing -> {
-                    existing.setCertificateContent(request.getCertificate());
-                    return existing;
-                  })
-              .orElseGet(
-                  () ->
-                      CertificateEntity.builder()
-                          .applicationId(applicationId)
-                          .certificateContent(request.getCertificate())
-                          .build());
-      certificateRepository.save(certificate);
-    }
+
+    CertificateEntity certificate =
+        certificateRepository
+            .findByApplicationId(applicationId)
+            .orElseGet(() -> CertificateEntity.builder().applicationId(applicationId).build());
+
+    certificate.setCertificateContent(request.getCertificate());
+    certificateRepository.save(certificate);
+
     saveDomainEventService.saveMakeDecisionDomainEvent(
         applicationId, request, caseworkerId, DomainEventType.APPLICATION_MAKE_DECISION_GRANTED);
   }
@@ -180,11 +172,7 @@ public class MakeDecisionService {
       errors.add("Not linked to application: " + notLinkedInDbIds);
     }
 
-    if (!errors.isEmpty()) {
-      throw new ResourceNotFoundException(String.join("; ", errors));
-    }
-
-    return linkedMap;
+    throw new ResourceNotFoundException(String.join("; ", errors));
   }
 
   private static UUID getCaseworkerId(ApplicationEntity application) {

@@ -420,6 +420,37 @@ class SdsServiceTest {
   }
 
   @Test
+  void givenSdsReturnsNullBody_whenDeleteFiles_thenReturnEmptyResults() {
+    // Given
+    UUID applicationId = UUID.randomUUID();
+    List<String> fileIds = List.of("file-1.pdf", "file-2.pdf");
+
+    RestClient.RequestHeadersUriSpec requestHeadersUriSpec =
+        mock(RestClient.RequestHeadersUriSpec.class);
+    RestClient.RequestHeadersSpec requestHeadersSpec = mock(RestClient.RequestHeadersSpec.class);
+    RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+
+    when(sdsRestClient.delete()).thenReturn(requestHeadersUriSpec);
+    when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.headers(any()))
+        .thenAnswer(
+            invocation -> {
+              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
+              headersConsumer.accept(new HttpHeaders());
+              return requestHeadersSpec;
+            });
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(null);
+
+    // When
+    DocumentDeleteResponse response = sdsService.deleteFiles(applicationId, fileIds);
+
+    // Then
+    assertThat(response.getResults()).isNotNull();
+    assertThat(response.getResults().isEmpty()).isTrue();
+  }
+
+  @Test
   void givenSdsServiceIsHealthy_whenCheckHealth_thenReturnSdsHealthResponse() {
     // Given
     SdsHealthResponse expectedResponse = mock(SdsHealthResponse.class);

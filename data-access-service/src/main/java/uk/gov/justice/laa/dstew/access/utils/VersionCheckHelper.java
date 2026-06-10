@@ -3,9 +3,13 @@ package uk.gov.justice.laa.dstew.access.utils;
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 import org.springframework.dao.OptimisticLockingFailureException;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /** Helper class for checking entity version locking. */
 public class VersionCheckHelper {
+
+  @ExcludeFromGeneratedCodeCoverage
+  private VersionCheckHelper() {}
 
   /**
    * Checks if the provided version matches the entity version for optimistic locking.
