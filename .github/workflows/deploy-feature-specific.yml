@@ -1,21 +1,19 @@
 name: Deploy Feature Flagged Environment
 
 on:
-  workflow_dispatch:
-    inputs:
-      feature-name:
-        description: 'Feature environment name (e.g. schema-v2).'
-        required: true
-      feature-flags:
-        description: 'Comma-separated feature flags as key=value pairs (e.g. schemaV2=true,newEndpoint=false). Leave blank for no flags.'
-        required: false
-        default: 'exampleFeatureFlag=true'
+  # Temporary PR trigger for POC testing.
+  # Comment out or remove this pull_request block before merging.
   pull_request:
     types:
-      - labeled
+      - opened
+      - reopened
+      - synchronize
+  push:
+    branches:
+      - main
 
 concurrency:
-  group: ${{ github.workflow }}-${{ inputs.feature-name || github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -24,72 +22,69 @@ permissions:
   id-token: write
 
 jobs:
-  check-label:
-    name: Check if feature deployment is required
+  base-resolve-presets:
+    name: Resolve Environment Presets
     runs-on: ubuntu-latest
     outputs:
-      should-deploy: ${{ steps.check.outputs.should-deploy }}
-      release-name-override: ${{ steps.check.outputs.release-name-override }}
-      feature-flags: ${{ steps.check.outputs.feature-flags }}
+      matrix: ${{ steps.resolve.outputs.matrix }}
     steps:
-      - name: Determine Feature Flag deployment
-        id: check
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Resolve preset matrix
+        id: resolve
         shell: bash
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          EVENT_ACTION: ${{ github.event.action }}
-          LABEL_NAME: ${{ github.event.label.name }}
-          FEATURE_NAME: ${{ inputs.feature-name }}
-          FEATURE_FLAGS_INPUT: ${{ inputs.feature-flags }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
-          BASE_REPO: ${{ github.repository }}
+          PRESET_FILE: .github/config/ephemeral-environment-presets.json
+          RELEASE_NAME_BASE: main-${{ github.sha }}
         run: |
           set -euo pipefail
 
-          echo "RC feature deploy check"
-          echo "  event_name=$EVENT_NAME"
-          echo "  event_action=${EVENT_ACTION:-}"
-          echo "  label_name=${LABEL_NAME:-}"
-          echo "  pr_number=${PR_NUMBER:-}"
-          echo "  head_repo=${HEAD_REPO:-}"
-          echo "  base_repo=${BASE_REPO:-}"
+          [ -f "$PRESET_FILE" ] || { echo "Missing preset file: $PRESET_FILE"; exit 1; }
 
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "Manual dispatch detected; enabling RC deploy"
-            echo "should-deploy=true" >> "$GITHUB_OUTPUT"
-            echo "release-name-override=${FEATURE_NAME}" >> "$GITHUB_OUTPUT"
-            echo "feature-flags=${FEATURE_FLAGS_INPUT}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          if [ "$EVENT_NAME" = "pull_request" ]; then
-            has_label=false
-
-            if [ "$EVENT_ACTION" = "labeled" ] && [ "$LABEL_NAME" = "enhancement" ]; then
-              has_label=true
+          sanitize_release_name() {
+            local raw
+            local cleaned
+            local hash_suffix
+            local prefix
+            raw="$1"
+            cleaned=$(echo "$raw" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9-' '-' | sed 's/^-*//; s/-*$//; s/--*/-/g')
+            if [ -z "$cleaned" ]; then
+              cleaned="feat-env"
             fi
 
-            echo "  has_label=$has_label"
-
-            if [ "$has_label" = true ]; then
-              echo "PR deploy label detected; enabling RC deploy"
-              echo "should-deploy=true" >> "$GITHUB_OUTPUT"
-              echo "release-name-override=pr-${PR_NUMBER}" >> "$GITHUB_OUTPUT"
-              echo "feature-flags=exampleFeatureFlag=true" >> "$GITHUB_OUTPUT"
-              exit 0
+            if [ ${#cleaned} -gt 53 ]; then
+              hash_suffix=$(printf "%s" "$cleaned" | shasum | cut -c1-8)
+              prefix=$(printf "%s" "$cleaned" | cut -c1-44 | sed 's/-*$//')
+              cleaned="${prefix}-${hash_suffix}"
             fi
+            echo "$cleaned"
+          }
+
+          matrix='[]'
+          while IFS= read -r preset; do
+            suffix=$(jq -r --arg p "$preset" '.[$p].suffix // $p' "$PRESET_FILE")
+            preset_extra_env=$(jq -r --arg p "$preset" '.[$p].extraEnv // ""' "$PRESET_FILE")
+
+            release_name=$(sanitize_release_name "${RELEASE_NAME_BASE}-${suffix}")
+
+            matrix=$(jq -c \
+              --arg preset_name "$preset" \
+              --arg release_name "$release_name" \
+              --arg extra_env "$preset_extra_env" \
+              '. + [{preset_name:$preset_name, release_name:$release_name, extra_env:$extra_env}]' \
+              <<< "$matrix")
+          done < <(jq -r 'keys[]' "$PRESET_FILE" | sort)
+
+          if [ "$matrix" = "[]" ]; then
+            echo "No presets resolved from file: ${PRESET_FILE}"
+            exit 1
           fi
 
-          echo "RC deploy not enabled for this event"
-          echo "should-deploy=false" >> "$GITHUB_OUTPUT"
-          echo "release-name-override=" >> "$GITHUB_OUTPUT"
-          echo "feature-flags=" >> "$GITHUB_OUTPUT"
+          echo "matrix={\"include\":${matrix}}" >> "$GITHUB_OUTPUT"
 
-  build-test:
-    if: ${{ needs.check-label.outputs.should-deploy == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+  base-build-test:
     runs-on: ubuntu-latest
-    needs: check-label
+    needs: base-resolve-presets
     permissions:
       contents: read
       packages: write
@@ -121,12 +116,11 @@ jobs:
           retention-days: 1
 
 
-  build-push-docker:
-    if: ${{ needs.check-label.outputs.should-deploy == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+  base-build-push-docker:
     runs-on: ubuntu-latest
     needs:
-      - check-label
-      - build-test
+      - base-resolve-presets
+      - base-build-test
     permissions:
       id-token: write
       contents: read
@@ -158,18 +152,18 @@ jobs:
           REPOSITORY: ${{ vars.ECR_REPOSITORY }}
           IMAGE_TAG: ${{ github.sha }}
 
-  deploy-rc-feature:
-    if: ${{ needs.check-label.outputs.should-deploy == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+  deploy-matrix-rc-feature:
     runs-on: ubuntu-latest
     needs:
-      - check-label
-      - build-push-docker
+      - base-resolve-presets
+      - base-build-push-docker
     environment: uat
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.base-resolve-presets.outputs.matrix) }}
     permissions:
       id-token: write
       contents: read
-    outputs:
-      release-name: ${{ steps.deploy.outputs.release-name }}
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
@@ -186,93 +180,17 @@ jobs:
           kube-cluster: ${{ secrets.KUBE_CLUSTER }}
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
           app-environment: rc-feature
-          release-name-override: ${{ needs.check-label.outputs.release-name-override }}
-          feature-flags: ${{ needs.check-label.outputs.feature-flags }}
+          release-name-override: ${{ matrix.release_name }}
+          extra-env: ${{ matrix.extra_env }}
 
-  smoke-test-rc-feature:
-    if: ${{ needs.check-label.outputs.should-deploy == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-    runs-on: ubuntu-latest
-    needs:
-      - check-label
-      - deploy-rc-feature
-    environment: uat
-    permissions:
-      id-token: write
-      contents: read
-    env:
-      RELEASE_NAME: ${{ needs.deploy-rc-feature.outputs.release-name }}
-      KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-
-      - name: Set up JDK 25
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+      - name: Run smoke tests
+        uses: ./.github/actions/smoke-test
         with:
-          java-version: 25
-          distribution: 'corretto'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
-
-      - name: Authenticate to the cluster
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
-        with:
+          release-name: ${{ steps.deploy.outputs.release-name }}
+          branch-name: ${{ matrix.release_name }}
           kube-cert: ${{ secrets.KUBE_CERT }}
           kube-token: ${{ secrets.KUBE_TOKEN }}
           kube-cluster: ${{ secrets.KUBE_CLUSTER }}
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-
-      - name: Port forward to Postgres
-        uses: ./.github/actions/port-forward
-        with:
-          kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
-          pod_selector: app.kubernetes.io/instance=${{ env.RELEASE_NAME }}-postgresql,app.kubernetes.io/name=postgresql
-          local_port: "5432"
-          remote_port: "5432"
-          pid_env_var: DB_PORT_FORWARD_PID
-
-      - name: Port forward to app
-        uses: ./.github/actions/port-forward
-        with:
-          kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
-          pod_selector: app.kubernetes.io/instance=${{ env.RELEASE_NAME }},app.kubernetes.io/name=data-access-api
-          local_port: "8080"
-          remote_port: "8080"
-          pid_env_var: APP_PORT_FORWARD_PID
-
-      - name: Configure smoke-test environment
-        shell: bash
-        run: |
-          set -euo pipefail
-          decode() {
-            kubectl -n "$KUBE_NAMESPACE" get secret "${{ env.RELEASE_NAME }}-postgresql" -o jsonpath="{.data.$1}" | base64 -d
-          }
-          DB_PASS=$(decode postgres-password)
-          echo "::add-mask::$DB_PASS"
-          {
-            echo "LAA_SMOKE_ACCESS_API_URL=http://localhost:8080"
-            echo "LAA_SMOKE_ACCESS_DB_URL=jdbc:postgresql://localhost:5432/postgres"
-            echo "LAA_SMOKE_ACCESS_DB_USERNAME=postgres"
-            echo "LAA_SMOKE_ACCESS_DB_PASSWORD=$DB_PASS"
-          } >> "$GITHUB_ENV"
-
-      - name: Run smoke tests
-        run: ./gradlew :data-access-service:infrastructureTest --continue --console=plain
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload smoke test report
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: rc-feature-smoke-test-report
-          path: data-access-service/build/reports/tests/infrastructureTest
-          retention-days: 14
-
-      - name: Stop port-forwards
-        if: always()
-        shell: bash
-        run: |
-          for pid in "${DB_PORT_FORWARD_PID:-}" "${APP_PORT_FORWARD_PID:-}"; do
-            [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
-          done
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          report-name: rc-feature-smoke-test-${{ matrix.preset_name }}

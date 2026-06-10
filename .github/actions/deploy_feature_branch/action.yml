@@ -29,8 +29,8 @@ inputs:
     description: "Optional Helm release name override"
     required: false
     default: ""
-  feature-flags:
-    description: "Comma-separated feature flags key=value"
+  extra-env:
+    description: "Comma-separated extra environment variables key=value"
     required: false
     default: ""
 
@@ -93,7 +93,7 @@ runs:
         APP_ENVIRONMENT: ${{ inputs.app-environment }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
         RELEASE_NAME: ${{ steps.resolve_release_name.outputs.release-name }}
-        FEATURE_FLAGS: ${{ inputs.feature-flags }}
+        EXTRA_ENV: ${{ inputs.extra-env }}
       run: |
         set -euo pipefail
 
@@ -143,15 +143,25 @@ runs:
         SPRING_PROFILE="preview"
         
 
-        FEATURE_FLAG_ARGS=()
-        if [ -n "${FEATURE_FLAGS}" ]; then
-          IFS=',' read -r -a pairs <<< "${FEATURE_FLAGS}"
+        EXTRA_ENV_ARGS=()
+
+        validate_kv_pair() {
+          local pair="$1"
+          local type_name="$2"
+          pair=$(echo "$pair" | xargs)
+          [ -z "$pair" ] && return 1
+          if [[ "$pair" != *=* ]]; then
+            echo "Invalid ${type_name} '$pair'. Expected key=value format."
+            exit 1
+          fi
+          return 0
+        }
+
+        if [ -n "${EXTRA_ENV}" ]; then
+          IFS=',' read -r -a pairs <<< "${EXTRA_ENV}"
           for pair in "${pairs[@]}"; do
-            pair=$(echo "$pair" | xargs)
-            [ -z "$pair" ] && continue
-            if [[ "$pair" != *=* ]]; then
-              echo "Invalid feature flag '$pair'. Expected key=value format."
-              exit 1
+            if ! validate_kv_pair "$pair" "extra env"; then
+              continue
             fi
 
             key=${pair%%=*}
@@ -160,11 +170,16 @@ runs:
             value=$(echo "$value" | xargs)
 
             if [ -z "$key" ]; then
-              echo "Invalid feature flag '$pair'. Key cannot be empty."
+              echo "Invalid extra env '$pair'. Key cannot be empty."
               exit 1
             fi
 
-            FEATURE_FLAG_ARGS+=(--set "featureFlags.${key}=${value}")
+            if [[ ! "$key" =~ ^[A-Z][A-Z0-9_]*$ ]]; then
+              echo "Invalid extra env key '$key'. Use uppercase letters, digits, and underscore only."
+              exit 1
+            fi
+
+            EXTRA_ENV_ARGS+=(--set-string "extraEnv.${key}=${value}")
           done
         fi
 
@@ -181,7 +196,7 @@ runs:
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
           --set autoscaling.enabled=false \
-          "${FEATURE_FLAG_ARGS[@]}" \
+          "${EXTRA_ENV_ARGS[@]}" \
           --values ${VALUES_FILE} \
           --install \
           --wait

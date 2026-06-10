@@ -69,3 +69,5 @@ portForward:
   enabled: false
 
 featureFlags: {}
+
+extraEnv: {}

@@ -128,6 +128,18 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
 {{- end }}
 
 {{/*
+  Define additional environment variables for short-lived environments
+*/}}
+{{- define "extraEnvConfig" }}
+{{- if .Values.extraEnv }}
+{{- range $key, $value := .Values.extraEnv }}
+- name: {{ $key }}
+  value: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
   Define SDS API environment variables
 */}}
 {{- define "sdsApiConfig" }}
