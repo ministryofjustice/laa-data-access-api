@@ -1,4 +1,4 @@
-{{- if default false .Values.flagd.enabled }}
+{{- if and .Values.flagd .Values.flagd.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,7 +22,7 @@ spec:
         - name: flagd
           image: {{ default "ghcr.io/open-feature/flagd:latest" .Values.flagd.image | quote }}
           imagePullPolicy: IfNotPresent
-          command: ["start", "--uri", "file:/etc/flagd/flags.flagd.json"]
+          args: ["start", "--uri", "file:///etc/flagd/flags.flagd.json"]
           ports:
             - name: grpc
               containerPort: 8013
