@@ -4,9 +4,14 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/** Validation exception that holds violations (errors). */
+/**
+ * Validation exception that holds violations (errors). excluded from code coverage as
+ * lines/branches not covered are not testable from the services which use it
+ */
 @JsonIgnoreProperties(ignoreUnknown = true)
+@ExcludeFromGeneratedCodeCoverage
 public class ValidationException extends RuntimeException {
   private final List<String> errors;
 

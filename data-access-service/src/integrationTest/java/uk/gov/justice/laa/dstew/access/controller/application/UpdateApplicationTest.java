@@ -10,6 +10,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -225,6 +226,10 @@ public class UpdateApplicationTest extends BaseHarnessTest {
             DataGenerator.createDefault(
                 ApplicationUpdateRequestGenerator.class,
                 builder -> builder.applicationContent(null))),
+        Arguments.of(
+            DataGenerator.createDefault(
+                ApplicationUpdateRequestGenerator.class,
+                builder -> builder.applicationContent(new HashMap<>()))),
         null);
   }
 }

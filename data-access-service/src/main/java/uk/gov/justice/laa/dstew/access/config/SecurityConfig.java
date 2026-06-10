@@ -45,13 +45,18 @@ import org.springframework.security.oauth2.server.resource.web.authentication.Be
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.filter.OncePerRequestFilter;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
-/** Spring Security configuration if security is not disabled. */
+/**
+ * Spring Security configuration if security is not disabled. Currently excluded from code coverage
+ * until we have OAuth mocking in place
+ */
 @Configuration
 @EnableMethodSecurity
 @EnableWebSecurity
 @ConditionalOnProperty(prefix = "feature", name = "disable-security", havingValue = "false")
+@ExcludeFromGeneratedCodeCoverage
 public class SecurityConfig {
 
   @Value("${spring.security.oauth2.resourceserver.jwt.audience}")
@@ -198,33 +203,7 @@ public class SecurityConfig {
    */
   @Bean("entra")
   public EffectiveAuthorizationProvider authProvider() {
-    return new EffectiveAuthorizationProvider() {
-      @Override
-      public boolean hasAppRole(String name) {
-        return getAuthorities().contains(AUTHORITY_PREFIX + name);
-      }
-
-      @Override
-      public boolean hasAnyAppRole(String... names) {
-        final var authorities = getAuthorities();
-        return Arrays.stream(names).anyMatch(name -> authorities.contains(AUTHORITY_PREFIX + name));
-      }
-
-      @Override
-      public boolean hasName() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.isAuthenticated() && !auth.getName().isBlank();
-      }
-
-      private Set<String> getAuthorities() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return (auth != null && auth.isAuthenticated())
-            ? auth.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.toUnmodifiableSet())
-            : Set.of();
-      }
-    };
+    return new SecurityContextEffectiveAuthorizationProvider();
   }
 
   /**
@@ -258,5 +237,36 @@ public class SecurityConfig {
     authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
 
     return authorizedClientManager;
+  }
+
+  /** Gives methods to check the SecurityContext for roles and username. */
+  @ExcludeFromGeneratedCodeCoverage
+  private class SecurityContextEffectiveAuthorizationProvider
+      implements EffectiveAuthorizationProvider {
+    @Override
+    public boolean hasAppRole(String name) {
+      return getAuthorities().contains(AUTHORITY_PREFIX + name);
+    }
+
+    @Override
+    public boolean hasAnyAppRole(String... names) {
+      final var authorities = getAuthorities();
+      return Arrays.stream(names).anyMatch(name -> authorities.contains(AUTHORITY_PREFIX + name));
+    }
+
+    @Override
+    public boolean hasName() {
+      Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+      return auth != null && auth.isAuthenticated() && !auth.getName().isBlank();
+    }
+
+    private Set<String> getAuthorities() {
+      Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+      return (auth != null && auth.isAuthenticated())
+          ? auth.getAuthorities().stream()
+              .map(GrantedAuthority::getAuthority)
+              .collect(Collectors.toUnmodifiableSet())
+          : Set.of();
+    }
   }
 }

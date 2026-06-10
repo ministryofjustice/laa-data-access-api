@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
@@ -114,6 +115,11 @@ public class ApplicationSummaryMapperTest extends BaseMapperTest {
   }
 
   @Test
+  void givenNullLinkedApplicationSummary_whenToLinkedApplicationSummary_thenReturnNull() {
+    assertThat(applicationMapper.toLinkedApplicationSummary(null)).isNull();
+  }
+
+  @Test
   void
       givenApplicationSummaryDtoWithNullSubmittedAt_whenToApplicationSummary_thenSubmittedAtIsNull() {
     ApplicationSummaryDto summaryDto =
@@ -156,6 +162,19 @@ public class ApplicationSummaryMapperTest extends BaseMapperTest {
     assertThat(result.getClientFirstName()).isNull();
     assertThat(result.getClientLastName()).isNull();
     assertThat(result.getClientDateOfBirth()).isNull();
+  }
+
+  @Test
+  void givenNullInstant_whenMap_thenReturnsNull() {
+    assertThat(applicationMapper.map((Instant) null)).isNull();
+  }
+
+  @Test
+  void givenInstant_whenMap_thenReturnsOffsetDateTimeAtUtc() {
+    Instant instant = Instant.ofEpochSecond(1_000_000);
+    OffsetDateTime expected = instant.atOffset(ZoneOffset.UTC);
+
+    assertThat(applicationMapper.map(instant)).isEqualTo(expected);
   }
 
   @Test

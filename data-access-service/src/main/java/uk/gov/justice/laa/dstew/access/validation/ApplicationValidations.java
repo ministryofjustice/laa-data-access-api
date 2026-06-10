@@ -23,9 +23,15 @@ public class ApplicationValidations {
   public void checkApplicationUpdateRequest(final ApplicationUpdateRequest dto) {
     ValidationErrors validationErrors =
         ValidationErrors.empty()
-            .addIf((dto == null), "ApplicationUpdateRequest and its content cannot be null")
-            .addIf(dto.getApplicationContent() == null, "Application content cannot be null")
-            .addIf(dto.getApplicationContent().isEmpty(), "Application content cannot be empty");
+            .addIf(dto == null, "ApplicationUpdateRequest and its content cannot be null")
+            .addIf(
+                dto != null && dto.getApplicationContent() == null,
+                "Application content cannot be null")
+            .addIf(
+                dto != null
+                    && dto.getApplicationContent() != null
+                    && dto.getApplicationContent().isEmpty(),
+                "Application content cannot be empty");
     if (!validationErrors.errors().isEmpty()) {
       throw new ValidationException(validationErrors.errors().stream().distinct().toList());
     }
@@ -40,7 +46,7 @@ public class ApplicationValidations {
 
   /** Validates an incoming apply Decision PATCH. */
   public void checkApplicationMakeDecisionRequest(final MakeDecisionRequest dto) {
-    if (dto == null || dto.getProceedings().isEmpty()) {
+    if (dto.getProceedings().isEmpty()) {
       throw new ValidationException(
           List.of("The Make Decision request must contain at least one proceeding"));
     }
@@ -66,13 +72,7 @@ public class ApplicationValidations {
             });
   }
 
-  private boolean isCertificateNullOrEmpty(Object certificate) {
-    if (certificate == null) {
-      return true;
-    }
-    if (certificate instanceof Map) {
-      return ((Map<?, ?>) certificate).isEmpty();
-    }
-    return certificate.toString().isEmpty();
+  private boolean isCertificateNullOrEmpty(Map<?, ?> certificate) {
+    return certificate == null || certificate.isEmpty();
   }
 }

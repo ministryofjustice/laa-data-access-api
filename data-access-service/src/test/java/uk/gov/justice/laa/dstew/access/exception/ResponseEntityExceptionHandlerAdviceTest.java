@@ -68,6 +68,14 @@ class ResponseEntityExceptionHandlerAdviceTest {
         Arguments.of(null, "PROGRESS"));
   }
 
+  public static Stream<Arguments> getIllegalArgumentWithMismatchedInputNonEnumCauses() {
+    // MismatchedInputException cause present, but target type is null or non-enum:
+    // the advice's when-guard rejects these and falls to iae.getLocalizedMessage()
+    return Stream.of(
+        Arguments.of("null targetType", (Class<?>) null),
+        Arguments.of("non-enum targetType", String.class));
+  }
+
   @ParameterizedTest
   @MethodSource("getDataTypes")
   void handleHttpMessageNotReadable(Class<?> clazz, String expectedType) {
@@ -199,6 +207,39 @@ class ResponseEntityExceptionHandlerAdviceTest {
     Map<String, String> invalidFieldsMap = (Map<String, String>) invalidFields;
     assertEquals(1, invalidFieldsMap.size());
     assertEquals("testMessage", invalidFieldsMap.get("testField"));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("getIllegalArgumentWithMismatchedInputNonEnumCauses")
+  void
+      handleHttpMessageNotReadable_IllegalArgumentWithMismatchedInputCauseButNotEnum_fallsBackToIaeMessage(
+          String description, @Nullable Class<?> targetType) {
+    HttpMessageNotReadableException exception =
+        getHttpMessageNotReadableExceptionIllegalArgumentWithMismatchedInputCause(targetType);
+    ResponseEntity<Object> objectResponseEntity = getResponseEntity(exception);
+    assertThat(objectResponseEntity).isNotNull();
+    assertInstanceOf(ProblemDetail.class, objectResponseEntity.getBody());
+    ProblemDetail problemDetail = (ProblemDetail) objectResponseEntity.getBody();
+    assertEquals(400, problemDetail.getStatus());
+    // When the pre-guard rejects the MismatchedInputException, the advice falls back to
+    // iae.getLocalizedMessage() — buildMessageForInvalidEnum is never called
+    assertEquals("Unexpected value : PROGRESS", problemDetail.getDetail());
+  }
+
+  private static @NonNull HttpMessageNotReadableException
+      getHttpMessageNotReadableExceptionIllegalArgumentWithMismatchedInputCause(
+          @Nullable Class<?> targetType) {
+    HttpMessageNotReadableException exception = mock(HttpMessageNotReadableException.class);
+    IllegalArgumentException illegalArgumentException = mock(IllegalArgumentException.class);
+    when(illegalArgumentException.getLocalizedMessage()).thenReturn("Unexpected value : PROGRESS");
+    when(exception.getRootCause()).thenReturn(illegalArgumentException);
+    // cause IS a MismatchedInputException, but targetType is null or non-enum
+    MismatchedInputException mismatchedInputException = mock(MismatchedInputException.class);
+    @SuppressWarnings("rawtypes")
+    Class rawClass = targetType;
+    when(mismatchedInputException.getTargetType()).thenReturn(rawClass);
+    when(exception.getCause()).thenReturn(mismatchedInputException);
+    return exception;
   }
 
   private @Nullable ResponseEntity<Object> getResponseEntity(
