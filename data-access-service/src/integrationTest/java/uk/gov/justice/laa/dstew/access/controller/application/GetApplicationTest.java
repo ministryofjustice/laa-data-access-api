@@ -201,7 +201,7 @@ public class GetApplicationTest extends BaseHarnessTest {
     assertThat(response.getOpponents()).hasSize(1);
 
     var mapped = response.getOpponents().get(0);
-    assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
+    assertThat(mapped.getOpponentType()).isEqualTo("ApplicationMeritsTask::Individual");
     assertThat(mapped.getFirstName()).isEqualTo("John");
     assertThat(mapped.getLastName()).isEqualTo("Smith");
     assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
@@ -298,12 +298,12 @@ public class GetApplicationTest extends BaseHarnessTest {
 
     Map<String, Object> opposable =
         Map.of(
-            "opposableType", "ApplicationMeritsTask::Individual",
             // firstName intentionally missing
             "lastName", "Smith",
             "name", "Acme Ltd");
 
-    Map<String, Object> opponent = Map.of("opposable", opposable);
+    Map<String, Object> opponent =
+        Map.of("opposableType", "ApplicationMeritsTask::Individual", "opposable", opposable);
 
     Map<String, Object> merits = Map.of("opponents", List.of(opponent));
 
@@ -322,7 +322,7 @@ public class GetApplicationTest extends BaseHarnessTest {
     assertThat(response.getOpponents()).hasSize(1);
 
     var mapped = response.getOpponents().get(0);
-    assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
+    assertThat(mapped.getOpponentType()).isEqualTo("ApplicationMeritsTask::Individual");
     assertThat(mapped.getFirstName()).isNull();
     assertThat(mapped.getLastName()).isEqualTo("Smith");
     assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
@@ -567,7 +567,7 @@ public class GetApplicationTest extends BaseHarnessTest {
                 .levelOfService(
                     proceeding
                         .getProceedingContent()
-                        .get("substantiveLevelOfServiceName")
+                        .get("substantiveLevelOfServiceNameEnum")
                         .toString())
                 .substantiveCostLimitation(
                     Double.parseDouble(
@@ -659,7 +659,7 @@ public class GetApplicationTest extends BaseHarnessTest {
             opponent -> {
               Map<String, Object> opposable = (Map<String, Object>) opponent.get("opposable");
               return OpponentResponse.builder()
-                  .opposableType(opposable.get("opposableType").toString())
+                  .opponentType(opponent.get("opposableType").toString())
                   .firstName(
                       opposable.get("firstName") != null
                           ? opposable.get("firstName").toString()

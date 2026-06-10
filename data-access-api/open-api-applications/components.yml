@@ -21,7 +21,7 @@ components:
     OpponentResponse:
       type: object
       properties:
-        opposableType:
+        opponentType:
           type: string
         firstName:
           type: string

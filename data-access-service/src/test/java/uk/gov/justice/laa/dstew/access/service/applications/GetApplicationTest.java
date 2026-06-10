@@ -341,7 +341,8 @@ public class GetApplicationTest extends BaseServiceTest {
         .isEqualToIgnoringCase(actualApplicationProceedingResponse.getMatterType().getValue());
     assertThat(
             getValueFromProceedingContent(
-                "substantiveLevelOfServiceName", expectedProceedingEntity.getProceedingContent()))
+                "substantiveLevelOfServiceNameEnum",
+                expectedProceedingEntity.getProceedingContent()))
         .isEqualTo(actualApplicationProceedingResponse.getLevelOfService());
     Double substantiveCostLimitation =
         Double.valueOf(

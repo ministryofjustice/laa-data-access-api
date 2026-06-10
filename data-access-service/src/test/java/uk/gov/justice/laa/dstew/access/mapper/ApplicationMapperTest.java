@@ -250,13 +250,11 @@ public class ApplicationMapperTest extends BaseMapperTest {
   @Test
   void givenApplicationWithOpponents_whenToApplication_thenMapsOpponentsCorrectly() {
     Map<String, Object> opposable =
-        Map.of(
-            "opposableType", "ApplicationMeritsTask::Individual",
-            "firstName", "John",
-            "lastName", "Smith",
-            "name", "Acme Ltd");
+        Map.of("firstName", "John", "lastName", "Smith", "name", "Acme Ltd");
+    Map<String, Object> opponent =
+        Map.of("opposableType", "ApplicationMeritsTask::Individual", "opposable", opposable);
     Map<String, Object> content =
-        Map.of("applicationMerits", Map.of("opponents", List.of(Map.of("opposable", opposable))));
+        Map.of("applicationMerits", Map.of("opponents", List.of(opponent)));
 
     ApplicationEntity entity =
         DataGenerator.createDefault(
@@ -264,11 +262,10 @@ public class ApplicationMapperTest extends BaseMapperTest {
 
     ApplicationResponse result = applicationMapper.toApplication(entity);
 
-    assertThat(result.getOpponents()).isNotNull();
-    assertThat(result.getOpponents()).hasSize(1);
+    assertThat(result.getOpponents()).isNotNull().hasSize(1);
 
     OpponentResponse mapped = result.getOpponents().getFirst();
-    assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
+    assertThat(mapped.getOpponentType()).isEqualTo("ApplicationMeritsTask::Individual");
     assertThat(mapped.getFirstName()).isEqualTo("John");
     assertThat(mapped.getLastName()).isEqualTo("Smith");
     assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
@@ -290,13 +287,11 @@ public class ApplicationMapperTest extends BaseMapperTest {
 
   @Test
   void givenOpponentWithMissingFirstName_whenToApplication_thenMapsRemainingFields() {
-    Map<String, Object> opposable =
-        Map.of(
-            "opposableType", "ApplicationMeritsTask::Individual",
-            "lastName", "Smith",
-            "name", "Acme Ltd");
+    Map<String, Object> opposable = Map.of("lastName", "Smith", "name", "Acme Ltd");
+    Map<String, Object> opponent =
+        Map.of("opposableType", "ApplicationMeritsTask::Individual", "opposable", opposable);
     Map<String, Object> content =
-        Map.of("applicationMerits", Map.of("opponents", List.of(Map.of("opposable", opposable))));
+        Map.of("applicationMerits", Map.of("opponents", List.of(opponent)));
 
     ApplicationEntity entity =
         DataGenerator.createDefault(
@@ -304,12 +299,11 @@ public class ApplicationMapperTest extends BaseMapperTest {
 
     ApplicationResponse result = applicationMapper.toApplication(entity);
 
-    assertThat(result.getOpponents()).isNotNull();
-    assertThat(result.getOpponents()).hasSize(1);
+    assertThat(result.getOpponents()).isNotNull().hasSize(1);
 
     var mapped = result.getOpponents().getFirst();
 
-    assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
+    assertThat(mapped.getOpponentType()).isEqualTo("ApplicationMeritsTask::Individual");
     assertThat(mapped.getFirstName()).isNull();
     assertThat(mapped.getLastName()).isEqualTo("Smith");
     assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
