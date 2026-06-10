@@ -212,7 +212,7 @@ dependencyManagement {
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     imports {
         mavenBom 'tools.jackson:jackson-bom:3.1.1'
-        mavenBom 'io.netty:netty-bom:4.2.13.Final'
+        mavenBom 'io.netty:netty-bom:4.2.15.Final'
     }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
@@ -252,6 +252,10 @@ dependencies {
     }
     implementation 'org.springframework.security:spring-security-config'
     implementation 'org.springframework.security:spring-security-web'
+    implementation 'org.springframework:spring-core:7.0.8'
+    implementation 'org.springframework:spring-expression:7.0.8'
+    implementation 'org.springframework:spring-web:7.0.8'
+    implementation 'org.springframework:spring-webmvc:7.0.8'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation('org.springframework.boot:spring-boot-starter-web') {
         exclude group: 'com.google.code.gson', module: 'gson'
@@ -281,12 +285,15 @@ dependencies {
     implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
 
     implementation 'io.micrometer:micrometer-registry-prometheus'
+    implementation 'io.micrometer:micrometer-core:1.16.6'
     implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot:2.2.0'
 
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
     annotationProcessor 'org.hibernate.orm:hibernate-processor:7.3.2.Final'
     implementation 'org.javers:javers-core:7.10.0'
+    implementation 'dev.openfeature:sdk:1.15.1'
+    implementation 'dev.openfeature.contrib.providers:flagd:0.11.11'
 
     runtimeOnly 'org.postgresql:postgresql:42.7.11'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"

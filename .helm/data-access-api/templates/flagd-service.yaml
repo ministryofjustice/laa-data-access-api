@@ -1,0 +1,19 @@
+{{- if and .Values.flagd .Values.flagd.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "data-access-api.fullname" . }}-flagd
+  labels:
+    {{- include "data-access-api.labels" . | nindent 4 }}
+    app.kubernetes.io/component: flagd
+spec:
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: {{ default 8013 .Values.flagd.port }}
+      targetPort: grpc
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: flagd
+{{- end }}
+

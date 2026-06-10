@@ -1,0 +1,14 @@
+{{- if and .Values.flagd .Values.flagd.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "data-access-api.fullname" . }}-flagd-flags
+  labels:
+    {{- include "data-access-api.labels" . | nindent 4 }}
+    app.kubernetes.io/component: flagd
+data:
+  flags.flagd.json: |
+{{ .Values.flagd.flagsJson | nindent 4 }}
+{{- end }}
+
+

@@ -122,6 +122,18 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
 {{- end }}
 
 {{/*
+  Define flagd environment variables
+*/}}
+{{- define "flagdConfig" }}
+- name: FLAGD_ENABLED
+  value: {{ default false .Values.flagd.enabled | quote }}
+- name: FLAGD_HOST
+  value: {{ printf "%s-flagd" (include "data-access-api.fullname" .) | quote }}
+- name: FLAGD_PORT
+  value: {{ default 8013 .Values.flagd.port | quote }}
+{{- end }}
+
+{{/*
   Define SDS API environment variables
 */}}
 {{- define "sdsApiConfig" }}

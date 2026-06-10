@@ -1,0 +1,12 @@
+services:
+  flagd:
+    image: ghcr.io/open-feature/flagd:latest
+    container_name: laa-flagd-poc
+    command: ["start", "--uri", "file:/etc/flagd/flags.flagd.json"]
+    ports:
+      - "8013:8013"
+    volumes:
+      - ./flagd:/etc/flagd:ro
+    restart: unless-stopped
+
+

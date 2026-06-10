@@ -357,6 +357,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify flagd-backed flags on preview releases
+        if: ${{ env.BRANCH_NAME != 'main' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          response=$(curl -sf http://localhost:8080/flags)
+          echo "Flag response: $response"
+          echo "$response" | jq -e '.pocEnabled == true and .pocVariant == "control" and .pocVariantTwo == "treatment"' > /dev/null
+
       - name: Upload smoke test report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
