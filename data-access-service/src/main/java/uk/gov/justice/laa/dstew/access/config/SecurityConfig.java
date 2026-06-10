@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.config;
 
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -142,9 +143,9 @@ public class SecurityConfig {
         jwt -> {
           var authorities = grantedAuthoritiesConverter.convert(jwt);
           if (authorities == null || authorities.isEmpty()) {
-            // Add default roles
-            return Set.of(new SimpleGrantedAuthority("APPROLE_LAA_CASEWORKER"));
+            authorities = new HashSet<>();
           }
+          authorities.add(new SimpleGrantedAuthority("APPROLE_LAA_CASEWORKER"));
           return authorities;
         });
     return jwtAuthenticationConverter;
@@ -163,8 +164,7 @@ public class SecurityConfig {
 
     OAuth2TokenValidator<Jwt> audienceValidator =
         token -> {
-          if (token.getAudience().contains(audience)
-              && token.getClaimAsString(APP_ROLES_CLAIM) != null) {
+          if (token.getAudience().contains(audience)) {
             return OAuth2TokenValidatorResult.success();
           }
           return OAuth2TokenValidatorResult.failure(
