@@ -35,7 +35,6 @@ jobs:
         shell: bash
         env:
           PRESET_FILE: .github/config/ephemeral-environment-presets.json
-          RELEASE_NAME_BASE: main-${{ github.sha }}
         run: |
           set -euo pipefail
 
@@ -65,7 +64,7 @@ jobs:
             suffix=$(jq -r --arg p "$preset" '.[$p].suffix // $p' "$PRESET_FILE")
             preset_extra_env=$(jq -r --arg p "$preset" '.[$p].extraEnv // ""' "$PRESET_FILE")
 
-            release_name=$(sanitize_release_name "${RELEASE_NAME_BASE}-${suffix}")
+            release_name=$(sanitize_release_name "$suffix")
 
             matrix=$(jq -c \
               --arg preset_name "$preset" \
