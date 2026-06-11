@@ -33,7 +33,7 @@ public class FeatureFlagsController {
    */
   @GetMapping(path = "/feature-flags", produces = "application/json")
   public ResponseEntity<Map<String, Boolean>> getFeatureFlags(
-      @RequestHeader ServiceName serviceName) {
+      @RequestHeader(value = "X-Service-Name") ServiceName serviceName) {
     Map<String, Boolean> flags =
         Map.of(
             "enableDevToken", featureProperties.enableDevToken(),
