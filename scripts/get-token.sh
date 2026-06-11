@@ -11,6 +11,7 @@
 # Environments:
 #   local       Local development (default) — mock server on port 9999
 #   smoke       Smoke test infrastructure   — mock server on port 9998
+#   uat         UAT mock server via kubectl port-forward on port 9999
 #   custom      Use OAUTH_TOKEN_URL env var  — bring your own URL
 #
 # Options:
@@ -22,10 +23,14 @@
 #   ./scripts/get-token.sh
 #   ./scripts/get-token.sh local --copy
 #   ./scripts/get-token.sh smoke --decode
+#   ./scripts/get-token.sh uat --decode
 #   OAUTH_TOKEN_URL=http://localhost:7777/entra/token ./scripts/get-token.sh custom
 #
 # Environment variable overrides (all optional):
 #   OAUTH_TOKEN_URL   Full token URL (used with the 'custom' environment)
+#   OAUTH_LOCAL_PORT  Local port used for UAT mock-oauth2 port-forward (default: 9999)
+#   OAUTH_ISSUER_HOST Host header used when token URL is port-forwarded but the issuer must be
+#                      the in-cluster mock-oauth2 service
 #   OAUTH_CLIENT_ID   OAuth client_id   (default: test)
 #   OAUTH_CLIENT_SECRET  OAuth client_secret  (default: test)
 #   OAUTH_SCOPE       OAuth scope  (default: api://laa-data-access-api/.default)
@@ -76,6 +81,11 @@ case "${ENV}" in
     TOKEN_URL="${OAUTH_TOKEN_URL:-http://localhost:9998/entra/token}"
     ENV_LABEL="smoke test"
     ;;
+  uat)
+    TOKEN_URL="${OAUTH_TOKEN_URL:-http://localhost:${OAUTH_LOCAL_PORT:-9999}/entra/token}"
+    OAUTH_ISSUER_HOST="${OAUTH_ISSUER_HOST:-spike-dstew1360-data-access-api-mock-oauth2:9999}"
+    ENV_LABEL="UAT mock-oauth2 via port-forward"
+    ;;
   custom)
     if [[ -z "${OAUTH_TOKEN_URL:-}" ]]; then
       echo "ERROR: 'custom' environment requires OAUTH_TOKEN_URL to be set." >&2
@@ -86,7 +96,7 @@ case "${ENV}" in
     ENV_LABEL="custom (${TOKEN_URL})"
     ;;
   *)
-    echo "ERROR: Unknown environment '${ENV}'. Valid values: local, smoke, custom." >&2
+    echo "ERROR: Unknown environment '${ENV}'. Valid values: local, smoke, uat, custom." >&2
     exit 1
     ;;
 esac
@@ -182,10 +192,22 @@ esac
 # ---------------------------------------------------------------------------
 echo "Fetching token from ${ENV_LABEL}..." >&2
 echo "  URL: ${TOKEN_URL}" >&2
+if [[ -n "${OAUTH_ISSUER_HOST:-}" ]]; then
+  echo "  Issuer host: ${OAUTH_ISSUER_HOST}" >&2
+fi
 
 CURL_ARGS=(
   -s -X POST "${TOKEN_URL}"
   -H "Content-Type: application/x-www-form-urlencoded"
+)
+
+if [[ -n "${OAUTH_ISSUER_HOST:-}" ]]; then
+  CURL_ARGS+=(
+    -H "Host: ${OAUTH_ISSUER_HOST}"
+  )
+fi
+
+CURL_ARGS+=(
   -d "grant_type=client_credentials"
   -d "client_id=${CLIENT_ID}"
   -d "client_secret=${CLIENT_SECRET}"
