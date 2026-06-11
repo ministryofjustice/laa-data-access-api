@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
@@ -27,6 +28,10 @@ import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
  * Service class for managing domain events. Service name for all domain events is retrieved from
  * the request-scoped ServiceNameContext, which is populated by the ServiceNameInterceptor from the
  * X-Service-Name header.
+ *
+ * <p>TODO: caseworkerId currently sourced from the assigned caseworker on the application. Once
+ * authentication is in place, all domain events should use the logged-in user from the auth token
+ * instead. Some functions excluded from code coverage as the functionality is due for refactor.
  */
 @Service
 @RequiredArgsConstructor
@@ -83,7 +88,11 @@ public class SaveDomainEventService {
     domainEventRepository.save(domainEventEntity);
   }
 
-  /** Posts an APPLICATION_UPDATED domain event. */
+  /**
+   * Posts an APPLICATION_UPDATED domain event. excluded from code coverage as caseworker will be
+   * removed once RBAC is sorted. Domain event is asserted in UpdateApplicationTest
+   */
+  @ExcludeFromGeneratedCodeCoverage
   public void saveUpdateApplicationDomainEvent(
       ApplicationEntity applicationEntity, String updatedBy) {
 
@@ -132,6 +141,7 @@ public class SaveDomainEventService {
    * @param domainEventType domain event type enum
    * @return JSON string representation of the domain event details
    */
+  @ExcludeFromGeneratedCodeCoverage
   private String getEventDetailsAsJson(Object domainEventDetails, DomainEventType domainEventType) {
     try {
       return objectMapper.writeValueAsString(domainEventDetails);
@@ -191,7 +201,11 @@ public class SaveDomainEventService {
     saveDomainEvent(applicationId, caseworkerId, domainEventType, domainEventDetails);
   }
 
-  /** Posts an APPLICATION_NOTES domain event. */
+  /**
+   * Posts an APPLICATION_NOTES domain event. excluded from code coverage as caseworker will be
+   * removed once RBAC is sorted. Domain event is asserted in UpdateApplicationTest
+   */
+  @ExcludeFromGeneratedCodeCoverage
   @AllowApiCaseworker
   public void saveCreateApplicationNoteDomainEvent(
       ApplicationEntity applicationEntity, CreateNoteRequest request) {

@@ -6,7 +6,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -36,16 +39,26 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.filter.OncePerRequestFilter;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
-/** Spring Security configuration for JWT-based authentication and authorization. */
-@ExcludeFromGeneratedCodeCoverage
+/**
+ * Spring Security configuration if security is not disabled. Currently excluded from code coverage
+ * until we have OAuth mocking in place
+ */
 @Configuration
+@ConditionalOnProperty(
+    prefix = "feature",
+    name = "disable-security",
+    havingValue = "false",
+    matchIfMissing = true)
 @EnableMethodSecurity
 @EnableWebSecurity
+@ExcludeFromGeneratedCodeCoverage
 public class SecurityConfig {
 
   @Value("${spring.security.oauth2.resourceserver.jwt.audience}")
@@ -84,7 +97,14 @@ public class SecurityConfig {
    * @throws Exception if anything went wrong.
    */
   @Bean
-  SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
+  SecurityFilterChain securityFilterChain(
+      final HttpSecurity http,
+      @Autowired(required = false) @Qualifier("devTokenFilter") OncePerRequestFilter devTokenFilter)
+      throws Exception {
+
+    if (devTokenFilter != null) {
+      http.addFilterBefore(devTokenFilter, BearerTokenAuthenticationFilter.class);
+    }
 
     http.authorizeHttpRequests(
             authorize ->
@@ -178,33 +198,7 @@ public class SecurityConfig {
    */
   @Bean("entra")
   public EffectiveAuthorizationProvider authProvider() {
-    return new EffectiveAuthorizationProvider() {
-      @Override
-      public boolean hasAppRole(String name) {
-        return getAuthorities().contains(AUTHORITY_PREFIX + name);
-      }
-
-      @Override
-      public boolean hasAnyAppRole(String... names) {
-        final var authorities = getAuthorities();
-        return Arrays.stream(names).anyMatch(name -> authorities.contains(AUTHORITY_PREFIX + name));
-      }
-
-      @Override
-      public boolean hasName() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.isAuthenticated() && !auth.getName().isBlank();
-      }
-
-      private Set<String> getAuthorities() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return (auth != null && auth.isAuthenticated())
-            ? auth.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.toUnmodifiableSet())
-            : Set.of();
-      }
-    };
+    return new SecurityContextEffectiveAuthorizationProvider();
   }
 
   /**
@@ -238,5 +232,36 @@ public class SecurityConfig {
     authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
 
     return authorizedClientManager;
+  }
+
+  /** Gives methods to check the SecurityContext for roles and username. */
+  @ExcludeFromGeneratedCodeCoverage
+  private class SecurityContextEffectiveAuthorizationProvider
+      implements EffectiveAuthorizationProvider {
+    @Override
+    public boolean hasAppRole(String name) {
+      return getAuthorities().contains(AUTHORITY_PREFIX + name);
+    }
+
+    @Override
+    public boolean hasAnyAppRole(String... names) {
+      final var authorities = getAuthorities();
+      return Arrays.stream(names).anyMatch(name -> authorities.contains(AUTHORITY_PREFIX + name));
+    }
+
+    @Override
+    public boolean hasName() {
+      Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+      return auth != null && auth.isAuthenticated() && !auth.getName().isBlank();
+    }
+
+    private Set<String> getAuthorities() {
+      Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+      return (auth != null && auth.isAuthenticated())
+          ? auth.getAuthorities().stream()
+              .map(GrantedAuthority::getAuthority)
+              .collect(Collectors.toUnmodifiableSet())
+          : Set.of();
+    }
   }
 }

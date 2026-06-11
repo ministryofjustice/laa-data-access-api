@@ -21,8 +21,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 import tools.jackson.core.JsonParser;
 import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.exc.MismatchedInputException;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.Proceeding;
 
 class PayloadValidationServiceTest {
@@ -152,6 +154,57 @@ class PayloadValidationServiceTest {
 
     String expectedMessage = mappingException.getOriginalMessage();
     assertThat(validationException.errors()).contains(expectedMessage);
+    verify(validatorMock, never()).validate(any());
+  }
+
+  @Test
+  void
+      convertAndValidate_whenMapperThrowsIllegalArgumentWithNonEnumMismatchedInputCause_returnsIaeMessage() {
+    ObjectMapper mapper = mock(ObjectMapper.class);
+    Validator validatorMock = mock(Validator.class);
+    PayloadValidationService service = new PayloadValidationService(mapper, validatorMock);
+
+    JsonParser jsonParser = mock(JsonParser.class);
+    // String.class is not an enum — exercises the guard branch in buildMessageForInvalidEnum
+    MismatchedInputException mie =
+        MismatchedInputException.from(jsonParser, String.class, "type mismatch");
+    IllegalArgumentException iae = new IllegalArgumentException("bad value", mie);
+    when(mapper.convertValue(any(), eq(Proceeding.class))).thenThrow(iae);
+
+    ValidationException validationException =
+        Assertions.assertThrows(
+            ValidationException.class,
+            () -> service.convertAndValidate(new Proceeding(), Proceeding.class));
+
+    assertThat(validationException.errors()).contains(iae.getLocalizedMessage());
+    verify(validatorMock, never()).validate(any());
+  }
+
+  @Test
+  void
+      convertAndValidate_whenMapperThrowsIllegalArgumentWithEnumMismatchedInputCause_returnsMessageWithValidEnumValues() {
+    ObjectMapper mapper = mock(ObjectMapper.class);
+    Validator validatorMock = mock(Validator.class);
+    PayloadValidationService service = new PayloadValidationService(mapper, validatorMock);
+
+    JsonParser jsonParser = mock(JsonParser.class);
+    MismatchedInputException mie =
+        MismatchedInputException.from(jsonParser, ApplicationStatus.class, "cannot deserialize");
+    IllegalArgumentException iae =
+        new IllegalArgumentException("Unexpected value 'INVALID_STATUS'", mie);
+    when(mapper.convertValue(any(), eq(Proceeding.class))).thenThrow(iae);
+
+    ValidationException validationException =
+        Assertions.assertThrows(
+            ValidationException.class,
+            () -> service.convertAndValidate(new Proceeding(), Proceeding.class));
+
+    assertThat(validationException.errors())
+        .anyMatch(
+            m ->
+                m.contains("Unexpected value 'INVALID_STATUS'")
+                    && m.contains("APPLICATION_IN_PROGRESS")
+                    && m.contains("APPLICATION_SUBMITTED"));
     verify(validatorMock, never()).validate(any());
   }
 

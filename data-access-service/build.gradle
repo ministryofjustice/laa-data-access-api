@@ -18,8 +18,7 @@ configurations.all {
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
-    // Fix for Spring Framework vulnerabilities - updated to 7.0.8
-    // Fix for Netty vulnerabilities SNYK-JAVA-IONETTY-17254117 and SNYK-JAVA-IONETTY-17254120 - updated to 4.2.15.Final
+    // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
     resolutionStrategy {
         force 'com.fasterxml.jackson.core:jackson-core:2.21.2'
         force 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
@@ -28,9 +27,6 @@ configurations.all {
         force 'tools.jackson:jackson-bom:3.1.1'
         force 'org.springframework.security:spring-security-config:7.0.5'
         force 'org.springframework.security:spring-security-web:7.0.5'
-        force 'org.springframework:spring-expression:7.0.8'
-        force 'org.springframework:spring-web:7.0.8'
-        force 'org.springframework:spring-webmvc:7.0.8'
     }
 }
 
@@ -50,12 +46,6 @@ sourceSets {
         runtimeClasspath += sourceSets.testUtilities.output
     }
     integrationTest {
-        java {
-            srcDir 'src/integrationTest/java'
-        }
-        resources {
-            srcDir 'src/integrationTest/resources'
-        }
         compileClasspath += sourceSets.testUtilities.output
         runtimeClasspath += sourceSets.testUtilities.output
     }
@@ -94,10 +84,6 @@ dockerCompose {
     if (dockerPath) {
         dockerExecutable.set(dockerPath)
     }
-}
-
-tasks.named('processIntegrationTestResources') {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 test {
@@ -141,14 +127,7 @@ tasks.register('infrastructureTest', Test) {
      'LAA_SMOKE_ACCESS_DB_USERNAME',
      'LAA_SMOKE_ACCESS_DB_PASSWORD',
      'FEATURE_DISABLE_SECURITY',
-     'FEATURE_ENABLE_DEV_TOKENS',
-     // OAuth token service — used by TokenService.fromEnvironment() in infrastructure tests.
-     // LAA_SMOKE_OAUTH_TOKEN_URL is the name used by the smoke-test script and maps to OAUTH_TOKEN_URL.
-     'OAUTH_TOKEN_URL',
-     'LAA_SMOKE_OAUTH_TOKEN_URL',
-     'OAUTH_CLIENT_ID',
-     'OAUTH_CLIENT_SECRET',
-     'OAUTH_SCOPE'].each { key ->
+     'FEATURE_ENABLE_DEV_TOKENS'].each { key ->
         def value = System.getenv(key)
         if (value) environment key, value
     }
@@ -226,17 +205,42 @@ jacocoTestCoverageVerification.mustRunAfter tasks.named('integrationTest')
 tasks.register('preflightCheck') {
     description = 'Runs clean, spotlessApply, build, integrationTest and jacocoTestCoverageVerification'
     group = 'verification'
-    dependsOn clean, spotlessApply, build, tasks.named('integrationTest'), jacocoTestCoverageVerification
+    dependsOn clean, spotlessApply, build, tasks.named('integrationTest'), jacocoTestCoverageVerification, combinedCoverageReport
+}
+
+tasks.register('combinedCoverageReport', JacocoReport) {
+    description = 'Generates a combined JaCoCo coverage report for unit tests and integration tests'
+    group = 'verification'
+    dependsOn test, tasks.named('integrationTest')
+
+    executionData(
+        layout.buildDirectory.file('jacoco/test.exec'),
+        layout.buildDirectory.file('jacoco/integrationTest.exec')
+    )
+
+    sourceDirectories.from(sourceSets.main.allJava.srcDirs)
+    classDirectories.from(files(sourceSets.main.output.classesDirs).asFileTree.matching {
+        exclude '**/AccessApp.class', '**/generated/**', '**/*Generated*.*', '**/export/generated/**', '**/*_.class'
+    })
+
+    reports {
+        xml.required = true
+        xml.outputLocation = layout.buildDirectory.file('reports/jacoco/combined/combined.xml')
+        html.required = true
+        html.outputLocation = layout.buildDirectory.dir('reports/jacoco/combined/html')
+        csv.required = false
+    }
+
+    doLast {
+        logger.lifecycle("Combined coverage report written to: ${reports.html.outputLocation.get().asFile.toURI()}")
+    }
 }
 
 dependencyManagement {
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
-    // Fix for Netty vulnerabilities - updated to 4.2.15.Final
-    // Fix for Spring Framework vulnerabilities - updated to 7.0.8
     imports {
         mavenBom 'tools.jackson:jackson-bom:3.1.1'
         mavenBom 'io.netty:netty-bom:4.2.15.Final'
-        mavenBom 'org.springframework:spring-framework-bom:7.0.8'
     }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
@@ -276,6 +280,10 @@ dependencies {
     }
     implementation 'org.springframework.security:spring-security-config'
     implementation 'org.springframework.security:spring-security-web'
+    implementation 'org.springframework:spring-core:7.0.8'
+    implementation 'org.springframework:spring-expression:7.0.8'
+    implementation 'org.springframework:spring-web:7.0.8'
+    implementation 'org.springframework:spring-webmvc:7.0.8'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation('org.springframework.boot:spring-boot-starter-web') {
         exclude group: 'com.google.code.gson', module: 'gson'
@@ -285,11 +293,9 @@ dependencies {
     }
 
     //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789756
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-17254117 (Allocation of Resources Without Limits or Throttling)
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-17254120 (Incorrect Comparison)
-    implementation 'io.netty:netty-codec-http:4.2.15.Final'
+    implementation 'io.netty:netty-codec-http:4.2.13.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789758
-    implementation 'io.netty:netty-codec-http2:4.2.15.Final'
+    implementation 'io.netty:netty-codec-http2:4.2.13.Final'
     //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-16643259
     implementation 'org.apache.tomcat.embed:tomcat-embed-core:11.0.22'
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
@@ -307,6 +313,7 @@ dependencies {
     implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
 
     implementation 'io.micrometer:micrometer-registry-prometheus'
+    implementation 'io.micrometer:micrometer-core:1.16.6'
     implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot:2.2.0'
 
     implementation 'org.mapstruct:mapstruct:1.6.3'
@@ -321,14 +328,6 @@ dependencies {
     testImplementation 'org.instancio:instancio-junit:5.5.1'
     testImplementation 'net.datafaker:datafaker:2.5.2'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    integrationTestImplementation 'no.nav.security:mock-oauth2-server:2.1.10'
-    integrationTestImplementation 'org.springframework.boot:spring-boot-starter-test'
-    integrationTestImplementation 'org.springframework.boot:spring-boot-starter-webflux'
-    integrationTestImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.1"
-    integrationTestImplementation 'org.testcontainers:postgresql:1.21.3'
-    integrationTestImplementation 'org.springframework.boot:spring-boot-testcontainers:4.0.6'
-    integrationTestImplementation 'org.springframework.security:spring-security-test'
-    integrationTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.1"
     testImplementation 'org.testcontainers:postgresql:1.21.3'
@@ -338,6 +337,10 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
     testImplementation 'org.wiremock:wiremock-standalone:3.12.1'
+
+    // Mock OAuth2 server and WireMock for integration tests
+    integrationTestImplementation 'no.nav.security:mock-oauth2-server:2.1.10'
+    integrationTestImplementation 'org.wiremock:wiremock-standalone:3.12.1'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
