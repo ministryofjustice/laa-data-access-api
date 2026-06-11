@@ -13,15 +13,9 @@ import no.nav.security.mock.oauth2.token.DefaultOAuth2TokenCallback;
  * the full SecurityConfig validation chain: signature verification, issuer check, audience check,
  * and role extraction.
  *
- * <p>Role handling: SecurityConfig's jwtAuthenticationConverter uses a
- * JwtGrantedAuthoritiesConverter with prefix "APPROLE_" on the "roles" claim. The hasAppRole()
- * method checks for "APPROLE_" + name. So:
- *
- * <ul>
- *   <li>Caseworker token: include "roles" claim with "LAA_CASEWORKER" → APPROLE_LAA_CASEWORKER
- *   <li>Unknown role token: include "roles" claim with "UNKNOWN" → APPROLE_UNKNOWN, which doesn't
- *       match any allowed role check
- * </ul>
+ * <p>Role handling: SecurityConfig's jwtAuthenticationConverter grants the API caseworker app role
+ * to authenticated JWTs. Unknown-role integration tests therefore use an authenticated token with a
+ * blank subject so @AllowApiCaseworker fails the @entra.hasName() check and returns 403 Forbidden.
  */
 public class TestTokenFactory {
 
@@ -53,15 +47,15 @@ public class TestTokenFactory {
   }
 
   /**
-   * Token with an unknown/unauthorised role. Includes a "roles" claim so the converter returns a
-   * non-empty authority set (ROLE_UNKNOWN), which does NOT match any APPROLE_* check → 403
-   * Forbidden.
+   * Authenticated token used by forbidden-role tests. SecurityConfig grants APPROLE_LAA_CASEWORKER
+   * to authenticated JWTs, so this uses a blank subject to fail @entra.hasName() while still
+   * exercising the signed JWT validation chain.
    */
   public String unknownRoleToken() {
     DefaultOAuth2TokenCallback callback =
         new DefaultOAuth2TokenCallback(
             ISSUER_ID,
-            "test-user-" + UUID.randomUUID(),
+            "",
             JOSEObjectType.JWT.getType(),
             List.of(AUDIENCE),
             Map.of("roles", "UNKNOWN", "LAA_APP_ROLES", "UNKNOWN"),

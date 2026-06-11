@@ -55,7 +55,11 @@ import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationPro
 @Configuration
 @EnableMethodSecurity
 @EnableWebSecurity
-@ConditionalOnProperty(prefix = "feature", name = "disable-security", havingValue = "false")
+@ConditionalOnProperty(
+    prefix = "feature",
+    name = "disable-security",
+    havingValue = "false",
+    matchIfMissing = true)
 @ExcludeFromGeneratedCodeCoverage
 public class SecurityConfig {
 
