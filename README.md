@@ -133,34 +133,96 @@ docker compose up -d
 
 The application uses the mock-oauth2-server on port 9999 for JWT validation. Security is always enabled—no environment variables or feature flags needed.
 
-#### Getting a local dev token
+#### Mock OAuth2 and test tokens
 
-To get a valid Bearer token for Swagger or Postman, run:
+This project uses [`navikt/mock-oauth2-server`](https://github.com/navikt/mock-oauth2-server) as the test identity provider for local development, infrastructure smoke tests, and deployed test fixtures. Security stays enabled: the API validates signed JWTs, issuer, JWKS, audience, and role claims instead of bypassing auth.
+
+| Environment | Mock/token source | Config |
+|-------------|-------------------|--------|
+| Local development | Docker Compose service `mock-oauth2-server` on `http://localhost:9999` | `infra/mock-oauth2/config.json` |
+| Integration tests | In-process `MockOAuth2Server` started by `IntegrationTestContextProvider`; tokens minted by `TestTokenFactory` | Claims built in `TestTokenFactory` |
+| Infrastructure smoke tests | Docker Compose service `mock-oauth2-server-smoketest`; tokens fetched by `SmokeTestTokenProvider` from `LAA_SMOKE_OAUTH_TOKEN_URL` | `infra/mock-oauth2/config-smoke-test.json` |
+| Deployed test fixture | Kubernetes `mock-oauth2-server` service | `infra/mock-oauth2/k8s/configmap.yml`, `deployment.yml`, `service.yml` |
+
+Key endpoints:
+
+| Use | URL |
+|-----|-----|
+| Local token endpoint | `http://localhost:9999/entra/token` |
+| Local JWKS endpoint | `http://localhost:9999/entra/jwks` |
+| Smoke-test host token endpoint | `http://localhost:9998/entra/token` |
+| In-cluster deployed token endpoint | `http://<release-name>-data-access-api-mock-oauth2.<namespace>.svc.cluster.local:9999/entra/token` |
+
+To reach a deployed mock OAuth2 service from your laptop, port-forward the Kubernetes **service** using the `svc/` prefix:
+
+```bash
+kubectl -n laa-data-access-api-uat port-forward svc/<release-name>-data-access-api-mock-oauth2 9999:9999
+```
+
+For example:
+
+```bash
+kubectl -n laa-data-access-api-uat port-forward svc/spike-dstew1360-data-access-api-mock-oauth2 9999:9999
+```
+
+Then fetch tokens from `http://localhost:9999/entra/token` using `POST`. A browser or `GET` request to `/entra/token` returns `405 Method Not Allowed` because the token endpoint only supports form-encoded `POST` requests.
+
+When calling a deployed API, the token `iss` claim must match that API's configured `ENTRA_ISSUER_URI`. Tokens fetched through a laptop port-forward commonly have `iss: http://localhost:9999/entra`; those will be rejected with a blank `401 Unauthorized` if the deployed API expects an in-cluster issuer such as `http://<release-name>-data-access-api-mock-oauth2:9999/entra`.
+
+If the deployed API expects the in-cluster service hostname, keep the port-forward running and request the token with a matching `Host` header:
+
+```bash
+TOKEN=$(curl -sS -X POST http://localhost:9999/entra/token \
+  -H "Host: <release-name>-data-access-api-mock-oauth2:9999" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=test" \
+  -d "client_secret=test" \
+  -d "scope=api://laa-data-access-api/.default" | jq -r .access_token)
+```
+
+Decode the token payload and check `iss` before calling the deployed API:
+
+```bash
+echo "$TOKEN" | awk -F. '{print $2}' | base64 -d 2>/dev/null | jq .iss
+```
+
+To get a valid local Bearer token for Swagger, Postman, or curl, prefer the helper script:
+
+```bash
+./scripts/get-token.sh local --copy
+```
+
+Or fetch one directly:
 
 ```bash
 curl -s -X POST http://localhost:9999/entra/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=client_credentials" \
   -d "client_id=test" \
-  -d "client_secret=test" | jq -r .access_token
+  -d "client_secret=test" \
+  -d "scope=api://laa-data-access-api/.default" | jq -r .access_token
 ```
 
-Or as a one-liner that copies the token to your clipboard:Or as a one-liner that copies the token to your clipboard (macOS):
+Tokens are pre-configured with the `LAA_CASEWORKER` role and a 1-hour expiry. To change token claims, update the relevant config file above. The important claims are:
+
+- `aud`: must contain `laa-data-access-api`
+- `roles`: should include the application role, e.g. `LAA_CASEWORKER`
+- `LAA_APP_ROLES`: must be present for the custom audience/role validation
+
+After changing mock OAuth2 config, restart the relevant service:
 
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:9999/entra/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=client_credentials" \
-  -d "client_id=test" \
-  -d "client_secret=test" | jq -r .access_token) && echo $TOKEN | pbcopy && echo "✓ Token copied to clipboard"
+# Local development
+docker compose restart mock-oauth2-server
+
+# Smoke-test stack
+docker compose -f docker-compose.smoke-test.yml restart mock-oauth2-server-smoketest
 ```
 
-The token is pre-configured with the `LAA_CASEWORKER` role and a 1-hour expiry.
+Keep the pinned `ghcr.io/navikt/mock-oauth2-server:2.1.10` version in sync across `docker-compose.yml`, `docker-compose.smoke-test.yml`, `data-access-service/build.gradle`, and `infra/mock-oauth2/k8s/deployment.yml`.
 
-> **Why not auto-authenticate in Swagger?** Swagger UI supports OAuth2 flows, but switching
-> the OpenAPI security scheme from Bearer to OAuth2 would affect all environments (not just local).
-> In production, tokens come from the Entra OBO flow, not client_credentials. Keeping a single
-> Bearer scheme keeps Swagger consistent across environments.
+> **Why not auto-authenticate in Swagger?** Swagger UI supports OAuth2 flows, but switching the OpenAPI security scheme from Bearer to OAuth2 would affect all environments. In production, tokens come from the Entra OBO flow, not `client_credentials`. Keeping a single Bearer scheme keeps Swagger consistent across environments.
 
 ### Executing endpoints
 
@@ -232,7 +294,7 @@ You may need to drop database tables manually prior to running app so Flyway can
 
 The "Authorize" button is available in the top right of the Swagger UI, which allows you to enter a Bearer token for 
 authentication when executing endpoints.
-See [Getting a local dev token](#getting-a-local-dev-token) for how to obtain a token.
+See [Mock OAuth2 and test tokens](#mock-oauth2-and-test-tokens) for how to obtain a token.
 
 #### API docs (JSON)
 - http://localhost:8080/v3/api-docs

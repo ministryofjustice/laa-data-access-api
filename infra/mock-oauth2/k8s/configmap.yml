@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mock-oauth2-config
+  labels:
+    app: mock-oauth2-server
+data:
+  config.json: |
+    {
+      "interactiveLogin": false,
+      "tokenCallbacks": [
+        {
+          "issuerId": "entra",
+          "tokenExpiry": 3600,
+          "requestMappings": [
+            {
+              "requestParam": "grant_type",
+              "match": "client_credentials",
+              "claims": {
+                "sub": "smoke-test-user",
+                "aud": ["laa-data-access-api"],
+                "roles": ["LAA_CASEWORKER"],
+                "LAA_APP_ROLES": "LAA_CASEWORKER"
+              }
+            }
+          ]
+        }
+      ]
+    }

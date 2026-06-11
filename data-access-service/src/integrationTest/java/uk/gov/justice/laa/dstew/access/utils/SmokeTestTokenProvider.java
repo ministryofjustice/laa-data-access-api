@@ -1,142 +1,99 @@
 package uk.gov.justice.laa.dstew.access.utils;
 
+import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 
 /**
- * Obtains test tokens from the mock-oauth2-server running in the smoke test infrastructure.
+ * Obtains signed test JWTs from the Docker or deployed {@code mock-oauth2-server} used by
+ * infrastructure smoke tests.
  *
- * <p>In infrastructure mode (smoke tests), the mock server runs as a Docker container. Tests call
- * this utility to fetch tokens via HTTP before making authenticated requests to the API.
- *
- * <p>The token URL defaults to {@code http://localhost:9998/entra/token} (the host port exposed by
- * docker-compose.smoke-test.yml) but can be overridden via the {@code LAA_SMOKE_OAUTH_TOKEN_URL}
- * environment variable for flexibility in CI/CD environments.
- *
- * <p>Tokens are cached for performance - each token type (identified by scope) is cached separately
- * and reused until it expires (with a 5-minute safety buffer).
+ * <p>Integration tests do not use this class; they mint tokens from the in-process mock server via
+ * {@link TestTokenFactory}. This provider is only for tests running against a live API where the
+ * mock OAuth2 server is reached over HTTP.
  */
-public class SmokeTestTokenProvider {
+public final class SmokeTestTokenProvider {
 
-  private static final String TOKEN_URL =
-      System.getenv()
-          .getOrDefault("LAA_SMOKE_OAUTH_TOKEN_URL", "http://localhost:9998/entra/token");
+  private static final String DEFAULT_TOKEN_URL = "http://localhost:9998/entra/token";
+  private static final String DEFAULT_SCOPE = "api://laa-data-access-api/.default";
+  private static final String DEFAULT_CLIENT_ID = "test";
+  private static final String DEFAULT_CLIENT_SECRET = "test";
 
-  // Token expiry from mock server is 3600 seconds (1 hour)
-  private static final long TOKEN_EXPIRY_MS = 3600_000L;
+  private static final String TOKEN_URL = setting("LAA_SMOKE_OAUTH_TOKEN_URL", DEFAULT_TOKEN_URL);
+  private static final String CLIENT_ID = setting("OAUTH_CLIENT_ID", DEFAULT_CLIENT_ID);
+  private static final String CLIENT_SECRET = setting("OAUTH_CLIENT_SECRET", DEFAULT_CLIENT_SECRET);
+  private static final RestClient REST_CLIENT = RestClient.create();
 
-  // Safety buffer - refresh token 5 minutes before expiry
+  // Token expiry from mock server is 3600 seconds (1 hour). Refresh 5 minutes early.
+  private static final long TOKEN_EXPIRY_MS = 3_600_000L;
   private static final long EXPIRY_BUFFER_MS = 300_000L;
 
-  // Cache: scope -> TokenCacheEntry
-  private static final Map<String, TokenCacheEntry> tokenCache = new ConcurrentHashMap<>();
+  private static final Map<String, TokenCacheEntry> TOKEN_CACHE = new ConcurrentHashMap<>();
 
-  /**
-   * Obtain a token with the LAA_CASEWORKER role from the mock OAuth server.
-   *
-   * <p>Tokens are cached and reused until they expire (with a 5-minute safety buffer). This reduces
-   * HTTP calls to the mock server during smoke test execution.
-   *
-   * @return a signed JWT with LAA_CASEWORKER role claims
-   * @throws RuntimeException if token request fails
-   */
+  private SmokeTestTokenProvider() {}
+
+  /** Returns a cached or freshly fetched token with the {@code LAA_CASEWORKER} role. */
   public static String getCaseworkerToken() {
-    return getToken("api://laa-data-access-api/.default");
-  }
-
-  /**
-   * Obtain a token from the mock OAuth server with the specified scope.
-   *
-   * <p>Tokens are cached by scope. If a valid cached token exists for the requested scope, it is
-   * returned immediately. Otherwise, a new token is fetched via HTTP.
-   *
-   * @param scope the OAuth scope to request (e.g., "api://laa-data-access-api/.default")
-   * @return a signed JWT
-   * @throws RuntimeException if token request fails
-   */
-  private static String getToken(String scope) {
     long now = System.currentTimeMillis();
-
-    // Check cache for valid token
-    TokenCacheEntry cached = tokenCache.get(scope);
-    if (cached != null && cached.expiryTime > now + EXPIRY_BUFFER_MS) {
+    TokenCacheEntry cached = TOKEN_CACHE.get(DEFAULT_SCOPE);
+    if (cached != null && cached.isValidAt(now)) {
       return cached.token;
     }
 
-    // Fetch new token
-    String token = fetchTokenFromServer(scope);
-
-    // Cache the token
-    tokenCache.put(scope, new TokenCacheEntry(token, now + TOKEN_EXPIRY_MS));
-
+    String token = fetchTokenFromServer();
+    TOKEN_CACHE.put(DEFAULT_SCOPE, new TokenCacheEntry(token, now + TOKEN_EXPIRY_MS));
     return token;
   }
 
-  /**
-   * Fetch a new token from the mock OAuth server via HTTP POST.
-   *
-   * @param scope the OAuth scope to request
-   * @return a signed JWT
-   * @throws RuntimeException if token request fails
-   */
-  private static String fetchTokenFromServer(String scope) {
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-    MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-    body.add("grant_type", "client_credentials");
-    body.add("scope", scope);
-
-    HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+  private static String fetchTokenFromServer() {
+    MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+    form.add("grant_type", "client_credentials");
+    form.add("client_id", CLIENT_ID);
+    form.add("client_secret", CLIENT_SECRET);
+    form.add("scope", DEFAULT_SCOPE);
 
     try {
-      RestTemplate restTemplate = new RestTemplate();
-      ResponseEntity<Map<String, Object>> response =
-          restTemplate.postForEntity(
-              TOKEN_URL, request, (Class<Map<String, Object>>) (Class<?>) Map.class);
+      Map<?, ?> response =
+          REST_CLIENT
+              .post()
+              .uri(URI.create(TOKEN_URL))
+              .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+              .body(form)
+              .retrieve()
+              .body(Map.class);
 
-      if (response.getBody() == null || !response.getBody().containsKey("access_token")) {
-        throw new RuntimeException(
-            "Mock OAuth server returned invalid response (missing access_token). "
-                + "Server URL: "
-                + TOKEN_URL);
+      Object accessToken = response == null ? null : response.get("access_token");
+      if (!(accessToken instanceof String token) || token.isBlank()) {
+        throw new IllegalStateException(
+            "Mock OAuth server returned no access_token. Server URL: " + TOKEN_URL);
       }
 
-      return (String) response.getBody().get("access_token");
-
-    } catch (RestClientException e) {
-      throw new RuntimeException(
+      return token;
+    } catch (RestClientException | IllegalArgumentException e) {
+      throw new IllegalStateException(
           "Failed to obtain token from mock OAuth server at "
               + TOKEN_URL
-              + ". Is the mock server running? Check docker-compose.smoke-test.yml",
+              + ". Is docker-compose.smoke-test.yml running?",
           e);
     }
   }
 
-  /**
-   * Clear the token cache. Useful for tests that need to force token regeneration or test token
-   * expiry scenarios.
-   */
-  static void clearCache() {
-    tokenCache.clear();
+  private static String setting(String key, String defaultValue) {
+    String value = System.getenv(key);
+    if (value == null || value.isBlank()) {
+      value = System.getProperty(key);
+    }
+    return value == null || value.isBlank() ? defaultValue : value;
   }
 
-  /** Immutable cache entry holding a token and its expiry time. */
-  private static class TokenCacheEntry {
-    final String token;
-    final long expiryTime;
-
-    TokenCacheEntry(String token, long expiryTime) {
-      this.token = token;
-      this.expiryTime = expiryTime;
+  private record TokenCacheEntry(String token, long expiryTime) {
+    boolean isValidAt(long currentTimeMs) {
+      return expiryTime > currentTimeMs + EXPIRY_BUFFER_MS;
     }
   }
 }

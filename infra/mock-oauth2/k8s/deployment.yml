@@ -16,10 +16,11 @@ spec:
     spec:
       containers:
         - name: mock-oauth2-server
-          # Version: 2.1.10 — keep in sync with docker-compose.yml and build.gradle
+          # Version: 2.1.10 — keep in sync with docker-compose.yml, docker-compose.smoke-test.yml and build.gradle
           image: ghcr.io/navikt/mock-oauth2-server:2.1.10
           ports:
-            - containerPort: 9999
+            - name: http
+              containerPort: 9999
           env:
             - name: SERVER_PORT
               value: "9999"
@@ -32,37 +33,16 @@ spec:
           readinessProbe:
             httpGet:
               path: /entra/.well-known/openid-configuration
-    apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: mock-oauth2-server
-  labels:
-    app: m lkind: Deployment
-m  metadata:
-  nam    name:     labels:
-    app: mock-on/    app:onspec:
-  replicas: 1
-  seleor  re99  selector:
-      matchLay      app: mock    template:
-    metadata:
-        metadarc      labels          app:      spec:
-      containers:
-          coor        - name:             # Version: 2.1.10 — k20          image: ghcr.io/navikt/mock-oauth2-server:2.1.10
-          ports:
-                     ports:
-            - containerPort: 9999
-     EO  cat > /Users/sophie.earl/Code/laa-data-access-api/infra/mock-oauth2/k8s/service.yml << 'EOF'
-apiVersion: v1
-kind: Service
-metadata:
-  name: mock-oauth2-server
-  labels:
-    app: mock-oauth2-server
-spec:
-  selector:
-    app: mock-oauth2-server
-  ports:
-    - name: http
-      port: 9999
-      targetPort: 9999
-  type: ClusterIP
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /entra/jwks
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+      volumes:
+        - name: mock-oauth2-config
+          configMap:
+            name: mock-oauth2-config
