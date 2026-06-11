@@ -3,11 +3,11 @@ name: Deploy Feature Flagged Environment
 on:
   # Temporary PR trigger for POC testing.
   # Comment out or remove this pull_request block before merging.
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
+#  pull_request:
+#    types:
+#      - opened
+#      - reopened
+#      - synchronize
   push:
     branches:
       - main
