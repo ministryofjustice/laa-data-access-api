@@ -97,13 +97,14 @@ runs:
         else
           export SPRING_PROFILE="preview"
           # Using Bitnami legacy with PostgreSQL 17.6 (specified in values.yaml)
-          helm_upgrade "${RELEASE_NAME}-postgresql" oci://registry-1.docker.io/bitnamicharts/postgresql \
+          helm upgrade ${RELEASE_NAME}-postgresql oci://registry-1.docker.io/bitnamicharts/postgresql \
             -f .helm/bitnami_postgres/values.yaml \
-            --namespace ${KUBE_NAMESPACE}
+            --namespace ${KUBE_NAMESPACE} \
+            --install --wait
         fi
         
 
-        helm_upgrade "$RELEASE_NAME" .helm/data-access-api \
+        helm upgrade $RELEASE_NAME .helm/data-access-api \
           --namespace ${KUBE_NAMESPACE} \
           --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
           --set image.tag="${GIT_SHA}" \
@@ -115,11 +116,16 @@ runs:
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
           --set autoscaling.enabled="$([ "$branch_name" = "main" ] && echo true || echo false)" \
-          --values ${VALUES_FILE}
+          --values ${VALUES_FILE} \
+          --install \
+          --wait
 
-        helm_upgrade "${RELEASE_NAME}-mass-generator" .helm/mass-generator \
+        helm upgrade ${RELEASE_NAME}-mass-generator .helm/mass-generator \
           --namespace ${KUBE_NAMESPACE} \
           --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
           --set image.tag="${GIT_SHA}-mass-generator" \
           --set spring.profile="${SPRING_PROFILE}" \
-          --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql"
+          --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
+          --install \
+          --wait
+
