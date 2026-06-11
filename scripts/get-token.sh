@@ -197,7 +197,7 @@ if [[ -n "${OAUTH_ISSUER_HOST:-}" ]]; then
 fi
 
 CURL_ARGS=(
-  -s -X POST "${TOKEN_URL}"
+  -s --show-error -X POST "${TOKEN_URL}"
   -H "Content-Type: application/x-www-form-urlencoded"
 )
 
@@ -214,17 +214,57 @@ CURL_ARGS+=(
   -d "scope=${SCOPE}"
 )
 
-HTTP_BODY=$(curl "${CURL_ARGS[@]}")
-HTTP_STATUS=$(curl "${CURL_ARGS[@]}" -o /dev/null -w "%{http_code}")
+# Single request — capture response headers, body, status, the effective URL,
+# timing and curl's own error output together, so a failure can be diagnosed
+# without re-sending the request (which previously cost 2-3 extra calls).
+HEADERS_FILE="$(mktemp)"
+CURL_ERR_FILE="$(mktemp)"
+trap 'rm -f "${HEADERS_FILE}" "${CURL_ERR_FILE}"' EXIT
 
-if [[ "${HTTP_STATUS}" != "200" ]]; then
-  echo "ERROR: Token request failed (HTTP ${HTTP_STATUS})." >&2
-  echo "  Response: ${HTTP_BODY}" >&2
+HTTP_RESPONSE=$(curl "${CURL_ARGS[@]}" \
+  -D "${HEADERS_FILE}" \
+  -w $'\n%{http_code}\t%{url_effective}\t%{time_total}' \
+  2>"${CURL_ERR_FILE}")
+CURL_EXIT=$?
+
+# The final line carries the metadata; everything before it is the body.
+HTTP_META=$(printf '%s\n' "${HTTP_RESPONSE}" | tail -n 1)
+HTTP_BODY=$(printf '%s\n' "${HTTP_RESPONSE}" | sed '$d')
+HTTP_STATUS=$(printf '%s' "${HTTP_META}" | cut -f1)
+HTTP_URL=$(printf '%s' "${HTTP_META}" | cut -f2)
+HTTP_TIME=$(printf '%s' "${HTTP_META}" | cut -f3)
+
+if [[ "${CURL_EXIT}" -ne 0 || "${HTTP_STATUS}" != "200" ]]; then
+  echo "ERROR: Token request failed." >&2
+  echo "  curl exit code : ${CURL_EXIT}" >&2
+  echo "  HTTP status    : ${HTTP_STATUS:-<none>}" >&2
+  echo "  Effective URL  : ${HTTP_URL:-${TOKEN_URL}}" >&2
+  echo "  Total time     : ${HTTP_TIME:-?}s" >&2
+  if [[ -n "${OAUTH_ISSUER_HOST:-}" ]]; then
+    echo "  Issuer host    : ${OAUTH_ISSUER_HOST}" >&2
+  fi
+  if [[ -s "${CURL_ERR_FILE}" ]]; then
+    echo "  --- curl error output ---" >&2
+    sed 's/^/  /' "${CURL_ERR_FILE}" >&2
+  fi
+  echo "  --- response headers ---" >&2
+  if [[ -s "${HEADERS_FILE}" ]]; then
+    sed 's/^/  /' "${HEADERS_FILE}" >&2
+  else
+    echo "  (no response headers received)" >&2
+  fi
+  echo "  --- response body ---" >&2
+  if [[ -n "${HTTP_BODY}" ]]; then
+    sed 's/^/  /' <<<"${HTTP_BODY}" >&2
+  else
+    echo "  (empty body)" >&2
+  fi
   echo "" >&2
-  echo "Is the mock OAuth server running?" >&2
+  echo "Is the mock OAuth server running/reachable?" >&2
   case "${ENV}" in
     local) echo "  Start it: docker compose up -d mock-oauth2-server" >&2 ;;
     smoke) echo "  Start it: docker compose -f docker-compose.smoke-test.yml up -d" >&2 ;;
+    uat)   echo "  Port-forward it: kubectl -n laa-data-access-api-uat port-forward svc/${OAUTH_ISSUER_HOST%%:*} ${OAUTH_LOCAL_PORT:-9999}:9999" >&2 ;;
   esac
   exit 1
 fi
