@@ -1,0 +1,56 @@
+{{- if .Values.mockOAuth2.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "data-access-api.fullname" . }}-mock-oauth2
+  labels:
+    {{- include "data-access-api.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mock-oauth2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "data-access-api.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: mock-oauth2
+  template:
+    metadata:
+      labels:
+        {{- include "data-access-api.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: mock-oauth2
+    spec:
+      containers:
+        - name: mock-oauth2-server
+          image: "{{ .Values.mockOAuth2.image.repository }}:{{ .Values.mockOAuth2.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 9999
+              protocol: TCP
+          env:
+            - name: SERVER_PORT
+              value: "9999"
+            - name: JSON_CONFIG_PATH
+              value: /etc/mock-oauth2/config.json
+          volumeMounts:
+            - name: config
+              mountPath: /etc/mock-oauth2
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /entra/.well-known/openid-configuration
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /entra/.well-known/openid-configuration
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.mockOAuth2.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "data-access-api.fullname" . }}-mock-oauth2-config
+{{- end }}
