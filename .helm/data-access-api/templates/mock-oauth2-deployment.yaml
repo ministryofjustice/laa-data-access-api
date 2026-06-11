@@ -1,4 +1,4 @@
-{{- if .Values.mockOAuth2.enabled }}
+{{- if and .Values.mockOAuth2 .Values.mockOAuth2.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -47,6 +47,15 @@ spec:
               port: http
             initialDelaySeconds: 30
             periodSeconds: 10
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop: [ "ALL" ]
           resources:
             {{- toYaml .Values.mockOAuth2.resources | nindent 12 }}
       volumes:

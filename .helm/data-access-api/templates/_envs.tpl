@@ -68,6 +68,14 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
   Define OAuth2/Entra ID environment variables for authentication
 */}}
 {{- define "oauth2Config" }}
+{{- if and .Values.mockOAuth2 .Values.mockOAuth2.enabled }}
+- name: ENTRA_ISSUER_URI
+  value: "http://{{ include "data-access-api.fullname" . }}-mock-oauth2:9999/entra"
+- name: ENTRA_JWK_SET_URI
+  value: "http://{{ include "data-access-api.fullname" . }}-mock-oauth2:9999/entra/jwks"
+- name: ENTRA_AUD
+  value: "laa-data-access-api"
+{{- else }}
 - name: ENTRA_ISSUER_URI
   valueFrom:
     secretKeyRef:
@@ -83,6 +91,7 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
     secretKeyRef:
       name: laa-data-access-api-secrets
       key: ENTRA_AUD
+{{- end }}
 - name: AUTH_CLIENT_ID
   valueFrom:
     secretKeyRef:

@@ -1,4 +1,4 @@
-{{- if .Values.mockOAuth2.enabled }}
+{{- if and .Values.mockOAuth2 .Values.mockOAuth2.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
