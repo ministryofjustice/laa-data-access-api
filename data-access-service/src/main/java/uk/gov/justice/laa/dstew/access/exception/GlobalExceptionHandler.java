@@ -8,12 +8,14 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static uk.gov.justice.laa.dstew.access.exception.ProblemDetailUtility.getCustomProblemDetail;
 
 import io.sentry.Sentry;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -82,6 +84,12 @@ public class GlobalExceptionHandler {
     Sentry.captureException(exception);
     return ResponseEntity.status(CONFLICT)
         .body(getCustomProblemDetail(HttpStatus.CONFLICT, exception.getMessage()));
+  }
+
+  @ExceptionHandler(AccessDeniedException.class)
+  public void handleAccessDenied(AccessDeniedException ex, HttpServletRequest req) {
+    log.warn("403 on {} {}", req.getMethod(), req.getRequestURI());
+    throw ex; // re-throw so Spring Security still handles the response
   }
 
   /**

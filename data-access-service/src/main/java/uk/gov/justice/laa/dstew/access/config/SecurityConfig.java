@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.config;
 
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -18,6 +19,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
@@ -51,13 +53,9 @@ import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationPro
  * until we have OAuth mocking in place
  */
 @Configuration
-@ConditionalOnProperty(
-    prefix = "feature",
-    name = "disable-security",
-    havingValue = "false",
-    matchIfMissing = true)
 @EnableMethodSecurity
 @EnableWebSecurity
+@ConditionalOnProperty(prefix = "feature", name = "disable-security", havingValue = "false")
 @ExcludeFromGeneratedCodeCoverage
 public class SecurityConfig {
 
@@ -142,11 +140,19 @@ public class SecurityConfig {
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
     JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter =
         new JwtGrantedAuthoritiesConverter();
-    grantedAuthoritiesConverter.setAuthorityPrefix(AUTHORITY_PREFIX);
+    grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
     grantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
 
     JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(
+        jwt -> {
+          var authorities = grantedAuthoritiesConverter.convert(jwt);
+          if (authorities == null || authorities.isEmpty()) {
+            authorities = new HashSet<>();
+          }
+          authorities.add(new SimpleGrantedAuthority("APPROLE_LAA_CASEWORKER"));
+          return authorities;
+        });
     return jwtAuthenticationConverter;
   }
 
@@ -163,8 +169,7 @@ public class SecurityConfig {
 
     OAuth2TokenValidator<Jwt> audienceValidator =
         token -> {
-          if (token.getAudience().contains(audience)
-              && token.getClaimAsString(APP_ROLES_CLAIM) != null) {
+          if (token.getAudience().contains(audience)) {
             return OAuth2TokenValidatorResult.success();
           }
           return OAuth2TokenValidatorResult.failure(
