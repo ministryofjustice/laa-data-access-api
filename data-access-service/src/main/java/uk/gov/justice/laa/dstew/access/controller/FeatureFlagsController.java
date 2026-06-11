@@ -4,8 +4,11 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.config.FeatureProperties;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 
 /**
  * Exposes effective feature flag values for test and diagnostics only.
@@ -13,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.config.FeatureProperties;
  * <p>This endpoint is intended to verify environment wiring in preview/ephemeral deployments and
  * should not be treated as a public runtime contract.
  */
+@ExcludeFromGeneratedCodeCoverage
 @RestController
 @RequiredArgsConstructor
 public class FeatureFlagsController {
@@ -28,7 +32,8 @@ public class FeatureFlagsController {
    * @return map of feature flag names to effective boolean values
    */
   @GetMapping(path = "/feature-flags", produces = "application/json")
-  public ResponseEntity<Map<String, Boolean>> getFeatureFlags() {
+  public ResponseEntity<Map<String, Boolean>> getFeatureFlags(
+      @RequestHeader ServiceName serviceName) {
     Map<String, Boolean> flags =
         Map.of(
             "enableDevToken", featureProperties.enableDevToken(),
