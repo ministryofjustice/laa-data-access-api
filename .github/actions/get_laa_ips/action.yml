@@ -1,0 +1,26 @@
+name: "Get LAA IPs"
+description: "Fetch and format LAA allowlist CIDRs for Helm ingress annotation"
+
+outputs:
+  laa-ips:
+    description: "Escaped comma-separated CIDRs"
+    value: ${{ steps.fetch_laa_ips.outputs.laa_ips }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Fetch LAA IP allowlist
+      id: fetch_laa_ips
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        laa_ips=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
+
+        if [ -z "${laa_ips}" ]; then
+          echo "Failed to fetch LAA allowlist CIDRs"
+          exit 1
+        fi
+
+        echo "laa_ips=${laa_ips}" >> "$GITHUB_OUTPUT"
+
