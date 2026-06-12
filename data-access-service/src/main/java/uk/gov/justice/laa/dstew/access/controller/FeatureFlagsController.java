@@ -1,5 +1,8 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +34,19 @@ public class FeatureFlagsController {
    *
    * @return map of feature flag names to effective boolean values
    */
+  @Operation(
+      operationId = "featureFlags",
+      summary = "Check feature flags.",
+      tags = {"featureFlags"},
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "400", description = "Bad request"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "404", description = "Not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      },
+      security = {@SecurityRequirement(name = "bearerAuth")})
   @GetMapping(path = "/feature-flags", produces = "application/json")
   public ResponseEntity<Map<String, Boolean>> getFeatureFlags(
       @RequestHeader(value = "X-Service-Name") ServiceName serviceName) {
