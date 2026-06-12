@@ -82,9 +82,9 @@ case "${ENV}" in
     ENV_LABEL="smoke test"
     ;;
   uat)
-    TOKEN_URL="${OAUTH_TOKEN_URL:-http://localhost:${OAUTH_LOCAL_PORT:-9999}/entra/token}"
-    OAUTH_ISSUER_HOST="${OAUTH_ISSUER_HOST:-spike-dstew1360-data-access-api-mock-oauth2:9999}"
-    ENV_LABEL="UAT mock-oauth2 via port-forward"
+    OAUTH_LOCAL_PORT="${OAUTH_LOCAL_PORT:-9999}"
+    TOKEN_URL="${OAUTH_TOKEN_URL:-http://localhost:${OAUTH_LOCAL_PORT}/entra/token}"
+    ENV_LABEL="UAT mock-oauth2 (manual setup)"
     ;;
   custom)
     if [[ -z "${OAUTH_TOKEN_URL:-}" ]]; then
@@ -169,6 +169,42 @@ ensure_mock_server_running() {
   echo "⚠ Mock server did not become ready in time — attempting token fetch anyway..." >&2
 }
 
+# ---------------------------------------------------------------------------
+# UAT helper — check that the user has started a manual port-forward
+# ---------------------------------------------------------------------------
+require_uat_issuer_and_port_forward() {
+  if [[ -z "${OAUTH_ISSUER_HOST:-}" ]]; then
+    echo "ERROR: OAUTH_ISSUER_HOST is required for 'uat' mode." >&2
+    echo "" >&2
+    echo "  The issuer host is the in-cluster mock-oauth2 Service name." >&2
+    echo "  After deploying to UAT, check the Helm NOTES or run:" >&2
+    echo "" >&2
+    echo "    kubectl -n <namespace> get svc -l app.kubernetes.io/component=mock-oauth2" >&2
+    echo "" >&2
+    echo "  Then set it, e.g.:" >&2
+    echo "    OAUTH_ISSUER_HOST=<release>-data-access-api-mock-oauth2:9999 \\" >&2
+    echo "      ./scripts/get-token.sh uat --copy" >&2
+    echo "" >&2
+    exit 1
+  fi
+
+  # Check that something is answering locally (user has started port-forward).
+  if curl -sf "${TOKEN_URL%/token}/jwks" >/dev/null 2>&1; then
+    echo "✓ mock-oauth2 reachable on localhost:${OAUTH_LOCAL_PORT}" >&2
+    echo "  Issuer host: ${OAUTH_ISSUER_HOST}" >&2
+    return
+  fi
+
+  local svc_name="${OAUTH_ISSUER_HOST%%:*}"
+  echo "ERROR: Nothing is responding on localhost:${OAUTH_LOCAL_PORT}." >&2
+  echo "  Start a port-forward in another terminal:" >&2
+  echo "" >&2
+  echo "    kubectl -n <namespace> port-forward svc/${svc_name} ${OAUTH_LOCAL_PORT}:9999" >&2
+  echo "" >&2
+  echo "  Then re-run this script." >&2
+  exit 1
+}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
@@ -184,6 +220,9 @@ case "${ENV}" in
       "laa-mock-oauth2-smoketest" \
       "${ROOT_DIR}/docker-compose.smoke-test.yml" \
       "mock-oauth2-server-smoketest"
+    ;;
+  uat)
+    require_uat_issuer_and_port_forward
     ;;
 esac
 
@@ -219,7 +258,7 @@ CURL_ARGS+=(
 # without re-sending the request (which previously cost 2-3 extra calls).
 HEADERS_FILE="$(mktemp)"
 CURL_ERR_FILE="$(mktemp)"
-trap 'rm -f "${HEADERS_FILE}" "${CURL_ERR_FILE}"' EXIT
+# (cleanup of these temp files is handled by the EXIT trap above)
 
 HTTP_RESPONSE=$(curl "${CURL_ARGS[@]}" \
   -D "${HEADERS_FILE}" \
@@ -264,7 +303,7 @@ if [[ "${CURL_EXIT}" -ne 0 || "${HTTP_STATUS}" != "200" ]]; then
   case "${ENV}" in
     local) echo "  Start it: docker compose up -d mock-oauth2-server" >&2 ;;
     smoke) echo "  Start it: docker compose -f docker-compose.smoke-test.yml up -d" >&2 ;;
-    uat)   echo "  Port-forward it: kubectl -n laa-data-access-api-uat port-forward svc/${OAUTH_ISSUER_HOST%%:*} ${OAUTH_LOCAL_PORT:-9999}:9999" >&2 ;;
+    uat)   echo "  Port-forward it: kubectl -n <namespace> port-forward svc/${OAUTH_ISSUER_HOST%%:*} ${OAUTH_LOCAL_PORT:-9999}:9999" >&2 ;;
   esac
   exit 1
 fi
@@ -298,7 +337,17 @@ fi
 if ${DECODE}; then
   echo "" >&2
   echo "── Token payload ──────────────────────────────────────────────────────" >&2
-  echo "${TOKEN}" | awk -F. '{print $2}' | base64 -d 2>/dev/null | jq >&2
+  # Extract the payload (second part of the JWT)
+  payload=$(echo "${TOKEN}" | awk -F. '{print $2}')
+  # Add padding if needed (JWT base64url omits padding)
+  case $((${#payload} % 4)) in
+    2) payload="${payload}==" ;;
+    3) payload="${payload}=" ;;
+  esac
+  # Decode and pretty-print
+  echo "${payload}" | base64 -d 2>/dev/null | jq >&2 || {
+    echo "⚠ Could not decode token payload" >&2
+  }
   echo "───────────────────────────────────────────────────────────────────────" >&2
 fi
 

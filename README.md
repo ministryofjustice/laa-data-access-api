@@ -1,9 +1,3 @@
-You can also use the Swagger UI to execute endpoints, which is described below in the
-[API documentation](#api-documentation) section.
-curl -X GET "http://localhost:8080/applications" -H "accept: application/json" -H "Authorization: Bearer {token}"
-```
-You can use a tool such as Postman or curl to execute endpoints. For example, to execute the `GET /applications`
-endpoint using curl:
 # laa-data-access-api
 
 ## Overview
@@ -64,16 +58,19 @@ Create or modify your '~/.zshrc' file to include the following environment varia
 export ENTRA_ISSUER_URI=https://dummy-issuer
 export ENTRA_JWK_SET_URI=https://dummy-jwk-set-uri
 export ENTRA_AUD=dummy-aud
+export FEATURE_ENABLE_DEV_TOKEN=true
+export FEATURE_DISABLE_SECURITY=true
+export SDS_API_URL=https://dummy-sds-api-url
+export SDS_API_BUCKET=dummy-sds-api-bucket-name
+export SDS_API_CLIENT_REGISTRATION_ID=dummy-sds-api-client-registration-id
+export SDS_API_PRINCIPAL_NAME=dummy-sds-api-principal-name
 ```
 
-> **Note:** These dummy values are only needed if you run `bootRun` without the `local` profile.
-> When using the `local` profile (recommended), the mock OAuth2 server provides real JWT validation — see [Run application](#run-application).
-
 This will ensure that where-ever you run the application from locally (IntelliJ, any terminal window, etc)
-, these environment variables will be set. 
+, these environment variables will be set.
 
-You can verify that they have been set by running `printenv` in your terminal or 
-looking in the environment variable section in the run/debug configuration in IntelliJ 
+You can verify that they have been set by running `printenv` in your terminal or
+looking in the environment variable section in the run/debug configuration in IntelliJ
 
 ### Developing application within Intellij
 Java version 25 is required
@@ -107,7 +104,7 @@ Infrastructure smoke tests run the built Docker image against a real Postgres da
 verify the live HTTP API. See [`docs/infrastructure-smoke-tests.md`](docs/infrastructure-smoke-tests.md)
 for full details.
 
-The script is useful for testing the application locally. 
+The script is useful for testing the application locally.
 The smoke tests will also run in CI eventually.
 
 ```bash
@@ -116,140 +113,41 @@ The smoke tests will also run in CI eventually.
 
 ### Run application
 
-**Simplest approach - automatic startup:**
+Ensure that the environment variables specified in the
+[Set up environment variables](#set-up-environment-variables) section have been set.
 
-```bash
-./gradlew bootRun
-```
+To start up Localstack and Postgres
 
-This automatically starts the mock-oauth2-server (if not already running), applies the `local` profile, and launches the application with JWT validation enabled.
+`docker compose up -d`
 
-**Manual approach - control Docker yourself:**
+Or if you want to use a different name or credentials
 
-```bash
-docker compose up -d
-./gradlew bootRun --args='--spring.profiles.active=local'
-```
+`docker compose run -p 5432:5432 -e POSTGRES_DB={database name} POSTGRES_USER={username} POSTGRES_PASSWORD={password} postgres`
 
-The application uses the mock-oauth2-server on port 9999 for JWT validation. Security is always enabled—no environment variables or feature flags needed.
+followed by
 
-#### Mock OAuth2 and test tokens
+`docker compose run -p 4566:4566 localstack`
 
-This project uses [`navikt/mock-oauth2-server`](https://github.com/navikt/mock-oauth2-server) as the test identity provider for local development, infrastructure smoke tests, and deployed test fixtures. Security stays enabled: the API validates signed JWTs, issuer, JWKS, audience, and role claims instead of bypassing auth.
+Then execute
 
-| Environment | Mock/token source | Config |
-|-------------|-------------------|--------|
-| Local development | Docker Compose service `mock-oauth2-server` on `http://localhost:9999` | `infra/mock-oauth2/config.json` |
-| Integration tests | In-process `MockOAuth2Server` started by `IntegrationTestContextProvider`; tokens minted by `TestTokenFactory` | Claims built in `TestTokenFactory` |
-| Infrastructure smoke tests | Docker Compose service `mock-oauth2-server-smoketest`; tokens fetched by `SmokeTestTokenProvider` from `LAA_SMOKE_OAUTH_TOKEN_URL` | `infra/mock-oauth2/config-smoke-test.json` |
-| Deployed test fixture | Kubernetes `mock-oauth2-server` service | `infra/mock-oauth2/k8s/configmap.yml`, `deployment.yml`, `service.yml` |
-
-Key endpoints:
-
-| Use | URL |
-|-----|-----|
-| Local token endpoint | `http://localhost:9999/entra/token` |
-| Local JWKS endpoint | `http://localhost:9999/entra/jwks` |
-| Smoke-test host token endpoint | `http://localhost:9998/entra/token` |
-| In-cluster deployed token endpoint | `http://<release-name>-data-access-api-mock-oauth2.<namespace>.svc.cluster.local:9999/entra/token` |
-
-To reach a deployed mock OAuth2 service from your laptop, port-forward the Kubernetes **service** using the `svc/` prefix:
-
-```bash
-kubectl -n laa-data-access-api-uat port-forward svc/<release-name>-data-access-api-mock-oauth2 9999:9999
-```
-
-For example:
-
-```bash
-kubectl -n laa-data-access-api-uat port-forward svc/spike-dstew1360-data-access-api-mock-oauth2 9999:9999
-```
-
-Then fetch tokens from `http://localhost:9999/entra/token` using `POST`. A browser or `GET` request to `/entra/token` returns `405 Method Not Allowed` because the token endpoint only supports form-encoded `POST` requests.
-
-When calling a deployed API, the token `iss` claim must match that API's configured `ENTRA_ISSUER_URI`. Tokens fetched through a laptop port-forward commonly have `iss: http://localhost:9999/entra`; those will be rejected with a blank `401 Unauthorized` if the deployed API expects an in-cluster issuer such as `http://<release-name>-data-access-api-mock-oauth2:9999/entra`.
-
-If the deployed API expects the in-cluster service hostname, keep the port-forward running and request the token with a matching `Host` header:
-
-```bash
-TOKEN=$(curl -sS -X POST http://localhost:9999/entra/token \
-  -H "Host: <release-name>-data-access-api-mock-oauth2:9999" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=client_credentials" \
-  -d "client_id=test" \
-  -d "client_secret=test" \
-  -d "scope=api://laa-data-access-api/.default" | jq -r .access_token)
-```
-
-Decode the token payload and check `iss` before calling the deployed API:
-
-```bash
-echo "$TOKEN" | awk -F. '{print $2}' | base64 -d 2>/dev/null | jq .iss
-```
-
-To get a valid local Bearer token for Swagger, Postman, or curl, prefer the helper script:
-
-```bash
-./scripts/get-token.sh local --copy
-```
-
-Or fetch one directly:
-
-```bash
-curl -s -X POST http://localhost:9999/entra/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=client_credentials" \
-  -d "client_id=test" \
-  -d "client_secret=test" \
-  -d "scope=api://laa-data-access-api/.default" | jq -r .access_token
-```
-
-Tokens are pre-configured with the `LAA_CASEWORKER` role and a 1-hour expiry. To change token claims, update the relevant config file above. The important claims are:
-
-- `aud`: must contain `laa-data-access-api`
-- `roles`: should include the application role, e.g. `LAA_CASEWORKER`
-- `LAA_APP_ROLES`: must be present for the custom audience/role validation
-
-After changing mock OAuth2 config, restart the relevant service:
-
-```bash
-# Local development
-docker compose restart mock-oauth2-server
-
-# Smoke-test stack
-docker compose -f docker-compose.smoke-test.yml restart mock-oauth2-server-smoketest
-```
-
-Keep the pinned `ghcr.io/navikt/mock-oauth2-server:2.1.10` version in sync across `docker-compose.yml`, `docker-compose.smoke-test.yml`, `data-access-service/build.gradle`, and `infra/mock-oauth2/k8s/deployment.yml`.
-
-> **Why not auto-authenticate in Swagger?** Swagger UI supports OAuth2 flows, but switching the OpenAPI security scheme from Bearer to OAuth2 would affect all environments. In production, tokens come from the Entra OBO flow, not `client_credentials`. Keeping a single Bearer scheme keeps Swagger consistent across environments.
+`./gradlew bootRun`
 
 ### Executing endpoints
 
-#### Using curl
+You can use a tool such as Postman or curl to execute endpoints. For example, to execute the `GET /applications`
+endpoint using curl:
 
-```bash
-curl -X GET "http://localhost:8080/api/v0/applications" \
-  -H "accept: application/json" \
-  -H "Authorization: Bearer {token}" \
-  -H "X-Service-Name: CIVIL_APPLY"
+```
+curl -X GET "http://localhost:8080/applications" -H "accept: application/json" -H "Authorization: Bearer {token}"
 ```
 
-#### Using Postman
+You can also use the Swagger UI to execute endpoints, which is described below in the
+[API documentation](#api-documentation) section.
 
-The `tools/postman/` directory contains a Postman collection with all endpoints and environment files for local and UAT.
-
-**Quick start:**
-1. Open Postman → **Import** → drag in `tools/postman/laa-data-access-api.postman_collection.json` and `tools/postman/local.postman_environment.json`
-2. Select the environment in the top-right dropdown (e.g. "LAA Data Access API — Local")
-3. Send any request — tokens are fetched automatically from mock-oauth2-server
-
-**For UAT:** Import `tools/postman/uat.postman_environment.json` and run `kubectl port-forward -n laa-data-access-uat svc/mock-oauth2-server 9999:9999` before making requests.
-
-#### Using Swagger UI
-
-See [API documentation](#api-documentation) below for Swagger UI usage.
-
+If FEATURE_ENABLE_DEV_TOKEN is set to true, you can use the following token for testing purposes
+```
+Authorization: Bearer swagger-caseworker-token
+```
 
 ### Dependency lock files
 
@@ -266,7 +164,7 @@ is intentional — it forces an explicit decision to accept the new set of resol
 
 **To regenerate lock files** after changing dependencies, run:
 
-- `./gradlew resolveAndLockAll` 
+- `./gradlew resolveAndLockAll`
 
 This resolves all configurations across every subproject and writes updated lock files automatically. The updated
 `gradle.lockfile` files should be committed alongside the dependency change.
@@ -292,9 +190,54 @@ You may need to drop database tables manually prior to running app so Flyway can
 #### Swagger UI
 - http://localhost:8080/swagger-ui/index.html
 
-The "Authorize" button is available in the top right of the Swagger UI, which allows you to enter a Bearer token for 
+The "Authorize" button is available in the top right of the Swagger UI, which allows you to enter a Bearer token for
 authentication when executing endpoints.
-See [Mock OAuth2 and test tokens](#mock-oauth2-and-test-tokens) for how to obtain a token.
+If you have set up the environment variables as specified in the
+[Set up environment variables](#set-up-environment-variables) section,
+you can use the "Authorize" button to enter the following token for testing purposes:
+
+```
+swagger-caseworker-token
+```
+
+### Mock OAuth2 (UAT/deployed environments)
+
+UAT and other deployed environments use [navikt/mock-oauth2-server](https://github.com/navikt/mock-oauth2-server) to issue test JWTs that match the API's issuer validation.
+
+After deploying to UAT, check the Helm deployment notes or run:
+```bash
+kubectl -n <namespace> get svc -l app.kubernetes.io/component=mock-oauth2
+```
+
+Then fetch a test token for **UAT** (or another environment):
+
+**Option 1: Using the helper script** (pass `uat` as the environment)
+```bash
+# 1. Port-forward the mock-oauth2 service (separate terminal)
+kubectl -n <namespace> port-forward svc/<release>-data-access-api-mock-oauth2 9999:9999
+
+# 2. Get a token for UAT
+OAUTH_ISSUER_HOST=<release>-data-access-api-mock-oauth2:9999 ./scripts/get-token.sh uat --copy --decode
+```
+
+**Option 2: Using curl directly**
+```bash
+# 1. Port-forward the mock-oauth2 service (separate terminal)
+kubectl -n <namespace> port-forward svc/<release>-data-access-api-mock-oauth2 9999:9999
+
+# 2. Get a token via curl
+TOKEN=$(curl -sS -X POST "http://localhost:9999/entra/token" \
+  -H "Host: <release>-data-access-api-mock-oauth2:9999" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=test" \
+  -d "client_secret=test" \
+  -d "scope=api://laa-data-access-api/.default" | jq -r '.access_token')
+
+echo "$TOKEN"
+```
+
+The token's `iss` claim will match the API's configured `ENTRA_ISSUER_URI`, so it will pass validation.
 
 #### API docs (JSON)
 - http://localhost:8080/v3/api-docs
@@ -307,7 +250,7 @@ The following actuator endpoints have been configured:
 
 ### Run the data generator
 
-Each deployment to UAT will also deploy data-access-mass-generator as a separate pod. Initially it is scaled to 0, 
+Each deployment to UAT will also deploy data-access-mass-generator as a separate pod. Initially it is scaled to 0,
 however you can start the pod and connect to it via kubectl to be able to create performance testing data in that PR's database.
 
 This is also available for the main deployment in UAT.
@@ -323,8 +266,9 @@ export RELEASE_NAME=<release name for the pod - you can find this in the deploym
 (in the shell run) java -jar mass-generator.jar <number of applications>
 ```
 
-Once the command is complete, exit the shell and the pod will be scaled back to 0. 
+Once the command is complete, exit the shell and the pod will be scaled back to 0.
 You can check the database to see the generated data or use swagger to execute endpoints.
+
 ## Additional information
 
 ### Libraries used
@@ -353,4 +297,3 @@ sensible defaults for the following plugins:
 
 The plugin is provided by [laa-spring-boot-common](https://github.com/ministryofjustice/laa-spring-boot-common), where you can find
 more information regarding (required) setup and usage.
-
