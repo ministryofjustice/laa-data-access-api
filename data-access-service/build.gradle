@@ -19,6 +19,7 @@ configurations.all {
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
     // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
+    // Fix for Spring Data DoS vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKDATA-17279540, 17295727, 17304742, 17308778
     resolutionStrategy {
         force 'com.fasterxml.jackson.core:jackson-core:2.21.2'
         force 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
@@ -27,6 +28,12 @@ configurations.all {
         force 'tools.jackson:jackson-bom:3.1.1'
         force 'org.springframework.security:spring-security-config:7.0.5'
         force 'org.springframework.security:spring-security-web:7.0.5'
+        eachDependency { DependencyResolveDetails details ->
+            if (details.requested.group == 'org.springframework.data' && details.requested.name == 'spring-data-commons') {
+                details.useVersion '4.0.6'
+                details.because 'Fix for DoS vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKDATA-17279540, 17295727, 17304742, 17308778'
+            }
+        }
     }
 }
 
