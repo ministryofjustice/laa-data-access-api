@@ -507,6 +507,74 @@ public class MakeDecisionTest extends BaseHarnessTest {
         problemDetail.getDetail());
   }
 
+  // This Test will be removed once security is implemented within the service
+  @Test
+  public void
+      givenApplicationWithNoCaseworker_whenAssignDecision_thenReturnNoContent_andDecisionSaved()
+          throws Exception {
+    // given
+    ApplicationEntity applicationEntity =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder -> {
+              builder.applicationContent(new HashMap<>(Map.of("test", "content")));
+              builder.proceedings(
+                  Set.of(
+                      DataGenerator.createDefault(ProceedingsEntityGenerator.class),
+                      DataGenerator.createDefault(ProceedingsEntityGenerator.class)));
+            });
+
+    Iterator<ProceedingEntity> existingProceedings = applicationEntity.getProceedings().iterator();
+    ProceedingEntity refusedProceedingEntity = existingProceedings.next();
+    ProceedingEntity grantedProceedingEntity = existingProceedings.next();
+
+    MakeDecisionRequest makeDecisionRequest =
+        DataGenerator.createDefault(
+            ApplicationMakeDecisionRequestGenerator.class,
+            builder ->
+                builder
+                    .eventHistory(
+                        EventHistoryRequest.builder().eventDescription("refusal event").build())
+                    .overallDecision(DecisionStatus.REFUSED)
+                    .proceedings(
+                        List.of(
+                            createMakeDecisionProceeding(
+                                grantedProceedingEntity.getId(),
+                                MeritsDecisionStatus.GRANTED,
+                                "justification 1",
+                                "reason 1"),
+                            createMakeDecisionProceeding(
+                                refusedProceedingEntity.getId(),
+                                MeritsDecisionStatus.REFUSED,
+                                "justification 2",
+                                "reason 2")))
+                    .autoGranted(true));
+
+    // when
+    HarnessResult result =
+        patchUri(TestConstants.URIs.MAKE_DECISION, makeDecisionRequest, applicationEntity.getId());
+
+    // then
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertNoContent(result);
+
+    ApplicationEntity actualApplication =
+        applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+    assertEquals(ApplicationStatus.APPLICATION_IN_PROGRESS, actualApplication.getStatus());
+    ApplicationEntity updatedApplicationEntity =
+        applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+    assertThat(updatedApplicationEntity.getDecision()).isNotNull();
+
+    domainEventAsserts.assertDomainEventsCreatedForApplications(
+        List.of(applicationEntity),
+        null,
+        DomainEventType.APPLICATION_MAKE_DECISION_REFUSED,
+        makeDecisionRequest.getEventHistory());
+
+    verifyDecisionSavedCorrectly(applicationEntity.getId(), makeDecisionRequest);
+  }
+
   private static MakeDecisionProceedingRequest createMakeDecisionProceeding(
       UUID proceedingId,
       MeritsDecisionStatus meritsDecisionStatus,
