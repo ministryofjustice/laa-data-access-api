@@ -281,6 +281,7 @@ dependencies {
     }
     implementation 'org.springframework.security:spring-security-config'
     implementation 'org.springframework.security:spring-security-web'
+    implementation 'org.springframework.data:spring-data-commons:4.0.6'
     implementation 'org.springframework:spring-core:7.0.8'
     implementation 'org.springframework:spring-expression:7.0.8'
     implementation 'org.springframework:spring-web:7.0.8'

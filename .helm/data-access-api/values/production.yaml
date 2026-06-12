@@ -54,3 +54,5 @@ slowQueryThresholdSeconds: 1
 
 massGenerator:
   enabled: false
+
+featureFlags: {}
