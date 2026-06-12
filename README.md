@@ -31,6 +31,10 @@ See `docs/monitoring.md` for details on how application metrics are collected, s
 
 See `docs/network-policies.md` for details on the Kubernetes network policy that allows Prometheus to scrape metrics.
 
+### CI/CD Immutable Release Process
+
+See `docs/immutable-release-process.md` for details on the tag-based release process, immutable image promotion, and deployment safety gates.
+
 ### Pre-commit hooks
 
 See `docs/pre-commit-hooks.md` for information on setting up and using pre-commit hooks in this project.

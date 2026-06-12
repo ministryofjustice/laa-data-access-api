@@ -31,7 +31,7 @@ Each non-baseline preset should enable only the flag under test.
 
 ## Workflow usage
 
-Preset resolution now runs inside `.github/workflows/build-test-deploy.yml` in the `base-resolve-presets` job.
+Preset resolution now runs inside `.github/workflows/deploy-main-uat-rc.yml` in the `base-resolve-presets` job.
 
 On `push` to `main`, the flow is:
 

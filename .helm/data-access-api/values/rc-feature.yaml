@@ -17,6 +17,7 @@ replicaCount: 1
 image:
   repository: null  # Set by GitHub Actions
   tag: null         # Set by GitHub Actions (git commit SHA)
+  digest: null      # Optional immutable digest for production-style promotion
 
 service_account:
   name: laa-data-access-uat-service-account

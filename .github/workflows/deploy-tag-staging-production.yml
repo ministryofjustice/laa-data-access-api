@@ -1,0 +1,201 @@
+name: Deploy to Staging and Production on Version Tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: deploy-tag-promotion
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate-tag-on-main:
+    name: Validate tag is on main branch
+    runs-on: ubuntu-latest
+    outputs:
+      commit_sha: ${{ steps.validate.outputs.commit_sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0  # Fetch full history for merge-base check
+
+      - name: Validate tag commit is ancestor of main
+        id: validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          # Fetch origin/main to ensure we have the latest history
+          git fetch origin main:refs/remotes/origin/main
+          
+          # Get the commit SHA of the tag
+          TAG_SHA=$(git rev-list -n 1 "${{ github.ref }}")
+          MAIN_SHA=$(git rev-parse origin/main)
+          
+          echo "Tag commit: $TAG_SHA"
+          echo "Main branch commit: $MAIN_SHA"
+          
+          # Check if tag commit is an ancestor of main
+          if git merge-base --is-ancestor "$TAG_SHA" "$MAIN_SHA"; then
+            echo "✓ Tag is on main branch (or an ancestor of main)"
+            echo "commit_sha=$TAG_SHA" >> "$GITHUB_OUTPUT"
+            exit 0
+          else
+            echo "✗ Tag is NOT on main branch"
+            echo "This tag must point to a commit that is reachable from main."
+            echo "To fix: ensure the tagged commit is merged to main before creating the tag."
+            exit 1
+          fi
+
+  resolve_image_metadata:
+    runs-on: ubuntu-latest
+    needs:
+      - validate-tag-on-main
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      image_tag: ${{ steps.resolve.outputs.image_tag }}
+      image_digest: ${{ steps.resolve.outputs.image_digest }}
+    steps:
+      - name: Configure AWS creds
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
+        with:
+          role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.ECR_REGION }}
+
+      - name: Resolve pushed image metadata
+        id: resolve
+        shell: bash
+        env:
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ needs.validate-tag-on-main.outputs.commit_sha }}
+        run: |
+          set -euo pipefail
+          DIGEST=$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$IMAGE_TAG" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)
+
+          if [ -z "$DIGEST" ] || [ "$DIGEST" = "None" ]; then
+            echo "Failed to resolve ECR digest for tag: $IMAGE_TAG"
+            exit 1
+          fi
+
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "image_digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs:
+      - resolve_image_metadata
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      release-name: ${{ steps.deploy_staging.outputs.release-name }}
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Deploy staging
+        id: deploy_staging
+        uses: ./.github/actions/deploy
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          app-environment: staging
+          image-tag: ${{ needs.resolve_image_metadata.outputs.image_tag }}
+          image-digest: ${{ needs.resolve_image_metadata.outputs.image_digest }}
+
+  staging-smoke-test:
+    runs-on: ubuntu-latest
+    needs:
+      - deploy-staging
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Run staging smoke tests
+        uses: ./.github/actions/smoke-test
+        with:
+          release-name: ${{ needs.deploy-staging.outputs.release-name }}
+          branch-name: main
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          report-name: staging-smoke-test-report
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs:
+      - staging-smoke-test
+      - resolve_image_metadata
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      release-name: ${{ steps.deploy_production.outputs.release-name }}
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Deploy production
+        id: deploy_production
+        uses: ./.github/actions/deploy
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          app-environment: production
+          image-tag: ${{ needs.resolve_image_metadata.outputs.image_tag }}
+          image-digest: ${{ needs.resolve_image_metadata.outputs.image_digest }}
+
+  production-smoke-test:
+    runs-on: ubuntu-latest
+    needs:
+      - deploy-production
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Run production smoke tests
+        uses: ./.github/actions/smoke-test
+        with:
+          release-name: ${{ needs.deploy-production.outputs.release-name }}
+          branch-name: main
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          report-name: production-smoke-test-report

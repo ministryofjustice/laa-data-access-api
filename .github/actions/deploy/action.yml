@@ -25,6 +25,19 @@ inputs:
   app-environment:
     description: "environment to which the app is being deployed [staging, production, etc]"
     required: true
+  image-tag:
+    description: "Docker image tag to deploy"
+    required: false
+    default: ""
+  image-digest:
+    description: "Optional immutable docker image digest (sha256:...)"
+    required: false
+    default: ""
+
+outputs:
+  release-name:
+    description: "Helm release name used for deployment"
+    value: "laa-data-access-api"
 
 runs:
   using: "composite"
@@ -51,10 +64,12 @@ runs:
         ECR_REPOSITORY: ${{ inputs.ecr-repository }}
         ECR_REGION: ${{ inputs.ecr-region }}
         ECR_REGISTRY: ${{ steps.deploy_prerequisites.outputs.ecr-registry }}
-        GIT_SHA: ${{ github.sha }}
+        IMAGE_TAG: ${{ inputs.image-tag != '' && inputs.image-tag || github.sha }}
+        IMAGE_DIGEST: ${{ inputs.image-digest }}
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
       run: |
+        set -euo pipefail
         LAA_IPS="${{ steps.get_laa_ips.outputs.laa-ips }}"
         echo "Environment: ${APP_ENVIRONMENT}"
 
@@ -64,15 +79,23 @@ runs:
           SPRING_PROFILE="unsecured"
         fi
 
+        IMAGE_REF_ARGS=(
+          --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}"
+          --set image.tag="${IMAGE_TAG}"
+        )
+
+        if [ -n "${IMAGE_DIGEST}" ]; then
+          IMAGE_REF_ARGS+=(--set image.digest="${IMAGE_DIGEST}")
+        fi
+
         helm upgrade laa-data-access-api .helm/data-access-api \
           --namespace ${KUBE_NAMESPACE} \
-          --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
-          --set image.tag="${GIT_SHA}" \
+          "${IMAGE_REF_ARGS[@]}" \
           --set ingress.annotations."nginx\.ingress\.kubernetes\.io/whitelist-source-range"="$LAA_IPS" \
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
           --set massGenerator.image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
-          --set massGenerator.image.tag="${GIT_SHA}-mass-generator" \
+          --set massGenerator.image.tag="${IMAGE_TAG}-mass-generator" \
           --values ${VALUES_FILE} \
           --install \
           --wait

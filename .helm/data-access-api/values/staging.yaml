@@ -7,6 +7,7 @@ replicaCount: 2
 image:
   repository: null
   tag: null
+  digest: null
 
 service_account:
   name: laa-data-access-staging-service-account
