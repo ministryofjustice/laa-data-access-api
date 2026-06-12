@@ -41,9 +41,8 @@ jobs:
       - name: Integration test
         run: ./gradlew integrationTest
 
-# disabled until failing tests are fixed
-#      - name: Test coverage verification
-#        run: ./gradlew jacocoTestCoverageVerification
+      - name: Test coverage verification
+        run: ./gradlew jacocoTestCoverageVerification
 
       - name: Publish api models package
         run: |
