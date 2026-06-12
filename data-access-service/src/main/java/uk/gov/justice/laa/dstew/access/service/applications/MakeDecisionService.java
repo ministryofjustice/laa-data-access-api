@@ -56,7 +56,7 @@ public class MakeDecisionService {
         ApplicationServiceHelper.getExistingApplication(applicationId, applicationRepository);
     VersionCheckHelper.checkEntityVersionLocking(
         applicationId, application.getVersion(), request.getApplicationVersion());
-    final UUID caseworkerId = getCaseworkerId(applicationId, application);
+    final UUID caseworkerId = getCaseworkerId(application);
     applicationValidations.checkApplicationMakeDecisionRequest(request);
 
     Map<UUID, ProceedingEntity> proceedingEntityMap =
@@ -175,12 +175,8 @@ public class MakeDecisionService {
     throw new ResourceNotFoundException(String.join("; ", errors));
   }
 
-  private static UUID getCaseworkerId(UUID applicationId, ApplicationEntity application) {
+  private static UUID getCaseworkerId(ApplicationEntity application) {
     final CaseworkerEntity caseworker = application.getCaseworker();
-    if (caseworker == null) {
-      throw new ResourceNotFoundException(
-          "Caseworker not found for application id: " + applicationId);
-    }
-    return caseworker.getId();
+    return caseworker != null ? caseworker.getId() : null;
   }
 }
