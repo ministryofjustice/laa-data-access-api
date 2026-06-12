@@ -55,16 +55,19 @@ Includes the following subprojects:
 Create or modify your '~/.zshrc' file to include the following environment variables:
 
 ```
-export ENTRA_ISSUER_URI=https://dummy-issuer
-export ENTRA_JWK_SET_URI=https://dummy-jwk-set-uri
-export ENTRA_AUD=dummy-aud
+export ENTRA_ISSUER_URI=http://host.docker.internal:9999/entra
+export ENTRA_JWK_SET_URI=http://localhost:9999/entra/jwks
+export ENTRA_AUD=api://laa-data-access-api
 export FEATURE_ENABLE_DEV_TOKEN=true
-export FEATURE_DISABLE_SECURITY=true
+export FEATURE_DISABLE_SECURITY=false
 export SDS_API_URL=https://dummy-sds-api-url
 export SDS_API_BUCKET=dummy-sds-api-bucket-name
 export SDS_API_CLIENT_REGISTRATION_ID=dummy-sds-api-client-registration-id
 export SDS_API_PRINCIPAL_NAME=dummy-sds-api-principal-name
 ```
+
+**Note:** When using the local mock-oauth2-server (see below), the ENTRA variables are configured to point to it.
+If you prefer to disable security entirely for local development, set `FEATURE_DISABLE_SECURITY=true`.
 
 This will ensure that where-ever you run the application from locally (IntelliJ, any terminal window, etc)
 , these environment variables will be set.
@@ -116,17 +119,19 @@ The smoke tests will also run in CI eventually.
 Ensure that the environment variables specified in the
 [Set up environment variables](#set-up-environment-variables) section have been set.
 
-To start up Localstack and Postgres
+To start up mock-oauth2-server, Postgres, Prometheus, and Grafana:
 
 `docker compose up -d`
 
-Or if you want to use a different name or credentials
+This will start:
+- **Postgres** (port 5432) - Database
+- **mock-oauth2-server** (port 9999) - OAuth2 test server for local authentication
+- **Prometheus** (port 9090) - Metrics collection
+- **Grafana** (port 3000) - Metrics visualization
 
-`docker compose run -p 5432:5432 -e POSTGRES_DB={database name} POSTGRES_USER={username} POSTGRES_PASSWORD={password} postgres`
+Or if you want to use a different database name or credentials:
 
-followed by
-
-`docker compose run -p 4566:4566 localstack`
+`docker compose run -p 5432:5432 -e POSTGRES_DB={database name} -e POSTGRES_USER={username} -e POSTGRES_PASSWORD={password} postgres`
 
 Then execute
 
@@ -148,6 +153,24 @@ If FEATURE_ENABLE_DEV_TOKEN is set to true, you can use the following token for 
 ```
 Authorization: Bearer swagger-caseworker-token
 ```
+
+#### Getting tokens from local mock-oauth2-server
+
+If you're running with `FEATURE_DISABLE_SECURITY=false` and want to test with real JWT tokens locally, 
+you can use the helper script to fetch a token from the local mock-oauth2-server:
+
+```bash
+# Get a token for local development
+./scripts/get-token.sh local
+
+# Get a token and copy it to clipboard
+./scripts/get-token.sh local --copy
+
+# Get a token and decode it to see the payload
+./scripts/get-token.sh local --decode
+```
+
+The token will be valid for the local API when using the mock-oauth2-server environment variables shown above.
 
 ### Dependency lock files
 
@@ -208,6 +231,8 @@ After deploying to UAT, check the Helm deployment notes or run:
 ```bash
 kubectl -n <namespace> get svc -l app.kubernetes.io/component=mock-oauth2
 ```
+
+**Note:** A copyable script with the correct namespace and release name is available in the `deploy-uat` GitHub Actions workflow output.
 
 Then fetch a test token for **UAT** (or another environment):
 
