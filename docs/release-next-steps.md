@@ -2,21 +2,21 @@
 
 ## Status
 
-This is a proposed implementation plan to move to RC-tag-driven promotion and final-tag production release.
-
-No assumptions in this file are active policy until approved.
+In progress. Workstream 2 items 1 and 2 are complete. Remaining workstreams are pending approval and implementation.
 
 ## Target Behavior
 
-1. `main` merges deploy to UAT only.
-2. RC tag creation (`vX.Y.Z-rc.N`) triggers:
-- RC matrix deployment
-- staging deployment
-- staging smoke tests
+1. `main` merges deploy to UAT only. **[Implemented]**
+2. RC tag creation (`v-X.Y.Z-rc.N`) triggers:
+   - RC matrix deployment **[Implemented]**
+   - staging deployment _(not yet implemented — staging still triggered by final tag)_
+   - staging smoke tests _(not yet implemented)_
 3. Final tag creation (`vX.Y.Z`) triggers:
-- production deployment
-- production smoke tests
-4. Staging accepts only commits promoted with RC tags.
+   - staging deployment **[Current behaviour]**
+   - staging smoke tests **[Current behaviour]**
+   - production deployment **[Implemented]**
+   - production smoke tests **[Implemented]**
+4. Staging accepts only commits promoted with RC tags. _(not yet implemented)_
 
 ## Workstream 1: Policy and Governance
 
@@ -27,10 +27,10 @@ No assumptions in this file are active policy until approved.
 
 ## Workstream 2: Workflow Trigger Split
 
-1. Remove automatic RC matrix from `main` workflow.
-2. Add RC-tag-triggered workflow for matrix + staging.
-3. Restrict staging deployment trigger to RC tags only.
-4. Restrict production deployment trigger to final tags only.
+1. ~~Remove automatic RC matrix from `main` workflow.~~ **Done** — `deploy-main-uat.yml` now deploys to UAT only.
+2. ~~Add RC-tag-triggered workflow for matrix.~~ **Done** — `deploy-release-candidate.yml` triggers on `v-*.*.*-rc.*` tags and runs RC matrix deployment.
+3. Add staging deployment to the RC-tag workflow and remove it from the final-tag workflow. _(pending)_
+4. Restrict production deployment trigger to final tags only. _(pending)_
 
 ## Workstream 3: Release Safety Gates
 

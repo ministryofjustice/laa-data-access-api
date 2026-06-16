@@ -2,17 +2,15 @@
 
 ## Status
 
-This runbook describes the proposed operating model for release-candidate tags and final release tags.
-
-It is intended for review and sign-off before workflow changes are fully aligned.
+Partially implemented. RC matrix deployment on RC tag is active. Staging deploy is still triggered by the final release tag until Workstream 2 is fully complete.
 
 ## Objective
 
 Promote releases with explicit intent using GitHub Releases UI and immutable artifacts:
 
 1. Merge to `main` deploys to UAT for early validation.
-2. Creating a release-candidate tag promotes to RC matrix and staging.
-3. Creating a final release tag promotes to production.
+2. Creating a release-candidate tag promotes to RC matrix environments.
+3. Creating a final release tag promotes to staging and then production.
 
 ## Roles
 
@@ -30,14 +28,14 @@ Promote releases with explicit intent using GitHub Releases UI and immutable art
 ## Tag Conventions
 
 1. RC tags
-- Format: `vX.Y.Z-rc.N`
-- Example: `v1.12.0-rc.1`
-- Create as GitHub pre-release.
+   - Format: `v-X.Y.Z-rc.N`
+   - Example: `v-1.12.0-rc.1`
+   - Create as GitHub pre-release.
 
 2. Final tags
-- Format: `vX.Y.Z`
-- Example: `v1.12.0`
-- Create as full GitHub release.
+   - Format: `vX.Y.Z`
+   - Example: `v1.12.0`
+   - Create as full GitHub release.
 
 ## Pre-Release Checklist (RC)
 
@@ -51,21 +49,19 @@ Promote releases with explicit intent using GitHub Releases UI and immutable art
 
 1. Open GitHub Releases and select Draft a new release.
 2. Select target commit on `main`.
-3. Create tag `vX.Y.Z-rc.N`.
+3. Create tag `v-X.Y.Z-rc.N`.
 4. Mark as pre-release.
 5. Publish release notes.
 6. Verify expected workflows run and succeed:
-- RC matrix deployment path.
-- Staging deployment path.
-- Staging smoke tests.
+   - `deploy-release-candidate.yml` — RC matrix deployment across all preset environments.
+   - Staging deployment is currently triggered by the final release tag (see Target Behavior in next-steps doc).
 7. Capture evidence links (workflow runs, smoke report, digest).
 
 ## RC Exit Criteria
 
 1. RC matrix completed successfully.
-2. Staging deployment completed successfully.
-3. Staging smoke tests passed.
-4. Go/no-go decision recorded.
+2. Go/no-go decision recorded.
+3. Staging deployment evidence (currently triggered by final tag — see Target Behavior in next-steps doc).
 
 ## Final Release Procedure (GitHub UI)
 

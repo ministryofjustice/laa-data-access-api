@@ -1,27 +1,57 @@
-name: Deploy to UAT and RC Feature on Main
+name: Deploy RC Feature Matrix on Release Candidate Tag
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    tags:
+      - 'v-*.*.*-rc.*'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: deploy-release-candidate-matrix
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  build-test-docker:
-    uses: ./.github/workflows/build-test-docker.yml
-    secrets: inherit
+  validate-tag-on-main:
+    name: Validate tag is on main branch
+    runs-on: ubuntu-latest
+    outputs:
+      commit_sha: ${{ steps.validate.outputs.commit_sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag commit is ancestor of main
+        id: validate
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch origin main:refs/remotes/origin/main
+
+          TAG_SHA=$(git rev-list -n 1 "${{ github.ref }}")
+          MAIN_SHA=$(git rev-parse origin/main)
+
+          echo "Tag commit: $TAG_SHA"
+          echo "Main branch commit: $MAIN_SHA"
+
+          if git merge-base --is-ancestor "$TAG_SHA" "$MAIN_SHA"; then
+            echo "Tag is on main branch (or an ancestor of main)"
+            echo "commit_sha=$TAG_SHA" >> "$GITHUB_OUTPUT"
+            exit 0
+          else
+            echo "Tag is NOT on main branch"
+            echo "This tag must point to a commit that is reachable from main."
+            exit 1
+          fi
 
   resolve-image-metadata:
     runs-on: ubuntu-latest
     needs:
-      - build-test-docker
+      - validate-tag-on-main
     permissions:
       id-token: write
       contents: read
@@ -40,7 +70,7 @@ jobs:
         shell: bash
         env:
           ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-          IMAGE_TAG: ${{ github.sha }}
+          IMAGE_TAG: ${{ needs.validate-tag-on-main.outputs.commit_sha }}
         run: |
           set -euo pipefail
           DIGEST=$(aws ecr describe-images \
@@ -57,69 +87,11 @@ jobs:
           echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
           echo "image_digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
-  deploy-uat:
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    needs:
-      - build-test-docker
-      - resolve-image-metadata
-    environment: uat
-    permissions:
-      id-token: write
-      contents: read
-    outputs:
-      release-name: ${{ steps.deploy_uat_branch.outputs.release-name }}
-      branch-name: ${{ steps.deploy_uat_branch.outputs.branch-name }}
-
-    steps:
-
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-
-      - name: Deploy UAT
-        id: deploy_uat_branch
-        uses: ./.github/actions/deploy_branch
-        with:
-          ecr-region: ${{ vars.ECR_REGION }}
-          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-          ecr-repository: ${{ vars.ECR_REPOSITORY }}
-          kube-cert: ${{ secrets.KUBE_CERT }}
-          kube-token: ${{ secrets.KUBE_TOKEN }}
-          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
-          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-          app-environment: uat
-          image-tag: ${{ needs.resolve-image-metadata.outputs.image_tag }}
-          image-digest: ${{ needs.resolve-image-metadata.outputs.image_digest }}
-
-  uat-smoke-test:
-    if: startsWith(github.head_ref || github.ref_name, 'openapi/') == false
-    runs-on: ubuntu-latest
-    needs:
-      - deploy-uat
-    environment: uat
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-
-      - name: Run smoke tests
-        uses: ./.github/actions/smoke-test
-        with:
-          release-name: ${{ needs.deploy-uat.outputs.release-name }}
-          branch-name: ${{ needs.deploy-uat.outputs.branch-name }}
-          kube-cert: ${{ secrets.KUBE_CERT }}
-          kube-token: ${{ secrets.KUBE_TOKEN }}
-          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
-          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          report-name: uat-smoke-test-report
-
-  base-resolve-presets:
+  resolve-presets:
     name: Resolve Environment Presets
     runs-on: ubuntu-latest
     needs:
-      - uat-smoke-test
+      - validate-tag-on-main
     outputs:
       matrix: ${{ steps.resolve.outputs.matrix }}
     steps:
@@ -177,15 +149,14 @@ jobs:
           echo "matrix={\"include\":${matrix}}" >> "$GITHUB_OUTPUT"
 
   deploy-matrix-rc-feature:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs:
-      - base-resolve-presets
+      - resolve-presets
       - resolve-image-metadata
     environment: uat
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.base-resolve-presets.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.resolve-presets.outputs.matrix) }}
     permissions:
       id-token: write
       contents: read
