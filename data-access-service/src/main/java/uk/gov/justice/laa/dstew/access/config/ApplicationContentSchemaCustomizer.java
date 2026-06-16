@@ -3,6 +3,8 @@ package uk.gov.justice.laa.dstew.access.config;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
 import java.io.IOException;
 import java.io.InputStream;
@@ -56,7 +58,8 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
     addSchemaFromClasspath(components, "Applicant", "schema/common/Applicant.json");
 
     // Register versioned application-content schemas.
-    addSchemaFromClasspath(components, "ApplyApplicationContent", "schema/1/ApplyApplication.json");
+    addSchemaFromClasspath(components, "ApplyApplicationContentV1", "schema/1/ApplyApplication.json");
+    addSchemaFromClasspath(components, "ApplyApplicationContentV2", "schema/2/ApplyApplication.json");
     addSchemaFromClasspath(components, "CssApplicationContent", "schema/1/CssApplication.json");
 
     // Replace the generic Map<String,Object> schema for applicationContent.
@@ -71,7 +74,7 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
     }
 
     Schema<?> contentRef = new Schema<>();
-    contentRef.set$ref("#/components/schemas/ApplyApplicationContent");
+    contentRef.set$ref("#/components/schemas/ApplyApplicationContentV2");
     contentRef.setDescription(
         "Versioned application content body validated at runtime against the JSON Schema "
             + "selected by applicationType and the X-Schema-Version header. "
@@ -80,6 +83,22 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
             + "CSS applications use a different structure (CssApplicationContent)."
     );
     appCreateRequest.getProperties().put("applicationContent", contentRef);
+
+    // Set a meaningful pre-filled example on the POST /api/v0/applications request body
+    // so Swagger UI shows it in the "Try it out" editor instead of auto-generating a sparse one.
+    JsonNode exampleNode = readJsonNode("schema/examples/ApplicationCreateRequest.json");
+    if (exampleNode != null && openApi.getPaths() != null) {
+      var pathItem = openApi.getPaths().get("/api/v0/applications");
+      if (pathItem != null) {
+        Operation postOp = pathItem.getPost();
+        if (postOp != null && postOp.getRequestBody() != null) {
+          MediaType mediaType = postOp.getRequestBody().getContent().get("application/json");
+          if (mediaType != null) {
+            mediaType.setExample(objectMapper.convertValue(exampleNode, Map.class));
+          }
+        }
+      }
+    }
   }
 
   private void addSchemaFromClasspath(
