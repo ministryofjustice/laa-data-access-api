@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "suffix": "baseline",
+    "extraEnv": ""
+  },
+"FEATURE_DISABLEJPAAUDITING": {
+    "suffix": "disable-jpa-audit",
+    "extraEnv": "FEATURE_DISABLEJPAAUDITING=true"
+  },
+
+  "FEATURE_EXAMPLE_FEATURE_FLAG": {
+    "suffix": "example-feature-flag",
+    "extraEnv": "FEATURE_EXAMPLE_FEATURE_FLAG=true"
+  }
+}

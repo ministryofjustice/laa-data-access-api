@@ -29,4 +29,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @ExcludeFromGeneratedCodeCoverage
 @ConfigurationProperties(prefix = "feature")
 public record FeatureProperties(
-    boolean enableDevToken, boolean disableJpaAuditing, boolean disableSecurity) {}
+    boolean enableDevToken,
+    boolean disableJpaAuditing,
+    boolean disableSecurity,
+    boolean exampleFeatureFlag) {}

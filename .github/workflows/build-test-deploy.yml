@@ -41,9 +41,8 @@ jobs:
       - name: Integration test
         run: ./gradlew integrationTest
 
-# disabled until failing tests are fixed
-#      - name: Test coverage verification
-#        run: ./gradlew jacocoTestCoverageVerification
+      - name: Test coverage verification
+        run: ./gradlew jacocoTestCoverageVerification
 
       - name: Publish api models package
         run: |
@@ -225,7 +224,160 @@ jobs:
           REPOSITORY: ${{ vars.ECR_REPOSITORY }}
           IMAGE_TAG: ${{ github.sha }}
 
+  deploy-ephemeral:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs:
+      - build-push-docker
+      - build-push-mass-generator-docker
+      - vulnerability-scan-app
+      - vulnerability-scan-docker
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      release-name: ${{ steps.deploy_ephemeral_branch.outputs.release-name }}
+      branch-name: ${{ steps.deploy_ephemeral_branch.outputs.branch-name }}
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Deploy ephemeral branch
+        id: deploy_ephemeral_branch
+        uses: ./.github/actions/deploy_branch
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          app-environment: uat
+
+  ephemeral-smoke-test:
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref || github.ref_name, 'openapi/') == false
+    runs-on: ubuntu-latest
+    needs:
+      - deploy-ephemeral
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Run smoke tests
+        uses: ./.github/actions/smoke-test
+        with:
+          release-name: ${{ needs.deploy-ephemeral.outputs.release-name }}
+          branch-name: ${{ needs.deploy-ephemeral.outputs.branch-name }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          report-name: ephemeral-smoke-test-report
+
+  base-resolve-presets:
+    name: Resolve Environment Presets
+    runs-on: ubuntu-latest
+    needs:
+      - uat-smoke-test
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Resolve preset matrix
+        id: resolve
+        shell: bash
+        env:
+          PRESET_FILE: .github/config/ephemeral-environment-presets.json
+        run: |
+          set -euo pipefail
+
+          [ -f "$PRESET_FILE" ] || { echo "Missing preset file: $PRESET_FILE"; exit 1; }
+
+          sanitize_release_name() {
+            local raw
+            local cleaned
+            local hash_suffix
+            local prefix
+            raw="$1"
+            cleaned=$(echo "$raw" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9-' '-' | sed 's/^-*//; s/-*$//; s/--*/-/g')
+            if [ -z "$cleaned" ]; then
+              cleaned="feat-env"
+            fi
+
+            if [ ${#cleaned} -gt 53 ]; then
+              hash_suffix=$(printf "%s" "$cleaned" | shasum | cut -c1-8)
+              prefix=$(printf "%s" "$cleaned" | cut -c1-44 | sed 's/-*$//')
+              cleaned="${prefix}-${hash_suffix}"
+            fi
+            echo "$cleaned"
+          }
+
+          matrix='[]'
+          while IFS= read -r preset; do
+            suffix=$(jq -r --arg p "$preset" '.[$p].suffix // $p' "$PRESET_FILE")
+            preset_extra_env=$(jq -r --arg p "$preset" '.[$p].extraEnv // ""' "$PRESET_FILE")
+
+            release_name=$(sanitize_release_name "$suffix")
+
+            matrix=$(jq -c \
+              --arg preset_name "$preset" \
+              --arg release_name "$release_name" \
+              --arg extra_env "$preset_extra_env" \
+              '. + [{preset_name:$preset_name, release_name:$release_name, extra_env:$extra_env}]' \
+              <<< "$matrix")
+          done < <(jq -r 'keys[]' "$PRESET_FILE" | sort)
+
+          if [ "$matrix" = "[]" ]; then
+            echo "No presets resolved from file: ${PRESET_FILE}"
+            exit 1
+          fi
+
+          echo "matrix={\"include\":${matrix}}" >> "$GITHUB_OUTPUT"
+          
+
+  deploy-matrix-rc-feature:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs:
+      - base-resolve-presets
+    environment: uat
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.base-resolve-presets.outputs.matrix) }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Deploy RC feature environment
+        id: deploy
+        uses: ./.github/actions/deploy_feature_branch
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          app-environment: rc-feature
+          release-name-override: ${{ matrix.release_name }}
+          extra-env: ${{ matrix.extra_env }}
+
+
   deploy-uat:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs:
       - build-push-docker
@@ -245,7 +397,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - name: Deploy UAT branch
+      - name: Deploy UAT
         id: deploy_uat_branch
         uses: ./.github/actions/deploy_branch
         with:
@@ -267,118 +419,20 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    env:
-      RELEASE_NAME: ${{ needs.deploy-uat.outputs.release-name }}
-      BRANCH_NAME: ${{ needs.deploy-uat.outputs.branch-name }}
-      KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - name: Set up JDK 25
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+      - name: Run smoke tests
+        uses: ./.github/actions/smoke-test
         with:
-          java-version: 25
-          distribution: 'corretto'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
-
-      - name: Authenticate to the cluster
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
-        with:
+          release-name: ${{ needs.deploy-uat.outputs.release-name }}
+          branch-name: ${{ needs.deploy-uat.outputs.branch-name }}
           kube-cert: ${{ secrets.KUBE_CERT }}
           kube-token: ${{ secrets.KUBE_TOKEN }}
           kube-cluster: ${{ secrets.KUBE_CLUSTER }}
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-
-      - name: Resolve smoke-test target
-        id: target
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "$BRANCH_NAME" = "main" ]; then
-            echo "db_pod_selector=run=port-forward-pod" >> "$GITHUB_OUTPUT"
-            echo "db_secret=rds-postgresql-instance-output" >> "$GITHUB_OUTPUT"
-            echo "db_flavour=rds" >> "$GITHUB_OUTPUT"
-          else
-            echo "db_pod_selector=app.kubernetes.io/instance=${RELEASE_NAME}-postgresql,app.kubernetes.io/name=postgresql" >> "$GITHUB_OUTPUT"
-            echo "db_secret=${RELEASE_NAME}-postgresql" >> "$GITHUB_OUTPUT"
-            echo "db_flavour=bitnami" >> "$GITHUB_OUTPUT"
-          fi
-          echo "app_pod_selector=app.kubernetes.io/instance=${RELEASE_NAME},app.kubernetes.io/name=data-access-api" >> "$GITHUB_OUTPUT"
-
-      - name: Port forward to Postgres
-        uses: ./.github/actions/port-forward
-        with:
-          kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
-          pod_selector: ${{ steps.target.outputs.db_pod_selector }}
-          local_port: "5432"
-          remote_port: "5432"
-          pid_env_var: DB_PORT_FORWARD_PID
-
-      - name: Port forward to app
-        uses: ./.github/actions/port-forward
-        with:
-          kube_namespace: ${{ secrets.KUBE_NAMESPACE }}
-          pod_selector: ${{ steps.target.outputs.app_pod_selector }}
-          local_port: "8080"
-          remote_port: "8080"
-          pid_env_var: APP_PORT_FORWARD_PID
-
-      - name: Configure smoke-test environment
-        shell: bash
-        env:
-          DB_SECRET: ${{ steps.target.outputs.db_secret }}
-          DB_FLAVOUR: ${{ steps.target.outputs.db_flavour }}
-        run: |
-          set -euo pipefail
-          decode() {
-            kubectl -n "$KUBE_NAMESPACE" get secret "$DB_SECRET" -o jsonpath="{.data.$1}" | base64 -d
-          }
-          if [ "$DB_FLAVOUR" = "rds" ]; then
-            DB_NAME=$(decode database_name)
-            DB_USER=$(decode database_username)
-            DB_PASS=$(decode database_password)
-          else
-            DB_NAME="postgres"
-            DB_USER="postgres"
-            DB_PASS=$(decode postgres-password)
-          fi
-          echo "::add-mask::$DB_PASS"
-          {
-            echo "LAA_SMOKE_ACCESS_API_URL=http://localhost:8080"
-            echo "LAA_SMOKE_ACCESS_DB_URL=jdbc:postgresql://localhost:5432/$DB_NAME"
-            echo "LAA_SMOKE_ACCESS_DB_USERNAME=$DB_USER"
-            echo "LAA_SMOKE_ACCESS_DB_PASSWORD=$DB_PASS"
-          } >> "$GITHUB_ENV"
-
-      - name: Run UAT smoke tests
-        run: ./gradlew :data-access-service:infrastructureTest --continue --console=plain
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload smoke test report
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: uat-smoke-test-report
-          path: data-access-service/build/reports/tests/infrastructureTest
-          retention-days: 14
-
-      - name: Stop port-forwards
-        if: always()
-        shell: bash
-        run: |
-          for pid in "${DB_PORT_FORWARD_PID:-}" "${APP_PORT_FORWARD_PID:-}"; do
-            [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
-          done
-
-      - name: Delete in-cluster port-forward resources
-        if: always()
-        shell: bash
-        run: |
-          kubectl -n "$KUBE_NAMESPACE" delete deployment port-forward-pod --ignore-not-found
-          kubectl -n "$KUBE_NAMESPACE" delete service laa-data-access-api-uat-postgresql-portforward --ignore-not-found
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          report-name: uat-smoke-test-report
 
   deploy-staging:
     if: github.ref == 'refs/heads/main'
