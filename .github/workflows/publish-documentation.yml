@@ -29,7 +29,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           sparse-checkout: |
             docs
@@ -45,7 +45,7 @@ jobs:
           /usr/local/bin/package
 
       - name: Upload artifact to be published
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: github-pages
           path: artifact.tar
@@ -63,18 +63,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Setup Pages
-        uses: actions/configure-pages@v5.0.0
+        uses: actions/configure-pages@v6.0.0
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   url-check:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
       - name: Download a Build Artifact from build
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: github-pages
           path: github-pages
