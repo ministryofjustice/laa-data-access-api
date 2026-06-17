@@ -10,6 +10,7 @@ import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.parameters.RequestBody;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,6 +21,10 @@ import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
 /**
  * Generates named Swagger UI examples for the {@code createApplication} operation directly from
@@ -59,6 +64,19 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
       )
   );
 
+  private static final Map<String, String> FIELD_EXAMPLES = Map.of(
+      "submittedat", "2024-03-21T09:00:00Z",
+      "id", "550e8400-e29b-41d4-a716-446655440000",
+      "status", "APPLICATION_IN_PROGRESS",
+      "categoryoflaw", "Family",
+      "mattertype", "SPECIAL_CHILDREN_ACT",
+      "description", "Proceeding description",
+      "code", "1L382A",
+      "officecode", "1L382A",
+      "office", "1L382A",
+      "laareference", "LAA-000-001"
+  );
+
   @Override
   public Operation customize(Operation operation, HandlerMethod handlerMethod) {
     if (!CREATE_APPLICATION_OPERATION_ID.equals(operation.getOperationId())) {
@@ -69,9 +87,13 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
     for (ExampleVariant variant : VARIANTS) {
       Map<String, Object> applicationContent = generateExampleFromSchema(variant.schemaPath());
       if (applicationContent != null) {
+        ApplicationCreateRequest request = buildRequestWrapper(applicationContent);
         Example example = new Example();
         example.setSummary(variant.summary());
-        example.setValue(buildRequestWrapper(applicationContent));
+        // Convert via the Spring ObjectMapper (JavaTimeModule configured) so the example value
+        // is plain Map/List/primitives rather than a typed Java object. This ensures
+        // swagger-core can render it correctly regardless of its own Jackson configuration.
+        example.setValue(objectMapper.convertValue(request, Object.class));
         examples.put(variant.key(), example);
       }
     }
@@ -124,11 +146,12 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
       return result;
     }
     schema.get("properties").properties()
-        .forEach(e -> result.put(e.getKey(), generateValueExample(e.getValue(), basePath)));
+        .forEach(e -> result.put(e.getKey(),
+            generateValueExample(e.getKey(), e.getValue(), basePath)));
     return result;
   }
 
-  private Object generateValueExample(JsonNode propSchema, String basePath) {
+  private Object generateValueExample(String fieldName, JsonNode propSchema, String basePath) {
     // Resolve $ref to another schema file
     if (propSchema.has("$ref")) {
       String resolvedPath = resolveRef(basePath, propSchema.get("$ref").asText());
@@ -140,13 +163,13 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
       return null;
     }
 
-    // oneOf: pick the first non-null branch
+    // oneOf: pick the first non-null branch, preserving field name for value generation
     if (propSchema.has("oneOf")) {
       for (JsonNode option : propSchema.get("oneOf")) {
         if ("null".equals(firstType(option))) {
           continue;
         }
-        return generateValueExample(option, basePath);
+        return generateValueExample(fieldName, option, basePath);
       }
       return null;
     }
@@ -161,14 +184,14 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
         if (propSchema.has("format")) {
           yield exampleStringForFormat(propSchema.get("format").asText());
         }
-        yield "example-string";
+        yield exampleStringForFieldName(fieldName);
       }
       case "boolean" -> true;
       case "integer" -> 1;
       case "number" -> 1.0;
       case "array" -> {
         if (propSchema.has("items")) {
-          Object item = generateValueExample(propSchema.get("items"), basePath);
+          Object item = generateValueExample(null, propSchema.get("items"), basePath);
           yield item != null ? List.of(item) : List.of();
         }
         yield List.of();
@@ -185,6 +208,18 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
       case "date" -> "2024-03-21";
       default -> "example-string";
     };
+  }
+
+  /**
+   * Returns a realistic example string value based on the field name, using the same
+   * values as the test data generators. Falls back to {@code "example-string"} for
+   * unrecognised names.
+   */
+  private String exampleStringForFieldName(String fieldName) {
+    if (fieldName == null) {
+      return "example-string";
+    }
+    return FIELD_EXAMPLES.getOrDefault(fieldName.toLowerCase(), "example-string");
   }
 
   /**
@@ -229,24 +264,28 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
   }
 
   /**
-   * Wraps the schema-generated {@code applicationContent} in the outer
-   * {@code ApplicationCreateRequest} envelope fields (status, laaReference, individuals).
+   * Wraps the schema-generated {@code applicationContent} in a typed
+   * {@link ApplicationCreateRequest} using the generated model builders.
+   *
+   * <p>This method is schema-agnostic: {@code applicationContent} is always
+   * {@code Map<String, Object>}, so the same wrapper applies uniformly to all
+   * schema variants (APPLY v1, APPLY v2, CSS v1) without any per-file branching.
    */
-  private Map<String, Object> buildRequestWrapper(Map<String, Object> applicationContent) {
-    Map<String, Object> request = new LinkedHashMap<>();
-    request.put("status", "APPLICATION_IN_PROGRESS");
-    request.put("applicationContent", applicationContent);
-    request.put("laaReference", "LAA-000-001");
-    request.put("individuals", List.of(
-        Map.of(
-            "firstName", "Jane",
-            "lastName", "Smith",
-            "dateOfBirth", "1990-01-15",
-            "type", "CLIENT",
-            "details", Map.of("niNumber", "AB123456C")
-        )
-    ));
-    return request;
+  private ApplicationCreateRequest buildRequestWrapper(Map<String, Object> applicationContent) {
+    Individual individual = Individual.builder()
+        .firstName("Jane")
+        .lastName("Smith")
+        .dateOfBirth(LocalDate.of(1990, 1, 15))
+        .type(IndividualType.CLIENT)
+        .details(Map.of("niNumber", "AB123456C"))
+        .build();
+
+    return ApplicationCreateRequest.builder()
+        .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+        .laaReference("LAA-000-001")
+        .applicationContent(applicationContent)
+        .individuals(List.of(individual))
+        .build();
   }
 
   private JsonNode readJsonNode(String classpathPath) {
