@@ -23,12 +23,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
 /**
- * Generates named Swagger UI examples for the {@code createApplication} operation directly from
- * the JSON Schema definition files. The {@code applicationContent} in each example is built by
+ * Generates named Swagger UI examples for the {@code createApplication} operation directly from the
+ * JSON Schema definition files. The {@code applicationContent} in each example is built by
  * introspecting the schema's properties, so renaming or adding a field in the schema file
  * automatically updates the Swagger example on next restart — no Java changes needed.
  */
@@ -38,7 +38,8 @@ import uk.gov.justice.laa.dstew.access.model.IndividualType;
 public class CreateApplicationExamplesCustomizer implements OperationCustomizer {
 
   private static final String CREATE_APPLICATION_OPERATION_ID = "createApplication";
-  private static final String MEDIA_TYPE = org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+  private static final String MEDIA_TYPE =
+      org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
   private final ObjectMapper objectMapper;
 
@@ -46,36 +47,33 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
    * Each variant points to an actual JSON Schema definition file. The example shown in Swagger UI
    * is generated from that file's {@code properties}, so it always matches the live schema.
    */
-  private static final List<ExampleVariant> VARIANTS = List.of(
-      new ExampleVariant(
-          "apply_v1",
-          "APPLY — version 1 (id + submittedAt required)",
-          "schema/1/ApplyApplication.json"
-      ),
-      new ExampleVariant(
-          "apply_v2",
-          "APPLY — version 2 (id, submittedAt, office, proceedings, applicant required)",
-          "schema/2/ApplyApplication.json"
-      ),
-      new ExampleVariant(
-          "css_v1",
-          "CSS — version 1 (id, submittedAt, laaReference required)",
-          "schema/1/CssApplication.json"
-      )
-  );
+  private static final List<ExampleVariant> VARIANTS =
+      List.of(
+          new ExampleVariant(
+              "apply_v1",
+              "APPLY — version 1 (id + submittedAt required)",
+              "schema/1/ApplyApplication.json"),
+          new ExampleVariant(
+              "apply_v2",
+              "APPLY — version 2 (id, submittedAt, office, proceedings, applicant required)",
+              "schema/2/ApplyApplication.json"),
+          new ExampleVariant(
+              "css_v1",
+              "CSS — version 1 (id, submittedAt, laaReference required)",
+              "schema/1/CssApplication.json"));
 
-  private static final Map<String, String> FIELD_EXAMPLES = Map.of(
-      "submittedat", "2024-03-21T09:00:00Z",
-      "id", "550e8400-e29b-41d4-a716-446655440000",
-      "status", "APPLICATION_IN_PROGRESS",
-      "categoryoflaw", "Family",
-      "mattertype", "SPECIAL_CHILDREN_ACT",
-      "description", "Proceeding description",
-      "code", "1L382A",
-      "officecode", "1L382A",
-      "office", "1L382A",
-      "laareference", "LAA-000-001"
-  );
+  private static final Map<String, String> FIELD_EXAMPLES =
+      Map.of(
+          "submittedat", "2024-03-21T09:00:00Z",
+          "id", "550e8400-e29b-41d4-a716-446655440000",
+          "status", "APPLICATION_IN_PROGRESS",
+          "categoryoflaw", "Family",
+          "mattertype", "SPECIAL_CHILDREN_ACT",
+          "description", "Proceeding description",
+          "code", "1L382A",
+          "officecode", "1L382A",
+          "office", "1L382A",
+          "laareference", "LAA-000-001");
 
   @Override
   public Operation customize(Operation operation, HandlerMethod handlerMethod) {
@@ -112,11 +110,14 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
       content = new Content();
       requestBody.setContent(content);
     }
-    MediaType mediaType = content.computeIfAbsent(MEDIA_TYPE, k -> {
-      MediaType mt = new MediaType();
-      mt.setSchema(new Schema<>().$ref("#/components/schemas/ApplicationCreateRequest"));
-      return mt;
-    });
+    MediaType mediaType =
+        content.computeIfAbsent(
+            MEDIA_TYPE,
+            k -> {
+              MediaType mt = new MediaType();
+              mt.setSchema(new Schema<>().$ref("#/components/schemas/ApplicationCreateRequest"));
+              return mt;
+            });
     mediaType.setExamples(examples);
     return operation;
   }
@@ -145,9 +146,11 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
     if (!schema.has("properties")) {
       return result;
     }
-    schema.get("properties").properties()
-        .forEach(e -> result.put(e.getKey(),
-            generateValueExample(e.getKey(), e.getValue(), basePath)));
+    schema
+        .get("properties")
+        .properties()
+        .forEach(
+            e -> result.put(e.getKey(), generateValueExample(e.getKey(), e.getValue(), basePath)));
     return result;
   }
 
@@ -211,9 +214,8 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
   }
 
   /**
-   * Returns a realistic example string value based on the field name, using the same
-   * values as the test data generators. Falls back to {@code "example-string"} for
-   * unrecognised names.
+   * Returns a realistic example string value based on the field name, using the same values as the
+   * test data generators. Falls back to {@code "example-string"} for unrecognised names.
    */
   private String exampleStringForFieldName(String fieldName) {
     if (fieldName == null) {
@@ -222,9 +224,7 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
     return FIELD_EXAMPLES.getOrDefault(fieldName.toLowerCase(), "example-string");
   }
 
-  /**
-   * Returns the first non-null type string from a schema node's {@code type} field.
-   */
+  /** Returns the first non-null type string from a schema node's {@code type} field. */
   private String firstType(JsonNode schema) {
     if (!schema.has("type")) {
       return null;
@@ -244,9 +244,9 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
   }
 
   /**
-   * Resolves a relative JSON Schema {@code $ref} path against a base directory path.
-   * Example: basePath={@code "schema/1/"}, ref={@code "../common/Proceeding.json"}
-   * → {@code "schema/common/Proceeding.json"}
+   * Resolves a relative JSON Schema {@code $ref} path against a base directory path. Example:
+   * basePath={@code "schema/1/"}, ref={@code "../common/Proceeding.json"} → {@code
+   * "schema/common/Proceeding.json"}
    */
   private String resolveRef(String basePath, String ref) {
     String[] parts = (basePath + ref).split("/");
@@ -264,21 +264,22 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
   }
 
   /**
-   * Wraps the schema-generated {@code applicationContent} in a typed
-   * {@link ApplicationCreateRequest} using the generated model builders.
+   * Wraps the schema-generated {@code applicationContent} in a typed {@link
+   * ApplicationCreateRequest} using the generated model builders.
    *
-   * <p>This method is schema-agnostic: {@code applicationContent} is always
-   * {@code Map<String, Object>}, so the same wrapper applies uniformly to all
-   * schema variants (APPLY v1, APPLY v2, CSS v1) without any per-file branching.
+   * <p>This method is schema-agnostic: {@code applicationContent} is always {@code Map<String,
+   * Object>}, so the same wrapper applies uniformly to all schema variants (APPLY v1, APPLY v2, CSS
+   * v1) without any per-file branching.
    */
   private ApplicationCreateRequest buildRequestWrapper(Map<String, Object> applicationContent) {
-    Individual individual = Individual.builder()
-        .firstName("Jane")
-        .lastName("Smith")
-        .dateOfBirth(LocalDate.of(1990, 1, 15))
-        .type(IndividualType.CLIENT)
-        .details(Map.of("niNumber", "AB123456C"))
-        .build();
+    IndividualCreateRequest individual =
+        IndividualCreateRequest.builder()
+            .firstName("Jane")
+            .lastName("Smith")
+            .dateOfBirth(LocalDate.of(1990, 1, 15))
+            .type(IndividualType.CLIENT)
+            .details(Map.of("niNumber", "AB123456C"))
+            .build();
 
     return ApplicationCreateRequest.builder()
         .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
@@ -301,6 +302,5 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
     }
   }
 
-  private record ExampleVariant(String key, String summary, String schemaPath) {
-  }
+  private record ExampleVariant(String key, String summary, String schemaPath) {}
 }

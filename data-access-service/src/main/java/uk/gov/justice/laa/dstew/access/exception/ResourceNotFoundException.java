@@ -1,8 +1,6 @@
 package uk.gov.justice.laa.dstew.access.exception;
 
-/**
- * The exception thrown when application not found.
- */
+/** The exception thrown when application not found. */
 public class ResourceNotFoundException extends RuntimeException {
 
   /**

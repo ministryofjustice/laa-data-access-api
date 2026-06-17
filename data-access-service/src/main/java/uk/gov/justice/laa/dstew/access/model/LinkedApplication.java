@@ -9,10 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/**
- * Model to represent linked applications in the application content.
- * 
- */
+/** Model to represent linked applications in the application content. */
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
@@ -22,7 +19,7 @@ public class LinkedApplication {
   @NotNull
   @Schema(name = "leadApplicationId", requiredMode = Schema.RequiredMode.REQUIRED)
   private UUID leadApplicationId;
-    
+
   @NotNull
   @Schema(name = "associatedApplicationId", requiredMode = Schema.RequiredMode.REQUIRED)
   private UUID associatedApplicationId;

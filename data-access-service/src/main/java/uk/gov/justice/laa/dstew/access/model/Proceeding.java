@@ -8,7 +8,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -19,8 +21,7 @@ import org.springframework.lang.Nullable;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
- * Proceeding.
- * Using the same format as the OpenAPI generator to enable switch when schema stable
+ * Proceeding. Using the same format as the OpenAPI generator to enable switch when schema stable
  */
 @AllArgsConstructor
 @NoArgsConstructor
@@ -29,19 +30,20 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @ExcludeFromGeneratedCodeCoverage
 public class Proceeding implements Serializable {
 
-  @Serial
-  private static final long serialVersionUID = 1L;
+  @Serial private static final long serialVersionUID = 1L;
+
   @NotNull
   @Valid
   @Schema(name = "id", requiredMode = Schema.RequiredMode.REQUIRED)
   @JsonProperty("id")
   private UUID id;
 
-  private @Nullable String categoryOfLaw;
+  private @Nullable String categoryOfLawEnum;
 
-  private @Nullable String matterType;
+  private @Nullable String matterTypeEnum;
 
   private @Nullable Boolean usedDelegatedFunctions;
+
   @NotNull
   @Schema(name = "leadProceeding", requiredMode = Schema.RequiredMode.REQUIRED)
   private Boolean leadProceeding;
@@ -50,18 +52,25 @@ public class Proceeding implements Serializable {
   @Schema(name = "description", requiredMode = Schema.RequiredMode.REQUIRED)
   private String description;
 
+  @Nullable private String meaning;
+
+  @Nullable private LocalDate usedDelegatedFunctionsOn;
+
+  @Nullable private String substantiveLevelOfServiceNameEnum;
+
+  @Nullable private Double substantiveCostLimitation;
+
+  @Nullable private List<Map<String, Object>> scopeLimitations;
 
   /**
-   * A container for additional, undeclared properties.
-   * This is a holder for any undeclared properties as specified with
-   * the 'additionalProperties' keyword in the OAS document.
+   * A container for additional, undeclared properties. This is a holder for any undeclared
+   * properties as specified with the 'additionalProperties' keyword in the OAS document.
    */
-  @JsonAnyGetter
-  private Map<String, Object> additionalProceedingsData;
+  @JsonAnyGetter private Map<String, Object> additionalProceedingsData;
 
   /**
-   * Set the additional (undeclared) property with the specified name and value.
-   * If the property does not already exist, create it otherwise replace it.
+   * Set the additional (undeclared) property with the specified name and value. If the property
+   * does not already exist, create it otherwise replace it.
    */
   @JsonAnySetter
   public Proceeding putAdditionalProperty(String key, Object value) {
@@ -71,7 +80,4 @@ public class Proceeding implements Serializable {
     this.additionalProceedingsData.put(key, value);
     return this;
   }
-
-
 }
-

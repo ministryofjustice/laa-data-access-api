@@ -17,16 +17,16 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 /**
- * Populates the OpenAPI 3.1 specification with the versioned JSON Schema definitions for
- * {@code applicationContent}, making Swagger UI display the full field structure instead of a
- * generic object.
+ * Populates the OpenAPI 3.1 specification with the versioned JSON Schema definitions for {@code
+ * applicationContent}, making Swagger UI display the full field structure instead of a generic
+ * object.
  *
- * <p>Each JSON Schema file under {@code schema/} is read from the classpath at startup. The
- * schemas are registered as named OpenAPI components, with {@code $ref} paths translated from
- * relative file references (e.g. {@code ../common/Proceeding.json}) to OpenAPI component
- * references (e.g. {@code #/components/schemas/Proceeding}). The {@code applicationContent}
- * property in {@code ApplicationCreateRequest} is then replaced with a reference to the latest
- * APPLY schema ({@code ApplyApplicationContent}).
+ * <p>Each JSON Schema file under {@code schema/} is read from the classpath at startup. The schemas
+ * are registered as named OpenAPI components, with {@code $ref} paths translated from relative file
+ * references (e.g. {@code ../common/Proceeding.json}) to OpenAPI component references (e.g. {@code
+ * #/components/schemas/Proceeding}). The {@code applicationContent} property in {@code
+ * ApplicationCreateRequest} is then replaced with a reference to the latest APPLY schema ({@code
+ * ApplyApplicationContent}).
  */
 @Component
 public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
@@ -36,13 +36,13 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
    * matters: entries are checked via {@link String#contains}, so more specific names should come
    * before shorter ones if there is any risk of overlap.
    */
-  private static final Map<String, String> REF_TRANSLATIONS = Map.of(
-      "Proceeding.json", "#/components/schemas/Proceeding",
-      "ApplicationOffice.json", "#/components/schemas/ApplicationOffice",
-      "LinkedApplication.json", "#/components/schemas/LinkedApplication",
-      "Address.json", "#/components/schemas/Address",
-      "Applicant.json", "#/components/schemas/Applicant"
-  );
+  private static final Map<String, String> REF_TRANSLATIONS =
+      Map.of(
+          "Proceeding.json", "#/components/schemas/Proceeding",
+          "ApplicationOffice.json", "#/components/schemas/ApplicationOffice",
+          "LinkedApplication.json", "#/components/schemas/LinkedApplication",
+          "Address.json", "#/components/schemas/Address",
+          "Applicant.json", "#/components/schemas/Applicant");
 
   private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -58,8 +58,10 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
     addSchemaFromClasspath(components, "Applicant", "schema/common/Applicant.json");
 
     // Register versioned application-content schemas.
-    addSchemaFromClasspath(components, "ApplyApplicationContentV1", "schema/1/ApplyApplication.json");
-    addSchemaFromClasspath(components, "ApplyApplicationContentV2", "schema/2/ApplyApplication.json");
+    addSchemaFromClasspath(
+        components, "ApplyApplicationContentV1", "schema/1/ApplyApplication.json");
+    addSchemaFromClasspath(
+        components, "ApplyApplicationContentV2", "schema/2/ApplyApplication.json");
     addSchemaFromClasspath(components, "CssApplicationContent", "schema/1/CssApplication.json");
 
     // Replace the generic Map<String,Object> schema for applicationContent.
@@ -80,8 +82,7 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
             + "selected by applicationType and the X-Schema-Version header. "
             + "Structure shown is for APPLY (schema version 2). "
             + "Version 1 does not require office, proceedings or applicant. "
-            + "CSS applications use a different structure (CssApplicationContent)."
-    );
+            + "CSS applications use a different structure (CssApplicationContent).");
     appCreateRequest.getProperties().put("applicationContent", contentRef);
 
     // Set a meaningful pre-filled example on the POST /api/v0/applications request body
@@ -102,9 +103,7 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
   }
 
   private void addSchemaFromClasspath(
-      io.swagger.v3.oas.models.Components components,
-      String componentName,
-      String classpathPath) {
+      io.swagger.v3.oas.models.Components components, String componentName, String classpathPath) {
 
     JsonNode root = readJsonNode(classpathPath);
     if (root == null) {
@@ -133,9 +132,8 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
    * Recursively converts a JSON Schema {@link JsonNode} into a swagger-core {@link Schema}.
    *
    * <p>Handles the subset of JSON Schema keywords actually used by the schemas in this project:
-   * {@code type}, {@code format}, {@code description}, {@code $ref}, {@code properties},
-   * {@code required}, {@code items}, {@code oneOf}, {@code minItems}, and
-   * {@code additionalProperties}.
+   * {@code type}, {@code format}, {@code description}, {@code $ref}, {@code properties}, {@code
+   * required}, {@code items}, {@code oneOf}, {@code minItems}, and {@code additionalProperties}.
    */
   @SuppressWarnings({"unchecked", "rawtypes"})
   private Schema<?> convertNode(JsonNode node) {
@@ -175,7 +173,8 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
 
     if (node.has("properties")) {
       Map<String, Schema> properties = new LinkedHashMap<>();
-      node.get("properties").properties()
+      node.get("properties")
+          .properties()
           .forEach(e -> properties.put(e.getKey(), convertNode(e.getValue())));
       schema.setProperties(properties);
     }

@@ -1,0 +1,67 @@
+name: "Deploy ephemeral PostgreSQL"
+description: "Deploy Bitnami PostgreSQL and reuse previous password to avoid stale PVC auth issues"
+inputs:
+  release-name:
+    description: "Base Helm release name for the application"
+    required: true
+  kube-namespace:
+    description: "Kubernetes namespace"
+    required: true
+  values-file:
+    description: "Path to PostgreSQL Helm values file"
+    required: false
+    default: .helm/bitnami_postgres/values.yaml
+  cleanup-stale-pvc:
+    description: "Delete stale PVCs when release metadata is missing"
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Deploy PostgreSQL safely
+      shell: bash
+      env:
+        RELEASE_NAME: ${{ inputs.release-name }}
+        KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+        VALUES_FILE: ${{ inputs.values-file }}
+        CLEANUP_STALE_PVC: ${{ inputs.cleanup-stale-pvc }}
+      run: |
+        set -euo pipefail
+
+        POSTGRES_RELEASE="${RELEASE_NAME}-postgresql"
+        PASSWORD=""
+
+        release_exists=false
+        if helm status "${POSTGRES_RELEASE}" --namespace "${KUBE_NAMESPACE}" >/dev/null 2>&1; then
+          release_exists=true
+          PASSWORD=$(kubectl -n "${KUBE_NAMESPACE}" get secret "${POSTGRES_RELEASE}" -o jsonpath='{.data.postgres-password}' 2>/dev/null | base64 -d || true)
+          if [ -n "${PASSWORD}" ]; then
+            echo "::add-mask::${PASSWORD}"
+          fi
+        fi
+
+        stale_pvcs=$(kubectl -n "${KUBE_NAMESPACE}" get pvc -l "app.kubernetes.io/instance=${POSTGRES_RELEASE}" -o name 2>/dev/null || true)
+
+        if [ -z "${PASSWORD}" ] && [ "${CLEANUP_STALE_PVC}" = "true" ] && [ -n "${stale_pvcs}" ]; then
+          if [ "${release_exists}" = true ]; then
+            helm uninstall "${POSTGRES_RELEASE}" --namespace "${KUBE_NAMESPACE}" || true
+          fi
+          echo "Removing stale PVCs for ${POSTGRES_RELEASE}"
+          echo "${stale_pvcs}" | xargs -r kubectl -n "${KUBE_NAMESPACE}" delete
+        fi
+
+        HELM_ARGS=(
+          upgrade "${POSTGRES_RELEASE}" oci://registry-1.docker.io/bitnamicharts/postgresql
+          -f "${VALUES_FILE}"
+          --namespace "${KUBE_NAMESPACE}"
+          --install
+          --wait
+        )
+
+        if [ -n "${PASSWORD}" ]; then
+          HELM_ARGS+=(--set-string "auth.postgresPassword=${PASSWORD}")
+        fi
+
+        helm "${HELM_ARGS[@]}"
+

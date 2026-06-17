@@ -13,4 +13,4 @@ export PATH="$HOME/.local/bin:$PATH"
 echo "Installing prek within the repository"
 prek install
 
-echo "Git hooks setup complete!"
+echo "Git hooks setup complete"

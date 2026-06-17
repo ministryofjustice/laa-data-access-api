@@ -1,0 +1,29 @@
+name: renovate-schedule.yml
+on:
+  schedule:
+    - cron: '0 3 * * 1'  # Weekly on Monday at 3am
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: 'Run in dry-run mode (no PRs created)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'full'
+          - 'lookup'
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/renovate
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          dry-run: ${{ inputs.dryRun || 'false' }}

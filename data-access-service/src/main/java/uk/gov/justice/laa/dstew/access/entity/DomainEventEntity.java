@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.entity;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -18,12 +16,13 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.annotation.JsonNaming;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 
-/**
- * Represents a domain events table.
- */
+/** Represents a domain events table. */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter
@@ -58,4 +57,8 @@ public class DomainEventEntity {
 
   @Column(name = "created_by")
   private String createdBy;
+
+  @Column(name = "service_name")
+  @Enumerated(EnumType.STRING)
+  private ServiceName serviceName;
 }

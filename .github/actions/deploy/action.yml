@@ -30,37 +30,32 @@ runs:
   using: "composite"
   steps:
 
-    - name: Authenticate to the cluster
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
+    - name: Run deploy prerequisites
+      id: deploy_prerequisites
+      uses: ./.github/actions/deploy_prerequisites
       with:
         kube-cert: ${{ inputs.kube-cert }}
         kube-token: ${{ inputs.kube-token }}
         kube-cluster: ${{ inputs.kube-cluster }}
         kube-namespace: ${{ inputs.kube-namespace }}
+        ecr-role-to-assume: ${{ inputs.ecr-role-to-assume }}
+        ecr-region: ${{ inputs.ecr-region }}
 
-    - name: Assume role in Cloud Platform
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ inputs.ecr-role-to-assume }}
-        aws-region: ${{ inputs.ecr-region }}
-
-    - name: Docker login to ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
-      with:
-        mask-password: 'true'
+    - name: Get LAA IP allowlist
+      id: get_laa_ips
+      uses: ./.github/actions/get_laa_ips
 
     - name: Helm deployment
       shell: bash
       env:
         ECR_REPOSITORY: ${{ inputs.ecr-repository }}
         ECR_REGION: ${{ inputs.ecr-region }}
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REGISTRY: ${{ steps.deploy_prerequisites.outputs.ecr-registry }}
         GIT_SHA: ${{ github.sha }}
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
       run: |
-        LAA_IPS=$(curl -s https://raw.githubusercontent.com/ministryofjustice/laa-ip-allowlist/main/cidrs.txt | tr -d ' ' | tr '\n' ',' | sed 's/,/\\,/g' | sed 's/\\,$//')
+        LAA_IPS="${{ steps.get_laa_ips.outputs.laa-ips }}"
         echo "Environment: ${APP_ENVIRONMENT}"
 
         if [ "${APP_ENVIRONMENT}" = "production" ]; then
@@ -76,6 +71,8 @@ runs:
           --set ingress.annotations."nginx\.ingress\.kubernetes\.io/whitelist-source-range"="$LAA_IPS" \
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
+          --set massGenerator.image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
+          --set massGenerator.image.tag="${GIT_SHA}-mass-generator" \
           --values ${VALUES_FILE} \
           --install \
           --wait

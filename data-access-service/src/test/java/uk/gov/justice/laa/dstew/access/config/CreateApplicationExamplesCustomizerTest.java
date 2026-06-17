@@ -59,7 +59,8 @@ class CreateApplicationExamplesCustomizerTest {
     customizer.customize(operation, null);
 
     // then
-    Example example = operation.getRequestBody().getContent().get(MEDIA_TYPE_JSON).getExamples().get("apply_v2");
+    Example example =
+        operation.getRequestBody().getContent().get(MEDIA_TYPE_JSON).getExamples().get("apply_v2");
     assertThat(example).isNotNull();
 
     @SuppressWarnings("unchecked")
@@ -68,7 +69,8 @@ class CreateApplicationExamplesCustomizerTest {
 
     @SuppressWarnings("unchecked")
     Map<String, Object> content = (Map<String, Object>) value.get("applicationContent");
-    assertThat(content).containsKeys("id", "submittedAt", "office", "proceedings", "applicant", "laaReference");
+    assertThat(content)
+        .containsKeys("id", "submittedAt", "office", "proceedings", "applicant", "laaReference");
     assertThat(content.get("submittedAt")).isEqualTo("2024-03-21T09:00:00Z");
 
     @SuppressWarnings("unchecked")
@@ -87,7 +89,8 @@ class CreateApplicationExamplesCustomizerTest {
     customizer.customize(operation, null);
 
     // then
-    Example example = operation.getRequestBody().getContent().get(MEDIA_TYPE_JSON).getExamples().get("css_v1");
+    Example example =
+        operation.getRequestBody().getContent().get(MEDIA_TYPE_JSON).getExamples().get("css_v1");
     assertThat(example).isNotNull();
 
     @SuppressWarnings("unchecked")

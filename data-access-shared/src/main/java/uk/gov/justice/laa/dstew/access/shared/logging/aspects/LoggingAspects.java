@@ -10,9 +10,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.springframework.stereotype.Component;
 
-/**
- * AspectJ implementation for @LogMethodArguments.
- */
+/** AspectJ implementation for @LogMethodArguments. */
 @Aspect
 @Component
 @Slf4j
@@ -46,7 +44,8 @@ public class LoggingAspects {
    * @param methodResponse the returned value.
    */
   @AfterReturning(
-      value = "@annotation(uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse)",
+      value =
+          "@annotation(uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse)",
       returning = "methodResponse")
   public void logMethodResponseAdvice(JoinPoint joinPoint, Object methodResponse) {
     if (log.isInfoEnabled()) {

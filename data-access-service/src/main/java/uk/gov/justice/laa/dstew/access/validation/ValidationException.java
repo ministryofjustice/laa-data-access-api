@@ -4,11 +4,14 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
- * Validation exception that holds violations (errors).
+ * Validation exception that holds violations (errors). excluded from code coverage as
+ * lines/branches not covered are not testable from the services which use it
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
+@ExcludeFromGeneratedCodeCoverage
 public class ValidationException extends RuntimeException {
   private final List<String> errors;
 
@@ -19,7 +22,8 @@ public class ValidationException extends RuntimeException {
    * @param errors List of validation messages.
    */
   @JsonCreator
-  public ValidationException(@JsonProperty("message") String message, @JsonProperty("errors") List<String> errors) {
+  public ValidationException(
+      @JsonProperty("message") String message, @JsonProperty("errors") List<String> errors) {
     super(message);
     this.errors = (errors == null) ? List.of() : List.copyOf(errors);
   }
@@ -30,9 +34,11 @@ public class ValidationException extends RuntimeException {
    * @param errors List of validation messages.
    */
   public ValidationException(List<String> errors) {
-    this((errors == null || errors.isEmpty())
-        ? "Validation failed"
-        : "One or more validation rules were violated", errors);
+    this(
+        (errors == null || errors.isEmpty())
+            ? "Validation failed"
+            : "One or more validation rules were violated",
+        errors);
   }
 
   /**

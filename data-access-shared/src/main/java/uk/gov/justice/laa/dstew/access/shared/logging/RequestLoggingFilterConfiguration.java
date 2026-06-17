@@ -4,9 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.filter.CommonsRequestLoggingFilter;
 
-/**
- * Spring config class to provide an injectable request log filter.
- */
+/** Spring config class to provide an injectable request log filter. */
 @Configuration
 public class RequestLoggingFilterConfiguration {
 

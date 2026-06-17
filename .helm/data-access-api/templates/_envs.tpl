@@ -63,3 +63,104 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
   value: "false"
 {{- end }}
 {{- end }}
+
+{{/*
+  Define OAuth2/Entra ID environment variables for authentication
+*/}}
+{{- define "oauth2Config" }}
+- name: ENTRA_ISSUER_URI
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: ENTRA_ISSUER_URI
+- name: ENTRA_JWK_SET_URI
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: ENTRA_JWK_SET_URI
+- name: ENTRA_AUD
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: ENTRA_AUD
+- name: AUTH_CLIENT_ID
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_CLIENT_ID
+- name: AUTH_CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_CLIENT_SECRET
+- name: AUTH_SCOPE
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_SCOPE
+- name: AUTH_TENANT_ID
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_TENANT_ID
+{{- end }}
+
+{{/*
+  Define feature environment variables for flags
+*/}}
+{{- define "featureConfig" }}
+- name: FEATURE_ENABLE_DEV_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: FEATURE_ENABLE_DEV_TOKEN
+- name: FEATURE_DISABLE_SECURITY
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: FEATURE_DISABLE_SECURITY
+{{- if .Values.featureFlags }}
+{{- range $key, $value := .Values.featureFlags }}
+- name: FEATURE_{{ upper $key }}
+  value: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+  Define additional environment variables for short-lived environments
+*/}}
+{{- define "extraEnvConfig" }}
+{{- if .Values.extraEnv }}
+{{- range $key, $value := .Values.extraEnv }}
+- name: {{ $key }}
+  value: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+  Define SDS API environment variables
+*/}}
+{{- define "sdsApiConfig" }}
+- name: SDS_API_URL
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_URL
+- name: SDS_API_BUCKET
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_BUCKET
+- name: SDS_API_CLIENT_REGISTRATION_ID
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_CLIENT_REGISTRATION_ID
+- name: SDS_API_PRINCIPAL_NAME
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_PRINCIPAL_NAME
+{{- end }}

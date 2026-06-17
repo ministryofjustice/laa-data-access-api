@@ -1,0 +1,78 @@
+components:
+  schemas:
+    IndividualType:
+      type: string
+      enum:
+        - CLIENT
+
+    IncludedAdditionalData:
+      type: string
+      enum:
+        - CLIENT_DETAILS
+
+    IndividualCreateRequest:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - dateOfBirth
+        - details
+        - type
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        details:
+          type: object
+          additionalProperties: true
+          minProperties: 1
+        type:
+          $ref: "#/components/schemas/IndividualType"
+
+    IndividualResponse:
+      type: object
+      properties:
+        clientId:
+          type: string
+          format: uuid
+        lastNameAtBirth:
+          type: string
+        previousApplicationId:
+          type: string
+        relationshipToInvolvedChildren:
+          type: string
+        correspondenceAddressType:
+          type: string
+        appliedPreviously:
+          type: boolean
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        correspondenceAddress:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        details:
+          type: object
+          additionalProperties: true
+        type:
+          $ref: "#/components/schemas/IndividualType"
+
+    IndividualsResponse:
+      type: object
+      properties:
+        paging:
+          $ref: "../open-api-common/components.yml#/components/schemas/PagingResponse"
+        individuals:
+          type: array
+          items:
+            $ref: "#/components/schemas/IndividualResponse"

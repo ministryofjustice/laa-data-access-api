@@ -11,6 +11,7 @@ access-datastore-api/generated
 data-access-api/bin/
 data-access-service/bin/
 data-access-shared/bin/
+data-access-mass-generator/bin/
 
 ### IntelliJ IDEA ###
 .idea
@@ -24,3 +25,10 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### agent plans and prompts ###
+plans/
+prompts/
+### Generated local monitoring dashboard (source of truth is the Helm template) ###
+infra/grafana/provisioning/dashboards/laa-data-access-api.json
+plans/k6-perf.md

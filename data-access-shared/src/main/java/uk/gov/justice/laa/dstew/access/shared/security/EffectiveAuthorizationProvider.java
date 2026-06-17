@@ -1,8 +1,8 @@
 package uk.gov.justice.laa.dstew.access.shared.security;
 
 /**
- * Check if current request has authorization to act in a specific app role.
- * Interface to be implemented by the `entra` Spring component.
+ * Check if current request has authorization to act in a specific app role. Interface to be
+ * implemented by the `entra` Spring component.
  */
 public interface EffectiveAuthorizationProvider {
   /**
@@ -20,5 +20,6 @@ public interface EffectiveAuthorizationProvider {
    * @return boolean true if any was found.
    */
   boolean hasAnyAppRole(String... names);
-}
 
+  boolean hasName();
+}

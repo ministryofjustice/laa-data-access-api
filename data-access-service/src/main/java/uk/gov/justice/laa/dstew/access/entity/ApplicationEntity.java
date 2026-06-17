@@ -1,14 +1,12 @@
 package uk.gov.justice.laa.dstew.access.entity;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import com.vladmihalcea.hibernate.type.json.JsonType;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -19,28 +17,33 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
+import jakarta.persistence.Version;
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.annotation.JsonNaming;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 
-/**
- * Represents an application.
- */
+/** Represents an application. */
 @ExcludeFromGeneratedCodeCoverage
 @Getter
 @Setter
@@ -51,7 +54,10 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 @Table(name = "applications")
 @EntityListeners(AuditingEntityListener.class)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+@DynamicUpdate
 public class ApplicationEntity implements AuditableEntity {
+
+  @Version private Long version;
 
   @Id
   @Column(columnDefinition = "UUID")
@@ -68,7 +74,7 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "office_code")
   private String officeCode;
 
-  @Type(JsonType.class)
+  @JdbcTypeCode(SqlTypes.JSON)
   @Column(columnDefinition = "json")
   private Map<String, Object> applicationContent;
 
@@ -76,8 +82,7 @@ public class ApplicationEntity implements AuditableEntity {
   @JoinTable(
       name = "linked_individuals",
       joinColumns = @JoinColumn(name = "application_id"),
-      inverseJoinColumns = @JoinColumn(name = "individual_id")
-  )
+      inverseJoinColumns = @JoinColumn(name = "individual_id"))
   private Set<IndividualEntity> individuals;
 
   @Column(name = "schema_version")
@@ -101,8 +106,9 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "submitted_at")
   private Instant submittedAt;
 
-  @OneToOne()
+  @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
   @JoinColumn(name = "decision_id", referencedColumnName = "id")
+  @Fetch(FetchMode.JOIN)
   private DecisionEntity decision;
 
   @Column(name = "used_delegated_functions")
@@ -119,13 +125,15 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(name = "is_auto_granted")
   private Boolean isAutoGranted;
 
-  @OneToMany
-  @JoinTable(
-      name = "linked_applications",
-      joinColumns = @JoinColumn(name = "lead_application_id"),
-      inverseJoinColumns = @JoinColumn(name = "associated_application_id")
-  )
-  private Set<ApplicationEntity> linkedApplications;
+  @OneToMany(fetch = FetchType.EAGER)
+  @JoinColumn(name = "lead_application_id", insertable = false, updatable = false)
+  @Fetch(FetchMode.SUBSELECT)
+  private Set<LinkedApplicationEntity> linkedApplications;
+
+  @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+  @JoinColumn(name = "application_id")
+  @Fetch(FetchMode.SUBSELECT)
+  private Set<ProceedingEntity> proceedings;
 
   @Transient
   public boolean isLead() {
@@ -141,14 +149,16 @@ public class ApplicationEntity implements AuditableEntity {
     this.applicationContent = applicationContent;
   }
 
-  /**
-  * adds an application to the set of linked applications.
-  */
-  public void addLinkedApplication(ApplicationEntity toAdd) {
+  /** Returns the IDs of associated applications linked to this lead application. */
+  @Transient
+  public Set<UUID> getLinkedApplicationIds() {
     if (linkedApplications == null) {
-      linkedApplications = new HashSet<>();
+      return Set.of();
     }
-    linkedApplications.add(toAdd);
+
+    return linkedApplications.stream()
+        .map(LinkedApplicationEntity::getAssociatedApplicationId)
+        .collect(Collectors.toSet());
   }
 
   @Override

@@ -1,33 +1,34 @@
 package uk.gov.justice.laa.dstew.access.mapper;
 
-import java.util.Map;
 import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.Individual;
+import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
+import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
 /**
- * Mapper interface for Individuals.
- * All mapping operations are performed safely,
- * gracefully handling null values.
+ * Mapper interface for Individuals. All mapping operations are performed safely, gracefully
+ * handling null values.
  */
 @Mapper(componentModel = "spring")
 public interface IndividualMapper {
 
   /**
-   * Converts a {@link IndividualEntity} to an API-facing {@link Individual} model.
-   * Safely handles nulls: if the {@code entity} itself is null,
-   * the method returns {@code null}.
+   * Converts a {@link IndividualEntity} to an API-facing {@link IndividualResponse} model. Safely
+   * handles nulls: if the {@code entity} itself is null, the method returns {@code null}.
    *
    * @param entity the {@link IndividualEntity} to map (might be null)
-   * @return a new {@link Individual} object populated with first name, last name, date of birth,
-   *         and individual content, or {@code null} if the input or individual is null
+   * @return a new {@link IndividualResponse} object populated with first name, last name, date of
+   *     birth, and individual content, or {@code null} if the input or individual is null
    */
-  default Individual toIndividual(IndividualEntity entity) {
+  default IndividualResponse toIndividual(IndividualEntity entity) {
     if (entity == null) {
       return null;
     }
 
-    Individual dto = new Individual();
+    IndividualResponse dto = new IndividualResponse();
     dto.setFirstName(entity.getFirstName());
     dto.setLastName(entity.getLastName());
     dto.setDateOfBirth(entity.getDateOfBirth());
@@ -37,24 +38,96 @@ public interface IndividualMapper {
   }
 
   /**
-   * Converts API model {@link Individual} to an database entity {@link IndividualEntity} model.
-   * Safely handles nulls: if the {@code individual} itself is null,
-   * the method returns {@code null}.
+   * Converts a {@link IndividualEntity} to an API-facing {@link IndividualResponse} model with
+   * extended client details from the application content. Safely handles nulls: if the {@code
+   * entity} itself is null, the method returns {@code null}.
    *
-   * @param individual API model the {@link Individual} to map (might be null)
-   * @return a new {@link IndividualEntity} object populated with first name, last name, date of birth,
-   *         and individual content, or {@code null} if the input or individual is null
+   * @param entity the {@link IndividualEntity} to map (might be null)
+   * @param individualType the type of individual
+   * @param include the additional data to include
+   * @param applicationContent the application content containing client details
+   * @return a new {@link IndividualResponse} object populated with first name, last name, date of
+   *     birth, and individual content, or {@code null} if the input or individual is null
    */
-  default IndividualEntity toIndividualEntity(Individual individual) {
-    return individual == null 
-            ? 
-            null : 
-            IndividualEntity.builder()
-                            .firstName(individual.getFirstName())
-                            .lastName(individual.getLastName())
-                            .dateOfBirth(individual.getDateOfBirth())
-                            .individualContent(individual.getDetails())
-                            .type(individual.getType())
-                            .build();
+  default IndividualResponse toExtendedIndividual(
+      IndividualEntity entity,
+      IndividualType individualType,
+      IncludedAdditionalData include,
+      ApplicationContent applicationContent) {
+
+    IndividualResponse dto = toIndividual(entity);
+
+    if (dto == null) {
+      return null;
+    }
+
+    dto.setClientId(null);
+    dto.setLastNameAtBirth(null);
+    dto.setPreviousApplicationId(null);
+    dto.setRelationshipToInvolvedChildren(null);
+    dto.setCorrespondenceAddressType(null);
+    dto.setAppliedPreviously(null);
+    dto.setCorrespondenceAddress(null);
+
+    // only populate fields if rules are set
+    if (individualType == IndividualType.CLIENT
+        && include == IncludedAdditionalData.CLIENT_DETAILS) {
+      dto.setClientId(entity.getId());
+      dto.setLastNameAtBirth(applicationContent.getLastNameAtBirth());
+      dto.setPreviousApplicationId(applicationContent.getPreviousApplicationId());
+      String relationshipToInvolvedChildren =
+          applicationContent.getApplicant() == null
+              ? null
+              : applicationContent.getApplicant().getRelationshipToInvolvedChildren();
+      dto.setRelationshipToInvolvedChildren(relationshipToInvolvedChildren);
+      dto.setCorrespondenceAddressType(applicationContent.getCorrespondenceAddressType());
+      if (applicationContent.getApplicant() != null) {
+        dto.setAppliedPreviously(applicationContent.getApplicant().getAppliedPreviously());
+        dto.setCorrespondenceAddress(applicationContent.getApplicant().getAddresses());
+      }
+    }
+    return dto;
+  }
+
+  /**
+   * Converts API model {@link IndividualResponse} to an database entity {@link IndividualEntity}
+   * model. Safely handles nulls: if the {@code individual} itself is null, the method returns
+   * {@code null}.
+   *
+   * @param individualResponse API model the {@link IndividualResponse} to map (might be null)
+   * @return a new {@link IndividualEntity} object populated with first name, last name, date of
+   *     birth, and individual content, or {@code null} if the input or individual is null
+   */
+  default IndividualEntity toIndividualEntity(IndividualResponse individualResponse) {
+    return individualResponse == null
+        ? null
+        : IndividualEntity.builder()
+            .firstName(individualResponse.getFirstName())
+            .lastName(individualResponse.getLastName())
+            .dateOfBirth(individualResponse.getDateOfBirth())
+            .individualContent(individualResponse.getDetails())
+            .type(individualResponse.getType())
+            .build();
+  }
+
+  /**
+   * Converts API model {@link IndividualCreateRequest} to an database entity {@link
+   * IndividualEntity} model. Safely handles nulls: if the {@code individual} itself is null, the
+   * method returns {@code null}.
+   *
+   * @param individual API model the {@link IndividualCreateRequest} to map (might be null)
+   * @return a new {@link IndividualEntity} object populated with first name, last name, date of
+   *     birth, and individual content, or {@code null} if the input or individual is null
+   */
+  default IndividualEntity toIndividualEntity(IndividualCreateRequest individual) {
+    return individual == null
+        ? null
+        : IndividualEntity.builder()
+            .firstName(individual.getFirstName())
+            .lastName(individual.getLastName())
+            .dateOfBirth(individual.getDateOfBirth())
+            .individualContent(individual.getDetails())
+            .type(individual.getType())
+            .build();
   }
 }
