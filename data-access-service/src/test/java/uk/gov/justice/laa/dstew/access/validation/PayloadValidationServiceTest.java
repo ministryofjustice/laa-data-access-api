@@ -23,9 +23,10 @@ import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.exc.MismatchedInputException;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.Proceeding;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.PayloadValidationService;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.Proceeding;
 
 class PayloadValidationServiceTest {
 

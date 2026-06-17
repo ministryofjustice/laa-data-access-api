@@ -1,6 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
-import uk.gov.justice.laa.dstew.access.model.ApplicationOffice;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationOffice;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
 public class ApplicationOfficeGenerator

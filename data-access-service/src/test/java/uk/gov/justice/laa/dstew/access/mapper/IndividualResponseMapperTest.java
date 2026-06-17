@@ -17,6 +17,8 @@ import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.*;
 import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationApplicant;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualGenerator;

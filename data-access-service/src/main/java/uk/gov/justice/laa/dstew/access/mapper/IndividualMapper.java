@@ -2,11 +2,11 @@ package uk.gov.justice.laa.dstew.access.mapper;
 
 import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
 import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
 
 /**
  * Mapper interface for Individuals. All mapping operations are performed safely, gracefully

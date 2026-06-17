@@ -8,6 +8,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
+import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
@@ -81,6 +82,32 @@ public class SaveDomainEventService {
             .type(DomainEventType.APPLICATION_CREATED)
             .createdAt(Instant.now())
             .createdBy(createdBy)
+            .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.APPLICATION_CREATED))
+            .serviceName(serviceNameContext.getServiceName())
+            .build();
+
+    domainEventRepository.save(domainEventEntity);
+  }
+
+  /** Posts an APPLICATION_CREATED domain event using domain types (new clean-architecture path). */
+  public void saveCreateApplicationDomainEvent(ApplicationDomain domain, String serialisedRequest) {
+
+    CreateApplicationDomainEventDetails domainEventDetails =
+        CreateApplicationDomainEventDetails.builder()
+            .applicationId(domain.id())
+            .createdDate(domain.createdAt())
+            .laaReference(domain.laaReference())
+            .applicationStatus(domain.status())
+            .request(serialisedRequest)
+            .build();
+
+    DomainEventEntity domainEventEntity =
+        DomainEventEntity.builder()
+            .applicationId(domain.id())
+            .caseworkerId(null)
+            .type(DomainEventType.APPLICATION_CREATED)
+            .createdAt(Instant.now())
+            .createdBy(null)
             .data(getEventDetailsAsJson(domainEventDetails, DomainEventType.APPLICATION_CREATED))
             .serviceName(serviceNameContext.getServiceName())
             .build();

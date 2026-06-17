@@ -22,29 +22,24 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
-import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProceedingLinkedChild;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationMerits;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCreateRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationUpdateRequestGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
@@ -126,61 +121,6 @@ public class ApplicationMapperTest extends BaseMapperTest {
     ApplicationResponse actualApplication =
         applicationMapper.toApplication(expectedApplicationEntity);
     assertThat(actualApplication.getAssignedTo()).isEqualTo(caseworkerId);
-  }
-
-  @Test
-  void givenApplicationCreateRequest_whenToApplicationEntity_thenMapsFieldsCorrectly() {
-    ApplicationStatus status = ApplicationStatus.APPLICATION_SUBMITTED;
-    String laaReference = "laa_reference";
-    List<IndividualCreateRequest> expectedIndividuals =
-        List.of(
-            IndividualCreateRequest.builder().build(), IndividualCreateRequest.builder().build());
-
-    Map<String, Object> applicationContent =
-        (Map<String, Object>)
-            objectMapper.convertValue(
-                DataGenerator.createDefault(
-                    ApplicationContentGenerator.class,
-                    builder ->
-                        builder
-                            .status(String.valueOf(ApplicationStatus.APPLICATION_IN_PROGRESS))
-                            .laaReference(laaReference)
-                            .allLinkedApplications(
-                                DataGenerator.createMultipleDefault(
-                                    LinkedApplicationsGenerator.class, 2))),
-                Map.class);
-
-    ApplicationCreateRequest expectedApplicationCreateRequest =
-        DataGenerator.createDefault(
-            ApplicationCreateRequestGenerator.class,
-            builder ->
-                builder
-                    .status(status)
-                    .laaReference(laaReference)
-                    .individuals(expectedIndividuals)
-                    .applicationContent(applicationContent));
-
-    ApplicationEntity actualApplicationEntity =
-        applicationMapper.toApplicationEntity(expectedApplicationCreateRequest);
-
-    assertThat(actualApplicationEntity.getStatus()).isEqualTo(status);
-    assertThat(actualApplicationEntity.getLaaReference()).isEqualTo(laaReference);
-
-    assertThat(actualApplicationEntity.getIndividuals())
-        .isNotNull()
-        .hasSize(expectedIndividuals.size())
-        .allSatisfy(individual -> assertThat(individual).isInstanceOf(IndividualEntity.class));
-
-    assertThat(actualApplicationEntity.getApplicationContent())
-        .isNotNull()
-        .usingRecursiveComparison()
-        .isEqualTo(applicationContent);
-  }
-
-  @Test
-  void givenNullApplicationCreateRequest_whenToApplicationEntity_thenReturnNull() {
-    ApplicationCreateRequest request = null;
-    assertThat(applicationMapper.toApplicationEntity(request)).isNull();
   }
 
   @Test

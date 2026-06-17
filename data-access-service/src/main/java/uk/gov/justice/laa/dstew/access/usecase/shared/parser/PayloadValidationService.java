@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.validation;
+package uk.gov.justice.laa.dstew.access.usecase.shared.parser;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -6,19 +6,18 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.exc.MismatchedInputException;
 import uk.gov.justice.laa.dstew.access.exception.JacksonExceptionMessageBuilder;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
  * Utility service to convert arbitrary payloads into typed POJOs and validate them using Bean
  * Validation. Any mapping or validation errors are converted into {@link ValidationException} so
  * they are handled consistently by {@code GlobalExceptionHandler}.
  */
-@Service
 @RequiredArgsConstructor
 public class PayloadValidationService {
 

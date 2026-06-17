@@ -15,14 +15,12 @@ import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChild;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
-import uk.gov.justice.laa.dstew.access.model.Proceeding;
 import uk.gov.justice.laa.dstew.access.model.ProceedingLinkedChild;
-import uk.gov.justice.laa.dstew.access.model.ProceedingMerits;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingMerits;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMeritsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.InvolvedChildGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingMeritsGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
 
@@ -30,39 +28,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEnt
 class ProceedingMapperTest extends BaseMapperTest {
 
   @InjectMocks private ProceedingMapperImpl proceedingMapper;
-
-  @Test
-  void givenNullProceeding_whenToProceedingEntity_thenReturnNull() {
-    assertThat(proceedingMapper.toProceedingEntity(null, UUID.randomUUID())).isNull();
-  }
-
-  @Test
-  void givenProceedingAndApplicationId_whenToProceedingEntity_thenMapsFieldsCorrectly() {
-    UUID applicationId = UUID.randomUUID();
-    Proceeding proceeding = DataGenerator.createDefault(ProceedingGenerator.class);
-
-    ProceedingEntity result = proceedingMapper.toProceedingEntity(proceeding, applicationId);
-
-    assertThat(result.getApplyProceedingId()).isEqualTo(proceeding.getId());
-    assertThat(result.getProceedingContent())
-        .isEqualTo(objectMapper.convertValue(proceeding, Map.class));
-    assertThat(result.isLead()).isEqualTo(proceeding.getLeadProceeding());
-    assertThat(result.getDescription()).isEqualTo(proceeding.getDescription());
-  }
-
-  @Test
-  void givenProceedingWithAllNullFields_whenToProceedingEntity_thenNullableFieldsAreNull() {
-    Proceeding proceeding =
-        DataGenerator.createDefault(
-            ProceedingGenerator.class,
-            builder -> builder.id(null).leadProceeding(null).description(null));
-
-    ProceedingEntity result = proceedingMapper.toProceedingEntity(proceeding, null);
-
-    assertThat(result.getApplyProceedingId()).isNull();
-    assertThat(result.isLead()).isFalse();
-    assertThat(result.getDescription()).isNull();
-  }
 
   @Test
   void givenNullProceedingEntity_whenToApplicationProceeding_thenReturnNull() {

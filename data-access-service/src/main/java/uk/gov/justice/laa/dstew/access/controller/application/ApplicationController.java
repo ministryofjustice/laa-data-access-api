@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.controller;
+package uk.gov.justice.laa.dstew.access.controller.application;
 
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
@@ -39,7 +39,6 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.applications.AssignCaseworkerService;
-import uk.gov.justice.laa.dstew.access.service.applications.CreateApplicationService;
 import uk.gov.justice.laa.dstew.access.service.applications.CreateNoteService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetAllApplicationsService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetAllNotesForApplicationService;
@@ -52,6 +51,7 @@ import uk.gov.justice.laa.dstew.access.service.applications.UpdateApplicationSer
 import uk.gov.justice.laa.dstew.access.service.domainevents.GetDomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
+import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
 /** Controller for handling /api/v0/applications requests. */
@@ -60,7 +60,8 @@ import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 @ExcludeFromGeneratedCodeCoverage
 public class ApplicationController implements ApplicationApi {
 
-  private final CreateApplicationService createApplicationService;
+  private final CreateApplicationUseCase createApplicationUseCase;
+  private final CreateApplicationCommandMapper createApplicationCommandMapper;
   private final UpdateApplicationService updateApplicationService;
   private final GetApplicationService getApplicationsService;
   private final GetAllApplicationsService applicationSummaryService;
@@ -78,8 +79,10 @@ public class ApplicationController implements ApplicationApi {
   @Override
   public ResponseEntity<Void> createApplication(
       @NotNull ServiceName serviceName, @Valid ApplicationCreateRequest applicationCreateReq) {
-    UUID id = createApplicationService.createApplication(applicationCreateReq);
-
+    UUID id =
+        createApplicationUseCase
+            .execute(createApplicationCommandMapper.toCommand(applicationCreateReq))
+            .id();
     URI uri =
         ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
     return ResponseEntity.created(uri).build();

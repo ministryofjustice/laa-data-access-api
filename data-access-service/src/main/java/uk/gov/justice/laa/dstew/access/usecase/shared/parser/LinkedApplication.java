@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.model;
+package uk.gov.justice.laa.dstew.access.usecase.shared.parser;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
@@ -16,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @Builder(toBuilder = true)
 @ExcludeFromGeneratedCodeCoverage
 public class LinkedApplication {
+
   @NotNull
   @Schema(name = "leadApplicationId", requiredMode = Schema.RequiredMode.REQUIRED)
   private UUID leadApplicationId;

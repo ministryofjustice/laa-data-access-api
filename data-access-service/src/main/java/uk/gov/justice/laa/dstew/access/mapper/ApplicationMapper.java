@@ -5,19 +5,14 @@ import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.factory.Mappers;
-import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
-import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
@@ -25,8 +20,10 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChild;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.Opposable;
-import uk.gov.justice.laa.dstew.access.model.ProceedingMerits;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingMerits;
 
 /**
  * Mapper interface. All mapping operations are performed safely, throwing an {@link
@@ -39,31 +36,6 @@ public interface ApplicationMapper {
 
   IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
   ProceedingMapper proceedingMapper = Mappers.getMapper(ProceedingMapper.class);
-
-  /**
-   * Converts a {@link ApplicationCreateRequest} model into a new {@link ApplicationEntity}.
-   *
-   * @param req the CREATE request to map
-   * @return a new {@link ApplicationEntity} populated from the request, or {@code null} if the
-   *     request is null
-   * @throws IllegalArgumentException if the {@code applicationContent} cannot be serialized
-   */
-  default ApplicationEntity toApplicationEntity(ApplicationCreateRequest req) {
-    if (req == null) {
-      return null;
-    }
-    ApplicationEntity entity = new ApplicationEntity();
-    entity.setStatus(req.getStatus());
-    entity.setLaaReference(req.getLaaReference());
-    ObjectMapper mapper = MapperUtil.getObjectMapper();
-    var individuals =
-        req.getIndividuals().stream()
-            .map(individualMapper::toIndividualEntity)
-            .collect(Collectors.toSet());
-    entity.setApplicationContent(mapper.convertValue(req.getApplicationContent(), Map.class));
-    entity.setIndividuals(individuals);
-    return entity;
-  }
 
   /**
    * Updates an existing {@link ApplicationEntity} using values from an {@link
