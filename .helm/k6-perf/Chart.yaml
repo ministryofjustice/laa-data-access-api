@@ -1,0 +1,6 @@
+apiVersion: v2
+name: k6-perf
+description: K6 Operator TestRun resources for laa-data-access-api performance tests.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
