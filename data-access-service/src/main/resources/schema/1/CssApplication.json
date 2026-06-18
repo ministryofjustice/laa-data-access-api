@@ -4,11 +4,8 @@
   "title": "CssApplicationContent",
   "description": "Schema for validating Css ApplicationContent",
   "type": "object",
-  "required": [
-    "id",
-    "submittedAt",
-    "laaReference"
-  ],
+  "required": ["id", "submittedAt", "laaReference"],
+
   "properties": {
     "id": {
       "type": "string",

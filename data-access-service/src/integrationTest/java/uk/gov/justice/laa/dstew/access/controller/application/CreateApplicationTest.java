@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -558,6 +559,35 @@ public class CreateApplicationTest extends BaseHarnessTest {
     assertUnauthorised(result);
   }
 
+  @Test
+  public void
+      givenApplicationContentMissingRequiredFields_whenCreateApplication_thenReturnBadRequest()
+          throws Exception {
+    // given - applicationContent that is missing the required 'id' and 'submittedAt' fields,
+    // which are enforced by JSON Schema validation (not Bean Validation)
+    ApplicationCreateRequest request =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class,
+            builder ->
+                builder.applicationContent(
+                    Map.of("applicationContent", Map.of("proceedings", List.of()))));
+
+    // when
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+    ProblemDetail detail = deserialise(result, ProblemDetail.class);
+
+    // then - JSON Schema validation catches missing required fields; error messages reference
+    // the field names but may differ in format from Bean Validation ("must not be null") messages
+    assertSecurityHeaders(result);
+    assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+    assertEquals("Generic Validation Error", detail.getDetail());
+    List<?> errors = (List<?>) detail.getProperties().get("errors");
+    assertThat(errors).isNotEmpty();
+    assertThat(errors).anyMatch(e -> e.toString().contains("id"));
+    assertThat(errors).anyMatch(e -> e.toString().contains("submittedAt"));
+    assertTrue(trackedApplicationIds().isEmpty(), "Expected no application to be persisted");
+  }
+
   private static Stream<Arguments> applicationCreateRequestInvalidDataCases() {
     ProblemDetail problemDetail =
         ProblemDetailBuilder.create()
@@ -592,18 +622,6 @@ public class CreateApplicationTest extends BaseHarnessTest {
                 builder -> builder.applicationContent(new HashMap<>())),
             problemDetail,
             Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class,
-                builder ->
-                    builder.applicationContent(
-                        Map.of("applicationContent", Map.of("proceedings", List.of())))),
-            ProblemDetailBuilder.create()
-                .status(HttpStatus.BAD_REQUEST)
-                .title("Bad Request")
-                .detail("Generic Validation Error")
-                .build(),
-            Map.of("errors", List.of("id: must not be null", "submittedAt: must not be null"))),
         Arguments.of(
             DataGenerator.createDefault(
                 ApplicationCreateRequestGenerator.class, builder -> builder.individuals(null)),

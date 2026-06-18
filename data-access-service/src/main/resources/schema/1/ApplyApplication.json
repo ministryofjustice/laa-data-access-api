@@ -4,10 +4,8 @@
   "title": "ApplicationContent",
   "description": "Schema for validating ApplicationContent",
   "type": "object",
-  "required": [
-    "id",
-    "submittedAt"
-  ],
+  "required": ["id", "submittedAt"],
+
   "properties": {
     "id": {
       "type": "string",
