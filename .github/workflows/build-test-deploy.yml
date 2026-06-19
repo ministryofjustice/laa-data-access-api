@@ -344,8 +344,8 @@ jobs:
           report-name: uat-smoke-test-report
 
   prepare-feature-environments:
-    name: Resolve Environment Presets
-    # if: github.ref == 'refs/heads/main'
+    name: Approve and prepare feature environments
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: uat-preview
     needs:
