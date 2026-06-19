@@ -2,7 +2,9 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
@@ -32,8 +34,16 @@ class CreateApplicationCommandMapperTest {
     assertThat(command.status()).isEqualTo(req.getStatus().name());
     assertThat(command.laaReference()).isEqualTo(req.getLaaReference());
     assertThat(command.applicationContent()).isEqualTo(req.getApplicationContent());
-    assertThat(command.individuals()).hasSize(req.getIndividuals().size());
     assertThat(command.serialisedRequest()).isNotNull().contains(req.getLaaReference());
+
+    assertThat(command.individuals()).hasSize(req.getIndividuals().size());
+    IndividualCreateRequest expectedIndividual = req.getIndividuals().getFirst();
+    IndividualCommand mappedIndividual = command.individuals().getFirst();
+    assertThat(mappedIndividual.firstName()).isEqualTo(expectedIndividual.getFirstName());
+    assertThat(mappedIndividual.lastName()).isEqualTo(expectedIndividual.getLastName());
+    assertThat(mappedIndividual.dateOfBirth()).isEqualTo(expectedIndividual.getDateOfBirth());
+    assertThat(mappedIndividual.individualContent()).isEqualTo(expectedIndividual.getDetails());
+    assertThat(mappedIndividual.type()).isEqualTo(expectedIndividual.getType().name());
   }
 
   @Test
@@ -42,6 +52,8 @@ class CreateApplicationCommandMapperTest {
         IndividualCreateRequest.builder()
             .firstName("Alice")
             .lastName("Smith")
+            .dateOfBirth(LocalDate.of(1990, 5, 15))
+            .details(Map.of("detail-key", "detail-value"))
             .type(IndividualType.CLIENT)
             .build();
     ApplicationCreateRequest req =
@@ -51,9 +63,11 @@ class CreateApplicationCommandMapperTest {
     CreateApplicationCommand command = mapper.toCreateCommand(req);
 
     assertThat(command.individuals()).hasSize(1);
-    IndividualCommand ind = command.individuals().get(0);
+    IndividualCommand ind = command.individuals().getFirst();
     assertThat(ind.firstName()).isEqualTo("Alice");
     assertThat(ind.lastName()).isEqualTo("Smith");
+    assertThat(ind.dateOfBirth()).isEqualTo(LocalDate.of(1990, 5, 15));
+    assertThat(ind.individualContent()).isEqualTo(Map.of("detail-key", "detail-value"));
     assertThat(ind.type()).isEqualTo(IndividualType.CLIENT.name());
   }
 

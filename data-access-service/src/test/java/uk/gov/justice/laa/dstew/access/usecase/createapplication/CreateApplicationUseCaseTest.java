@@ -19,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
+import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
@@ -377,17 +378,53 @@ class CreateApplicationUseCaseTest {
 
   /**
    * Asserts that the domain record captured before {@code save()} was correctly built from the
-   * command: pre-save fields ({@code id}, {@code createdAt}) are null, and all fields carried
-   * directly from the command are equal.
+   * command and parsed content: all 15 fields of {@link ApplicationDomain} are checked. Pre-save
+   * fields ({@code id}, {@code createdAt}, {@code modifiedAt}, {@code isAutoGranted}) are null.
+   * Parsed fields use the known values produced by the default generators.
    */
   private void assertCommandMappedToDomain(
       CreateApplicationCommand command, ApplicationDomain captured) {
+    // Pre-save fields are always null
     assertThat(captured.id()).isNull();
     assertThat(captured.createdAt()).isNull();
+    assertThat(captured.modifiedAt()).isNull();
+    assertThat(captured.isAutoGranted()).isNull();
+
+    // Fields carried directly from the command
     assertThat(captured.status()).isEqualTo(command.status());
     assertThat(captured.laaReference()).isEqualTo(command.laaReference());
     assertThat(captured.applicationContent()).isEqualTo(command.applicationContent());
+    assertThat(captured.schemaVersion())
+        .isEqualTo(CreateApplicationDomainMapper.APPLICATION_SCHEMA_VERSION);
+
+    // Fields derived from parsing the content (known values from the default generators)
+    assertThat(captured.applyApplicationId()).isEqualTo(extractApplyApplicationId(command));
+    assertThat(captured.submittedAt()).isEqualTo(Instant.parse("2024-01-01T12:00:00Z"));
+    assertThat(captured.officeCode()).isEqualTo("officeCode");
+    assertThat(captured.categoryOfLaw()).isEqualTo("FAMILY");
+    assertThat(captured.matterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
+    assertThat(captured.usedDelegatedFunctions()).isTrue();
+    assertThat(captured.proceedings()).hasSize(1);
+
+    // Individual field values — not just size
     assertThat(captured.individuals()).hasSize(command.individuals().size());
+    IndividualDomain mappedIndividual = captured.individuals().iterator().next();
+    IndividualCommand sourceIndividual = command.individuals().get(0);
+    assertThat(mappedIndividual.firstName()).isEqualTo(sourceIndividual.firstName());
+    assertThat(mappedIndividual.lastName()).isEqualTo(sourceIndividual.lastName());
+    assertThat(mappedIndividual.dateOfBirth()).isEqualTo(sourceIndividual.dateOfBirth());
+    assertThat(mappedIndividual.individualContent())
+        .isEqualTo(sourceIndividual.individualContent());
+    assertThat(mappedIndividual.type()).isEqualTo(sourceIndividual.type());
+    assertThat(mappedIndividual.id()).isNull(); // no id before persistence
+  }
+
+  /**
+   * Extracts the {@code applyApplicationId} from the command's content map. The id is stored as a
+   * {@link String} after Jackson round-trip serialisation in the generator.
+   */
+  private UUID extractApplyApplicationId(CreateApplicationCommand command) {
+    return UUID.fromString((String) command.applicationContent().get("id"));
   }
 
   /**

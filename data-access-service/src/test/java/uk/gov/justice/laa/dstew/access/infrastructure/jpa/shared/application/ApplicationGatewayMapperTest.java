@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.infrastructure.jpa.shared.application;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
@@ -32,21 +33,27 @@ class ApplicationGatewayMapperTest {
 
   @Test
   void toApplicationDomain_mapsAllFieldsFromEntity() {
-    ApplicationEntity entity = DataGenerator.createDefault(ApplicationEntityGenerator.class);
+    UUID entityId = UUID.randomUUID();
+    ApplicationEntity entity =
+        DataGenerator.createDefault(ApplicationEntityGenerator.class, b -> b.id(entityId));
     ApplicationDomain domain = mapper.toApplicationDomain(entity);
 
-    assertThat(domain.id()).isEqualTo(entity.getId());
+    assertThat(domain.id()).isEqualTo(entityId);
     assertThat(domain.status()).isEqualTo(entity.getStatus().name());
     assertThat(domain.laaReference()).isEqualTo(entity.getLaaReference());
     assertThat(domain.officeCode()).isEqualTo(entity.getOfficeCode());
+    assertThat(domain.applicationContent()).isEqualTo(entity.getApplicationContent());
     assertThat(domain.schemaVersion()).isEqualTo(entity.getSchemaVersion());
     assertThat(domain.createdAt()).isEqualTo(entity.getCreatedAt());
+    assertThat(domain.modifiedAt()).isEqualTo(entity.getModifiedAt());
     assertThat(domain.applyApplicationId()).isEqualTo(entity.getApplyApplicationId());
     assertThat(domain.submittedAt()).isEqualTo(entity.getSubmittedAt());
     assertThat(domain.usedDelegatedFunctions()).isEqualTo(entity.getUsedDelegatedFunctions());
     assertThat(domain.categoryOfLaw()).isEqualTo(entity.getCategoryOfLaw().name());
     assertThat(domain.matterType()).isEqualTo(entity.getMatterType().name());
     assertThat(domain.isAutoGranted()).isEqualTo(entity.getIsAutoGranted());
+    assertThat(domain.individuals()).hasSize(1);
+    assertThat(domain.proceedings()).isEmpty();
   }
 
   @Test
@@ -63,11 +70,15 @@ class ApplicationGatewayMapperTest {
     assertThat(entity.getLaaReference()).isEqualTo(domain.laaReference());
     assertThat(entity.getOfficeCode()).isEqualTo(domain.officeCode());
     assertThat(entity.getSchemaVersion()).isEqualTo(domain.schemaVersion());
+    assertThat(entity.getApplicationContent()).isEqualTo(domain.applicationContent());
     assertThat(entity.getApplyApplicationId()).isEqualTo(domain.applyApplicationId());
     assertThat(entity.getSubmittedAt()).isEqualTo(domain.submittedAt());
     assertThat(entity.getUsedDelegatedFunctions()).isEqualTo(domain.usedDelegatedFunctions());
     assertThat(entity.getCategoryOfLaw().name()).isEqualTo(domain.categoryOfLaw());
     assertThat(entity.getMatterType().name()).isEqualTo(domain.matterType());
+    assertThat(entity.getIsAutoGranted()).isEqualTo(domain.isAutoGranted());
+    assertThat(entity.getIndividuals()).hasSize(1);
+    assertThat(entity.getProceedings()).hasSize(1);
   }
 
   // ── toEntity: null optional fields ──────────────────────────────────────
@@ -241,8 +252,9 @@ class ApplicationGatewayMapperTest {
 
   @Test
   void toApplicationDomain_mapsIndividualFields() {
+    UUID individualId = UUID.randomUUID();
     IndividualEntity individualEntity =
-        DataGenerator.createDefault(IndividualEntityGenerator.class);
+        DataGenerator.createDefault(IndividualEntityGenerator.class, b -> b.id(individualId));
     ApplicationEntity entity =
         ApplicationEntity.builder()
             .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
@@ -252,6 +264,7 @@ class ApplicationGatewayMapperTest {
     ApplicationDomain domain = mapper.toApplicationDomain(entity);
 
     IndividualDomain individual = domain.individuals().iterator().next();
+    assertThat(individual.id()).isEqualTo(individualId);
     assertThat(individual.firstName()).isEqualTo(individualEntity.getFirstName());
     assertThat(individual.lastName()).isEqualTo(individualEntity.getLastName());
     assertThat(individual.dateOfBirth()).isEqualTo(individualEntity.getDateOfBirth());
