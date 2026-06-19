@@ -7,17 +7,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class JsonSchemaValidatorTest {
 
-  private JsonSchemaValidator validator;
-
-  @BeforeEach
-  void setUp() {
-    validator = new JsonSchemaValidator();
-  }
+  private final JsonSchemaValidator validator = new JsonSchemaValidator();
 
   @Test
   void validateAcceptsPayloadMatchingSchema() {

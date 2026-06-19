@@ -19,8 +19,10 @@ class CreateApplicationExamplesCustomizerTest {
   private static final String MEDIA_TYPE_JSON = "application/json";
 
   private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+  private final SchemaExampleGenerator schemaExampleGenerator =
+      new SchemaExampleGenerator(objectMapper);
   private final CreateApplicationExamplesCustomizer customizer =
-      new CreateApplicationExamplesCustomizer(objectMapper);
+      new CreateApplicationExamplesCustomizer(objectMapper, schemaExampleGenerator);
 
   @Test
   void givenNonMatchingOperationId_whenCustomize_thenSkipCustomisation() {
