@@ -344,11 +344,31 @@ jobs:
           echo "matrix={\"include\":${matrix}}" >> "$GITHUB_OUTPUT"
           
 
+  approve-matrix-rc-feature:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs:
+      - base-resolve-presets
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Manual approval for RC feature matrix deploy
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ secrets.GITHUB_TOKEN }}
+          approvers: ${{ vars.RC_FEATURE_APPROVERS }}
+          minimum-approvals: 1
+          issue-title: Approve env feature matrix deployment
+          issue-body: Please approve or deny deployment for commit ${{ github.sha }}.
+          exclude-workflow-initiator-as-approver: false
+
   deploy-matrix-rc-feature:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs:
       - base-resolve-presets
+      - approve-matrix-rc-feature
     environment: uat
     strategy:
       fail-fast: false
