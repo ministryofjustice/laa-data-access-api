@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "CssApplication.json",
+  "type": "object",
+  "required": ["id", "submittedAt", "laaReference"],
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "submittedAt": { "type": "string" },
+    "laaReference": { "type": "string" }
+  },
+  "additionalProperties": true
+}

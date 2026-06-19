@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ApplyApplication.json",
+  "type": "object",
+  "required": ["id", "submittedAt"],
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "submittedAt": { "type": "string" },
+    "proceedings": { "type": "array", "minItems": 1 }
+  },
+  "additionalProperties": true
+}

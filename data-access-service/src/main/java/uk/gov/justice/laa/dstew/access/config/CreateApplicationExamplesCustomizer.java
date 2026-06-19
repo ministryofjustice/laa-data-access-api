@@ -118,7 +118,8 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
               mt.setSchema(new Schema<>().$ref("#/components/schemas/ApplicationCreateRequest"));
               return mt;
             });
-    mediaType.setExamples(examples);
+    // TODO: activate once the applicationContent schema structure has been confirmed.
+    // mediaType.setExamples(examples);
     return operation;
   }
 
