@@ -4,7 +4,7 @@
 
 The pipeline is defined in `.github/workflows/build-test-deploy.yml` and uses GitHub Actions with Helm to build, test, and deploy the application. Two Docker images are produced per commit: one for `data-access-service` and one for `data-access-mass-generator`. Both are pushed to AWS ECR tagged with the Git commit SHA.
 
-There is no tag-based RC promotion flow.  Feature preset deployments are gated by a manual approval step in the workflow. Deployments are otherwise driven by branch events.
+There is no tag-based RC promotion flow. Feature preset deployments are driven directly from `main` after UAT smoke tests succeed.
 
 ---
 
@@ -13,7 +13,7 @@ There is no tag-based RC promotion flow.  Feature preset deployments are gated b
 | Event | Effect |
 |---|---|
 | `pull_request` (opened / updated) | Build, test, scan, push images, deploy ephemeral PR environment, run smoke tests |
-| `push` to `main` | Build, test, scan, push images, deploy UAT + Staging + Production, run smoke tests, deploy RC feature preset environments |
+| `push` to `main` | Build, test, scan, push images, deploy UAT, run UAT smoke tests, then run approval-gated deploys for RC feature preset environments, Staging, and Production |
 | `workflow_dispatch` | Runs the workflow; jobs guarded with `if: github.ref == 'refs/heads/main'` only deploy when dispatched from `main` |
 | `pull_request` (closed / merged) | Tear down the ephemeral PR environment |
 
@@ -29,10 +29,10 @@ A `concurrency` group keyed to `workflow + ref` ensures that a new run cancels a
 build-test
   ├── vulnerability-scan-app
   ├── vulnerability-scan-docker
-  └── build-push-docker
-        └── build-push-mass-generator-docker
-              └── deploy-ephemeral        ← ephemeral PR environment (UAT namespace)
-                    └── ephemeral-smoke-test
+  ├── build-push-docker
+  └── build-push-mass-generator-docker
+        └── deploy-ephemeral        ← ephemeral PR environment (UAT namespace)
+              └── ephemeral-smoke-test
 ```
 
 `openapi/` branches skip `build-test` and `ephemeral-smoke-test` entirely.
@@ -43,18 +43,17 @@ build-test
 build-test
   ├── vulnerability-scan-app
   ├── vulnerability-scan-docker
-  └── build-push-docker ──────────────────────────────────────────┐
-        └── build-push-mass-generator-docker                      │
-              ├── deploy-uat   (UAT namespace, `main` release)    │
-              │     └── uat-smoke-test                            │
-              │           └── approve_matrix_rc_feature           │
-              │                 └── base-resolve-presets          │
-              │                       └── deploy-matrix-rc-feature│
-              └── deploy-staging  ◄──────────────────────────────┘
-                    └── deploy-production
+  ├── build-push-docker
+  └── build-push-mass-generator-docker
+        └── deploy-uat   (UAT namespace, `main` release)
+              └── uat-smoke-test
+                    ├── prepare-feature-environments
+                    │     └── deploy-matrix-rc-feature
+                    └── deploy-staging
+                          └── deploy-production
 ```
 
-`deploy-staging` runs in parallel with the UAT / RC-feature chain; it does not wait for smoke tests. `deploy-production` requires `deploy-staging` to succeed and has a manual approval gate (`environment: production`).
+`deploy-staging` waits for both `deploy-uat` and `uat-smoke-test`. `deploy-matrix-rc-feature`, `deploy-staging`, and `deploy-production` are all approval-gated deployment steps.
 
 ---
 
@@ -85,7 +84,8 @@ build-test
 
 ### 3. RC feature environments
 
-- **Triggered by:** push to `main`, after UAT smoke tests pass and manual approval is granted
+- **Triggered by:** push to `main`, after UAT smoke tests pass
+- **Approval gate:** required before `deploy-matrix-rc-feature` runs
 - **Helm values:** `.helm/data-access-api/values/rc-feature.yaml`
 - **Spring profile:** `preview`
 - **Release names:** derived from the preset catalog (see below)
@@ -95,7 +95,8 @@ build-test
 
 ### 4. Staging
 
-- **Triggered by:** push to `main` (in parallel with UAT deploy, not gated on smoke tests)
+- **Triggered by:** push to `main`, after UAT deploy and UAT smoke tests succeed
+- **Approval gate:** required before `deploy-staging` runs
 - **Helm values:** `.helm/data-access-api/values/staging.yaml`
 - **Spring profile:** `unsecured`
 - **Release name:** `laa-data-access-api` (fixed)
@@ -104,7 +105,8 @@ build-test
 
 ### 5. Production
 
-- **Triggered by:** `deploy-staging` succeeding, with a manual approval gate
+- **Triggered by:** `deploy-staging` succeeding
+- **Approval gate:** required before `deploy-production` runs
 - **Helm values:** `.helm/data-access-api/values/production.yaml`
 - **Spring profile:** `main`
 - **Release name:** `laa-data-access-api` (fixed)
@@ -117,13 +119,11 @@ build-test
 
 ## RC feature preset environments
 
-Feature environments are prepared on every push to `main`, then deployed only after UAT smoke tests pass and the `approve_matrix_rc_feature` manual approval gate is approved.
+Feature environments are prepared on every push to `main` after UAT smoke tests pass.
 
-The approval gate uses the `trstringer/manual-approval` action and is configured to allow the GitHub team `ministryofjustice/laa-data-stewardship-access-team` to approve.
+Deployment of the matrix environments is approval-gated before `deploy-matrix-rc-feature` runs.
 
-If the RC feature deployment is not approved, the workflow continues but `deploy-matrix-rc-feature` is skipped.
-
-Preset resolution happens immediately before the deploy job so the workflow only resolves the matrix once approval has been granted.
+Preset resolution is performed by the `prepare-feature-environments` job and passed to `deploy-matrix-rc-feature` as a GitHub Actions matrix.
 
 The preset catalog lives in `.github/config/ephemeral-environment-presets.json`. Each entry defines:
 
@@ -139,6 +139,7 @@ The current catalog:
 | `baseline` | `baseline` | _(none)_ |
 | `FEATURE_DISABLEJPAAUDITING` | `disable-jpa-audit` | `FEATURE_DISABLEJPAAUDITING=true` |
 | `FEATURE_EXAMPLE_FEATURE_FLAG` | `example-feature-flag` | `FEATURE_EXAMPLE_FEATURE_FLAG=true` |
+| `DECIDE_ENV` | `decide-env` | _(none)_ |
 
 A `sanitize_release_name` function in the workflow ensures release names are lowercase, contain only `a-z`, `0-9`, `-`, and are at most 53 characters. Names longer than that are truncated with an 8-character SHA suffix.
 
@@ -236,7 +237,7 @@ Not automatically torn down. Manual cleanup:
 ```bash
 helm uninstall <preset-release-name> --namespace <namespace>
 helm uninstall <preset-release-name>-postgresql --namespace <namespace>
-kubectl delete pvc -l app.kubernetes.io/instance=data-<preset-release-name>-postgresql --namespace <namespace>
+kubectl delete pvc -l app.kubernetes.io/instance=<preset-release-name>-postgresql --namespace <namespace>
 ```
 
 Replace `<preset-release-name>` with the sanitised suffix from the preset catalog (e.g. `baseline`, `disable-jpa-audit`, `example-feature-flag`).
