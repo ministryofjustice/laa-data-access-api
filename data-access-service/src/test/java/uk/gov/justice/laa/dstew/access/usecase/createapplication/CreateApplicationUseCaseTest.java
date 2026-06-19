@@ -178,6 +178,34 @@ class CreateApplicationUseCaseTest {
   }
 
   @Test
+  void givenLinkedApplicationWithNullLead_whenExecuted_thenSkipLinking() {
+    UUID associatedApplyId = UUID.randomUUID();
+
+    ApplicationContent appContent =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            b ->
+                b.id(associatedApplyId)
+                    .allLinkedApplications(
+                        List.of(
+                            LinkedApplication.builder()
+                                .leadApplicationId(null)
+                                .associatedApplicationId(associatedApplyId)
+                                .build())));
+
+    CreateApplicationCommand command =
+        DataGenerator.createDefault(
+            CreateApplicationCommandGenerator.class,
+            b -> b.applicationContent(toContentMap(appContent)));
+
+    stubSaveEnriching(UUID.randomUUID(), null);
+
+    useCase.execute(command);
+
+    verify(linkedApplicationGateway, never()).link(any(), any());
+  }
+
+  @Test
   void
       givenLinkedApplicationWithMissingAssociated_whenExecuted_thenThrowsResourceNotFoundException() {
     UUID leadApplyId = UUID.randomUUID();

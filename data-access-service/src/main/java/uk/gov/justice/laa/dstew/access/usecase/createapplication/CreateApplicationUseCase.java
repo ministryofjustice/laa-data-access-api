@@ -47,19 +47,18 @@ public class CreateApplicationUseCase {
                   + parsed.applyApplicationId()));
     }
 
-    // 3. Build domain (pre-save; id and createdAt are null)
-    ApplicationDomain domain = domainMapper.toApplicationDomain(command, parsed);
+    // 3. Build domain (pre-save; id and createdAt are null) then persist application
+    ApplicationDomain savedApplication =
+        applicationGateway.save(domainMapper.toApplicationDomain(command, parsed));
 
-    // 4. Persist application
-    ApplicationDomain saved = applicationGateway.save(domain);
+    // 4. Link to lead application if applicable (after save — requires savedApplication.id())
+    linkToLeadApplicationIfApplicable(parsed.allLinkedApplications(), savedApplication);
 
-    // 5. Link to lead application if applicable (after save — requires saved.id())
-    linkToLeadApplicationIfApplicable(parsed.allLinkedApplications(), saved);
+    // 5. Publish domain event (uses pre-serialised request from command)
+    saveDomainEventService.saveCreateApplicationDomainEvent(
+        savedApplication, command.serialisedRequest());
 
-    // 6. Publish domain event (uses pre-serialised request from command)
-    saveDomainEventService.saveCreateApplicationDomainEvent(saved, command.serialisedRequest());
-
-    return saved;
+    return savedApplication;
   }
 
   private void linkToLeadApplicationIfApplicable(
@@ -69,23 +68,26 @@ public class CreateApplicationUseCase {
   }
 
   private Optional<UUID> getLeadApplicationId(List<LinkedApplication> allLinkedApplications) {
-    UUID leadApplyId = getRawLeadApplyApplicationId(allLinkedApplications);
 
-    if (allLinkedApplications != null && !allLinkedApplications.isEmpty()) {
-      List<UUID> associatedIds =
-          allLinkedApplications.stream()
-              .map(LinkedApplication::getAssociatedApplicationId)
-              .filter(uuid -> !uuid.equals(leadApplyId))
-              .toList();
-      List<UUID> missing = applicationGateway.findMissingApplyApplicationIds(associatedIds);
-      if (!missing.isEmpty()) {
-        throw new ResourceNotFoundException(
-            "No linked application found with associated apply ids: " + missing);
-      }
+    if (allLinkedApplications == null || allLinkedApplications.isEmpty()) {
+      return Optional.empty();
     }
+
+    UUID leadApplyId = allLinkedApplications.getFirst().getLeadApplicationId();
 
     if (leadApplyId == null) {
       return Optional.empty();
+    }
+
+    List<UUID> associatedIds =
+        allLinkedApplications.stream()
+            .map(LinkedApplication::getAssociatedApplicationId)
+            .filter(uuid -> !uuid.equals(leadApplyId))
+            .toList();
+    List<UUID> missing = applicationGateway.findMissingApplyApplicationIds(associatedIds);
+    if (!missing.isEmpty()) {
+      throw new ResourceNotFoundException(
+          "No linked application found with associated apply ids: " + missing);
     }
 
     ApplicationDomain leadDomain =
@@ -97,11 +99,5 @@ public class CreateApplicationUseCase {
                         "Linking failed > Lead application not found, ID: " + leadApplyId));
 
     return Optional.of(leadDomain.id());
-  }
-
-  private static UUID getRawLeadApplyApplicationId(List<LinkedApplication> linkedApplications) {
-    return (!linkedApplications.isEmpty())
-        ? linkedApplications.getFirst().getLeadApplicationId()
-        : null;
   }
 }
