@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.mapper;
 import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
-import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
@@ -107,27 +106,6 @@ public interface IndividualMapper {
             .dateOfBirth(individualResponse.getDateOfBirth())
             .individualContent(individualResponse.getDetails())
             .type(individualResponse.getType())
-            .build();
-  }
-
-  /**
-   * Converts API model {@link IndividualCreateRequest} to an database entity {@link
-   * IndividualEntity} model. Safely handles nulls: if the {@code individual} itself is null, the
-   * method returns {@code null}.
-   *
-   * @param individual API model the {@link IndividualCreateRequest} to map (might be null)
-   * @return a new {@link IndividualEntity} object populated with first name, last name, date of
-   *     birth, and individual content, or {@code null} if the input or individual is null
-   */
-  default IndividualEntity toIndividualEntity(IndividualCreateRequest individual) {
-    return individual == null
-        ? null
-        : IndividualEntity.builder()
-            .firstName(individual.getFirstName())
-            .lastName(individual.getLastName())
-            .dateOfBirth(individual.getDateOfBirth())
-            .individualContent(individual.getDetails())
-            .type(individual.getType())
             .build();
   }
 }

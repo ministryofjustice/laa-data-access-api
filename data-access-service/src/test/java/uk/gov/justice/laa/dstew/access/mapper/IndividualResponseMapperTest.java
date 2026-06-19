@@ -231,11 +231,6 @@ class IndividualResponseMapperTest extends BaseMapperTest {
   }
 
   @Test
-  void givenNullIndividualCreateRequest_whenToIndividualEntity_thenReturnNull() {
-    assertThat(individualMapper.toIndividualEntity((IndividualCreateRequest) null)).isNull();
-  }
-
-  @Test
   void givenNullIndividual_whenToIndividualEntity_thenReturnNull() {
     assertThat(individualMapper.toIndividualEntity((IndividualResponse) null)).isNull();
   }

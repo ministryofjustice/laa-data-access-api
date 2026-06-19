@@ -34,7 +34,6 @@ import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingMerits;
     uses = {IndividualMapper.class, ProceedingMapper.class})
 public interface ApplicationMapper {
 
-  IndividualMapper individualMapper = Mappers.getMapper(IndividualMapper.class);
   ProceedingMapper proceedingMapper = Mappers.getMapper(ProceedingMapper.class);
 
   /**
@@ -109,10 +108,6 @@ public interface ApplicationMapper {
       ProceedingEntity proceeding,
       List<ProceedingMerits> proceedingMeritsList,
       List<InvolvedChild> involvedChildren) {
-
-    if (proceeding == null) {
-      return null;
-    }
 
     ApplicationProceedingResponse proceedingResponse =
         proceedingMapper.toApplicationProceeding(

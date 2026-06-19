@@ -75,7 +75,7 @@ public class CreateApplicationUseCase {
       List<UUID> associatedIds =
           allLinkedApplications.stream()
               .map(LinkedApplication::getAssociatedApplicationId)
-              .filter(uuid -> leadApplyId == null || !uuid.equals(leadApplyId))
+              .filter(uuid -> !uuid.equals(leadApplyId))
               .toList();
       List<UUID> missing = applicationGateway.findMissingApplyApplicationIds(associatedIds);
       if (!missing.isEmpty()) {
@@ -100,7 +100,7 @@ public class CreateApplicationUseCase {
   }
 
   private static UUID getRawLeadApplyApplicationId(List<LinkedApplication> linkedApplications) {
-    return (linkedApplications != null && !linkedApplications.isEmpty())
+    return (!linkedApplications.isEmpty())
         ? linkedApplications.getFirst().getLeadApplicationId()
         : null;
   }

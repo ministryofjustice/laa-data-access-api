@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.usecase.createapplication;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import jakarta.validation.Validation;
@@ -18,9 +17,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
+import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.LinkedApplicationGateway;
@@ -40,7 +43,7 @@ class CreateApplicationUseCaseTest {
 
   @Mock private ApplicationGateway applicationGateway;
   @Mock private LinkedApplicationGateway linkedApplicationGateway;
-  @Mock private SaveDomainEventService saveDomainEventService;
+  @Mock private DomainEventRepository domainEventRepository;
 
   private CreateApplicationUseCase useCase;
 
@@ -51,6 +54,10 @@ class CreateApplicationUseCaseTest {
         new PayloadValidationService(
             MapperUtil.getObjectMapper(), Validation.buildDefaultValidatorFactory().getValidator());
     ApplicationContentParser parser = new ApplicationContentParser(validationService);
+
+    SaveDomainEventService saveDomainEventService =
+        new SaveDomainEventService(
+            domainEventRepository, MapperUtil.getObjectMapper(), new ServiceNameContext());
 
     useCase =
         new CreateApplicationUseCase(
@@ -75,7 +82,15 @@ class CreateApplicationUseCaseTest {
     assertCommandMappedToDomain(command, domainCaptor.getValue());
     assertThat(result.id()).isEqualTo(generatedId);
     assertThat(result.createdAt()).isEqualTo(generatedCreatedAt);
-    verify(saveDomainEventService).saveCreateApplicationDomainEvent(eq(result), any());
+
+    ArgumentCaptor<DomainEventEntity> eventCaptor =
+        ArgumentCaptor.forClass(DomainEventEntity.class);
+    verify(domainEventRepository).save(eventCaptor.capture());
+    DomainEventEntity savedEvent = eventCaptor.getValue();
+    assertThat(savedEvent.getType()).isEqualTo(DomainEventType.APPLICATION_CREATED);
+    assertThat(savedEvent.getApplicationId()).isEqualTo(generatedId);
+    assertThat(savedEvent.getCaseworkerId()).isNull();
+
     verify(linkedApplicationGateway, never()).link(any(), any());
   }
 
@@ -175,6 +190,46 @@ class CreateApplicationUseCaseTest {
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(command))
         .withMessageContaining("No linked application found with associated apply ids:");
+  }
+
+  @Test
+  void
+      givenLinkedApplicationWhereAssociatedIdEqualsLeadId_whenExecuted_thenSelfReferenceIsExcludedFromExistenceCheck() {
+    // When associatedApplicationId == leadApplicationId, the entry represents the lead app itself
+    // and should be filtered out of the existence check (it is looked up separately as the lead).
+    UUID sharedId = UUID.randomUUID();
+    UUID savedDomainId = UUID.randomUUID();
+    UUID leadDomainId = UUID.randomUUID();
+
+    ApplicationContent appContent =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            b ->
+                b.id(sharedId)
+                    .allLinkedApplications(
+                        List.of(
+                            LinkedApplication.builder()
+                                .leadApplicationId(sharedId)
+                                .associatedApplicationId(sharedId)
+                                .build())));
+
+    CreateApplicationCommand command =
+        DataGenerator.createDefault(
+            CreateApplicationCommandGenerator.class,
+            b -> b.applicationContent(toContentMap(appContent)));
+
+    stubSaveEnriching(savedDomainId, null);
+
+    ApplicationDomain leadDomain =
+        DataGenerator.createDefault(ApplicationDomainGenerator.class, b -> b.id(leadDomainId));
+    when(applicationGateway.findLeadByApplyApplicationId(sharedId))
+        .thenReturn(Optional.of(leadDomain));
+
+    useCase.execute(command);
+
+    // The self-referencing UUID was filtered out, so existence check was called with an empty list
+    verify(applicationGateway).findMissingApplyApplicationIds(List.of());
+    verify(linkedApplicationGateway).link(leadDomainId, savedDomainId);
   }
 
   @Test

@@ -73,4 +73,18 @@ class CreateApplicationCommandMapperTest {
     CreateApplicationCommand command = mapper.toCommand(req);
     assertThat(command.individuals()).isEmpty();
   }
+
+  @Test
+  void toCommand_mapsIndividualWithNullType_asNullType() {
+    IndividualCreateRequest individual =
+        IndividualCreateRequest.builder().firstName("Bob").lastName("Jones").type(null).build();
+    ApplicationCreateRequest req =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class, b -> b.individuals(List.of(individual)));
+
+    CreateApplicationCommand command = mapper.toCommand(req);
+
+    IndividualCommand ind = command.individuals().getFirst();
+    assertThat(ind.type()).isNull();
+  }
 }

@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import java.util.List;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
@@ -56,6 +57,7 @@ public class CreateApplicationCommandMapper {
         .build();
   }
 
+  @ExcludeFromGeneratedCodeCoverage
   private String serialise(ApplicationCreateRequest req) {
     try {
       return objectMapper.writeValueAsString(req);
