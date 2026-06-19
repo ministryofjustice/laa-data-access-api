@@ -81,7 +81,7 @@ public class ApplicationController implements ApplicationApi {
       @NotNull ServiceName serviceName, @Valid ApplicationCreateRequest applicationCreateReq) {
     UUID id =
         createApplicationUseCase
-            .execute(createApplicationCommandMapper.toCommand(applicationCreateReq))
+            .execute(createApplicationCommandMapper.toCreateCommand(applicationCreateReq))
             .id();
     URI uri =
         ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();

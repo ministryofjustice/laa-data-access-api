@@ -28,9 +28,9 @@ public class ApplicationJpaGateway implements ApplicationGateway {
 
   @Override
   public ApplicationDomain save(ApplicationDomain domain) {
-    ApplicationEntity entity = mapper.toEntity(domain);
+    ApplicationEntity entity = mapper.toApplicationEntity(domain);
     ApplicationEntity saved = applicationRepository.save(entity);
-    return mapper.toDomain(saved);
+    return mapper.toApplicationDomain(saved);
   }
 
   @Override
@@ -41,7 +41,7 @@ public class ApplicationJpaGateway implements ApplicationGateway {
   @Override
   public Optional<ApplicationDomain> findLeadByApplyApplicationId(UUID applyApplicationId) {
     ApplicationEntity entity = applicationRepository.findByApplyApplicationId(applyApplicationId);
-    return Optional.ofNullable(entity).map(mapper::toDomain);
+    return Optional.ofNullable(entity).map(mapper::toApplicationDomain);
   }
 
   @Override

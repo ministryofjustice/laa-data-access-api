@@ -19,9 +19,9 @@ public class CreateApplicationDomainMapper {
   static final int APPLICATION_SCHEMA_VERSION = 1;
 
   /**
-   * Builds an {@link ApplicationDomain} from a {@link CreateApplicationCommand} and the pre-parsedDetails
-   * {@link ParsedAppContentDetails}. The resulting domain is pre-save: {@code id} and {@code
-   * createdAt} are null.
+   * Builds an {@link ApplicationDomain} from a {@link CreateApplicationCommand} and the
+   * pre-parsedDetails {@link ParsedAppContentDetails}. The resulting domain is pre-save: {@code id}
+   * and {@code createdAt} are null.
    *
    * @param command the command carrying all fields from the HTTP request
    * @param parsedDetails the details extracted from the application content
@@ -37,7 +37,8 @@ public class CreateApplicationDomainMapper {
         .schemaVersion(APPLICATION_SCHEMA_VERSION)
         .applyApplicationId(parsedDetails.applyApplicationId())
         .usedDelegatedFunctions(parsedDetails.usedDelegatedFunctions())
-        .categoryOfLaw(parsedDetails.categoryOfLaw() != null ? parsedDetails.categoryOfLaw().name() : null)
+        .categoryOfLaw(
+            parsedDetails.categoryOfLaw() != null ? parsedDetails.categoryOfLaw().name() : null)
         .matterType(parsedDetails.matterType() != null ? parsedDetails.matterType().name() : null)
         .submittedAt(parsedDetails.submittedAt())
         .officeCode(parsedDetails.officeCode())
@@ -74,6 +75,13 @@ public class CreateApplicationDomainMapper {
         .build();
   }
 
+  /**
+   * Converts a list of {@link Proceeding} records into an ordered set of {@link ProceedingDomain}.
+   *
+   * @param proceedings the list of proceedings to convert; may be {@code null}
+   * @return a {@link LinkedHashSet} of proceeding domain records, preserving insertion order;
+   *     returns an empty set if {@code proceedings} is {@code null}
+   */
   public Set<ProceedingDomain> toProceedingDomains(List<Proceeding> proceedings) {
     if (proceedings == null) {
       return new LinkedHashSet<>();
@@ -84,6 +92,12 @@ public class CreateApplicationDomainMapper {
         .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
+  /**
+   * Converts a single {@link Proceeding} to a {@link ProceedingDomain}.
+   *
+   * @param proceeding the proceeding to convert
+   * @return the proceeding domain record
+   */
   public ProceedingDomain toProceedingDomain(Proceeding proceeding) {
     return ProceedingDomain.builder()
         .applyProceedingId(proceeding.getId())
@@ -95,6 +109,13 @@ public class CreateApplicationDomainMapper {
         .build();
   }
 
+  /**
+   * Converts a {@link Proceeding} into a {@link Map} representation suitable for storage as
+   * proceeding content.
+   *
+   * @param proceeding the proceeding to convert
+   * @return a {@link Map} of field names to values derived from the proceeding
+   */
   @SuppressWarnings("unchecked")
   public Map<String, Object> toProceedingContentMap(Proceeding proceeding) {
     return MapperUtil.getObjectMapper().convertValue(proceeding, Map.class);

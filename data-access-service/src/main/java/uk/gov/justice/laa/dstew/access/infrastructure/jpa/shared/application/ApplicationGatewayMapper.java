@@ -38,7 +38,7 @@ public class ApplicationGatewayMapper {
    * @param application the application record (id and createdAt are null for INSERT)
    * @return the entity ready for persistence
    */
-  public ApplicationEntity toEntity(ApplicationDomain application) {
+  public ApplicationEntity toApplicationEntity(ApplicationDomain application) {
     ApplicationEntity entity = new ApplicationEntity();
     entity.setStatus(ApplicationStatus.valueOf(application.status()));
     entity.setLaaReference(application.laaReference());
@@ -49,14 +49,18 @@ public class ApplicationGatewayMapper {
     entity.setSubmittedAt(application.submittedAt());
     entity.setUsedDelegatedFunctions(application.usedDelegatedFunctions());
     entity.setCategoryOfLaw(
-        application.categoryOfLaw() != null ? CategoryOfLaw.valueOf(application.categoryOfLaw()) : null);
+        application.categoryOfLaw() != null
+            ? CategoryOfLaw.valueOf(application.categoryOfLaw())
+            : null);
     entity.setMatterType(
         application.matterType() != null ? MatterType.valueOf(application.matterType()) : null);
     entity.setIsAutoGranted(application.isAutoGranted());
 
     if (application.individuals() != null) {
       entity.setIndividuals(
-          application.individuals().stream().map(this::toIndividualEntity).collect(Collectors.toSet()));
+          application.individuals().stream()
+              .map(this::toIndividualEntity)
+              .collect(Collectors.toSet()));
     }
     if (application.proceedings() != null && !application.proceedings().isEmpty()) {
       entity.setProceedings(
@@ -76,7 +80,7 @@ public class ApplicationGatewayMapper {
    * @param application the JPA application
    * @return the domain record
    */
-  public ApplicationDomain toDomain(ApplicationEntity application) {
+  public ApplicationDomain toApplicationDomain(ApplicationEntity application) {
     return ApplicationDomain.builder()
         .id(application.getId())
         .status(application.getStatus() != null ? application.getStatus().name() : null)
@@ -89,7 +93,8 @@ public class ApplicationGatewayMapper {
         .applyApplicationId(application.getApplyApplicationId())
         .submittedAt(application.getSubmittedAt())
         .usedDelegatedFunctions(application.getUsedDelegatedFunctions())
-        .categoryOfLaw(application.getCategoryOfLaw() != null ? application.getCategoryOfLaw().name() : null)
+        .categoryOfLaw(
+            application.getCategoryOfLaw() != null ? application.getCategoryOfLaw().name() : null)
         .matterType(application.getMatterType() != null ? application.getMatterType().name() : null)
         .isAutoGranted(application.getIsAutoGranted())
         .individuals(

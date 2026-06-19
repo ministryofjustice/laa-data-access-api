@@ -24,10 +24,10 @@ class CreateApplicationCommandMapperTest {
   }
 
   @Test
-  void toCommand_mapsAllFieldsFromFullyPopulatedRequest() {
+  void toCreateCommand_mapsAllFieldsFromFullyPopulatedRequest() {
     ApplicationCreateRequest req =
         DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
-    CreateApplicationCommand command = mapper.toCommand(req);
+    CreateApplicationCommand command = mapper.toCreateCommand(req);
 
     assertThat(command.status()).isEqualTo(req.getStatus().name());
     assertThat(command.laaReference()).isEqualTo(req.getLaaReference());
@@ -37,7 +37,7 @@ class CreateApplicationCommandMapperTest {
   }
 
   @Test
-  void toCommand_mapsIndividualFields_asIndividualCommand() {
+  void toCommand_mapsIndividualFields_asIndividualCreateCommand() {
     IndividualCreateRequest individual =
         IndividualCreateRequest.builder()
             .firstName("Alice")
@@ -48,7 +48,7 @@ class CreateApplicationCommandMapperTest {
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class, b -> b.individuals(List.of(individual)));
 
-    CreateApplicationCommand command = mapper.toCommand(req);
+    CreateApplicationCommand command = mapper.toCreateCommand(req);
 
     assertThat(command.individuals()).hasSize(1);
     IndividualCommand ind = command.individuals().get(0);
@@ -58,31 +58,31 @@ class CreateApplicationCommandMapperTest {
   }
 
   @Test
-  void toCommand_handlesNullStatus() {
+  void toCreateCommand_handlesNullStatus() {
     ApplicationCreateRequest req =
         DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, b -> b.status(null));
-    CreateApplicationCommand command = mapper.toCommand(req);
+    CreateApplicationCommand command = mapper.toCreateCommand(req);
     assertThat(command.status()).isNull();
   }
 
   @Test
-  void toCommand_handlesNullOrEmptyIndividuals() {
+  void toCreateCommand_handlesNullOrEmptyIndividuals() {
     ApplicationCreateRequest req =
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class, b -> b.individuals(null));
-    CreateApplicationCommand command = mapper.toCommand(req);
+    CreateApplicationCommand command = mapper.toCreateCommand(req);
     assertThat(command.individuals()).isEmpty();
   }
 
   @Test
-  void toCommand_mapsIndividualWithNullType_asNullType() {
+  void toCreateCommand_mapsIndividualWithNullType_asNullType() {
     IndividualCreateRequest individual =
         IndividualCreateRequest.builder().firstName("Bob").lastName("Jones").type(null).build();
     ApplicationCreateRequest req =
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class, b -> b.individuals(List.of(individual)));
 
-    CreateApplicationCommand command = mapper.toCommand(req);
+    CreateApplicationCommand command = mapper.toCreateCommand(req);
 
     IndividualCommand ind = command.individuals().getFirst();
     assertThat(ind.type()).isNull();

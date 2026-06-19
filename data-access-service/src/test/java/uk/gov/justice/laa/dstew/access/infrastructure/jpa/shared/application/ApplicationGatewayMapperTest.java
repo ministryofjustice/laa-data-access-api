@@ -31,9 +31,9 @@ class ApplicationGatewayMapperTest {
   }
 
   @Test
-  void toDomain_mapsAllFieldsFromEntity() {
+  void toApplicationDomain_mapsAllFieldsFromEntity() {
     ApplicationEntity entity = DataGenerator.createDefault(ApplicationEntityGenerator.class);
-    ApplicationDomain domain = mapper.toDomain(entity);
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
 
     assertThat(domain.id()).isEqualTo(entity.getId());
     assertThat(domain.status()).isEqualTo(entity.getStatus().name());
@@ -50,13 +50,13 @@ class ApplicationGatewayMapperTest {
   }
 
   @Test
-  void toEntity_mapsAllFieldsFromDomain_insertPath() {
+  void toApplicationEntity_mapsAllFieldsFromDomain_insertPath() {
     ApplicationDomain domain =
         DataGenerator.createDefault(
             ApplicationDomainGenerator.class,
             b -> b.id(null).createdAt(null)); // simulate pre-save state
 
-    ApplicationEntity entity = mapper.toEntity(domain);
+    ApplicationEntity entity = mapper.toApplicationEntity(domain);
 
     assertThat(entity.getId()).isNull();
     assertThat(entity.getStatus().name()).isEqualTo(domain.status());
@@ -73,43 +73,43 @@ class ApplicationGatewayMapperTest {
   // ── toEntity: null optional fields ──────────────────────────────────────
 
   @Test
-  void toEntity_withNullCategoryOfLawAndMatterType_mapsNulls() {
+  void toApplicationEntity_withNullCategoryOfLawAndMatterType_mapsNulls() {
     ApplicationDomain domain =
         DataGenerator.createDefault(
             ApplicationDomainGenerator.class, b -> b.categoryOfLaw(null).matterType(null));
 
-    ApplicationEntity entity = mapper.toEntity(domain);
+    ApplicationEntity entity = mapper.toApplicationEntity(domain);
 
     assertThat(entity.getCategoryOfLaw()).isNull();
     assertThat(entity.getMatterType()).isNull();
   }
 
   @Test
-  void toEntity_withNullIndividuals_doesNotPopulateIndividuals() {
+  void toApplicationEntity_withNullIndividuals_doesNotPopulateIndividuals() {
     ApplicationDomain domain =
         DataGenerator.createDefault(ApplicationDomainGenerator.class, b -> b.individuals(null));
 
-    ApplicationEntity entity = mapper.toEntity(domain);
+    ApplicationEntity entity = mapper.toApplicationEntity(domain);
 
     assertThat(entity.getIndividuals()).isNull();
   }
 
   @Test
-  void toEntity_withNullProceedings_doesNotPopulateProceedings() {
+  void toApplicationEntity_withNullProceedings_doesNotPopulateProceedings() {
     ApplicationDomain domain =
         DataGenerator.createDefault(ApplicationDomainGenerator.class, b -> b.proceedings(null));
 
-    ApplicationEntity entity = mapper.toEntity(domain);
+    ApplicationEntity entity = mapper.toApplicationEntity(domain);
 
     assertThat(entity.getProceedings()).isNull();
   }
 
   @Test
-  void toEntity_withEmptyProceedings_doesNotPopulateProceedings() {
+  void toApplicationEntity_withEmptyProceedings_doesNotPopulateProceedings() {
     ApplicationDomain domain =
         DataGenerator.createDefault(ApplicationDomainGenerator.class, b -> b.proceedings(Set.of()));
 
-    ApplicationEntity entity = mapper.toEntity(domain);
+    ApplicationEntity entity = mapper.toApplicationEntity(domain);
 
     assertThat(entity.getProceedings()).isNull();
   }
@@ -117,14 +117,14 @@ class ApplicationGatewayMapperTest {
   // ── toEntity: toIndividualEntity private method ──────────────────────────
 
   @Test
-  void toEntity_mapsIndividualFields() {
+  void toApplicationEntity_mapsIndividualFields() {
     IndividualDomain individualDomain =
         DataGenerator.createDefault(IndividualDomainGenerator.class);
     ApplicationDomain domain =
         DataGenerator.createDefault(
             ApplicationDomainGenerator.class, b -> b.individuals(Set.of(individualDomain)));
 
-    ApplicationEntity entity = mapper.toEntity(domain);
+    ApplicationEntity entity = mapper.toApplicationEntity(domain);
 
     IndividualEntity individual = entity.getIndividuals().iterator().next();
     assertThat(individual.getFirstName()).isEqualTo(individualDomain.firstName());
@@ -135,14 +135,14 @@ class ApplicationGatewayMapperTest {
   }
 
   @Test
-  void toEntity_withNullIndividualType_mapsNullType() {
+  void toApplicationEntity_withNullIndividualType_mapsNullType() {
     IndividualDomain individualDomain =
         DataGenerator.createDefault(IndividualDomainGenerator.class, b -> b.type(null));
     ApplicationDomain domain =
         DataGenerator.createDefault(
             ApplicationDomainGenerator.class, b -> b.individuals(Set.of(individualDomain)));
 
-    ApplicationEntity entity = mapper.toEntity(domain);
+    ApplicationEntity entity = mapper.toApplicationEntity(domain);
 
     IndividualEntity individual = entity.getIndividuals().iterator().next();
     assertThat(individual.getType()).isNull();
@@ -151,14 +151,14 @@ class ApplicationGatewayMapperTest {
   // ── toEntity: toProceedingEntity private method ──────────────────────────
 
   @Test
-  void toEntity_mapsProceedingFields() {
+  void toApplicationEntity_mapsProceedingFields() {
     ProceedingDomain proceedingDomain =
         DataGenerator.createDefault(ProceedingDomainGenerator.class);
     ApplicationDomain domain =
         DataGenerator.createDefault(
             ApplicationDomainGenerator.class, b -> b.proceedings(Set.of(proceedingDomain)));
 
-    ApplicationEntity entity = mapper.toEntity(domain);
+    ApplicationEntity entity = mapper.toApplicationEntity(domain);
 
     ProceedingEntity proceeding = entity.getProceedings().iterator().next();
     assertThat(proceeding.getApplyProceedingId()).isEqualTo(proceedingDomain.applyProceedingId());
@@ -170,7 +170,7 @@ class ApplicationGatewayMapperTest {
   }
 
   @Test
-  void toEntity_withNullProceedingCreatedByAndUpdatedBy_defaultsToEmptyString() {
+  void toEntity_withNullProceedingCreatedByAndUpdatedBy_defaultsToApplicationEmptyString() {
     ProceedingDomain proceedingDomain =
         DataGenerator.createDefault(
             ProceedingDomainGenerator.class, b -> b.createdBy(null).updatedBy(null));
@@ -178,7 +178,7 @@ class ApplicationGatewayMapperTest {
         DataGenerator.createDefault(
             ApplicationDomainGenerator.class, b -> b.proceedings(Set.of(proceedingDomain)));
 
-    ApplicationEntity entity = mapper.toEntity(domain);
+    ApplicationEntity entity = mapper.toApplicationEntity(domain);
 
     ProceedingEntity proceeding = entity.getProceedings().iterator().next();
     assertThat(proceeding.getCreatedBy()).isEmpty();
@@ -188,16 +188,16 @@ class ApplicationGatewayMapperTest {
   // ── toDomain: null optional fields ──────────────────────────────────────
 
   @Test
-  void toDomain_withNullStatus_mapsNullStatus() {
+  void toApplicationDomain_withNullStatus_mapsNullStatus() {
     ApplicationEntity entity = ApplicationEntity.builder().status(null).build();
 
-    ApplicationDomain domain = mapper.toDomain(entity);
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
 
     assertThat(domain.status()).isNull();
   }
 
   @Test
-  void toDomain_withNullCategoryOfLawAndMatterType_mapsNulls() {
+  void toApplicationDomain_withNullCategoryOfLawAndMatterType_mapsNulls() {
     ApplicationEntity entity =
         ApplicationEntity.builder()
             .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
@@ -205,34 +205,34 @@ class ApplicationGatewayMapperTest {
             .matterType(null)
             .build();
 
-    ApplicationDomain domain = mapper.toDomain(entity);
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
 
     assertThat(domain.categoryOfLaw()).isNull();
     assertThat(domain.matterType()).isNull();
   }
 
   @Test
-  void toDomain_withNullIndividuals_returnsEmptySet() {
+  void toApplicationDomain_withNullIndividuals_returnsEmptySet() {
     ApplicationEntity entity =
         ApplicationEntity.builder()
             .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
             .individuals(null)
             .build();
 
-    ApplicationDomain domain = mapper.toDomain(entity);
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
 
     assertThat(domain.individuals()).isEmpty();
   }
 
   @Test
-  void toDomain_withNullProceedings_returnsEmptySet() {
+  void toApplicationDomain_withNullProceedings_returnsEmptySet() {
     ApplicationEntity entity =
         ApplicationEntity.builder()
             .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
             .proceedings(null)
             .build();
 
-    ApplicationDomain domain = mapper.toDomain(entity);
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
 
     assertThat(domain.proceedings()).isEmpty();
   }
@@ -240,7 +240,7 @@ class ApplicationGatewayMapperTest {
   // ── toDomain: toIndividualDomain private method ──────────────────────────
 
   @Test
-  void toDomain_mapsIndividualFields() {
+  void toApplicationDomain_mapsIndividualFields() {
     IndividualEntity individualEntity =
         DataGenerator.createDefault(IndividualEntityGenerator.class);
     ApplicationEntity entity =
@@ -249,7 +249,7 @@ class ApplicationGatewayMapperTest {
             .individuals(Set.of(individualEntity))
             .build();
 
-    ApplicationDomain domain = mapper.toDomain(entity);
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
 
     IndividualDomain individual = domain.individuals().iterator().next();
     assertThat(individual.firstName()).isEqualTo(individualEntity.getFirstName());
@@ -260,7 +260,7 @@ class ApplicationGatewayMapperTest {
   }
 
   @Test
-  void toDomain_withNullIndividualType_mapsNullType() {
+  void toApplicationDomain_withNullIndividualType_mapsNullType() {
     IndividualEntity individualEntity =
         DataGenerator.createDefault(IndividualEntityGenerator.class, b -> b.type(null));
     ApplicationEntity entity =
@@ -269,7 +269,7 @@ class ApplicationGatewayMapperTest {
             .individuals(Set.of(individualEntity))
             .build();
 
-    ApplicationDomain domain = mapper.toDomain(entity);
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
 
     IndividualDomain individual = domain.individuals().iterator().next();
     assertThat(individual.type()).isNull();
@@ -278,7 +278,7 @@ class ApplicationGatewayMapperTest {
   // ── toDomain: toProceedingDomain private method ─────────────────────────
 
   @Test
-  void toDomain_mapsProceedingFields() {
+  void toApplicationDomain_mapsProceedingFields() {
     ProceedingEntity proceedingEntity =
         DataGenerator.createDefault(ProceedingsEntityGenerator.class);
     ApplicationEntity entity =
@@ -287,7 +287,7 @@ class ApplicationGatewayMapperTest {
             .proceedings(Set.of(proceedingEntity))
             .build();
 
-    ApplicationDomain domain = mapper.toDomain(entity);
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
 
     ProceedingDomain proceeding = domain.proceedings().iterator().next();
     assertThat(proceeding.id()).isEqualTo(proceedingEntity.getId());

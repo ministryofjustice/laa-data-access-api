@@ -30,24 +30,25 @@ public class CreateApplicationCommandMapper {
    * @param req the HTTP request model
    * @return the command record
    */
-  public CreateApplicationCommand toCommand(ApplicationCreateRequest req) {
+  public CreateApplicationCommand toCreateCommand(ApplicationCreateRequest req) {
     return CreateApplicationCommand.builder()
         .status(req.getStatus() != null ? req.getStatus().name() : null)
         .laaReference(req.getLaaReference())
         .applicationContent(req.getApplicationContent())
-        .individuals(toIndividualCommands(req.getIndividuals()))
+        .individuals(toIndividualCreateCommands(req.getIndividuals()))
         .serialisedRequest(serialise(req))
         .build();
   }
 
-  private List<IndividualCommand> toIndividualCommands(List<IndividualCreateRequest> individuals) {
+  private List<IndividualCommand> toIndividualCreateCommands(
+      List<IndividualCreateRequest> individuals) {
     if (individuals == null) {
       return List.of();
     }
-    return individuals.stream().map(this::toIndividualCommand).toList();
+    return individuals.stream().map(this::toIndividualCreateCommand).toList();
   }
 
-  private IndividualCommand toIndividualCommand(IndividualCreateRequest req) {
+  private IndividualCommand toIndividualCreateCommand(IndividualCreateRequest req) {
     return IndividualCommand.builder()
         .firstName(req.getFirstName())
         .lastName(req.getLastName())
