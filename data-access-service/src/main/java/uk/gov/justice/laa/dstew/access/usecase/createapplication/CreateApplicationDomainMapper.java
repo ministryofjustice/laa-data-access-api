@@ -19,58 +19,58 @@ public class CreateApplicationDomainMapper {
   static final int APPLICATION_SCHEMA_VERSION = 1;
 
   /**
-   * Builds an {@link ApplicationDomain} from a {@link CreateApplicationCommand} and the pre-parsed
+   * Builds an {@link ApplicationDomain} from a {@link CreateApplicationCommand} and the pre-parsedDetails
    * {@link ParsedAppContentDetails}. The resulting domain is pre-save: {@code id} and {@code
    * createdAt} are null.
    *
    * @param command the command carrying all fields from the HTTP request
-   * @param parsed the details extracted from the application content
+   * @param parsedDetails the details extracted from the application content
    * @return a new {@link ApplicationDomain} ready for persistence
    */
   public ApplicationDomain toApplicationDomain(
-      CreateApplicationCommand command, ParsedAppContentDetails parsed) {
+      CreateApplicationCommand command, ParsedAppContentDetails parsedDetails) {
     return ApplicationDomain.builder()
         .status(command.status())
         .laaReference(command.laaReference())
         .applicationContent(command.applicationContent())
         .individuals(toIndividualDomains(command.individuals()))
         .schemaVersion(APPLICATION_SCHEMA_VERSION)
-        .applyApplicationId(parsed.applyApplicationId())
-        .usedDelegatedFunctions(parsed.usedDelegatedFunctions())
-        .categoryOfLaw(parsed.categoryOfLaw() != null ? parsed.categoryOfLaw().name() : null)
-        .matterType(parsed.matterType() != null ? parsed.matterType().name() : null)
-        .submittedAt(parsed.submittedAt())
-        .officeCode(parsed.officeCode())
-        .proceedings(toProceedingDomains(parsed.proceedings()))
+        .applyApplicationId(parsedDetails.applyApplicationId())
+        .usedDelegatedFunctions(parsedDetails.usedDelegatedFunctions())
+        .categoryOfLaw(parsedDetails.categoryOfLaw() != null ? parsedDetails.categoryOfLaw().name() : null)
+        .matterType(parsedDetails.matterType() != null ? parsedDetails.matterType().name() : null)
+        .submittedAt(parsedDetails.submittedAt())
+        .officeCode(parsedDetails.officeCode())
+        .proceedings(toProceedingDomains(parsedDetails.proceedings()))
         .build();
   }
 
   /**
    * Converts a list of {@link IndividualCommand} records into a set of {@link IndividualDomain}.
    *
-   * @param commands the list of individual commands
+   * @param individuals the list of individual individuals
    * @return a set of individual domain records
    */
-  public Set<IndividualDomain> toIndividualDomains(List<IndividualCommand> commands) {
-    if (commands == null) {
+  public Set<IndividualDomain> toIndividualDomains(List<IndividualCommand> individuals) {
+    if (individuals == null) {
       return Set.of();
     }
-    return commands.stream().map(this::toIndividualDomain).collect(Collectors.toSet());
+    return individuals.stream().map(this::toIndividualDomain).collect(Collectors.toSet());
   }
 
   /**
    * Converts a single {@link IndividualCommand} to an {@link IndividualDomain}.
    *
-   * @param command the individual command
+   * @param individual the individual individual
    * @return the individual domain record
    */
-  public IndividualDomain toIndividualDomain(IndividualCommand command) {
+  public IndividualDomain toIndividualDomain(IndividualCommand individual) {
     return IndividualDomain.builder()
-        .firstName(command.firstName())
-        .lastName(command.lastName())
-        .dateOfBirth(command.dateOfBirth())
-        .individualContent(command.individualContent())
-        .type(command.type())
+        .firstName(individual.firstName())
+        .lastName(individual.lastName())
+        .dateOfBirth(individual.dateOfBirth())
+        .individualContent(individual.individualContent())
+        .type(individual.type())
         .build();
   }
 

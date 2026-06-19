@@ -35,32 +35,32 @@ public class ApplicationGatewayMapper {
   /**
    * Converts an {@link ApplicationDomain} to a new {@link ApplicationEntity} for INSERT.
    *
-   * @param domain the domain record (id and createdAt are null for INSERT)
+   * @param application the application record (id and createdAt are null for INSERT)
    * @return the entity ready for persistence
    */
-  public ApplicationEntity toEntity(ApplicationDomain domain) {
+  public ApplicationEntity toEntity(ApplicationDomain application) {
     ApplicationEntity entity = new ApplicationEntity();
-    entity.setStatus(ApplicationStatus.valueOf(domain.status()));
-    entity.setLaaReference(domain.laaReference());
-    entity.setOfficeCode(domain.officeCode());
-    entity.setApplicationContent(domain.applicationContent());
-    entity.setSchemaVersion(domain.schemaVersion());
-    entity.setApplyApplicationId(domain.applyApplicationId());
-    entity.setSubmittedAt(domain.submittedAt());
-    entity.setUsedDelegatedFunctions(domain.usedDelegatedFunctions());
+    entity.setStatus(ApplicationStatus.valueOf(application.status()));
+    entity.setLaaReference(application.laaReference());
+    entity.setOfficeCode(application.officeCode());
+    entity.setApplicationContent(application.applicationContent());
+    entity.setSchemaVersion(application.schemaVersion());
+    entity.setApplyApplicationId(application.applyApplicationId());
+    entity.setSubmittedAt(application.submittedAt());
+    entity.setUsedDelegatedFunctions(application.usedDelegatedFunctions());
     entity.setCategoryOfLaw(
-        domain.categoryOfLaw() != null ? CategoryOfLaw.valueOf(domain.categoryOfLaw()) : null);
+        application.categoryOfLaw() != null ? CategoryOfLaw.valueOf(application.categoryOfLaw()) : null);
     entity.setMatterType(
-        domain.matterType() != null ? MatterType.valueOf(domain.matterType()) : null);
-    entity.setIsAutoGranted(domain.isAutoGranted());
+        application.matterType() != null ? MatterType.valueOf(application.matterType()) : null);
+    entity.setIsAutoGranted(application.isAutoGranted());
 
-    if (domain.individuals() != null) {
+    if (application.individuals() != null) {
       entity.setIndividuals(
-          domain.individuals().stream().map(this::toIndividualEntity).collect(Collectors.toSet()));
+          application.individuals().stream().map(this::toIndividualEntity).collect(Collectors.toSet()));
     }
-    if (domain.proceedings() != null && !domain.proceedings().isEmpty()) {
+    if (application.proceedings() != null && !application.proceedings().isEmpty()) {
       entity.setProceedings(
-          domain.proceedings().stream()
+          application.proceedings().stream()
               .filter(Objects::nonNull)
               .map(this::toProceedingEntity)
               .collect(Collectors.toCollection(LinkedHashSet::new)));
@@ -73,35 +73,35 @@ public class ApplicationGatewayMapper {
   /**
    * Converts an {@link ApplicationEntity} to an {@link ApplicationDomain}.
    *
-   * @param entity the JPA entity
+   * @param application the JPA application
    * @return the domain record
    */
-  public ApplicationDomain toDomain(ApplicationEntity entity) {
+  public ApplicationDomain toDomain(ApplicationEntity application) {
     return ApplicationDomain.builder()
-        .id(entity.getId())
-        .status(entity.getStatus() != null ? entity.getStatus().name() : null)
-        .laaReference(entity.getLaaReference())
-        .officeCode(entity.getOfficeCode())
-        .applicationContent(entity.getApplicationContent())
-        .schemaVersion(entity.getSchemaVersion())
-        .createdAt(entity.getCreatedAt())
-        .modifiedAt(entity.getModifiedAt())
-        .applyApplicationId(entity.getApplyApplicationId())
-        .submittedAt(entity.getSubmittedAt())
-        .usedDelegatedFunctions(entity.getUsedDelegatedFunctions())
-        .categoryOfLaw(entity.getCategoryOfLaw() != null ? entity.getCategoryOfLaw().name() : null)
-        .matterType(entity.getMatterType() != null ? entity.getMatterType().name() : null)
-        .isAutoGranted(entity.getIsAutoGranted())
+        .id(application.getId())
+        .status(application.getStatus() != null ? application.getStatus().name() : null)
+        .laaReference(application.getLaaReference())
+        .officeCode(application.getOfficeCode())
+        .applicationContent(application.getApplicationContent())
+        .schemaVersion(application.getSchemaVersion())
+        .createdAt(application.getCreatedAt())
+        .modifiedAt(application.getModifiedAt())
+        .applyApplicationId(application.getApplyApplicationId())
+        .submittedAt(application.getSubmittedAt())
+        .usedDelegatedFunctions(application.getUsedDelegatedFunctions())
+        .categoryOfLaw(application.getCategoryOfLaw() != null ? application.getCategoryOfLaw().name() : null)
+        .matterType(application.getMatterType() != null ? application.getMatterType().name() : null)
+        .isAutoGranted(application.getIsAutoGranted())
         .individuals(
-            entity.getIndividuals() == null
+            application.getIndividuals() == null
                 ? Set.of()
-                : entity.getIndividuals().stream()
+                : application.getIndividuals().stream()
                     .map(this::toIndividualDomain)
                     .collect(Collectors.toSet()))
         .proceedings(
-            entity.getProceedings() == null
+            application.getProceedings() == null
                 ? Set.of()
-                : entity.getProceedings().stream()
+                : application.getProceedings().stream()
                     .map(this::toProceedingDomain)
                     .collect(Collectors.toCollection(LinkedHashSet::new)))
         .build();
@@ -109,47 +109,47 @@ public class ApplicationGatewayMapper {
 
   // ── Private helpers ──────────────────────────────────────────────────────
 
-  private IndividualEntity toIndividualEntity(IndividualDomain domain) {
+  private IndividualEntity toIndividualEntity(IndividualDomain individual) {
     IndividualEntity entity = new IndividualEntity();
-    entity.setFirstName(domain.firstName());
-    entity.setLastName(domain.lastName());
-    entity.setDateOfBirth(domain.dateOfBirth());
-    entity.setIndividualContent(domain.individualContent());
-    entity.setType(domain.type() != null ? IndividualType.valueOf(domain.type()) : null);
+    entity.setFirstName(individual.firstName());
+    entity.setLastName(individual.lastName());
+    entity.setDateOfBirth(individual.dateOfBirth());
+    entity.setIndividualContent(individual.individualContent());
+    entity.setType(individual.type() != null ? IndividualType.valueOf(individual.type()) : null);
     return entity;
   }
 
-  private IndividualDomain toIndividualDomain(IndividualEntity entity) {
+  private IndividualDomain toIndividualDomain(IndividualEntity individual) {
     return IndividualDomain.builder()
-        .id(entity.getId())
-        .firstName(entity.getFirstName())
-        .lastName(entity.getLastName())
-        .dateOfBirth(entity.getDateOfBirth())
-        .individualContent(entity.getIndividualContent())
-        .type(entity.getType() != null ? entity.getType().name() : null)
+        .id(individual.getId())
+        .firstName(individual.getFirstName())
+        .lastName(individual.getLastName())
+        .dateOfBirth(individual.getDateOfBirth())
+        .individualContent(individual.getIndividualContent())
+        .type(individual.getType() != null ? individual.getType().name() : null)
         .build();
   }
 
-  private ProceedingEntity toProceedingEntity(ProceedingDomain domain) {
+  private ProceedingEntity toProceedingEntity(ProceedingDomain proceeding) {
     ProceedingEntity entity = new ProceedingEntity();
-    entity.setApplyProceedingId(domain.applyProceedingId());
-    entity.setLead(domain.isLead());
-    entity.setDescription(domain.description());
-    entity.setProceedingContent(domain.proceedingContent());
-    entity.setCreatedBy(domain.createdBy() != null ? domain.createdBy() : "");
-    entity.setUpdatedBy(domain.updatedBy() != null ? domain.updatedBy() : "");
+    entity.setApplyProceedingId(proceeding.applyProceedingId());
+    entity.setLead(proceeding.isLead());
+    entity.setDescription(proceeding.description());
+    entity.setProceedingContent(proceeding.proceedingContent());
+    entity.setCreatedBy(proceeding.createdBy() != null ? proceeding.createdBy() : "");
+    entity.setUpdatedBy(proceeding.updatedBy() != null ? proceeding.updatedBy() : "");
     return entity;
   }
 
-  private ProceedingDomain toProceedingDomain(ProceedingEntity entity) {
+  private ProceedingDomain toProceedingDomain(ProceedingEntity proceeding) {
     return ProceedingDomain.builder()
-        .id(entity.getId())
-        .applyProceedingId(entity.getApplyProceedingId())
-        .description(entity.getDescription())
-        .isLead(entity.isLead())
-        .proceedingContent(entity.getProceedingContent())
-        .createdBy(entity.getCreatedBy())
-        .updatedBy(entity.getUpdatedBy())
+        .id(proceeding.getId())
+        .applyProceedingId(proceeding.getApplyProceedingId())
+        .description(proceeding.getDescription())
+        .isLead(proceeding.isLead())
+        .proceedingContent(proceeding.getProceedingContent())
+        .createdBy(proceeding.getCreatedBy())
+        .updatedBy(proceeding.getUpdatedBy())
         .build();
   }
 }
