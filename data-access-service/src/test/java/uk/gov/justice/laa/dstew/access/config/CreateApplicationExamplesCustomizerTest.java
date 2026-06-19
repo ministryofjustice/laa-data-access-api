@@ -124,6 +124,23 @@ class CreateApplicationExamplesCustomizerTest {
     assertThat(operation.getRequestBody().getContent().get(MEDIA_TYPE_JSON)).isNotNull();
   }
 
+  @Test
+  void
+      givenCreateApplicationOperationWithExistingRequestBody_whenCustomize_thenOperationIsReturned() {
+    // given - operation already has a request body and content; exercises the requestBody != null
+    // and content != null paths that are skipped when the body is absent
+    Operation operation = createOperationWithBody();
+    operation.setOperationId("createApplication");
+
+    // when
+    Operation result = customizer.customize(operation, null);
+
+    // then
+    assertThat(result).isSameAs(operation);
+    assertThat(operation.getRequestBody()).isNotNull();
+    assertThat(operation.getRequestBody().getContent().get(MEDIA_TYPE_JSON)).isNotNull();
+  }
+
   private Operation createOperationWithBody() {
     Operation operation = new Operation();
     RequestBody requestBody = new RequestBody();
