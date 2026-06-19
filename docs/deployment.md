@@ -47,8 +47,8 @@ build-test
         └── build-push-mass-generator-docker                      │
               ├── deploy-uat   (UAT namespace, `main` release)    │
               │     └── uat-smoke-test                            │
-              │           └── base-resolve-presets                │
-              │                 └── approve-matrix-rc-feature     │
+              │           └── approve_matrix_rc_feature           │
+              │                 └── base-resolve-presets          │
               │                       └── deploy-matrix-rc-feature│
               └── deploy-staging  ◄──────────────────────────────┘
                     └── deploy-production
@@ -117,9 +117,13 @@ build-test
 
 ## RC feature preset environments
 
-Feature environments are prepared on every push to `main`, then deployed only after UAT smoke tests pass and the `approve-matrix-rc-feature` manual approval gate is approved.
+Feature environments are prepared on every push to `main`, then deployed only after UAT smoke tests pass and the `approve_matrix_rc_feature` manual approval gate is approved.
 
-The approval gate uses the `trstringer/manual-approval` action and expects approvers to be configured in repository variable `RC_FEATURE_APPROVERS`.
+The approval gate uses the `trstringer/manual-approval` action and is configured to allow the GitHub team `ministryofjustice/laa-data-stewardship-access-team` to approve.
+
+If the RC feature deployment is not approved, the workflow continues but `deploy-matrix-rc-feature` is skipped.
+
+Preset resolution happens immediately before the deploy job so the workflow only resolves the matrix once approval has been granted.
 
 The preset catalog lives in `.github/config/ephemeral-environment-presets.json`. Each entry defines:
 
