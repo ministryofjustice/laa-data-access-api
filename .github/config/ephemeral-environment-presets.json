@@ -11,5 +11,9 @@
   "FEATURE_EXAMPLE_FEATURE_FLAG": {
     "suffix": "example-feature-flag",
     "extraEnv": "FEATURE_EXAMPLE_FEATURE_FLAG=true"
+  },
+  "DECIDE_ENV": {
+    "suffix": "decide-env",
+    "extraEnv": ""
   }
 }
