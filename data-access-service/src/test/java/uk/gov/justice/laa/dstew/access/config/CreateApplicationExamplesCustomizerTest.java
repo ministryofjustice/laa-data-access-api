@@ -9,6 +9,7 @@ import io.swagger.v3.oas.models.examples.Example;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.parameters.RequestBody;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -139,6 +140,65 @@ class CreateApplicationExamplesCustomizerTest {
     assertThat(result).isSameAs(operation);
     assertThat(operation.getRequestBody()).isNotNull();
     assertThat(operation.getRequestBody().getContent().get(MEDIA_TYPE_JSON)).isNotNull();
+  }
+
+  @Test
+  void givenRichSchemaVariant_whenCustomize_thenAllTypeSwitchBranchesAreExercised() {
+    // given – a single variant pointing to a test schema that contains every field type and
+    // edge-case combination needed to exercise all switch branches in generateValueExample
+    customizer.variants =
+        List.of(
+            new CreateApplicationExamplesCustomizer.ExampleVariant(
+                "rich", "Rich example", "schema/test/RichExample.json"));
+    Operation operation = new Operation();
+    operation.setOperationId("createApplication");
+
+    // when
+    Operation result = customizer.customize(operation, null);
+
+    // then
+    assertThat(result).isSameAs(operation);
+    assertThat(operation.getRequestBody()).isNotNull();
+  }
+
+  @Test
+  void givenSchemaVariantWithNoProperties_whenCustomize_thenSkipsPropertiesProcessing() {
+    // given – schema exists but has no "properties" key, covering the early-return branch in
+    // generateObjectExample (!schema.has("properties") == true)
+    customizer.variants =
+        List.of(
+            new CreateApplicationExamplesCustomizer.ExampleVariant(
+                "noprops", "No-properties example", "schema/test/NoProperties.json"));
+    Operation operation = new Operation();
+    operation.setOperationId("createApplication");
+
+    // when
+    Operation result = customizer.customize(operation, null);
+
+    // then – example is still created (non-null empty applicationContent)
+    assertThat(result).isSameAs(operation);
+    assertThat(operation.getRequestBody()).isNotNull();
+  }
+
+  @Test
+  void
+      givenAllVariantsHaveNonExistentPaths_whenCustomize_thenExamplesEmptyAndOperationReturnedEarly() {
+    // given – every variant points to a file that does not exist; schema load returns null,
+    // applicationContent is null, examples stays empty, and customize() returns the unmodified
+    // operation immediately (the examples.isEmpty() true-branch)
+    customizer.variants =
+        List.of(
+            new CreateApplicationExamplesCustomizer.ExampleVariant(
+                "missing", "Missing schema", "schema/test/DoesNotExist.json"));
+    Operation operation = new Operation();
+    operation.setOperationId("createApplication");
+
+    // when
+    Operation result = customizer.customize(operation, null);
+
+    // then – requestBody was never set (early return before requestBody creation)
+    assertThat(result).isSameAs(operation);
+    assertThat(operation.getRequestBody()).isNull();
   }
 
   private Operation createOperationWithBody() {

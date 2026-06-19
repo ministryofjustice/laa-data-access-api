@@ -128,6 +128,31 @@ public class CreateApplicationTest extends BaseHarnessTest {
 
   @Test
   public void
+      givenEmptyLinkedApplicationsList_whenCreateApplication_thenReturnsCreatedWithNoLinking()
+          throws Exception {
+    // given - applicationContent with an explicit empty allLinkedApplications list (non-null)
+    // This exercises the getLeadApplicationId(emptyList) short-circuit: list != null but isEmpty
+    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class);
+    Map<String, Object> contentMap = new HashMap<>(objectMapper.convertValue(content, Map.class));
+    contentMap.put("allLinkedApplications", List.of());
+
+    ApplicationCreateRequest request =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(contentMap));
+
+    // when
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+
+    // then
+    assertSecurityHeaders(result);
+    assertCreated(result);
+    UUID createdId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    persistedDataGenerator.trackExistingApplication(createdId);
+  }
+
+  @Test
+  public void
       givenCreateNewApplication_whenCreateApplicationWithLinkedApplication_thenReturnCreatedWithLocationHeader()
           throws Exception {
     final ApplicationEntity leadApplicationToLink =

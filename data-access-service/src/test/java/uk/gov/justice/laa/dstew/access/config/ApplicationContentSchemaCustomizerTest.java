@@ -141,6 +141,22 @@ class ApplicationContentSchemaCustomizerTest {
   }
 
   @Test
+  void givenApplicationCreateRequestWithNullProperties_whenCustomise_thenReturnsEarlyGracefully() {
+    // given - ApplicationCreateRequest exists in the schemas map but has no properties set
+    OpenAPI openApi = openApiWithComponents();
+    Schema<?> requestSchemaWithNullProperties = new Schema<>();
+    // properties left null (not explicitly set)
+    openApi
+        .getComponents()
+        .setSchemas(
+            new LinkedHashMap<>(
+                Map.of("ApplicationCreateRequest", requestSchemaWithNullProperties)));
+
+    // when/then - no exception thrown; customiser exits the null-properties guard without wiring
+    assertThatCode(() -> customizer.customise(openApi)).doesNotThrowAnyException();
+  }
+
+  @Test
   void givenOpenApiWithNoApplicationCreateRequest_whenCustomise_thenNoExceptionThrown() {
     // given
     OpenAPI openApi = new OpenAPI();

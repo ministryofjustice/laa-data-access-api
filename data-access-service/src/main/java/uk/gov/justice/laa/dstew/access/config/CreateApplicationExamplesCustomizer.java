@@ -47,7 +47,7 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
    * Each variant points to an actual JSON Schema definition file. The example shown in Swagger UI
    * is generated from that file's {@code properties}, so it always matches the live schema.
    */
-  private static final List<ExampleVariant> VARIANTS =
+  List<ExampleVariant> variants =
       List.of(
           new ExampleVariant(
               "apply_v1",
@@ -82,7 +82,7 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
     }
 
     Map<String, Example> examples = new LinkedHashMap<>();
-    for (ExampleVariant variant : VARIANTS) {
+    for (ExampleVariant variant : variants) {
       Map<String, Object> applicationContent = generateExampleFromSchema(variant.schemaPath());
       if (applicationContent != null) {
         ApplicationCreateRequest request = buildRequestWrapper(applicationContent);
@@ -303,5 +303,5 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
     }
   }
 
-  private record ExampleVariant(String key, String summary, String schemaPath) {}
+  record ExampleVariant(String key, String summary, String schemaPath) {}
 }
