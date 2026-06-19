@@ -74,7 +74,7 @@ public class CreateApplicationDomainMapper {
         .build();
   }
 
-  Set<ProceedingDomain> toProceedingDomains(List<Proceeding> proceedings) {
+  public Set<ProceedingDomain> toProceedingDomains(List<Proceeding> proceedings) {
     if (proceedings == null) {
       return new LinkedHashSet<>();
     }
@@ -84,7 +84,7 @@ public class CreateApplicationDomainMapper {
         .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
-  ProceedingDomain toProceedingDomain(Proceeding proceeding) {
+  public ProceedingDomain toProceedingDomain(Proceeding proceeding) {
     return ProceedingDomain.builder()
         .applyProceedingId(proceeding.getId())
         .isLead(Boolean.TRUE.equals(proceeding.getLeadProceeding()))
@@ -96,7 +96,7 @@ public class CreateApplicationDomainMapper {
   }
 
   @SuppressWarnings("unchecked")
-  Map<String, Object> toProceedingContentMap(Proceeding proceeding) {
+  public Map<String, Object> toProceedingContentMap(Proceeding proceeding) {
     return MapperUtil.getObjectMapper().convertValue(proceeding, Map.class);
   }
 }
