@@ -284,9 +284,10 @@ jobs:
 
   base-resolve-presets:
     name: Resolve Environment Presets
+    if: github.ref == 'refs/heads/main' && needs.approve_matrix_rc_feature.outputs.approved == 'true'
     runs-on: ubuntu-latest
     needs:
-      - uat-smoke-test
+      - approve_matrix_rc_feature
     outputs:
       matrix: ${{ steps.resolve.outputs.matrix }}
     steps:
@@ -344,11 +345,45 @@ jobs:
           echo "matrix={\"include\":${matrix}}" >> "$GITHUB_OUTPUT"
           
 
-  deploy-matrix-rc-feature:
+  approve_matrix_rc_feature:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs:
+      - uat-smoke-test
+    permissions:
+      issues: write
+      contents: read
+    outputs:
+      approved: ${{ steps.approval_status.outputs.approved }}
+    steps:
+      - name: Manual approval for RC feature matrix deploy
+        id: approval
+        continue-on-error: true
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ secrets.GITHUB_TOKEN }}
+          approvers: ministryofjustice/laa-data-stewardship-access-team
+          minimum-approvals: 1
+          issue-title: Approve env feature matrix deployment
+          issue-body: Please approve or deny deployment for commit ${{ github.sha }}.
+          exclude-workflow-initiator-as-approver: false
+
+      - name: Record approval result
+        id: approval_status
+        shell: bash
+        run: |
+          if [ "${{ steps.approval.outcome }}" = "success" ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy-matrix-rc-feature:
+    runs-on: ubuntu-latest
+    needs:
+      - approve_matrix_rc_feature
       - base-resolve-presets
+    if: github.ref == 'refs/heads/main' && needs.approve_matrix_rc_feature.outputs.approved == 'true'
     environment: uat
     strategy:
       fail-fast: false
