@@ -25,14 +25,13 @@ import tools.jackson.databind.exc.MismatchedInputException;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
-import uk.gov.justice.laa.dstew.access.usecase.shared.parser.PayloadValidationService;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.PayloadValidator;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.Proceeding;
 
 class PayloadValidationServiceTest {
 
   private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
-  PayloadValidationService serviceUnderTest =
-      new PayloadValidationService(MapperUtil.getObjectMapper(), validator);
+  PayloadValidator serviceUnderTest = new PayloadValidator(MapperUtil.getObjectMapper(), validator);
 
   public static Stream<Arguments> payloadsForValidation() {
     return Stream.of(Arguments.of(ApplicationContent.class), Arguments.of(Proceeding.class));
@@ -141,7 +140,7 @@ class PayloadValidationServiceTest {
       convertAndValidate_whenMapperThrowsIllegalArgumentWithJsonMappingCause_returnsOriginalMessage() {
     ObjectMapper mapper = mock(ObjectMapper.class);
     Validator validatorMock = mock(Validator.class);
-    PayloadValidationService service = new PayloadValidationService(mapper, validatorMock);
+    PayloadValidator service = new PayloadValidator(mapper, validatorMock);
 
     JsonParser jsonParser = mock(JsonParser.class);
     DatabindException mappingException = DatabindException.from(jsonParser, "bad payload");
@@ -163,7 +162,7 @@ class PayloadValidationServiceTest {
       convertAndValidate_whenMapperThrowsIllegalArgumentWithNonEnumMismatchedInputCause_returnsIaeMessage() {
     ObjectMapper mapper = mock(ObjectMapper.class);
     Validator validatorMock = mock(Validator.class);
-    PayloadValidationService service = new PayloadValidationService(mapper, validatorMock);
+    PayloadValidator service = new PayloadValidator(mapper, validatorMock);
 
     JsonParser jsonParser = mock(JsonParser.class);
     // String.class is not an enum — exercises the guard branch in buildMessageForInvalidEnum
@@ -186,7 +185,7 @@ class PayloadValidationServiceTest {
       convertAndValidate_whenMapperThrowsIllegalArgumentWithEnumMismatchedInputCause_returnsMessageWithValidEnumValues() {
     ObjectMapper mapper = mock(ObjectMapper.class);
     Validator validatorMock = mock(Validator.class);
-    PayloadValidationService service = new PayloadValidationService(mapper, validatorMock);
+    PayloadValidator service = new PayloadValidator(mapper, validatorMock);
 
     JsonParser jsonParser = mock(JsonParser.class);
     MismatchedInputException mie =
@@ -213,7 +212,7 @@ class PayloadValidationServiceTest {
   void convertAndValidate_whenMapperThrowsIllegalArgumentWithoutCause_returnsGenericMessage() {
     ObjectMapper mapper = mock(ObjectMapper.class);
     Validator validatorMock = mock(Validator.class);
-    PayloadValidationService service = new PayloadValidationService(mapper, validatorMock);
+    PayloadValidator service = new PayloadValidator(mapper, validatorMock);
 
     when(mapper.convertValue(any(), eq(Proceeding.class)))
         .thenThrow(new IllegalArgumentException("boom"));

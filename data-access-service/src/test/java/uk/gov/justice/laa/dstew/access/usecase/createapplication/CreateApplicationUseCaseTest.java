@@ -30,7 +30,7 @@ import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.LinkedAppli
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContentParser;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.LinkedApplication;
-import uk.gov.justice.laa.dstew.access.usecase.shared.parser.PayloadValidationService;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.PayloadValidator;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.createapplication.CreateApplicationCommandGenerator;
@@ -50,8 +50,8 @@ class CreateApplicationUseCaseTest {
   @BeforeEach
   void setUp() {
     // Real (not mocked) instances — preserves bean validation behaviour
-    PayloadValidationService validationService =
-        new PayloadValidationService(
+    PayloadValidator validationService =
+        new PayloadValidator(
             MapperUtil.getObjectMapper(), Validation.buildDefaultValidatorFactory().getValidator());
     ApplicationContentParser parser = new ApplicationContentParser(validationService);
 

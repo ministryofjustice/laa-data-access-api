@@ -19,7 +19,7 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
  * they are handled consistently by {@code GlobalExceptionHandler}.
  */
 @RequiredArgsConstructor
-public class PayloadValidationService {
+public class PayloadValidator {
 
   private final ObjectMapper objectMapper;
   private final Validator validator;

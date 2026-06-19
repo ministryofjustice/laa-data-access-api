@@ -15,7 +15,7 @@ import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventServi
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationDomainMapper;
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContentParser;
-import uk.gov.justice.laa.dstew.access.usecase.shared.parser.PayloadValidationService;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.PayloadValidator;
 
 /** Spring configuration that wires all beans for the createApplication use case. */
 @Configuration
@@ -45,13 +45,13 @@ public class CreateApplicationConfig {
   }
 
   @Bean
-  public PayloadValidationService payloadValidationService() {
-    return new PayloadValidationService(objectMapper, validator);
+  public PayloadValidator payloadValidationService() {
+    return new PayloadValidator(objectMapper, validator);
   }
 
   @Bean
   public ApplicationContentParser applicationContentParser(
-      PayloadValidationService payloadValidationService) {
+      PayloadValidator payloadValidationService) {
     return new ApplicationContentParser(payloadValidationService);
   }
 

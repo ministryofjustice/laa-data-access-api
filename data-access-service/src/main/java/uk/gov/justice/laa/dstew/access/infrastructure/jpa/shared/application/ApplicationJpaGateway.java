@@ -30,7 +30,7 @@ public class ApplicationJpaGateway implements ApplicationGateway {
   public ApplicationDomain save(ApplicationDomain domain) {
     ApplicationEntity entity = mapper.toEntity(domain);
     ApplicationEntity saved = applicationRepository.save(entity);
-    return mapper.enrichWithSavedFields(domain, saved);
+    return mapper.toDomain(saved);
   }
 
   @Override

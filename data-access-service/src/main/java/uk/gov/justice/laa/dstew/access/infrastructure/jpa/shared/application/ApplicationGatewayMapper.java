@@ -68,12 +68,6 @@ public class ApplicationGatewayMapper {
     return entity;
   }
 
-  /** Enriches a pre-save domain record with the id and createdAt returned by the database. */
-  public ApplicationDomain enrichWithSavedFields(
-      ApplicationDomain domain, ApplicationEntity saved) {
-    return domain.toBuilder().id(saved.getId()).createdAt(saved.getCreatedAt()).build();
-  }
-
   // ── Entity → Domain (read path) ─────────────────────────────────────────
 
   /**

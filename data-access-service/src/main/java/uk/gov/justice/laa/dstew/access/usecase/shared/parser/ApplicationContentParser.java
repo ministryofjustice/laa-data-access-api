@@ -21,7 +21,7 @@ public class ApplicationContentParser {
   private static final CategoryOfLawTypeConvertor categoryOfLawConvertor =
       new CategoryOfLawTypeConvertor();
 
-  private final PayloadValidationService payloadValidationService;
+  private final PayloadValidator payloadValidator;
 
   /**
    * Constructs the parser with the validation service used to deserialise and validate the raw
@@ -29,8 +29,8 @@ public class ApplicationContentParser {
    *
    * @param payloadValidationService the service used to convert and validate the raw payload
    */
-  public ApplicationContentParser(PayloadValidationService payloadValidationService) {
-    this.payloadValidationService = payloadValidationService;
+  public ApplicationContentParser(PayloadValidator payloadValidationService) {
+    this.payloadValidator = payloadValidationService;
   }
 
   /**
@@ -43,7 +43,7 @@ public class ApplicationContentParser {
    */
   public ParsedAppContentDetails parse(Map<String, Object> rawContent) {
     ApplicationContent content =
-        payloadValidationService.convertAndValidate(rawContent, ApplicationContent.class);
+        payloadValidator.convertAndValidate(rawContent, ApplicationContent.class);
     return parseValidated(content);
   }
 

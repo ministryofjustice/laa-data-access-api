@@ -70,19 +70,6 @@ class ApplicationGatewayMapperTest {
     assertThat(entity.getMatterType().name()).isEqualTo(domain.matterType());
   }
 
-  @Test
-  void enrichWithSavedFields_populatesIdAndCreatedAt() {
-    ApplicationDomain domain =
-        DataGenerator.createDefault(
-            ApplicationDomainGenerator.class, b -> b.id(null).createdAt(null));
-    ApplicationEntity saved = DataGenerator.createDefault(ApplicationEntityGenerator.class);
-
-    ApplicationDomain enriched = mapper.enrichWithSavedFields(domain, saved);
-
-    assertThat(enriched.id()).isEqualTo(saved.getId());
-    assertThat(enriched.createdAt()).isEqualTo(saved.getCreatedAt());
-  }
-
   // ── toEntity: null optional fields ──────────────────────────────────────
 
   @Test
