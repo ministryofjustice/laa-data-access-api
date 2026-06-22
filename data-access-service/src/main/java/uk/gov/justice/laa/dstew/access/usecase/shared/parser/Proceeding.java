@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.model;
+package uk.gov.justice.laa.dstew.access.usecase.shared.parser;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;

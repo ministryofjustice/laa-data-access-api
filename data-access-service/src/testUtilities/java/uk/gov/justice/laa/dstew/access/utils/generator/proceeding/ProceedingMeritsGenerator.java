@@ -3,7 +3,7 @@ package uk.gov.justice.laa.dstew.access.utils.generator.proceeding;
 import java.util.List;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.model.ProceedingLinkedChild;
-import uk.gov.justice.laa.dstew.access.model.ProceedingMerits;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingMerits;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMeritsGenerator;
 

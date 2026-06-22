@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.model;
+package uk.gov.justice.laa.dstew.access.usecase.shared.parser;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @Builder(toBuilder = true)
 @ExcludeFromGeneratedCodeCoverage
 public class ApplicationOffice implements Serializable {
+
   @Nullable
   @Schema(name = "code", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   private String code;
