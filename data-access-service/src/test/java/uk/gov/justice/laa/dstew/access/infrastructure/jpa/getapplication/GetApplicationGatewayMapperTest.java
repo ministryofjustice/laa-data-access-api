@@ -11,7 +11,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationProceedingDomain;
+import uk.gov.justice.laa.dstew.access.domain.ApplicationProceedingReadModel;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
@@ -93,7 +93,7 @@ class GetApplicationGatewayMapperTest {
     assertThat(actual.provider().contactEmail()).isEqualTo("test@example.com");
     assertThat(actual.proceedings()).hasSize(1);
 
-    ApplicationProceedingDomain mappedProceeding = actual.proceedings().getFirst();
+    ApplicationProceedingReadModel mappedProceeding = actual.proceedings().getFirst();
     assertThat(mappedProceeding.proceedingId()).isEqualTo(proceedingEntity.getId());
     assertThat(mappedProceeding.description()).isEqualTo(proceedingEntity.getDescription());
     assertThat(mappedProceeding.proceedingType()).isEqualTo("hearing");

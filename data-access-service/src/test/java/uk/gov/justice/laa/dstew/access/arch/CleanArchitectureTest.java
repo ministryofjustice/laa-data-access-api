@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.arch;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -135,6 +136,37 @@ class CleanArchitectureTest {
             .resideInAPackage("..infrastructure.jpa.getapplication..")
             .should()
             .beAnnotatedWith(jakarta.transaction.Transactional.class)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void domainClassesMustFollowReadModelOrDomainNamingConvention() {
+    ArchRule rule =
+        classes()
+            .that()
+            .resideInAPackage("..domain..")
+            .and()
+            .areNotAnonymousClasses()
+            .should()
+            .haveSimpleNameEndingWith("Domain")
+            .orShould()
+            .haveSimpleNameEndingWith("ReadModel")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void readModelTypesMustNotBeImportedByWritePathUseCases() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..usecase..")
+            .and()
+            .haveSimpleNameNotEndingWith("ReadModel")
+            .should()
+            .dependOnClassesThat()
+            .haveSimpleNameEndingWith("ReadModel")
             .allowEmptyShould(true);
     rule.check(classes);
   }

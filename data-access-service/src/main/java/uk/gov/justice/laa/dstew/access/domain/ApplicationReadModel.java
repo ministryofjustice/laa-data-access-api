@@ -20,6 +20,6 @@ public record ApplicationReadModel(
     String decisionStatus,
     String applicationType,
     Long version,
-    List<OpponentDomain> opponents,
-    ProviderDomain provider,
-    List<ApplicationProceedingDomain> proceedings) {}
+    List<OpponentReadModel> opponents,
+    ProviderReadModel provider,
+    List<ApplicationProceedingReadModel> proceedings) {}

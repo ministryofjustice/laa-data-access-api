@@ -6,12 +6,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import tools.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationProceedingDomain;
+import uk.gov.justice.laa.dstew.access.domain.ApplicationProceedingReadModel;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.domain.InvolvedChildDomain;
-import uk.gov.justice.laa.dstew.access.domain.OpponentDomain;
-import uk.gov.justice.laa.dstew.access.domain.ProviderDomain;
-import uk.gov.justice.laa.dstew.access.domain.ScopeLimitationDomain;
+import uk.gov.justice.laa.dstew.access.domain.InvolvedChildReadModel;
+import uk.gov.justice.laa.dstew.access.domain.OpponentReadModel;
+import uk.gov.justice.laa.dstew.access.domain.ProviderReadModel;
+import uk.gov.justice.laa.dstew.access.domain.ScopeLimitationReadModel;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChild;
@@ -69,15 +69,15 @@ public class GetApplicationGatewayMapper {
                 : null)
         .applicationType(APPLICATION_TYPE_INITIAL)
         .version(application.getVersion())
-        .opponents(toOpponentDomains(applicationContent))
-        .provider(toProviderDomain(application.getOfficeCode(), applicationContent))
+        .opponents(toOpponentReadModels(applicationContent))
+        .provider(toProviderReadModel(application.getOfficeCode(), applicationContent))
         .proceedings(
-            toApplicationProceedingDomains(
+            toApplicationProceedingReadModels(
                 application.getProceedings(), proceedingMerits, involvedChildren))
         .build();
   }
 
-  private List<ApplicationProceedingDomain> toApplicationProceedingDomains(
+  private List<ApplicationProceedingReadModel> toApplicationProceedingReadModels(
       java.util.Set<ProceedingEntity> proceedings,
       List<ProceedingMerits> proceedingMerits,
       List<InvolvedChild> involvedChildren) {
@@ -88,11 +88,11 @@ public class GetApplicationGatewayMapper {
     return proceedings.stream()
         .map(
             proceeding ->
-                toApplicationProceedingDomain(proceeding, proceedingMerits, involvedChildren))
+                toApplicationProceedingReadModel(proceeding, proceedingMerits, involvedChildren))
         .toList();
   }
 
-  private ApplicationProceedingDomain toApplicationProceedingDomain(
+  private ApplicationProceedingReadModel toApplicationProceedingReadModel(
       ProceedingEntity proceedingEntity,
       List<ProceedingMerits> proceedingMerits,
       List<InvolvedChild> involvedChildren) {
@@ -100,7 +100,7 @@ public class GetApplicationGatewayMapper {
     Proceeding proceeding =
         objectMapper.convertValue(proceedingEntity.getProceedingContent(), Proceeding.class);
 
-    return ApplicationProceedingDomain.builder()
+    return ApplicationProceedingReadModel.builder()
         .proceedingId(proceedingEntity.getId())
         .description(proceedingEntity.getDescription())
         .proceedingType(proceeding.getMeaning())
@@ -115,13 +115,13 @@ public class GetApplicationGatewayMapper {
                 ? proceedingEntity.getMeritsDecision().getDecision().name()
                 : null)
         .involvedChildren(
-            toInvolvedChildDomains(
+            toInvolvedChildReadModels(
                 proceedingEntity.getApplyProceedingId(), proceedingMerits, involvedChildren))
-        .scopeLimitations(toScopeLimitationDomains(proceeding.getScopeLimitations()))
+        .scopeLimitations(toScopeLimitationReadModels(proceeding.getScopeLimitations()))
         .build();
   }
 
-  private List<InvolvedChildDomain> toInvolvedChildDomains(
+  private List<InvolvedChildReadModel> toInvolvedChildReadModels(
       UUID applyProceedingId,
       List<ProceedingMerits> proceedingMerits,
       List<InvolvedChild> involvedChildren) {
@@ -134,11 +134,11 @@ public class GetApplicationGatewayMapper {
         .findFirst()
         .map(
             merits ->
-                toInvolvedChildDomains(merits.getProceedingLinkedChildren(), involvedChildren))
+                toInvolvedChildReadModels(merits.getProceedingLinkedChildren(), involvedChildren))
         .orElse(Collections.emptyList());
   }
 
-  private List<InvolvedChildDomain> toInvolvedChildDomains(
+  private List<InvolvedChildReadModel> toInvolvedChildReadModels(
       List<ProceedingLinkedChild> linkedChildren, List<InvolvedChild> involvedChildren) {
     if (linkedChildren == null || linkedChildren.isEmpty() || involvedChildren.isEmpty()) {
       return Collections.emptyList();
@@ -155,14 +155,14 @@ public class GetApplicationGatewayMapper {
                     .stream())
         .map(
             involvedChild ->
-                InvolvedChildDomain.builder()
+                InvolvedChildReadModel.builder()
                     .fullName(involvedChild.getFullName())
                     .dateOfBirth(involvedChild.getDateOfBirth())
                     .build())
         .toList();
   }
 
-  private List<ScopeLimitationDomain> toScopeLimitationDomains(
+  private List<ScopeLimitationReadModel> toScopeLimitationReadModels(
       List<Map<String, Object>> scopeLimitations) {
     if (scopeLimitations == null) {
       return Collections.emptyList();
@@ -171,7 +171,7 @@ public class GetApplicationGatewayMapper {
     return scopeLimitations.stream()
         .map(
             scopeLimitation ->
-                ScopeLimitationDomain.builder()
+                ScopeLimitationReadModel.builder()
                     .scopeLimitation(
                         scopeLimitation.get("meaning") != null
                             ? scopeLimitation.get("meaning").toString()
@@ -184,7 +184,7 @@ public class GetApplicationGatewayMapper {
         .toList();
   }
 
-  private List<OpponentDomain> toOpponentDomains(ApplicationContent applicationContent) {
+  private List<OpponentReadModel> toOpponentReadModels(ApplicationContent applicationContent) {
     if (applicationContent == null || applicationContent.getApplicationMerits() == null) {
       return Collections.emptyList();
     }
@@ -198,7 +198,7 @@ public class GetApplicationGatewayMapper {
         .map(
             opponentDetails -> {
               Opposable opposable = opponentDetails.getOpposable();
-              return OpponentDomain.builder()
+              return OpponentReadModel.builder()
                   .opponentType(opponentDetails.getOpposableType())
                   .firstName(opposable != null ? opposable.getFirstName() : null)
                   .lastName(opposable != null ? opposable.getLastName() : null)
@@ -208,7 +208,7 @@ public class GetApplicationGatewayMapper {
         .toList();
   }
 
-  private ProviderDomain toProviderDomain(
+  private ProviderReadModel toProviderReadModel(
       String officeCode, ApplicationContent applicationContent) {
     String contactEmail =
         applicationContent != null ? applicationContent.getSubmitterEmail() : null;
@@ -217,7 +217,7 @@ public class GetApplicationGatewayMapper {
       return null;
     }
 
-    return ProviderDomain.builder().officeCode(officeCode).contactEmail(contactEmail).build();
+    return ProviderReadModel.builder().officeCode(officeCode).contactEmail(contactEmail).build();
   }
 
   private ApplicationContent toApplicationContent(Map<String, Object> applicationContent) {

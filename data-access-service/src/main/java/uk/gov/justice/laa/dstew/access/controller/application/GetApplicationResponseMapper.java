@@ -5,12 +5,12 @@ import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationProceedingDomain;
+import uk.gov.justice.laa.dstew.access.domain.ApplicationProceedingReadModel;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.domain.InvolvedChildDomain;
-import uk.gov.justice.laa.dstew.access.domain.OpponentDomain;
-import uk.gov.justice.laa.dstew.access.domain.ProviderDomain;
-import uk.gov.justice.laa.dstew.access.domain.ScopeLimitationDomain;
+import uk.gov.justice.laa.dstew.access.domain.InvolvedChildReadModel;
+import uk.gov.justice.laa.dstew.access.domain.OpponentReadModel;
+import uk.gov.justice.laa.dstew.access.domain.ProviderReadModel;
+import uk.gov.justice.laa.dstew.access.domain.ScopeLimitationReadModel;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -65,12 +65,12 @@ public class GetApplicationResponseMapper {
     return ResponseEntity.ok(applicationResponse);
   }
 
-  private List<OpponentResponse> toOpponentResponses(List<OpponentDomain> opponentDomains) {
-    if (opponentDomains == null) {
+  private List<OpponentResponse> toOpponentResponses(List<OpponentReadModel> opponentReadModels) {
+    if (opponentReadModels == null) {
       return Collections.emptyList();
     }
 
-    return opponentDomains.stream()
+    return opponentReadModels.stream()
         .map(
             opponent ->
                 OpponentResponse.builder()
@@ -82,57 +82,59 @@ public class GetApplicationResponseMapper {
         .toList();
   }
 
-  private ProviderResponse toProviderResponse(ProviderDomain providerDomain) {
-    if (providerDomain == null) {
+  private ProviderResponse toProviderResponse(ProviderReadModel providerReadModel) {
+    if (providerReadModel == null) {
       return null;
     }
 
     ProviderResponse response = new ProviderResponse();
-    response.setOfficeCode(providerDomain.officeCode());
-    response.setContactEmail(providerDomain.contactEmail());
+    response.setOfficeCode(providerReadModel.officeCode());
+    response.setContactEmail(providerReadModel.contactEmail());
     return response;
   }
 
   private List<ApplicationProceedingResponse> toApplicationProceedingResponses(
-      List<ApplicationProceedingDomain> applicationProceedingDomains) {
-    if (applicationProceedingDomains == null) {
+      List<ApplicationProceedingReadModel> applicationProceedingReadModels) {
+    if (applicationProceedingReadModels == null) {
       return Collections.emptyList();
     }
 
-    return applicationProceedingDomains.stream()
+    return applicationProceedingReadModels.stream()
         .map(this::toApplicationProceedingResponse)
         .toList();
   }
 
   private ApplicationProceedingResponse toApplicationProceedingResponse(
-      ApplicationProceedingDomain applicationProceedingDomain) {
+      ApplicationProceedingReadModel applicationProceedingReadModel) {
     return ApplicationProceedingResponse.builder()
-        .proceedingId(applicationProceedingDomain.proceedingId())
-        .proceedingDescription(applicationProceedingDomain.description())
-        .proceedingType(applicationProceedingDomain.proceedingType())
+        .proceedingId(applicationProceedingReadModel.proceedingId())
+        .proceedingDescription(applicationProceedingReadModel.description())
+        .proceedingType(applicationProceedingReadModel.proceedingType())
         .categoryOfLaw(
-            EnumParsingUtils.convertToCategoryOfLaw(applicationProceedingDomain.categoryOfLaw()))
-        .matterType(EnumParsingUtils.convertToMatterType(applicationProceedingDomain.matterType()))
-        .levelOfService(applicationProceedingDomain.levelOfService())
-        .substantiveCostLimitation(applicationProceedingDomain.substantiveCostLimitation())
-        .delegatedFunctionsDate(applicationProceedingDomain.delegatedFunctionsDate())
+            EnumParsingUtils.convertToCategoryOfLaw(applicationProceedingReadModel.categoryOfLaw()))
+        .matterType(
+            EnumParsingUtils.convertToMatterType(applicationProceedingReadModel.matterType()))
+        .levelOfService(applicationProceedingReadModel.levelOfService())
+        .substantiveCostLimitation(applicationProceedingReadModel.substantiveCostLimitation())
+        .delegatedFunctionsDate(applicationProceedingReadModel.delegatedFunctionsDate())
         .meritsDecision(
-            applicationProceedingDomain.meritsDecision() != null
-                ? MeritsDecisionStatus.valueOf(applicationProceedingDomain.meritsDecision())
+            applicationProceedingReadModel.meritsDecision() != null
+                ? MeritsDecisionStatus.valueOf(applicationProceedingReadModel.meritsDecision())
                 : null)
-        .involvedChildren(toInvolvedChildResponses(applicationProceedingDomain.involvedChildren()))
+        .involvedChildren(
+            toInvolvedChildResponses(applicationProceedingReadModel.involvedChildren()))
         .scopeLimitations(
-            toScopeLimitationResponses(applicationProceedingDomain.scopeLimitations()))
+            toScopeLimitationResponses(applicationProceedingReadModel.scopeLimitations()))
         .build();
   }
 
   private List<InvolvedChildResponse> toInvolvedChildResponses(
-      List<InvolvedChildDomain> involvedChildDomains) {
-    if (involvedChildDomains == null) {
+      List<InvolvedChildReadModel> involvedChildReadModels) {
+    if (involvedChildReadModels == null) {
       return Collections.emptyList();
     }
 
-    return involvedChildDomains.stream()
+    return involvedChildReadModels.stream()
         .map(
             child ->
                 new InvolvedChildResponse()
@@ -142,12 +144,12 @@ public class GetApplicationResponseMapper {
   }
 
   private List<ScopeLimitationResponse> toScopeLimitationResponses(
-      List<ScopeLimitationDomain> scopeLimitationDomains) {
-    if (scopeLimitationDomains == null) {
+      List<ScopeLimitationReadModel> scopeLimitationReadModels) {
+    if (scopeLimitationReadModels == null) {
       return Collections.emptyList();
     }
 
-    return scopeLimitationDomains.stream()
+    return scopeLimitationReadModels.stream()
         .map(
             scopeLimitation ->
                 ScopeLimitationResponse.builder()

@@ -4,16 +4,19 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.domain.ProviderDomain;
+import uk.gov.justice.laa.dstew.access.domain.ProviderReadModel;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
+/** Generator for {@link ApplicationReadModel} test data. */
 public class ApplicationReadModelGenerator
     extends BaseGenerator<ApplicationReadModel, ApplicationReadModel.ApplicationReadModelBuilder> {
 
-  private final ApplicationProceedingDomainGenerator applicationProceedingDomainGenerator =
-      new ApplicationProceedingDomainGenerator();
-  private final OpponentDomainGenerator opponentDomainGenerator = new OpponentDomainGenerator();
+  private final ApplicationProceedingReadModelGenerator applicationProceedingReadModelGenerator =
+      new ApplicationProceedingReadModelGenerator();
+  private final OpponentReadModelGenerator opponentReadModelGenerator =
+      new OpponentReadModelGenerator();
 
+  /** Constructs the generator. */
   public ApplicationReadModelGenerator() {
     super(ApplicationReadModel::toBuilder, ApplicationReadModel.ApplicationReadModelBuilder::build);
   }
@@ -33,13 +36,13 @@ public class ApplicationReadModelGenerator
         .decisionStatus("GRANTED")
         .applicationType("INITIAL")
         .version(0L)
-        .opponents(List.of(opponentDomainGenerator.createDefault()))
+        .opponents(List.of(opponentReadModelGenerator.createDefault()))
         .provider(
-            ProviderDomain.builder()
+            ProviderReadModel.builder()
                 .officeCode("officeCode")
                 .contactEmail("test@example.com")
                 .build())
-        .proceedings(List.of(applicationProceedingDomainGenerator.createDefault()))
+        .proceedings(List.of(applicationProceedingReadModelGenerator.createDefault()))
         .build();
   }
 }

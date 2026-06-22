@@ -8,9 +8,9 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationProceedingDomain;
+import uk.gov.justice.laa.dstew.access.domain.ApplicationProceedingReadModel;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.domain.ProviderDomain;
+import uk.gov.justice.laa.dstew.access.domain.ProviderReadModel;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
@@ -144,10 +144,10 @@ class GetApplicationResponseMapperTest {
 
   @Test
   void givenNullProceedingMeritsDecision_whenMapped_thenMeritsDecisionIsNull() {
-    ApplicationProceedingDomain proceeding =
+    ApplicationProceedingReadModel proceeding =
         DataGenerator.createDefault(
             uk.gov.justice.laa.dstew.access.utils.generator.getapplication
-                .ApplicationProceedingDomainGenerator.class,
+                .ApplicationProceedingReadModelGenerator.class,
             builder -> builder.meritsDecision(null));
     ApplicationReadModel readModel =
         DataGenerator.createDefault(
@@ -162,10 +162,10 @@ class GetApplicationResponseMapperTest {
 
   @Test
   void givenEmptyStringCategoryOfLaw_whenMapped_thenCategoryOfLawIsNull() {
-    ApplicationProceedingDomain proceeding =
+    ApplicationProceedingReadModel proceeding =
         DataGenerator.createDefault(
             uk.gov.justice.laa.dstew.access.utils.generator.getapplication
-                .ApplicationProceedingDomainGenerator.class,
+                .ApplicationProceedingReadModelGenerator.class,
             builder -> builder.categoryOfLaw(""));
     ApplicationReadModel readModel =
         DataGenerator.createDefault(
@@ -180,10 +180,10 @@ class GetApplicationResponseMapperTest {
 
   @Test
   void givenEmptyStringMatterType_whenMapped_thenMatterTypeIsNull() {
-    ApplicationProceedingDomain proceeding =
+    ApplicationProceedingReadModel proceeding =
         DataGenerator.createDefault(
             uk.gov.justice.laa.dstew.access.utils.generator.getapplication
-                .ApplicationProceedingDomainGenerator.class,
+                .ApplicationProceedingReadModelGenerator.class,
             builder -> builder.matterType(""));
     ApplicationReadModel readModel =
         DataGenerator.createDefault(
@@ -203,7 +203,10 @@ class GetApplicationResponseMapperTest {
             ApplicationReadModelGenerator.class,
             builder ->
                 builder.provider(
-                    ProviderDomain.builder().officeCode("officeCode").contactEmail(null).build()));
+                    ProviderReadModel.builder()
+                        .officeCode("officeCode")
+                        .contactEmail(null)
+                        .build()));
 
     ApplicationResponse response = responseMapper.toGetApplicationResponse(readModel).getBody();
 
@@ -250,10 +253,10 @@ class GetApplicationResponseMapperTest {
 
   @Test
   void givenProceedingWithNullChildrenAndScope_whenMapped_thenNestedListsAreEmpty() {
-    ApplicationProceedingDomain proceeding =
+    ApplicationProceedingReadModel proceeding =
         DataGenerator.createDefault(
             uk.gov.justice.laa.dstew.access.utils.generator.getapplication
-                .ApplicationProceedingDomainGenerator.class,
+                .ApplicationProceedingReadModelGenerator.class,
             builder -> builder.involvedChildren(null).scopeLimitations(null));
     ApplicationReadModel readModel =
         DataGenerator.createDefault(

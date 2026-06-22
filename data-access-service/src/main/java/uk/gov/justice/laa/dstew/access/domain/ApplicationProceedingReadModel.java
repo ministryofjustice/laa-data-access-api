@@ -5,9 +5,9 @@ import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 
-/** Domain record for a proceeding within the get-application read model. */
+/** Read-model record for a single proceeding in the get-application response. */
 @Builder(toBuilder = true)
-public record ApplicationProceedingDomain(
+public record ApplicationProceedingReadModel(
     UUID proceedingId,
     String description,
     String proceedingType,
@@ -17,5 +17,5 @@ public record ApplicationProceedingDomain(
     Double substantiveCostLimitation,
     LocalDate delegatedFunctionsDate,
     String meritsDecision,
-    List<InvolvedChildDomain> involvedChildren,
-    List<ScopeLimitationDomain> scopeLimitations) {}
+    List<InvolvedChildReadModel> involvedChildren,
+    List<ScopeLimitationReadModel> scopeLimitations) {}
