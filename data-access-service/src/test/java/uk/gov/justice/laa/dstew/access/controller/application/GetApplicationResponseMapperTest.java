@@ -237,6 +237,18 @@ class GetApplicationResponseMapperTest {
   }
 
   @Test
+  void givenNullStatus_whenMapped_thenStatusIsNull() {
+    ApplicationReadModel readModel =
+        DataGenerator.createDefault(
+            ApplicationReadModelGenerator.class, builder -> builder.status(null));
+
+    ApplicationResponse response = responseMapper.toGetApplicationResponse(readModel).getBody();
+
+    assertThat(response).isNotNull();
+    assertThat(response.getStatus()).isNull();
+  }
+
+  @Test
   void givenProceedingWithNullChildrenAndScope_whenMapped_thenNestedListsAreEmpty() {
     ApplicationProceedingDomain proceeding =
         DataGenerator.createDefault(

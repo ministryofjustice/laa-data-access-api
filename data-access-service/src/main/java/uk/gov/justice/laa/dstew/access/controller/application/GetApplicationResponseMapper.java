@@ -36,7 +36,10 @@ public class GetApplicationResponseMapper {
       ApplicationReadModel applicationReadModel) {
     ApplicationResponse applicationResponse = new ApplicationResponse();
     applicationResponse.setApplicationId(applicationReadModel.id());
-    applicationResponse.setStatus(ApplicationStatus.valueOf(applicationReadModel.status()));
+    applicationResponse.setStatus(
+        applicationReadModel.status() != null
+            ? ApplicationStatus.valueOf(applicationReadModel.status())
+            : null);
     applicationResponse.setLaaReference(applicationReadModel.laaReference());
     applicationResponse.setLastUpdated(
         OffsetDateTime.ofInstant(applicationReadModel.updatedAt(), ZoneOffset.UTC));

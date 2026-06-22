@@ -68,23 +68,32 @@ class GetApplicationGatewayMapperTest {
         newApplicationEntity(
             objectMapper.convertValue(applicationContent, Map.class), Set.of(proceedingEntity));
 
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
+    ApplicationReadModel actual = mapper.toApplicationReadModel(applicationEntity);
 
-    assertThat(readModel.id()).isEqualTo(applicationEntity.getId());
-    assertThat(readModel.status()).isEqualTo(applicationEntity.getStatus().name());
-    assertThat(readModel.laaReference()).isEqualTo(applicationEntity.getLaaReference());
-    assertThat(readModel.updatedAt()).isEqualTo(applicationEntity.getUpdatedAt());
-    assertThat(readModel.submittedAt()).isEqualTo(applicationEntity.getSubmittedAt());
-    assertThat(readModel.autoGrant()).isEqualTo(applicationEntity.getIsAutoGranted());
-    assertThat(readModel.applicationType()).isEqualTo("INITIAL");
-    assertThat(readModel.version()).isEqualTo(applicationEntity.getVersion());
-    assertThat(readModel.opponents()).hasSize(1);
-    assertThat(readModel.provider()).isNotNull();
-    assertThat(readModel.provider().officeCode()).isEqualTo(applicationEntity.getOfficeCode());
-    assertThat(readModel.provider().contactEmail()).isEqualTo("test@example.com");
-    assertThat(readModel.proceedings()).hasSize(1);
+    // Exhaustive scalar-field assertions (G9)
+    assertThat(actual.id()).isEqualTo(applicationEntity.getId());
+    assertThat(actual.status()).isEqualTo(applicationEntity.getStatus().name());
+    assertThat(actual.laaReference()).isEqualTo(applicationEntity.getLaaReference());
+    assertThat(actual.updatedAt()).isEqualTo(applicationEntity.getUpdatedAt());
+    assertThat(actual.caseworkerId()).isEqualTo(applicationEntity.getCaseworker().getId());
+    assertThat(actual.submittedAt()).isEqualTo(applicationEntity.getSubmittedAt());
+    assertThat(actual.isLead()).isEqualTo(applicationEntity.isLead());
+    assertThat(actual.usedDelegatedFunctions())
+        .isEqualTo(applicationEntity.getUsedDelegatedFunctions());
+    assertThat(actual.autoGrant()).isEqualTo(applicationEntity.getIsAutoGranted());
+    assertThat(actual.decisionStatus())
+        .isEqualTo(applicationEntity.getDecision().getOverallDecision().name());
+    assertThat(actual.applicationType()).isEqualTo("INITIAL");
+    assertThat(actual.version()).isEqualTo(applicationEntity.getVersion());
 
-    ApplicationProceedingDomain mappedProceeding = readModel.proceedings().getFirst();
+    // Structural assertions for nested objects
+    assertThat(actual.opponents()).hasSize(1);
+    assertThat(actual.provider()).isNotNull();
+    assertThat(actual.provider().officeCode()).isEqualTo(applicationEntity.getOfficeCode());
+    assertThat(actual.provider().contactEmail()).isEqualTo("test@example.com");
+    assertThat(actual.proceedings()).hasSize(1);
+
+    ApplicationProceedingDomain mappedProceeding = actual.proceedings().getFirst();
     assertThat(mappedProceeding.proceedingId()).isEqualTo(proceedingEntity.getId());
     assertThat(mappedProceeding.description()).isEqualTo(proceedingEntity.getDescription());
     assertThat(mappedProceeding.proceedingType()).isEqualTo("hearing");
@@ -123,6 +132,17 @@ class GetApplicationGatewayMapperTest {
     assertThat(readModel.provider()).isNotNull();
     assertThat(readModel.provider().officeCode()).isEqualTo("officeCode");
     assertThat(readModel.provider().contactEmail()).isNull();
+  }
+
+  @Test
+  void givenSubmitterEmailPresent_whenMapped_thenProviderContactEmailSet() {
+    ApplicationEntity applicationEntity =
+        newApplicationEntity(Map.of("submitterEmail", "test@example.com"), Set.of());
+
+    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
+
+    assertThat(readModel.provider()).isNotNull();
+    assertThat(readModel.provider().contactEmail()).isEqualTo("test@example.com");
   }
 
   @Test
