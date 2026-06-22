@@ -221,6 +221,19 @@ class ProceedingMapperTest extends BaseMapperTest {
 
   @Test
   void
+      givenEmptyProceedingMeritsList_whenToApplicationProceedingWithChildren_thenInvolvedChildrenIsEmpty() {
+    ProceedingEntity entity = DataGenerator.createDefault(ProceedingsEntityGenerator.class);
+    InvolvedChild child = DataGenerator.createDefault(InvolvedChildGenerator.class);
+
+    ApplicationProceedingResponse result =
+        proceedingMapper.toApplicationProceeding(entity, List.of(), List.of(child));
+
+    assertThat(result).isNotNull();
+    assertThat(result.getInvolvedChildren()).isEmpty();
+  }
+
+  @Test
+  void
       givenLinkedChildIdNotFoundInInvolvedChildren_whenToApplicationProceedingWithChildren_thenChildSkipped() {
     UUID applyProceedingId = UUID.randomUUID();
     UUID unknownChildId = UUID.randomUUID();

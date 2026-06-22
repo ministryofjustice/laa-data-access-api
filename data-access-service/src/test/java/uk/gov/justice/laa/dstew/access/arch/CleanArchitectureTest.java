@@ -88,4 +88,54 @@ class CleanArchitectureTest {
             .allowEmptyShould(true);
     rule.check(classes);
   }
+
+  @Test
+  void getApplicationUseCaseMustNotImportApiModels() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..usecase.getapplication..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..model..")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void getApplicationUseCaseMustNotImportJpaEntities() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..usecase.getapplication..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..entity..")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void getApplicationJpaGatewayMustNotBeAnnotatedWithComponent() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..infrastructure.jpa.getapplication..")
+            .should()
+            .beAnnotatedWith(org.springframework.stereotype.Component.class)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void getApplicationJpaGatewayMustNotBeAnnotatedWithTransactional() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..infrastructure.jpa.getapplication..")
+            .should()
+            .beAnnotatedWith(jakarta.transaction.Transactional.class)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
 }
