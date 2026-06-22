@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.model;
+package uk.gov.justice.laa.dstew.access.usecase.shared.parser;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
@@ -12,17 +12,19 @@ import lombok.NoArgsConstructor;
 import org.springframework.lang.Nullable;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/** ApplicationMerits pojo. */
+/** ApplicationApplicant pojo. */
 @Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
 @ExcludeFromGeneratedCodeCoverage
-public class ApplicationMerits {
+public class ApplicationApplicant {
 
-  @Nullable private List<OpponentDetails> opponents;
+  @Nullable private List<Map<String, Object>> addresses;
 
-  @Nullable private List<InvolvedChild> involvedChildren;
+  @Nullable private Boolean appliedPreviously;
+
+  @jakarta.annotation.Nullable private String relationshipToInvolvedChildren;
 
   @JsonAnyGetter private Map<String, Object> additionalContent;
 
@@ -31,7 +33,7 @@ public class ApplicationMerits {
    * does not already exist, create it otherwise replace it.
    */
   @JsonAnySetter
-  public ApplicationMerits putAdditionalContent(String key, Object value) {
+  public ApplicationApplicant putAdditionalContent(String key, Object value) {
     if (this.additionalContent == null) {
       this.additionalContent = new HashMap<>();
     }

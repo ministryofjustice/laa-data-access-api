@@ -3,8 +3,8 @@ package uk.gov.justice.laa.dstew.access.utils.generator.application;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.model.ApplicationApplicant;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationApplicant;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
 

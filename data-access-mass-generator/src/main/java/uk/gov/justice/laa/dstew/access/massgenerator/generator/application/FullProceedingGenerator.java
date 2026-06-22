@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.model.Proceeding;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.Proceeding;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
 public class FullProceedingGenerator

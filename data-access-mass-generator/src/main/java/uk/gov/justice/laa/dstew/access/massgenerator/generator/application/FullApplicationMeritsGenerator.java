@@ -1,7 +1,7 @@
 package uk.gov.justice.laa.dstew.access.massgenerator.generator.application;
 
 import java.util.List;
-import uk.gov.justice.laa.dstew.access.model.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationMerits;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
 public class FullApplicationMeritsGenerator

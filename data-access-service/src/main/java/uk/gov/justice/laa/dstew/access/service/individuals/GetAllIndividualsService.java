@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.mapper.IndividualMapper;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
 import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
@@ -20,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.specification.IndividualSpecification;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
 /**

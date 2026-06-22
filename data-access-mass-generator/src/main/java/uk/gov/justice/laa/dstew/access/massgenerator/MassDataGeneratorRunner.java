@@ -28,12 +28,12 @@ import uk.gov.justice.laa.dstew.access.massgenerator.generator.PersistedDataGene
 import uk.gov.justice.laa.dstew.access.massgenerator.generator.application.FullCertificateGenerator;
 import uk.gov.justice.laa.dstew.access.massgenerator.generator.application.FullJsonGenerator;
 import uk.gov.justice.laa.dstew.access.massgenerator.generator.application.FullMeritsDecisionGenerator;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
-import uk.gov.justice.laa.dstew.access.model.Proceeding;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.Proceeding;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
