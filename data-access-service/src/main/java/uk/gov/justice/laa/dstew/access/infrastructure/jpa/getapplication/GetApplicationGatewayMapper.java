@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationProceedingReadModel;
@@ -78,7 +79,7 @@ public class GetApplicationGatewayMapper {
   }
 
   private List<ApplicationProceedingReadModel> toApplicationProceedingReadModels(
-      java.util.Set<ProceedingEntity> proceedings,
+      Set<ProceedingEntity> proceedings,
       List<ProceedingMerits> proceedingMerits,
       List<InvolvedChild> involvedChildren) {
     if (proceedings == null) {
