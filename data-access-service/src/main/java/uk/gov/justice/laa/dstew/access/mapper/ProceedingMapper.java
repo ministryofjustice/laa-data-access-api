@@ -7,11 +7,11 @@ import java.util.UUID;
 import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
-import uk.gov.justice.laa.dstew.access.model.InvolvedChild;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
-import uk.gov.justice.laa.dstew.access.model.ProceedingLinkedChild;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.InvolvedChild;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.Proceeding;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingLinkedChild;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingMerits;
 import uk.gov.justice.laa.dstew.access.utils.EnumParsingUtils;
 

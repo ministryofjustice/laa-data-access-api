@@ -3,9 +3,6 @@ package uk.gov.justice.laa.dstew.access.usecase.getapplication;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import uk.gov.justice.laa.dstew.access.model.InvolvedChild;
-import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
-import uk.gov.justice.laa.dstew.access.model.Opposable;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ApplicationDbProjection;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ProceedingDbProjection;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationProceedingReadModel;
@@ -14,6 +11,9 @@ import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.InvolvedChil
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.OpponentReadModel;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ProviderReadModel;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ScopeLimitationReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.InvolvedChild;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.OpponentDetails;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.Opposable;
 
 /** Composes an {@link ApplicationDbProjection} into an {@link ApplicationReadModel}. */
 public class GetApplicationReadModelMapper {

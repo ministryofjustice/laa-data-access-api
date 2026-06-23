@@ -10,12 +10,12 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.model.InvolvedChild;
-import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
-import uk.gov.justice.laa.dstew.access.model.Opposable;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ApplicationDbProjection;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ProceedingDbProjection;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.InvolvedChild;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.OpponentDetails;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.Opposable;
 
 class GetApplicationReadModelMapperTest {
 

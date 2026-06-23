@@ -9,14 +9,14 @@ import java.util.UUID;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
-import uk.gov.justice.laa.dstew.access.model.InvolvedChild;
-import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
-import uk.gov.justice.laa.dstew.access.model.ProceedingLinkedChild;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ApplicationDbProjection;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ProceedingDbProjection;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.InvolvedChild;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.OpponentDetails;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.Proceeding;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingLinkedChild;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingMerits;
 
 /**

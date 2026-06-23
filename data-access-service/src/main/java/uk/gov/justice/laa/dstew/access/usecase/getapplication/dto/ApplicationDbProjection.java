@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
-import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.OpponentDetails;
 
 /** Raw projection of an application entity and its parsed JSON content. No business logic. */
 @Builder(toBuilder = true)

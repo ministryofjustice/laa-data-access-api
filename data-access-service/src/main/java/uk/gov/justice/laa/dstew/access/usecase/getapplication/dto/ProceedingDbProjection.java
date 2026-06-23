@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
-import uk.gov.justice.laa.dstew.access.model.InvolvedChild;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.InvolvedChild;
 
 /** Raw projection of a proceeding entity and its parsed JSON content. No business logic. */
 @Builder(toBuilder = true)
