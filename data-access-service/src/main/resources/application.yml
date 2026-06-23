@@ -40,6 +40,11 @@ spring:
           jwk-set-uri: ${ENTRA_JWK_SET_URI}
           audience: ${ENTRA_AUD}
 
+  servlet:
+    multipart:
+      max-file-size: ${MAX_UPLOAD_FILE_SIZE:25MB}
+      max-request-size: ${MAX_UPLOAD_REQUEST_SIZE:25MB}
+
   flyway:
     enabled: true
     locations: classpath:db/migration

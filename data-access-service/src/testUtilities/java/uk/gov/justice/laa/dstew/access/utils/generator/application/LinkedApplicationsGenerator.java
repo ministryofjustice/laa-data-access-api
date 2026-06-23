@@ -1,7 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.model.LinkedApplication;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
 

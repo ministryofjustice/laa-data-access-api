@@ -85,19 +85,6 @@ allprojects {
             resolutionStrategy.activateDependencyLocking()
         }
 
-        // Add global force for Spring Security CVE fix
-        // Add global force for Spring Framework vulnerabilities
-        // Add global force for Spring Data Commons DoS vulnerabilities
-        // SNYK-JAVA-ORGSPRINGFRAMEWORKDATA-17279540, SNYK-JAVA-ORGSPRINGFRAMEWORKDATA-17295727,
-        // SNYK-JAVA-ORGSPRINGFRAMEWORKDATA-17304742 - updated to 4.0.6
-        conf.resolutionStrategy {
-            force 'org.springframework.security:spring-security-config:7.0.5'
-            force 'org.springframework.security:spring-security-web:7.0.5'
-            force 'org.springframework:spring-expression:7.0.8'
-            force 'org.springframework:spring-web:7.0.8'
-            force 'org.springframework:spring-webmvc:7.0.8'
-            force 'org.springframework.data:spring-data-commons:4.0.6'
-        }
     }
 }
 

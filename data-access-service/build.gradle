@@ -19,6 +19,7 @@ configurations.all {
     // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
     // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
     // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
+    // Fix for Spring Data DoS vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKDATA-17279540, 17295727, 17304742, 17308778
     resolutionStrategy {
         force 'com.fasterxml.jackson.core:jackson-core:2.21.2'
         force 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
@@ -27,6 +28,12 @@ configurations.all {
         force 'tools.jackson:jackson-bom:3.1.1'
         force 'org.springframework.security:spring-security-config:7.0.5'
         force 'org.springframework.security:spring-security-web:7.0.5'
+        eachDependency { DependencyResolveDetails details ->
+            if (details.requested.group == 'org.springframework.data' && details.requested.name == 'spring-data-commons') {
+                details.useVersion '4.0.6'
+                details.because 'Fix for DoS vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKDATA-17279540, 17295727, 17304742, 17308778'
+            }
+        }
     }
 }
 
@@ -281,11 +288,11 @@ dependencies {
     }
     implementation 'org.springframework.security:spring-security-config'
     implementation 'org.springframework.security:spring-security-web'
-    implementation 'org.springframework.data:spring-data-commons:4.0.6'
-    implementation 'org.springframework:spring-core:7.0.8'
-    implementation 'org.springframework:spring-expression:7.0.8'
-    implementation 'org.springframework:spring-web:7.0.8'
-    implementation 'org.springframework:spring-webmvc:7.0.8'
+    implementation 'org.springframework.data:spring-data-commons'
+    implementation 'org.springframework:spring-core'
+    implementation 'org.springframework:spring-expression'
+    implementation 'org.springframework:spring-web'
+    implementation 'org.springframework:spring-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation('org.springframework.boot:spring-boot-starter-web') {
         exclude group: 'com.google.code.gson', module: 'gson'
@@ -301,12 +308,12 @@ dependencies {
     //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-16643259
     implementation 'org.apache.tomcat.embed:tomcat-embed-core:11.0.22'
     // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.2'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2') {
         exclude group: 'tools.jackson.core'
     }
-    implementation("org.springframework.boot:spring-boot-starter-flyway:4.0.6")
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-database-postgresql")
 
     // Source: https://mvnrepository.com/artifact/com.azure.spring/spring-cloud-azure-starter-active-directory
@@ -333,12 +340,13 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.1"
     testImplementation 'org.testcontainers:postgresql:1.21.3'
-    testImplementation 'org.springframework.boot:spring-boot-testcontainers:4.0.6'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     // https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide#test-code
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
     testImplementation 'org.wiremock:wiremock-standalone:3.12.1'
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
 
     // Mock OAuth2 server and WireMock for integration tests
     integrationTestImplementation 'no.nav.security:mock-oauth2-server:2.1.10'
