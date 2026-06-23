@@ -156,8 +156,7 @@ Authorization: Bearer swagger-caseworker-token
 
 #### Getting tokens from local mock-oauth2-server
 
-If you're running with `FEATURE_DISABLE_SECURITY=false` and want to test with real JWT tokens locally, 
-you can use the helper script to fetch a token from the local mock-oauth2-server:
+You can use the helper script to fetch a token from the local mock-oauth2-server:
 
 ```bash
 # Get a token for local development
