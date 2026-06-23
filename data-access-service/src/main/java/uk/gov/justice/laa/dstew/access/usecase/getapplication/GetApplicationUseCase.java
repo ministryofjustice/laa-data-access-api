@@ -13,6 +13,7 @@ import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationR
 public class GetApplicationUseCase {
 
   private final GetApplicationApplicationGateway applicationGateway;
+  private final GetApplicationReadModelMapper readModelMapper;
 
   /**
    * Retrieves a single application by id.
@@ -24,7 +25,8 @@ public class GetApplicationUseCase {
   @Transactional
   public ApplicationReadModel execute(UUID id) {
     return applicationGateway
-        .findApplicationReadModelById(id)
+        .findApplicationById(id)
+        .map(readModelMapper::toApplicationReadModel)
         .orElseThrow(
             () ->
                 new ResourceNotFoundException(

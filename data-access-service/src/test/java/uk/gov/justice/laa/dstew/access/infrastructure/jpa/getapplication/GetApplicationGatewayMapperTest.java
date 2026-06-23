@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -14,15 +15,15 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
+import uk.gov.justice.laa.dstew.access.model.InvolvedChild;
 import uk.gov.justice.laa.dstew.access.model.ProceedingLinkedChild;
-import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationProceedingReadModel;
-import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ApplicationDbProjection;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ProceedingDbProjection;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
-import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationMerits;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingMerits;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
@@ -41,36 +42,19 @@ class GetApplicationGatewayMapperTest {
   }
 
   @Test
-  void givenFullyPopulatedEntity_whenMapped_thenAllFieldsAreMapped() {
-    UUID applyProceedingId = UUID.randomUUID();
-    ProceedingEntity proceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applyProceedingId(applyProceedingId));
-
+  void givenFullyPopulatedEntity_whenMapped_thenAllFieldsExtracted() {
     ApplicationContent applicationContent =
-        DataGenerator.createDefault(
-            ApplicationContentGenerator.class,
-            builder ->
-                builder.proceedingMerits(
-                    List.of(
-                        ProceedingMerits.builder()
-                            .proceedingId(applyProceedingId)
-                            .proceedingLinkedChildren(
-                                List.of(
-                                    ProceedingLinkedChild.builder()
-                                        .involvedChildId(
-                                            ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_ID)
-                                        .build()))
-                            .build())));
+        DataGenerator.createDefault(ApplicationContentGenerator.class);
+
+    ProceedingEntity proceedingEntity =
+        DataGenerator.createDefault(ProceedingsEntityGenerator.class);
 
     ApplicationEntity applicationEntity =
         newApplicationEntity(
             objectMapper.convertValue(applicationContent, Map.class), Set.of(proceedingEntity));
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(applicationEntity);
+    ApplicationDbProjection actual = mapper.toApplicationDbProjection(applicationEntity);
 
-    // Exhaustive scalar-field assertions (G9)
     assertThat(actual.id()).isEqualTo(applicationEntity.getId());
     assertThat(actual.status()).isEqualTo(applicationEntity.getStatus().name());
     assertThat(actual.laaReference()).isEqualTo(applicationEntity.getLaaReference());
@@ -83,123 +67,39 @@ class GetApplicationGatewayMapperTest {
     assertThat(actual.autoGrant()).isEqualTo(applicationEntity.getIsAutoGranted());
     assertThat(actual.decisionStatus())
         .isEqualTo(applicationEntity.getDecision().getOverallDecision().name());
-    assertThat(actual.applicationType()).isEqualTo("INITIAL");
     assertThat(actual.version()).isEqualTo(applicationEntity.getVersion());
-
-    // Structural assertions for nested objects
-    assertThat(actual.opponents()).hasSize(1);
-    assertThat(actual.provider()).isNotNull();
-    assertThat(actual.provider().officeCode()).isEqualTo(applicationEntity.getOfficeCode());
-    assertThat(actual.provider().contactEmail()).isEqualTo("test@example.com");
+    assertThat(actual.officeCode()).isEqualTo(applicationEntity.getOfficeCode());
+    assertThat(actual.submitterEmail()).isEqualTo(applicationContent.getSubmitterEmail());
+    assertThat(actual.opponents())
+        .hasSize(applicationContent.getApplicationMerits().getOpponents().size());
     assertThat(actual.proceedings()).hasSize(1);
-
-    ApplicationProceedingReadModel mappedProceeding = actual.proceedings().getFirst();
-    assertThat(mappedProceeding.proceedingId()).isEqualTo(proceedingEntity.getId());
-    assertThat(mappedProceeding.description()).isEqualTo(proceedingEntity.getDescription());
-    assertThat(mappedProceeding.proceedingType()).isEqualTo("hearing");
-    assertThat(mappedProceeding.categoryOfLaw()).isEqualTo("Family");
-    assertThat(mappedProceeding.matterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
-    assertThat(mappedProceeding.delegatedFunctionsDate()).isEqualTo(LocalDate.of(2025, 5, 6));
-    assertThat(mappedProceeding.involvedChildren()).hasSize(1);
-    assertThat(mappedProceeding.involvedChildren().getFirst().fullName())
-        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_FULL_NAME);
   }
 
   @Test
-  void givenEmptyOpponents_whenMapped_thenOpponentsIsEmpty() {
-    ApplicationMerits merits =
-        DataGenerator.createDefault(
-            ApplicationMeritsGenerator.class, builder -> builder.opponents(List.of()));
-    ApplicationContent applicationContent =
-        DataGenerator.createDefault(
-            ApplicationContentGenerator.class, builder -> builder.applicationMerits(merits));
-
-    ApplicationEntity applicationEntity =
-        newApplicationEntity(objectMapper.convertValue(applicationContent, Map.class), Set.of());
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.opponents()).isEmpty();
-  }
-
-  @Test
-  void givenNoSubmitterEmail_whenMapped_thenProviderContactEmailIsNull() {
-    ApplicationEntity applicationEntity =
-        newApplicationEntity(Map.of("applicationMerits", Map.of()), Set.of());
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.provider()).isNotNull();
-    assertThat(readModel.provider().officeCode()).isEqualTo("officeCode");
-    assertThat(readModel.provider().contactEmail()).isNull();
-  }
-
-  @Test
-  void givenSubmitterEmailPresent_whenMapped_thenProviderContactEmailSet() {
-    ApplicationEntity applicationEntity =
-        newApplicationEntity(Map.of("submitterEmail", "test@example.com"), Set.of());
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.provider()).isNotNull();
-    assertThat(readModel.provider().contactEmail()).isEqualTo("test@example.com");
-  }
-
-  @Test
-  void givenUnresolvableChildId_whenMapped_thenInvolvedChildrenIsEmpty() {
-    UUID applyProceedingId = UUID.randomUUID();
-    UUID unknownChildId = UUID.randomUUID();
-
+  void givenFullyPopulatedProceedingEntity_whenMapped_thenAllFieldsExtracted() {
     ProceedingEntity proceedingEntity =
         DataGenerator.createDefault(
             ProceedingsEntityGenerator.class,
-            builder -> builder.applyProceedingId(applyProceedingId));
-
-    ApplicationContent applicationContent =
-        DataGenerator.createDefault(
-            ApplicationContentGenerator.class,
             builder ->
-                builder.proceedingMerits(
-                    List.of(
-                        ProceedingMerits.builder()
-                            .proceedingId(applyProceedingId)
-                            .proceedingLinkedChildren(
-                                List.of(
-                                    ProceedingLinkedChild.builder()
-                                        .involvedChildId(unknownChildId)
-                                        .build()))
-                            .build())));
+                builder.meritsDecision(
+                    uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity.builder()
+                        .decision(
+                            uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus.GRANTED)
+                        .build()));
 
-    ApplicationEntity applicationEntity =
-        newApplicationEntity(
-            objectMapper.convertValue(applicationContent, Map.class), Set.of(proceedingEntity));
+    ProceedingDbProjection actual =
+        mapper.toProceedingDbProjection(
+            proceedingEntity, Collections.emptyList(), Collections.emptyList());
 
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.proceedings()).hasSize(1);
-    assertThat(readModel.proceedings().getFirst().involvedChildren()).isEmpty();
-  }
-
-  @Test
-  void givenNoProceedingMerits_whenMapped_thenInvolvedChildrenIsEmpty() {
-    UUID applyProceedingId = UUID.randomUUID();
-    ProceedingEntity proceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applyProceedingId(applyProceedingId));
-
-    ApplicationContent applicationContent =
-        DataGenerator.createDefault(
-            ApplicationContentGenerator.class, builder -> builder.proceedingMerits(List.of()));
-
-    ApplicationEntity applicationEntity =
-        newApplicationEntity(
-            objectMapper.convertValue(applicationContent, Map.class), Set.of(proceedingEntity));
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.proceedings()).hasSize(1);
-    assertThat(readModel.proceedings().getFirst().involvedChildren()).isEmpty();
+    assertThat(actual.proceedingId()).isEqualTo(proceedingEntity.getId());
+    assertThat(actual.description()).isEqualTo(proceedingEntity.getDescription());
+    assertThat(actual.meritsDecision())
+        .isEqualTo(proceedingEntity.getMeritsDecision().getDecision().name());
+    assertThat(actual.proceedingType()).isEqualTo("hearing");
+    assertThat(actual.categoryOfLaw()).isEqualTo("Family");
+    assertThat(actual.matterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
+    assertThat(actual.delegatedFunctionsDate()).isEqualTo(LocalDate.of(2025, 5, 6));
+    assertThat(actual.involvedChildren()).isEmpty();
   }
 
   @Test
@@ -207,168 +107,9 @@ class GetApplicationGatewayMapperTest {
     ApplicationEntity applicationEntity = newApplicationEntity(Map.of(), Set.of());
     applicationEntity.setDecision(null);
 
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
+    ApplicationDbProjection actual = mapper.toApplicationDbProjection(applicationEntity);
 
-    assertThat(readModel.decisionStatus()).isNull();
-  }
-
-  @Test
-  void givenNullCaseworker_whenMapped_thenCaseworkerIdIsNull() {
-    ApplicationEntity applicationEntity = newApplicationEntity(Map.of(), Set.of());
-    applicationEntity.setCaseworker(null);
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.caseworkerId()).isNull();
-  }
-
-  @Test
-  void givenNullProceedings_whenMapped_thenProceedingsIsEmpty() {
-    ApplicationEntity applicationEntity = newApplicationEntity(Map.of(), null);
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.proceedings()).isEmpty();
-  }
-
-  @Test
-  void givenNullApplicationContentAndOfficeCode_whenMapped_thenProviderIsNull() {
-    ApplicationEntity applicationEntity = newApplicationEntity(null, Set.of());
-    applicationEntity.setOfficeCode(null);
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.provider()).isNull();
-    assertThat(readModel.opponents()).isEmpty();
-  }
-
-  @Test
-  void givenMissingInvolvedChildrenCollection_whenMapped_thenInvolvedChildrenIsEmpty() {
-    UUID applyProceedingId = UUID.randomUUID();
-    ProceedingEntity proceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applyProceedingId(applyProceedingId));
-
-    ApplicationMerits meritsWithoutChildren =
-        DataGenerator.createDefault(
-            ApplicationMeritsGenerator.class, builder -> builder.involvedChildren(null));
-
-    ApplicationContent contentWithoutChildren =
-        DataGenerator.createDefault(
-            ApplicationContentGenerator.class,
-            builder ->
-                builder
-                    .applicationMerits(meritsWithoutChildren)
-                    .proceedingMerits(
-                        List.of(
-                            ProceedingMerits.builder()
-                                .proceedingId(applyProceedingId)
-                                .proceedingLinkedChildren(
-                                    List.of(
-                                        ProceedingLinkedChild.builder()
-                                            .involvedChildId(UUID.randomUUID())
-                                            .build()))
-                                .build())));
-
-    ApplicationEntity applicationEntity =
-        newApplicationEntity(
-            objectMapper.convertValue(contentWithoutChildren, Map.class), Set.of(proceedingEntity));
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.proceedings().getFirst().involvedChildren()).isEmpty();
-  }
-
-  @Test
-  void givenProceedingWithNullApplyProceedingId_whenMapped_thenInvolvedChildrenIsEmpty() {
-    ProceedingEntity proceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class, builder -> builder.applyProceedingId(null));
-
-    ApplicationContent applicationContent =
-        DataGenerator.createDefault(ApplicationContentGenerator.class);
-    ApplicationEntity applicationEntity =
-        newApplicationEntity(
-            objectMapper.convertValue(applicationContent, Map.class), Set.of(proceedingEntity));
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.proceedings().getFirst().involvedChildren()).isEmpty();
-  }
-
-  @Test
-  void givenProceedingWithNullScopeLimitations_whenMapped_thenScopeLimitationsIsEmpty() {
-    UUID applyProceedingId = UUID.randomUUID();
-    ProceedingEntity proceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder ->
-                builder
-                    .applyProceedingId(applyProceedingId)
-                    .proceedingContent(
-                        Map.of(
-                            "meaning", "hearing",
-                            "matterTypeEnum", "SPECIAL_CHILDREN_ACT",
-                            "categoryOfLawEnum", "Family",
-                            "usedDelegatedFunctionsOn", "2025-05-06",
-                            "substantiveCostLimitation", "23.45",
-                            "substantiveLevelOfServiceNameEnum", "SERVICE")));
-
-    ApplicationEntity applicationEntity = newApplicationEntity(Map.of(), Set.of(proceedingEntity));
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.proceedings()).hasSize(1);
-    assertThat(readModel.proceedings().getFirst().scopeLimitations()).isEmpty();
-  }
-
-  @Test
-  void
-      givenApplicationContentWithoutApplicationMerits_whenMapped_thenOpponentsAndChildrenAreEmpty() {
-    UUID applyProceedingId = UUID.randomUUID();
-    ProceedingEntity proceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applyProceedingId(applyProceedingId));
-
-    ApplicationEntity applicationEntity =
-        newApplicationEntity(Map.of("proceedingMerits", List.of()), Set.of(proceedingEntity));
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.opponents()).isEmpty();
-    assertThat(readModel.proceedings().getFirst().involvedChildren()).isEmpty();
-  }
-
-  @Test
-  void givenApplicationContentWithNullProceedingMerits_whenMapped_thenInvolvedChildrenIsEmpty() {
-    UUID applyProceedingId = UUID.randomUUID();
-    ProceedingEntity proceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applyProceedingId(applyProceedingId));
-
-    ApplicationContent content =
-        DataGenerator.createDefault(
-            ApplicationContentGenerator.class, builder -> builder.proceedingMerits(null));
-    ApplicationEntity applicationEntity =
-        newApplicationEntity(
-            objectMapper.convertValue(content, Map.class), Set.of(proceedingEntity));
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.proceedings().getFirst().involvedChildren()).isEmpty();
-  }
-
-  @Test
-  void givenNullApplicationStatus_whenMapped_thenStatusIsNull() {
-    ApplicationEntity applicationEntity = newApplicationEntity(Map.of(), Set.of());
-    applicationEntity.setStatus(null);
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.status()).isNull();
+    assertThat(actual.decisionStatus()).isNull();
   }
 
   @Test
@@ -376,129 +117,74 @@ class GetApplicationGatewayMapperTest {
     ApplicationEntity applicationEntity = newApplicationEntity(Map.of(), Set.of());
     applicationEntity.setDecision(DecisionEntity.builder().overallDecision(null).build());
 
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
+    ApplicationDbProjection actual = mapper.toApplicationDbProjection(applicationEntity);
 
-    assertThat(readModel.decisionStatus()).isNull();
+    assertThat(actual.decisionStatus()).isNull();
   }
 
   @Test
-  void givenProceedingMeritsDecisionWithNullDecision_whenMapped_thenMeritsDecisionIsNull() {
+  void givenNullCaseworker_whenMapped_thenCaseworkerIdIsNull() {
+    ApplicationEntity applicationEntity = newApplicationEntity(Map.of(), Set.of());
+    applicationEntity.setCaseworker(null);
+
+    ApplicationDbProjection actual = mapper.toApplicationDbProjection(applicationEntity);
+
+    assertThat(actual.caseworkerId()).isNull();
+  }
+
+  @Test
+  void givenNullApplicationStatus_whenMapped_thenStatusIsNull() {
+    ApplicationEntity applicationEntity = newApplicationEntity(Map.of(), Set.of());
+    applicationEntity.setStatus(null);
+
+    ApplicationDbProjection actual = mapper.toApplicationDbProjection(applicationEntity);
+
+    assertThat(actual.status()).isNull();
+  }
+
+  @Test
+  void givenNullProceedings_whenMapped_thenProceedingsIsEmpty() {
+    ApplicationEntity applicationEntity = newApplicationEntity(Map.of(), null);
+
+    ApplicationDbProjection actual = mapper.toApplicationDbProjection(applicationEntity);
+
+    assertThat(actual.proceedings()).isEmpty();
+  }
+
+  @Test
+  void givenNullApplicationContent_whenMapped_thenParsedFieldsAreEmpty() {
+    ApplicationEntity applicationEntity = newApplicationEntity(null, Set.of());
+
+    ApplicationDbProjection actual = mapper.toApplicationDbProjection(applicationEntity);
+
+    assertThat(actual.submitterEmail()).isNull();
+    assertThat(actual.opponents()).isEmpty();
+  }
+
+  @Test
+  void givenNullMeritsDecisionOnProceeding_whenMapped_thenMeritsDecisionIsNull() {
     ProceedingEntity proceedingEntity =
         DataGenerator.createDefault(ProceedingsEntityGenerator.class);
-    proceedingEntity.setMeritsDecision(
-        uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity.builder()
-            .decision(null)
-            .build());
+    proceedingEntity.setMeritsDecision(null);
 
-    ApplicationEntity applicationEntity = newApplicationEntity(Map.of(), Set.of(proceedingEntity));
+    ProceedingDbProjection actual =
+        mapper.toProceedingDbProjection(
+            proceedingEntity, Collections.emptyList(), Collections.emptyList());
 
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.proceedings()).hasSize(1);
-    assertThat(readModel.proceedings().getFirst().meritsDecision()).isNull();
+    assertThat(actual.meritsDecision()).isNull();
   }
 
   @Test
-  void givenMatchedProceedingWithEmptyLinkedChildren_whenMapped_thenInvolvedChildrenIsEmpty() {
-    UUID applyProceedingId = UUID.randomUUID();
+  void givenMeritsDecisionWithNullDecision_whenMapped_thenMeritsDecisionIsNull() {
     ProceedingEntity proceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder -> builder.applyProceedingId(applyProceedingId));
+        DataGenerator.createDefault(ProceedingsEntityGenerator.class);
+    proceedingEntity.setMeritsDecision(MeritsDecisionEntity.builder().decision(null).build());
 
-    ApplicationContent applicationContent =
-        DataGenerator.createDefault(
-            ApplicationContentGenerator.class,
-            builder ->
-                builder.proceedingMerits(
-                    List.of(
-                        ProceedingMerits.builder()
-                            .proceedingId(applyProceedingId)
-                            .proceedingLinkedChildren(List.of())
-                            .build())));
+    ProceedingDbProjection actual =
+        mapper.toProceedingDbProjection(
+            proceedingEntity, Collections.emptyList(), Collections.emptyList());
 
-    ApplicationEntity applicationEntity =
-        newApplicationEntity(
-            objectMapper.convertValue(applicationContent, Map.class), Set.of(proceedingEntity));
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.proceedings().getFirst().involvedChildren()).isEmpty();
-  }
-
-  @Test
-  void givenScopeLimitationsWithMissingFields_whenMapped_thenMissingFieldsMapToNull() {
-    ProceedingEntity proceedingEntity =
-        DataGenerator.createDefault(
-            ProceedingsEntityGenerator.class,
-            builder ->
-                builder.proceedingContent(
-                    Map.of(
-                        "meaning", "hearing",
-                        "matterTypeEnum", "SPECIAL_CHILDREN_ACT",
-                        "categoryOfLawEnum", "Family",
-                        "usedDelegatedFunctionsOn", "2025-05-06",
-                        "substantiveCostLimitation", "23.45",
-                        "substantiveLevelOfServiceNameEnum", "SERVICE",
-                        "scopeLimitations",
-                            List.of(
-                                Map.of("description", "only description"),
-                                Map.of("meaning", "only meaning")))));
-
-    ApplicationEntity applicationEntity = newApplicationEntity(Map.of(), Set.of(proceedingEntity));
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.proceedings()).hasSize(1);
-    assertThat(readModel.proceedings().getFirst().scopeLimitations()).hasSize(2);
-    assertThat(readModel.proceedings().getFirst().scopeLimitations().get(0).scopeLimitation())
-        .isNull();
-    assertThat(readModel.proceedings().getFirst().scopeLimitations().get(0).scopeDescription())
-        .isEqualTo("only description");
-    assertThat(readModel.proceedings().getFirst().scopeLimitations().get(1).scopeLimitation())
-        .isEqualTo("only meaning");
-    assertThat(readModel.proceedings().getFirst().scopeLimitations().get(1).scopeDescription())
-        .isNull();
-  }
-
-  @Test
-  void givenOpponentWithNullOpposable_whenMapped_thenOpponentNameFieldsAreNull() {
-    ApplicationMerits merits =
-        DataGenerator.createDefault(
-            ApplicationMeritsGenerator.class,
-            builder ->
-                builder.opponents(
-                    List.of(
-                        OpponentDetails.builder()
-                            .opposableType("ApplicationMeritsTask::Individual")
-                            .opposable(null)
-                            .build())));
-    ApplicationContent applicationContent =
-        DataGenerator.createDefault(
-            ApplicationContentGenerator.class, builder -> builder.applicationMerits(merits));
-
-    ApplicationEntity applicationEntity =
-        newApplicationEntity(objectMapper.convertValue(applicationContent, Map.class), Set.of());
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.opponents()).hasSize(1);
-    assertThat(readModel.opponents().getFirst().firstName()).isNull();
-    assertThat(readModel.opponents().getFirst().lastName()).isNull();
-    assertThat(readModel.opponents().getFirst().organisationName()).isNull();
-  }
-
-  @Test
-  void givenOfficeCodeNullAndSubmitterEmailPresent_whenMapped_thenProviderContainsEmail() {
-    ApplicationEntity applicationEntity =
-        newApplicationEntity(Map.of("submitterEmail", "x@y.z"), Set.of());
-    applicationEntity.setOfficeCode(null);
-
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
-
-    assertThat(readModel.provider()).isNotNull();
-    assertThat(readModel.provider().officeCode()).isNull();
-    assertThat(readModel.provider().contactEmail()).isEqualTo("x@y.z");
+    assertThat(actual.meritsDecision()).isNull();
   }
 
   @Test
@@ -509,9 +195,212 @@ class GetApplicationGatewayMapperTest {
     ApplicationEntity applicationEntity =
         newApplicationEntity(objectMapper.convertValue(applicationContent, Map.class), Set.of());
 
-    ApplicationReadModel readModel = mapper.toApplicationReadModel(applicationEntity);
+    ApplicationDbProjection actual = mapper.toApplicationDbProjection(applicationEntity);
 
-    assertThat(readModel.opponents()).isEmpty();
+    assertThat(actual.opponents()).isEmpty();
+    assertThat(actual.proceedings()).isEmpty();
+  }
+
+  @Test
+  void givenMatchingMeritsWithChildren_whenMapped_thenInvolvedChildrenResolvedOnProceeding() {
+    UUID applyProceedingId = UUID.randomUUID();
+    UUID childId = UUID.randomUUID();
+
+    ProceedingEntity proceedingEntity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+
+    InvolvedChild child =
+        InvolvedChild.builder()
+            .id(childId)
+            .fullName("John Smith")
+            .dateOfBirth(LocalDate.of(2020, 1, 1))
+            .build();
+
+    ProceedingMerits merits =
+        ProceedingMerits.builder()
+            .proceedingId(applyProceedingId)
+            .proceedingLinkedChildren(
+                List.of(ProceedingLinkedChild.builder().involvedChildId(childId).build()))
+            .build();
+
+    ProceedingDbProjection actual =
+        mapper.toProceedingDbProjection(proceedingEntity, List.of(merits), List.of(child));
+
+    assertThat(actual.involvedChildren()).hasSize(1);
+    assertThat(actual.involvedChildren().getFirst().getFullName()).isEqualTo("John Smith");
+    assertThat(actual.involvedChildren().getFirst().getDateOfBirth())
+        .isEqualTo(LocalDate.of(2020, 1, 1));
+  }
+
+  @Test
+  void givenNoMatchingMeritsForProceeding_whenMapped_thenInvolvedChildrenIsEmpty() {
+    UUID applyProceedingId = UUID.randomUUID();
+
+    ProceedingEntity proceedingEntity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+
+    ProceedingMerits merits =
+        ProceedingMerits.builder()
+            .proceedingId(UUID.randomUUID())
+            .proceedingLinkedChildren(
+                List.of(ProceedingLinkedChild.builder().involvedChildId(UUID.randomUUID()).build()))
+            .build();
+
+    ProceedingDbProjection actual =
+        mapper.toProceedingDbProjection(
+            proceedingEntity,
+            List.of(merits),
+            List.of(InvolvedChild.builder().id(UUID.randomUUID()).build()));
+
+    assertThat(actual.involvedChildren()).isEmpty();
+  }
+
+  @Test
+  void givenNullApplyProceedingId_whenMapped_thenInvolvedChildrenIsEmpty() {
+    ProceedingEntity proceedingEntity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class, builder -> builder.applyProceedingId(null));
+
+    ProceedingDbProjection actual =
+        mapper.toProceedingDbProjection(
+            proceedingEntity,
+            List.of(ProceedingMerits.builder().proceedingId(UUID.randomUUID()).build()),
+            List.of(InvolvedChild.builder().id(UUID.randomUUID()).build()));
+
+    assertThat(actual.involvedChildren()).isEmpty();
+  }
+
+  @Test
+  void givenMatchingMeritsWithNullLinkedChildren_whenMapped_thenInvolvedChildrenIsEmpty() {
+    UUID applyProceedingId = UUID.randomUUID();
+    ProceedingEntity proceedingEntity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+
+    ProceedingMerits merits =
+        ProceedingMerits.builder()
+            .proceedingId(applyProceedingId)
+            .proceedingLinkedChildren(null)
+            .build();
+
+    ProceedingDbProjection actual =
+        mapper.toProceedingDbProjection(
+            proceedingEntity,
+            List.of(merits),
+            List.of(InvolvedChild.builder().id(UUID.randomUUID()).build()));
+
+    assertThat(actual.involvedChildren()).isEmpty();
+  }
+
+  @Test
+  void givenMatchingMeritsWithEmptyLinkedChildren_whenMapped_thenInvolvedChildrenIsEmpty() {
+    UUID applyProceedingId = UUID.randomUUID();
+    ProceedingEntity proceedingEntity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+
+    ProceedingMerits merits =
+        ProceedingMerits.builder()
+            .proceedingId(applyProceedingId)
+            .proceedingLinkedChildren(Collections.emptyList())
+            .build();
+
+    ProceedingDbProjection actual =
+        mapper.toProceedingDbProjection(
+            proceedingEntity,
+            List.of(merits),
+            List.of(InvolvedChild.builder().id(UUID.randomUUID()).build()));
+
+    assertThat(actual.involvedChildren()).isEmpty();
+  }
+
+  @Test
+  void
+      givenMatchingMeritsWithLinkedChildrenButNullInvolvedChildren_whenMapped_thenInvolvedChildrenIsEmpty() {
+    UUID applyProceedingId = UUID.randomUUID();
+    ProceedingEntity proceedingEntity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+
+    ProceedingMerits merits =
+        ProceedingMerits.builder()
+            .proceedingId(applyProceedingId)
+            .proceedingLinkedChildren(
+                List.of(ProceedingLinkedChild.builder().involvedChildId(UUID.randomUUID()).build()))
+            .build();
+
+    ProceedingDbProjection actual =
+        mapper.toProceedingDbProjection(proceedingEntity, List.of(merits), null);
+
+    assertThat(actual.involvedChildren()).isEmpty();
+  }
+
+  @Test
+  void
+      givenMatchingMeritsWithLinkedChildrenButEmptyInvolvedChildren_whenMapped_thenInvolvedChildrenIsEmpty() {
+    UUID applyProceedingId = UUID.randomUUID();
+    ProceedingEntity proceedingEntity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+
+    ProceedingMerits merits =
+        ProceedingMerits.builder()
+            .proceedingId(applyProceedingId)
+            .proceedingLinkedChildren(
+                List.of(ProceedingLinkedChild.builder().involvedChildId(UUID.randomUUID()).build()))
+            .build();
+
+    ProceedingDbProjection actual =
+        mapper.toProceedingDbProjection(proceedingEntity, List.of(merits), Collections.emptyList());
+
+    assertThat(actual.involvedChildren()).isEmpty();
+  }
+
+  @Test
+  void givenUnresolvableChildId_whenMapped_thenInvolvedChildrenIsEmpty() {
+    UUID applyProceedingId = UUID.randomUUID();
+    UUID childId = UUID.randomUUID();
+
+    ProceedingEntity proceedingEntity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+
+    ProceedingMerits merits =
+        ProceedingMerits.builder()
+            .proceedingId(applyProceedingId)
+            .proceedingLinkedChildren(
+                List.of(ProceedingLinkedChild.builder().involvedChildId(childId).build()))
+            .build();
+
+    ProceedingDbProjection actual =
+        mapper.toProceedingDbProjection(
+            proceedingEntity,
+            List.of(merits),
+            List.of(InvolvedChild.builder().id(UUID.randomUUID()).build()));
+
+    assertThat(actual.involvedChildren()).isEmpty();
+  }
+
+  @Test
+  void givenSubmitterEmailPresent_whenMapped_thenSubmitterEmailExtracted() {
+    ApplicationEntity applicationEntity =
+        newApplicationEntity(
+            Map.of("submitterEmail", ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_FULL_NAME),
+            Set.of());
+
+    ApplicationDbProjection actual = mapper.toApplicationDbProjection(applicationEntity);
+
+    assertThat(actual.submitterEmail())
+        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_FULL_NAME);
   }
 
   private ApplicationEntity newApplicationEntity(

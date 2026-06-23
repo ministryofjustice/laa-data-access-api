@@ -10,23 +10,20 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChild;
-import uk.gov.justice.laa.dstew.access.model.Opposable;
+import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
 import uk.gov.justice.laa.dstew.access.model.ProceedingLinkedChild;
-import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationProceedingReadModel;
-import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.InvolvedChildReadModel;
-import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.OpponentReadModel;
-import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ProviderReadModel;
-import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ScopeLimitationReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ApplicationDbProjection;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ProceedingDbProjection;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationMerits;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.Proceeding;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingMerits;
 
-/** Maps application entities to the get-application read model. */
+/**
+ * Maps application entities to intermediate DB projection DTOs. Responsible for extracting parsed
+ * fields and joining proceedings with merits and involved children.
+ */
 public class GetApplicationGatewayMapper {
-
-  private static final String APPLICATION_TYPE_INITIAL = "INITIAL";
 
   private final ObjectMapper objectMapper;
 
@@ -39,20 +36,14 @@ public class GetApplicationGatewayMapper {
     this.objectMapper = objectMapper;
   }
 
-  /**
-   * Maps an application entity to the read model returned by the use case.
-   *
-   * @param application application entity
-   * @return application read model
-   */
-  public ApplicationReadModel toApplicationReadModel(ApplicationEntity application) {
+  /** Extracts an application entity into a DB projection. */
+  public ApplicationDbProjection toApplicationDbProjection(ApplicationEntity application) {
     ApplicationContent applicationContent =
         toApplicationContent(application.getApplicationContent());
-
     List<ProceedingMerits> proceedingMerits = toProceedingMerits(applicationContent);
     List<InvolvedChild> involvedChildren = toInvolvedChildren(applicationContent);
 
-    return ApplicationReadModel.builder()
+    return ApplicationDbProjection.builder()
         .id(application.getId())
         .status(application.getStatus() != null ? application.getStatus().name() : null)
         .laaReference(application.getLaaReference())
@@ -68,17 +59,17 @@ public class GetApplicationGatewayMapper {
                     && application.getDecision().getOverallDecision() != null
                 ? application.getDecision().getOverallDecision().name()
                 : null)
-        .applicationType(APPLICATION_TYPE_INITIAL)
         .version(application.getVersion())
-        .opponents(toOpponentReadModels(applicationContent))
-        .provider(toProviderReadModel(application.getOfficeCode(), applicationContent))
+        .officeCode(application.getOfficeCode())
+        .submitterEmail(applicationContent != null ? applicationContent.getSubmitterEmail() : null)
+        .opponents(toOpponentDetails(applicationContent))
         .proceedings(
-            toApplicationProceedingReadModels(
+            toProceedingDbProjections(
                 application.getProceedings(), proceedingMerits, involvedChildren))
         .build();
   }
 
-  private List<ApplicationProceedingReadModel> toApplicationProceedingReadModels(
+  private List<ProceedingDbProjection> toProceedingDbProjections(
       Set<ProceedingEntity> proceedings,
       List<ProceedingMerits> proceedingMerits,
       List<InvolvedChild> involvedChildren) {
@@ -87,46 +78,44 @@ public class GetApplicationGatewayMapper {
     }
 
     return proceedings.stream()
-        .map(
-            proceeding ->
-                toApplicationProceedingReadModel(proceeding, proceedingMerits, involvedChildren))
+        .map(p -> toProceedingDbProjection(p, proceedingMerits, involvedChildren))
         .toList();
   }
 
-  private ApplicationProceedingReadModel toApplicationProceedingReadModel(
+  /** Extracts a proceeding entity into a DB projection with resolved involved children. */
+  public ProceedingDbProjection toProceedingDbProjection(
       ProceedingEntity proceedingEntity,
       List<ProceedingMerits> proceedingMerits,
       List<InvolvedChild> involvedChildren) {
-
     Proceeding proceeding =
         objectMapper.convertValue(proceedingEntity.getProceedingContent(), Proceeding.class);
 
-    return ApplicationProceedingReadModel.builder()
+    return ProceedingDbProjection.builder()
         .proceedingId(proceedingEntity.getId())
         .description(proceedingEntity.getDescription())
+        .meritsDecision(
+            proceedingEntity.getMeritsDecision() != null
+                    && proceedingEntity.getMeritsDecision().getDecision() != null
+                ? proceedingEntity.getMeritsDecision().getDecision().name()
+                : null)
         .proceedingType(proceeding.getMeaning())
         .categoryOfLaw(proceeding.getCategoryOfLawEnum())
         .matterType(proceeding.getMatterTypeEnum())
         .levelOfService(proceeding.getSubstantiveLevelOfServiceNameEnum())
         .substantiveCostLimitation(proceeding.getSubstantiveCostLimitation())
         .delegatedFunctionsDate(proceeding.getUsedDelegatedFunctionsOn())
-        .meritsDecision(
-            proceedingEntity.getMeritsDecision() != null
-                    && proceedingEntity.getMeritsDecision().getDecision() != null
-                ? proceedingEntity.getMeritsDecision().getDecision().name()
-                : null)
+        .scopeLimitations(proceeding.getScopeLimitations())
         .involvedChildren(
-            toInvolvedChildReadModels(
+            resolveInvolvedChildren(
                 proceedingEntity.getApplyProceedingId(), proceedingMerits, involvedChildren))
-        .scopeLimitations(toScopeLimitationReadModels(proceeding.getScopeLimitations()))
         .build();
   }
 
-  private List<InvolvedChildReadModel> toInvolvedChildReadModels(
+  private List<InvolvedChild> resolveInvolvedChildren(
       UUID applyProceedingId,
       List<ProceedingMerits> proceedingMerits,
       List<InvolvedChild> involvedChildren) {
-    if (applyProceedingId == null || proceedingMerits.isEmpty()) {
+    if (applyProceedingId == null || proceedingMerits == null || proceedingMerits.isEmpty()) {
       return Collections.emptyList();
     }
 
@@ -135,13 +124,16 @@ public class GetApplicationGatewayMapper {
         .findFirst()
         .map(
             merits ->
-                toInvolvedChildReadModels(merits.getProceedingLinkedChildren(), involvedChildren))
+                filterInvolvedChildren(merits.getProceedingLinkedChildren(), involvedChildren))
         .orElse(Collections.emptyList());
   }
 
-  private List<InvolvedChildReadModel> toInvolvedChildReadModels(
+  private List<InvolvedChild> filterInvolvedChildren(
       List<ProceedingLinkedChild> linkedChildren, List<InvolvedChild> involvedChildren) {
-    if (linkedChildren == null || linkedChildren.isEmpty() || involvedChildren.isEmpty()) {
+    if (linkedChildren == null
+        || linkedChildren.isEmpty()
+        || involvedChildren == null
+        || involvedChildren.isEmpty()) {
       return Collections.emptyList();
     }
 
@@ -151,41 +143,13 @@ public class GetApplicationGatewayMapper {
         .flatMap(
             childId ->
                 involvedChildren.stream()
-                    .filter(involvedChild -> childId.equals(involvedChild.getId()))
+                    .filter(child -> childId.equals(child.getId()))
                     .findFirst()
                     .stream())
-        .map(
-            involvedChild ->
-                InvolvedChildReadModel.builder()
-                    .fullName(involvedChild.getFullName())
-                    .dateOfBirth(involvedChild.getDateOfBirth())
-                    .build())
         .toList();
   }
 
-  private List<ScopeLimitationReadModel> toScopeLimitationReadModels(
-      List<Map<String, Object>> scopeLimitations) {
-    if (scopeLimitations == null) {
-      return Collections.emptyList();
-    }
-
-    return scopeLimitations.stream()
-        .map(
-            scopeLimitation ->
-                ScopeLimitationReadModel.builder()
-                    .scopeLimitation(
-                        scopeLimitation.get("meaning") != null
-                            ? scopeLimitation.get("meaning").toString()
-                            : null)
-                    .scopeDescription(
-                        scopeLimitation.get("description") != null
-                            ? scopeLimitation.get("description").toString()
-                            : null)
-                    .build())
-        .toList();
-  }
-
-  private List<OpponentReadModel> toOpponentReadModels(ApplicationContent applicationContent) {
+  private List<OpponentDetails> toOpponentDetails(ApplicationContent applicationContent) {
     if (applicationContent == null || applicationContent.getApplicationMerits() == null) {
       return Collections.emptyList();
     }
@@ -195,30 +159,7 @@ public class GetApplicationGatewayMapper {
       return Collections.emptyList();
     }
 
-    return merits.getOpponents().stream()
-        .map(
-            opponentDetails -> {
-              Opposable opposable = opponentDetails.getOpposable();
-              return OpponentReadModel.builder()
-                  .opponentType(opponentDetails.getOpposableType())
-                  .firstName(opposable != null ? opposable.getFirstName() : null)
-                  .lastName(opposable != null ? opposable.getLastName() : null)
-                  .organisationName(opposable != null ? opposable.getName() : null)
-                  .build();
-            })
-        .toList();
-  }
-
-  private ProviderReadModel toProviderReadModel(
-      String officeCode, ApplicationContent applicationContent) {
-    String contactEmail =
-        applicationContent != null ? applicationContent.getSubmitterEmail() : null;
-
-    if (officeCode == null && contactEmail == null) {
-      return null;
-    }
-
-    return ProviderReadModel.builder().officeCode(officeCode).contactEmail(contactEmail).build();
+    return merits.getOpponents();
   }
 
   private ApplicationContent toApplicationContent(Map<String, Object> applicationContent) {

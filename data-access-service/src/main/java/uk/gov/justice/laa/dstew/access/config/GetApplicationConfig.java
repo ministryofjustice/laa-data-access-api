@@ -8,6 +8,7 @@ import uk.gov.justice.laa.dstew.access.controller.application.GetApplicationResp
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getapplication.GetApplicationApplicationJpaGateway;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getapplication.GetApplicationGatewayMapper;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.GetApplicationReadModelMapper;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.GetApplicationUseCase;
 
 /** Spring configuration for the get-application use case. */
@@ -42,15 +43,28 @@ public class GetApplicationConfig {
   }
 
   /**
+   * Creates the read model mapper bean.
+   *
+   * @return read model mapper
+   */
+  @Bean
+  public GetApplicationReadModelMapper getApplicationReadModelMapper() {
+    return new GetApplicationReadModelMapper();
+  }
+
+  /**
    * Creates the use case bean.
    *
    * @param getApplicationApplicationJpaGateway get-application gateway
+   * @param getApplicationReadModelMapper read model mapper
    * @return use case
    */
   @Bean
   public GetApplicationUseCase getApplicationUseCase(
-      GetApplicationApplicationJpaGateway getApplicationApplicationJpaGateway) {
-    return new GetApplicationUseCase(getApplicationApplicationJpaGateway);
+      GetApplicationApplicationJpaGateway getApplicationApplicationJpaGateway,
+      GetApplicationReadModelMapper getApplicationReadModelMapper) {
+    return new GetApplicationUseCase(
+        getApplicationApplicationJpaGateway, getApplicationReadModelMapper);
   }
 
   /**
