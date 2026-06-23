@@ -47,5 +47,7 @@ jar {
     enabled = false
 }
 
-
+// Mass-generator is a standalone utility with generated-style source that does not fit the
+// repository-wide Checkstyle rules, so exclude it from Checkstyle enforcement.
+checkstyleMain.exclude("*")
 
