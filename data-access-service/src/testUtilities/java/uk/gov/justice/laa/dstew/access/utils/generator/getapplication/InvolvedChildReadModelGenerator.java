@@ -1,7 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.getapplication;
 
 import java.time.LocalDate;
-import uk.gov.justice.laa.dstew.access.domain.InvolvedChildReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.InvolvedChildReadModel;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
 /** Generator for {@link InvolvedChildReadModel} test data. */

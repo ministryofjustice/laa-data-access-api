@@ -1,6 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.getapplication;
 
-import uk.gov.justice.laa.dstew.access.domain.ScopeLimitationReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ScopeLimitationReadModel;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
 /** Generator for {@link ScopeLimitationReadModel} test data. */

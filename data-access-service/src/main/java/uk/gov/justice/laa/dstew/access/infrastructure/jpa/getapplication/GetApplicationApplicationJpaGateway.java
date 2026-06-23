@@ -2,9 +2,9 @@ package uk.gov.justice.laa.dstew.access.infrastructure.jpa.getapplication;
 
 import java.util.Optional;
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.infrastructure.GetApplicationApplicationGateway;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationReadModel;
 
 /** JPA gateway for the get-application use case. */
 public class GetApplicationApplicationJpaGateway implements GetApplicationApplicationGateway {

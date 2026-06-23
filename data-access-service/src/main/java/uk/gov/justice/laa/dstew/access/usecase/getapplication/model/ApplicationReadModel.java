@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.domain;
+package uk.gov.justice.laa.dstew.access.usecase.getapplication.model;
 
 import java.time.Instant;
 import java.util.List;

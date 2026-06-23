@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.domain;
+package uk.gov.justice.laa.dstew.access.usecase.getapplication.model;
 
 import lombok.Builder;
 

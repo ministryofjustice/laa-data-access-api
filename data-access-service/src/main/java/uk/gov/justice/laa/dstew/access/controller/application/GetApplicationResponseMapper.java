@@ -5,12 +5,6 @@ import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationProceedingReadModel;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.domain.InvolvedChildReadModel;
-import uk.gov.justice.laa.dstew.access.domain.OpponentReadModel;
-import uk.gov.justice.laa.dstew.access.domain.ProviderReadModel;
-import uk.gov.justice.laa.dstew.access.domain.ScopeLimitationReadModel;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -21,6 +15,12 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationProceedingReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.InvolvedChildReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.OpponentReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ProviderReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ScopeLimitationReadModel;
 import uk.gov.justice.laa.dstew.access.utils.EnumParsingUtils;
 
 /** Maps get-application read models to API responses. */

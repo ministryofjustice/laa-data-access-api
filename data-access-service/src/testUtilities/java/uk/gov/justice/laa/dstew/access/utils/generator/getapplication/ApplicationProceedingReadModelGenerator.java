@@ -3,7 +3,7 @@ package uk.gov.justice.laa.dstew.access.utils.generator.getapplication;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationProceedingReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationProceedingReadModel;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
 /** Generator for {@link ApplicationProceedingReadModel} test data. */
