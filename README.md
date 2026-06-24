@@ -64,6 +64,10 @@ export SDS_API_URL=https://dummy-sds-api-url
 export SDS_API_BUCKET=dummy-sds-api-bucket-name
 export SDS_API_CLIENT_REGISTRATION_ID=dummy-sds-api-client-registration-id
 export SDS_API_PRINCIPAL_NAME=dummy-sds-api-principal-name
+export AUTH_CLIENT_ID=test
+export AUTH_CLIENT_SECRET=test
+export AUTH_SCOPE=api://laa-data-access-api/.default
+export AUTH_TENANT_ID=entra
 ```
 
 **Note:** When using the local mock-oauth2-server (see below), the ENTRA variables are configured to point to it.
@@ -73,7 +77,7 @@ This will ensure that where-ever you run the application from locally (IntelliJ,
 , these environment variables will be set.
 
 You can verify that they have been set by running `printenv` in your terminal or
-looking in the environment variable section in the run/debug configuration in IntelliJ
+## Build and run application
 
 ### Developing application within Intellij
 Java version 25 is required
@@ -121,7 +125,9 @@ Ensure that the environment variables specified in the
 
 To start up mock-oauth2-server, Postgres, Prometheus, and Grafana:
 
-`docker compose up -d`
+```bash
+docker compose up -d
+```
 
 This will start:
 - **Postgres** (port 5432) - Database
@@ -133,35 +139,36 @@ Or if you want to use a different database name or credentials:
 
 `docker compose run -p 5432:5432 -e POSTGRES_DB={database name} -e POSTGRES_USER={username} -e POSTGRES_PASSWORD={password} postgres`
 
-Then execute
+Then run the application with the `local` profile:
 
-`./gradlew bootRun`
+```bash
+./gradlew bootRun --args='--spring.profiles.active=local'
+```
+
+The app will start on http://localhost:8080 with all OAuth2 configuration pre-configured.
 
 ### Executing endpoints
 
-You can use a tool such as Postman or curl to execute endpoints. For example, to execute the `GET /applications`
-endpoint using curl:
+You can use curl or Postman to execute endpoints. First, get an authentication token:
 
-```
-curl -X GET "http://localhost:8080/applications" -H "accept: application/json" -H "Authorization: Bearer {token}"
+```bash
+# Get a token and save it as an environment variable
+export TOKEN=$(./scripts/get-token.sh local)
+
+# Call the API
+curl -X GET "http://localhost:8080/api/v0/caseworkers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Service-Name: CIVIL_APPLY"
 ```
 
 You can also use the Swagger UI to execute endpoints, which is described below in the
 [API documentation](#api-documentation) section.
-
-If FEATURE_ENABLE_DEV_TOKEN is set to true, you can use the following token for testing purposes
-```
-Authorization: Bearer swagger-caseworker-token
-```
 
 #### Getting tokens from local mock-oauth2-server
 
 You can use the helper script to fetch a token from the local mock-oauth2-server:
 
 ```bash
-# Get a token for local development
-./scripts/get-token.sh local
-
 # Get a token and copy it to clipboard
 ./scripts/get-token.sh local --copy
 
@@ -169,7 +176,235 @@ You can use the helper script to fetch a token from the local mock-oauth2-server
 ./scripts/get-token.sh local --decode
 ```
 
-The token will be valid for the local API when using the mock-oauth2-server environment variables shown above.
+**How to use the token:**
+1. Run the script with `--copy` to copy the token to your clipboard
+2. Open Swagger UI at http://localhost:8080/swagger-ui/index.html
+3. Click the "Authorize" button in the top right
+4. Paste the token into the "Value" field
+5. Click "Authorize" then "Close"
+
+Now you can execute endpoints directly from Swagger UI.
+
+---
+
+## Authentication Across Environments
+
+This section explains how to get JWT tokens for testing the API in different environments using mock-oauth2-server.
+
+### Local Development
+
+**Setup:**
+```bash
+# 1. Start the infrastructure
+docker compose up -d
+
+# 2. Run the app with local profile (includes all OAuth2 config)
+./gradlew bootRun --args='--spring.profiles.active=local'
+```
+
+**Get a token:**
+```bash
+# Option 1: Copy to clipboard for Swagger UI
+./scripts/get-token.sh local --copy
+
+# Option 2: Save to environment variable for curl
+export TOKEN=$(./scripts/get-token.sh local)
+```
+
+**Use the token:**
+```bash
+# With curl
+curl -X GET "http://localhost:8080/api/v0/caseworkers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Service-Name: CIVIL_APPLY"
+
+# With Swagger UI - paste the token in the Authorize dialog
+# http://localhost:8080/swagger-ui/index.html
+```
+
+**What's happening:**
+- The `local` profile configures the app to accept JWTs from `http://localhost:9999/entra`
+- The script requests a token from the same mock server
+- No environment variables needed - everything is preconfigured
+
+---
+
+### UAT/Deployed Environments
+
+**Prerequisites:**
+- Access to the Kubernetes cluster
+- `kubectl` configured with correct context
+- Namespace and release name from your GitHub Actions deployment output
+  - The deployment logs on GitHub will show the exact service name and `OAUTH_ISSUER_HOST` to use
+  - Look for the "Deploy to UAT" 
+
+**Step 1: Find the mock-oauth2 service**
+```bash
+# Set your namespace
+export KUBE_NAMESPACE=laa-data-access-api-uat
+
+# Find the service name
+kubectl -n $KUBE_NAMESPACE get svc -l app.kubernetes.io/component=mock-oauth2
+
+# Example output:
+# NAME                                        TYPE        CLUSTER-IP      PORT(S)
+# pr-123-data-access-api-mock-oauth2         ClusterIP   10.200.1.45     9999/TCP
+```
+
+**Step 2: Port-forward the mock-oauth2 service**
+
+In a separate terminal window, keep this running:
+```bash
+# Replace <service-name> with the actual service name from step 1
+kubectl -n $KUBE_NAMESPACE port-forward svc/<service-name> 9999:9999
+
+# Example:
+# kubectl -n laa-data-access-api-uat port-forward svc/pr-123-data-access-api-mock-oauth2 9999:9999
+```
+
+**Step 3: Get a token**
+
+**Note:** The `OAUTH_ISSUER_HOST` is the service name from your port-forward command (the part after `svc/`), followed by `:9999`.
+
+For example, if your port-forward command is:
+```bash
+kubectl -n laa-data-access-api-uat port-forward svc/spike-dstew1360-data-access-api-mock-oauth2 9999:9999
+```
+
+Then your `OAUTH_ISSUER_HOST` is: `spike-dstew1360-data-access-api-mock-oauth2:9999`
+
+Choose one of these methods:
+
+**Option A: Using the helper script**
+```bash
+# Set the issuer host (extract from your port-forward command above)
+export OAUTH_ISSUER_HOST=spike-dstew1360-data-access-api-mock-oauth2:9999
+
+# Get the token
+./scripts/get-token.sh uat --copy --decode
+```
+
+**Option B: Using curl directly**
+```bash
+# Get token and save to variable
+TOKEN=$(curl -sS -X POST "http://localhost:9999/entra/token" \
+  -H "Host: spike-dstew1360-data-access-api-mock-oauth2:9999" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=test" \
+  -d "client_secret=test" \
+  -d "scope=api://laa-data-access-api/.default" | jq -r '.access_token')
+
+# Copy to clipboard (macOS)
+echo $TOKEN | pbcopy
+```
+
+**Step 4: Use the token**
+
+The token is now in your clipboard. Use it in:
+
+1. **Swagger UI:**
+   - Navigate to UAT Swagger (replace with your actual hostname from deployment output)
+   - Example: `https://spike-dstew1360-laa-data-access-api-uat.cloud-platform.service.justice.gov.uk/swagger-ui/index.html`
+   - Click "Authorize"
+   - Paste the token
+   - Test endpoints
+
+2. **curl:**
+   ```bash
+   # Using the token from Option A
+   curl -X GET "https://spike-dstew1360-laa-data-access-api-uat.cloud-platform.service.justice.gov.uk/api/v0/caseworkers" \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "X-Service-Name: CIVIL_APPLY"
+   
+   # Or get token inline with Option B
+   export TOKEN=$(curl -sS -X POST "http://localhost:9999/entra/token" \
+     -H "Host: spike-dstew1360-data-access-api-mock-oauth2:9999" \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "grant_type=client_credentials" \
+     -d "client_id=test" \
+     -d "client_secret=test" \
+     -d "scope=api://laa-data-access-api/.default" | jq -r '.access_token')
+   ```
+
+**Important Notes:**
+- The port-forward must stay running while you use the API
+- Tokens expire, currently set to 24 hours - get a fresh token if you see 401 errors
+- The `OAUTH_ISSUER_HOST` must match the in-cluster service name (not `localhost`)
+- Find the exact commands in your GitHub Actions deployment logs
+
+---
+
+### Smoke Test Environment
+
+For smoke tests that run via `docker-compose.smoke-test.yml`:
+
+```bash
+# Start smoke test infrastructure
+docker compose -f docker-compose.smoke-test.yml up -d
+
+# Get a token (uses port 9998)
+./scripts/get-token.sh smoke --copy
+
+# Use with smoke test API (runs on port 9000)
+export TOKEN=$(./scripts/get-token.sh smoke)
+curl -X GET "http://localhost:9000/api/v0/caseworkers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Service-Name: CIVIL_APPLY"
+```
+
+**Smoke test ports:**
+- App: http://localhost:9000
+- Mock OAuth2: http://localhost:9998
+- Postgres: localhost:6432
+
+---
+
+### Troubleshooting Authentication
+
+**Problem: "401 Unauthorized"**
+
+Causes:
+- Token expired
+- Token from wrong environment
+- Wrong issuer configuration
+
+Solution:
+```bash
+# Get a fresh token
+export TOKEN=$(./scripts/get-token.sh local)  # or 'uat'
+
+# Decode to check claims
+./scripts/get-token.sh local --decode
+
+# Verify the 'iss' (issuer) matches your app's expected issuer
+```
+
+**Problem: Token works locally but not in UAT**
+
+Cause: Issuer mismatch - local tokens won't work in UAT
+
+Solution:
+```bash
+# Must get a UAT-specific token with correct OAUTH_ISSUER_HOST
+OAUTH_ISSUER_HOST=<service-name>:9999 ./scripts/get-token.sh uat --copy
+```
+
+---
+
+### Quick Reference
+
+| Environment | Command | Mock Server Port |
+|------------|---------|------------------|
+| **Local** | `./scripts/get-token.sh local --copy` | 9999 |
+| **Smoke Test** | `./scripts/get-token.sh smoke --copy` | 9998 |
+| **UAT** | `OAUTH_ISSUER_HOST=<svc>:9999 ./scripts/get-token.sh uat --copy` | 9999 (via port-forward) |
+
+**Required Headers for API Calls:**
+- `Authorization: Bearer <token>`
+- `X-Service-Name: CIVIL_APPLY` (or other valid service)
+
+---
 
 ### Dependency lock files
 
@@ -212,56 +447,7 @@ You may need to drop database tables manually prior to running app so Flyway can
 #### Swagger UI
 - http://localhost:8080/swagger-ui/index.html
 
-The "Authorize" button is available in the top right of the Swagger UI, which allows you to enter a Bearer token for
-authentication when executing endpoints.
-If you have set up the environment variables as specified in the
-[Set up environment variables](#set-up-environment-variables) section,
-you can use the "Authorize" button to enter the following token for testing purposes:
-
-```
-swagger-caseworker-token
-```
-
-### Mock OAuth2 (UAT/deployed environments)
-
-UAT and other deployed environments use [navikt/mock-oauth2-server](https://github.com/navikt/mock-oauth2-server) to issue test JWTs that match the API's issuer validation.
-
-After deploying to UAT, check the Helm deployment notes or run:
-```bash
-kubectl -n <namespace> get svc -l app.kubernetes.io/component=mock-oauth2
-```
-
-**Note:** A copyable script with the correct namespace and release name is available in the `deploy-uat` GitHub Actions workflow output.
-
-Then fetch a test token for **UAT** (or another environment):
-
-**Option 1: Using the helper script** (pass `uat` as the environment)
-```bash
-# 1. Port-forward the mock-oauth2 service (separate terminal)
-kubectl -n <namespace> port-forward svc/<release>-data-access-api-mock-oauth2 9999:9999
-
-# 2. Get a token for UAT
-OAUTH_ISSUER_HOST=<release>-data-access-api-mock-oauth2:9999 ./scripts/get-token.sh uat --copy --decode
-```
-
-**Option 2: Using curl directly**
-```bash
-# 1. Port-forward the mock-oauth2 service (separate terminal)
-kubectl -n <namespace> port-forward svc/<release>-data-access-api-mock-oauth2 9999:9999
-
-# 2. Get a token via curl
-TOKEN=$(curl -sS -X POST "http://localhost:9999/entra/token" \
-  -H "Host: <release>-data-access-api-mock-oauth2:9999" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=client_credentials" \
-  -d "client_id=test" \
-  -d "client_secret=test" \
-  -d "scope=api://laa-data-access-api/.default" | jq -r '.access_token')
-
-echo "$TOKEN"
-```
-
-The token's `iss` claim will match the API's configured `ENTRA_ISSUER_URI`, so it will pass validation.
+For authentication tokens, see the [Authentication Across Environments](#authentication-across-environments) section above.
 
 #### API docs (JSON)
 - http://localhost:8080/v3/api-docs
