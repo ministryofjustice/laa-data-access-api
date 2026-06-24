@@ -54,30 +54,50 @@ Includes the following subprojects:
 
 Create or modify your '~/.zshrc' file to include the following environment variables:
 
-```
-export ENTRA_ISSUER_URI=http://host.docker.internal:9999/entra
-export ENTRA_JWK_SET_URI=http://localhost:9999/entra/jwks
-export ENTRA_AUD=api://laa-data-access-api
-export FEATURE_ENABLE_DEV_TOKEN=true
-export FEATURE_DISABLE_SECURITY=false
+Only set these 4 SDS variables in your `~/.zshrc`:
+
+```bash
+# SDS API Configuration (required)
 export SDS_API_URL=https://dummy-sds-api-url
 export SDS_API_BUCKET=dummy-sds-api-bucket-name
 export SDS_API_CLIENT_REGISTRATION_ID=dummy-sds-api-client-registration-id
 export SDS_API_PRINCIPAL_NAME=dummy-sds-api-principal-name
+```
+
+Then run with: `./gradlew bootRun --args='--spring.profiles.active=local'`
+
+OAuth2 config is handled by `application-local.yml` - no ENTRA_* or AUTH_* variables needed.
+
+---
+
+**Option 2: Use environment variables (without local profile)**
+
+Set all variables in your `~/.zshrc`:
+
+```bash
+# OAuth2 Resource Server Configuration
+export ENTRA_ISSUER_URI=http://host.docker.internal:9999/entra
+export ENTRA_JWK_SET_URI=http://localhost:9999/entra/jwks
+export ENTRA_AUD=api://laa-data-access-api
+
+# OAuth2 Client Configuration
 export AUTH_CLIENT_ID=test
 export AUTH_CLIENT_SECRET=test
 export AUTH_SCOPE=api://laa-data-access-api/.default
 export AUTH_TENANT_ID=entra
+
+# SDS API Configuration
+export SDS_API_URL=https://dummy-sds-api-url
+export SDS_API_BUCKET=dummy-sds-api-bucket-name
+export SDS_API_CLIENT_REGISTRATION_ID=dummy-sds-api-client-registration-id
+export SDS_API_PRINCIPAL_NAME=dummy-sds-api-principal-name
 ```
 
-**Note:** When using the local mock-oauth2-server (see below), the ENTRA variables are configured to point to it.
-If you prefer to disable security entirely for local development, set `FEATURE_DISABLE_SECURITY=true`.
+Then run with: `./gradlew bootRun`
 
-This will ensure that where-ever you run the application from locally (IntelliJ, any terminal window, etc)
-, these environment variables will be set.
+---
 
-You can verify that they have been set by running `printenv` in your terminal or
-## Build and run application
+After setting environment variables, reload: `source ~/.zshrc`
 
 ### Developing application within Intellij
 Java version 25 is required
@@ -119,9 +139,6 @@ The smoke tests will also run in CI eventually.
 ```
 
 ### Run application
-
-Ensure that the environment variables specified in the
-[Set up environment variables](#set-up-environment-variables) section have been set.
 
 To start up mock-oauth2-server, Postgres, Prometheus, and Grafana:
 
@@ -231,107 +248,26 @@ curl -X GET "http://localhost:8080/api/v0/caseworkers" \
 
 ### UAT/Deployed Environments
 
-**Prerequisites:**
-- Access to the Kubernetes cluster
-- `kubectl` configured with correct context
-- Namespace and release name from your GitHub Actions deployment output
-  - The deployment logs on GitHub will show the exact service name and `OAUTH_ISSUER_HOST` to use
-  - Look for the "Deploy to UAT" 
+**Check GitHub Actions `deploy-ephemeral` workflow output** for exact commands:
 
-**Step 1: Find the mock-oauth2 service**
-```bash
-# Set your namespace
-export KUBE_NAMESPACE=laa-data-access-api-uat
+```
+Mock OAuth2 (test tokens)
+   The API validates tokens against this in-cluster issuer:
+    http://spike-dstew1360-data-access-api-mock-oauth2:9999/entra
 
-# Find the service name
-kubectl -n $KUBE_NAMESPACE get svc -l app.kubernetes.io/component=mock-oauth2
+   1. Port-forward the mock-oauth2 service (in a separate terminal):
+       kubectl -n *** port-forward \
+         svc/spike-dstew1360-data-access-api-mock-oauth2 9999:9999
 
-# Example output:
-# NAME                                        TYPE        CLUSTER-IP      PORT(S)
-# pr-123-data-access-api-mock-oauth2         ClusterIP   10.200.1.45     9999/TCP
+   2. Fetch a matching test token:
+       OAUTH_ISSUER_HOST=spike-dstew1360-data-access-api-mock-oauth2:9999 \
+         ./scripts/get-token.sh uat --copy --decode
 ```
 
-**Step 2: Port-forward the mock-oauth2 service**
-
-In a separate terminal window, keep this running:
-```bash
-# Replace <service-name> with the actual service name from step 1
-kubectl -n $KUBE_NAMESPACE port-forward svc/<service-name> 9999:9999
-
-# Example:
-# kubectl -n laa-data-access-api-uat port-forward svc/pr-123-data-access-api-mock-oauth2 9999:9999
-```
-
-**Step 3: Get a token**
-
-**Note:** The `OAUTH_ISSUER_HOST` is the service name from your port-forward command (the part after `svc/`), followed by `:9999`.
-
-For example, if your port-forward command is:
-```bash
-kubectl -n laa-data-access-api-uat port-forward svc/spike-dstew1360-data-access-api-mock-oauth2 9999:9999
-```
-
-Then your `OAUTH_ISSUER_HOST` is: `spike-dstew1360-data-access-api-mock-oauth2:9999`
-
-Choose one of these methods:
-
-**Option A: Using the helper script**
-```bash
-# Set the issuer host (extract from your port-forward command above)
-export OAUTH_ISSUER_HOST=spike-dstew1360-data-access-api-mock-oauth2:9999
-
-# Get the token
-./scripts/get-token.sh uat --copy --decode
-```
-
-**Option B: Using curl directly**
-```bash
-# Get token and save to variable
-TOKEN=$(curl -sS -X POST "http://localhost:9999/entra/token" \
-  -H "Host: spike-dstew1360-data-access-api-mock-oauth2:9999" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=client_credentials" \
-  -d "client_id=test" \
-  -d "client_secret=test" \
-  -d "scope=api://laa-data-access-api/.default" | jq -r '.access_token')
-
-# Copy to clipboard (macOS)
-echo $TOKEN | pbcopy
-```
-
-**Step 4: Use the token**
-
-The token is now in your clipboard. Use it in:
-
-1. **Swagger UI:**
-   - Navigate to UAT Swagger (replace with your actual hostname from deployment output)
-   - Example: `https://spike-dstew1360-laa-data-access-api-uat.cloud-platform.service.justice.gov.uk/swagger-ui/index.html`
-   - Click "Authorize"
-   - Paste the token
-   - Test endpoints
-
-2. **curl:**
-   ```bash
-   # Using the token from Option A
-   curl -X GET "https://spike-dstew1360-laa-data-access-api-uat.cloud-platform.service.justice.gov.uk/api/v0/caseworkers" \
-     -H "Authorization: Bearer $TOKEN" \
-     -H "X-Service-Name: CIVIL_APPLY"
-   
-   # Or get token inline with Option B
-   export TOKEN=$(curl -sS -X POST "http://localhost:9999/entra/token" \
-     -H "Host: spike-dstew1360-data-access-api-mock-oauth2:9999" \
-     -H "Content-Type: application/x-www-form-urlencoded" \
-     -d "grant_type=client_credentials" \
-     -d "client_id=test" \
-     -d "client_secret=test" \
-     -d "scope=api://laa-data-access-api/.default" | jq -r '.access_token')
-   ```
-
-**Important Notes:**
-- The port-forward must stay running while you use the API
-- Tokens expire, currently set to 24 hours - get a fresh token if you see 401 errors
-- The `OAUTH_ISSUER_HOST` must match the in-cluster service name (not `localhost`)
-- Find the exact commands in your GitHub Actions deployment logs
+**Then use the token:**
+- The token is now in your clipboard (from the `--copy` flag)
+- Paste it into Swagger UI's "Authorize" dialog
+- Or use it with curl commands
 
 ---
 
