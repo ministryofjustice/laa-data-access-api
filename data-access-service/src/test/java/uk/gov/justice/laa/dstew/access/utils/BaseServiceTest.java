@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.databind.ObjectMapper;
@@ -49,7 +50,7 @@ public class BaseServiceTest {
 
   @MockitoBean protected ServiceNameContext serviceNameContext;
 
-  @MockitoBean protected org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder;
+  @MockitoBean protected JwtDecoder jwtDecoder;
 
   @Autowired protected ObjectMapper objectMapper;
 
