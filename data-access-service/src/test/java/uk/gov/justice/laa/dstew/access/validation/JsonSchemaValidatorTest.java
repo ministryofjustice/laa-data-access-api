@@ -151,4 +151,24 @@ class JsonSchemaValidatorTest {
         ex.errors().stream().anyMatch(msg -> msg.toLowerCase().contains("proceedings")),
         "Expected validation errors to mention proceedings field. Actual errors: " + ex.errors());
   }
+
+  @Test
+  void validateRejectsMissingRequiredFieldWithinCollectionItem() {
+    Map<String, Object> payload =
+        Map.of(
+            "id", UUID.randomUUID().toString(),
+            "submittedAt", "2026-01-15T10:20:30Z",
+            "proceedings",
+                List.of(Map.of("id", UUID.randomUUID().toString(), "leadProceeding", true)));
+
+    ValidationException ex =
+        assertThrows(
+            ValidationException.class,
+            () -> validator.validate(payload, "ApplyApplication.json", 1));
+
+    assertTrue(
+        ex.errors().stream().anyMatch(msg -> msg.toLowerCase().contains("description")),
+        "Expected validation errors to mention missing description field within proceeding. Actual errors: "
+            + ex.errors());
+  }
 }
