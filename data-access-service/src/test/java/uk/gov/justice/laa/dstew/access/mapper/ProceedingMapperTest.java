@@ -13,10 +13,10 @@ import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
-import uk.gov.justice.laa.dstew.access.model.InvolvedChild;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
-import uk.gov.justice.laa.dstew.access.model.ProceedingLinkedChild;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.InvolvedChild;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingLinkedChild;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingMerits;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMeritsGenerator;
@@ -214,6 +214,19 @@ class ProceedingMapperTest extends BaseMapperTest {
 
     ApplicationProceedingResponse result =
         proceedingMapper.toApplicationProceeding(entity, null, Collections.emptyList());
+
+    assertThat(result).isNotNull();
+    assertThat(result.getInvolvedChildren()).isEmpty();
+  }
+
+  @Test
+  void
+      givenEmptyProceedingMeritsList_whenToApplicationProceedingWithChildren_thenInvolvedChildrenIsEmpty() {
+    ProceedingEntity entity = DataGenerator.createDefault(ProceedingsEntityGenerator.class);
+    InvolvedChild child = DataGenerator.createDefault(InvolvedChildGenerator.class);
+
+    ApplicationProceedingResponse result =
+        proceedingMapper.toApplicationProceeding(entity, List.of(), List.of(child));
 
     assertThat(result).isNotNull();
     assertThat(result.getInvolvedChildren()).isEmpty();

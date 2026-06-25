@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.utils.generator;
 import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityManager;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -226,7 +227,7 @@ public class PersistedDataGenerator extends DataGenerator {
     ApplicationEntity entity =
         DataGenerator.createDefault(ApplicationEntityGenerator.class, customiser);
     if (entity.getIndividuals() != null) {
-      java.util.Set<IndividualEntity> merged = new java.util.HashSet<>();
+      Set<IndividualEntity> merged = new HashSet<>();
       for (IndividualEntity ind : entity.getIndividuals()) {
         merged.add(ind.getId() != null ? entityManager.merge(ind) : ind);
       }
