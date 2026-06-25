@@ -20,6 +20,7 @@ spec:
     metadata:
       labels:
         {{- include "data-access-api.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
       annotations:
         releaseTime: {{ dateInZone "2006-01-02 15:04:05Z" (now) "UTC"| quote }}
     spec:

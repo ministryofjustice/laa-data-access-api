@@ -64,5 +64,20 @@ slowQueryThresholdSeconds: 1
 portForward:
   enabled: true
 
+# Mock OAuth2 Server for UAT testing
+# Provides test tokens without needing port-forward or real Azure credentials
+mockOAuth2:
+  enabled: true
+  image:
+    repository: ghcr.io/navikt/mock-oauth2-server
+    tag: "2.1.10"
+  tokenExpiry: 86400  # 24 hours - tokens valid for a full working day
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 10m
+      memory: 64Mi
 
 featureFlags: {}

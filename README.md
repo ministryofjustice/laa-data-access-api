@@ -54,23 +54,50 @@ Includes the following subprojects:
 
 Create or modify your '~/.zshrc' file to include the following environment variables:
 
-```
-export ENTRA_ISSUER_URI=https://dummy-issuer
-export ENTRA_JWK_SET_URI=https://dummy-jwk-set-uri
-export ENTRA_AUD=dummy-aud
-export FEATURE_ENABLE_DEV_TOKEN=true
-export FEATURE_DISABLE_SECURITY=true
+Only set these 4 SDS variables in your `~/.zshrc`:
+
+```bash
+# SDS API Configuration (required)
 export SDS_API_URL=https://dummy-sds-api-url
 export SDS_API_BUCKET=dummy-sds-api-bucket-name
 export SDS_API_CLIENT_REGISTRATION_ID=dummy-sds-api-client-registration-id
 export SDS_API_PRINCIPAL_NAME=dummy-sds-api-principal-name
 ```
 
-This will ensure that where-ever you run the application from locally (IntelliJ, any terminal window, etc)
-, these environment variables will be set. 
+Then run with: `./gradlew bootRun --args='--spring.profiles.active=local'`
 
-You can verify that they have been set by running `printenv` in your terminal or 
-looking in the environment variable section in the run/debug configuration in IntelliJ 
+OAuth2 config is handled by `application-local.yml` - no ENTRA_* or AUTH_* variables needed.
+
+---
+
+**Option 2: Use environment variables (without local profile)**
+
+Set all variables in your `~/.zshrc`:
+
+```bash
+# OAuth2 Resource Server Configuration
+export ENTRA_ISSUER_URI=http://localhost:9999/entra
+export ENTRA_JWK_SET_URI=http://localhost:9999/entra/jwks
+export ENTRA_AUD=laa-data-access-api
+
+# OAuth2 Client Configuration
+export AUTH_CLIENT_ID=test
+export AUTH_CLIENT_SECRET=test
+export AUTH_SCOPE=api://laa-data-access-api/.default
+export AUTH_TENANT_ID=entra
+
+# SDS API Configuration
+export SDS_API_URL=https://dummy-sds-api-url
+export SDS_API_BUCKET=dummy-sds-api-bucket-name
+export SDS_API_CLIENT_REGISTRATION_ID=dummy-sds-api-client-registration-id
+export SDS_API_PRINCIPAL_NAME=dummy-sds-api-principal-name
+```
+
+Then run with: `./gradlew bootRun`
+
+---
+
+After setting environment variables, reload: `source ~/.zshrc`
 
 ### Developing application within Intellij
 Java version 25 is required
@@ -104,7 +131,7 @@ Infrastructure smoke tests run the built Docker image against a real Postgres da
 verify the live HTTP API. See [`docs/infrastructure-smoke-tests.md`](docs/infrastructure-smoke-tests.md)
 for full details.
 
-The script is useful for testing the application locally. 
+The script is useful for testing the application locally.
 The smoke tests will also run in CI eventually.
 
 ```bash
@@ -113,41 +140,207 @@ The smoke tests will also run in CI eventually.
 
 ### Run application
 
-Ensure that the environment variables specified in the 
-[Set up environment variables](#set-up-environment-variables) section have been set.
+To start up mock-oauth2-server, Postgres, Prometheus, and Grafana:
 
-To start up Localstack and Postgres
+```bash
+docker compose up -d
+```
 
-`docker compose up -d`
+This will start:
+- **Postgres** (port 5432) - Database
+- **mock-oauth2-server** (port 9999) - OAuth2 test server for local authentication
+- **Prometheus** (port 9090) - Metrics collection
+- **Grafana** (port 3000) - Metrics visualization
 
-Or if you want to use a different name or credentials
+Or if you want to use a different database name or credentials:
 
-`docker compose run -p 5432:5432 -e POSTGRES_DB={database name} POSTGRES_USER={username} POSTGRES_PASSWORD={password} postgres`
+`docker compose run -p 5432:5432 -e POSTGRES_DB={database name} -e POSTGRES_USER={username} -e POSTGRES_PASSWORD={password} postgres`
 
-followed by
+Then run the application with the `local` profile:
 
-`docker compose run -p 4566:4566 localstack`
+```bash
+./gradlew bootRun --args='--spring.profiles.active=local'
+```
 
-Then execute
-
-`./gradlew bootRun`
+The app will start on http://localhost:8080 with all OAuth2 configuration pre-configured.
 
 ### Executing endpoints
 
-You can use a tool such as Postman or curl to execute endpoints. For example, to execute the `GET /applications` 
-endpoint using curl:
+You can use curl or Postman to execute endpoints. First, get an authentication token:
 
-```
-curl -X GET "http://localhost:8080/applications" -H "accept: application/json" -H "Authorization: Bearer {token}"
+```bash
+# Get a token and save it as an environment variable
+export TOKEN=$(./scripts/get-token.sh local)
+
+# Call the API
+curl -X GET "http://localhost:8080/api/v0/caseworkers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Service-Name: CIVIL_APPLY"
 ```
 
-You can also use the Swagger UI to execute endpoints, which is described below in the 
+You can also use the Swagger UI to execute endpoints, which is described below in the
 [API documentation](#api-documentation) section.
 
-If FEATURE_ENABLE_DEV_TOKEN is set to true, you can use the following token for testing purposes
+#### Getting tokens from local mock-oauth2-server
+
+You can use the helper script to fetch a token from the local mock-oauth2-server:
+
+```bash
+# Get a token and copy it to clipboard
+./scripts/get-token.sh local --copy
+
+# Get a token and decode it to see the payload
+./scripts/get-token.sh local --decode
 ```
-Authorization: Bearer swagger-caseworker-token
+
+**How to use the token:**
+1. Run the script with `--copy` to copy the token to your clipboard
+2. Open Swagger UI at http://localhost:8080/swagger-ui/index.html
+3. Click the "Authorize" button in the top right
+4. Paste the token into the "Value" field
+5. Click "Authorize" then "Close"
+
+Now you can execute endpoints directly from Swagger UI.
+
+---
+
+## Authentication Across Environments
+
+This section explains how to get JWT tokens for testing the API in different environments using mock-oauth2-server.
+
+### Local Development
+
+**Setup:**
+```bash
+# 1. Start the infrastructure
+docker compose up -d
+
+# 2. Run the app with local profile (includes all OAuth2 config)
+./gradlew bootRun --args='--spring.profiles.active=local'
 ```
+
+**Get a token:**
+```bash
+# Option 1: Copy to clipboard for Swagger UI
+./scripts/get-token.sh local --copy
+
+# Option 2: Save to environment variable for curl
+export TOKEN=$(./scripts/get-token.sh local)
+```
+
+**Use the token:**
+```bash
+# With curl
+curl -X GET "http://localhost:8080/api/v0/caseworkers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Service-Name: CIVIL_APPLY"
+
+# With Swagger UI - paste the token in the Authorize dialog
+# http://localhost:8080/swagger-ui/index.html
+```
+
+**What's happening:**
+- The `local` profile configures the app to accept JWTs from `http://localhost:9999/entra`
+- The script requests a token from the same mock server
+- No environment variables needed - everything is preconfigured
+
+---
+
+### UAT/Deployed Environments
+
+**Check GitHub Actions `deploy-ephemeral` workflow output** for exact commands:
+
+```
+Mock OAuth2 (test tokens)
+   The API validates tokens against this in-cluster issuer:
+    http://spike-dstew1360-data-access-api-mock-oauth2:9999/entra
+
+   1. Port-forward the mock-oauth2 service (in a separate terminal):
+       kubectl -n *** port-forward \
+         svc/spike-dstew1360-data-access-api-mock-oauth2 9999:9999
+
+   2. Fetch a matching test token:
+       OAUTH_ISSUER_HOST=spike-dstew1360-data-access-api-mock-oauth2:9999 \
+         ./scripts/get-token.sh uat --copy --decode
+```
+
+**Then use the token:**
+- The token is now in your clipboard (from the `--copy` flag)
+- Paste it into Swagger UI's "Authorize" dialog
+- Or use it with curl commands
+
+---
+
+### Smoke Test Environment
+
+For smoke tests that run via `docker-compose.smoke-test.yml`:
+
+```bash
+# Start smoke test infrastructure
+docker compose -f docker-compose.smoke-test.yml up -d
+
+# Get a token (uses port 9998)
+./scripts/get-token.sh smoke --copy
+
+# Use with smoke test API (runs on port 9000)
+export TOKEN=$(./scripts/get-token.sh smoke)
+curl -X GET "http://localhost:9000/api/v0/caseworkers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Service-Name: CIVIL_APPLY"
+```
+
+**Smoke test ports:**
+- App: http://localhost:9000
+- Mock OAuth2: http://localhost:9998
+- Postgres: localhost:6432
+
+---
+
+### Troubleshooting Authentication
+
+**Problem: "401 Unauthorized"**
+
+Causes:
+- Token expired
+- Token from wrong environment
+- Wrong issuer configuration
+
+Solution:
+```bash
+# Get a fresh token
+export TOKEN=$(./scripts/get-token.sh local)  # or 'uat'
+
+# Decode to check claims
+./scripts/get-token.sh local --decode
+
+# Verify the 'iss' (issuer) matches your app's expected issuer
+```
+
+**Problem: Token works locally but not in UAT**
+
+Cause: Issuer mismatch - local tokens won't work in UAT
+
+Solution:
+```bash
+# Must get a UAT-specific token with correct OAUTH_ISSUER_HOST
+OAUTH_ISSUER_HOST=<service-name>:9999 ./scripts/get-token.sh uat --copy
+```
+
+---
+
+### Quick Reference
+
+| Environment | Command | Mock Server Port |
+|------------|---------|------------------|
+| **Local** | `./scripts/get-token.sh local --copy` | 9999 |
+| **Smoke Test** | `./scripts/get-token.sh smoke --copy` | 9998 |
+| **UAT** | `OAUTH_ISSUER_HOST=<svc>:9999 ./scripts/get-token.sh uat --copy` | 9999 (via port-forward) |
+
+**Required Headers for API Calls:**
+- `Authorization: Bearer <token>`
+- `X-Service-Name: CIVIL_APPLY` (or other valid service)
+
+---
 
 ### Dependency lock files
 
@@ -164,7 +357,7 @@ is intentional — it forces an explicit decision to accept the new set of resol
 
 **To regenerate lock files** after changing dependencies, run:
 
-- `./gradlew resolveAndLockAll` 
+- `./gradlew resolveAndLockAll`
 
 This resolves all configurations across every subproject and writes updated lock files automatically. The updated
 `gradle.lockfile` files should be committed alongside the dependency change.
@@ -190,15 +383,7 @@ You may need to drop database tables manually prior to running app so Flyway can
 #### Swagger UI
 - http://localhost:8080/swagger-ui/index.html
 
-The "Authorize" button is available in the top right of the Swagger UI, which allows you to enter a Bearer token for 
-authentication when executing endpoints. 
-If you have set up the environment variables as specified in the 
-[Set up environment variables](#set-up-environment-variables) section, 
-you can use the "Authorize" button to enter the following token for testing purposes:
-
-```
-swagger-caseworker-token
-```
+For authentication tokens, see the [Authentication Across Environments](#authentication-across-environments) section above.
 
 #### API docs (JSON)
 - http://localhost:8080/v3/api-docs
@@ -211,7 +396,7 @@ The following actuator endpoints have been configured:
 
 ### Run the data generator
 
-Each deployment to UAT will also deploy data-access-mass-generator as a separate pod. Initially it is scaled to 0, 
+Each deployment to UAT will also deploy data-access-mass-generator as a separate pod. Initially it is scaled to 0,
 however you can start the pod and connect to it via kubectl to be able to create performance testing data in that PR's database.
 
 This is also available for the main deployment in UAT.
@@ -227,7 +412,7 @@ export RELEASE_NAME=<release name for the pod - you can find this in the deploym
 (in the shell run) java -jar mass-generator.jar <number of applications>
 ```
 
-Once the command is complete, exit the shell and the pod will be scaled back to 0. 
+Once the command is complete, exit the shell and the pod will be scaled back to 0.
 You can check the database to see the generated data or use swagger to execute endpoints.
 
 ## Additional information
@@ -258,4 +443,3 @@ sensible defaults for the following plugins:
 
 The plugin is provided by [laa-spring-boot-common](https://github.com/ministryofjustice/laa-spring-boot-common), where you can find
 more information regarding (required) setup and usage.
-

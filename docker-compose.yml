@@ -14,6 +14,18 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  mock-oauth2-server:
+    # Version: 2.1.10 (also update: docker-compose.smoke-test.yml, build.gradle integrationTestImplementation)
+    image: ghcr.io/navikt/mock-oauth2-server:2.1.10
+    container_name: laa-mock-oauth2
+    ports:
+      - "9999:9999"
+    hostname: host.docker.internal
+    environment:
+      SERVER_PORT: 9999
+      JSON_CONFIG_PATH: /etc/mock-oauth2/config.json
+    volumes:
+      - ./infra/mock-oauth2/config.json:/etc/mock-oauth2/config.json:ro
   prometheus:
     image: prom/prometheus:v3.2.1
     container_name: laa-prometheus
