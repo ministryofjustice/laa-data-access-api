@@ -14,29 +14,6 @@ def versions = [
         sentry : '8.28.0'
 ]
 
-configurations.all {
-    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
-    // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
-    // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
-    // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
-    // Fix for Spring Data DoS vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKDATA-17279540, 17295727, 17304742, 17308778
-    resolutionStrategy {
-        force 'com.fasterxml.jackson.core:jackson-core:2.21.2'
-        force 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
-        force 'tools.jackson.core:jackson-core:3.1.1'
-        force 'tools.jackson.core:jackson-databind:3.1.1'
-        force 'tools.jackson:jackson-bom:3.1.1'
-        force 'org.springframework.security:spring-security-config:7.0.5'
-        force 'org.springframework.security:spring-security-web:7.0.5'
-        eachDependency { DependencyResolveDetails details ->
-            if (details.requested.group == 'org.springframework.data' && details.requested.name == 'spring-data-commons') {
-                details.useVersion '4.0.6'
-                details.because 'Fix for DoS vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKDATA-17279540, 17295727, 17304742, 17308778'
-            }
-        }
-    }
-}
-
 sourceSets {
     testUtilities {
         java {
@@ -244,11 +221,6 @@ tasks.register('combinedCoverageReport', JacocoReport) {
 }
 
 dependencyManagement {
-    // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
-    imports {
-        mavenBom 'tools.jackson:jackson-bom:3.1.1'
-        mavenBom 'io.netty:netty-bom:4.2.15.Final'
-    }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
             entry 'sentry-spring-boot-starter'
@@ -300,15 +272,6 @@ dependencies {
         exclude group: 'com.google.code.gson', module: 'gson'
     }
 
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789756
-    implementation 'io.netty:netty-codec-http:4.2.13.Final'
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789758
-    implementation 'io.netty:netty-codec-http2:4.2.13.Final'
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-16643259
-    implementation 'org.apache.tomcat.embed:tomcat-embed-core:11.0.22'
-    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2') {
         exclude group: 'tools.jackson.core'
     }
@@ -349,9 +312,6 @@ dependencies {
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
-    // Security fix for SNYK-JAVA-ORGAPACHECOMMONS-10734078 (CVE-2025-48924)
-    implementation 'org.apache.commons:commons-lang3:3.18.0'
 
     // Sentry
     implementation platform("io.sentry:sentry-bom:$versions.sentry")
