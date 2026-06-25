@@ -221,11 +221,6 @@ tasks.register('combinedCoverageReport', JacocoReport) {
 }
 
 dependencyManagement {
-    // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
-    imports {
-        mavenBom 'tools.jackson:jackson-bom:3.1.1'
-        mavenBom 'io.netty:netty-bom:4.2.15.Final'
-    }
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
             entry 'sentry-spring-boot-starter'
