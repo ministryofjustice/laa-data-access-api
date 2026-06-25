@@ -48,15 +48,18 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
           new ExampleVariant(
               "apply_v1",
               "APPLY — version 1 (id + submittedAt required)",
-              "schema/1/ApplyApplication.json"),
-          new ExampleVariant(
-              "apply_v2",
-              "APPLY — version 2 (id, submittedAt, office, proceedings, applicant required)",
-              "schema/2/ApplyApplication.json"),
-          new ExampleVariant(
-              "css_v1",
-              "CSS — version 1 (id, submittedAt, laaReference required)",
-              "schema/1/CssApplication.json"));
+              "schema/1/ApplyApplication.json"));
+
+  // TODO: activate additional variants once the applicationContent schema structure has been
+  // confirmed.
+  //  new ExampleVariant(
+  //      "apply_v2",
+  //      "APPLY — version 2 (id, submittedAt, office, proceedings, applicant required)",
+  //      "schema/2/ApplyApplication.json"),
+  //  new ExampleVariant(
+  //      "css_v1",
+  //      "CSS — version 1 (id, submittedAt, laaReference required)",
+  //      "schema/1/CssApplication.json")
 
   @Override
   public Operation customize(Operation operation, HandlerMethod handlerMethod) {
@@ -102,8 +105,7 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
               mt.setSchema(new Schema<>().$ref("#/components/schemas/ApplicationCreateRequest"));
               return mt;
             });
-    // TODO: activate once the applicationContent schema structure has been confirmed.
-    //    mediaType.setExamples(examples);
+    mediaType.setExamples(examples);
     return operation;
   }
 

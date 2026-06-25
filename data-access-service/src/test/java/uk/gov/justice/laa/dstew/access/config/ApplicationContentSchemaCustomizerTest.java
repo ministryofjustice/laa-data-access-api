@@ -169,14 +169,15 @@ class ApplicationContentSchemaCustomizerTest {
   }
 
   @Test
-  void givenOpenApiWithApplicationCreateRequest_whenCustomise_thenApplicationContentNotRewired() {
+  void
+      givenOpenApiWithApplicationCreateRequest_whenCustomise_thenApplicationContentRewiredToApplyV1() {
     // given - ApplicationCreateRequest schema with a plain applicationContent property
     OpenAPI openApi = openApiWithApplicationCreateRequest();
 
     // when
     customizer.customise(openApi);
 
-    // then - applicationContent is left as-is; no $ref is injected by the customiser
+    // then
     @SuppressWarnings("unchecked")
     Schema<?> applicationContent =
         (Schema<?>)
@@ -186,7 +187,8 @@ class ApplicationContentSchemaCustomizerTest {
                 .get("ApplicationCreateRequest")
                 .getProperties()
                 .get("applicationContent");
-    assertThat(applicationContent.get$ref()).isNull();
+    assertThat(applicationContent.get$ref())
+        .isEqualTo("#/components/schemas/ApplyApplicationContentV1");
   }
 
   private OpenAPI openApiWithComponents() {

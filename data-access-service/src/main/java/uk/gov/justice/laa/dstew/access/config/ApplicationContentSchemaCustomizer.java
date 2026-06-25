@@ -65,10 +65,11 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
       return;
     }
 
-    // TODO: activate once the applicationContent schema structure has been confirmed.
-    //    Schema<?> contentRef = new Schema<>();
-    //    contentRef.set$ref("#/components/schemas/ApplyApplicationContentV2");
-    //    appCreateRequest.getProperties().put("applicationContent", contentRef);
+    // TODO: update ref to the appropriate versioned schema once the applicationContent structure is
+    // confirmed (e.g. ApplyApplicationContentV2 or CssApplicationContent).
+    Schema<?> contentRef = new Schema<>();
+    contentRef.set$ref("#/components/schemas/ApplyApplicationContentV1");
+    appCreateRequest.getProperties().put("applicationContent", contentRef);
   }
 
   private void addSchemaFromClasspath(
