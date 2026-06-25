@@ -71,7 +71,7 @@ runs:
   using: composite
   steps:
     - name: Scan
-      uses: renovatebot/github-action@7b4b65bf31e07d4e3e51708d07700fb41bc03166 # v46.1.3
+      uses: renovatebot/github-action@8217b3fc286df088d7c27f3255fe8414463bc0fd # v46.1.15
       with:
         token: ${{ inputs.token }}
       env:
