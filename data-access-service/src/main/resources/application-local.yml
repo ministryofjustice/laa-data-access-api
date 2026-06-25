@@ -5,6 +5,16 @@
 spring:
   security:
     oauth2:
+      client:
+        registration:
+          moj-identity:
+            client-id: test
+            client-secret: test
+            scope: api://laa-data-access-api/.default
+            authorization-grant-type: client_credentials
+        provider:
+          moj-identity:
+            token-uri: http://localhost:9999/entra/token
       resourceserver:
         jwt:
           issuer-uri: http://localhost:9999/entra

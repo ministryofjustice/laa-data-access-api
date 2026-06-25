@@ -76,9 +76,9 @@ Set all variables in your `~/.zshrc`:
 
 ```bash
 # OAuth2 Resource Server Configuration
-export ENTRA_ISSUER_URI=http://host.docker.internal:9999/entra
+export ENTRA_ISSUER_URI=http://localhost:9999/entra
 export ENTRA_JWK_SET_URI=http://localhost:9999/entra/jwks
-export ENTRA_AUD=api://laa-data-access-api
+export ENTRA_AUD=laa-data-access-api
 
 # OAuth2 Client Configuration
 export AUTH_CLIENT_ID=test
