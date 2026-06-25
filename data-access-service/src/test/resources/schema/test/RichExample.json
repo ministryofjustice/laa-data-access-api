@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "countField": { "type": "integer" },
+    "amountField": { "type": "number" },
+    "detailsField": {
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" }
+      }
+    },
+    "unknownType": { "type": "null" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "birthDate": { "type": "string", "format": "date" },
+    "emailField": { "type": "string", "format": "email" },
+    "tagsField": { "type": "array" },
+    "brokenRef": { "$ref": "NonExistent.json" },
+    "itemsBadRef": { "type": "array", "items": { "$ref": "NonExistent.json" } },
+    "inlineItems": { "type": "array", "items": { "type": "string" } },
+    "nullFirstOneOf": { "oneOf": [{ "type": "null" }, { "type": "string" }] },
+    "allNullOneOf": { "oneOf": [{ "type": "null" }] },
+    "emptyOneOf": { "oneOf": [] },
+    "noTypeField": { "description": "a field with no type keyword" },
+    "nullFirstType": { "type": ["null", "string"] },
+    "emptyTypeArray": { "type": [] },
+    "nullTypeValue": { "type": null },
+    "dotRef": { "$ref": "./NonExistent.json" },
+    "emptyPartRef": { "$ref": "/NonExistent.json" },
+    "deepBackRef": { "$ref": "../../../NonExistent.json" }
+  }
+}

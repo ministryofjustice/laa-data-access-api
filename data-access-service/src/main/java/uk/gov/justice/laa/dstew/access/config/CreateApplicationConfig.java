@@ -16,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicati
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContentParser;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.PayloadValidator;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /** Spring configuration that wires all beans for the createApplication use case. */
 @Configuration
@@ -27,6 +28,7 @@ public class CreateApplicationConfig {
   private final SaveDomainEventService saveDomainEventService;
   private final ObjectMapper objectMapper;
   private final Validator validator;
+  private final JsonSchemaValidator jsonSchemaValidator;
 
   @Bean
   public ApplicationGatewayMapper createApplicationGatewayMapper() {
@@ -80,7 +82,8 @@ public class CreateApplicationConfig {
         linkedApplicationGateway,
         applicationContentParser,
         domainMapper,
-        saveDomainEventService);
+        saveDomainEventService,
+        jsonSchemaValidator);
   }
 
   @Bean

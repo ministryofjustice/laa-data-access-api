@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationCommand;
@@ -29,7 +30,7 @@ class CreateApplicationCommandMapperTest {
   void toCreateCommand_mapsAllFieldsFromFullyPopulatedRequest() {
     ApplicationCreateRequest req =
         DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
-    CreateApplicationCommand command = mapper.toCreateCommand(req);
+    CreateApplicationCommand command = mapper.toCreateCommand(req, 1);
 
     assertThat(command.status()).isEqualTo(req.getStatus().name());
     assertThat(command.laaReference()).isEqualTo(req.getLaaReference());
@@ -60,7 +61,7 @@ class CreateApplicationCommandMapperTest {
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class, b -> b.individuals(List.of(individual)));
 
-    CreateApplicationCommand command = mapper.toCreateCommand(req);
+    CreateApplicationCommand command = mapper.toCreateCommand(req, 1);
 
     assertThat(command.individuals()).hasSize(1);
     IndividualCommand ind = command.individuals().getFirst();
@@ -75,7 +76,7 @@ class CreateApplicationCommandMapperTest {
   void toCreateCommand_handlesNullStatus() {
     ApplicationCreateRequest req =
         DataGenerator.createDefault(ApplicationCreateRequestGenerator.class, b -> b.status(null));
-    CreateApplicationCommand command = mapper.toCreateCommand(req);
+    CreateApplicationCommand command = mapper.toCreateCommand(req, 1);
     assertThat(command.status()).isNull();
   }
 
@@ -84,7 +85,7 @@ class CreateApplicationCommandMapperTest {
     ApplicationCreateRequest req =
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class, b -> b.individuals(null));
-    CreateApplicationCommand command = mapper.toCreateCommand(req);
+    CreateApplicationCommand command = mapper.toCreateCommand(req, 1);
     assertThat(command.individuals()).isEmpty();
   }
 
@@ -96,9 +97,31 @@ class CreateApplicationCommandMapperTest {
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class, b -> b.individuals(List.of(individual)));
 
-    CreateApplicationCommand command = mapper.toCreateCommand(req);
+    CreateApplicationCommand command = mapper.toCreateCommand(req, 1);
 
     IndividualCommand ind = command.individuals().getFirst();
     assertThat(ind.type()).isNull();
+  }
+
+  @Test
+  void toCreateCommand_mapsApplicationType_whenPresent() {
+    ApplicationCreateRequest req =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class, b -> b.applicationType(ApplicationType.CCS));
+
+    CreateApplicationCommand command = mapper.toCreateCommand(req, 1);
+
+    assertThat(command.applicationType()).isEqualTo(ApplicationType.CCS.name());
+  }
+
+  @Test
+  void toCreateCommand_defaultsApplicationTypeToApply_whenNull() {
+    ApplicationCreateRequest req =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class, b -> b.applicationType(null));
+
+    CreateApplicationCommand command = mapper.toCreateCommand(req, 1);
+
+    assertThat(command.applicationType()).isEqualTo(ApplicationType.APPLY.name());
   }
 }

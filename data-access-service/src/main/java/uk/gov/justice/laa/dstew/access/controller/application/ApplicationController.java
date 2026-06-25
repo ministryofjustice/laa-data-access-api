@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.time.LocalDate;
@@ -11,6 +12,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -78,10 +80,14 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @Override
   public ResponseEntity<Void> createApplication(
-      @NotNull ServiceName serviceName, @Valid ApplicationCreateRequest applicationCreateReq) {
+      @NotNull ServiceName serviceName,
+      @Valid ApplicationCreateRequest applicationCreateReq,
+      @Min(1) @RequestHeader(value = "X-Schema-Version", required = false, defaultValue = "1")
+          Integer schemaVersion) {
     UUID id =
         createApplicationUseCase
-            .execute(createApplicationCommandMapper.toCreateCommand(applicationCreateReq))
+            .execute(
+                createApplicationCommandMapper.toCreateCommand(applicationCreateReq, schemaVersion))
             .id();
     URI uri =
         ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();

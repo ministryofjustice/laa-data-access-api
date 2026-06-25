@@ -33,6 +33,8 @@ public class CreateApplicationCommandGenerator
         .applicationContent(appContent)
         .individuals(List.of(individualCommandGenerator.createDefault()))
         .serialisedRequest("{\"status\":\"APPLICATION_IN_PROGRESS\",\"laaReference\":\"REF7327\"}")
+        .schemaVersion(1)
+        .applicationType("APPLY")
         .build();
   }
 }
