@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.usecase.getapplication;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -8,8 +9,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ApplicationDbProjection;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ProceedingDbProjection;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationReadModel;
@@ -82,7 +87,7 @@ class GetApplicationReadModelMapperTest {
             .proceedings(List.of(proceeding))
             .build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
 
     // Scalar fields
     assertThat(actual.id()).isEqualTo(projection.id());
@@ -140,31 +145,34 @@ class GetApplicationReadModelMapperTest {
         .isEqualTo("desc");
   }
 
-  @Test
-  void givenBothOfficeCodeAndEmailNull_whenMapped_thenProviderIsNull() {
+  @ParameterizedTest(name = "[{index}] officeCode={0}, submitterEmail={1}")
+  @MethodSource("providerScenarios")
+  void givenProviderFieldVariants_whenMapped_thenProviderIsMappedAsExpected(
+      String officeCode,
+      String submitterEmail,
+      boolean providerExpected,
+      String expectedOfficeCode,
+      String expectedContactEmail) {
     ApplicationDbProjection projection =
-        minimalProjection().toBuilder().officeCode(null).submitterEmail(null).build();
+        minimalProjection().toBuilder()
+            .officeCode(officeCode)
+            .submitterEmail(submitterEmail)
+            .build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
 
-    assertThat(actual.provider()).isNull();
-  }
-
-  @Test
-  void givenOfficeCodeNullButEmailPresent_whenMapped_thenProviderIsNotNull() {
-    ApplicationDbProjection projection =
-        minimalProjection().toBuilder().officeCode(null).submitterEmail("x@y.z").build();
-
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
-
-    assertThat(actual.provider()).isNotNull();
-    assertThat(actual.provider().officeCode()).isNull();
-    assertThat(actual.provider().contactEmail()).isEqualTo("x@y.z");
+    if (!providerExpected) {
+      assertThat(actual.provider()).isNull();
+    } else {
+      assertThat(actual.provider()).isNotNull();
+      assertThat(actual.provider().officeCode()).isEqualTo(expectedOfficeCode);
+      assertThat(actual.provider().contactEmail()).isEqualTo(expectedContactEmail);
+    }
   }
 
   @Test
   void givenAlwaysSetApplicationType_whenMapped_thenApplicationTypeIsInitial() {
-    ApplicationReadModel actual = mapper.toApplicationReadModel(minimalProjection());
+    ApplicationReadModel actual = mapper.toApplicationReadModel(minimalProjection(), "INITIAL");
 
     assertThat(actual.applicationType()).isEqualTo("INITIAL");
   }
@@ -180,7 +188,7 @@ class GetApplicationReadModelMapperTest {
     ApplicationDbProjection projection =
         minimalProjection().toBuilder().proceedings(List.of(proceeding)).build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
 
     assertThat(actual.proceedings().getFirst().involvedChildren()).isEmpty();
   }
@@ -189,7 +197,7 @@ class GetApplicationReadModelMapperTest {
   void givenNullProceedings_whenMapped_thenProceedingsIsEmpty() {
     ApplicationDbProjection projection = minimalProjection().toBuilder().proceedings(null).build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
 
     assertThat(actual.proceedings()).isEmpty();
   }
@@ -198,7 +206,7 @@ class GetApplicationReadModelMapperTest {
   void givenNullOpponents_whenMapped_thenOpponentsIsEmpty() {
     ApplicationDbProjection projection = minimalProjection().toBuilder().opponents(null).build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
 
     assertThat(actual.opponents()).isEmpty();
   }
@@ -212,7 +220,7 @@ class GetApplicationReadModelMapperTest {
                     OpponentDetails.builder().opposableType("Individual").opposable(null).build()))
             .build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
 
     assertThat(actual.opponents()).hasSize(1);
     assertThat(actual.opponents().getFirst().firstName()).isNull();
@@ -231,7 +239,7 @@ class GetApplicationReadModelMapperTest {
     ApplicationDbProjection projection =
         minimalProjection().toBuilder().proceedings(List.of(proceeding)).build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
 
     assertThat(actual.proceedings().getFirst().scopeLimitations()).isEmpty();
   }
@@ -249,7 +257,7 @@ class GetApplicationReadModelMapperTest {
     ApplicationDbProjection projection =
         minimalProjection().toBuilder().proceedings(List.of(proceeding)).build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
 
     assertThat(actual.proceedings().getFirst().scopeLimitations()).hasSize(2);
     assertThat(actual.proceedings().getFirst().scopeLimitations().get(0).scopeLimitation())
@@ -280,5 +288,12 @@ class GetApplicationReadModelMapperTest {
         .opponents(Collections.emptyList())
         .proceedings(Collections.emptyList())
         .build();
+  }
+
+  private static Stream<Arguments> providerScenarios() {
+    return Stream.of(
+        arguments(null, null, false, null, null),
+        arguments(null, "x@y.z", true, null, "x@y.z"),
+        arguments("OFFICE1", null, true, "OFFICE1", null));
   }
 }

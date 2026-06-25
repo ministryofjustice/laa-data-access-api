@@ -18,15 +18,15 @@ import uk.gov.justice.laa.dstew.access.usecase.shared.parser.Opposable;
 /** Composes an {@link ApplicationDbProjection} into an {@link ApplicationReadModel}. */
 public class GetApplicationReadModelMapper {
 
-  private static final String APPLICATION_TYPE_INITIAL = "INITIAL";
-
   /**
    * Builds the use-case read model from a raw DB projection.
    *
    * @param projection application DB projection
+   * @param applicationType applicationType
    * @return application read model
    */
-  public ApplicationReadModel toApplicationReadModel(ApplicationDbProjection projection) {
+  public ApplicationReadModel toApplicationReadModel(
+      ApplicationDbProjection projection, String applicationType) {
     return ApplicationReadModel.builder()
         .id(projection.id())
         .status(projection.status())
@@ -38,7 +38,7 @@ public class GetApplicationReadModelMapper {
         .usedDelegatedFunctions(projection.usedDelegatedFunctions())
         .autoGrant(projection.autoGrant())
         .decisionStatus(projection.decisionStatus())
-        .applicationType(APPLICATION_TYPE_INITIAL)
+        .applicationType(applicationType)
         .version(projection.version())
         .opponents(toOpponentReadModels(projection.opponents()))
         .provider(toProviderReadModel(projection.officeCode(), projection.submitterEmail()))
