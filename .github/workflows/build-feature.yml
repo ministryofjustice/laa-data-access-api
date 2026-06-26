@@ -1,0 +1,166 @@
+name: Build feature branch
+
+on:
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: &JAVA_VERSION '25'
+  JDK_DISTRIBUTION: &JDK_DISTRIBUTION 'corretto'
+
+jobs:
+  compute-snapshot-version:
+    runs-on: ubuntu-latest
+    outputs:
+      snapshot_version: ${{ steps.version.outputs.snapshot_version }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Compute version
+        id: compute
+        uses: ministryofjustice/laa-ccms-common-workflows/.github/actions/compute-version@4daa796eff475c7a107e17daf4e4882b8a1b949b # v2.3.0
+      - name: Compute snapshot version
+        id: version
+        shell: bash
+        env:
+          BUMP_TYPE: ${{ steps.compute.outputs.bump_type }}
+          MAJOR:     ${{ steps.compute.outputs.major }}
+          MINOR:     ${{ steps.compute.outputs.minor }}
+          PATCH:     ${{ steps.compute.outputs.patch }}
+        run: |
+          set -eu
+          BUMP="${BUMP_TYPE:-none}"
+          M="${MAJOR:-0}"; N="${MINOR:-0}"; P="${PATCH:-0}"
+          if [[ "$BUMP" == "none" ]]; then P=$((P+1)); fi
+          HASH=$(git rev-parse --short HEAD)
+          VERSION="${M}.${N}.${P}-${HASH}-SNAPSHOT"
+          echo "snapshot_version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Snapshot version: ${VERSION}"
+
+  build-and-test:
+    needs: [ compute-snapshot-version ]
+    if: startsWith(github.head_ref || github.ref_name, 'openapi/') == false
+    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/gradle-build-and-publish.yml@4daa796eff475c7a107e17daf4e4882b8a1b949b # v2.3.0
+    permissions:
+      contents: write
+      packages: write
+    with:
+      java_distribution: *JDK_DISTRIBUTION
+      integration_test_task: "integrationTest"
+      publish_package: false
+      override_version: ${{ needs.compute-snapshot-version.outputs.snapshot_version }}
+      jacoco_coverage_report: 'true'
+    secrets:
+      gh_token: ${{ secrets.GITHUB_TOKEN }}
+
+  vulnerability-scan-app:
+    runs-on: ubuntu-latest
+    needs: [ build-and-test ]
+    permissions:
+      contents: read
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      SNYK_TEST_EXCLUDE: build,generated
+      SNYK_TARGET_REFERENCE: main
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run Snyk to check app for vulnerabilities
+        uses: snyk/actions/gradle@9adf32b1121593767fc3c057af55b55db032dc04 #master
+        with:
+          command: code test
+          args: --severity-threshold=high
+
+  ecr-publish-service-image:
+    needs: [ build-and-test, compute-snapshot-version ]
+    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/ecr-publish-image.yml@4daa796eff475c7a107e17daf4e4882b8a1b949b # v2.3.0
+    permissions:
+      contents: read
+      id-token: write
+      security-events: write
+    with:
+      java_distribution: *JDK_DISTRIBUTION
+      dockerfile_path: Dockerfile
+      image_version: ${{ needs.compute-snapshot-version.outputs.snapshot_version }}
+      image_scan: 'true'
+    secrets:
+      gh_token: ${{ secrets.GITHUB_TOKEN }}
+      ecr_repository: ${{ vars.ECR_REPOSITORY }}
+      ecr_region: ${{ vars.ECR_REGION }}
+      ecr_role_to_assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+      snyk_token: ${{ secrets.SNYK_TOKEN }}
+
+  ecr-publish-mass-generator-image:
+    needs: [ build-and-test, compute-snapshot-version ]
+    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/ecr-publish-image.yml@4daa796eff475c7a107e17daf4e4882b8a1b949b # v2.3.0
+    permissions:
+      contents: read
+      id-token: write
+      security-events: write
+    with:
+      java_distribution: *JDK_DISTRIBUTION
+      dockerfile_path: Dockerfile.mass-generator
+      image_version: ${{ format('{0}-mass-generator', needs.compute-snapshot-version.outputs.snapshot_version) }}
+      image_scan: 'false'
+    secrets:
+      gh_token: ${{ secrets.GITHUB_TOKEN }}
+      ecr_repository: ${{ vars.ECR_REPOSITORY }}
+      ecr_region: ${{ vars.ECR_REGION }}
+      ecr_role_to_assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+
+  deploy-ephemeral:
+    runs-on: ubuntu-latest
+    needs: [ ecr-publish-service-image, ecr-publish-mass-generator-image, vulnerability-scan-app, compute-snapshot-version ]
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      release-name: ${{ steps.deploy_ephemeral_branch.outputs.release-name }}
+      branch-name: ${{ steps.deploy_ephemeral_branch.outputs.branch-name }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Deploy ephemeral branch
+        id: deploy_ephemeral_branch
+        uses: ./.github/actions/deploy_branch
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          app-environment: uat
+          image-tag: ${{ needs.compute-snapshot-version.outputs.snapshot_version }}
+
+  ephemeral-smoke-test:
+    if: startsWith(github.head_ref || github.ref_name, 'openapi/') == false
+    runs-on: ubuntu-latest
+    needs: [ deploy-ephemeral ]
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run smoke tests
+        uses: ./.github/actions/smoke-test
+        with:
+          release-name: ${{ needs.deploy-ephemeral.outputs.release-name }}
+          branch-name: ${{ needs.deploy-ephemeral.outputs.branch-name }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          report-name: ephemeral-smoke-test-report
