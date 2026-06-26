@@ -56,9 +56,13 @@ jobs:
     with:
       java_distribution: *JDK_DISTRIBUTION
       integration_test_task: "integrationTest"
-      publish_package: false
+      release_type: 'snapshot'
       override_version: ${{ needs.compute-snapshot-version.outputs.snapshot_version }}
       jacoco_coverage_report: 'true'
+      jacoco_coverage_report_path: 'data-access-service/build/reports/jacoco'
+      junit_results_path: 'data-access-service/build/test-results'
+      junit_report_path: 'data-access-service/build/reports/tests'
+      semgrep_check: true
     secrets:
       gh_token: ${{ secrets.GITHUB_TOKEN }}
 
