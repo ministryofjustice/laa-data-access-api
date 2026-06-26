@@ -31,8 +31,6 @@ import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.infrastructure.A
 import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.infrastructure.AssignCaseworkerCaseworkerGateway;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
-// Security scenarios (@AllowApiCaseworker enforcement) require Spring AOP and are covered by
-// the integration test controller/application/AssignCaseworkerTest.
 @ExtendWith(MockitoExtension.class)
 class AssignCaseworkerUseCaseTest {
 

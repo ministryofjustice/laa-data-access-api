@@ -50,9 +50,6 @@ public class AssignCaseworkerApplicationJpaGateway implements AssignCaseworkerAp
    */
   @Override
   public void save(ApplicationDomain domain) {
-    // Load managed entity — never re-map from domain — to preserve @Version.
-    // NoSuchElementException (JDK, not an application exception) used per G9.
-    // These guards are defensive; the use case verifies existence before calling save().
     ApplicationEntity entity =
         applicationRepository
             .findById(domain.id())
