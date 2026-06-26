@@ -1,0 +1,260 @@
+name: Build and deploy main
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        type: choice
+        required: true
+        default: "patch"
+        description: "Release type"
+        options: [ "patch", "minor", "major" ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: &JAVA_VERSION '25'
+  JDK_DISTRIBUTION: &JDK_DISTRIBUTION 'corretto'
+
+jobs:
+  release:
+    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/gradle-build-and-publish.yml@4daa796eff475c7a107e17daf4e4882b8a1b949b # v2.3.0
+    permissions:
+      contents: write
+      packages: write
+    with:
+      java_distribution: *JDK_DISTRIBUTION
+      integration_test_task: "integrationTest"
+      release_type: ${{ inputs.release_type || '' }}
+      jacoco_coverage_report: 'false'
+    secrets:
+      gh_token: ${{ secrets.GITHUB_TOKEN }}
+
+  vulnerability-scan-app:
+    runs-on: ubuntu-latest
+    needs: [ release ]
+    permissions:
+      contents: read
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      SNYK_TEST_EXCLUDE: build,generated
+      SNYK_TARGET_REFERENCE: main
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run Snyk to check app for vulnerabilities
+        uses: snyk/actions/gradle@9adf32b1121593767fc3c057af55b55db032dc04 #master
+        with:
+          command: code test
+          args: --severity-threshold=high
+
+  ecr-publish-service-image:
+    needs: [ release ]
+    if: ${{ needs.release.outputs.published_artifact_version != '' }}
+    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/ecr-publish-image.yml@4daa796eff475c7a107e17daf4e4882b8a1b949b # v2.3.0
+    permissions:
+      contents: read
+      id-token: write
+      security-events: write
+    with:
+      java_distribution: *JDK_DISTRIBUTION
+      dockerfile_path: Dockerfile
+      image_version: ${{ needs.release.outputs.published_artifact_version }}
+      image_scan: 'true'
+    secrets:
+      gh_token: ${{ secrets.GITHUB_TOKEN }}
+      ecr_repository: ${{ vars.ECR_REPOSITORY }}
+      ecr_region: ${{ vars.ECR_REGION }}
+      ecr_role_to_assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+      snyk_token: ${{ secrets.SNYK_TOKEN }}
+
+  ecr-publish-mass-generator-image:
+    needs: [ release ]
+    if: ${{ needs.release.outputs.published_artifact_version != '' }}
+    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/ecr-publish-image.yml@4daa796eff475c7a107e17daf4e4882b8a1b949b # v2.3.0
+    permissions:
+      contents: read
+      id-token: write
+      security-events: write
+    with:
+      java_distribution: *JDK_DISTRIBUTION
+      dockerfile_path: Dockerfile.mass-generator
+      image_version: ${{ format('{0}-mass-generator', needs.release.outputs.published_artifact_version) }}
+      image_scan: 'false'
+    secrets:
+      gh_token: ${{ secrets.GITHUB_TOKEN }}
+      ecr_repository: ${{ vars.ECR_REPOSITORY }}
+      ecr_region: ${{ vars.ECR_REGION }}
+      ecr_role_to_assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+
+  deploy-uat:
+    runs-on: ubuntu-latest
+    needs: [ ecr-publish-service-image, ecr-publish-mass-generator-image, vulnerability-scan-app ]
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      release-name: ${{ steps.deploy_uat_branch.outputs.release-name }}
+      branch-name: ${{ steps.deploy_uat_branch.outputs.branch-name }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Deploy UAT
+        id: deploy_uat_branch
+        uses: ./.github/actions/deploy_branch
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          app-environment: uat
+          image-tag: ${{ needs.release.outputs.published_artifact_version }}
+
+  uat-smoke-test:
+    runs-on: ubuntu-latest
+    needs: [ deploy-uat ]
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run smoke tests
+        uses: ./.github/actions/smoke-test
+        with:
+          release-name: ${{ needs.deploy-uat.outputs.release-name }}
+          branch-name: ${{ needs.deploy-uat.outputs.branch-name }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          report-name: uat-smoke-test-report
+
+  prepare-feature-environments:
+    name: Approve and prepare feature environments
+    runs-on: ubuntu-latest
+    environment: uat-preview
+    needs: [ uat-smoke-test ]
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Resolve preset matrix
+        id: resolve
+        shell: bash
+        env:
+          PRESET_FILE: .github/config/ephemeral-environment-presets.json
+        run: |
+          set -euo pipefail
+
+          [ -f "$PRESET_FILE" ] || { echo "Missing preset file: $PRESET_FILE"; exit 1; }
+
+          sanitize_release_name() {
+            local raw cleaned hash_suffix prefix
+            raw="$1"
+            cleaned=$(echo "$raw" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9-' '-' | sed 's/^-*//; s/-*$//; s/--*/-/g')
+            if [ -z "$cleaned" ]; then cleaned="feat-env"; fi
+            if [ ${#cleaned} -gt 53 ]; then
+              hash_suffix=$(printf "%s" "$cleaned" | shasum | cut -c1-8)
+              prefix=$(printf "%s" "$cleaned" | cut -c1-44 | sed 's/-*$//')
+              cleaned="${prefix}-${hash_suffix}"
+            fi
+            echo "$cleaned"
+          }
+
+          matrix='[]'
+          while IFS= read -r preset; do
+            suffix=$(jq -r --arg p "$preset" '.[$p].suffix // $p' "$PRESET_FILE")
+            preset_extra_env=$(jq -r --arg p "$preset" '.[$p].extraEnv // ""' "$PRESET_FILE")
+            release_name=$(sanitize_release_name "$suffix")
+            matrix=$(jq -c \
+              --arg preset_name "$preset" \
+              --arg release_name "$release_name" \
+              --arg extra_env "$preset_extra_env" \
+              '. + [{preset_name:$preset_name, release_name:$release_name, extra_env:$extra_env}]' \
+              <<< "$matrix")
+          done < <(jq -r 'keys[]' "$PRESET_FILE" | sort)
+
+          [ "$matrix" != "[]" ] || { echo "No presets resolved from file: ${PRESET_FILE}"; exit 1; }
+          echo "matrix={\"include\":${matrix}}" >> "$GITHUB_OUTPUT"
+
+  deploy-matrix-rc-feature:
+    runs-on: ubuntu-latest
+    needs: [ prepare-feature-environments, release ]
+    environment: uat
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare-feature-environments.outputs.matrix) }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Deploy RC feature environment
+        uses: ./.github/actions/deploy_feature_branch
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          app-environment: rc-feature
+          release-name-override: ${{ matrix.release_name }}
+          extra-env: ${{ matrix.extra_env }}
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [ deploy-uat, uat-smoke-test, release ]
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Deploy staging
+        uses: ./.github/actions/deploy
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          app-environment: staging
+          image-tag: ${{ needs.release.outputs.published_artifact_version }}
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [ deploy-staging, release ]
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Deploy production
+        uses: ./.github/actions/deploy
+        with:
+          ecr-region: ${{ vars.ECR_REGION }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-repository: ${{ vars.ECR_REPOSITORY }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          app-environment: production
+          image-tag: ${{ needs.release.outputs.published_artifact_version }}
