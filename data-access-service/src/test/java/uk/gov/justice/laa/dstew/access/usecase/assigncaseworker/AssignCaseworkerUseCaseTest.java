@@ -101,16 +101,14 @@ class AssignCaseworkerUseCaseTest {
   }
 
   @Test
-  void givenNullCaseworkerId_whenExecuted_thenThrowsResourceNotFoundException() {
-    // caseworkerGateway.exists(null) returns false (Mockito default for boolean)
-    AssignCaseworkerCommand command =
-        AssignCaseworkerCommand.builder()
-            .caseworkerId(null)
-            .applicationIds(List.of(UUID.randomUUID()))
-            .build();
-
-    assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(() -> useCase.execute(command));
+  void givenNullCaseworkerId_whenExecuted_thenThrowsNullPointerException() {
+    assertThatExceptionOfType(NullPointerException.class)
+        .isThrownBy(
+            () ->
+                AssignCaseworkerCommand.builder()
+                    .caseworkerId(null)
+                    .applicationIds(List.of(UUID.randomUUID()))
+                    .build());
 
     verify(applicationGateway, never()).findAllByIds(anyList());
   }
