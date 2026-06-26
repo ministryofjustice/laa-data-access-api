@@ -24,4 +24,5 @@ public record ApplicationDomain(
     String categoryOfLaw,
     String matterType,
     Boolean isAutoGranted,
-    Set<ProceedingDomain> proceedings) {}
+    Set<ProceedingDomain> proceedings,
+    UUID caseworkerId) {}
