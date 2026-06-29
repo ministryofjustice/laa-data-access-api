@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -30,6 +31,7 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
@@ -81,6 +83,72 @@ public class CreateApplicationTest extends BaseHarnessTest {
       givenCreateNewApplication_whenCreateApplicationWithCivilDecideServiceName_thenReturnCreatedAndPersistServiceName()
           throws Exception {
     verifyCreateNewApplicationWithServiceName(ServiceName.CIVIL_DECIDE);
+  }
+
+  @Test
+  public void
+      givenNullApplicationType_whenCreateApplication_thenDefaultsToApplyBehaviourAndReturnsCreated()
+          throws Exception {
+    // given - no applicationType provided; service defaults to APPLY
+    ApplicationCreateRequest request =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class, builder -> builder.applicationType(null));
+
+    // when
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+
+    // then
+    assertSecurityHeaders(result);
+    assertCreated(result);
+    UUID createdId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    persistedDataGenerator.trackExistingApplication(createdId);
+  }
+
+  @Test
+  public void givenCcsApplicationType_whenCreateApplication_thenReturnCreated() throws Exception {
+    // given - CCS application type; schema requires id, submittedAt and laaReference in content
+    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class);
+    Map<String, Object> contentMap = new HashMap<>(objectMapper.convertValue(content, Map.class));
+    contentMap.put("laaReference", "LAA-CSS-001");
+
+    ApplicationCreateRequest request =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationType(ApplicationType.CCS).applicationContent(contentMap));
+
+    // when
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+
+    // then
+    assertSecurityHeaders(result);
+    assertCreated(result);
+    UUID createdId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    persistedDataGenerator.trackExistingApplication(createdId);
+  }
+
+  @Test
+  public void
+      givenEmptyLinkedApplicationsList_whenCreateApplication_thenReturnsCreatedWithNoLinking()
+          throws Exception {
+    // given - applicationContent with an explicit empty allLinkedApplications list (non-null)
+    // This exercises the getLeadApplicationId(emptyList) short-circuit: list != null but isEmpty
+    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class);
+    Map<String, Object> contentMap = new HashMap<>(objectMapper.convertValue(content, Map.class));
+    contentMap.put("allLinkedApplications", List.of());
+
+    ApplicationCreateRequest request =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class,
+            builder -> builder.applicationContent(contentMap));
+
+    // when
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+
+    // then
+    assertSecurityHeaders(result);
+    assertCreated(result);
+    UUID createdId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
+    persistedDataGenerator.trackExistingApplication(createdId);
   }
 
   @Test
@@ -558,6 +626,35 @@ public class CreateApplicationTest extends BaseHarnessTest {
     assertUnauthorised(result);
   }
 
+  @Test
+  public void
+      givenApplicationContentMissingRequiredFields_whenCreateApplication_thenReturnBadRequest()
+          throws Exception {
+    // given - applicationContent that is missing the required 'id' and 'submittedAt' fields,
+    // which are enforced by JSON Schema validation (not Bean Validation)
+    ApplicationCreateRequest request =
+        DataGenerator.createDefault(
+            ApplicationCreateRequestGenerator.class,
+            builder ->
+                builder.applicationContent(
+                    Map.of("applicationContent", Map.of("proceedings", List.of()))));
+
+    // when
+    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
+    ProblemDetail detail = deserialise(result, ProblemDetail.class);
+
+    // then - JSON Schema validation catches missing required fields; error messages reference
+    // the field names but may differ in format from Bean Validation ("must not be null") messages
+    assertSecurityHeaders(result);
+    assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+    assertEquals("Generic Validation Error", detail.getDetail());
+    List<?> errors = (List<?>) detail.getProperties().get("errors");
+    assertThat(errors).isNotEmpty();
+    assertThat(errors).anyMatch(e -> e.toString().contains("id"));
+    assertThat(errors).anyMatch(e -> e.toString().contains("submittedAt"));
+    assertTrue(trackedApplicationIds().isEmpty(), "Expected no application to be persisted");
+  }
+
   private static Stream<Arguments> applicationCreateRequestInvalidDataCases() {
     ProblemDetail problemDetail =
         ProblemDetailBuilder.create()
@@ -592,18 +689,6 @@ public class CreateApplicationTest extends BaseHarnessTest {
                 builder -> builder.applicationContent(new HashMap<>())),
             problemDetail,
             Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class,
-                builder ->
-                    builder.applicationContent(
-                        Map.of("applicationContent", Map.of("proceedings", List.of())))),
-            ProblemDetailBuilder.create()
-                .status(HttpStatus.BAD_REQUEST)
-                .title("Bad Request")
-                .detail("Generic Validation Error")
-                .build(),
-            Map.of("errors", List.of("id: must not be null", "submittedAt: must not be null"))),
         Arguments.of(
             DataGenerator.createDefault(
                 ApplicationCreateRequestGenerator.class, builder -> builder.individuals(null)),

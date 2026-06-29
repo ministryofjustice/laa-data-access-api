@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.model;
+package uk.gov.justice.laa.dstew.access.usecase.shared.parser;
 
 import jakarta.annotation.Nullable;
 import lombok.AllArgsConstructor;
