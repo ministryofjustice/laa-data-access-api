@@ -96,7 +96,7 @@ jobs:
 
   deploy-uat:
     runs-on: ubuntu-latest
-    needs: [ ecr-publish-service-image, ecr-publish-mass-generator-image, vulnerability-scan-app ]
+    needs: [ release, ecr-publish-service-image, ecr-publish-mass-generator-image, vulnerability-scan-app ]
     environment: uat
     permissions:
       id-token: write
@@ -191,7 +191,7 @@ jobs:
 
   deploy-matrix-rc-feature:
     runs-on: ubuntu-latest
-    needs: [ prepare-feature-environments, release ]
+    needs: [ release, prepare-feature-environments, release ]
     environment: uat
     strategy:
       fail-fast: false
@@ -214,6 +214,7 @@ jobs:
           app-environment: rc-feature
           release-name-override: ${{ matrix.release_name }}
           extra-env: ${{ matrix.extra_env }}
+          image-tag: ${{ needs.release.outputs.published_artifact_version }}
 
   deploy-staging:
     runs-on: ubuntu-latest

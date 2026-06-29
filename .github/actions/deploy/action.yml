@@ -57,8 +57,14 @@ runs:
         ECR_REGISTRY: ${{ steps.deploy_prerequisites.outputs.ecr-registry }}
         IMAGE_TAG: ${{ inputs.image-tag }}
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+        APP_ENVIRONMENT: ${{ inputs.app-environment }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
       run: |
+        if [ -z "${IMAGE_TAG}" ]; then
+          echo "image-tag input is required."
+          exit 1
+        fi
+
         LAA_IPS="${{ steps.get_laa_ips.outputs.laa-ips }}"
         echo "Environment: ${APP_ENVIRONMENT}"
 
