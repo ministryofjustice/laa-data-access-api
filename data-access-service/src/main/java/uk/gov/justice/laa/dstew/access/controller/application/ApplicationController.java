@@ -44,7 +44,6 @@ import uk.gov.justice.laa.dstew.access.service.applications.AssignCaseworkerServ
 import uk.gov.justice.laa.dstew.access.service.applications.CreateNoteService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetAllApplicationsService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetAllNotesForApplicationService;
-import uk.gov.justice.laa.dstew.access.service.applications.GetApplicationService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetCertificateService;
 import uk.gov.justice.laa.dstew.access.service.applications.MakeDecisionService;
 import uk.gov.justice.laa.dstew.access.service.applications.SdsService;
@@ -54,6 +53,7 @@ import uk.gov.justice.laa.dstew.access.service.domainevents.GetDomainEventServic
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.GetApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
 /** Controller for handling /api/v0/applications requests. */
@@ -65,7 +65,8 @@ public class ApplicationController implements ApplicationApi {
   private final CreateApplicationUseCase createApplicationUseCase;
   private final CreateApplicationCommandMapper createApplicationCommandMapper;
   private final UpdateApplicationService updateApplicationService;
-  private final GetApplicationService getApplicationsService;
+  private final GetApplicationUseCase getApplicationUseCase;
+  private final GetApplicationResponseMapper getApplicationResponseMapper;
   private final GetAllApplicationsService applicationSummaryService;
   private final GetCertificateService certificateService;
   private final AssignCaseworkerService assignCaseworkerService;
@@ -156,7 +157,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<ApplicationResponse> getApplicationById(ServiceName serviceName, UUID id) {
-    return ResponseEntity.ok(getApplicationsService.getApplication(id));
+    return getApplicationResponseMapper.toGetApplicationResponse(getApplicationUseCase.execute(id));
   }
 
   @Override

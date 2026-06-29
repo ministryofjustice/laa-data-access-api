@@ -1,6 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
-import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.OpponentDetails;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
 public class OpponentDetailsGenerator
