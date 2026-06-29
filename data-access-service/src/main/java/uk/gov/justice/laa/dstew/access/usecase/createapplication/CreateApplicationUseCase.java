@@ -102,7 +102,7 @@ public class CreateApplicationUseCase {
 
     ApplicationDomain leadDomain =
         applicationGateway
-            .findLeadByApplyApplicationId(leadApplyId)
+            .findByLeadApplyApplicationId(leadApplyId)
             .orElseThrow(
                 () ->
                     new ResourceNotFoundException(

@@ -30,7 +30,9 @@ public interface ApplicationGateway {
    * @param applyApplicationId the Apply application ID to search for
    * @return an Optional containing the lead application domain, or empty
    */
-  Optional<ApplicationDomain> findLeadByApplyApplicationId(UUID applyApplicationId);
+  Optional<ApplicationDomain> findByLeadApplyApplicationId(UUID applyApplicationId);
+
+  Optional<ApplicationDomain> findByApplicationId(UUID applicationId);
 
   /**
    * Returns any applyApplicationIds from the supplied list that do not exist in the repository. An

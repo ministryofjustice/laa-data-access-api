@@ -39,9 +39,14 @@ public class ApplicationJpaGateway implements ApplicationGateway {
   }
 
   @Override
-  public Optional<ApplicationDomain> findLeadByApplyApplicationId(UUID applyApplicationId) {
+  public Optional<ApplicationDomain> findByLeadApplyApplicationId(UUID applyApplicationId) {
     ApplicationEntity entity = applicationRepository.findByApplyApplicationId(applyApplicationId);
     return Optional.ofNullable(entity).map(mapper::toApplicationDomain);
+  }
+
+  @Override
+  public Optional<ApplicationDomain> findByApplicationId(UUID applicationId) {
+    return applicationRepository.findById(applicationId).map(mapper::toApplicationDomain);
   }
 
   @Override
