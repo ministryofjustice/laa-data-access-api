@@ -102,7 +102,7 @@ public class SaveDomainEventService {
             .updatedBy(updatedBy)
             .applicationStatus(String.valueOf(applicationEntity.getStatus()))
             .applicationContent(applicationEntity.getApplicationContent().toString())
-            .build();;
+            .build();
 
     saveDomainEvent(
         applicationEntity.getId(),
