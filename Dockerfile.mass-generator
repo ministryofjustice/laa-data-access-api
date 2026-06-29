@@ -1,4 +1,4 @@
-FROM amazoncorretto:25-alpine
+FROM amazoncorretto:25.0.3-alpine
 
 #update all packages
 RUN apk update
