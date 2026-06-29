@@ -25,6 +25,10 @@ inputs:
   app-environment:
     description: "environment to which the app is being deployed [staging, production, etc]"
     required: true
+  image-tag:
+    description: "Docker image tag to deploy. Defaults to the git SHA."
+    required: false
+    default: ${{ github.sha }}
 
 runs:
   using: "composite"
@@ -51,7 +55,7 @@ runs:
         ECR_REPOSITORY: ${{ inputs.ecr-repository }}
         ECR_REGION: ${{ inputs.ecr-region }}
         ECR_REGISTRY: ${{ steps.deploy_prerequisites.outputs.ecr-registry }}
-        GIT_SHA: ${{ github.sha }}
+        IMAGE_TAG: ${{ inputs.image-tag }}
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
       run: |
@@ -67,12 +71,12 @@ runs:
         helm upgrade laa-data-access-api .helm/data-access-api \
           --namespace ${KUBE_NAMESPACE} \
           --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
-          --set image.tag="${GIT_SHA}" \
+          --set image.tag="${IMAGE_TAG}" \
           --set ingress.annotations."nginx\.ingress\.kubernetes\.io/whitelist-source-range"="$LAA_IPS" \
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
           --set massGenerator.image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
-          --set massGenerator.image.tag="${GIT_SHA}-mass-generator" \
+          --set massGenerator.image.tag="${IMAGE_TAG}-mass-generator" \
           --values ${VALUES_FILE} \
           --install \
           --wait
