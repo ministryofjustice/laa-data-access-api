@@ -103,7 +103,7 @@ public class SaveDomainEventService {
             .applicationStatus(String.valueOf(applicationEntity.getStatus()))
             .applicationContent(applicationEntity.getApplicationContent().toString())
             .build();
-    UUID uuid = domainEventDetails.getApplicationId();
+
     saveDomainEvent(
         applicationEntity.getId(),
         applicationEntity.getCaseworker() != null
