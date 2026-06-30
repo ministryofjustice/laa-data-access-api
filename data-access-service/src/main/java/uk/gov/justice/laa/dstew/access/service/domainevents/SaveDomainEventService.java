@@ -206,7 +206,6 @@ public class SaveDomainEventService {
    * @param caseworkerId the UUID of the assigned caseworker, or {@code null} if unassigned
    * @param serialisedNoteRequest the pre-serialised JSON of the original {@code CreateNoteRequest}
    */
-  @ExcludeFromGeneratedCodeCoverage
   public void saveCreateApplicationNoteDomainEvent(
       UUID applicationId, UUID caseworkerId, String serialisedNoteRequest) {
 

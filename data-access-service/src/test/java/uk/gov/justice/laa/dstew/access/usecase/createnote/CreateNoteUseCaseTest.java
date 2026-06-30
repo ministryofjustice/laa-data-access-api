@@ -26,7 +26,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
-import uk.gov.justice.laa.dstew.access.usecase.createnote.infrastructure.CreateNoteNoteGateway;
+import uk.gov.justice.laa.dstew.access.usecase.createnote.infrastructure.NoteGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.createnote.CreateNoteCommandGenerator;
@@ -36,7 +36,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.domain.ApplicationDomainG
 class CreateNoteUseCaseTest {
 
   @Mock private ApplicationGateway applicationGateway;
-  @Mock private CreateNoteNoteGateway noteGateway;
+  @Mock private NoteGateway noteGateway;
   @Mock private DomainEventRepository domainEventRepository;
   @Mock private ServiceNameContext serviceNameContext;
 

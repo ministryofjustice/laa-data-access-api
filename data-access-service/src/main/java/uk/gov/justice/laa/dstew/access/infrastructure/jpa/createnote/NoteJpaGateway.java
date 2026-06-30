@@ -3,10 +3,10 @@ package uk.gov.justice.laa.dstew.access.infrastructure.jpa.createnote;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.entity.NoteEntity;
 import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
-import uk.gov.justice.laa.dstew.access.usecase.createnote.infrastructure.CreateNoteNoteGateway;
+import uk.gov.justice.laa.dstew.access.usecase.createnote.infrastructure.NoteGateway;
 
-/** JPA implementation of {@link CreateNoteNoteGateway}. */
-public class CreateNoteNoteJpaGateway implements CreateNoteNoteGateway {
+/** JPA implementation of {@link NoteGateway}. */
+public class NoteJpaGateway implements NoteGateway {
 
   private final NoteRepository noteRepository;
 
@@ -15,7 +15,7 @@ public class CreateNoteNoteJpaGateway implements CreateNoteNoteGateway {
    *
    * @param noteRepository the Spring Data repository for notes
    */
-  public CreateNoteNoteJpaGateway(NoteRepository noteRepository) {
+  public NoteJpaGateway(NoteRepository noteRepository) {
     this.noteRepository = noteRepository;
   }
 

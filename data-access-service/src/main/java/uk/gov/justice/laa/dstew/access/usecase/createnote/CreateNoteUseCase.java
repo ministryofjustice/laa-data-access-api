@@ -6,7 +6,7 @@ import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
-import uk.gov.justice.laa.dstew.access.usecase.createnote.infrastructure.CreateNoteNoteGateway;
+import uk.gov.justice.laa.dstew.access.usecase.createnote.infrastructure.NoteGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
 
 /** Orchestrates the create-application-note use case. */
@@ -14,7 +14,7 @@ import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.Application
 public class CreateNoteUseCase {
 
   private final ApplicationGateway applicationGateway;
-  private final CreateNoteNoteGateway noteGateway;
+  private final NoteGateway noteGateway;
   private final SaveDomainEventService saveDomainEventService;
 
   /**
