@@ -12,9 +12,11 @@ import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.web.client.RestClient;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.context.LoggingContext;
 
 /** Configuration class for RestClient bean. */
+@ExcludeFromGeneratedCodeCoverage
 @Configuration
 @Slf4j
 public class RestClientConfig {
@@ -61,6 +63,7 @@ public class RestClientConfig {
 
   /** Implementation of logging interceptor with structured logging support. */
   @Slf4j
+  @ExcludeFromGeneratedCodeCoverage
   static class LoggingClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
 
     private static final String[] SENSITIVE_HEADERS = {

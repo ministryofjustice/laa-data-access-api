@@ -6,12 +6,14 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * Thread-safe logging context that manages correlation IDs and other contextual information for
  * structured logging. Uses SLF4J's MDC (Mapped Diagnostic Context) to propagate context across log
  * entries.
  */
+@ExcludeFromGeneratedCodeCoverage
 @Slf4j
 public class LoggingContext {
 
