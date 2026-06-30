@@ -6,6 +6,7 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.IndividualCommand;
@@ -30,13 +31,18 @@ public class CreateApplicationCommandMapper {
    * @param req the HTTP request model
    * @return the command record
    */
-  public CreateApplicationCommand toCreateCommand(ApplicationCreateRequest req) {
+  public CreateApplicationCommand toCreateCommand(ApplicationCreateRequest req, int schemaVersion) {
     return CreateApplicationCommand.builder()
         .status(req.getStatus() != null ? req.getStatus().name() : null)
         .laaReference(req.getLaaReference())
         .applicationContent(req.getApplicationContent())
         .individuals(toIndividualCreateCommands(req.getIndividuals()))
         .serialisedRequest(serialise(req))
+        .schemaVersion(schemaVersion)
+        .applicationType(
+            req.getApplicationType() != null
+                ? req.getApplicationType().name()
+                : ApplicationType.APPLY.name())
         .build();
   }
 

@@ -119,6 +119,10 @@ management:
       percentile-histogram:
         jdbc.query: true
 
+springdoc:
+  api-docs:
+    version: openapi_3_1
+
 sentry:
   enabled: ${SENTRY_ENABLED:false}
   dsn: ${SENTRY_DSN:}

@@ -37,6 +37,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCo
 import uk.gov.justice.laa.dstew.access.utils.generator.createapplication.CreateApplicationCommandGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domain.ApplicationDomainGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,6 +46,7 @@ class CreateApplicationUseCaseTest {
   @Mock private ApplicationGateway applicationGateway;
   @Mock private LinkedApplicationGateway linkedApplicationGateway;
   @Mock private DomainEventRepository domainEventRepository;
+  @Mock private JsonSchemaValidator jsonSchemaValidator;
 
   private CreateApplicationUseCase useCase;
 
@@ -66,7 +68,8 @@ class CreateApplicationUseCaseTest {
             linkedApplicationGateway,
             parser,
             new CreateApplicationDomainMapper(),
-            saveDomainEventService);
+            saveDomainEventService,
+            jsonSchemaValidator);
   }
 
   @Test

@@ -5,10 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import uk.gov.justice.laa.dstew.access.convertors.CategoryOfLawTypeConvertor;
-import uk.gov.justice.laa.dstew.access.convertors.MatterTypeConvertor;
-import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.model.MatterType;
+import uk.gov.justice.laa.dstew.access.convertors.GenericEnumConvertor;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
@@ -17,9 +14,10 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
  */
 public class ApplicationContentParser {
 
-  private static final MatterTypeConvertor matterTypeConvertor = new MatterTypeConvertor();
-  private static final CategoryOfLawTypeConvertor categoryOfLawConvertor =
-      new CategoryOfLawTypeConvertor();
+  private static final GenericEnumConvertor<MatterType> matterTypeConvertor =
+      new GenericEnumConvertor<>(MatterType.class);
+  private static final GenericEnumConvertor<CategoryOfLaw> categoryOfLawConvertor =
+      new GenericEnumConvertor<>(CategoryOfLaw.class);
 
   private final PayloadValidator payloadValidator;
 

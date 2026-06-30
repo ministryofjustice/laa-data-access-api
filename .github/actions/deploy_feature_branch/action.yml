@@ -33,6 +33,10 @@ inputs:
     description: "Comma-separated extra environment variables key=value"
     required: false
     default: ""
+  image-tag:
+    description: "Docker image tag to deploy. Defaults to the git SHA."
+    required: false
+    default: ${{ github.sha }}
 
 outputs:
   release-name:
@@ -88,7 +92,7 @@ runs:
         ECR_REPOSITORY: ${{ inputs.ecr-repository }}
         ECR_REGION: ${{ inputs.ecr-region }}
         ECR_REGISTRY: ${{ steps.deploy_prerequisites.outputs.ecr-registry }}
-        GIT_SHA: ${{ github.sha }}
+        IMAGE_TAG: ${{ inputs.image-tag }}
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
         APP_ENVIRONMENT: ${{ inputs.app-environment }}
         VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
@@ -96,6 +100,11 @@ runs:
         EXTRA_ENV: ${{ inputs.extra-env }}
       run: |
         set -euo pipefail
+
+        if [ -z "${IMAGE_TAG}" ]; then
+          echo "image-tag input is required."
+          exit 1
+        fi
 
         # Mirror Helm _helpers.tpl fullname logic:
         # if release name contains "data-access-api", fullname = release name
@@ -187,7 +196,7 @@ runs:
         helm upgrade ${RELEASE_NAME} .helm/data-access-api \
           --namespace ${KUBE_NAMESPACE} \
           --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
-          --set image.tag="${GIT_SHA}" \
+          --set image.tag="${IMAGE_TAG}" \
           --set ingress.annotations."external-dns\.alpha\.kubernetes\.io/set-identifier"="$external_identifier" \
           --set ingress.annotations."nginx\.ingress\.kubernetes\.io/whitelist-source-range"="$LAA_IPS" \
           --set ingress.hosts="{$external_host}" \
