@@ -62,7 +62,7 @@ public class AssignCaseworkerUseCase {
   }
 
   private void processApplication(ApplicationDomain app, AssignCaseworkerCommand command) {
-    if (!Objects.equals(app.caseworkerId(), command.caseworkerId())) {
+    if (!command.caseworkerId().equals(app.caseworkerId())) {
       applicationGateway.save(app.toBuilder().caseworkerId(command.caseworkerId()).build());
     }
     saveDomainEventService.saveAssignApplicationDomainEvent(

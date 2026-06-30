@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -143,7 +144,7 @@ class AssignCaseworkerUseCaseTest {
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(command))
-        .withMessageContaining(caseworkerId.toString());
+        .withMessage("No caseworker found with id: " + caseworkerId);
 
     verify(applicationGateway, never()).findAllByIds(anyList());
   }
@@ -223,9 +224,13 @@ class AssignCaseworkerUseCaseTest {
     when(caseworkerGateway.exists(caseworkerId)).thenReturn(true);
     when(applicationGateway.findAllByIds(anyList())).thenReturn(List.of(existingApp));
 
+    String expectedMissingIds =
+        List.of(missingId1, missingId2).stream()
+            .map(UUID::toString)
+            .collect(Collectors.joining(","));
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(command))
-        .withMessageContaining("No application found with ids:");
+        .withMessage("No application found with ids: " + expectedMissingIds);
 
     verify(applicationGateway, never()).save(any(ApplicationDomain.class));
     verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
