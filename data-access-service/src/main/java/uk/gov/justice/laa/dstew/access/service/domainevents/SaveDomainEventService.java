@@ -88,7 +88,7 @@ public class SaveDomainEventService {
   }
 
   /**
-   * Posts an APPLICATION_UPDATED domain event. excluded from code coverage as caseworker will be
+   * Pogit log --show-signature -1sts an APPLICATION_UPDATED domain event. excluded from code coverage as caseworker will be
    * removed once RBAC is sorted. Domain event is asserted in UpdateApplicationTest
    */
   @ExcludeFromGeneratedCodeCoverage
@@ -102,7 +102,7 @@ public class SaveDomainEventService {
             .updatedBy(updatedBy)
             .applicationStatus(String.valueOf(applicationEntity.getStatus()))
             .applicationContent(applicationEntity.getApplicationContent().toString())
-            .build();
+            .build();;
 
     saveDomainEvent(
         applicationEntity.getId(),
