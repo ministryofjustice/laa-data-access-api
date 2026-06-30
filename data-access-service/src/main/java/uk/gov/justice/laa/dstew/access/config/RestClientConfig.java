@@ -20,6 +20,11 @@ import uk.gov.justice.laa.dstew.access.context.LoggingContext;
 public class RestClientConfig {
 
   @Bean
+  ClientHttpRequestInterceptor loggingInterceptor() {
+    return new LoggingClientHttpRequestInterceptor();
+  }
+
+  @Bean
   RestClient restClient(
       RestClient.Builder builder, ClientHttpRequestInterceptor loggingInterceptor) {
     return builder
