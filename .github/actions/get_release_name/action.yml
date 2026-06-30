@@ -1,6 +1,11 @@
 name: "Get release name"
 description: 'Get a release name'
 
+inputs:
+  pr-number:
+    description: "Pull request number. When provided, release name will be pr-{number}."
+    required: false
+
 outputs:
   branch-name:
     description: "Extracted branch name"
@@ -28,6 +33,15 @@ runs:
 
     - name: Extract release name from branch name
       id: extract_release
-      uses: ./.github/actions/extract_release_name_from_branch
-      with:
-        branch_name: ${{ steps.extract_branch.outputs.branch_name }}
+      shell: bash
+      env:
+        PR_NUMBER: ${{ inputs.pr-number }}
+        BRANCH_NAME: ${{ steps.extract_branch.outputs.branch_name }}
+      run: |
+        if [[ -n "$PR_NUMBER" ]]; then
+          release_name="pr-${PR_NUMBER}"
+        else
+          release_name=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | tr -s ' _/[]().' '-' | cut -c1-15 | sed 's/-$//')
+        fi
+        echo "release_name=${release_name}" >> $GITHUB_OUTPUT
+        echo "release_name being exported: ${release_name}"
