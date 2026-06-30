@@ -7,6 +7,8 @@ repositories {
     mavenCentral()
 }
 
+ext['logback.version'] = '1.5.36'
+
 def requiredJavaVersion = 25
 def currentJavaVersion = JavaVersion.current().majorVersion.toInteger()
 
