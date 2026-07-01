@@ -8,6 +8,17 @@ repositories {
 }
 
 ext['logback.version'] = '1.5.36'
+//[Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17733895] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        ✗ Always-Incorrect Control Flow Implementation (new) [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17734715] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        ✗ Always-Incorrect Control Flow Implementation (new) [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17734718] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        ✗ Improper Authentication (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17732890] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        ✗ Detection of Error Condition Without Action (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17733746] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+ext['tomcat.version'] = '11.0.23'
 
 def requiredJavaVersion = 25
 def currentJavaVersion = JavaVersion.current().majorVersion.toInteger()
