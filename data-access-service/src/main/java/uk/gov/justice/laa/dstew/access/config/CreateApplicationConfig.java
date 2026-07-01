@@ -32,7 +32,7 @@ public class CreateApplicationConfig {
 
   @Bean
   public ApplicationGatewayMapper createApplicationGatewayMapper() {
-    return new ApplicationGatewayMapper(objectMapper);
+    return new ApplicationGatewayMapper();
   }
 
   @Bean

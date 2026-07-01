@@ -156,7 +156,7 @@ class CreateApplicationUseCaseTest {
     ApplicationDomain leadDomain =
         DataGenerator.createDefault(ApplicationDomainGenerator.class, b -> b.id(leadDomainId));
 
-    when(applicationGateway.findLeadByApplyApplicationId(leadApplyId))
+    when(applicationGateway.findByLeadApplyApplicationId(leadApplyId))
         .thenReturn(Optional.of(leadDomain));
 
     useCase.execute(command);
@@ -172,7 +172,7 @@ class CreateApplicationUseCaseTest {
 
     CreateApplicationCommand command = commandWithLinkedApplication(leadApplyId, associatedApplyId);
     stubSaveEnriching(UUID.randomUUID(), null);
-    when(applicationGateway.findLeadByApplyApplicationId(leadApplyId)).thenReturn(Optional.empty());
+    when(applicationGateway.findByLeadApplyApplicationId(leadApplyId)).thenReturn(Optional.empty());
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(command))
@@ -254,7 +254,7 @@ class CreateApplicationUseCaseTest {
 
     ApplicationDomain leadDomain =
         DataGenerator.createDefault(ApplicationDomainGenerator.class, b -> b.id(leadDomainId));
-    when(applicationGateway.findLeadByApplyApplicationId(sharedId))
+    when(applicationGateway.findByLeadApplyApplicationId(sharedId))
         .thenReturn(Optional.of(leadDomain));
 
     useCase.execute(command);

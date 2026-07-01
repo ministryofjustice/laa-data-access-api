@@ -41,6 +41,7 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.applications.CreateNoteService;
+import uk.gov.justice.laa.dstew.access.service.applications.AssignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetAllApplicationsService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetAllNotesForApplicationService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetCertificateService;
@@ -53,6 +54,7 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.AssignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.createnote.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.GetApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
@@ -74,7 +76,8 @@ public class ApplicationController implements ApplicationApi {
   private final UnassignCaseworkerService unassignCaseworkerService;
   private final MakeDecisionService makeDecisionService;
   private final GetAllNotesForApplicationService getNotesService;
-  private final CreateNoteService createNoteService;
+  private final CreateNoteUseCase createNoteUseCase;
+  private final CreateNoteCommandMapper createNoteCommandMapper;
   private final GetDomainEventService getDomainEventsService;
   private final SdsService sdsService;
 
@@ -209,9 +212,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   public ResponseEntity<Void> createApplicationNotes(
       @NotNull ServiceName serviceName, UUID applicationId, @Valid CreateNoteRequest request) {
-
-    createNoteService.createApplicationNote(applicationId, request);
-
+    createNoteUseCase.execute(createNoteCommandMapper.toCreateNoteCommand(applicationId, request));
     return ResponseEntity.noContent().build();
   }
 

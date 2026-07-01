@@ -46,6 +46,7 @@ public class ApplicationDomainGenerator
         .matterType("SPECIAL_CHILDREN_ACT")
         .isAutoGranted(false)
         .proceedings(Set.of(proceedingDomainGenerator.createDefault()))
+        .caseworkerId(UUID.randomUUID())
         .build();
   }
 }
