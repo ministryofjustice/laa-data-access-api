@@ -14,12 +14,14 @@ import org.springframework.core.annotation.Order;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.context.LoggingContext;
 
 /** Servlet filter that manages correlation IDs for request tracing. */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @Slf4j
+@ExcludeFromGeneratedCodeCoverage
 public class CorrelationIdFilter extends OncePerRequestFilter {
 
   @Value("${spring.application.name:laa-data-access-api}")
