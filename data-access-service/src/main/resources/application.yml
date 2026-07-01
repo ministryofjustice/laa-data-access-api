@@ -65,6 +65,8 @@ logging:
     uk.gov.justice.laa.dstew.access: ${APP_LOGGING_LEVEL:INFO}
     # Reduce startup noise
     org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: WARN
+    # Reduce actuator endpoint logging
+    org.springframework.boot.actuate: WARN
   # ECS structured logging configuration
   structured:
     format:

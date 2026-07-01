@@ -74,7 +74,8 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
 
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
-    // Filter all requests including actuator endpoints for consistent correlation
-    return false;
+    // Exclude actuator endpoints to avoid flooding logs with health checks and metrics
+    String uri = request.getRequestURI();
+    return uri != null && uri.startsWith("/actuator");
   }
 }
