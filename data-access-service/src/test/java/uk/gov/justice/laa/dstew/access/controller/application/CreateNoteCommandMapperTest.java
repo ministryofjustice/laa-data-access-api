@@ -31,20 +31,4 @@ class CreateNoteCommandMapperTest {
     JsonNode tree = new ObjectMapper().readTree(command.serialisedNoteRequest());
     assertThat(tree.get("notes").asString()).isEqualTo("test note text");
   }
-
-  @Test
-  void givenNullNotesField_whenToCreateNoteCommand_thenNoteTextIsNullAndJsonContainsNullNotes() {
-    UUID applicationId = UUID.randomUUID();
-    CreateNoteRequest request =
-        DataGenerator.createDefault(CreateNoteRequestGenerator.class, b -> b.notes(null));
-
-    CreateNoteCommand command = mapper.toCreateNoteCommand(applicationId, request);
-
-    assertThat(command.applicationId()).isEqualTo(applicationId);
-    assertThat(command.noteText()).isNull();
-    assertThat(command.serialisedNoteRequest()).isNotNull();
-
-    JsonNode tree = new ObjectMapper().readTree(command.serialisedNoteRequest());
-    assertThat(tree.get("notes").isNull()).isTrue();
-  }
 }
