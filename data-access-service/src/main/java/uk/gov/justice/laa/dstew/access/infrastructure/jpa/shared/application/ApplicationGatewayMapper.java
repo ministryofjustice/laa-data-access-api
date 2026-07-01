@@ -4,7 +4,6 @@ import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
@@ -18,17 +17,6 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 
 /** Converts between domain records and JPA entities for the createApplication use case. */
 public class ApplicationGatewayMapper {
-
-  private final ObjectMapper objectMapper;
-
-  /**
-   * Constructs the mapper with the given Jackson ObjectMapper.
-   *
-   * @param objectMapper the Jackson ObjectMapper
-   */
-  public ApplicationGatewayMapper(ObjectMapper objectMapper) {
-    this.objectMapper = objectMapper;
-  }
 
   // ── INSERT path ─────────────────────────────────────────────────────────
 
@@ -109,6 +97,8 @@ public class ApplicationGatewayMapper {
                 : application.getProceedings().stream()
                     .map(this::toProceedingDomain)
                     .collect(Collectors.toCollection(LinkedHashSet::new)))
+        .caseworkerId(
+            application.getCaseworker() != null ? application.getCaseworker().getId() : null)
         .build();
   }
 

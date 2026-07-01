@@ -15,7 +15,6 @@ import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationNoteDomainEventDetails;
-import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
@@ -201,31 +200,25 @@ public class SaveDomainEventService {
   }
 
   /**
-   * Posts an APPLICATION_NOTES domain event. excluded from code coverage as caseworker will be
-   * removed once RBAC is sorted. Domain event is asserted in UpdateApplicationTest
+   * Posts an APPLICATION_NOTES domain event using domain types (new clean-architecture path).
+   *
+   * @param applicationId the UUID of the application
+   * @param caseworkerId the UUID of the assigned caseworker, or {@code null} if unassigned
+   * @param serialisedNoteRequest the pre-serialised JSON of the original {@code CreateNoteRequest}
    */
-  @ExcludeFromGeneratedCodeCoverage
-  @AllowApiCaseworker
   public void saveCreateApplicationNoteDomainEvent(
-      ApplicationEntity applicationEntity, CreateNoteRequest request) {
+      UUID applicationId, UUID caseworkerId, String serialisedNoteRequest) {
 
     DomainEventType domainEventType = DomainEventType.APPLICATION_NOTES;
-    // TODO: caseworkerId currently sourced from the assigned caseworker on the application.
-    //  Once authentication is in place, all domain events should use the logged-in user
-    //  from the auth token instead.
-    UUID caseworkerId =
-        applicationEntity.getCaseworker() != null
-            ? applicationEntity.getCaseworker().getId()
-            : null;
 
     CreateApplicationNoteDomainEventDetails domainEventDetails =
         CreateApplicationNoteDomainEventDetails.builder()
-            .applicationId(applicationEntity.getId())
+            .applicationId(applicationId)
             .caseworkerId(caseworkerId)
-            .request(getEventDetailsAsJson(request, domainEventType))
+            .request(serialisedNoteRequest)
             .createdDate(Instant.now())
             .build();
 
-    saveDomainEvent(applicationEntity.getId(), caseworkerId, domainEventType, domainEventDetails);
+    saveDomainEvent(applicationId, caseworkerId, domainEventType, domainEventDetails);
   }
 }
