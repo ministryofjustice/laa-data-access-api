@@ -76,31 +76,6 @@ logging:
         environment: ${sentry.environment:local}
         node_name: ${HOSTNAME:unknown}
 
----
-# Local profile configuration
-spring:
-  config:
-    activate:
-      on-profile: local
-
-logging:
-  level:
-    root: ${ROOT_LOGGING_LEVEL:INFO}
-    org.springframework: ${SPRING_LOGGING_LEVEL:INFO}
-    org.springframework.web: ${SPRING_LOGGING_LEVEL:INFO}
-    org.springframework.security: INFO
-    org.hibernate: INFO
-    org.hibernate.SQL: INFO
-    org.hibernate.type.descriptor.sql.BasicBinder: INFO
-    uk.gov.justice.laa.dstew.access: ${APP_LOGGING_LEVEL:INFO}
-    # Reduce startup noise
-    org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: WARN
-  structured:
-    format:
-      console: # Disables structured logging for local development
-  pattern:
-    console: "%clr(%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr{faint} %clr([%15.15t]){faint} %clr([correlationId=%X{correlationId}]){yellow} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx"
-
 jdbc:
   datasource-proxy:
     slow-query:
@@ -151,3 +126,19 @@ app:
 
 server:
   forward-headers-strategy: framework
+
+---
+# Local profile configuration - overrides for local development
+spring:
+  config:
+    activate:
+      on-profile: local
+
+logging:
+  # Override structured logging for local development
+  structured:
+    format:
+      console: # Disables structured logging for local development
+  pattern:
+    console: "%clr(%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr{faint} %clr([%15.15t]){faint} %clr([correlationId=%X{correlationId}]){yellow} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx"
+
