@@ -6,7 +6,6 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
@@ -28,7 +27,7 @@ class ApplicationGatewayMapperTest {
 
   @BeforeEach
   void setUp() {
-    mapper = new ApplicationGatewayMapper(new ObjectMapper());
+    mapper = new ApplicationGatewayMapper();
   }
 
   @Test
