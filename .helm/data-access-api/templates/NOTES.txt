@@ -8,3 +8,20 @@ URL(s):
 {{- range .Values.ingressInternal.hosts }}
   Internal hostname: https://{{ . }}
 {{- end }}
+
+{{- if and .Values.mockOAuth2 .Values.mockOAuth2.enabled }}
+
+Mock OAuth2 (test tokens)
+
+  The API validates tokens against this in-cluster issuer:
+    http://{{ include "data-access-api.fullname" . }}-mock-oauth2:9999/entra
+
+  1. Port-forward the mock-oauth2 service (in a separate terminal):
+       kubectl -n {{ .Release.Namespace }} port-forward \
+         svc/{{ include "data-access-api.fullname" . }}-mock-oauth2 9999:9999
+
+  2. Fetch a matching test token:
+       OAUTH_ISSUER_HOST={{ include "data-access-api.fullname" . }}-mock-oauth2:9999 \
+         ./scripts/get-token.sh uat --copy --decode
+{{- end }}
+

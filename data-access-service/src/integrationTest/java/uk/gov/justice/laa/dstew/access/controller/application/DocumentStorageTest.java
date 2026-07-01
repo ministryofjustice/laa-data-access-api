@@ -31,7 +31,6 @@ import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
-import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
 import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
@@ -401,13 +400,16 @@ public class DocumentStorageTest extends BaseHarnessTest {
     WebTestClient.RequestBodySpec spec =
         webTestClient.post().uri(uri).contentType(MediaType.MULTIPART_FORM_DATA);
 
-    spec = spec.header(AUTHORIZATION, "Bearer " + TestConstants.Tokens.CASEWORKER);
+    spec = spec.header(AUTHORIZATION, "Bearer " + currentToken);
 
     if (headers != null) {
       for (java.util.Map.Entry<String, java.util.List<String>> entry : headers.headerSet()) {
         spec = spec.header(entry.getKey(), entry.getValue().toArray(String[]::new));
       }
     }
+
+    // Reset token state after each use
+    currentToken = freshCaseworkerToken();
 
     EntityExchangeResult<byte[]> raw =
         spec.bodyValue(builder.build()).exchange().expectBody().returnResult();
@@ -429,13 +431,16 @@ public class DocumentStorageTest extends BaseHarnessTest {
     WebTestClient.RequestBodySpec spec =
         webTestClient.put().uri(uri).contentType(MediaType.MULTIPART_FORM_DATA);
 
-    spec = spec.header(AUTHORIZATION, "Bearer " + TestConstants.Tokens.CASEWORKER);
+    spec = spec.header(AUTHORIZATION, "Bearer " + currentToken);
 
     if (headers != null) {
       for (java.util.Map.Entry<String, java.util.List<String>> entry : headers.headerSet()) {
         spec = spec.header(entry.getKey(), entry.getValue().toArray(String[]::new));
       }
     }
+
+    // Reset token state after each use
+    currentToken = freshCaseworkerToken();
 
     EntityExchangeResult<byte[]> raw =
         spec.bodyValue(builder.build()).exchange().expectBody().returnResult();
@@ -451,7 +456,7 @@ public class DocumentStorageTest extends BaseHarnessTest {
   private HarnessResult deleteUri(String uri, HttpHeaders headers) throws Exception {
     WebTestClient.RequestHeadersSpec<?> spec = webTestClient.delete().uri(uri);
 
-    spec = spec.header(AUTHORIZATION, "Bearer " + TestConstants.Tokens.CASEWORKER);
+    spec = spec.header(AUTHORIZATION, "Bearer " + currentToken);
 
     if (headers != null) {
       for (java.util.Map.Entry<String, java.util.List<String>> entry : headers.headerSet()) {

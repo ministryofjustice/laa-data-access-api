@@ -597,7 +597,7 @@ public class CreateApplicationTest extends BaseHarnessTest {
   public void givenCorrectRequestBodyAndReaderRole_whenCreateApplication_thenReturnForbidden()
       throws Exception {
     // given
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     ApplicationCreateRequest request =
         DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
 

@@ -20,7 +20,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
  * @param enableDevToken whether OAuth2 authorization allows dev tokens. Spring property:
  *     `feature.enable-dev-token`. Environment variable: `FEATURE_ENABLE_DEV_TOKEN`.
  * @param disableJpaAuditing whether JPA auditing is disabled. Spring property:
- *     `feature.disable-jpa-auditing`. Environment variable: `FEATURE_DISABLEJPAAUDITING`. Needed
+ *     `feature.disable-jpa-auditing`. Environment variable: `FEATURE_DISABLE_JPA_AUDITING`. Needed
  *     because JPA auditing cannot be disabled by excluding autoconfiguration classes in
  *     `@SpringBootTest` tests.
  * @param disableSecurity whether Spring Security is disabled (e.g. for development). Spring

@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.databind.ObjectMapper;
@@ -21,8 +22,7 @@ import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.*;
 
-@SpringBootTest(
-    properties = {"feature.disable-jpa-auditing=true", "feature.disable-security=false"})
+@SpringBootTest(properties = {"feature.disable-jpa-auditing=true"})
 @ImportAutoConfiguration(
     exclude = {
       DataSourceAutoConfiguration.class,
@@ -49,6 +49,8 @@ public class BaseServiceTest {
   @MockitoBean protected ProceedingRepository proceedingRepository;
 
   @MockitoBean protected ServiceNameContext serviceNameContext;
+
+  @MockitoBean protected JwtDecoder jwtDecoder;
 
   @Autowired protected ObjectMapper objectMapper;
 

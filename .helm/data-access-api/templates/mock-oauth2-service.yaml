@@ -1,16 +1,19 @@
+{{- if and .Values.mockOAuth2 .Values.mockOAuth2.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "data-access-api.fullname" . }}
+  name: {{ include "data-access-api.fullname" . }}-mock-oauth2
   labels:
     {{- include "data-access-api.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mock-oauth2
 spec:
-  type: {{ .Values.service.type }}
+  type: ClusterIP
   ports:
-    - port: {{ .Values.service.port }}
+    - port: 9999
       targetPort: http
       protocol: TCP
       name: http
   selector:
     {{- include "data-access-api.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: api
+    app.kubernetes.io/component: mock-oauth2
+{{- end }}

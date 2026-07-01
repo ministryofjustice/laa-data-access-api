@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import { sleep } from 'k6';
 import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
+import { fetchToken } from './lib/auth.js';
 
 // ---------------------------------------------------------------------------
 // Fixture: load once at init time, mutate per iteration
@@ -11,6 +12,9 @@ const APPLICATION_CONTENT_TEMPLATE = JSON.parse(open('./fixtures/applicationCont
 // Configuration
 // ---------------------------------------------------------------------------
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:9080';
+// Base URL of the mock-oauth2-server (or a deployed equivalent).
+// Defaults to the local docker-compose instance; override with -e OAUTH_BASE_URL=...
+const OAUTH_BASE_URL = __ENV.OAUTH_BASE_URL || 'http://localhost:9999';
 const VUS = parseInt(__ENV.VUS || '5', 10);
 const ITERATIONS = parseInt(__ENV.ITERATIONS || '100', 10);
 const THINK_TIME_MIN_MS = parseInt(__ENV.THINK_TIME_MIN_MS || '0', 10);
@@ -36,14 +40,17 @@ export const options = {
 
 // ---------------------------------------------------------------------------
 // Default request params (auth headers applied to every request)
+// Built per-iteration from the token fetched in setup().
 // ---------------------------------------------------------------------------
-const DEFAULT_PARAMS = {
-  headers: {
-    'Authorization': `Bearer ${__ENV.BEARER_TOKEN}`,
-    'X-Service-Name': 'CIVIL_DECIDE',
-    'Content-Type': 'application/json',
-  },
-};
+function buildParams(token) {
+  return {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'X-Service-Name': 'CIVIL_DECIDE',
+      'Content-Type': 'application/json',
+    },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -161,7 +168,7 @@ function maybeThinkTime() {
  * POST /api/v0/applications
  * Returns the applicationId UUID string parsed from the Location header, or null on failure.
  */
-function postCreateApplication() {
+function postCreateApplication(token) {
   const content = buildApplicationContent();
 
   const body = JSON.stringify({
@@ -180,7 +187,7 @@ function postCreateApplication() {
   });
 
   const res = http.post(`${BASE_URL}/api/v0/applications`, body, {
-    ...DEFAULT_PARAMS,
+    ...buildParams(token),
     tags: { name: 'POST /api/v0/applications' },
   });
 
@@ -198,9 +205,9 @@ function postCreateApplication() {
  * GET /api/v0/applications/{id}
  * Returns an array of proceedingId strings (may be empty).
  */
-function getApplicationProceedings(applicationId) {
+function getApplicationProceedings(applicationId, token) {
   const res = http.get(`${BASE_URL}/api/v0/applications/${applicationId}`, {
-    ...DEFAULT_PARAMS,
+    ...buildParams(token),
     tags: { name: 'GET /api/v0/applications/{id}' },
   });
 
@@ -225,7 +232,7 @@ function getApplicationProceedings(applicationId) {
  * PATCH /api/v0/applications/{id}/decision
  * Sends a REFUSED decision for every supplied proceeding ID.
  */
-function patchDecision(applicationId, proceedingIds) {
+function patchDecision(applicationId, proceedingIds, token) {
   const proceedings = proceedingIds.map((proceedingId) => ({
     proceedingId,
     meritsDecision: {
@@ -244,7 +251,7 @@ function patchDecision(applicationId, proceedingIds) {
   });
 
   const res = http.patch(`${BASE_URL}/api/v0/applications/${applicationId}/decision`, body, {
-    ...DEFAULT_PARAMS,
+    ...buildParams(token),
     tags: { name: 'PATCH /api/v0/applications/{id}/decision' },
   });
 
@@ -254,21 +261,39 @@ function patchDecision(applicationId, proceedingIds) {
 }
 
 // ---------------------------------------------------------------------------
+// setup — runs once before VUs start; return value is passed to every VU
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetches a token from the mock-oauth2-server (or a deployed equivalent) once per test run.
+ * The token is shared with all VUs via the returned data object.
+ *
+ * Override the server URL with: -e OAUTH_BASE_URL=http://my-mock-pod:9999
+ */
+export function setup() {
+  const token = fetchToken(OAUTH_BASE_URL);
+  console.log(`✓ OAuth token fetched from ${OAUTH_BASE_URL}`);
+  return { token };
+}
+
+// ---------------------------------------------------------------------------
 // Default function — one iteration
 // ---------------------------------------------------------------------------
-export default function () {
+export default function (data) {
+  const { token } = data;
+
   // 1. Create application
-  const applicationId = postCreateApplication();
+  const applicationId = postCreateApplication(token);
 
   // 2. Optionally make a decision
   if (applicationId !== null) {
     maybeThinkTime();
 
-    const proceedingIds = getApplicationProceedings(applicationId);
+    const proceedingIds = getApplicationProceedings(applicationId, token);
 
     if (proceedingIds.length > 0) {
       maybeThinkTime();
-      patchDecision(applicationId, proceedingIds);
+      patchDecision(applicationId, proceedingIds, token);
     }
   }
 }
