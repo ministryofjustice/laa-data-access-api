@@ -6,12 +6,12 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
 import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.infrastructure.AssignCaseworkerApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.infrastructure.AssignCaseworkerCaseworkerGateway;
+import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.model.AssignCaseworkerApplication;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Orchestrates assigning a caseworker to one or more applications. */
@@ -42,15 +42,17 @@ public class AssignCaseworkerUseCase {
     }
 
     List<UUID> distinctIds = command.applicationIds().stream().distinct().toList();
-    List<ApplicationDomain> applications = applicationGateway.findAllByIds(distinctIds);
+    List<AssignCaseworkerApplication> applications = applicationGateway.findAllByIds(distinctIds);
 
     checkForMissingApplications(distinctIds, applications);
 
     applications.forEach(app -> processApplication(app, command));
   }
 
-  private void checkForMissingApplications(List<UUID> requestedIds, List<ApplicationDomain> found) {
-    List<UUID> foundIds = found.stream().map(ApplicationDomain::id).toList();
+  private void checkForMissingApplications(
+      List<UUID> requestedIds, List<AssignCaseworkerApplication> retrievedApplications) {
+    List<UUID> foundIds =
+        retrievedApplications.stream().map(AssignCaseworkerApplication::id).toList();
     String missingIds =
         requestedIds.stream()
             .filter(id -> !foundIds.contains(id))
@@ -61,7 +63,8 @@ public class AssignCaseworkerUseCase {
     }
   }
 
-  private void processApplication(ApplicationDomain app, AssignCaseworkerCommand command) {
+  private void processApplication(
+      AssignCaseworkerApplication app, AssignCaseworkerCommand command) {
     if (!command.caseworkerId().equals(app.caseworkerId())) {
       applicationGateway.save(app.toBuilder().caseworkerId(command.caseworkerId()).build());
     }

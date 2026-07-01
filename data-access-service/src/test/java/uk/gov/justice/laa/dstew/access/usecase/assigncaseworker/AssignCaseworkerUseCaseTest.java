@@ -21,7 +21,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
@@ -30,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
 import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.infrastructure.AssignCaseworkerApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.infrastructure.AssignCaseworkerCaseworkerGateway;
+import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.model.AssignCaseworkerApplication;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
@@ -60,13 +60,15 @@ class AssignCaseworkerUseCaseTest {
             .applicationIds(List.of(appId))
             .eventDescription("Caseworker assigned.")
             .build();
-    ApplicationDomain app = ApplicationDomain.builder().id(appId).caseworkerId(null).build();
+    AssignCaseworkerApplication app =
+        AssignCaseworkerApplication.builder().id(appId).caseworkerId(null).build();
     when(caseworkerGateway.exists(caseworkerId)).thenReturn(true);
     when(applicationGateway.findAllByIds(List.of(appId))).thenReturn(List.of(app));
 
     useCase.execute(command);
 
-    ArgumentCaptor<ApplicationDomain> saveCaptor = ArgumentCaptor.forClass(ApplicationDomain.class);
+    ArgumentCaptor<AssignCaseworkerApplication> saveCaptor =
+        ArgumentCaptor.forClass(AssignCaseworkerApplication.class);
     verify(applicationGateway).save(saveCaptor.capture());
     assertThat(saveCaptor.getValue().caseworkerId()).isEqualTo(caseworkerId);
 
@@ -89,13 +91,14 @@ class AssignCaseworkerUseCaseTest {
             .applicationIds(List.of(appId))
             .eventDescription(null)
             .build();
-    ApplicationDomain app = ApplicationDomain.builder().id(appId).caseworkerId(null).build();
+    AssignCaseworkerApplication app =
+        AssignCaseworkerApplication.builder().id(appId).caseworkerId(null).build();
     when(caseworkerGateway.exists(caseworkerId)).thenReturn(true);
     when(applicationGateway.findAllByIds(List.of(appId))).thenReturn(List.of(app));
 
     useCase.execute(command);
 
-    verify(applicationGateway).save(any(ApplicationDomain.class));
+    verify(applicationGateway).save(any(AssignCaseworkerApplication.class));
     verify(domainEventRepository).save(any(DomainEventEntity.class));
   }
 
@@ -162,7 +165,7 @@ class AssignCaseworkerUseCaseTest {
 
     useCase.execute(command);
 
-    verify(applicationGateway, never()).save(any(ApplicationDomain.class));
+    verify(applicationGateway, never()).save(any(AssignCaseworkerApplication.class));
     verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
   }
 
@@ -175,14 +178,15 @@ class AssignCaseworkerUseCaseTest {
             .caseworkerId(caseworkerId)
             .applicationIds(List.of(appId, appId, appId))
             .build();
-    ApplicationDomain app = ApplicationDomain.builder().id(appId).caseworkerId(null).build();
+    AssignCaseworkerApplication app =
+        AssignCaseworkerApplication.builder().id(appId).caseworkerId(null).build();
     when(caseworkerGateway.exists(caseworkerId)).thenReturn(true);
     when(applicationGateway.findAllByIds(List.of(appId))).thenReturn(List.of(app));
 
     useCase.execute(command);
 
     verify(applicationGateway).findAllByIds(eq(List.of(appId)));
-    verify(applicationGateway, times(1)).save(any(ApplicationDomain.class));
+    verify(applicationGateway, times(1)).save(any(AssignCaseworkerApplication.class));
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
   }
 
@@ -197,14 +201,14 @@ class AssignCaseworkerUseCaseTest {
             .applicationIds(List.of(appId))
             .build();
     // Application is already assigned to this caseworker
-    ApplicationDomain app =
-        ApplicationDomain.builder().id(appId).caseworkerId(caseworkerId).build();
+    AssignCaseworkerApplication app =
+        AssignCaseworkerApplication.builder().id(appId).caseworkerId(caseworkerId).build();
     when(caseworkerGateway.exists(caseworkerId)).thenReturn(true);
     when(applicationGateway.findAllByIds(List.of(appId))).thenReturn(List.of(app));
 
     useCase.execute(command);
 
-    verify(applicationGateway, never()).save(any(ApplicationDomain.class));
+    verify(applicationGateway, never()).save(any(AssignCaseworkerApplication.class));
     verify(domainEventRepository).save(any(DomainEventEntity.class));
   }
 
@@ -219,8 +223,8 @@ class AssignCaseworkerUseCaseTest {
             .caseworkerId(caseworkerId)
             .applicationIds(List.of(existingId, missingId1, missingId2))
             .build();
-    ApplicationDomain existingApp =
-        ApplicationDomain.builder().id(existingId).caseworkerId(null).build();
+    AssignCaseworkerApplication existingApp =
+        AssignCaseworkerApplication.builder().id(existingId).caseworkerId(null).build();
     when(caseworkerGateway.exists(caseworkerId)).thenReturn(true);
     when(applicationGateway.findAllByIds(anyList())).thenReturn(List.of(existingApp));
 
@@ -232,7 +236,7 @@ class AssignCaseworkerUseCaseTest {
         .isThrownBy(() -> useCase.execute(command))
         .withMessage("No application found with ids: " + expectedMissingIds);
 
-    verify(applicationGateway, never()).save(any(ApplicationDomain.class));
+    verify(applicationGateway, never()).save(any(AssignCaseworkerApplication.class));
     verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
   }
 
@@ -248,14 +252,15 @@ class AssignCaseworkerUseCaseTest {
             .eventDescription("Reassigned caseworker.")
             .build();
     // Application currently has a different caseworker
-    ApplicationDomain app =
-        ApplicationDomain.builder().id(appId).caseworkerId(originalCaseworkerId).build();
+    AssignCaseworkerApplication app =
+        AssignCaseworkerApplication.builder().id(appId).caseworkerId(originalCaseworkerId).build();
     when(caseworkerGateway.exists(newCaseworkerId)).thenReturn(true);
     when(applicationGateway.findAllByIds(List.of(appId))).thenReturn(List.of(app));
 
     useCase.execute(command);
 
-    ArgumentCaptor<ApplicationDomain> saveCaptor = ArgumentCaptor.forClass(ApplicationDomain.class);
+    ArgumentCaptor<AssignCaseworkerApplication> saveCaptor =
+        ArgumentCaptor.forClass(AssignCaseworkerApplication.class);
     verify(applicationGateway).save(saveCaptor.capture());
     assertThat(saveCaptor.getValue().caseworkerId()).isEqualTo(newCaseworkerId);
 

@@ -5,9 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
+import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.model.AssignCaseworkerApplication;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
@@ -31,14 +31,10 @@ class AssignCaseworkerGatewayMapperTest {
         DataGenerator.createDefault(
             ApplicationEntityGenerator.class, b -> b.id(appId).caseworker(caseworker));
 
-    ApplicationDomain domain = mapper.toApplicationDomain(entity);
+    AssignCaseworkerApplication caseworkerAssignment = mapper.toReadModel(entity);
 
-    ApplicationDomain expected =
-        ApplicationDomain.builder().id(appId).caseworkerId(caseworkerId).build();
-    assertThat(domain)
-        .usingRecursiveComparison()
-        .comparingOnlyFields("id", "caseworkerId")
-        .isEqualTo(expected);
+    assertThat(caseworkerAssignment.id()).isEqualTo(appId);
+    assertThat(caseworkerAssignment.caseworkerId()).isEqualTo(caseworkerId);
   }
 
   @Test
@@ -48,9 +44,9 @@ class AssignCaseworkerGatewayMapperTest {
         DataGenerator.createDefault(
             ApplicationEntityGenerator.class, b -> b.id(appId).caseworker(null));
 
-    ApplicationDomain domain = mapper.toApplicationDomain(entity);
+    AssignCaseworkerApplication caseworkerAssignment = mapper.toReadModel(entity);
 
-    assertThat(domain.id()).isEqualTo(appId);
-    assertThat(domain.caseworkerId()).isNull();
+    assertThat(caseworkerAssignment.id()).isEqualTo(appId);
+    assertThat(caseworkerAssignment.caseworkerId()).isNull();
   }
 }

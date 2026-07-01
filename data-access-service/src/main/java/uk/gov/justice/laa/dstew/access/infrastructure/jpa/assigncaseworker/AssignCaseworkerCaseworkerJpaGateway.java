@@ -9,11 +9,6 @@ public class AssignCaseworkerCaseworkerJpaGateway implements AssignCaseworkerCas
 
   private final CaseworkerRepository caseworkerRepository;
 
-  /**
-   * Constructs the gateway.
-   *
-   * @param caseworkerRepository the Spring Data caseworker repository
-   */
   public AssignCaseworkerCaseworkerJpaGateway(CaseworkerRepository caseworkerRepository) {
     this.caseworkerRepository = caseworkerRepository;
   }

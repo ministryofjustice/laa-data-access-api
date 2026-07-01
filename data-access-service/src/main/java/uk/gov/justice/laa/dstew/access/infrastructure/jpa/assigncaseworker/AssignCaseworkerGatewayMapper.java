@@ -1,22 +1,17 @@
 package uk.gov.justice.laa.dstew.access.infrastructure.jpa.assigncaseworker;
 
-import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.model.AssignCaseworkerApplication;
 
-/**
- * Maps {@link ApplicationEntity} to {@link ApplicationDomain} for the assignCaseworker use case.
- */
+/** Maps {@link ApplicationEntity} to {@link AssignCaseworkerApplication}. */
 public class AssignCaseworkerGatewayMapper {
 
   /**
-   * Converts an {@link ApplicationEntity} to an {@link ApplicationDomain} carrying only the fields
-   * relevant to this use case: {@code id} and {@code caseworkerId}.
-   *
-   * @param application the JPA entity
-   * @return the domain projection
+   * Maps an {@link ApplicationEntity} to an {@link AssignCaseworkerApplication} carrying only the
+   * fields required by the assignCaseworker use case: {@code id} and {@code caseworkerId}.
    */
-  public ApplicationDomain toApplicationDomain(ApplicationEntity application) {
-    return ApplicationDomain.builder()
+  public AssignCaseworkerApplication toReadModel(ApplicationEntity application) {
+    return AssignCaseworkerApplication.builder()
         .id(application.getId())
         .caseworkerId(
             application.getCaseworker() != null ? application.getCaseworker().getId() : null)

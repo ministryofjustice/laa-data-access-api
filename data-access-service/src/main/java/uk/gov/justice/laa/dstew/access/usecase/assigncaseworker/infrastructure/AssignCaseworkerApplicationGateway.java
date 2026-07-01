@@ -2,24 +2,24 @@ package uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.infrastructure;
 
 import java.util.List;
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
+import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.model.AssignCaseworkerApplication;
 
 /** Gateway interface for application read/write operations in the assignCaseworker use case. */
 public interface AssignCaseworkerApplicationGateway {
 
   /**
-   * Returns all applications whose IDs are in the supplied list.
+   * Returns the projections for the given application IDs.
    *
    * @param ids the application IDs to look up
-   * @return found domain records (may be fewer than {@code ids} if some are missing)
+   * @return the matching projections
    */
-  List<ApplicationDomain> findAllByIds(List<UUID> ids);
+  List<AssignCaseworkerApplication> findAllByIds(List<UUID> ids);
 
   /**
    * Persists changes to an existing application. Implementations must load the managed entity
    * before applying changes to preserve the {@code @Version} field.
    *
-   * @param domain the domain record carrying the updated caseworker ID
+   * @param caseworkerAssignment the projection carrying the updated caseworker ID
    */
-  void save(ApplicationDomain domain);
+  void save(AssignCaseworkerApplication caseworkerAssignment);
 }
