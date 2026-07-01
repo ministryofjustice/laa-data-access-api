@@ -67,10 +67,15 @@ class AssignCaseworkerUseCaseTest {
 
     useCase.execute(command);
 
-    ArgumentCaptor<AssignCaseworkerApplication> saveCaptor =
-        ArgumentCaptor.forClass(AssignCaseworkerApplication.class);
-    verify(applicationGateway).save(saveCaptor.capture());
-    assertThat(saveCaptor.getValue().caseworkerId()).isEqualTo(caseworkerId);
+    verify(applicationGateway)
+        .saveAll(
+            eq(
+                List.of(
+                    AssignCaseworkerApplication.builder()
+                        .id(appId)
+                        .caseworkerId(caseworkerId)
+                        .build())),
+            eq(caseworkerId));
 
     ArgumentCaptor<DomainEventEntity> eventCaptor =
         ArgumentCaptor.forClass(DomainEventEntity.class);
@@ -98,7 +103,7 @@ class AssignCaseworkerUseCaseTest {
 
     useCase.execute(command);
 
-    verify(applicationGateway).save(any(AssignCaseworkerApplication.class));
+    verify(applicationGateway).saveAll(anyList(), eq(caseworkerId));
     verify(domainEventRepository).save(any(DomainEventEntity.class));
   }
 
@@ -165,7 +170,7 @@ class AssignCaseworkerUseCaseTest {
 
     useCase.execute(command);
 
-    verify(applicationGateway, never()).save(any(AssignCaseworkerApplication.class));
+    verify(applicationGateway, never()).saveAll(anyList(), any(UUID.class));
     verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
   }
 
@@ -186,7 +191,7 @@ class AssignCaseworkerUseCaseTest {
     useCase.execute(command);
 
     verify(applicationGateway).findAllByIds(eq(List.of(appId)));
-    verify(applicationGateway, times(1)).save(any(AssignCaseworkerApplication.class));
+    verify(applicationGateway, times(1)).saveAll(anyList(), eq(caseworkerId));
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
   }
 
@@ -208,7 +213,7 @@ class AssignCaseworkerUseCaseTest {
 
     useCase.execute(command);
 
-    verify(applicationGateway, never()).save(any(AssignCaseworkerApplication.class));
+    verify(applicationGateway, never()).saveAll(anyList(), any(UUID.class));
     verify(domainEventRepository).save(any(DomainEventEntity.class));
   }
 
@@ -236,7 +241,7 @@ class AssignCaseworkerUseCaseTest {
         .isThrownBy(() -> useCase.execute(command))
         .withMessage("No application found with ids: " + expectedMissingIds);
 
-    verify(applicationGateway, never()).save(any(AssignCaseworkerApplication.class));
+    verify(applicationGateway, never()).saveAll(anyList(), any(UUID.class));
     verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
   }
 
@@ -259,10 +264,15 @@ class AssignCaseworkerUseCaseTest {
 
     useCase.execute(command);
 
-    ArgumentCaptor<AssignCaseworkerApplication> saveCaptor =
-        ArgumentCaptor.forClass(AssignCaseworkerApplication.class);
-    verify(applicationGateway).save(saveCaptor.capture());
-    assertThat(saveCaptor.getValue().caseworkerId()).isEqualTo(newCaseworkerId);
+    verify(applicationGateway)
+        .saveAll(
+            eq(
+                List.of(
+                    AssignCaseworkerApplication.builder()
+                        .id(appId)
+                        .caseworkerId(newCaseworkerId)
+                        .build())),
+            eq(newCaseworkerId));
 
     ArgumentCaptor<DomainEventEntity> eventCaptor =
         ArgumentCaptor.forClass(DomainEventEntity.class);

@@ -46,7 +46,20 @@ public class AssignCaseworkerUseCase {
 
     checkForMissingApplications(distinctIds, applications);
 
-    applications.forEach(app -> processApplication(app, command));
+    List<AssignCaseworkerApplication> toUpdate =
+        applications.stream()
+            .filter(app -> !command.caseworkerId().equals(app.caseworkerId()))
+            .map(app -> app.toBuilder().caseworkerId(command.caseworkerId()).build())
+            .toList();
+
+    if (!toUpdate.isEmpty()) {
+      applicationGateway.saveAll(toUpdate, command.caseworkerId());
+    }
+
+    applications.forEach(
+        app ->
+            saveDomainEventService.saveAssignApplicationDomainEvent(
+                app.id(), command.caseworkerId(), command.eventDescription()));
   }
 
   private void checkForMissingApplications(
@@ -61,14 +74,5 @@ public class AssignCaseworkerUseCase {
     if (!missingIds.isEmpty()) {
       throw new ResourceNotFoundException("No application found with ids: " + missingIds);
     }
-  }
-
-  private void processApplication(
-      AssignCaseworkerApplication app, AssignCaseworkerCommand command) {
-    if (!command.caseworkerId().equals(app.caseworkerId())) {
-      applicationGateway.save(app.toBuilder().caseworkerId(command.caseworkerId()).build());
-    }
-    saveDomainEventService.saveAssignApplicationDomainEvent(
-        app.id(), command.caseworkerId(), command.eventDescription());
   }
 }

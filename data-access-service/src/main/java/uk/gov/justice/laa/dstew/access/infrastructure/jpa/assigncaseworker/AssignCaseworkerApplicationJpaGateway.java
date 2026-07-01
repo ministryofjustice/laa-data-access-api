@@ -40,29 +40,27 @@ public class AssignCaseworkerApplicationJpaGateway implements AssignCaseworkerAp
   }
 
   /**
-   * Persists the updated caseworker assignment for an existing application. Loads the managed
-   * entity from the repository before applying changes to preserve the {@code @Version} field.
+   * Persists the caseworker assignment for all supplied applications. Resolves the caseworker
+   * entity once, then loads each managed application entity before applying changes to preserve the
+   * {@code @Version} field.
    *
-   * @param caseworkerAssignment the caseworker assignment carrying the updated caseworker ID
+   * @param applications the applications to update
+   * @param caseworkerId the ID of the caseworker to assign
    */
   @Override
-  public void save(AssignCaseworkerApplication caseworkerAssignment) {
-    ApplicationEntity entity =
-        applicationRepository
-            .findById(caseworkerAssignment.id())
-            .orElseThrow(
-                () ->
-                    new NoSuchElementException(
-                        "Application not found: " + caseworkerAssignment.id()));
+  public void saveAll(List<AssignCaseworkerApplication> applications, UUID caseworkerId) {
     CaseworkerEntity caseworker =
         caseworkerRepository
-            .findById(caseworkerAssignment.caseworkerId())
-            .orElseThrow(
-                () ->
-                    new NoSuchElementException(
-                        "Caseworker not found: " + caseworkerAssignment.caseworkerId()));
-    entity.setCaseworker(caseworker);
-    entity.setModifiedAt(Instant.now());
-    applicationRepository.save(entity);
+            .findById(caseworkerId)
+            .orElseThrow(() -> new NoSuchElementException("Caseworker not found: " + caseworkerId));
+    for (AssignCaseworkerApplication app : applications) {
+      ApplicationEntity entity =
+          applicationRepository
+              .findById(app.id())
+              .orElseThrow(() -> new NoSuchElementException("Application not found: " + app.id()));
+      entity.setCaseworker(caseworker);
+      entity.setModifiedAt(Instant.now());
+      applicationRepository.save(entity);
+    }
   }
 }

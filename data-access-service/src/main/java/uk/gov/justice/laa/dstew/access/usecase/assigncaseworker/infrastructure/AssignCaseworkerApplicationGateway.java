@@ -16,10 +16,11 @@ public interface AssignCaseworkerApplicationGateway {
   List<AssignCaseworkerApplication> findAllByIds(List<UUID> ids);
 
   /**
-   * Persists changes to an existing application. Implementations must load the managed entity
-   * before applying changes to preserve the {@code @Version} field.
+   * Persists the caseworker assignment for all supplied applications. Implementations must load
+   * each managed entity before applying changes to preserve the {@code @Version} field.
    *
-   * @param caseworkerAssignment the projection carrying the updated caseworker ID
+   * @param applications the applications to update
+   * @param caseworkerId the caseworker to assign
    */
-  void save(AssignCaseworkerApplication caseworkerAssignment);
+  void saveAll(List<AssignCaseworkerApplication> applications, UUID caseworkerId);
 }
