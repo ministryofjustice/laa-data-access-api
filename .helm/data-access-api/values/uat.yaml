@@ -65,19 +65,14 @@ portForward:
   enabled: true
 
 # Mock OAuth2 Server for UAT testing
-# Provides test tokens without needing port-forward or real Azure credentials
+# Use shared instance instead of per-branch deployment
 mockOAuth2:
-  enabled: true
-  image:
-    repository: ghcr.io/navikt/mock-oauth2-server
-    tag: "2.1.10"
-  tokenExpiry: 86400  # 24 hours - tokens valid for a full working day
-  resources:
-    limits:
-      cpu: 100m
-      memory: 128Mi
-    requests:
-      cpu: 10m
-      memory: 64Mi
+  enabled: false  # Disabled in favor of shared instance
+  sharedInstance:
+    enabled: true
+    serviceName: laa-data-access-mock-oauth2-shared
+    namespace: laa-data-access-api-uat
 
-featureFlags: {}
+featureFlags:
+  # Enable dev token feature to allow swagger-caseworker-token in UAT
+  enable_dev_token: "true"

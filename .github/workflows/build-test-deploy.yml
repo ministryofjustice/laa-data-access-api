@@ -319,6 +319,44 @@ jobs:
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
           app-environment: uat
 
+  deploy-shared-mock-oauth2:
+    name: Deploy shared mock-oauth2 for UAT
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs:
+      - deploy-uat
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Authenticate to cluster
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
+        with:
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+
+      - name: Deploy shared mock-oauth2 server
+        run: |
+          echo "Deploying shared mock-oauth2 server to UAT..."
+          helm upgrade laa-data-access-mock-oauth2-shared .helm/shared-mock-oauth2 \
+            --namespace ${{ secrets.KUBE_NAMESPACE }} \
+            --install \
+            --wait
+
+          echo "Verifying deployment..."
+          kubectl get pods -n ${{ secrets.KUBE_NAMESPACE }} -l app=mock-oauth2-shared
+          kubectl get svc -n ${{ secrets.KUBE_NAMESPACE }} laa-data-access-mock-oauth2-shared
+
+          echo "✅ Shared mock-oauth2 server deployed successfully"
+          echo "Pod name: $(kubectl get pods -n ${{ secrets.KUBE_NAMESPACE }} -l app=mock-oauth2-shared -o name)"
+
   uat-smoke-test:
     if: startsWith(github.head_ref || github.ref_name, 'openapi/') == false
     runs-on: ubuntu-latest
