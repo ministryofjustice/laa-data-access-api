@@ -10,11 +10,11 @@ public interface GetAllIndividualsIndividualGateway {
   /**
    * Returns a page of individuals matching the given filters.
    *
-   * @param applicationId optional application UUID filter (null means no filter)
-   * @param individualType optional individual type filter as String (null means no filter)
+   * @param applicationId optional application UUID filter
+   * @param individualType optional individual type filter
    * @param page one-based page number
    * @param pageSize page size
-   * @return page of matching individuals as domain records
+   * @return page of matching individuals
    */
   Page<IndividualDomain> findAll(UUID applicationId, String individualType, int page, int pageSize);
 }

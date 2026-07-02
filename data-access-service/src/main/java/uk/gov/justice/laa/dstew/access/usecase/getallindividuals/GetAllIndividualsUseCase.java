@@ -25,12 +25,12 @@ public class GetAllIndividualsUseCase {
   /**
    * Retrieves a page of individuals, optionally enriched with CLIENT_DETAILS.
    *
-   * @param page one-based page number (null defaults to 1)
-   * @param pageSize page size (null defaults to 20)
-   * @param applicationId optional filter by application UUID
-   * @param individualType optional filter by individual type String (e.g. "CLIENT")
-   * @param include optional included additional data type String (e.g. "CLIENT_DETAILS")
-   * @return result record containing paged individuals and optional client details
+   * @param page one-based page number
+   * @param pageSize page size
+   * @param applicationId optional application UUID filter
+   * @param individualType optional individual type filter
+   * @param include optional included additional data filter
+   * @return use-case result containing paged individuals and optional client details
    */
   @AllowApiCaseworker
   public GetAllIndividualsResult execute(
