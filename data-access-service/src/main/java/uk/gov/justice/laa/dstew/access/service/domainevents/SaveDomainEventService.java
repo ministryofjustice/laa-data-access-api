@@ -9,7 +9,6 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
-import uk.gov.justice.laa.dstew.access.domain.enums.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
@@ -87,29 +86,22 @@ public class SaveDomainEventService {
   }
 
   /**
-   * Posts an APPLICATION_UPDATED domain event. excluded from code coverage as caseworker will be
-   * removed once RBAC is sorted. Domain event is asserted in UpdateApplicationTest
+   * Posts an APPLICATION_UPDATED domain event using domain types (new clean-architecture path).
+   *
+   * @param domain the updated application domain
    */
-  @ExcludeFromGeneratedCodeCoverage
-  public void saveUpdateApplicationDomainEvent(
-      ApplicationEntity applicationEntity, String updatedBy) {
+  public void saveUpdateApplicationDomainEvent(ApplicationDomain domain) {
 
     UpdateApplicationDomainEventDetails domainEventDetails =
         UpdateApplicationDomainEventDetails.builder()
-            .applicationId(applicationEntity.getId())
-            .updatedDate(applicationEntity.getModifiedAt())
-            .updatedBy(updatedBy)
-            .applicationStatus(String.valueOf(applicationEntity.getStatus()))
-            .applicationContent(applicationEntity.getApplicationContent().toString())
+            .applicationId(domain.id())
+            .updatedDate(domain.modifiedAt())
+            .updatedBy(null)
+            .applicationStatus(String.valueOf(domain.status()))
+            .applicationContent(domain.applicationContent().toString())
             .build();
 
-    saveDomainEvent(
-        applicationEntity.getId(),
-        applicationEntity.getCaseworker() != null
-            ? applicationEntity.getCaseworker().getId()
-            : null,
-        DomainEventType.APPLICATION_UPDATED,
-        domainEventDetails);
+    saveDomainEvent(domain.id(), null, DomainEventType.APPLICATION_UPDATED, domainEventDetails);
   }
 
   /** Posts an ASSIGN_APPLICATION_TO_CASEWORKER domain event. */

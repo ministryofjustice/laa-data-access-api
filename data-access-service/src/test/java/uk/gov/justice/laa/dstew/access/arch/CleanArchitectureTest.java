@@ -235,4 +235,44 @@ class CleanArchitectureTest {
             .allowEmptyShould(true);
     rule.check(classes);
   }
+
+  @Test
+  void updateApplicationUseCaseMustNotImportApiModels() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..usecase.updateapplication..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("uk.gov.justice.laa.dstew.access.model")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void updateApplicationUseCaseMustNotImportJpaEntities() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..usecase.updateapplication..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..entity..")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void updateApplicationConfigMustBeAnnotatedWithConfiguration() {
+    ArchRule rule =
+        classes()
+            .that()
+            .resideInAPackage("..config..")
+            .and()
+            .haveSimpleName("UpdateApplicationConfig")
+            .should()
+            .beAnnotatedWith(org.springframework.context.annotation.Configuration.class)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
 }

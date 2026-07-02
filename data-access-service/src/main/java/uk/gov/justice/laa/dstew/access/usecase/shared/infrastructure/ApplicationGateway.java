@@ -42,4 +42,21 @@ public interface ApplicationGateway {
    * @return a list of IDs that could not be found (empty if all were present)
    */
   List<UUID> findMissingApplyApplicationIds(List<UUID> applyApplicationIds);
+
+  /**
+   * Finds an application by its primary key ID.
+   *
+   * @param id the application UUID
+   * @return the application domain
+   */
+  ApplicationDomain findById(UUID id);
+
+  /**
+   * Updates an existing application and returns the saved domain enriched with modifiedAt.
+   *
+   * @param id the application UUID
+   * @param updatedFields the fields to update
+   * @return the updated application domain
+   */
+  ApplicationDomain update(UUID id, ApplicationDomain updatedFields);
 }

@@ -45,7 +45,6 @@ import uk.gov.justice.laa.dstew.access.service.applications.GetAllNotesForApplic
 import uk.gov.justice.laa.dstew.access.service.applications.GetCertificateService;
 import uk.gov.justice.laa.dstew.access.service.applications.SdsService;
 import uk.gov.justice.laa.dstew.access.service.applications.UnassignCaseworkerService;
-import uk.gov.justice.laa.dstew.access.service.applications.UpdateApplicationService;
 import uk.gov.justice.laa.dstew.access.service.domainevents.GetDomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
@@ -53,6 +52,7 @@ import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.AssignCaseworker
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.createnote.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.GetApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.updateapplication.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
@@ -64,7 +64,8 @@ public class ApplicationController implements ApplicationApi {
 
   private final CreateApplicationUseCase createApplicationUseCase;
   private final CreateApplicationCommandMapper createApplicationCommandMapper;
-  private final UpdateApplicationService updateApplicationService;
+  private final UpdateApplicationUseCase updateApplicationUseCase;
+  private final UpdateApplicationCommandMapper updateApplicationCommandMapper;
   private final GetApplicationUseCase getApplicationUseCase;
   private final GetApplicationResponseMapper getApplicationResponseMapper;
   private final GetAllApplicationsService applicationSummaryService;
@@ -105,7 +106,8 @@ public class ApplicationController implements ApplicationApi {
       @NotNull ServiceName serviceName,
       UUID id,
       @Valid ApplicationUpdateRequest applicationUpdateReq) {
-    updateApplicationService.updateApplication(id, applicationUpdateReq);
+    updateApplicationUseCase.execute(
+        updateApplicationCommandMapper.toUpdateApplicationCommand(id, applicationUpdateReq));
     return ResponseEntity.noContent().build();
   }
 
