@@ -3,6 +3,11 @@ package uk.gov.justice.laa.dstew.access.config;
 import static uk.gov.justice.laa.dstew.access.context.LoggingContext.CORRELATION_ID_HEADER;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -27,18 +32,24 @@ public class RestClientConfig {
   }
 
   @Bean
+  ClientHttpRequestInterceptor correlationIdInterceptor() {
+    return (request, body, execution) -> {
+      String correlationId = LoggingContext.getCorrelationId();
+      if (correlationId != null) {
+        request.getHeaders().set(CORRELATION_ID_HEADER, correlationId);
+      }
+      return execution.execute(request, body);
+    };
+  }
+
+  @Bean
   RestClient restClient(
-      RestClient.Builder builder, ClientHttpRequestInterceptor loggingInterceptor) {
+      RestClient.Builder builder,
+      ClientHttpRequestInterceptor loggingInterceptor,
+      ClientHttpRequestInterceptor correlationIdInterceptor) {
     return builder
         .requestInterceptor(loggingInterceptor)
-        .requestInterceptor(
-            (request, body, execution) -> {
-              String correlationId = LoggingContext.getCorrelationId();
-              if (correlationId != null) {
-                request.getHeaders().set(CORRELATION_ID_HEADER, correlationId);
-              }
-              return execution.execute(request, body);
-            })
+        .requestInterceptor(correlationIdInterceptor)
         .build();
   }
 
@@ -46,18 +57,12 @@ public class RestClientConfig {
   RestClient sdsRestClient(
       RestClient.Builder builder,
       @Value("${app.sds-api.url}") String sdsApiUrl,
-      ClientHttpRequestInterceptor loggingInterceptor) {
+      ClientHttpRequestInterceptor loggingInterceptor,
+      ClientHttpRequestInterceptor correlationIdInterceptor) {
     return builder
         .baseUrl(sdsApiUrl)
         .requestInterceptor(loggingInterceptor)
-        .requestInterceptor(
-            (request, body, execution) -> {
-              String correlationId = LoggingContext.getCorrelationId();
-              if (correlationId != null) {
-                request.getHeaders().set(CORRELATION_ID_HEADER, correlationId);
-              }
-              return execution.execute(request, body);
-            })
+        .requestInterceptor(correlationIdInterceptor)
         .build();
   }
 
@@ -66,9 +71,8 @@ public class RestClientConfig {
   @ExcludeFromGeneratedCodeCoverage
   static class LoggingClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
 
-    private static final String[] SENSITIVE_HEADERS = {
-      "authorization", "x-api-key", "cookie", "set-cookie", "x-auth-token"
-    };
+    private static final Set<String> SENSITIVE_HEADERS =
+        Set.of("authorization", "x-api-key", "cookie", "set-cookie", "x-auth-token");
 
     @Override
     public ClientHttpResponse intercept(
@@ -150,32 +154,27 @@ public class RestClientConfig {
      * @return sanitized headers as string
      */
     private String sanitizeHeaders(HttpRequest request) {
-      StringBuilder headers = new StringBuilder("{");
-      request
-          .getHeaders()
-          .forEach(
-              (key, values) -> {
-                String lowerKey = key.toLowerCase();
-                boolean isSensitive = false;
-                for (String sensitiveHeader : SENSITIVE_HEADERS) {
-                  if (lowerKey.contains(sensitiveHeader)) {
-                    isSensitive = true;
-                    break;
-                  }
-                }
+      Map<String, List<String>> headers = new HashMap<>();
+      request.getHeaders().forEach(headers::put);
 
-                if (isSensitive) {
-                  headers.append(key).append("=[REDACTED], ");
-                } else {
-                  headers.append(key).append("=").append(values).append(", ");
-                }
-              });
+      return headers.entrySet().stream()
+          .map(entry -> formatHeader(entry.getKey(), entry.getValue()))
+          .collect(Collectors.joining(", ", "{", "}"));
+    }
 
-      if (headers.length() > 1) {
-        headers.setLength(headers.length() - 2); // Remove trailing comma and space
-      }
-      headers.append("}");
-      return headers.toString();
+    /**
+     * Formats a single header entry, redacting sensitive values.
+     *
+     * @param key the header key
+     * @param values the header values
+     * @return formatted header string
+     */
+    private String formatHeader(String key, List<String> values) {
+      String lowerKey = key.toLowerCase();
+      boolean isSensitive = SENSITIVE_HEADERS.stream().anyMatch(lowerKey::contains);
+
+      List<String> sanitizedValues = isSensitive ? List.of("[REDACTED]") : values;
+      return key + "=" + sanitizedValues;
     }
   }
 }
