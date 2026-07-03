@@ -47,19 +47,19 @@ class GetAllIndividualsResponseMapperTest {
     IndividualsResponse body = responseEntity.getBody();
     assertThat(body).isNotNull();
     assertThat(body.getIndividuals()).hasSize(1);
-    IndividualResponse ir = body.getIndividuals().getFirst();
-    assertThat(ir.getFirstName()).isEqualTo(individual.firstName());
-    assertThat(ir.getLastName()).isEqualTo(individual.lastName());
-    assertThat(ir.getDateOfBirth()).isEqualTo(individual.dateOfBirth());
-    assertThat(ir.getDetails()).isEqualTo(individual.individualContent());
-    assertThat(ir.getType()).isEqualTo(IndividualType.valueOf(individual.type()));
-    assertThat(ir.getClientId()).isNull();
-    assertThat(ir.getLastNameAtBirth()).isNull();
-    assertThat(ir.getPreviousApplicationId()).isNull();
-    assertThat(ir.getRelationshipToInvolvedChildren()).isNull();
-    assertThat(ir.getCorrespondenceAddressType()).isNull();
-    assertThat(ir.getAppliedPreviously()).isNull();
-    assertThat(ir.getCorrespondenceAddress()).isNullOrEmpty();
+    IndividualResponse individualResponse = body.getIndividuals().getFirst();
+    assertThat(individualResponse.getFirstName()).isEqualTo(individual.firstName());
+    assertThat(individualResponse.getLastName()).isEqualTo(individual.lastName());
+    assertThat(individualResponse.getDateOfBirth()).isEqualTo(individual.dateOfBirth());
+    assertThat(individualResponse.getDetails()).isEqualTo(individual.individualContent());
+    assertThat(individualResponse.getType()).isEqualTo(IndividualType.valueOf(individual.type()));
+    assertThat(individualResponse.getClientId()).isNull();
+    assertThat(individualResponse.getLastNameAtBirth()).isNull();
+    assertThat(individualResponse.getPreviousApplicationId()).isNull();
+    assertThat(individualResponse.getRelationshipToInvolvedChildren()).isNull();
+    assertThat(individualResponse.getCorrespondenceAddressType()).isNull();
+    assertThat(individualResponse.getAppliedPreviously()).isNull();
+    assertThat(individualResponse.getCorrespondenceAddress()).isNullOrEmpty();
     assertThat(body.getPaging().getPage()).isEqualTo(1);
     assertThat(body.getPaging().getPageSize()).isEqualTo(10);
     assertThat(body.getPaging().getTotalRecords()).isEqualTo(1);
@@ -84,16 +84,19 @@ class GetAllIndividualsResponseMapperTest {
 
     ResponseEntity<IndividualsResponse> responseEntity = mapper.toGetAllIndividualsResponse(result);
 
-    IndividualResponse ir = responseEntity.getBody().getIndividuals().getFirst();
-    assertThat(ir.getClientId()).isEqualTo(individualId);
-    assertThat(ir.getLastNameAtBirth()).isEqualTo(clientDetails.lastNameAtBirth());
-    assertThat(ir.getPreviousApplicationId()).isEqualTo(clientDetails.previousApplicationId());
-    assertThat(ir.getRelationshipToInvolvedChildren())
+    IndividualResponse individualResponse = responseEntity.getBody().getIndividuals().getFirst();
+    assertThat(individualResponse.getClientId()).isEqualTo(individualId);
+    assertThat(individualResponse.getLastNameAtBirth()).isEqualTo(clientDetails.lastNameAtBirth());
+    assertThat(individualResponse.getPreviousApplicationId())
+        .isEqualTo(clientDetails.previousApplicationId());
+    assertThat(individualResponse.getRelationshipToInvolvedChildren())
         .isEqualTo(clientDetails.relationshipToInvolvedChildren());
-    assertThat(ir.getCorrespondenceAddressType())
+    assertThat(individualResponse.getCorrespondenceAddressType())
         .isEqualTo(clientDetails.correspondenceAddressType());
-    assertThat(ir.getAppliedPreviously()).isEqualTo(clientDetails.appliedPreviously());
-    assertThat(ir.getCorrespondenceAddress()).isEqualTo(clientDetails.correspondenceAddress());
+    assertThat(individualResponse.getAppliedPreviously())
+        .isEqualTo(clientDetails.appliedPreviously());
+    assertThat(individualResponse.getCorrespondenceAddress())
+        .isEqualTo(clientDetails.correspondenceAddress());
   }
 
   @Test
@@ -112,10 +115,10 @@ class GetAllIndividualsResponseMapperTest {
             .clientDetails(clientDetails)
             .build();
 
-    IndividualResponse ir =
+    IndividualResponse individualResponse =
         mapper.toGetAllIndividualsResponse(result).getBody().getIndividuals().getFirst();
 
-    assertThat(ir.getAppliedPreviously()).isNull();
+    assertThat(individualResponse.getAppliedPreviously()).isNull();
   }
 
   @Test
@@ -135,10 +138,10 @@ class GetAllIndividualsResponseMapperTest {
             .clientDetails(clientDetails)
             .build();
 
-    IndividualResponse ir =
+    IndividualResponse individualResponse =
         mapper.toGetAllIndividualsResponse(result).getBody().getIndividuals().getFirst();
 
-    assertThat(ir.getCorrespondenceAddress()).isNull();
+    assertThat(individualResponse.getCorrespondenceAddress()).isNull();
   }
 
   @Test
@@ -200,9 +203,9 @@ class GetAllIndividualsResponseMapperTest {
             .clientDetails(null)
             .build();
 
-    IndividualResponse ir =
+    IndividualResponse individualResponse =
         mapper.toGetAllIndividualsResponse(result).getBody().getIndividuals().getFirst();
 
-    assertThat(ir.getType()).isNull();
+    assertThat(individualResponse.getType()).isNull();
   }
 }
