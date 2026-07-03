@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.infrastructure.jpa.shared.application;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
@@ -62,17 +63,7 @@ public class ApplicationJpaGateway implements ApplicationGateway {
   }
 
   @Override
-  public ApplicationDomain findById(UUID id) {
-    ApplicationEntity entity =
-        applicationRepository
-            .findById(id)
-            .orElseThrow(
-                () -> new ResourceNotFoundException("No application found with id: " + id));
-    return mapper.toApplicationDomain(entity);
-  }
-
-  @Override
-  public ApplicationDomain update(UUID id, ApplicationDomain updatedFields) {
+  public ApplicationDomain update(UUID id, String status, Map<String, Object> applicationContent) {
     ApplicationEntity entity =
         applicationRepository
             .findById(id)
@@ -80,10 +71,10 @@ public class ApplicationJpaGateway implements ApplicationGateway {
                 () -> new ResourceNotFoundException("No application found with id: " + id));
 
     // Update the managed entity directly to preserve @Version semantics.
-    if (updatedFields.status() != null) {
-      entity.setStatus(ApplicationStatus.valueOf(updatedFields.status()));
+    if (status != null) {
+      entity.setStatus(ApplicationStatus.valueOf(status));
     }
-    entity.setApplicationContent(updatedFields.applicationContent());
+    entity.setApplicationContent(applicationContent);
     entity.setModifiedAt(Instant.now());
 
     ApplicationEntity saved = applicationRepository.save(entity);

@@ -101,7 +101,11 @@ public class SaveDomainEventService {
             .applicationContent(domain.applicationContent().toString())
             .build();
 
-    saveDomainEvent(domain.id(), null, DomainEventType.APPLICATION_UPDATED, domainEventDetails);
+    saveDomainEvent(
+        domain.id(),
+        domain.caseworkerId(),
+        DomainEventType.APPLICATION_UPDATED,
+        domainEventDetails);
   }
 
   /** Posts an ASSIGN_APPLICATION_TO_CASEWORKER domain event. */

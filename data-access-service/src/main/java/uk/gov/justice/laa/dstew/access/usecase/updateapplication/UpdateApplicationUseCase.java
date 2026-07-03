@@ -1,11 +1,13 @@
 package uk.gov.justice.laa.dstew.access.usecase.updateapplication;
 
 import jakarta.transaction.Transactional;
+import java.util.ArrayList;
 import java.util.List;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Use case for updating an existing application. */
@@ -36,23 +38,33 @@ public class UpdateApplicationUseCase {
   public void execute(UpdateApplicationCommand command) {
     validateCommand(command);
 
-    ApplicationDomain existingDomain = applicationGateway.findById(command.id());
-    ApplicationDomain updatedDomain =
-        existingDomain.toBuilder()
-            .status(command.status() != null ? command.status() : existingDomain.status())
-            .applicationContent(command.applicationContent())
-            .build();
-    ApplicationDomain savedDomain = applicationGateway.update(command.id(), updatedDomain);
+    ApplicationDomain savedDomain =
+        applicationGateway.update(command.id(), command.status(), command.applicationContent());
 
     saveDomainEventService.saveUpdateApplicationDomainEvent(savedDomain);
   }
 
-  private void validateCommand(UpdateApplicationCommand updateApplicationCommand) {
-    if (updateApplicationCommand.applicationContent() == null) {
-      throw new ValidationException(List.of("Application content cannot be null"));
+  private void validateCommand(UpdateApplicationCommand command) {
+    List<String> errors = new ArrayList<>();
+
+    if (command.applicationContent() == null) {
+      errors.add("Application content cannot be null");
     }
-    if (updateApplicationCommand.applicationContent().isEmpty()) {
-      throw new ValidationException(List.of("Application content cannot be empty"));
+
+    if (command.applicationContent() != null && command.applicationContent().isEmpty()) {
+      errors.add("Application content cannot be empty");
+    }
+
+    if (command.status() != null) {
+      try {
+        ApplicationStatus.valueOf(command.status());
+      } catch (IllegalArgumentException ex) {
+        errors.add("Invalid application status: " + command.status());
+      }
+
+      if (!errors.isEmpty()) {
+        throw new ValidationException(errors);
+      }
     }
   }
 }

@@ -55,15 +55,14 @@ class UpdateApplicationUseCaseTest {
         DataGenerator.createDefault(
             UpdateApplicationCommandGenerator.class, builder -> builder.id(applicationId));
 
-    when(applicationGateway.findById(applicationId))
+    when(applicationGateway.update(any(UUID.class), any(), any(Map.class)))
         .thenThrow(new ResourceNotFoundException("No application found with id: " + applicationId));
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(updateApplicationCommand))
         .withMessageContaining("No application found with id: " + applicationId);
 
-    verify(applicationGateway, times(1)).findById(applicationId);
-    verify(applicationGateway, never()).update(any(), any());
+    verify(applicationGateway, times(1)).update(any(UUID.class), any(), any(Map.class));
     verify(domainEventRepository, never()).save(any());
   }
 
@@ -80,8 +79,7 @@ class UpdateApplicationUseCaseTest {
                 assertThat(e.errors())
                     .anyMatch(err -> err.contains("Application content cannot be null")));
 
-    verify(applicationGateway, never()).findById(any());
-    verify(applicationGateway, never()).update(any(), any());
+    verify(applicationGateway, never()).update(any(UUID.class), any(), any(Map.class));
     verify(domainEventRepository, never()).save(any());
   }
 
@@ -99,8 +97,24 @@ class UpdateApplicationUseCaseTest {
                 assertThat(e.errors())
                     .anyMatch(err -> err.contains("Application content cannot be empty")));
 
-    verify(applicationGateway, never()).findById(any());
-    verify(applicationGateway, never()).update(any(), any());
+    verify(applicationGateway, never()).update(any(UUID.class), any(), any(Map.class));
+    verify(domainEventRepository, never()).save(any());
+  }
+
+  @Test
+  void givenInvalidStatus_whenExecuted_thenThrowsValidationException() {
+    UpdateApplicationCommand updateApplicationCommand =
+        DataGenerator.createDefault(
+            UpdateApplicationCommandGenerator.class, builder -> builder.status("INVALID_STATUS"));
+
+    assertThatExceptionOfType(ValidationException.class)
+        .isThrownBy(() -> useCase.execute(updateApplicationCommand))
+        .satisfies(
+            e ->
+                assertThat(e.errors())
+                    .anyMatch(err -> err.contains("Invalid application status: INVALID_STATUS")));
+
+    verify(applicationGateway, never()).update(any(UUID.class), any(), any(Map.class));
     verify(domainEventRepository, never()).save(any());
   }
 
@@ -118,39 +132,29 @@ class UpdateApplicationUseCaseTest {
                     .status("APPLICATION_SUBMITTED")
                     .applicationContent(changedContent));
 
-    ApplicationDomain existingDomain =
+    ApplicationDomain savedDomain =
         DataGenerator.createDefault(
             ApplicationDomainGenerator.class,
             builder ->
                 builder
                     .id(applicationId)
-                    .status("APPLICATION_IN_PROGRESS")
-                    .applicationContent(new HashMap<>(Map.of("test", "unmodified"))));
+                    .status("APPLICATION_SUBMITTED")
+                    .applicationContent(changedContent));
 
-    ApplicationDomain savedDomain =
-        existingDomain.toBuilder()
-            .status("APPLICATION_SUBMITTED")
-            .applicationContent(changedContent)
-            .build();
-
-    when(applicationGateway.findById(applicationId)).thenReturn(existingDomain);
-    when(applicationGateway.update(any(UUID.class), any(ApplicationDomain.class)))
-        .thenReturn(savedDomain);
+    when(applicationGateway.update(any(UUID.class), any(), any(Map.class))).thenReturn(savedDomain);
 
     useCase.execute(updateApplicationCommand);
 
-    ArgumentCaptor<ApplicationDomain> updatedCaptor =
-        ArgumentCaptor.forClass(ApplicationDomain.class);
-    verify(applicationGateway, times(1)).findById(applicationId);
-    verify(applicationGateway, times(1)).update(any(UUID.class), updatedCaptor.capture());
+    ArgumentCaptor<UUID> idCaptor = ArgumentCaptor.forClass(UUID.class);
+    ArgumentCaptor<String> statusCaptor = ArgumentCaptor.forClass(String.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, Object>> contentCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(applicationGateway, times(1))
+        .update(idCaptor.capture(), statusCaptor.capture(), contentCaptor.capture());
 
-    assertThat(updatedCaptor.getValue())
-        .usingRecursiveComparison()
-        .isEqualTo(
-            existingDomain.toBuilder()
-                .status("APPLICATION_SUBMITTED")
-                .applicationContent(changedContent)
-                .build());
+    assertThat(idCaptor.getValue()).isEqualTo(applicationId);
+    assertThat(statusCaptor.getValue()).isEqualTo("APPLICATION_SUBMITTED");
+    assertThat(contentCaptor.getValue()).usingRecursiveComparison().isEqualTo(changedContent);
 
     ArgumentCaptor<DomainEventEntity> domainEventCaptor =
         ArgumentCaptor.forClass(DomainEventEntity.class);
@@ -158,6 +162,8 @@ class UpdateApplicationUseCaseTest {
     assertThat(domainEventCaptor.getValue().getType())
         .isEqualTo(DomainEventType.APPLICATION_UPDATED);
     assertThat(domainEventCaptor.getValue().getApplicationId()).isEqualTo(applicationId);
+    assertThat(domainEventCaptor.getValue().getCaseworkerId())
+        .isEqualTo(savedDomain.caseworkerId());
   }
 
   @Test
@@ -170,30 +176,25 @@ class UpdateApplicationUseCaseTest {
             UpdateApplicationCommandGenerator.class,
             builder -> builder.id(applicationId).status(null).applicationContent(changedContent));
 
-    ApplicationDomain existingDomain =
+    ApplicationDomain savedDomain =
         DataGenerator.createDefault(
             ApplicationDomainGenerator.class,
             builder ->
                 builder
                     .id(applicationId)
                     .status("APPLICATION_IN_PROGRESS")
-                    .applicationContent(new HashMap<>(Map.of("test", "unmodified"))));
+                    .applicationContent(changedContent));
 
-    ApplicationDomain savedDomain =
-        existingDomain.toBuilder().applicationContent(changedContent).build();
-
-    when(applicationGateway.findById(applicationId)).thenReturn(existingDomain);
-    when(applicationGateway.update(any(UUID.class), any(ApplicationDomain.class)))
-        .thenReturn(savedDomain);
+    when(applicationGateway.update(any(UUID.class), any(), any(Map.class))).thenReturn(savedDomain);
 
     useCase.execute(updateApplicationCommand);
 
-    ArgumentCaptor<ApplicationDomain> updatedCaptor =
-        ArgumentCaptor.forClass(ApplicationDomain.class);
-    verify(applicationGateway).update(any(UUID.class), updatedCaptor.capture());
-    assertThat(updatedCaptor.getValue().status()).isEqualTo("APPLICATION_IN_PROGRESS");
-    assertThat(updatedCaptor.getValue().applicationContent())
-        .usingRecursiveComparison()
-        .isEqualTo(changedContent);
+    ArgumentCaptor<String> statusCaptor = ArgumentCaptor.forClass(String.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, Object>> contentCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(applicationGateway)
+        .update(any(UUID.class), statusCaptor.capture(), contentCaptor.capture());
+    assertThat(statusCaptor.getValue()).isNull();
+    assertThat(contentCaptor.getValue()).usingRecursiveComparison().isEqualTo(changedContent);
   }
 }
