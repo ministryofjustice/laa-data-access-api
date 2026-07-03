@@ -4,9 +4,7 @@ import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.validatePag
 import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.validatePageSize;
 
 import java.util.List;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationClientDetailsDomain;
 import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
@@ -25,34 +23,26 @@ public class GetAllIndividualsUseCase {
   /**
    * Retrieves a page of individuals, optionally enriched with CLIENT_DETAILS.
    *
-   * @param page one-based page number
-   * @param pageSize page size
-   * @param applicationId optional application UUID filter
-   * @param individualType optional individual type filter
-   * @param include optional included additional data filter
-   * @return use-case result containing paged individuals and optional client details
+   * @param query the query record carrying all filter and pagination parameters
+   * @return result record containing paged individuals and optional client details
    */
   @AllowApiCaseworker
-  public GetAllIndividualsResult execute(
-      @Nullable Integer page,
-      @Nullable Integer pageSize,
-      @Nullable UUID applicationId,
-      @Nullable String individualType,
-      @Nullable String include) {
-    if ("CLIENT_DETAILS".equals(include) && applicationId == null) {
+  public GetAllIndividualsResult execute(GetAllIndividualsQuery query) {
+    if ("CLIENT_DETAILS".equals(query.include()) && query.applicationId() == null) {
       throw new ValidationException(
           List.of("Application ID is required when included data is CLIENT_DETAILS"));
     }
 
-    int resolvedPage = validatePage(page);
-    int resolvedPageSize = validatePageSize(pageSize);
+    int resolvedPage = validatePage(query.page());
+    int resolvedPageSize = validatePageSize(query.pageSize());
 
     Page<IndividualDomain> individuals =
-        individualGateway.findAll(applicationId, individualType, resolvedPage, resolvedPageSize);
+        individualGateway.findAll(
+            query.applicationId(), query.individualType(), resolvedPage, resolvedPageSize);
 
     ApplicationClientDetailsDomain clientDetails = null;
-    if ("CLIENT".equals(individualType) && include != null) {
-      clientDetails = applicationGateway.findClientDetails(applicationId);
+    if ("CLIENT".equals(query.individualType()) && query.include() != null) {
+      clientDetails = applicationGateway.findClientDetails(query.applicationId());
     }
 
     return GetAllIndividualsResult.builder()

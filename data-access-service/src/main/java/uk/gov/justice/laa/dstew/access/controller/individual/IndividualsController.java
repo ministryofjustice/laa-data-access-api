@@ -22,6 +22,7 @@ public class IndividualsController implements IndividualsApi {
 
   private final GetAllIndividualsUseCase getAllIndividualsUseCase;
   private final GetAllIndividualsResponseMapper getAllIndividualsResponseMapper;
+  private final GetAllIndividualsQueryMapper getAllIndividualsQueryMapper;
 
   /**
    * Retrieves a paginated list of individuals.
@@ -46,10 +47,6 @@ public class IndividualsController implements IndividualsApi {
       IndividualType type) {
     return getAllIndividualsResponseMapper.toGetAllIndividualsResponse(
         getAllIndividualsUseCase.execute(
-            page,
-            pageSize,
-            applicationId,
-            type == null ? null : type.name(),
-            include == null ? null : include.name()));
+            getAllIndividualsQueryMapper.toQuery(page, pageSize, applicationId, type, include)));
   }
 }

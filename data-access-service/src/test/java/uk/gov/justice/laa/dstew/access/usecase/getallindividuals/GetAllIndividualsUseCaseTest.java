@@ -44,7 +44,8 @@ class GetAllIndividualsUseCaseTest {
     Page<IndividualDomain> page = new PageImpl<>(List.of(individual));
     when(individualGateway.findAll(null, null, 1, 10)).thenReturn(page);
 
-    GetAllIndividualsResult result = useCase.execute(1, 10, null, null, null);
+    GetAllIndividualsResult result =
+        useCase.execute(GetAllIndividualsQuery.builder().page(1).pageSize(10).build());
 
     assertThat(result.individuals().getContent()).hasSize(1);
     assertThat(result.clientDetails()).isNull();
@@ -60,7 +61,8 @@ class GetAllIndividualsUseCaseTest {
     Page<IndividualDomain> page = new PageImpl<>(List.of());
     when(individualGateway.findAll(appId, null, 1, 10)).thenReturn(page);
 
-    useCase.execute(1, 10, appId, null, null);
+    useCase.execute(
+        GetAllIndividualsQuery.builder().page(1).pageSize(10).applicationId(appId).build());
 
     verify(individualGateway).findAll(appId, null, 1, 10);
   }
@@ -70,7 +72,8 @@ class GetAllIndividualsUseCaseTest {
     Page<IndividualDomain> page = new PageImpl<>(List.of());
     when(individualGateway.findAll(null, "CLIENT", 1, 10)).thenReturn(page);
 
-    useCase.execute(1, 10, null, "CLIENT", null);
+    useCase.execute(
+        GetAllIndividualsQuery.builder().page(1).pageSize(10).individualType("CLIENT").build());
 
     verify(individualGateway).findAll(null, "CLIENT", 1, 10);
   }
@@ -81,7 +84,13 @@ class GetAllIndividualsUseCaseTest {
     Page<IndividualDomain> page = new PageImpl<>(List.of());
     when(individualGateway.findAll(appId, "CLIENT", 1, 10)).thenReturn(page);
 
-    useCase.execute(1, 10, appId, "CLIENT", null);
+    useCase.execute(
+        GetAllIndividualsQuery.builder()
+            .page(1)
+            .pageSize(10)
+            .applicationId(appId)
+            .individualType("CLIENT")
+            .build());
 
     verify(individualGateway).findAll(appId, "CLIENT", 1, 10);
   }
@@ -96,7 +105,15 @@ class GetAllIndividualsUseCaseTest {
     when(individualGateway.findAll(appId, "CLIENT", 1, 10)).thenReturn(page);
     when(applicationGateway.findClientDetails(appId)).thenReturn(clientDetails);
 
-    GetAllIndividualsResult result = useCase.execute(1, 10, appId, "CLIENT", "CLIENT_DETAILS");
+    GetAllIndividualsResult result =
+        useCase.execute(
+            GetAllIndividualsQuery.builder()
+                .page(1)
+                .pageSize(10)
+                .applicationId(appId)
+                .individualType("CLIENT")
+                .include("CLIENT_DETAILS")
+                .build());
 
     assertThat(result.clientDetails()).isNotNull();
     assertThat(result.clientDetails()).usingRecursiveComparison().isEqualTo(clientDetails);
@@ -108,7 +125,7 @@ class GetAllIndividualsUseCaseTest {
     Page<IndividualDomain> page = new PageImpl<>(List.of());
     when(individualGateway.findAll(null, null, 1, 20)).thenReturn(page);
 
-    GetAllIndividualsResult result = useCase.execute(null, null, null, null, null);
+    GetAllIndividualsResult result = useCase.execute(GetAllIndividualsQuery.builder().build());
 
     assertThat(result.requestedPage()).isEqualTo(1);
     assertThat(result.requestedPageSize()).isEqualTo(20);
@@ -119,7 +136,8 @@ class GetAllIndividualsUseCaseTest {
     Page<IndividualDomain> page = new PageImpl<>(List.of());
     when(individualGateway.findAll(null, null, 2, 10)).thenReturn(page);
 
-    GetAllIndividualsResult result = useCase.execute(2, 10, null, null, null);
+    GetAllIndividualsResult result =
+        useCase.execute(GetAllIndividualsQuery.builder().page(2).pageSize(10).build());
 
     assertThat(result.requestedPage()).isEqualTo(2);
     assertThat(result.requestedPageSize()).isEqualTo(10);
@@ -130,7 +148,8 @@ class GetAllIndividualsUseCaseTest {
     Page<IndividualDomain> page = new PageImpl<>(List.of());
     when(individualGateway.findAll(null, null, 1, 100)).thenReturn(page);
 
-    GetAllIndividualsResult result = useCase.execute(1, 100, null, null, null);
+    GetAllIndividualsResult result =
+        useCase.execute(GetAllIndividualsQuery.builder().page(1).pageSize(100).build());
 
     assertThat(result.requestedPageSize()).isEqualTo(100);
   }
@@ -138,7 +157,15 @@ class GetAllIndividualsUseCaseTest {
   @Test
   void givenClientDetailsIncludeWithNullApplicationId_whenExecuted_thenThrowsValidationException() {
     assertThatExceptionOfType(ValidationException.class)
-        .isThrownBy(() -> useCase.execute(1, 10, null, "CLIENT", "CLIENT_DETAILS"))
+        .isThrownBy(
+            () ->
+                useCase.execute(
+                    GetAllIndividualsQuery.builder()
+                        .page(1)
+                        .pageSize(10)
+                        .individualType("CLIENT")
+                        .include("CLIENT_DETAILS")
+                        .build()))
         .satisfies(
             e ->
                 assertThat(e.errors())
@@ -152,7 +179,8 @@ class GetAllIndividualsUseCaseTest {
   @Test
   void givenInvalidPage_whenExecuted_thenThrowsIllegalArgumentException() {
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> useCase.execute(0, 10, null, null, null))
+        .isThrownBy(
+            () -> useCase.execute(GetAllIndividualsQuery.builder().page(0).pageSize(10).build()))
         .withMessageContaining("page must be greater than or equal to 1");
     verify(individualGateway, never()).findAll(any(), any(), any(int.class), any(int.class));
   }
@@ -160,7 +188,8 @@ class GetAllIndividualsUseCaseTest {
   @Test
   void givenInvalidPageSize_whenExecuted_thenThrowsIllegalArgumentException() {
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> useCase.execute(1, 0, null, null, null))
+        .isThrownBy(
+            () -> useCase.execute(GetAllIndividualsQuery.builder().page(1).pageSize(0).build()))
         .withMessageContaining("pageSize must be greater than or equal to 1");
     verify(individualGateway, never()).findAll(any(), any(), any(int.class), any(int.class));
   }
@@ -168,7 +197,8 @@ class GetAllIndividualsUseCaseTest {
   @Test
   void givenPageSizeExceedingMax_whenExecuted_thenThrowsIllegalArgumentException() {
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> useCase.execute(1, 101, null, null, null))
+        .isThrownBy(
+            () -> useCase.execute(GetAllIndividualsQuery.builder().page(1).pageSize(101).build()))
         .withMessageContaining("pageSize cannot be more than 100");
     verify(individualGateway, never()).findAll(any(), any(), any(int.class), any(int.class));
   }
@@ -178,7 +208,9 @@ class GetAllIndividualsUseCaseTest {
     Page<IndividualDomain> page = new PageImpl<>(List.of());
     when(individualGateway.findAll(null, "CLIENT", 1, 10)).thenReturn(page);
 
-    GetAllIndividualsResult result = useCase.execute(1, 10, null, "CLIENT", null);
+    GetAllIndividualsResult result =
+        useCase.execute(
+            GetAllIndividualsQuery.builder().page(1).pageSize(10).individualType("CLIENT").build());
 
     assertThat(result.clientDetails()).isNull();
     verify(applicationGateway, never()).findClientDetails(any());
@@ -195,7 +227,15 @@ class GetAllIndividualsUseCaseTest {
     when(individualGateway.findAll(appId, "CLIENT", 1, 10)).thenReturn(page);
     when(applicationGateway.findClientDetails(appId)).thenReturn(clientDetails);
 
-    GetAllIndividualsResult result = useCase.execute(1, 10, appId, "CLIENT", "CLIENT_DETAILS");
+    GetAllIndividualsResult result =
+        useCase.execute(
+            GetAllIndividualsQuery.builder()
+                .page(1)
+                .pageSize(10)
+                .applicationId(appId)
+                .individualType("CLIENT")
+                .include("CLIENT_DETAILS")
+                .build());
 
     assertThat(result.clientDetails().appliedPreviously()).isFalse();
   }
@@ -215,7 +255,15 @@ class GetAllIndividualsUseCaseTest {
     when(individualGateway.findAll(appId, "CLIENT", 1, 10)).thenReturn(page);
     when(applicationGateway.findClientDetails(appId)).thenReturn(clientDetails);
 
-    GetAllIndividualsResult result = useCase.execute(1, 10, appId, "CLIENT", "CLIENT_DETAILS");
+    GetAllIndividualsResult result =
+        useCase.execute(
+            GetAllIndividualsQuery.builder()
+                .page(1)
+                .pageSize(10)
+                .applicationId(appId)
+                .individualType("CLIENT")
+                .include("CLIENT_DETAILS")
+                .build());
 
     assertThat(result.clientDetails().appliedPreviously()).isNull();
     assertThat(result.clientDetails().correspondenceAddress()).isNull();

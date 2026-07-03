@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.controller.individual.GetAllIndividualsQueryMapper;
 import uk.gov.justice.laa.dstew.access.controller.individual.GetAllIndividualsResponseMapper;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallindividuals.GetAllIndividualsApplicationJpaGateway;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallindividuals.GetAllIndividualsGatewayMapper;
@@ -80,5 +81,15 @@ public class GetAllIndividualsConfig {
   @Bean
   public GetAllIndividualsResponseMapper getAllIndividualsResponseMapper() {
     return new GetAllIndividualsResponseMapper();
+  }
+
+  /**
+   * Creates the query mapper bean.
+   *
+   * @return query mapper
+   */
+  @Bean
+  public GetAllIndividualsQueryMapper getAllIndividualsQueryMapper() {
+    return new GetAllIndividualsQueryMapper();
   }
 }
