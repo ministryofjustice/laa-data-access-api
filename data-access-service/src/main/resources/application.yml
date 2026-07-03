@@ -63,17 +63,14 @@ logging:
     org.hibernate.type.descriptor.sql.BasicBinder: INFO
     com.azure.spring: INFO
     uk.gov.justice.laa.dstew.access: ${APP_LOGGING_LEVEL:INFO}
-    # Reduce startup noise
     org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: WARN
-    # Reduce actuator endpoint logging
     org.springframework.boot.actuate: WARN
-  # ECS structured logging configuration
   structured:
     format:
-      console: ecs  # Enable ECS format for structured logging
+      console: ecs
     ecs:
       service:
-        name: ${spring.application.name:laa-data-access-api}
+        name: laa-data-access-api
         version: ${info.app.version:unknown}
         environment: ${sentry.environment:local}
         node_name: ${HOSTNAME:unknown}

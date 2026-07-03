@@ -16,7 +16,6 @@ import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.web.client.RestClient;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
-import uk.gov.justice.laa.dstew.access.context.LoggingContext;
 
 /** Configuration class for RestClient bean with Micrometer Tracing support. */
 @ExcludeFromGeneratedCodeCoverage
@@ -51,7 +50,6 @@ public class RestClientConfig {
     return builder.baseUrl(sdsApiUrl).requestInterceptor(loggingInterceptor).build();
   }
 
-  /** Implementation of logging interceptor with structured logging support. */
   @Slf4j
   @ExcludeFromGeneratedCodeCoverage
   static class LoggingClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
@@ -64,69 +62,63 @@ public class RestClientConfig {
         HttpRequest request, byte[] body, ClientHttpRequestExecution execution) throws IOException {
 
       long startTime = System.currentTimeMillis();
-      String traceId = LoggingContext.getCorrelationId();
       String method = request.getMethod().name();
       String uri = request.getURI().toString();
 
-      // Log outbound request
       if (log.isDebugEnabled()) {
-        log.debug(
-            "Outbound request: method={}, uri={}, traceId={}, headers={}",
-            method,
-            uri,
-            traceId,
-            sanitizeHeaders(request));
+        log.atDebug()
+            .addKeyValue("http.request.method", method)
+            .addKeyValue("url.full", uri)
+            .addKeyValue("http.request.headers", sanitizeHeaders(request))
+            .log("Outbound request");
       } else {
-        log.info("Outbound request: method={}, uri={}, traceId={}", method, uri, traceId);
+        log.atInfo()
+            .addKeyValue("http.request.method", method)
+            .addKeyValue("url.full", uri)
+            .log("Outbound request");
       }
 
       ClientHttpResponse response;
       try {
-        // Execute the request
         response = execution.execute(request, body);
 
         long duration = System.currentTimeMillis() - startTime;
         int statusCode = response.getStatusCode().value();
 
-        // Log response based on status
         if (statusCode >= 200 && statusCode < 300) {
-          log.info(
-              "Outbound response: method={}, uri={}, statusCode={}, duration={}ms, traceId={}",
-              method,
-              uri,
-              statusCode,
-              duration,
-              traceId);
+          log.atInfo()
+              .addKeyValue("http.request.method", method)
+              .addKeyValue("url.full", uri)
+              .addKeyValue("http.response.status_code", statusCode)
+              .addKeyValue("event.duration", duration)
+              .log("Outbound response");
         } else if (statusCode >= 400 && statusCode < 500) {
-          log.warn(
-              "Outbound client error: method={}, uri={}, statusCode={}, duration={}ms, traceId={}",
-              method,
-              uri,
-              statusCode,
-              duration,
-              traceId);
+          log.atWarn()
+              .addKeyValue("http.request.method", method)
+              .addKeyValue("url.full", uri)
+              .addKeyValue("http.response.status_code", statusCode)
+              .addKeyValue("event.duration", duration)
+              .log("Outbound client error");
         } else if (statusCode >= 500) {
-          log.error(
-              "Outbound server error: method={}, uri={}, statusCode={}, duration={}ms, traceId={}",
-              method,
-              uri,
-              statusCode,
-              duration,
-              traceId);
+          log.atError()
+              .addKeyValue("http.request.method", method)
+              .addKeyValue("url.full", uri)
+              .addKeyValue("http.response.status_code", statusCode)
+              .addKeyValue("event.duration", duration)
+              .log("Outbound server error");
         }
 
         return response;
 
       } catch (IOException e) {
         long duration = System.currentTimeMillis() - startTime;
-        log.error(
-            "Outbound request failed: method={}, uri={}, duration={}ms, traceId={}, error={}",
-            method,
-            uri,
-            duration,
-            traceId,
-            e.getMessage(),
-            e);
+        log.atError()
+            .addKeyValue("http.request.method", method)
+            .addKeyValue("url.full", uri)
+            .addKeyValue("event.duration", duration)
+            .addKeyValue("error.message", e.getMessage())
+            .setCause(e)
+            .log("Outbound request failed");
         throw e;
       }
     }

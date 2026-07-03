@@ -6,27 +6,19 @@ import org.slf4j.MDC;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
- * Thread-safe logging context that provides MDC utilities for structured logging. Correlation ID
- * management is now fully handled by Micrometer Tracing.
- *
- * <p>Micrometer automatically populates MDC with 'traceId' and 'spanId'. This class provides
- * additional MDC utilities for application-specific context.
+ * Thread-safe logging context providing MDC utilities for structured logging. Correlation ID
+ * management is handled by Micrometer Tracing. Field names follow ECS (Elastic Common Schema)
+ * conventions.
  */
 @ExcludeFromGeneratedCodeCoverage
 public class LoggingContext {
 
   public static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
-  // ...existing code...
-  public static final String SERVICE_NAME = "serviceName";
-  public static final String ENVIRONMENT = "environment";
-  public static final String USER_ID = "userId";
-  public static final String REQUEST_METHOD = "requestMethod";
-  public static final String REQUEST_URI = "requestUri";
-  public static final String STATUS_CODE = "statusCode";
+  public static final String SERVICE_NAME = "service.name";
+  public static final String SERVICE_ENVIRONMENT = "service.environment";
+  public static final String USER_ID = "user.id";
 
-  private LoggingContext() {
-    // Utility class
-  }
+  private LoggingContext() {}
 
   /**
    * Gets the current correlation ID from MDC. Per LAA logging guardrails, this is a UUID7 (or UUID4
@@ -102,7 +94,7 @@ public class LoggingContext {
    * @param environment the environment (e.g., dev, staging, prod)
    */
   public static void setEnvironment(String environment) {
-    set(ENVIRONMENT, environment);
+    set(SERVICE_ENVIRONMENT, environment);
   }
 
   /**
@@ -112,25 +104,5 @@ public class LoggingContext {
    */
   public static void setUserId(String userId) {
     set(USER_ID, userId);
-  }
-
-  /**
-   * Sets request-related information in the logging context.
-   *
-   * @param method the HTTP method
-   * @param uri the request URI
-   */
-  public static void setRequestInfo(String method, String uri) {
-    set(REQUEST_METHOD, method);
-    set(REQUEST_URI, uri);
-  }
-
-  /**
-   * Sets the HTTP status code in the logging context.
-   *
-   * @param statusCode the HTTP status code
-   */
-  public static void setStatusCode(int statusCode) {
-    set(STATUS_CODE, String.valueOf(statusCode));
   }
 }

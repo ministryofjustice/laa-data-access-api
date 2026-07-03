@@ -2,15 +2,10 @@ package uk.gov.justice.laa.dstew.access.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatException;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
-import io.micrometer.tracing.Span;
-import io.micrometer.tracing.TraceContext;
-import io.micrometer.tracing.Tracer;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,20 +18,11 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class GlobalExceptionHandlerTest {
 
-  private Tracer tracer;
   private GlobalExceptionHandler globalExceptionHandler;
 
   @BeforeEach
   void setUp() {
-    tracer = mock(Tracer.class);
-    Span span = mock(Span.class);
-    TraceContext traceContext = mock(TraceContext.class);
-
-    when(tracer.currentSpan()).thenReturn(span);
-    when(span.context()).thenReturn(traceContext);
-    when(traceContext.traceId()).thenReturn("test-trace-id-123");
-
-    globalExceptionHandler = new GlobalExceptionHandler(tracer);
+    globalExceptionHandler = new GlobalExceptionHandler();
   }
 
   @Test
@@ -139,21 +125,5 @@ class GlobalExceptionHandlerTest {
     assertThat(result.getBody()).isNotNull();
     assertThat(result.getBody().getDetail())
         .isEqualTo("Application with id 123 and version 1 not found");
-  }
-
-  @Test
-  void handleGenericException_whenNoCurrentSpan_returnsInternalServerErrorStatus() {
-    // Arrange: mock tracer to return null for currentSpan (no active trace)
-    when(tracer.currentSpan()).thenReturn(null);
-
-    // Act
-    var result =
-        globalExceptionHandler.handleGenericException(new RuntimeException("No trace context"));
-
-    // Assert
-    assertThat(result).isNotNull();
-    assertThat(result.getStatusCode()).isEqualTo(INTERNAL_SERVER_ERROR);
-    assertThat(result.getBody()).isNotNull();
-    assertThat(result.getBody().getDetail()).isEqualTo("An unexpected error has occurred.");
   }
 }
