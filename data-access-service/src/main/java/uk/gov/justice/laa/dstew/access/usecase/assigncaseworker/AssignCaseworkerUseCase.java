@@ -1,0 +1,78 @@
+package uk.gov.justice.laa.dstew.access.usecase.assigncaseworker;
+
+import jakarta.transaction.Transactional;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
+import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
+import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.infrastructure.AssignCaseworkerApplicationGateway;
+import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.infrastructure.AssignCaseworkerCaseworkerGateway;
+import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.model.AssignCaseworkerApplication;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
+
+/** Orchestrates assigning a caseworker to one or more applications. */
+@RequiredArgsConstructor
+public class AssignCaseworkerUseCase {
+
+  private final AssignCaseworkerApplicationGateway applicationGateway;
+  private final AssignCaseworkerCaseworkerGateway caseworkerGateway;
+  private final SaveDomainEventService saveDomainEventService;
+
+  /**
+   * Assigns the caseworker identified by {@code command.caseworkerId()} to each application in
+   * {@code command.applicationIds()}. Skips the save if the application is already assigned to that
+   * caseworker; always fires a domain event.
+   *
+   * @param command the input command
+   */
+  @AllowApiCaseworker
+  @Transactional
+  public void execute(AssignCaseworkerCommand command) {
+    if (command.applicationIds().stream().anyMatch(Objects::isNull)) {
+      throw new ValidationException(List.of("Request contains null values for ids"));
+    }
+
+    if (!caseworkerGateway.exists(command.caseworkerId())) {
+      throw new ResourceNotFoundException(
+          String.format("No caseworker found with id: %s", command.caseworkerId()));
+    }
+
+    List<UUID> distinctIds = command.applicationIds().stream().distinct().toList();
+    List<AssignCaseworkerApplication> applications = applicationGateway.findAllByIds(distinctIds);
+
+    checkForMissingApplications(distinctIds, applications);
+
+    List<AssignCaseworkerApplication> toUpdate =
+        applications.stream()
+            .filter(app -> !command.caseworkerId().equals(app.caseworkerId()))
+            .map(app -> app.toBuilder().caseworkerId(command.caseworkerId()).build())
+            .toList();
+
+    if (!toUpdate.isEmpty()) {
+      applicationGateway.saveAll(toUpdate, command.caseworkerId());
+    }
+
+    applications.forEach(
+        app ->
+            saveDomainEventService.saveAssignApplicationDomainEvent(
+                app.id(), command.caseworkerId(), command.eventDescription()));
+  }
+
+  private void checkForMissingApplications(
+      List<UUID> requestedIds, List<AssignCaseworkerApplication> retrievedApplications) {
+    List<UUID> foundIds =
+        retrievedApplications.stream().map(AssignCaseworkerApplication::id).toList();
+    String missingIds =
+        requestedIds.stream()
+            .filter(id -> !foundIds.contains(id))
+            .map(UUID::toString)
+            .collect(Collectors.joining(","));
+    if (!missingIds.isEmpty()) {
+      throw new ResourceNotFoundException("No application found with ids: " + missingIds);
+    }
+  }
+}

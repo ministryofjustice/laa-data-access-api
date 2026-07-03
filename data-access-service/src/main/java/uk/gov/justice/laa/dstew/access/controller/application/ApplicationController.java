@@ -40,7 +40,6 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.service.applications.AssignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetAllApplicationsService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetAllNotesForApplicationService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetCertificateService;
@@ -51,6 +50,7 @@ import uk.gov.justice.laa.dstew.access.service.applications.UpdateApplicationSer
 import uk.gov.justice.laa.dstew.access.service.domainevents.GetDomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
+import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.AssignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.createnote.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.GetApplicationUseCase;
@@ -69,7 +69,8 @@ public class ApplicationController implements ApplicationApi {
   private final GetApplicationResponseMapper getApplicationResponseMapper;
   private final GetAllApplicationsService applicationSummaryService;
   private final GetCertificateService certificateService;
-  private final AssignCaseworkerService assignCaseworkerService;
+  private final AssignCaseworkerUseCase assignCaseworkerUseCase;
+  private final AssignCaseworkerCommandMapper assignCaseworkerCommandMapper;
   private final UnassignCaseworkerService unassignCaseworkerService;
   private final MakeDecisionService makeDecisionService;
   private final GetAllNotesForApplicationService getNotesService;
@@ -166,8 +167,8 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   public ResponseEntity<Void> assignCaseworker(
       @NotNull ServiceName serviceName, @Valid CaseworkerAssignRequest request) {
-    assignCaseworkerService.assignCaseworker(
-        request.getCaseworkerId(), request.getApplicationIds(), request.getEventHistory());
+    assignCaseworkerUseCase.execute(
+        assignCaseworkerCommandMapper.toAssignCaseworkerCommand(request));
     return ResponseEntity.ok().build();
   }
 
