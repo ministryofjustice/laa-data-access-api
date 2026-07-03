@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallindividuals;
 
-import java.util.List;
-import java.util.Map;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationClientDetailsDomain;
 import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
@@ -51,18 +49,28 @@ public class GetAllIndividualsGatewayMapper {
     ApplicationContent content =
         objectMapper.convertValue(
             applicationEntity.getApplicationContent(), ApplicationContent.class);
-    ApplicationApplicant applicant = content != null ? content.getApplicant() : null;
-    List<Map<String, Object>> addresses = applicant != null ? applicant.getAddresses() : null;
-    String relationship = applicant != null ? applicant.getRelationshipToInvolvedChildren() : null;
-    Boolean appliedPreviously = applicant != null ? applicant.getAppliedPreviously() : null;
 
-    return ApplicationClientDetailsDomain.builder()
-        .lastNameAtBirth(content != null ? content.getLastNameAtBirth() : null)
-        .previousApplicationId(content != null ? content.getPreviousApplicationId() : null)
-        .relationshipToInvolvedChildren(relationship)
-        .correspondenceAddressType(content != null ? content.getCorrespondenceAddressType() : null)
-        .appliedPreviously(appliedPreviously)
-        .correspondenceAddress(addresses)
+    ApplicationClientDetailsDomain.ApplicationClientDetailsDomainBuilder builder =
+        ApplicationClientDetailsDomain.builder();
+
+    if (content == null) {
+      return builder.build();
+    }
+
+    builder
+        .lastNameAtBirth(content.getLastNameAtBirth())
+        .previousApplicationId(content.getPreviousApplicationId())
+        .correspondenceAddressType(content.getCorrespondenceAddressType());
+
+    ApplicationApplicant applicant = content.getApplicant();
+    if (applicant == null) {
+      return builder.build();
+    }
+
+    return builder
+        .relationshipToInvolvedChildren(applicant.getRelationshipToInvolvedChildren())
+        .appliedPreviously(applicant.getAppliedPreviously())
+        .correspondenceAddress(applicant.getAddresses())
         .build();
   }
 }
