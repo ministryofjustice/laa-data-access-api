@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallindividuals;
 
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationClientDetailsDomain;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.usecase.getallindividuals.infrastructure.GetAllIndividualsApplicationGateway;
 
@@ -28,6 +29,9 @@ public class GetAllIndividualsApplicationJpaGateway implements GetAllIndividuals
     return applicationRepository
         .findById(applicationId)
         .map(gatewayMapper::toClientDetails)
-        .orElseThrow();
+        .orElseThrow(
+            () ->
+                new ResourceNotFoundException(
+                    String.format("No application found with id: %s", applicationId)));
   }
 }
