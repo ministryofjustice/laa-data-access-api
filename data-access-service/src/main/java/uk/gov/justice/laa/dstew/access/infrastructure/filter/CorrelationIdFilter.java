@@ -117,8 +117,14 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
 
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
-    // Exclude actuator endpoints to avoid flooding logs
+    // Exclude infrastructure endpoints to avoid flooding logs
     String uri = request.getRequestURI();
-    return uri != null && uri.startsWith("/actuator");
+    if (uri == null) {
+      return false;
+    }
+    return uri.startsWith("/actuator")
+        || uri.startsWith("/swagger-ui")
+        || uri.startsWith("/v3/api-docs")
+        || uri.startsWith("/api-docs");
   }
 }

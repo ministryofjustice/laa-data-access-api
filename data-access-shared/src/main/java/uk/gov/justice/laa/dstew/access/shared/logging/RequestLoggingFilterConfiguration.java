@@ -10,7 +10,8 @@ import org.springframework.web.filter.CommonsRequestLoggingFilter;
 public class RequestLoggingFilterConfiguration {
 
   /**
-   * Creates and configures the request log filter. Excludes actuator endpoints.
+   * Creates and configures the request log filter. Excludes infrastructure endpoints (actuator,
+   * swagger).
    *
    * @return the configured request log filter.
    */
@@ -21,7 +22,14 @@ public class RequestLoggingFilterConfiguration {
           @Override
           protected boolean shouldNotFilter(HttpServletRequest request) {
             String uri = request.getRequestURI();
-            return uri != null && uri.startsWith("/actuator");
+            if (uri == null) {
+              return false;
+            }
+            // Exclude infrastructure/documentation endpoints
+            return uri.startsWith("/actuator")
+                || uri.startsWith("/swagger-ui")
+                || uri.startsWith("/v3/api-docs")
+                || uri.startsWith("/api-docs");
           }
         };
 
