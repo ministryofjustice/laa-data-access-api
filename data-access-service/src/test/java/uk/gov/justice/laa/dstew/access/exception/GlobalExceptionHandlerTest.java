@@ -140,4 +140,20 @@ class GlobalExceptionHandlerTest {
     assertThat(result.getBody().getDetail())
         .isEqualTo("Application with id 123 and version 1 not found");
   }
+
+  @Test
+  void handleGenericException_whenNoCurrentSpan_returnsInternalServerErrorStatus() {
+    // Arrange: mock tracer to return null for currentSpan (no active trace)
+    when(tracer.currentSpan()).thenReturn(null);
+
+    // Act
+    var result =
+        globalExceptionHandler.handleGenericException(new RuntimeException("No trace context"));
+
+    // Assert
+    assertThat(result).isNotNull();
+    assertThat(result.getStatusCode()).isEqualTo(INTERNAL_SERVER_ERROR);
+    assertThat(result.getBody()).isNotNull();
+    assertThat(result.getBody().getDetail()).isEqualTo("An unexpected error has occurred.");
+  }
 }

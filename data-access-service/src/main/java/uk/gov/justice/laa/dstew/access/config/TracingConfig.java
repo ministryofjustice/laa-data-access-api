@@ -37,6 +37,7 @@ public class TracingConfig {
   }
 
   /** Helper class to access tracing information from the current context. */
+  @ExcludeFromGeneratedCodeCoverage
   public static class TracingHelper {
     private final Tracer tracer;
 
