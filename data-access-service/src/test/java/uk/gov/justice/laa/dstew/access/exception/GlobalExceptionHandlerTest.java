@@ -2,11 +2,17 @@ package uk.gov.justice.laa.dstew.access.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatException;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -17,7 +23,21 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class GlobalExceptionHandlerTest {
 
-  GlobalExceptionHandler globalExceptionHandler = new GlobalExceptionHandler();
+  private Tracer tracer;
+  private GlobalExceptionHandler globalExceptionHandler;
+
+  @BeforeEach
+  void setUp() {
+    tracer = mock(Tracer.class);
+    Span span = mock(Span.class);
+    TraceContext traceContext = mock(TraceContext.class);
+
+    when(tracer.currentSpan()).thenReturn(span);
+    when(span.context()).thenReturn(traceContext);
+    when(traceContext.traceId()).thenReturn("test-trace-id-123");
+
+    globalExceptionHandler = new GlobalExceptionHandler(tracer);
+  }
 
   @Test
   void handleApplicationNotFound_returnsGenericNotFoundExceptionAndErrorMessage() {

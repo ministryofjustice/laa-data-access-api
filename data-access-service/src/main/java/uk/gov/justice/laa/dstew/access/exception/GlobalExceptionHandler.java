@@ -7,6 +7,7 @@ import static org.springframework.http.HttpStatus.LENGTH_REQUIRED;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static uk.gov.justice.laa.dstew.access.exception.ProblemDetailUtility.getCustomProblemDetail;
 
+import io.micrometer.tracing.Tracer;
 import io.sentry.Sentry;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -19,13 +20,30 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import uk.gov.justice.laa.dstew.access.context.LoggingContext;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** The global exception handler for all exceptions with structured logging. */
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+  private final Tracer tracer;
+
+  public GlobalExceptionHandler(Tracer tracer) {
+    this.tracer = tracer;
+  }
+
+  /**
+   * Gets the correlation ID (trace ID) from Micrometer Tracing.
+   *
+   * @return the trace ID from Micrometer
+   */
+  private String getCorrelationId() {
+    if (tracer.currentSpan() != null) {
+      return tracer.currentSpan().context().traceId();
+    }
+    return null;
+  }
 
   /**
    * The handler for ResourceNotFoundException. Generic exception for when resource such as
@@ -37,9 +55,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(ResourceNotFoundException.class)
   public ResponseEntity<ProblemDetail> handleResourceNotFound(ResourceNotFoundException exception) {
     log.warn(
-        "Resource not found: message={}, correlationId={}",
-        exception.getMessage(),
-        LoggingContext.getCorrelationId());
+        "Resource not found: message={}, traceId={}", exception.getMessage(), getCorrelationId());
     return ResponseEntity.status(NOT_FOUND)
         .body(getCustomProblemDetail(HttpStatus.NOT_FOUND, exception.getMessage()));
   }
@@ -52,10 +68,7 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(ValidationException.class)
   public ResponseEntity<ProblemDetail> handleValidationException(ValidationException exception) {
-    log.warn(
-        "Validation error: errors={}, correlationId={}",
-        exception.errors(),
-        LoggingContext.getCorrelationId());
+    log.warn("Validation error: errors={}, traceId={}", exception.errors(), getCorrelationId());
 
     final ProblemDetail problemDetail =
         getCustomProblemDetail(HttpStatus.BAD_REQUEST, "Generic Validation Error");
@@ -74,9 +87,7 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ProblemDetail> handleIllegalArgumentException(
       IllegalArgumentException exception) {
     log.warn(
-        "Invalid argument: message={}, correlationId={}",
-        exception.getMessage(),
-        LoggingContext.getCorrelationId());
+        "Invalid argument: message={}, traceId={}", exception.getMessage(), getCorrelationId());
     return ResponseEntity.badRequest()
         .body(getCustomProblemDetail(HttpStatus.BAD_REQUEST, exception.getMessage()));
   }
@@ -91,9 +102,7 @@ public class GlobalExceptionHandler {
   public void handleAuthorizationDeniedException(AuthorizationDeniedException exception)
       throws AuthorizationDeniedException {
     log.warn(
-        "Authorization denied: message={}, correlationId={}",
-        exception.getMessage(),
-        LoggingContext.getCorrelationId());
+        "Authorization denied: message={}, traceId={}", exception.getMessage(), getCorrelationId());
     throw exception; // rely on Spring ExceptionTranslationFilter to differ between 403 and 401
     // return codes
   }
@@ -108,9 +117,9 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ProblemDetail> handleOptimisticLoggingException(
       OptimisticLockingFailureException exception) {
     log.error(
-        "Optimistic locking failure: message={}, correlationId={}",
+        "Optimistic locking failure: message={}, traceId={}",
         exception.getMessage(),
-        LoggingContext.getCorrelationId(),
+        getCorrelationId(),
         exception);
     Sentry.captureException(exception);
     return ResponseEntity.status(CONFLICT)
@@ -126,10 +135,10 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(AccessDeniedException.class)
   public void handleAccessDenied(AccessDeniedException ex, HttpServletRequest req) {
     log.warn(
-        "Access denied: method={}, uri={}, correlationId={}",
+        "Access denied: method={}, uri={}, traceId={}",
         req.getMethod(),
         req.getRequestURI(),
-        LoggingContext.getCorrelationId());
+        getCorrelationId());
     throw ex; // re-throw so Spring Security still handles the response
   }
 
@@ -143,10 +152,10 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ProblemDetail> handleGenericException(Exception exception) {
     final var logMessage = "An unexpected error has occurred.";
     log.error(
-        "Unexpected error: exceptionType={}, message={}, correlationId={}",
+        "Unexpected error: exceptionType={}, message={}, traceId={}",
         exception.getClass().getSimpleName(),
         exception.getMessage(),
-        LoggingContext.getCorrelationId(),
+        getCorrelationId(),
         exception);
     // Do NOT use the exception type or message in the response (it may leak security-sensitive
     // info)
@@ -167,9 +176,9 @@ public class GlobalExceptionHandler {
     final String responseMessage = "An unexpected error has occurred.";
     final String exceptionType = exception.getClass().getSimpleName();
     log.error(
-        "Database error: exceptionType={}, correlationId={}",
+        "Database error: exceptionType={}, traceId={}",
         exceptionType,
-        LoggingContext.getCorrelationId(),
+        getCorrelationId(),
         exception);
     Sentry.captureException(exception);
     return ResponseEntity.internalServerError()
@@ -184,10 +193,7 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(FileConflictException.class)
   public ResponseEntity<ProblemDetail> handleFileConflictException(FileConflictException ex) {
-    log.warn(
-        "File conflict: message={}, correlationId={}",
-        ex.getMessage(),
-        LoggingContext.getCorrelationId());
+    log.warn("File conflict: message={}, traceId={}", ex.getMessage(), getCorrelationId());
     ProblemDetail problemDetail =
         ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     problemDetail.setTitle("Conflict");
@@ -203,10 +209,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(FileLengthRequiredException.class)
   public ResponseEntity<ProblemDetail> handleFileLengthRequiredException(
       FileLengthRequiredException ex) {
-    log.warn(
-        "File length required: message={}, correlationId={}",
-        ex.getMessage(),
-        LoggingContext.getCorrelationId());
+    log.warn("File length required: message={}, traceId={}", ex.getMessage(), getCorrelationId());
     ProblemDetail problemDetail =
         ProblemDetail.forStatusAndDetail(LENGTH_REQUIRED, ex.getMessage());
     problemDetail.setTitle("Length Required");
@@ -221,10 +224,7 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(VirusDetectedException.class)
   public ResponseEntity<ProblemDetail> handleVirusDetectedException(VirusDetectedException ex) {
-    log.warn(
-        "Virus detected: message={}, correlationId={}",
-        ex.getMessage(),
-        LoggingContext.getCorrelationId());
+    log.warn("Virus detected: message={}, traceId={}", ex.getMessage(), getCorrelationId());
     ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(BAD_REQUEST, ex.getMessage());
     problemDetail.setTitle("Virus Detected");
     return ResponseEntity.status(BAD_REQUEST).body(problemDetail);
@@ -238,11 +238,7 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(VirusScanException.class)
   public ResponseEntity<ProblemDetail> handleVirusScanException(VirusScanException ex) {
-    log.error(
-        "Virus scan error: message={}, correlationId={}",
-        ex.getMessage(),
-        LoggingContext.getCorrelationId(),
-        ex);
+    log.error("Virus scan error: message={}, traceId={}", ex.getMessage(), getCorrelationId(), ex);
     ProblemDetail problemDetail =
         ProblemDetail.forStatusAndDetail(INTERNAL_SERVER_ERROR, ex.getMessage());
     problemDetail.setTitle("Virus Scan Error");

@@ -95,6 +95,24 @@ management:
     distribution:
       percentile-histogram:
         jdbc.query: true
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    baggage:
+      enabled: true
+      remote-fields: X-Correlation-ID
+      correlation:
+        enabled: true
+        fields: correlationId
+  observations:
+    http:
+      server:
+        requests:
+          name: http.server.requests
+      client:
+        requests:
+          name: http.client.requests
 
 springdoc:
   api-docs:

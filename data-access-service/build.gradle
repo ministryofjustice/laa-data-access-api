@@ -283,8 +283,9 @@ dependencies {
     implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.2.0'
 
     implementation 'io.micrometer:micrometer-registry-prometheus'
-    implementation 'io.micrometer:micrometer-core:1.16.6'
+    implementation 'io.micrometer:micrometer-tracing-bridge-brave'
     implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot:2.2.0'
+    implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
 
     implementation 'com.networknt:json-schema-validator:3.0.0'
     implementation 'org.mapstruct:mapstruct:1.6.3'
@@ -321,5 +322,4 @@ dependencies {
     implementation 'co.elastic.logging:logback-ecs-encoder:1.6.0'
     implementation 'ch.qos.logback:logback-classic'
     implementation 'ch.qos.logback:logback-core'
-    implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
 }

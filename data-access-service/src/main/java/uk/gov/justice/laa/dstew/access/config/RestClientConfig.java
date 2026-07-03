@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.config;
 
-import static uk.gov.justice.laa.dstew.access.context.LoggingContext.CORRELATION_ID_HEADER;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -20,7 +18,7 @@ import org.springframework.web.client.RestClient;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.context.LoggingContext;
 
-/** Configuration class for RestClient bean. */
+/** Configuration class for RestClient bean with Micrometer Tracing support. */
 @ExcludeFromGeneratedCodeCoverage
 @Configuration
 @Slf4j
@@ -31,39 +29,26 @@ public class RestClientConfig {
     return new LoggingClientHttpRequestInterceptor();
   }
 
-  @Bean
-  ClientHttpRequestInterceptor correlationIdInterceptor() {
-    return (request, body, execution) -> {
-      String correlationId = LoggingContext.getCorrelationId();
-      if (correlationId != null) {
-        request.getHeaders().set(CORRELATION_ID_HEADER, correlationId);
-      }
-      return execution.execute(request, body);
-    };
-  }
-
+  /**
+   * Creates a RestClient with Micrometer observation support. Micrometer automatically propagates
+   * trace context and baggage (including correlation ID).
+   */
   @Bean
   RestClient restClient(
-      RestClient.Builder builder,
-      ClientHttpRequestInterceptor loggingInterceptor,
-      ClientHttpRequestInterceptor correlationIdInterceptor) {
-    return builder
-        .requestInterceptor(loggingInterceptor)
-        .requestInterceptor(correlationIdInterceptor)
-        .build();
+      RestClient.Builder builder, ClientHttpRequestInterceptor loggingInterceptor) {
+    return builder.requestInterceptor(loggingInterceptor).build();
   }
 
+  /**
+   * Creates a RestClient for SDS API with Micrometer observation support. Micrometer automatically
+   * propagates trace context and baggage (including correlation ID).
+   */
   @Bean
   RestClient sdsRestClient(
       RestClient.Builder builder,
       @Value("${app.sds-api.url}") String sdsApiUrl,
-      ClientHttpRequestInterceptor loggingInterceptor,
-      ClientHttpRequestInterceptor correlationIdInterceptor) {
-    return builder
-        .baseUrl(sdsApiUrl)
-        .requestInterceptor(loggingInterceptor)
-        .requestInterceptor(correlationIdInterceptor)
-        .build();
+      ClientHttpRequestInterceptor loggingInterceptor) {
+    return builder.baseUrl(sdsApiUrl).requestInterceptor(loggingInterceptor).build();
   }
 
   /** Implementation of logging interceptor with structured logging support. */
@@ -79,21 +64,20 @@ public class RestClientConfig {
         HttpRequest request, byte[] body, ClientHttpRequestExecution execution) throws IOException {
 
       long startTime = System.currentTimeMillis();
-      String correlationId = LoggingContext.getCorrelationId();
+      String traceId = LoggingContext.getCorrelationId();
       String method = request.getMethod().name();
       String uri = request.getURI().toString();
 
       // Log outbound request
       if (log.isDebugEnabled()) {
         log.debug(
-            "Outbound request: method={}, uri={}, correlationId={}, headers={}",
+            "Outbound request: method={}, uri={}, traceId={}, headers={}",
             method,
             uri,
-            correlationId,
+            traceId,
             sanitizeHeaders(request));
       } else {
-        log.info(
-            "Outbound request: method={}, uri={}, correlationId={}", method, uri, correlationId);
+        log.info("Outbound request: method={}, uri={}, traceId={}", method, uri, traceId);
       }
 
       ClientHttpResponse response;
@@ -107,28 +91,28 @@ public class RestClientConfig {
         // Log response based on status
         if (statusCode >= 200 && statusCode < 300) {
           log.info(
-              "Outbound response: method={}, uri={}, statusCode={}, duration={}ms, correlationId={}",
+              "Outbound response: method={}, uri={}, statusCode={}, duration={}ms, traceId={}",
               method,
               uri,
               statusCode,
               duration,
-              correlationId);
+              traceId);
         } else if (statusCode >= 400 && statusCode < 500) {
           log.warn(
-              "Outbound client error: method={}, uri={}, statusCode={}, duration={}ms, correlationId={}",
+              "Outbound client error: method={}, uri={}, statusCode={}, duration={}ms, traceId={}",
               method,
               uri,
               statusCode,
               duration,
-              correlationId);
+              traceId);
         } else if (statusCode >= 500) {
           log.error(
-              "Outbound server error: method={}, uri={}, statusCode={}, duration={}ms, correlationId={}",
+              "Outbound server error: method={}, uri={}, statusCode={}, duration={}ms, traceId={}",
               method,
               uri,
               statusCode,
               duration,
-              correlationId);
+              traceId);
         }
 
         return response;
@@ -136,11 +120,11 @@ public class RestClientConfig {
       } catch (IOException e) {
         long duration = System.currentTimeMillis() - startTime;
         log.error(
-            "Outbound request failed: method={}, uri={}, duration={}ms, correlationId={}, error={}",
+            "Outbound request failed: method={}, uri={}, duration={}ms, traceId={}, error={}",
             method,
             uri,
             duration,
-            correlationId,
+            traceId,
             e.getMessage(),
             e);
         throw e;

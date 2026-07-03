@@ -1,24 +1,22 @@
 package uk.gov.justice.laa.dstew.access.context;
 
-import com.fasterxml.uuid.Generators;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
- * Thread-safe logging context that manages correlation IDs and other contextual information for
- * structured logging. Uses SLF4J's MDC (Mapped Diagnostic Context) to propagate context across log
- * entries.
+ * Thread-safe logging context that provides MDC utilities for structured logging. Correlation ID
+ * management is now fully handled by Micrometer Tracing.
+ *
+ * <p>Micrometer automatically populates MDC with 'traceId' and 'spanId'. This class provides
+ * additional MDC utilities for application-specific context.
  */
 @ExcludeFromGeneratedCodeCoverage
-@Slf4j
 public class LoggingContext {
 
-  public static final String CORRELATION_ID = "correlationId";
   public static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
+  // ...existing code...
   public static final String SERVICE_NAME = "serviceName";
   public static final String ENVIRONMENT = "environment";
   public static final String USER_ID = "userId";
@@ -31,41 +29,13 @@ public class LoggingContext {
   }
 
   /**
-   * Sets the correlation ID in the logging context. If correlationId is null, generates a new
-   * UUID7.
+   * Gets the current correlation ID from MDC. Per LAA logging guardrails, this is a UUID7 (or UUID4
+   * fallback).
    *
-   * @param correlationId the correlation ID to set, or null to generate a new one
-   * @return the correlation ID that was set
-   */
-  public static String setCorrelationId(String correlationId) {
-    String id = correlationId != null ? correlationId : generateCorrelationId();
-    MDC.put(CORRELATION_ID, id);
-    return id;
-  }
-
-  /**
-   * Gets the current correlation ID from the logging context.
-   *
-   * @return the correlation ID, or null if not set
+   * @return the correlation ID (UUID7), or null if not set
    */
   public static String getCorrelationId() {
-    return MDC.get(CORRELATION_ID);
-  }
-
-  /**
-   * Generates a new UUID7-based correlation ID. Falls back to UUID4 if UUID7 is not available.
-   *
-   * @return a new correlation ID
-   */
-  public static String generateCorrelationId() {
-    try {
-      // Use UUID version 7 (time-ordered) for better sorting and indexing
-      UUID uuid = Generators.timeBasedEpochGenerator().generate();
-      return uuid.toString();
-    } catch (Exception e) {
-      log.warn("Failed to generate UUID7, falling back to UUID4", e);
-      return UUID.randomUUID().toString();
-    }
+    return MDC.get("correlationId");
   }
 
   /**
