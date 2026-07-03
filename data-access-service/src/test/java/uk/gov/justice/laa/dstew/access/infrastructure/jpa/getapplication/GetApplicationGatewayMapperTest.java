@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
@@ -32,14 +31,8 @@ import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEnt
 
 class GetApplicationGatewayMapperTest {
 
-  private ObjectMapper objectMapper;
-  private GetApplicationGatewayMapper mapper;
-
-  @BeforeEach
-  void setUp() {
-    objectMapper = new ObjectMapper();
-    mapper = new GetApplicationGatewayMapper(objectMapper);
-  }
+  private final ObjectMapper objectMapper = new ObjectMapper();
+  private final GetApplicationGatewayMapper mapper = new GetApplicationGatewayMapper(objectMapper);
 
   @Test
   void givenFullyPopulatedEntity_whenMapped_thenAllFieldsExtracted() {

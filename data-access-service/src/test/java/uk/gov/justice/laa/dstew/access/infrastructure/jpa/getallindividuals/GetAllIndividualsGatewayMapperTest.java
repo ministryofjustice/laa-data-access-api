@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationClientDetailsDomain;
@@ -21,14 +20,9 @@ import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEnti
 
 class GetAllIndividualsGatewayMapperTest {
 
-  private GetAllIndividualsGatewayMapper mapper;
-  private ObjectMapper objectMapper;
-
-  @BeforeEach
-  void setUp() {
-    objectMapper = new ObjectMapper();
-    mapper = new GetAllIndividualsGatewayMapper(objectMapper);
-  }
+  private final ObjectMapper objectMapper = new ObjectMapper();
+  private final GetAllIndividualsGatewayMapper mapper =
+      new GetAllIndividualsGatewayMapper(objectMapper);
 
   @Test
   void givenFullyPopulatedEntity_whenToDomain_thenAllFieldsMapped() {
