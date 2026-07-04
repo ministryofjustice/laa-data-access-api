@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.controller.application.MakeDecisionCommandMapper;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.makedecision.MakeDecisionApplicationJpaGateway;
+import uk.gov.justice.laa.dstew.access.infrastructure.jpa.makedecision.MakeDecisionCertificateGatewayMapper;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.makedecision.MakeDecisionCertificateJpaGateway;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.makedecision.MakeDecisionGatewayMapper;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.makedecision.MakeDecisionProceedingJpaGateway;
@@ -30,17 +31,24 @@ public class MakeDecisionConfig {
   /** Injected shared gateway — used for read operations (findByApplicationId). */
   private final ApplicationGateway applicationGateway;
 
-  /** Creates the certificate gateway mapper bean. */
+  /** Creates the decision gateway mapper bean. */
   @Bean
   public MakeDecisionGatewayMapper makeDecisionGatewayMapper() {
     return new MakeDecisionGatewayMapper();
   }
 
+  /** Creates the certificate gateway mapper bean. */
+  @Bean
+  public MakeDecisionCertificateGatewayMapper makeDecisionCertificateGatewayMapper() {
+    return new MakeDecisionCertificateGatewayMapper();
+  }
+
   /** Creates the certificate JPA gateway bean. */
   @Bean
   public MakeDecisionCertificateJpaGateway makeDecisionCertificateGateway(
-      MakeDecisionGatewayMapper makeDecisionGatewayMapper) {
-    return new MakeDecisionCertificateJpaGateway(certificateRepository, makeDecisionGatewayMapper);
+      MakeDecisionCertificateGatewayMapper makeDecisionCertificateGatewayMapper) {
+    return new MakeDecisionCertificateJpaGateway(
+        certificateRepository, makeDecisionCertificateGatewayMapper);
   }
 
   /** Creates the proceeding JPA gateway bean. */

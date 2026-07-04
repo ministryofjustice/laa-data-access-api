@@ -11,16 +11,16 @@ import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.MakeD
 public class MakeDecisionCertificateJpaGateway implements MakeDecisionCertificateGateway {
 
   private final CertificateRepository certificateRepository;
-  private final MakeDecisionGatewayMapper mapper;
+  private final MakeDecisionCertificateGatewayMapper mapper;
 
   /**
    * Constructs the gateway.
    *
    * @param certificateRepository the Spring Data repository
-   * @param mapper the gateway mapper
+   * @param mapper the certificate gateway mapper
    */
   public MakeDecisionCertificateJpaGateway(
-      CertificateRepository certificateRepository, MakeDecisionGatewayMapper mapper) {
+      CertificateRepository certificateRepository, MakeDecisionCertificateGatewayMapper mapper) {
     this.certificateRepository = certificateRepository;
     this.mapper = mapper;
   }

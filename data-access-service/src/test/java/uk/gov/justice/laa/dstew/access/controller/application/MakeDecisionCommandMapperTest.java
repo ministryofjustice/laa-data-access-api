@@ -47,6 +47,10 @@ class MakeDecisionCommandMapperTest {
     assertThat(command.certificate()).isEqualTo(Map.of("key", "val"));
     assertThat(command.eventDescription()).isEqualTo("desc");
     assertThat(command.proceedings()).hasSize(1);
+    var procCmd = command.proceedings().get(0);
+    assertThat(procCmd.proceedingId()).isEqualTo(request.getProceedings().get(0).getProceedingId());
+    assertThat(procCmd.decision())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.domain.enums.MeritsDecisionStatus.REFUSED);
     assertThat(command.serialisedRequest()).contains("overallDecision");
   }
 
@@ -104,20 +108,6 @@ class MakeDecisionCommandMapperTest {
     MakeDecisionCommand command = mapper.toMakeDecisionCommand(UUID.randomUUID(), request);
 
     assertThat(command.proceedings()).isEmpty();
-  }
-
-  @Test
-  void givenProceeding_whenToMakeDecisionCommand_thenProceedingFieldsMapped() {
-    MakeDecisionRequest request =
-        DataGenerator.createDefault(ApplicationMakeDecisionRequestGenerator.class);
-
-    MakeDecisionCommand command = mapper.toMakeDecisionCommand(UUID.randomUUID(), request);
-
-    assertThat(command.proceedings()).hasSize(1);
-    var procCmd = command.proceedings().get(0);
-    assertThat(procCmd.proceedingId()).isEqualTo(request.getProceedings().get(0).getProceedingId());
-    assertThat(procCmd.decision())
-        .isEqualTo(uk.gov.justice.laa.dstew.access.domain.enums.MeritsDecisionStatus.REFUSED);
   }
 
   @Test

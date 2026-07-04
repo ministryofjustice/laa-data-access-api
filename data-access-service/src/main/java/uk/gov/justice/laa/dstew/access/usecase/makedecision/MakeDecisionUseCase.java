@@ -44,7 +44,6 @@ public class MakeDecisionUseCase {
   @AllowApiCaseworker
   @Transactional
   public void execute(MakeDecisionCommand command) {
-    // 1. Load application — throws 404 if not found
     ApplicationDomain application =
         applicationGateway
             .findByApplicationId(command.applicationId())
@@ -54,17 +53,16 @@ public class MakeDecisionUseCase {
                         String.format(
                             "No application found with id: %s", command.applicationId())));
 
-    // 2. Version check
     VersionCheckHelper.checkEntityVersionLocking(
         command.applicationId(), application.version(), command.applicationVersion());
 
-    // 3. Inline validation (before any write)
+    // Inline validation (before any write)
     validateCommand(command);
 
-    // 4. Validate proceedings are linked
+    // Validate proceedings are linked
     validateProceedings(application, command);
 
-    // 5. Merge merits decisions from command into the existing proceedings
+    // Merge merits decisions from command into the existing proceedings
     Map<UUID, MakeDecisionProceedingCommand> commandByProceedingId =
         command.proceedings().stream()
             .collect(Collectors.toMap(MakeDecisionProceedingCommand::proceedingId, p -> p));
@@ -89,7 +87,7 @@ public class MakeDecisionUseCase {
                 })
             .collect(Collectors.toCollection(LinkedHashSet::new));
 
-    // 6. Build updated application domain
+    // Build updated application domain
     ApplicationDomain updatedApplication =
         application.toBuilder()
             .decision(
@@ -101,17 +99,17 @@ public class MakeDecisionUseCase {
             .proceedings(mergedProceedings)
             .build();
 
-    // 7. Persist application changes via the makeDecision-specific gateway
+    // Persist application changes via the makeDecision-specific gateway
     makeDecisionApplicationGateway.updateDecision(updatedApplication);
 
-    // 8. Certificate handling
+    // Certificate handling
     if (DecisionStatus.GRANTED == command.overallDecision()) {
       handleGrantedDecision(command);
     } else {
       certificateGateway.deleteByApplicationId(command.applicationId());
     }
 
-    // 9. Fire domain event
+    // Fire domain event
     saveDomainEventService.saveMakeDecisionDomainEvent(
         command.applicationId(),
         command.serialisedRequest(),
@@ -176,18 +174,17 @@ public class MakeDecisionUseCase {
     Set<UUID> foundInDbIds = proceedingGateway.findExistingIds(notLinkedIds);
 
     List<String> errors = new ArrayList<>();
-    String notFoundIds =
-        notLinkedIds.stream()
-            .filter(id -> !foundInDbIds.contains(id))
-            .map(UUID::toString)
-            .collect(Collectors.joining(","));
-    if (!notFoundIds.isEmpty()) {
-      errors.add("No proceeding found with id: " + notFoundIds);
+    List<UUID> notFoundIdList =
+        notLinkedIds.stream().filter(id -> !foundInDbIds.contains(id)).toList();
+    if (!notFoundIdList.isEmpty()) {
+      errors.add(
+          "No proceeding found with id: "
+              + notFoundIdList.stream().map(UUID::toString).collect(Collectors.joining(",")));
     }
-    String notLinkedInDbIds =
-        foundInDbIds.stream().map(UUID::toString).collect(Collectors.joining(","));
-    if (!notLinkedInDbIds.isEmpty()) {
-      errors.add("Not linked to application: " + notLinkedInDbIds);
+    if (!foundInDbIds.isEmpty()) {
+      errors.add(
+          "Not linked to application: "
+              + foundInDbIds.stream().map(UUID::toString).collect(Collectors.joining(",")));
     }
     throw new ResourceNotFoundException(String.join("; ", errors));
   }
