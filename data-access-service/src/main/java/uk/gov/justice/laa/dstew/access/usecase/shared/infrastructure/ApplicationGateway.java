@@ -5,7 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 
-/** Gateway interface for application persistence operations in the createApplication use case. */
+/** Gateway interface for application persistence operations. */
 public interface ApplicationGateway {
 
   /**
@@ -42,4 +42,12 @@ public interface ApplicationGateway {
    * @return a list of IDs that could not be found (empty if all were present)
    */
   List<UUID> findMissingApplyApplicationIds(List<UUID> applyApplicationIds);
+
+  /**
+   * Persists decision and merits-decision changes to an existing managed application (UPDATE path).
+   * Implementations must reload the managed entity to avoid {@literal @}Version null.
+   *
+   * @param domain the updated application domain (id must be non-null)
+   */
+  void updateDecision(ApplicationDomain domain);
 }

@@ -10,6 +10,7 @@ import lombok.Builder;
 @Builder(toBuilder = true)
 public record ApplicationDomain(
     UUID id,
+    Long version,
     String status,
     String laaReference,
     String officeCode,
@@ -25,4 +26,5 @@ public record ApplicationDomain(
     String matterType,
     Boolean isAutoGranted,
     Set<ProceedingDomain> proceedings,
-    UUID caseworkerId) {}
+    UUID caseworkerId,
+    DecisionDomain decision) {}

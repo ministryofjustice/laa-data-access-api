@@ -1,15 +1,11 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
-import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 /** Class that runs validations for Access. */
@@ -42,37 +38,5 @@ public class ApplicationValidations {
     if (appIds.stream().anyMatch(Objects::isNull)) {
       throw new ValidationException(List.of("Request contains null values for ids"));
     }
-  }
-
-  /** Validates an incoming apply Decision PATCH. */
-  public void checkApplicationMakeDecisionRequest(final MakeDecisionRequest dto) {
-    if (dto.getProceedings().isEmpty()) {
-      throw new ValidationException(
-          List.of("The Make Decision request must contain at least one proceeding"));
-    }
-
-    // Validate certificate is provided when overallDecision is GRANTED
-    if (dto.getOverallDecision() == DecisionStatus.GRANTED
-        && isCertificateNullOrEmpty(dto.getCertificate())) {
-      throw new ValidationException(
-          List.of(
-              "The Make Decision request must contain a certificate when overallDecision is GRANTED"));
-    }
-
-    dto.getProceedings()
-        .forEach(
-            proceeding -> {
-              MeritsDecisionDetailsRequest mdd = proceeding.getMeritsDecision();
-              if (mdd.getJustification() == null || mdd.getJustification().isEmpty()) {
-                throw new ValidationException(
-                    List.of(
-                        "The Make Decision request must contain a refusal justification for proceeding with id: "
-                            + proceeding.getProceedingId()));
-              }
-            });
-  }
-
-  private boolean isCertificateNullOrEmpty(Map<?, ?> certificate) {
-    return certificate == null || certificate.isEmpty();
   }
 }

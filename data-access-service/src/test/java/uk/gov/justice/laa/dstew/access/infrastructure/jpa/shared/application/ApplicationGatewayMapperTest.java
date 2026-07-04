@@ -2,21 +2,29 @@ package uk.gov.justice.laa.dstew.access.infrastructure.jpa.shared.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
+import uk.gov.justice.laa.dstew.access.domain.DecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
+import uk.gov.justice.laa.dstew.access.domain.MeritsDecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domain.ApplicationDomainGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domain.IndividualDomainGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.domain.MeritsDecisionDomainGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domain.ProceedingDomainGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.individual.IndividualEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
@@ -38,6 +46,7 @@ class ApplicationGatewayMapperTest {
     ApplicationDomain domain = mapper.toApplicationDomain(entity);
 
     assertThat(domain.id()).isEqualTo(entityId);
+    assertThat(domain.version()).isEqualTo(entity.getVersion());
     assertThat(domain.status()).isEqualTo(entity.getStatus().name());
     assertThat(domain.laaReference()).isEqualTo(entity.getLaaReference());
     assertThat(domain.officeCode()).isEqualTo(entity.getOfficeCode());
@@ -309,5 +318,226 @@ class ApplicationGatewayMapperTest {
     assertThat(proceeding.proceedingContent()).isEqualTo(proceedingEntity.getProceedingContent());
     assertThat(proceeding.createdBy()).isEqualTo(proceedingEntity.getCreatedBy());
     assertThat(proceeding.updatedBy()).isEqualTo(proceedingEntity.getUpdatedBy());
+    assertThat(proceeding.meritsDecision()).isNull();
+  }
+
+  @Test
+  void toApplicationDomain_withProceedingWithMeritsDecision_mapsMeritsDecisionFields() {
+    MeritsDecisionEntity meritsDecisionEntity = new MeritsDecisionEntity();
+    meritsDecisionEntity.setDecision(MeritsDecisionStatus.GRANTED);
+    meritsDecisionEntity.setReason("a reason");
+    meritsDecisionEntity.setJustification("a justification");
+    meritsDecisionEntity.setModifiedAt(Instant.now());
+
+    ProceedingEntity proceedingEntity =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class, b -> b.meritsDecision(meritsDecisionEntity));
+    ApplicationEntity entity =
+        ApplicationEntity.builder()
+            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+            .proceedings(Set.of(proceedingEntity))
+            .build();
+
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
+
+    MeritsDecisionDomain meritsDecision = domain.proceedings().iterator().next().meritsDecision();
+    assertThat(meritsDecision).isNotNull();
+    assertThat(meritsDecision.decision()).isEqualTo("GRANTED");
+    assertThat(meritsDecision.reason()).isEqualTo("a reason");
+    assertThat(meritsDecision.justification()).isEqualTo("a justification");
+  }
+
+  // ── toDecisionDomain ─────────────────────────────────────────────────────
+
+  @Test
+  void toDecisionDomain_withNullInput_returnsNull() {
+    assertThat(mapper.toDecisionDomain(null)).isNull();
+  }
+
+  @Test
+  void toDecisionDomain_withNullOverallDecision_mapsNullOverallDecision() {
+    DecisionEntity entity = DecisionEntity.builder().overallDecision(null).build();
+
+    DecisionDomain domain = mapper.toDecisionDomain(entity);
+
+    assertThat(domain.overallDecision()).isNull();
+  }
+
+  @Test
+  void toDecisionDomain_mapsAllFields() {
+    Instant now = Instant.now();
+    DecisionEntity entity =
+        DecisionEntity.builder().overallDecision(DecisionStatus.GRANTED).modifiedAt(now).build();
+
+    DecisionDomain domain = mapper.toDecisionDomain(entity);
+
+    assertThat(domain.overallDecision()).isEqualTo("GRANTED");
+    assertThat(domain.modifiedAt()).isEqualTo(now);
+  }
+
+  @Test
+  void toApplicationDomain_withDecision_mapsDecisionDomain() {
+    DecisionEntity decisionEntity =
+        DecisionEntity.builder().overallDecision(DecisionStatus.REFUSED).build();
+    ApplicationEntity entity =
+        ApplicationEntity.builder()
+            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+            .decision(decisionEntity)
+            .build();
+
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
+
+    assertThat(domain.decision()).isNotNull();
+    assertThat(domain.decision().overallDecision()).isEqualTo("REFUSED");
+  }
+
+  @Test
+  void toApplicationDomain_withNullDecision_mapsNullDecision() {
+    ApplicationEntity entity =
+        ApplicationEntity.builder()
+            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+            .decision(null)
+            .build();
+
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
+
+    assertThat(domain.decision()).isNull();
+  }
+
+  // ── toMeritsDecisionDomain ───────────────────────────────────────────────
+
+  @Test
+  void toMeritsDecisionDomain_withNullInput_returnsNull() {
+    assertThat(mapper.toMeritsDecisionDomain(null)).isNull();
+  }
+
+  @Test
+  void toMeritsDecisionDomain_withNullDecision_mapsNullDecision() {
+    MeritsDecisionEntity entity = new MeritsDecisionEntity();
+    entity.setDecision(null);
+
+    MeritsDecisionDomain domain = mapper.toMeritsDecisionDomain(entity);
+
+    assertThat(domain.decision()).isNull();
+  }
+
+  @Test
+  void toMeritsDecisionDomain_mapsAllFields() {
+    Instant now = Instant.now();
+    MeritsDecisionEntity entity = new MeritsDecisionEntity();
+    entity.setDecision(MeritsDecisionStatus.GRANTED);
+    entity.setReason("reason");
+    entity.setJustification("justification");
+    entity.setModifiedAt(now);
+
+    MeritsDecisionDomain domain = mapper.toMeritsDecisionDomain(entity);
+
+    assertThat(domain.decision()).isEqualTo("GRANTED");
+    assertThat(domain.reason()).isEqualTo("reason");
+    assertThat(domain.justification()).isEqualTo("justification");
+    assertThat(domain.modifiedAt()).isEqualTo(now);
+  }
+
+  // ── applyDecisionToEntity ────────────────────────────────────────────────
+
+  @Test
+  void applyDecisionToEntity_updatesDecisionIsAutoGrantedAndMeritsDecision() {
+    UUID proceedingId = UUID.randomUUID();
+    ProceedingEntity proceedingEntity = ProceedingEntity.builder().id(proceedingId).build();
+    ApplicationEntity entity =
+        ApplicationEntity.builder()
+            .version(5L)
+            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+            .isAutoGranted(false)
+            .proceedings(Set.of(proceedingEntity))
+            .build();
+
+    MeritsDecisionDomain meritsDomain =
+        DataGenerator.createDefault(
+            MeritsDecisionDomainGenerator.class,
+            b -> b.decision("GRANTED").reason("r").justification("j"));
+    ProceedingDomain proceedingDomain =
+        ProceedingDomain.builder().id(proceedingId).meritsDecision(meritsDomain).build();
+    DecisionDomain decisionDomain =
+        DecisionDomain.builder().overallDecision("GRANTED").modifiedAt(Instant.now()).build();
+    ApplicationDomain domain =
+        DataGenerator.createDefault(
+            ApplicationDomainGenerator.class,
+            b ->
+                b.decision(decisionDomain)
+                    .isAutoGranted(true)
+                    .proceedings(Set.of(proceedingDomain)));
+
+    mapper.applyDecisionToEntity(entity, domain);
+
+    assertThat(entity.getVersion()).isEqualTo(5L);
+    assertThat(entity.getDecision().getOverallDecision()).isEqualTo(DecisionStatus.GRANTED);
+    assertThat(entity.getIsAutoGranted()).isTrue();
+    assertThat(entity.getProceedings().iterator().next().getMeritsDecision()).isNotNull();
+    assertThat(entity.getProceedings().iterator().next().getMeritsDecision().getDecision())
+        .isEqualTo(MeritsDecisionStatus.GRANTED);
+    assertThat(entity.getProceedings().iterator().next().getMeritsDecision().getReason())
+        .isEqualTo("r");
+    assertThat(entity.getProceedings().iterator().next().getMeritsDecision().getJustification())
+        .isEqualTo("j");
+  }
+
+  @Test
+  void applyDecisionToEntity_withNullExistingDecision_createsNewDecisionEntity() {
+    ApplicationEntity entity =
+        ApplicationEntity.builder()
+            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+            .decision(null)
+            .build();
+    ApplicationDomain domain =
+        DataGenerator.createDefault(
+            ApplicationDomainGenerator.class,
+            b ->
+                b.decision(
+                        DecisionDomain.builder()
+                            .overallDecision("REFUSED")
+                            .modifiedAt(Instant.now())
+                            .build())
+                    .proceedings(Set.of()));
+
+    mapper.applyDecisionToEntity(entity, domain);
+
+    assertThat(entity.getDecision()).isNotNull();
+    assertThat(entity.getDecision().getOverallDecision()).isEqualTo(DecisionStatus.REFUSED);
+  }
+
+  @Test
+  void applyDecisionToEntity_withNullExistingMeritsDecision_createsNewMeritsDecisionEntity() {
+    UUID proceedingId = UUID.randomUUID();
+    ProceedingEntity proceedingEntity =
+        ProceedingEntity.builder().id(proceedingId).meritsDecision(null).build();
+    ApplicationEntity entity =
+        ApplicationEntity.builder()
+            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+            .proceedings(Set.of(proceedingEntity))
+            .build();
+
+    MeritsDecisionDomain meritsDomain =
+        DataGenerator.createDefault(
+            MeritsDecisionDomainGenerator.class,
+            b -> b.decision("REFUSED").reason("r").justification("j"));
+    ProceedingDomain proceedingDomain =
+        ProceedingDomain.builder().id(proceedingId).meritsDecision(meritsDomain).build();
+    ApplicationDomain domain =
+        DataGenerator.createDefault(
+            ApplicationDomainGenerator.class,
+            b ->
+                b.decision(
+                        DecisionDomain.builder()
+                            .overallDecision("REFUSED")
+                            .modifiedAt(Instant.now())
+                            .build())
+                    .proceedings(Set.of(proceedingDomain)));
+
+    mapper.applyDecisionToEntity(entity, domain);
+
+    assertThat(proceedingEntity.getMeritsDecision()).isNotNull();
+    assertThat(proceedingEntity.getMeritsDecision().getDecision())
+        .isEqualTo(MeritsDecisionStatus.REFUSED);
   }
 }

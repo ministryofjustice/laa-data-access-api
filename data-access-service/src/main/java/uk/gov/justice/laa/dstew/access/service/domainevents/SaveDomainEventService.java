@@ -17,7 +17,6 @@ import uk.gov.justice.laa.dstew.access.model.CreateApplicationDomainEventDetails
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationNoteDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionDomainEventDetails;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.UpdateApplicationDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
@@ -170,29 +169,36 @@ public class SaveDomainEventService {
   }
 
   /**
-   * Posts a make decision domain event.
+   * Posts a make decision domain event using domain types (new clean-architecture path). The event
+   * type is derived from {@code overallDecision}: {@code "GRANTED"} maps to {@link
+   * DomainEventType#APPLICATION_MAKE_DECISION_GRANTED}, any other value maps to {@link
+   * DomainEventType#APPLICATION_MAKE_DECISION_REFUSED}.
    *
    * @param applicationId the id of the application for which the decision was made
-   * @param request the details of the decision that was made
+   * @param serialisedRequest the pre-serialised JSON of the make-decision request
    * @param caseworkerId the id of the caseworker who made the decision
-   * @param domainEventType the type of the domain event to post, either
-   *     APPLICATION_MAKE_DECISION_REFUSED or APPLICATION_MAKE_DECISION_GRANTED
+   * @param overallDecision the overall decision string ({@code "GRANTED"} or {@code "REFUSED"})
+   * @param eventDescription the event description from the request's eventHistory
    */
   @AllowApiCaseworker
   public void saveMakeDecisionDomainEvent(
       UUID applicationId,
-      MakeDecisionRequest request,
+      String serialisedRequest,
       UUID caseworkerId,
-      DomainEventType domainEventType) {
+      String overallDecision,
+      String eventDescription) {
 
-    String eventDescription = request.getEventHistory().getEventDescription();
+    DomainEventType domainEventType =
+        "GRANTED".equals(overallDecision)
+            ? DomainEventType.APPLICATION_MAKE_DECISION_GRANTED
+            : DomainEventType.APPLICATION_MAKE_DECISION_REFUSED;
 
     MakeDecisionDomainEventDetails domainEventDetails =
         MakeDecisionDomainEventDetails.builder()
             .applicationId(applicationId)
             .caseworkerId(caseworkerId)
             .createdAt(Instant.now())
-            .request(getEventDetailsAsJson(request, domainEventType))
+            .request(serialisedRequest)
             .eventDescription(eventDescription)
             .build();
 
