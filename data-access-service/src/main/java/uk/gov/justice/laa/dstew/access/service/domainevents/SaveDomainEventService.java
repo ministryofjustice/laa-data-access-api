@@ -9,6 +9,7 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
+import uk.gov.justice.laa.dstew.access.domain.enums.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
@@ -170,14 +171,14 @@ public class SaveDomainEventService {
 
   /**
    * Posts a make decision domain event using domain types (new clean-architecture path). The event
-   * type is derived from {@code overallDecision}: {@code "GRANTED"} maps to {@link
+   * type is derived from {@code overallDecision}: {@link DecisionStatus#GRANTED} maps to {@link
    * DomainEventType#APPLICATION_MAKE_DECISION_GRANTED}, any other value maps to {@link
    * DomainEventType#APPLICATION_MAKE_DECISION_REFUSED}.
    *
    * @param applicationId the id of the application for which the decision was made
    * @param serialisedRequest the pre-serialised JSON of the make-decision request
    * @param caseworkerId the id of the caseworker who made the decision
-   * @param overallDecision the overall decision string ({@code "GRANTED"} or {@code "REFUSED"})
+   * @param overallDecision the overall decision enum value
    * @param eventDescription the event description from the request's eventHistory
    */
   @AllowApiCaseworker
@@ -185,11 +186,11 @@ public class SaveDomainEventService {
       UUID applicationId,
       String serialisedRequest,
       UUID caseworkerId,
-      String overallDecision,
+      DecisionStatus overallDecision,
       String eventDescription) {
 
     DomainEventType domainEventType =
-        "GRANTED".equals(overallDecision)
+        DecisionStatus.GRANTED == overallDecision
             ? DomainEventType.APPLICATION_MAKE_DECISION_GRANTED
             : DomainEventType.APPLICATION_MAKE_DECISION_REFUSED;
 

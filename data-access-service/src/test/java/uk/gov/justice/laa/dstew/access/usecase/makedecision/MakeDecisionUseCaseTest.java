@@ -25,6 +25,8 @@ import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.domain.CertificateDomain;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
+import uk.gov.justice.laa.dstew.access.domain.enums.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.domain.enums.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
@@ -91,7 +93,7 @@ class MakeDecisionUseCaseTest {
         b ->
             b.applicationId(applicationId)
                 .applicationVersion(0L)
-                .overallDecision("GRANTED")
+                .overallDecision(DecisionStatus.GRANTED)
                 .certificate(Map.of("k", "v"))
                 .proceedings(List.of(proc)));
   }
@@ -100,13 +102,16 @@ class MakeDecisionUseCaseTest {
     MakeDecisionProceedingCommand proc =
         DataGenerator.createDefault(
             MakeDecisionProceedingCommandGenerator.class,
-            b -> b.proceedingId(proceedingId).decision("REFUSED").justification("justification"));
+            b ->
+                b.proceedingId(proceedingId)
+                    .decision(MeritsDecisionStatus.REFUSED)
+                    .justification("justification"));
     return DataGenerator.createDefault(
         MakeDecisionCommandGenerator.class,
         b ->
             b.applicationId(applicationId)
                 .applicationVersion(0L)
-                .overallDecision("REFUSED")
+                .overallDecision(DecisionStatus.REFUSED)
                 .certificate(null)
                 .proceedings(List.of(proc)));
   }
@@ -129,7 +134,7 @@ class MakeDecisionUseCaseTest {
 
     ArgumentCaptor<ApplicationDomain> appCaptor = ArgumentCaptor.forClass(ApplicationDomain.class);
     verify(makeDecisionApplicationGateway).updateDecision(appCaptor.capture());
-    assertThat(appCaptor.getValue().decision().overallDecision()).isEqualTo("GRANTED");
+    assertThat(appCaptor.getValue().decision().overallDecision()).isEqualTo(DecisionStatus.GRANTED);
     ArgumentCaptor<CertificateDomain> certCaptor = ArgumentCaptor.forClass(CertificateDomain.class);
     verify(certificateGateway).save(certCaptor.capture());
     assertThat(certCaptor.getValue().applicationId()).isEqualTo(applicationId);
@@ -181,13 +186,13 @@ class MakeDecisionUseCaseTest {
 
     ArgumentCaptor<ApplicationDomain> appCaptor = ArgumentCaptor.forClass(ApplicationDomain.class);
     verify(makeDecisionApplicationGateway).updateDecision(appCaptor.capture());
-    assertThat(appCaptor.getValue().decision().overallDecision()).isEqualTo("REFUSED");
+    assertThat(appCaptor.getValue().decision().overallDecision()).isEqualTo(DecisionStatus.REFUSED);
     assertThat(appCaptor.getValue().proceedings())
         .singleElement()
         .satisfies(
             p -> {
               assertThat(p.meritsDecision()).isNotNull();
-              assertThat(p.meritsDecision().decision()).isEqualTo("REFUSED");
+              assertThat(p.meritsDecision().decision()).isEqualTo(MeritsDecisionStatus.REFUSED);
               assertThat(p.meritsDecision().justification()).isEqualTo("justification");
             });
     verify(certificateGateway).deleteByApplicationId(applicationId);
@@ -271,7 +276,7 @@ class MakeDecisionUseCaseTest {
             b ->
                 b.applicationId(applicationId)
                     .applicationVersion(0L)
-                    .overallDecision("GRANTED")
+                    .overallDecision(DecisionStatus.GRANTED)
                     .certificate(null)
                     .proceedings(List.of(proc)));
 
@@ -304,7 +309,7 @@ class MakeDecisionUseCaseTest {
             b ->
                 b.applicationId(applicationId)
                     .applicationVersion(0L)
-                    .overallDecision("GRANTED")
+                    .overallDecision(DecisionStatus.GRANTED)
                     .certificate(Map.of())
                     .proceedings(List.of(proc)));
 
@@ -333,7 +338,7 @@ class MakeDecisionUseCaseTest {
             b ->
                 b.applicationId(applicationId)
                     .applicationVersion(0L)
-                    .overallDecision("REFUSED")
+                    .overallDecision(DecisionStatus.REFUSED)
                     .certificate(null)
                     .proceedings(List.of(proc)));
 
@@ -367,7 +372,7 @@ class MakeDecisionUseCaseTest {
             b ->
                 b.applicationId(applicationId)
                     .applicationVersion(0L)
-                    .overallDecision("REFUSED")
+                    .overallDecision(DecisionStatus.REFUSED)
                     .certificate(null)
                     .proceedings(List.of(proc)));
 
@@ -399,7 +404,7 @@ class MakeDecisionUseCaseTest {
             b ->
                 b.applicationId(applicationId)
                     .applicationVersion(0L)
-                    .overallDecision("REFUSED")
+                    .overallDecision(DecisionStatus.REFUSED)
                     .certificate(null)
                     .proceedings(List.of(proc)));
 
@@ -429,7 +434,7 @@ class MakeDecisionUseCaseTest {
             b ->
                 b.applicationId(applicationId)
                     .applicationVersion(0L)
-                    .overallDecision("REFUSED")
+                    .overallDecision(DecisionStatus.REFUSED)
                     .certificate(null)
                     .proceedings(List.of(proc)));
 
@@ -466,7 +471,7 @@ class MakeDecisionUseCaseTest {
             b ->
                 b.applicationId(applicationId)
                     .applicationVersion(0L)
-                    .overallDecision("REFUSED")
+                    .overallDecision(DecisionStatus.REFUSED)
                     .certificate(null)
                     .proceedings(List.of(proc1, proc2)));
 
@@ -496,7 +501,7 @@ class MakeDecisionUseCaseTest {
             b ->
                 b.applicationId(applicationId)
                     .applicationVersion(0L)
-                    .overallDecision("REFUSED")
+                    .overallDecision(DecisionStatus.REFUSED)
                     .certificate(null)
                     .eventDescription(null)
                     .proceedings(
@@ -567,14 +572,18 @@ class MakeDecisionUseCaseTest {
     MakeDecisionProceedingCommand procCmd =
         DataGenerator.createDefault(
             MakeDecisionProceedingCommandGenerator.class,
-            b -> b.proceedingId(updatedId).decision("REFUSED").justification("j").reason("r"));
+            b ->
+                b.proceedingId(updatedId)
+                    .decision(MeritsDecisionStatus.REFUSED)
+                    .justification("j")
+                    .reason("r"));
     MakeDecisionCommand command =
         DataGenerator.createDefault(
             MakeDecisionCommandGenerator.class,
             b ->
                 b.applicationId(applicationId)
                     .applicationVersion(0L)
-                    .overallDecision("REFUSED")
+                    .overallDecision(DecisionStatus.REFUSED)
                     .certificate(null)
                     .proceedings(List.of(procCmd)));
 
@@ -593,7 +602,7 @@ class MakeDecisionUseCaseTest {
         .satisfies(
             p -> {
               assertThat(p.meritsDecision()).isNotNull();
-              assertThat(p.meritsDecision().decision()).isEqualTo("REFUSED");
+              assertThat(p.meritsDecision().decision()).isEqualTo(MeritsDecisionStatus.REFUSED);
               assertThat(p.meritsDecision().justification()).isEqualTo("j");
               assertThat(p.meritsDecision().reason()).isEqualTo("r");
             });
@@ -624,7 +633,7 @@ class MakeDecisionUseCaseTest {
             b ->
                 b.applicationId(applicationId)
                     .applicationVersion(0L)
-                    .overallDecision("GRANTED")
+                    .overallDecision(DecisionStatus.GRANTED)
                     .autoGranted(true)
                     .certificate(Map.of("k", "v"))
                     .proceedings(List.of(proc)));

@@ -41,7 +41,8 @@ class MakeDecisionCommandMapperTest {
 
     assertThat(command.applicationId()).isEqualTo(applicationId);
     assertThat(command.applicationVersion()).isEqualTo(2L);
-    assertThat(command.overallDecision()).isEqualTo("GRANTED");
+    assertThat(command.overallDecision())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.domain.enums.DecisionStatus.GRANTED);
     assertThat(command.autoGranted()).isFalse();
     assertThat(command.certificate()).isEqualTo(Map.of("key", "val"));
     assertThat(command.eventDescription()).isEqualTo("desc");
@@ -115,7 +116,8 @@ class MakeDecisionCommandMapperTest {
     assertThat(command.proceedings()).hasSize(1);
     var procCmd = command.proceedings().get(0);
     assertThat(procCmd.proceedingId()).isEqualTo(request.getProceedings().get(0).getProceedingId());
-    assertThat(procCmd.decision()).isEqualTo("REFUSED");
+    assertThat(procCmd.decision())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.domain.enums.MeritsDecisionStatus.REFUSED);
   }
 
   @Test

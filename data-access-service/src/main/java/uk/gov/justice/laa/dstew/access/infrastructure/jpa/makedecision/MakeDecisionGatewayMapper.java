@@ -65,7 +65,10 @@ public class MakeDecisionGatewayMapper {
   public void applyDecisionToEntity(ApplicationEntity entity, ApplicationDomain domain) {
     DecisionEntity decisionEntity =
         Optional.ofNullable(entity.getDecision()).orElseGet(() -> DecisionEntity.builder().build());
-    decisionEntity.setOverallDecision(DecisionStatus.valueOf(domain.decision().overallDecision()));
+    decisionEntity.setOverallDecision(
+        domain.decision().overallDecision() != null
+            ? DecisionStatus.valueOf(domain.decision().overallDecision().name())
+            : null);
     decisionEntity.setModifiedAt(domain.decision().modifiedAt());
     entity.setDecision(decisionEntity);
 
@@ -86,7 +89,10 @@ public class MakeDecisionGatewayMapper {
                       Optional.ofNullable(proceedingEntity.getMeritsDecision())
                           .orElseGet(MeritsDecisionEntity::new);
                   meritsDecision.setDecision(
-                      MeritsDecisionStatus.valueOf(proceedingDomain.meritsDecision().decision()));
+                      proceedingDomain.meritsDecision().decision() != null
+                          ? MeritsDecisionStatus.valueOf(
+                              proceedingDomain.meritsDecision().decision().name())
+                          : null);
                   meritsDecision.setReason(proceedingDomain.meritsDecision().reason());
                   meritsDecision.setJustification(
                       proceedingDomain.meritsDecision().justification());

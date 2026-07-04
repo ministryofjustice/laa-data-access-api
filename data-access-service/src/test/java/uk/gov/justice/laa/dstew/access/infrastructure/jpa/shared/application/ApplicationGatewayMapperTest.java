@@ -12,14 +12,14 @@ import uk.gov.justice.laa.dstew.access.domain.DecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
 import uk.gov.justice.laa.dstew.access.domain.MeritsDecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
+import uk.gov.justice.laa.dstew.access.domain.enums.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.domain.enums.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domain.ApplicationDomainGenerator;
@@ -323,7 +323,8 @@ class ApplicationGatewayMapperTest {
   @Test
   void toApplicationDomain_withProceedingWithMeritsDecision_mapsMeritsDecisionFields() {
     MeritsDecisionEntity meritsDecisionEntity = new MeritsDecisionEntity();
-    meritsDecisionEntity.setDecision(MeritsDecisionStatus.GRANTED);
+    meritsDecisionEntity.setDecision(
+        uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus.GRANTED);
     meritsDecisionEntity.setReason("a reason");
     meritsDecisionEntity.setJustification("a justification");
     meritsDecisionEntity.setModifiedAt(Instant.now());
@@ -341,7 +342,7 @@ class ApplicationGatewayMapperTest {
 
     MeritsDecisionDomain meritsDecision = domain.proceedings().iterator().next().meritsDecision();
     assertThat(meritsDecision).isNotNull();
-    assertThat(meritsDecision.decision()).isEqualTo("GRANTED");
+    assertThat(meritsDecision.decision()).isEqualTo(MeritsDecisionStatus.GRANTED);
     assertThat(meritsDecision.reason()).isEqualTo("a reason");
     assertThat(meritsDecision.justification()).isEqualTo("a justification");
   }
@@ -366,18 +367,23 @@ class ApplicationGatewayMapperTest {
   void toDecisionDomain_mapsAllFields() {
     Instant now = Instant.now();
     DecisionEntity entity =
-        DecisionEntity.builder().overallDecision(DecisionStatus.GRANTED).modifiedAt(now).build();
+        DecisionEntity.builder()
+            .overallDecision(uk.gov.justice.laa.dstew.access.model.DecisionStatus.GRANTED)
+            .modifiedAt(now)
+            .build();
 
     DecisionDomain domain = mapper.toDecisionDomain(entity);
 
-    assertThat(domain.overallDecision()).isEqualTo("GRANTED");
+    assertThat(domain.overallDecision()).isEqualTo(DecisionStatus.GRANTED);
     assertThat(domain.modifiedAt()).isEqualTo(now);
   }
 
   @Test
   void toApplicationDomain_withDecision_mapsDecisionDomain() {
     DecisionEntity decisionEntity =
-        DecisionEntity.builder().overallDecision(DecisionStatus.REFUSED).build();
+        DecisionEntity.builder()
+            .overallDecision(uk.gov.justice.laa.dstew.access.model.DecisionStatus.REFUSED)
+            .build();
     ApplicationEntity entity =
         ApplicationEntity.builder()
             .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
@@ -387,7 +393,7 @@ class ApplicationGatewayMapperTest {
     ApplicationDomain domain = mapper.toApplicationDomain(entity);
 
     assertThat(domain.decision()).isNotNull();
-    assertThat(domain.decision().overallDecision()).isEqualTo("REFUSED");
+    assertThat(domain.decision().overallDecision()).isEqualTo(DecisionStatus.REFUSED);
   }
 
   @Test
@@ -424,14 +430,14 @@ class ApplicationGatewayMapperTest {
   void toMeritsDecisionDomain_mapsAllFields() {
     Instant now = Instant.now();
     MeritsDecisionEntity entity = new MeritsDecisionEntity();
-    entity.setDecision(MeritsDecisionStatus.GRANTED);
+    entity.setDecision(uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus.GRANTED);
     entity.setReason("reason");
     entity.setJustification("justification");
     entity.setModifiedAt(now);
 
     MeritsDecisionDomain domain = mapper.toMeritsDecisionDomain(entity);
 
-    assertThat(domain.decision()).isEqualTo("GRANTED");
+    assertThat(domain.decision()).isEqualTo(MeritsDecisionStatus.GRANTED);
     assertThat(domain.reason()).isEqualTo("reason");
     assertThat(domain.justification()).isEqualTo("justification");
     assertThat(domain.modifiedAt()).isEqualTo(now);

@@ -9,6 +9,8 @@ import uk.gov.justice.laa.dstew.access.domain.DecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
 import uk.gov.justice.laa.dstew.access.domain.MeritsDecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
+import uk.gov.justice.laa.dstew.access.domain.enums.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.domain.enums.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
@@ -120,7 +122,9 @@ public class ApplicationGatewayMapper {
     }
     return DecisionDomain.builder()
         .overallDecision(
-            decision.getOverallDecision() != null ? decision.getOverallDecision().name() : null)
+            decision.getOverallDecision() != null
+                ? DecisionStatus.valueOf(decision.getOverallDecision().name())
+                : null)
         .modifiedAt(decision.getModifiedAt())
         .build();
   }
@@ -136,7 +140,10 @@ public class ApplicationGatewayMapper {
       return null;
     }
     return MeritsDecisionDomain.builder()
-        .decision(meritsDecision.getDecision() != null ? meritsDecision.getDecision().name() : null)
+        .decision(
+            meritsDecision.getDecision() != null
+                ? MeritsDecisionStatus.valueOf(meritsDecision.getDecision().name())
+                : null)
         .reason(meritsDecision.getReason())
         .justification(meritsDecision.getJustification())
         .modifiedAt(meritsDecision.getModifiedAt())

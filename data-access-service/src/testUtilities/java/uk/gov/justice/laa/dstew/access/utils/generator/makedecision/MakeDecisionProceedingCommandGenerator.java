@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.makedecision;
 
 import java.util.UUID;
+import uk.gov.justice.laa.dstew.access.domain.enums.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionProceedingCommand;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
@@ -21,7 +22,7 @@ public class MakeDecisionProceedingCommandGenerator
   public MakeDecisionProceedingCommand createDefault() {
     return MakeDecisionProceedingCommand.builder()
         .proceedingId(UUID.randomUUID())
-        .decision("GRANTED")
+        .decision(MeritsDecisionStatus.GRANTED)
         .reason("default reason")
         .justification("default justification")
         .build();

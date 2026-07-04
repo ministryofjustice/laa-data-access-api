@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.utils.generator.domain;
 
 import java.time.Instant;
 import uk.gov.justice.laa.dstew.access.domain.MeritsDecisionDomain;
+import uk.gov.justice.laa.dstew.access.domain.enums.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
 /** Generator for {@link MeritsDecisionDomain} test instances. */
@@ -16,7 +17,7 @@ public class MeritsDecisionDomainGenerator
   @Override
   public MeritsDecisionDomain createDefault() {
     return MeritsDecisionDomain.builder()
-        .decision("GRANTED")
+        .decision(MeritsDecisionStatus.GRANTED)
         .reason("default reason")
         .justification("default justification")
         .modifiedAt(Instant.now())

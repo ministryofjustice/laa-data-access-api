@@ -5,6 +5,8 @@ import java.util.UUID;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
+import uk.gov.justice.laa.dstew.access.domain.enums.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.domain.enums.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.exception.DomainEventPublishException;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
@@ -39,7 +41,7 @@ public class MakeDecisionCommandMapper {
         .applicationVersion(makeDecisionRequest.getApplicationVersion())
         .overallDecision(
             makeDecisionRequest.getOverallDecision() != null
-                ? makeDecisionRequest.getOverallDecision().name()
+                ? DecisionStatus.valueOf(makeDecisionRequest.getOverallDecision().name())
                 : null)
         .autoGranted(makeDecisionRequest.getAutoGranted())
         .proceedings(toMakeDecisionProceedingCommands(makeDecisionRequest.getProceedings()))
@@ -67,7 +69,8 @@ public class MakeDecisionCommandMapper {
         .decision(
             makeDecisionProceedingRequest.getMeritsDecision() != null
                     && makeDecisionProceedingRequest.getMeritsDecision().getDecision() != null
-                ? makeDecisionProceedingRequest.getMeritsDecision().getDecision().name()
+                ? MeritsDecisionStatus.valueOf(
+                    makeDecisionProceedingRequest.getMeritsDecision().getDecision().name())
                 : null)
         .reason(
             makeDecisionProceedingRequest.getMeritsDecision() != null

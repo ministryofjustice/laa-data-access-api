@@ -13,13 +13,13 @@ import uk.gov.justice.laa.dstew.access.domain.CertificateDomain;
 import uk.gov.justice.laa.dstew.access.domain.DecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.MeritsDecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
+import uk.gov.justice.laa.dstew.access.domain.enums.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.domain.enums.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domain.ApplicationDomainGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domain.CertificateDomainGenerator;
@@ -99,11 +99,14 @@ class MakeDecisionGatewayMapperTest {
     MeritsDecisionDomain meritsDomain =
         DataGenerator.createDefault(
             MeritsDecisionDomainGenerator.class,
-            b -> b.decision("GRANTED").reason("r").justification("j"));
+            b -> b.decision(MeritsDecisionStatus.GRANTED).reason("r").justification("j"));
     ProceedingDomain proceedingDomain =
         ProceedingDomain.builder().id(proceedingId).meritsDecision(meritsDomain).build();
     DecisionDomain decisionDomain =
-        DecisionDomain.builder().overallDecision("GRANTED").modifiedAt(Instant.now()).build();
+        DecisionDomain.builder()
+            .overallDecision(DecisionStatus.GRANTED)
+            .modifiedAt(Instant.now())
+            .build();
     ApplicationDomain domain =
         DataGenerator.createDefault(
             ApplicationDomainGenerator.class,
@@ -115,11 +118,12 @@ class MakeDecisionGatewayMapperTest {
     mapper.applyDecisionToEntity(entity, domain);
 
     assertThat(entity.getVersion()).isEqualTo(5L);
-    assertThat(entity.getDecision().getOverallDecision()).isEqualTo(DecisionStatus.GRANTED);
+    assertThat(entity.getDecision().getOverallDecision())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.DecisionStatus.GRANTED);
     assertThat(entity.getIsAutoGranted()).isTrue();
     assertThat(entity.getProceedings().iterator().next().getMeritsDecision()).isNotNull();
     assertThat(entity.getProceedings().iterator().next().getMeritsDecision().getDecision())
-        .isEqualTo(MeritsDecisionStatus.GRANTED);
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus.GRANTED);
     assertThat(entity.getProceedings().iterator().next().getMeritsDecision().getReason())
         .isEqualTo("r");
     assertThat(entity.getProceedings().iterator().next().getMeritsDecision().getJustification())
@@ -139,7 +143,7 @@ class MakeDecisionGatewayMapperTest {
             b ->
                 b.decision(
                         DecisionDomain.builder()
-                            .overallDecision("REFUSED")
+                            .overallDecision(DecisionStatus.REFUSED)
                             .modifiedAt(Instant.now())
                             .build())
                     .proceedings(Set.of()));
@@ -147,7 +151,8 @@ class MakeDecisionGatewayMapperTest {
     mapper.applyDecisionToEntity(entity, domain);
 
     assertThat(entity.getDecision()).isNotNull();
-    assertThat(entity.getDecision().getOverallDecision()).isEqualTo(DecisionStatus.REFUSED);
+    assertThat(entity.getDecision().getOverallDecision())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.DecisionStatus.REFUSED);
   }
 
   @Test
@@ -164,7 +169,7 @@ class MakeDecisionGatewayMapperTest {
     MeritsDecisionDomain meritsDomain =
         DataGenerator.createDefault(
             MeritsDecisionDomainGenerator.class,
-            b -> b.decision("REFUSED").reason("r").justification("j"));
+            b -> b.decision(MeritsDecisionStatus.REFUSED).reason("r").justification("j"));
     ProceedingDomain proceedingDomain =
         ProceedingDomain.builder().id(proceedingId).meritsDecision(meritsDomain).build();
     ApplicationDomain domain =
@@ -173,7 +178,7 @@ class MakeDecisionGatewayMapperTest {
             b ->
                 b.decision(
                         DecisionDomain.builder()
-                            .overallDecision("REFUSED")
+                            .overallDecision(DecisionStatus.REFUSED)
                             .modifiedAt(Instant.now())
                             .build())
                     .proceedings(Set.of(proceedingDomain)));
@@ -182,13 +187,15 @@ class MakeDecisionGatewayMapperTest {
 
     assertThat(proceedingEntity.getMeritsDecision()).isNotNull();
     assertThat(proceedingEntity.getMeritsDecision().getDecision())
-        .isEqualTo(MeritsDecisionStatus.REFUSED);
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus.REFUSED);
   }
 
   @Test
   void applyDecisionToEntity_withExistingDecisionEntity_reusesExistingDecisionEntity() {
     DecisionEntity existingDecision =
-        DecisionEntity.builder().overallDecision(DecisionStatus.REFUSED).build();
+        DecisionEntity.builder()
+            .overallDecision(uk.gov.justice.laa.dstew.access.model.DecisionStatus.REFUSED)
+            .build();
     ApplicationEntity entity =
         ApplicationEntity.builder()
             .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
@@ -200,7 +207,7 @@ class MakeDecisionGatewayMapperTest {
             b ->
                 b.decision(
                         DecisionDomain.builder()
-                            .overallDecision("GRANTED")
+                            .overallDecision(DecisionStatus.GRANTED)
                             .modifiedAt(Instant.now())
                             .build())
                     .proceedings(Set.of()));
@@ -208,7 +215,8 @@ class MakeDecisionGatewayMapperTest {
     mapper.applyDecisionToEntity(entity, domain);
 
     assertThat(entity.getDecision()).isSameAs(existingDecision);
-    assertThat(entity.getDecision().getOverallDecision()).isEqualTo(DecisionStatus.GRANTED);
+    assertThat(entity.getDecision().getOverallDecision())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.DecisionStatus.GRANTED);
   }
 
   @Test
@@ -226,7 +234,7 @@ class MakeDecisionGatewayMapperTest {
             b ->
                 b.decision(
                         DecisionDomain.builder()
-                            .overallDecision("REFUSED")
+                            .overallDecision(DecisionStatus.REFUSED)
                             .modifiedAt(Instant.now())
                             .build())
                     .proceedings(null));
@@ -260,7 +268,7 @@ class MakeDecisionGatewayMapperTest {
             b ->
                 b.decision(
                         DecisionDomain.builder()
-                            .overallDecision("REFUSED")
+                            .overallDecision(DecisionStatus.REFUSED)
                             .modifiedAt(Instant.now())
                             .build())
                     .proceedings(Set.of(unmatchedDomain)));
@@ -288,7 +296,7 @@ class MakeDecisionGatewayMapperTest {
             b ->
                 b.decision(
                         DecisionDomain.builder()
-                            .overallDecision("REFUSED")
+                            .overallDecision(DecisionStatus.REFUSED)
                             .modifiedAt(Instant.now())
                             .build())
                     .proceedings(Set.of(proceedingDomain)));
@@ -296,5 +304,55 @@ class MakeDecisionGatewayMapperTest {
     mapper.applyDecisionToEntity(entity, domain);
 
     assertThat(proceedingEntity.getMeritsDecision()).isNull();
+  }
+
+  @Test
+  void applyDecisionToEntity_withNullOverallDecisionInDomain_setsNullOnEntity() {
+    ApplicationEntity entity =
+        ApplicationEntity.builder().status(ApplicationStatus.APPLICATION_IN_PROGRESS).build();
+    ApplicationDomain domain =
+        DataGenerator.createDefault(
+            ApplicationDomainGenerator.class,
+            b ->
+                b.decision(
+                        DecisionDomain.builder()
+                            .overallDecision(null)
+                            .modifiedAt(Instant.now())
+                            .build())
+                    .proceedings(Set.of()));
+
+    mapper.applyDecisionToEntity(entity, domain);
+
+    assertThat(entity.getDecision().getOverallDecision()).isNull();
+  }
+
+  @Test
+  void applyDecisionToEntity_withNullDecisionInsideMeritsDecision_setsNullDecisionOnEntity() {
+    UUID proceedingId = UUID.randomUUID();
+    ProceedingEntity proceedingEntity = ProceedingEntity.builder().id(proceedingId).build();
+    ApplicationEntity entity =
+        ApplicationEntity.builder()
+            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+            .proceedings(Set.of(proceedingEntity))
+            .build();
+
+    MeritsDecisionDomain meritsDomain =
+        MeritsDecisionDomain.builder().decision(null).reason("r").justification("j").build();
+    ProceedingDomain proceedingDomain =
+        ProceedingDomain.builder().id(proceedingId).meritsDecision(meritsDomain).build();
+    ApplicationDomain domain =
+        DataGenerator.createDefault(
+            ApplicationDomainGenerator.class,
+            b ->
+                b.decision(
+                        DecisionDomain.builder()
+                            .overallDecision(DecisionStatus.REFUSED)
+                            .modifiedAt(Instant.now())
+                            .build())
+                    .proceedings(Set.of(proceedingDomain)));
+
+    mapper.applyDecisionToEntity(entity, domain);
+
+    assertThat(proceedingEntity.getMeritsDecision().getDecision()).isNull();
   }
 }

@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.domain.CertificateDomain;
 import uk.gov.justice.laa.dstew.access.domain.DecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.MeritsDecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
+import uk.gov.justice.laa.dstew.access.domain.enums.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
@@ -104,7 +105,7 @@ public class MakeDecisionUseCase {
     makeDecisionApplicationGateway.updateDecision(updatedApplication);
 
     // 8. Certificate handling
-    if ("GRANTED".equals(command.overallDecision())) {
+    if (DecisionStatus.GRANTED == command.overallDecision()) {
       handleGrantedDecision(command);
     } else {
       certificateGateway.deleteByApplicationId(command.applicationId());
@@ -138,7 +139,7 @@ public class MakeDecisionUseCase {
       throw new ValidationException(
           List.of("The Make Decision request must contain at least one proceeding"));
     }
-    if ("GRANTED".equals(command.overallDecision())
+    if (DecisionStatus.GRANTED == command.overallDecision()
         && isCertificateNullOrEmpty(command.certificate())) {
       throw new ValidationException(
           List.of(
