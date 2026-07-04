@@ -1,8 +1,5 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
@@ -30,13 +27,6 @@ public class ApplicationValidations {
                 "Application content cannot be empty");
     if (!validationErrors.errors().isEmpty()) {
       throw new ValidationException(validationErrors.errors().stream().distinct().toList());
-    }
-  }
-
-  /** Validates a list of application ids and throw ValidationException. */
-  public void checkApplicationIdList(final List<UUID> appIds) {
-    if (appIds.stream().anyMatch(Objects::isNull)) {
-      throw new ValidationException(List.of("Request contains null values for ids"));
     }
   }
 }

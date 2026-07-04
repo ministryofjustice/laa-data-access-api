@@ -57,21 +57,4 @@ public class ApplicationJpaGateway implements ApplicationGateway {
             .toList();
     return applyApplicationIds.stream().filter(id -> !found.contains(id)).toList();
   }
-
-  /**
-   * Re-loads the managed entity by ID and applies decision changes in-place via the mapper. This
-   * avoids the @Version null problem that would occur if a new detached entity were saved.
-   */
-  @Override
-  public void updateDecision(ApplicationDomain domain) {
-    ApplicationEntity entity =
-        applicationRepository
-            .findById(domain.id())
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "Application not found during update: " + domain.id()));
-    mapper.applyDecisionToEntity(entity, domain);
-    applicationRepository.save(entity);
-  }
 }

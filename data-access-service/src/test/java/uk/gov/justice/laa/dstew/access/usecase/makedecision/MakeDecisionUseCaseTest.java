@@ -31,6 +31,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
+import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.MakeDecisionApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.MakeDecisionCertificateGateway;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.MakeDecisionProceedingGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
@@ -45,6 +46,7 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 class MakeDecisionUseCaseTest {
 
   @Mock private ApplicationGateway applicationGateway;
+  @Mock private MakeDecisionApplicationGateway makeDecisionApplicationGateway;
   @Mock private MakeDecisionCertificateGateway certificateGateway;
   @Mock private MakeDecisionProceedingGateway proceedingGateway;
   @Mock private DomainEventRepository domainEventRepository;
@@ -58,7 +60,11 @@ class MakeDecisionUseCaseTest {
         new SaveDomainEventService(domainEventRepository, new ObjectMapper(), serviceNameContext);
     useCase =
         new MakeDecisionUseCase(
-            applicationGateway, certificateGateway, proceedingGateway, saveDomainEventService);
+            applicationGateway,
+            makeDecisionApplicationGateway,
+            certificateGateway,
+            proceedingGateway,
+            saveDomainEventService);
     Mockito.lenient().when(serviceNameContext.getServiceName()).thenReturn(ServiceName.CIVIL_APPLY);
   }
 
@@ -122,7 +128,7 @@ class MakeDecisionUseCaseTest {
     useCase.execute(command);
 
     ArgumentCaptor<ApplicationDomain> appCaptor = ArgumentCaptor.forClass(ApplicationDomain.class);
-    verify(applicationGateway).updateDecision(appCaptor.capture());
+    verify(makeDecisionApplicationGateway).updateDecision(appCaptor.capture());
     assertThat(appCaptor.getValue().decision().overallDecision()).isEqualTo("GRANTED");
     ArgumentCaptor<CertificateDomain> certCaptor = ArgumentCaptor.forClass(CertificateDomain.class);
     verify(certificateGateway).save(certCaptor.capture());
@@ -174,7 +180,7 @@ class MakeDecisionUseCaseTest {
     useCase.execute(command);
 
     ArgumentCaptor<ApplicationDomain> appCaptor = ArgumentCaptor.forClass(ApplicationDomain.class);
-    verify(applicationGateway).updateDecision(appCaptor.capture());
+    verify(makeDecisionApplicationGateway).updateDecision(appCaptor.capture());
     assertThat(appCaptor.getValue().decision().overallDecision()).isEqualTo("REFUSED");
     assertThat(appCaptor.getValue().proceedings())
         .singleElement()
@@ -200,7 +206,7 @@ class MakeDecisionUseCaseTest {
         .isThrownBy(() -> useCase.execute(command))
         .withMessageContaining(command.applicationId().toString());
 
-    verify(applicationGateway, never()).updateDecision(any());
+    verify(makeDecisionApplicationGateway, never()).updateDecision(any());
   }
 
   @Test
@@ -219,7 +225,7 @@ class MakeDecisionUseCaseTest {
     assertThatExceptionOfType(OptimisticLockingFailureException.class)
         .isThrownBy(() -> useCase.execute(command));
 
-    verify(applicationGateway, never()).updateDecision(any());
+    verify(makeDecisionApplicationGateway, never()).updateDecision(any());
   }
 
   // ── validation failures ───────────────────────────────────────────────────
@@ -247,7 +253,7 @@ class MakeDecisionUseCaseTest {
                             err.contains(
                                 "The Make Decision request must contain at least one proceeding")));
 
-    verify(applicationGateway, never()).updateDecision(any());
+    verify(makeDecisionApplicationGateway, never()).updateDecision(any());
   }
 
   @Test
@@ -578,7 +584,7 @@ class MakeDecisionUseCaseTest {
     useCase.execute(command);
 
     ArgumentCaptor<ApplicationDomain> appCaptor = ArgumentCaptor.forClass(ApplicationDomain.class);
-    verify(applicationGateway).updateDecision(appCaptor.capture());
+    verify(makeDecisionApplicationGateway).updateDecision(appCaptor.capture());
 
     assertThat(appCaptor.getValue().proceedings()).hasSize(2);
     assertThat(appCaptor.getValue().proceedings())
@@ -630,7 +636,7 @@ class MakeDecisionUseCaseTest {
     useCase.execute(command);
 
     ArgumentCaptor<ApplicationDomain> appCaptor = ArgumentCaptor.forClass(ApplicationDomain.class);
-    verify(applicationGateway).updateDecision(appCaptor.capture());
+    verify(makeDecisionApplicationGateway).updateDecision(appCaptor.capture());
     assertThat(appCaptor.getValue().isAutoGranted()).isTrue();
   }
 }

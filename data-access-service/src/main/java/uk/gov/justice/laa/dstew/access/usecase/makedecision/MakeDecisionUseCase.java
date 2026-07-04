@@ -18,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
+import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.MakeDecisionApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.MakeDecisionCertificateGateway;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.infrastructure.MakeDecisionProceedingGateway;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
@@ -29,6 +30,7 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 public class MakeDecisionUseCase {
 
   private final ApplicationGateway applicationGateway;
+  private final MakeDecisionApplicationGateway makeDecisionApplicationGateway;
   private final MakeDecisionCertificateGateway certificateGateway;
   private final MakeDecisionProceedingGateway proceedingGateway;
   private final SaveDomainEventService saveDomainEventService;
@@ -98,8 +100,8 @@ public class MakeDecisionUseCase {
             .proceedings(mergedProceedings)
             .build();
 
-    // 7. Persist application changes via the shared gateway
-    applicationGateway.updateDecision(updatedApplication);
+    // 7. Persist application changes via the makeDecision-specific gateway
+    makeDecisionApplicationGateway.updateDecision(updatedApplication);
 
     // 8. Certificate handling
     if ("GRANTED".equals(command.overallDecision())) {
