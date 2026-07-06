@@ -246,28 +246,36 @@ curl -X GET "http://localhost:8080/api/v0/caseworkers" \
 
 ---
 
-### UAT/Deployed Environments
+### UAT/Deployed Environments (PR and Feature Deployments)
 
-**Check GitHub Actions `deploy-ephemeral` workflow output** for exact commands:
+All PR and feature deployments in UAT use a **shared mock-oauth2 server** that is automatically deployed when code merges to `main`.
 
-```
-Mock OAuth2 (test tokens)
-   The API validates tokens against this in-cluster issuer:
-    http://spike-dstew1360-data-access-api-mock-oauth2:9999/entra
+**Service name:** `laa-data-access-mock-oauth2-shared`
 
-   1. Port-forward the mock-oauth2 service (in a separate terminal):
-       kubectl -n *** port-forward \
-         svc/spike-dstew1360-data-access-api-mock-oauth2 9999:9999
+#### Getting a token for your PR deployment
 
-   2. Fetch a matching test token:
-       OAUTH_ISSUER_HOST=spike-dstew1360-data-access-api-mock-oauth2:9999 \
-         ./scripts/get-token.sh uat --copy --decode
-```
+1. **Port-forward the shared mock-oauth2 service** (in a separate terminal):
+   ```bash
+   kubectl -n laa-data-access-api-uat port-forward \
+     svc/laa-data-access-mock-oauth2-shared 9999:9999
+   ```
+
+2. **Fetch a test token** (the script now defaults to the shared instance):
+   ```bash
+   ./scripts/get-token.sh uat --copy --decode
+   ```
 
 **Then use the token:**
 - The token is now in your clipboard (from the `--copy` flag)
 - Paste it into Swagger UI's "Authorize" dialog
 - Or use it with curl commands
+
+**Note:** The issuer in the token will be `http://laa-data-access-mock-oauth2-shared:9999/entra`, which matches what your PR deployment expects.
+
+**Advanced:** If you need a token from a different mock-oauth2 service (e.g., a specific PR's instance), you can override:
+```bash
+OAUTH_ISSUER_HOST=pr-123-mock-oauth2:9999 ./scripts/get-token.sh uat --copy
+```
 
 ---
 
@@ -334,7 +342,9 @@ OAUTH_ISSUER_HOST=<service-name>:9999 ./scripts/get-token.sh uat --copy
 |------------|---------|------------------|
 | **Local** | `./scripts/get-token.sh local --copy` | 9999 |
 | **Smoke Test** | `./scripts/get-token.sh smoke --copy` | 9998 |
-| **UAT** | `OAUTH_ISSUER_HOST=<svc>:9999 ./scripts/get-token.sh uat --copy` | 9999 (via port-forward) |
+| **UAT/PR** | `./scripts/get-token.sh uat --copy` | 9999 (via port-forward) |
+
+**Note:** The `uat` environment now defaults to the shared mock-oauth2 service (`laa-data-access-mock-oauth2-shared:9999`).
 
 **Required Headers for API Calls:**
 - `Authorization: Bearer <token>`

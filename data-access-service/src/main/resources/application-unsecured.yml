@@ -36,4 +36,5 @@ management:
 
 feature:
   disable-security: true
+  enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:true}
 

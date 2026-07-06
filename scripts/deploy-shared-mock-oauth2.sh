@@ -2,20 +2,20 @@
 #
 # Deploy the SHARED mock-oauth2 server to UAT namespace
 #
-# ⚠️  IMPORTANT: This is a ONE-TIME deployment!
+# ⚠️  IMPORTANT: This is automatically deployed via CI/CD!
 #
 # Purpose:
 #   - Creates a SINGLE shared mock-oauth2 instance for ALL PRs/branches
 #   - This pod stays running permanently (not deleted with PRs)
 #   - ALL PR deployments will use this shared instance (no per-PR mock-oauth2)
-#   - Automatically deployed via CI/CD when merging to main
+#   - Automatically deployed when merging to main (see .github/workflows/build-main.yml)
 #
 # Pod Name: laa-data-access-mock-oauth2-shared-<hash>-<id>
 # Example:  laa-data-access-mock-oauth2-shared-7d8f9c4b5-xyz
 #
-# When to run:
+# When to run manually:
 #   - Usually NOT needed - CI/CD handles it automatically on main merge
-#   - Only run manually if CI/CD is bypassed or for initial setup
+#   - Only run manually if you need to update the shared instance outside of CI/CD
 #   - Can be re-run safely (Helm upgrade is idempotent)
 #
 # What PR deployments do:
@@ -23,7 +23,10 @@
 #   - DO NOT create their own mock-oauth2 pod
 #   - Deploy faster (no mock-oauth2 startup time)
 #
-# See docs/FAQ-SHARED-MOCK-OAUTH2.md for more details
+# CI/CD Integration:
+#   - Job: deploy-shared-mock-oauth2 in .github/workflows/build-main.yml
+#   - Runs after UAT deployment succeeds
+#   - Uses the same Helm chart as this script
 #
 
 set -euo pipefail
@@ -37,8 +40,8 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "🚀 Deploying SHARED mock-oauth2 server"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "   This is usually done automatically via CI/CD!"
-echo "   Only run manually if needed for initial setup."
+echo "   ℹ️  This is usually done automatically via CI/CD!"
+echo "   Only run manually if needed outside of the normal workflow."
 echo ""
 echo "   Namespace: $NAMESPACE"
 echo "   Release:   $RELEASE_NAME"
@@ -95,7 +98,7 @@ echo "   Service:       $RELEASE_NAME"
 echo "   Internal URL:  http://$RELEASE_NAME.$NAMESPACE.svc.cluster.local:9999"
 echo ""
 echo "🔍 Check Status:"
-echo "   kubectl get pods -n $NAMESPACE -l app=mock-oauth2-shared"
+echo "   kubectl get pods -n $NAMESPACE -l app.kubernetes.io/name=shared-mock-oauth2"
 echo ""
 echo "📦 Pod Name Pattern:"
 echo "   $RELEASE_NAME-<hash>-<id>"
@@ -108,34 +111,36 @@ echo ""
 echo "   ✅ All PR deployments will use this shared instance"
 echo "   ✅ PRs will NOT create their own mock-oauth2 pods"
 echo "   ✅ This pod stays running even when PRs are closed"
-echo "   ✅ Dev token also enabled (use 'swagger-caseworker-token')"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "📚 Next Steps:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "1️⃣  Verify deployment:"
-echo "   kubectl get pods -n $NAMESPACE -l app=mock-oauth2-shared"
+echo "   kubectl get pods -n $NAMESPACE -l app.kubernetes.io/name=shared-mock-oauth2"
 echo ""
-echo "2️⃣  Deploy your PR (as normal - no changes needed)"
+echo "2️⃣  Deploy a PR (as normal - no changes needed)"
+echo "   PRs will automatically use this shared mock-oauth2 instance"
 echo ""
 echo "3️⃣  Verify PR doesn't create its own mock-oauth2:"
-echo "   kubectl get pods -n $NAMESPACE | grep rc-<your-feature>"
+echo "   kubectl get pods -n $NAMESPACE | grep pr-<number>"
 echo "   (should see app pod only, no mock-oauth2 pod)"
 echo ""
-echo "4️⃣  Test authentication:"
+echo "4️⃣  Test authentication with a PR deployment:"
 echo ""
-echo "   Option A - Dev Token (simplest):"
-echo "     curl -H \"Authorization: Bearer swagger-caseworker-token\" \\"
-echo "          https://laa-data-access-api-rc-<your-feature>-uat.../"
+echo "   # Port-forward the shared mock-oauth2"
+echo "   kubectl -n $NAMESPACE port-forward svc/$RELEASE_NAME 9999:9999"
 echo ""
-echo "   Option B - Mock OAuth2 JWT:"
-echo "     ./scripts/get-token.sh uat --copy"
+echo "   # Get a token (in another terminal)"
+echo "   ./scripts/get-token.sh uat --copy"
+echo ""
+echo "   # Use the token with your PR deployment"
+echo "   # See README.md for full authentication examples"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📖 Documentation:"
+echo "📖 More Information:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "   📘 docs/FAQ-SHARED-MOCK-OAUTH2.md - Quick FAQ"
-echo "   📗 docs/mock-oauth2-and-dev-token-setup.md - Complete guide"
+echo "   📘 README.md - Authentication section"
+echo "   📗 docs/deployment.md - Full deployment documentation"
 echo ""

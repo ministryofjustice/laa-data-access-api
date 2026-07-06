@@ -116,9 +116,63 @@ jobs:
           app-environment: uat
           image-tag: ${{ needs.release.outputs.published_artifact_version }}
 
-  uat-smoke-test:
+  deploy-shared-mock-oauth2:
     runs-on: ubuntu-latest
     needs: [ deploy-uat ]
+    environment: uat
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run deploy prerequisites
+        id: deploy_prerequisites
+        uses: ./.github/actions/deploy_prerequisites
+        with:
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-region: ${{ vars.ECR_REGION }}
+      - name: Deploy shared mock-oauth2 server
+        shell: bash
+        env:
+          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🚀 Deploying SHARED mock-oauth2 server"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "   This shared instance will be used by ALL PR deployments"
+          echo "   Namespace: ${KUBE_NAMESPACE}"
+          echo "   Release:   laa-data-access-mock-oauth2-shared"
+          echo ""
+          
+          helm upgrade laa-data-access-mock-oauth2-shared .helm/shared-mock-oauth2 \
+            --namespace "${KUBE_NAMESPACE}" \
+            --install \
+            --wait
+          
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✅ Shared mock-oauth2 server deployed successfully!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "📋 Service Details:"
+          echo "   Service Name: laa-data-access-mock-oauth2-shared"
+          echo "   Internal URL: http://laa-data-access-mock-oauth2-shared.${KUBE_NAMESPACE}.svc.cluster.local:9999"
+          echo ""
+          echo "🔍 Verify deployment:"
+          echo "   kubectl get pods -n ${KUBE_NAMESPACE} -l app.kubernetes.io/name=shared-mock-oauth2"
+          echo ""
+          echo "📝 All PR deployments will now use this shared instance"
+          echo "   (No per-PR mock-oauth2 pods will be created)"
+          echo ""
+
+  uat-smoke-test:
+    runs-on: ubuntu-latest
+    needs: [ deploy-uat, deploy-shared-mock-oauth2 ]
     environment: uat
     permissions:
       id-token: write

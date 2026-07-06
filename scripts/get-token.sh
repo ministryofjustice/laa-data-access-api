@@ -11,7 +11,8 @@
 # Environments:
 #   local       Local development (default) — mock server on port 9999
 #   smoke       Smoke test infrastructure   — mock server on port 9998
-#   uat         UAT mock server via kubectl port-forward on port 9999
+#   uat         UAT/PR shared mock-oauth2 via kubectl port-forward on port 9999
+#               Default issuer: laa-data-access-mock-oauth2-shared:9999
 #   custom      Use OAUTH_TOKEN_URL env var  — bring your own URL
 #
 # Options:
@@ -23,14 +24,17 @@
 #   ./scripts/get-token.sh
 #   ./scripts/get-token.sh local --copy
 #   ./scripts/get-token.sh smoke --decode
-#   ./scripts/get-token.sh uat --decode
+#   ./scripts/get-token.sh uat --copy
+#   OAUTH_ISSUER_HOST=pr-123-data-access-api-mock-oauth2:9999 ./scripts/get-token.sh uat --copy
 #   OAUTH_TOKEN_URL=http://localhost:7777/entra/token ./scripts/get-token.sh custom
 #
 # Environment variable overrides (all optional):
 #   OAUTH_TOKEN_URL   Full token URL (used with the 'custom' environment)
 #   OAUTH_LOCAL_PORT  Local port used for UAT mock-oauth2 port-forward (default: 9999)
 #   OAUTH_ISSUER_HOST Host header used when token URL is port-forwarded but the issuer must be
-#                      the in-cluster mock-oauth2 service
+#                      the in-cluster mock-oauth2 service.
+#                      Default for UAT: laa-data-access-mock-oauth2-shared:9999 (shared instance)
+#                      Override for specific PR: pr-<number>-data-access-api-mock-oauth2:9999
 #   OAUTH_CLIENT_ID   OAuth client_id   (default: test)
 #   OAUTH_CLIENT_SECRET  OAuth client_secret  (default: test)
 #   OAUTH_SCOPE       OAuth scope  (default: api://laa-data-access-api/.default)
@@ -83,8 +87,10 @@ case "${ENV}" in
     ;;
   uat)
     OAUTH_LOCAL_PORT="${OAUTH_LOCAL_PORT:-9999}"
+    # Default to shared mock-oauth2 instance (deployed by CI/CD on merge to main)
+    OAUTH_ISSUER_HOST="${OAUTH_ISSUER_HOST:-laa-data-access-mock-oauth2-shared:9999}"
     TOKEN_URL="${OAUTH_TOKEN_URL:-http://localhost:${OAUTH_LOCAL_PORT}/entra/token}"
-    ENV_LABEL="UAT mock-oauth2 (manual setup)"
+    ENV_LABEL="UAT shared mock-oauth2"
     ;;
   custom)
     if [[ -z "${OAUTH_TOKEN_URL:-}" ]]; then
@@ -173,20 +179,8 @@ ensure_mock_server_running() {
 # UAT helper — check that the user has started a manual port-forward
 # ---------------------------------------------------------------------------
 require_uat_issuer_and_port_forward() {
-  if [[ -z "${OAUTH_ISSUER_HOST:-}" ]]; then
-    echo "ERROR: OAUTH_ISSUER_HOST is required for 'uat' mode." >&2
-    echo "" >&2
-    echo "  The issuer host is the in-cluster mock-oauth2 Service name." >&2
-    echo "  After deploying to UAT, check the Helm NOTES or run:" >&2
-    echo "" >&2
-    echo "    kubectl -n <namespace> get svc -l app.kubernetes.io/component=mock-oauth2" >&2
-    echo "" >&2
-    echo "  Then set it, e.g.:" >&2
-    echo "    OAUTH_ISSUER_HOST=<release>-data-access-api-mock-oauth2:9999 \\" >&2
-    echo "      ./scripts/get-token.sh uat --copy" >&2
-    echo "" >&2
-    exit 1
-  fi
+  # OAUTH_ISSUER_HOST should have been set to a default by now
+  # (or user can override it for a specific PR's mock-oauth2)
 
   # Check that something is answering locally (user has started port-forward).
   if curl -sf "${TOKEN_URL%/token}/jwks" >/dev/null 2>&1; then
@@ -197,9 +191,15 @@ require_uat_issuer_and_port_forward() {
 
   local svc_name="${OAUTH_ISSUER_HOST%%:*}"
   echo "ERROR: Nothing is responding on localhost:${OAUTH_LOCAL_PORT}." >&2
-  echo "  Start a port-forward in another terminal:" >&2
   echo "" >&2
-  echo "    kubectl -n <namespace> port-forward svc/${svc_name} ${OAUTH_LOCAL_PORT}:9999" >&2
+  echo "  Start a port-forward to the shared mock-oauth2 service in another terminal:" >&2
+  echo "" >&2
+  echo "    kubectl -n laa-data-access-api-uat port-forward svc/${svc_name} ${OAUTH_LOCAL_PORT}:9999" >&2
+  echo "" >&2
+  echo "  The shared mock-oauth2 service is deployed automatically when code merges to main." >&2
+  echo "  To verify it's running:" >&2
+  echo "" >&2
+  echo "    kubectl -n laa-data-access-api-uat get pods -l app.kubernetes.io/name=shared-mock-oauth2" >&2
   echo "" >&2
   echo "  Then re-run this script." >&2
   exit 1
