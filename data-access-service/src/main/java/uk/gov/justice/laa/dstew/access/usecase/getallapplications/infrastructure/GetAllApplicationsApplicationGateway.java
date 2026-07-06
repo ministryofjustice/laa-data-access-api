@@ -11,18 +11,12 @@ import uk.gov.justice.laa.dstew.access.domain.LinkedApplicationSummaryDomain;
 public interface GetAllApplicationsApplicationGateway {
 
   /**
-   * Retrieves a page of application summaries matching the provided filters.
+   * Finds a page of application summaries matching the provided filters.
    *
-   * @param status optional status filter (enum name string)
-   * @param laaReference optional reference filter
-   * @param clientFirstName optional first-name filter
-   * @param clientLastName optional last-name filter
-   * @param clientDateOfBirth optional date-of-birth filter
-   * @param userId optional caseworker ID filter
-   * @param matterType optional matter-type filter (enum name string)
-   * @param isAutoGranted optional auto-grant filter
-   * @param sortBy optional sort field (enum name string; SUBMITTED_DATE default)
-   * @param orderBy optional sort direction (enum name string; ASC default)
+   * @param status optional status filter (enum name)
+   * @param matterType optional matter-type filter (enum name)
+   * @param sortBy optional sort field (enum name; defaults to SUBMITTED_DATE)
+   * @param orderBy optional sort direction (enum name; defaults to ASC)
    * @param page one-based page number
    * @param pageSize number of results per page
    * @return page of domain summaries

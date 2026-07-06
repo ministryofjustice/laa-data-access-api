@@ -13,11 +13,7 @@ import uk.gov.justice.laa.dstew.access.usecase.getallapplications.infrastructure
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
-/**
- * Use case responsible for retrieving a paginated list of application summaries. Validates
- * caseworker existence before querying applications, and resolves linked-application relationships
- * in pure domain logic after the page query.
- */
+/** Retrieves a paginated list of application summaries. */
 public class GetAllApplicationsUseCase {
 
   private final GetAllApplicationsApplicationGateway applicationGateway;
@@ -37,15 +33,10 @@ public class GetAllApplicationsUseCase {
   }
 
   /**
-   * Executes the getAllApplications use case.
+   * Retrieves a page of application summaries.
    *
-   * <p>Execution order: (1) validate pagination parameters; (2) validate caseworker existence when
-   * {@code userId} is supplied; (3) fetch the application page; (4) if non-empty, fetch and resolve
-   * linked applications; (5) return the result.
-   *
-   * @param command the input command carrying all filter, sort, and pagination parameters
-   * @return a {@link GetAllApplicationsResult} containing the paged summaries and pagination
-   *     metadata
+   * @param command the input command
+   * @return the paged application summaries and pagination metadata
    */
   @AllowApiCaseworker
   public GetAllApplicationsResult execute(GetAllApplicationsCommand command) {

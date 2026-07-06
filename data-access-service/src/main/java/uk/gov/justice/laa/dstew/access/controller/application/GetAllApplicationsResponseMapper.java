@@ -17,17 +17,15 @@ import uk.gov.justice.laa.dstew.access.usecase.getallapplications.GetAllApplicat
 
 /**
  * Maps a {@link GetAllApplicationsResult} to a {@link ResponseEntity} containing an {@link
- * ApplicationSummaryResponse}. Responsible for constructing both the application list and the
- * paging envelope — no presentation logic resides in the controller.
+ * ApplicationSummaryResponse}.
  */
 public class GetAllApplicationsResponseMapper {
 
   /**
-   * Converts the use-case result to an HTTP 200 response containing the full application summary
-   * and paging metadata.
+   * Maps the result to a response entity.
    *
    * @param result the use-case result
-   * @return response entity containing the application summary response
+   * @return the application summary response
    */
   public ResponseEntity<ApplicationSummaryResponse> toGetAllApplicationsResponse(
       GetAllApplicationsResult result) {

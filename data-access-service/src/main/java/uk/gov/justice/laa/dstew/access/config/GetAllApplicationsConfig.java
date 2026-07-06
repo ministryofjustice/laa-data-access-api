@@ -20,33 +20,20 @@ public class GetAllApplicationsConfig {
   private final ApplicationRepository applicationRepository;
   private final CaseworkerRepository caseworkerRepository;
 
-  /**
-   * Creates the gateway mapper bean.
-   *
-   * @return the gateway mapper
-   */
+  /** Creates the {@link GetAllApplicationsGatewayMapper} bean. */
   @Bean
   public GetAllApplicationsGatewayMapper getAllApplicationsGatewayMapper() {
     return new GetAllApplicationsGatewayMapper();
   }
 
-  /**
-   * Creates the application JPA gateway bean.
-   *
-   * @param gatewayMapper the gateway mapper
-   * @return the application JPA gateway
-   */
+  /** Creates the {@link GetAllApplicationsApplicationJpaGateway} bean. */
   @Bean
   public GetAllApplicationsApplicationJpaGateway getAllApplicationsApplicationGateway(
       GetAllApplicationsGatewayMapper gatewayMapper) {
     return new GetAllApplicationsApplicationJpaGateway(applicationRepository, gatewayMapper);
   }
 
-  /**
-   * Creates the caseworker JPA gateway bean.
-   *
-   * @return the caseworker JPA gateway
-   */
+  /** Creates the {@link GetAllApplicationsCaseworkerJpaGateway} bean. */
   @Bean
   public GetAllApplicationsCaseworkerJpaGateway getAllApplicationsCaseworkerGateway() {
     return new GetAllApplicationsCaseworkerJpaGateway(caseworkerRepository);
@@ -66,21 +53,13 @@ public class GetAllApplicationsConfig {
     return new GetAllApplicationsUseCase(appGateway, caseworkerGateway);
   }
 
-  /**
-   * Creates the command mapper bean.
-   *
-   * @return the command mapper
-   */
+  /** Creates the {@link GetAllApplicationsCommandMapper} bean. */
   @Bean
   public GetAllApplicationsCommandMapper getAllApplicationsCommandMapper() {
     return new GetAllApplicationsCommandMapper();
   }
 
-  /**
-   * Creates the response mapper bean.
-   *
-   * @return the response mapper
-   */
+  /** Creates the {@link GetAllApplicationsResponseMapper} bean. */
   @Bean
   public GetAllApplicationsResponseMapper getAllApplicationsResponseMapper() {
     return new GetAllApplicationsResponseMapper();

@@ -14,10 +14,7 @@ public class GetAllApplicationsGatewayMapper {
   private static final String APPLICATION_TYPE_INITIAL = "INITIAL";
 
   /**
-   * Maps an {@link ApplicationSummaryDto} to an {@link ApplicationSummaryDomain}. The CLIENT
-   * individual is extracted to populate client name and date-of-birth fields. The {@code
-   * linkedApplications} list is initialised as empty and is populated later by the use case after
-   * the linked-applications query.
+   * Maps a {@link ApplicationSummaryDto} to an {@link ApplicationSummaryDomain}.
    *
    * @param applicationSummaryDto the source DTO
    * @return the domain record, or {@code null} if the input is {@code null}

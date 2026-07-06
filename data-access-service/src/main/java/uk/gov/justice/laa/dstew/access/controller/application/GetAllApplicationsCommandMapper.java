@@ -8,18 +8,13 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.usecase.getallapplications.GetAllApplicationsCommand;
 
-/**
- * Maps controller query parameters to a {@link GetAllApplicationsCommand}. This is the only class
- * permitted to import API model enum types for the getAllApplications use case; it converts them to
- * plain Strings via {@code .name()} with null guards.
- */
+/** Maps controller query parameters to a {@link GetAllApplicationsCommand}. */
 public class GetAllApplicationsCommandMapper {
 
   /**
-   * Converts the controller query parameters to a {@link GetAllApplicationsCommand}. {@code
-   * ServiceName} is consumed at the controller level and excluded from the command.
+   * Maps the parameters to a {@link GetAllApplicationsCommand}.
    *
-   * @param status optional application status filter
+   * @param status optional status filter
    * @param laaReference optional LAA reference filter
    * @param clientFirstName optional client first-name filter
    * @param clientLastName optional client last-name filter
