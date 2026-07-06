@@ -6,10 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 
-/**
- * Domain record representing a summary of a single legal aid application. Pure Java — no JPA, no
- * Spring, no API model imports.
- */
+/** Domain record representing a summary of a single legal aid application. */
 @Builder(toBuilder = true)
 public record ApplicationSummaryDomain(
     UUID id,

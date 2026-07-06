@@ -6,7 +6,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationSummaryDomain;
 import uk.gov.justice.laa.dstew.access.domain.LinkedApplicationSummaryDomain;
@@ -23,12 +22,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplica
 
 class GetAllApplicationsGatewayMapperTest {
 
-  private GetAllApplicationsGatewayMapper mapper;
-
-  @BeforeEach
-  void setUp() {
-    mapper = new GetAllApplicationsGatewayMapper();
-  }
+  private final GetAllApplicationsGatewayMapper mapper = new GetAllApplicationsGatewayMapper();
 
   @Test
   void givenFullyPopulatedDto_whenToApplicationSummaryDomain_thenAllFieldsMapped() {

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
@@ -14,12 +13,7 @@ import uk.gov.justice.laa.dstew.access.usecase.getallapplications.GetAllApplicat
 
 class GetAllApplicationsCommandMapperTest {
 
-  private GetAllApplicationsCommandMapper mapper;
-
-  @BeforeEach
-  void setUp() {
-    mapper = new GetAllApplicationsCommandMapper();
-  }
+  private final GetAllApplicationsCommandMapper mapper = new GetAllApplicationsCommandMapper();
 
   @Test
   void givenFullyPopulatedParams_whenToGetAllApplicationsCommand_thenAllFieldsMapped() {

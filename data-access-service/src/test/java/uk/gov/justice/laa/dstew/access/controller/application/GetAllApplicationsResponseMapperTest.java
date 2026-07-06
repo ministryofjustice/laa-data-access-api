@@ -8,7 +8,6 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -28,12 +27,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.domain.LinkedApplicationS
 
 class GetAllApplicationsResponseMapperTest {
 
-  private GetAllApplicationsResponseMapper mapper;
-
-  @BeforeEach
-  void setUp() {
-    mapper = new GetAllApplicationsResponseMapper();
-  }
+  private final GetAllApplicationsResponseMapper mapper = new GetAllApplicationsResponseMapper();
 
   @Test
   void givenFullyPopulatedResult_whenToGetAllApplicationsResponse_thenAllFieldsMapped() {

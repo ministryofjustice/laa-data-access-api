@@ -36,33 +36,40 @@ public class GetAllApplicationsGatewayMapper {
                 .findFirst()
                 .orElse(null);
 
-    return ApplicationSummaryDomain.builder()
-        .id(applicationSummaryDto.getId())
-        .submittedAt(applicationSummaryDto.getSubmittedAt())
-        .isAutoGranted(applicationSummaryDto.getIsAutoGranted())
-        .categoryOfLaw(
-            applicationSummaryDto.getCategoryOfLaw() != null
-                ? applicationSummaryDto.getCategoryOfLaw().name()
-                : null)
-        .matterType(
-            applicationSummaryDto.getMatterType() != null
-                ? applicationSummaryDto.getMatterType().name()
-                : null)
-        .usedDelegatedFunctions(applicationSummaryDto.getUsedDelegatedFunctions())
-        .laaReference(applicationSummaryDto.getLaaReference())
-        .officeCode(applicationSummaryDto.getOfficeCode())
-        .status(
-            applicationSummaryDto.getStatus() != null
-                ? applicationSummaryDto.getStatus().name()
-                : null)
-        .caseworkerId(applicationSummaryDto.getCaseworkerId())
-        .clientFirstName(client != null ? client.getFirstName() : null)
-        .clientLastName(client != null ? client.getLastName() : null)
-        .clientDateOfBirth(client != null ? client.getDateOfBirth() : null)
-        .applicationType(APPLICATION_TYPE_INITIAL)
-        .modifiedAt(applicationSummaryDto.getModifiedAt())
-        .isLead(applicationSummaryDto.isLead())
-        .linkedApplications(List.of())
+    ApplicationSummaryDomain.ApplicationSummaryDomainBuilder builder =
+        ApplicationSummaryDomain.builder()
+            .id(applicationSummaryDto.getId())
+            .submittedAt(applicationSummaryDto.getSubmittedAt())
+            .isAutoGranted(applicationSummaryDto.getIsAutoGranted())
+            .categoryOfLaw(
+                applicationSummaryDto.getCategoryOfLaw() != null
+                    ? applicationSummaryDto.getCategoryOfLaw().name()
+                    : null)
+            .matterType(
+                applicationSummaryDto.getMatterType() != null
+                    ? applicationSummaryDto.getMatterType().name()
+                    : null)
+            .usedDelegatedFunctions(applicationSummaryDto.getUsedDelegatedFunctions())
+            .laaReference(applicationSummaryDto.getLaaReference())
+            .officeCode(applicationSummaryDto.getOfficeCode())
+            .status(
+                applicationSummaryDto.getStatus() != null
+                    ? applicationSummaryDto.getStatus().name()
+                    : null)
+            .caseworkerId(applicationSummaryDto.getCaseworkerId())
+            .applicationType(APPLICATION_TYPE_INITIAL)
+            .modifiedAt(applicationSummaryDto.getModifiedAt())
+            .isLead(applicationSummaryDto.isLead())
+            .linkedApplications(List.of());
+
+    if (client == null) {
+      return builder.build();
+    }
+
+    return builder
+        .clientFirstName(client.getFirstName())
+        .clientLastName(client.getLastName())
+        .clientDateOfBirth(client.getDateOfBirth())
         .build();
   }
 
