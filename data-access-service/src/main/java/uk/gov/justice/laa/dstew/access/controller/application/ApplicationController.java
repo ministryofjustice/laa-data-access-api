@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.time.LocalDate;
@@ -11,6 +12,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -38,11 +40,8 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.service.applications.AssignCaseworkerService;
-import uk.gov.justice.laa.dstew.access.service.applications.CreateNoteService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetAllApplicationsService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetAllNotesForApplicationService;
-import uk.gov.justice.laa.dstew.access.service.applications.GetApplicationService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetCertificateService;
 import uk.gov.justice.laa.dstew.access.service.applications.MakeDecisionService;
 import uk.gov.justice.laa.dstew.access.service.applications.SdsService;
@@ -51,7 +50,10 @@ import uk.gov.justice.laa.dstew.access.service.applications.UpdateApplicationSer
 import uk.gov.justice.laa.dstew.access.service.domainevents.GetDomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
+import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.AssignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.createnote.CreateNoteUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.GetApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
 /** Controller for handling /api/v0/applications requests. */
@@ -63,14 +65,17 @@ public class ApplicationController implements ApplicationApi {
   private final CreateApplicationUseCase createApplicationUseCase;
   private final CreateApplicationCommandMapper createApplicationCommandMapper;
   private final UpdateApplicationService updateApplicationService;
-  private final GetApplicationService getApplicationsService;
+  private final GetApplicationUseCase getApplicationUseCase;
+  private final GetApplicationResponseMapper getApplicationResponseMapper;
   private final GetAllApplicationsService applicationSummaryService;
   private final GetCertificateService certificateService;
-  private final AssignCaseworkerService assignCaseworkerService;
+  private final AssignCaseworkerUseCase assignCaseworkerUseCase;
+  private final AssignCaseworkerCommandMapper assignCaseworkerCommandMapper;
   private final UnassignCaseworkerService unassignCaseworkerService;
   private final MakeDecisionService makeDecisionService;
   private final GetAllNotesForApplicationService getNotesService;
-  private final CreateNoteService createNoteService;
+  private final CreateNoteUseCase createNoteUseCase;
+  private final CreateNoteCommandMapper createNoteCommandMapper;
   private final GetDomainEventService getDomainEventsService;
   private final SdsService sdsService;
 
@@ -78,10 +83,14 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @Override
   public ResponseEntity<Void> createApplication(
-      @NotNull ServiceName serviceName, @Valid ApplicationCreateRequest applicationCreateReq) {
+      @NotNull ServiceName serviceName,
+      @Valid ApplicationCreateRequest applicationCreateReq,
+      @Min(1) @RequestHeader(value = "X-Schema-Version", required = false, defaultValue = "1")
+          Integer schemaVersion) {
     UUID id =
         createApplicationUseCase
-            .execute(createApplicationCommandMapper.toCreateCommand(applicationCreateReq))
+            .execute(
+                createApplicationCommandMapper.toCreateCommand(applicationCreateReq, schemaVersion))
             .id();
     URI uri =
         ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
@@ -150,7 +159,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   @LogMethodArguments
   public ResponseEntity<ApplicationResponse> getApplicationById(ServiceName serviceName, UUID id) {
-    return ResponseEntity.ok(getApplicationsService.getApplication(id));
+    return getApplicationResponseMapper.toGetApplicationResponse(getApplicationUseCase.execute(id));
   }
 
   @Override
@@ -158,8 +167,8 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   public ResponseEntity<Void> assignCaseworker(
       @NotNull ServiceName serviceName, @Valid CaseworkerAssignRequest request) {
-    assignCaseworkerService.assignCaseworker(
-        request.getCaseworkerId(), request.getApplicationIds(), request.getEventHistory());
+    assignCaseworkerUseCase.execute(
+        assignCaseworkerCommandMapper.toAssignCaseworkerCommand(request));
     return ResponseEntity.ok().build();
   }
 
@@ -201,9 +210,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   public ResponseEntity<Void> createApplicationNotes(
       @NotNull ServiceName serviceName, UUID applicationId, @Valid CreateNoteRequest request) {
-
-    createNoteService.createApplicationNote(applicationId, request);
-
+    createNoteUseCase.execute(createNoteCommandMapper.toCreateNoteCommand(applicationId, request));
     return ResponseEntity.noContent().build();
   }
 

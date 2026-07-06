@@ -4,9 +4,9 @@ import java.time.LocalDate;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.model.InvolvedChild;
-import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.InvolvedChild;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.OpponentDetails;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
 public class ApplicationMeritsGenerator

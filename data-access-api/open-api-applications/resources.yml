@@ -90,6 +90,7 @@ paths:
       operationId: createApplication
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - $ref: "../open-api-common/components.yml#/components/parameters/XSchemaVersion"
       requestBody:
         description: Create an application (all fields inside `applicationContent`)
         required: true

@@ -54,20 +54,26 @@ spring:
 
 logging:
   level:
-    tomcat: INFO
-    root: INFO
-    org:
-      springframework:
-        web: INFO
-      hibernate: INFO
+    root: ${ROOT_LOGGING_LEVEL:INFO}
+    org.springframework: ${SPRING_LOGGING_LEVEL:INFO}
+    org.springframework.web: ${SPRING_LOGGING_LEVEL:INFO}
+    org.springframework.security: INFO
+    org.hibernate: INFO
+    org.hibernate.SQL: INFO
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO
     com.azure.spring: INFO
-    uk:
-      gov:
-        justice:
-          laa:
-            dstew:
-              access:
-                config: INFO
+    uk.gov.justice.laa.dstew.access: ${APP_LOGGING_LEVEL:INFO}
+    org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: WARN
+    org.springframework.boot.actuate: WARN
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        name: laa-data-access-api
+        version: ${info.app.version:unknown}
+        environment: ${sentry.environment:local}
+        node_name: ${HOSTNAME:unknown}
 
 jdbc:
   datasource-proxy:
@@ -86,6 +92,28 @@ management:
     distribution:
       percentile-histogram:
         jdbc.query: true
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    baggage:
+      enabled: true
+      remote-fields: X-Correlation-ID
+      correlation:
+        enabled: true
+        fields: correlationId
+  observations:
+    http:
+      server:
+        requests:
+          name: http.server.requests
+      client:
+        requests:
+          name: http.client.requests
+
+springdoc:
+  api-docs:
+    version: openapi_3_1
 
 sentry:
   enabled: ${SENTRY_ENABLED:false}
@@ -104,8 +132,6 @@ sentry:
 feature:
   enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}
   disable-security: ${FEATURE_DISABLE_SECURITY:false}
-  example-feature-flag: ${FEATURE_EXAMPLE_FEATURE_FLAG:false}
-  disable-jpa-auditing: ${FEATURE_DISABLE_JPA_AUDITING:false}
 
 app:
   sds-api:
@@ -116,3 +142,19 @@ app:
 
 server:
   forward-headers-strategy: framework
+
+---
+# Local profile configuration - overrides for local development
+spring:
+  config:
+    activate:
+      on-profile: local
+
+logging:
+  # Override structured logging for local development
+  structured:
+    format:
+      console: # Disables structured logging for local development
+  pattern:
+    console: "%clr(%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr{faint} %clr([%15.15t]){faint} %clr([correlationId=%X{correlationId}]){yellow} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx"
+

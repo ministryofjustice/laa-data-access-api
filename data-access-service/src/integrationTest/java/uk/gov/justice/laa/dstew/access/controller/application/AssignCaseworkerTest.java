@@ -269,7 +269,7 @@ public class AssignCaseworkerTest extends BaseHarnessTest {
             ApplicationEntityGenerator.class, 4, builder -> builder.caseworker(null));
 
     List<UUID> invalidApplicationIds =
-        IntStream.range(0, 5).mapToObj(_ -> UUID.randomUUID()).toList();
+        IntStream.range(0, 5).mapToObj(i -> UUID.randomUUID()).toList();
 
     List<UUID> allApplicationIds =
         Stream.of(

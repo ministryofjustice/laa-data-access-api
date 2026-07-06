@@ -11,4 +11,6 @@ public record CreateApplicationCommand(
     String laaReference,
     Map<String, Object> applicationContent,
     List<IndividualCommand> individuals,
-    String serialisedRequest) {}
+    String serialisedRequest,
+    int schemaVersion,
+    String applicationType) {}

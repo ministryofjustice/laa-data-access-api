@@ -14,6 +14,7 @@ import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.LinkedAppli
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContentParser;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ParsedAppContentDetails;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Orchestrates the full create-application flow. */
@@ -25,6 +26,7 @@ public class CreateApplicationUseCase {
   private final ApplicationContentParser applicationContentParser;
   private final CreateApplicationDomainMapper domainMapper;
   private final SaveDomainEventService saveDomainEventService;
+  private final JsonSchemaValidator jsonSchemaValidator;
 
   /**
    * Executes the createApplication use case.
@@ -36,10 +38,18 @@ public class CreateApplicationUseCase {
   @Transactional
   public ApplicationDomain execute(CreateApplicationCommand command) {
 
-    // 1. Validate and parse application content
+    // 1. Validate against JSON schema
+    String formType =
+        switch (command.applicationType()) {
+          case "CCS" -> "CssApplication.json";
+          default -> "ApplyApplication.json";
+        };
+    jsonSchemaValidator.validate(command.applicationContent(), formType, command.schemaVersion());
+
+    // 3. Validate and parse application content
     ParsedAppContentDetails parsed = applicationContentParser.parse(command.applicationContent());
 
-    // 2. Duplicate-check BEFORE save
+    // 4. Duplicate-check BEFORE save
     if (applicationGateway.existsByApplyApplicationId(parsed.applyApplicationId())) {
       throw new ValidationException(
           List.of(
@@ -47,14 +57,14 @@ public class CreateApplicationUseCase {
                   + parsed.applyApplicationId()));
     }
 
-    // 3. Build domain (pre-save; id and createdAt are null) then persist application
+    // 5. Build domain (pre-save; id and createdAt are null) then persist application
     ApplicationDomain savedApplication =
         applicationGateway.save(domainMapper.toApplicationDomain(command, parsed));
 
-    // 4. Link to lead application if applicable (after save — requires savedApplication.id())
+    // 6. Link to lead application if applicable (after save — requires savedApplication.id())
     linkToLeadApplicationIfApplicable(parsed.allLinkedApplications(), savedApplication);
 
-    // 5. Publish domain event (uses pre-serialised request from command)
+    // 7. Publish domain event (uses pre-serialised request from command)
     saveDomainEventService.saveCreateApplicationDomainEvent(
         savedApplication, command.serialisedRequest());
 
@@ -92,7 +102,7 @@ public class CreateApplicationUseCase {
 
     ApplicationDomain leadDomain =
         applicationGateway
-            .findLeadByApplyApplicationId(leadApplyId)
+            .findByLeadApplyApplicationId(leadApplyId)
             .orElseThrow(
                 () ->
                     new ResourceNotFoundException(

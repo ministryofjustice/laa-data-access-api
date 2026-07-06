@@ -1,19 +1,14 @@
 {
-  "baseline": {
-    "suffix": "baseline",
+  "DEFAULT": {
+    "suffix": "pre-staging-default",
     "extraEnv": ""
   },
-"FEATURE_DISABLEJPAAUDITING": {
-    "suffix": "disable-jpa-audit",
-    "extraEnv": "FEATURE_DISABLEJPAAUDITING=true"
+  "DEV_TOKEN_DISABLED": {
+    "suffix": "dev-token-disabled",
+    "extraEnv": "FEATURE_ENABLE_DEV_TOKEN=false,FEATURE_DISABLE_SECURITY=false"
   },
-
-  "FEATURE_EXAMPLE_FEATURE_FLAG": {
-    "suffix": "example-feature-flag",
-    "extraEnv": "FEATURE_EXAMPLE_FEATURE_FLAG=true"
-  },
-  "DECIDE_ENV": {
-    "suffix": "decide-env",
-    "extraEnv": ""
+  "DEV_TOKEN_ENABLED": {
+    "suffix": "dev-token-enabled",
+    "extraEnv": "FEATURE_ENABLE_DEV_TOKEN=true,FEATURE_DISABLE_SECURITY=false"
   }
 }

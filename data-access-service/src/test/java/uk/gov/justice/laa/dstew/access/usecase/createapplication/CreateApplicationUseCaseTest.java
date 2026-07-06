@@ -37,6 +37,7 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCo
 import uk.gov.justice.laa.dstew.access.utils.generator.createapplication.CreateApplicationCommandGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domain.ApplicationDomainGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,6 +46,7 @@ class CreateApplicationUseCaseTest {
   @Mock private ApplicationGateway applicationGateway;
   @Mock private LinkedApplicationGateway linkedApplicationGateway;
   @Mock private DomainEventRepository domainEventRepository;
+  @Mock private JsonSchemaValidator jsonSchemaValidator;
 
   private CreateApplicationUseCase useCase;
 
@@ -66,7 +68,8 @@ class CreateApplicationUseCaseTest {
             linkedApplicationGateway,
             parser,
             new CreateApplicationDomainMapper(),
-            saveDomainEventService);
+            saveDomainEventService,
+            jsonSchemaValidator);
   }
 
   @Test
@@ -153,7 +156,7 @@ class CreateApplicationUseCaseTest {
     ApplicationDomain leadDomain =
         DataGenerator.createDefault(ApplicationDomainGenerator.class, b -> b.id(leadDomainId));
 
-    when(applicationGateway.findLeadByApplyApplicationId(leadApplyId))
+    when(applicationGateway.findByLeadApplyApplicationId(leadApplyId))
         .thenReturn(Optional.of(leadDomain));
 
     useCase.execute(command);
@@ -169,7 +172,7 @@ class CreateApplicationUseCaseTest {
 
     CreateApplicationCommand command = commandWithLinkedApplication(leadApplyId, associatedApplyId);
     stubSaveEnriching(UUID.randomUUID(), null);
-    when(applicationGateway.findLeadByApplyApplicationId(leadApplyId)).thenReturn(Optional.empty());
+    when(applicationGateway.findByLeadApplyApplicationId(leadApplyId)).thenReturn(Optional.empty());
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(command))
@@ -251,7 +254,7 @@ class CreateApplicationUseCaseTest {
 
     ApplicationDomain leadDomain =
         DataGenerator.createDefault(ApplicationDomainGenerator.class, b -> b.id(leadDomainId));
-    when(applicationGateway.findLeadByApplyApplicationId(sharedId))
+    when(applicationGateway.findByLeadApplyApplicationId(sharedId))
         .thenReturn(Optional.of(leadDomain));
 
     useCase.execute(command);

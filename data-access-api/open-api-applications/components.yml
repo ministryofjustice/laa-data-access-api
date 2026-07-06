@@ -16,6 +16,8 @@ components:
       type: string
       enum:
         - INITIAL
+        - APPLY
+        - CCS
       default: INITIAL
 
     OpponentResponse:
@@ -94,6 +96,8 @@ components:
         - laaReference
         - individuals
       properties:
+        applicationType:
+          $ref: "#/components/schemas/ApplicationType"
         status:
           $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
         applicationContent:
