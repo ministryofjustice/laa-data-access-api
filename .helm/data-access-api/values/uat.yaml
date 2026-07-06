@@ -74,5 +74,7 @@ mockOAuth2:
     namespace: laa-data-access-api-uat
 
 featureFlags:
+  # Disable security checks in UAT (use mock OAuth2 for testing)
+  disable_security: "false"
   # Enable dev token feature to allow swagger-caseworker-token in UAT
   enable_dev_token: "true"

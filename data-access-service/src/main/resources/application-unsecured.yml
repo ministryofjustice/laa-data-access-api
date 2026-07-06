@@ -34,7 +34,5 @@ management:
   endpoint.health.show-details: always
   info.env.enabled: true
 
-feature:
-  disable-security: true
-  enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:true}
-
+# Note: This profile is called "unsecured" because it uses mock OAuth2 instead of real Azure Entra ID,
+# but security/JWT validation is still enabled. Use FEATURE_DISABLE_SECURITY env var to fully disable security.
