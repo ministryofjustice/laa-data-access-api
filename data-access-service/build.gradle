@@ -281,11 +281,11 @@ dependencies {
     // Source: https://mvnrepository.com/artifact/com.azure.spring/spring-cloud-azure-starter-active-directory
     // Note: Version 7.0.0 may not be compatible with Spring Boot 4, check for updated version
     implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.2.0'
-    implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
 
     implementation 'io.micrometer:micrometer-registry-prometheus'
-    implementation 'io.micrometer:micrometer-core:1.16.6'
+    implementation 'io.micrometer:micrometer-tracing-bridge-brave'
     implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot:2.2.0'
+    implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
 
     implementation 'com.networknt:json-schema-validator:3.0.0'
     implementation 'org.mapstruct:mapstruct:1.6.3'
@@ -317,4 +317,9 @@ dependencies {
     implementation platform("io.sentry:sentry-bom:$versions.sentry")
     implementation "io.sentry:sentry-logback:$versions.sentry"
     implementation "io.sentry:sentry-spring-boot-4:$versions.sentry"
+
+    // Structured Logging - ECS format
+    implementation 'co.elastic.logging:logback-ecs-encoder:1.6.0'
+    implementation 'ch.qos.logback:logback-classic'
+    implementation 'ch.qos.logback:logback-core'
 }
