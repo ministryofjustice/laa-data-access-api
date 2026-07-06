@@ -25,7 +25,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
@@ -38,9 +37,7 @@ import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
-import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.service.applications.GetAllApplicationsService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetAllNotesForApplicationService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetCertificateService;
 import uk.gov.justice.laa.dstew.access.service.applications.MakeDecisionService;
@@ -53,8 +50,8 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.AssignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.createnote.CreateNoteUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.GetAllApplicationsUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.GetApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
 /** Controller for handling /api/v0/applications requests. */
 @RequiredArgsConstructor
@@ -67,7 +64,9 @@ public class ApplicationController implements ApplicationApi {
   private final UpdateApplicationService updateApplicationService;
   private final GetApplicationUseCase getApplicationUseCase;
   private final GetApplicationResponseMapper getApplicationResponseMapper;
-  private final GetAllApplicationsService applicationSummaryService;
+  private final GetAllApplicationsUseCase getAllApplicationsUseCase;
+  private final GetAllApplicationsCommandMapper getAllApplicationsCommandMapper;
+  private final GetAllApplicationsResponseMapper getAllApplicationsResponseMapper;
   private final GetCertificateService certificateService;
   private final AssignCaseworkerUseCase assignCaseworkerUseCase;
   private final AssignCaseworkerCommandMapper assignCaseworkerCommandMapper;
@@ -126,33 +125,21 @@ public class ApplicationController implements ApplicationApi {
       Integer page,
       Integer pageSize) {
 
-    PaginatedResult<ApplicationSummary> result =
-        applicationSummaryService.getAllApplications(
-            status,
-            laaReference,
-            clientFirstName,
-            clientLastName,
-            clientDateOfBirth,
-            userId,
-            isAutoGranted,
-            matterType,
-            sortBy,
-            orderBy,
-            page,
-            pageSize);
-
-    List<ApplicationSummary> applications = result.page().stream().toList();
-    PagingResponse pagingResponse = new PagingResponse();
-    pagingResponse.setPage(result.requestedPage());
-    pagingResponse.pageSize(result.requestedPageSize());
-    pagingResponse.totalRecords((int) result.page().getTotalElements());
-    pagingResponse.itemsReturned(applications.size());
-
-    ApplicationSummaryResponse response = new ApplicationSummaryResponse();
-    response.setApplications(applications);
-    response.setPaging(pagingResponse);
-
-    return ResponseEntity.ok(response);
+    return getAllApplicationsResponseMapper.toGetAllApplicationsResponse(
+        getAllApplicationsUseCase.execute(
+            getAllApplicationsCommandMapper.toGetAllApplicationsCommand(
+                status,
+                laaReference,
+                clientFirstName,
+                clientLastName,
+                clientDateOfBirth,
+                userId,
+                isAutoGranted,
+                matterType,
+                sortBy,
+                orderBy,
+                page,
+                pageSize)));
   }
 
   @Override
