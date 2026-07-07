@@ -24,9 +24,6 @@ spring:
           jwk-set-uri: ${ENTRA_JWK_SET_URI}
           audience: ${ENTRA_AUD}
 
-feature:
-  enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:true}
-
 logging:
   level:
     com.azure.spring: INFO

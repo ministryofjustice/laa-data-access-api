@@ -21,6 +21,3 @@ spring:
           jwk-set-uri: http://localhost:9999/entra/jwks
           audience: laa-data-access-api
 
-feature:
-  enable-dev-token: true
-

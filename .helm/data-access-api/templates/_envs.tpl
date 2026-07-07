@@ -68,24 +68,6 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
   Define OAuth2/Entra ID environment variables for authentication
 */}}
 {{- define "oauth2Config" }}
-{{- if and .Values.mockOAuth2 .Values.mockOAuth2.sharedInstance .Values.mockOAuth2.sharedInstance.enabled }}
-{{/* Use shared mock-oauth2 instance across all deployments */}}
-- name: ENTRA_ISSUER_URI
-  value: "http://{{ .Values.mockOAuth2.sharedInstance.serviceName }}.{{ .Values.mockOAuth2.sharedInstance.namespace }}.svc.cluster.local:9999/entra"
-- name: ENTRA_JWK_SET_URI
-  value: "http://{{ .Values.mockOAuth2.sharedInstance.serviceName }}.{{ .Values.mockOAuth2.sharedInstance.namespace }}.svc.cluster.local:9999/entra/jwks"
-- name: ENTRA_AUD
-  value: "laa-data-access-api"
-{{- else if and .Values.mockOAuth2 .Values.mockOAuth2.enabled }}
-{{/* Use per-deployment mock-oauth2 instance (legacy/preview mode) */}}
-- name: ENTRA_ISSUER_URI
-  value: "http://{{ include "data-access-api.fullname" . }}-mock-oauth2:9999/entra"
-- name: ENTRA_JWK_SET_URI
-  value: "http://{{ include "data-access-api.fullname" . }}-mock-oauth2:9999/entra/jwks"
-- name: ENTRA_AUD
-  value: "laa-data-access-api"
-{{- else }}
-{{/* Use real Azure Entra ID */}}
 - name: ENTRA_ISSUER_URI
   valueFrom:
     secretKeyRef:
@@ -101,7 +83,6 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
     secretKeyRef:
       name: laa-data-access-api-secrets
       key: ENTRA_AUD
-{{- end }}
 - name: AUTH_CLIENT_ID
   valueFrom:
     secretKeyRef:
@@ -128,18 +109,11 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
   Define feature environment variables for flags
 */}}
 {{- define "featureConfig" }}
-{{- if and .Values.featureFlags (hasKey .Values.featureFlags "enable_dev_token") }}
-{{/* Override from values.yaml if explicitly set */}}
-- name: FEATURE_ENABLE_DEV_TOKEN
-  value: {{ .Values.featureFlags.enable_dev_token | quote }}
-{{- else }}
-{{/* Default to secret value */}}
 - name: FEATURE_ENABLE_DEV_TOKEN
   valueFrom:
     secretKeyRef:
       name: laa-data-access-api-secrets
       key: FEATURE_ENABLE_DEV_TOKEN
-{{- end }}
 - name: FEATURE_DISABLE_SECURITY
   valueFrom:
     secretKeyRef:
@@ -147,10 +121,8 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
       key: FEATURE_DISABLE_SECURITY
 {{- if .Values.featureFlags }}
 {{- range $key, $value := .Values.featureFlags }}
-{{- if ne $key "enable_dev_token" }}
 - name: FEATURE_{{ upper $key }}
   value: {{ $value | quote }}
-{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
