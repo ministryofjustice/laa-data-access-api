@@ -65,7 +65,7 @@ public class ApplicationController implements ApplicationApi {
   private final GetApplicationUseCase getApplicationUseCase;
   private final GetApplicationResponseMapper getApplicationResponseMapper;
   private final GetAllApplicationsUseCase getAllApplicationsUseCase;
-  private final GetAllApplicationsCommandMapper getAllApplicationsCommandMapper;
+  private final GetAllApplicationsQueryMapper getAllApplicationsQueryMapper;
   private final GetAllApplicationsResponseMapper getAllApplicationsResponseMapper;
   private final GetCertificateService certificateService;
   private final AssignCaseworkerUseCase assignCaseworkerUseCase;
@@ -127,7 +127,7 @@ public class ApplicationController implements ApplicationApi {
 
     return getAllApplicationsResponseMapper.toGetAllApplicationsResponse(
         getAllApplicationsUseCase.execute(
-            getAllApplicationsCommandMapper.toGetAllApplicationsCommand(
+            getAllApplicationsQueryMapper.toGetAllApplicationsQuery(
                 status,
                 laaReference,
                 clientFirstName,

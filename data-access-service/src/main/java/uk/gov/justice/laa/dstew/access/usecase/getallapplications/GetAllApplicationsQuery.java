@@ -9,7 +9,7 @@ import lombok.Builder;
  * enum params are stored as nullable Strings (enum names) — no API model imports.
  */
 @Builder(toBuilder = true)
-public record GetAllApplicationsCommand(
+public record GetAllApplicationsQuery(
     String status,
     String laaReference,
     String clientFirstName,

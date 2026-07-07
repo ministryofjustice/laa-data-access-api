@@ -2,24 +2,24 @@ package uk.gov.justice.laa.dstew.access.utils.generator.getallapplications;
 
 import java.time.LocalDate;
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.usecase.getallapplications.GetAllApplicationsCommand;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.GetAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
-/** Generates {@link GetAllApplicationsCommand} instances for use in tests. */
-public class GetAllApplicationsCommandGenerator
+/** Generates {@link GetAllApplicationsQuery} instances for use in tests. */
+public class GetAllApplicationsQueryGenerator
     extends BaseGenerator<
-        GetAllApplicationsCommand, GetAllApplicationsCommand.GetAllApplicationsCommandBuilder> {
+        GetAllApplicationsQuery, GetAllApplicationsQuery.GetAllApplicationsQueryBuilder> {
 
   /** Constructs the generator. */
-  public GetAllApplicationsCommandGenerator() {
+  public GetAllApplicationsQueryGenerator() {
     super(
-        GetAllApplicationsCommand::toBuilder,
-        GetAllApplicationsCommand.GetAllApplicationsCommandBuilder::build);
+        GetAllApplicationsQuery::toBuilder,
+        GetAllApplicationsQuery.GetAllApplicationsQueryBuilder::build);
   }
 
   @Override
-  public GetAllApplicationsCommand createDefault() {
-    return GetAllApplicationsCommand.builder()
+  public GetAllApplicationsQuery createDefault() {
+    return GetAllApplicationsQuery.builder()
         .status("APPLICATION_SUBMITTED")
         .laaReference("REF7327")
         .clientFirstName("Jane")

@@ -6,13 +6,13 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
-import uk.gov.justice.laa.dstew.access.usecase.getallapplications.GetAllApplicationsCommand;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.GetAllApplicationsQuery;
 
-/** Maps controller query parameters to a {@link GetAllApplicationsCommand}. */
-public class GetAllApplicationsCommandMapper {
+/** Maps controller query parameters to a {@link GetAllApplicationsQuery}. */
+public class GetAllApplicationsQueryMapper {
 
   /**
-   * Maps the parameters to a {@link GetAllApplicationsCommand}.
+   * Maps the parameters to a {@link GetAllApplicationsQuery}.
    *
    * @param status optional status filter
    * @param laaReference optional LAA reference filter
@@ -28,7 +28,7 @@ public class GetAllApplicationsCommandMapper {
    * @param pageSize number of results per page
    * @return the command record
    */
-  public GetAllApplicationsCommand toGetAllApplicationsCommand(
+  public GetAllApplicationsQuery toGetAllApplicationsQuery(
       ApplicationStatus status,
       String laaReference,
       String clientFirstName,
@@ -41,7 +41,7 @@ public class GetAllApplicationsCommandMapper {
       ApplicationOrderBy orderBy,
       Integer page,
       Integer pageSize) {
-    return GetAllApplicationsCommand.builder()
+    return GetAllApplicationsQuery.builder()
         .status(status == null ? null : status.name())
         .laaReference(laaReference)
         .clientFirstName(clientFirstName)

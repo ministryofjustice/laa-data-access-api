@@ -9,19 +9,19 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
-import uk.gov.justice.laa.dstew.access.usecase.getallapplications.GetAllApplicationsCommand;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.GetAllApplicationsQuery;
 
-class GetAllApplicationsCommandMapperTest {
+class GetAllApplicationsQueryMapperTest {
 
-  private final GetAllApplicationsCommandMapper mapper = new GetAllApplicationsCommandMapper();
+  private final GetAllApplicationsQueryMapper mapper = new GetAllApplicationsQueryMapper();
 
   @Test
-  void givenFullyPopulatedParams_whenToGetAllApplicationsCommand_thenAllFieldsMapped() {
+  void givenFullyPopulatedParams_whenToGetAllApplicationsQuery_thenAllFieldsMapped() {
     UUID userId = UUID.randomUUID();
     LocalDate dob = LocalDate.of(1990, 1, 1);
 
-    GetAllApplicationsCommand command =
-        mapper.toGetAllApplicationsCommand(
+    GetAllApplicationsQuery command =
+        mapper.toGetAllApplicationsQuery(
             ApplicationStatus.APPLICATION_SUBMITTED,
             "REF123",
             "Jane",
@@ -35,8 +35,8 @@ class GetAllApplicationsCommandMapperTest {
             1,
             10);
 
-    GetAllApplicationsCommand expected =
-        GetAllApplicationsCommand.builder()
+    GetAllApplicationsQuery expected =
+        GetAllApplicationsQuery.builder()
             .status("APPLICATION_SUBMITTED")
             .laaReference("REF123")
             .clientFirstName("Jane")
@@ -55,9 +55,9 @@ class GetAllApplicationsCommandMapperTest {
   }
 
   @Test
-  void givenNullStatus_whenToGetAllApplicationsCommand_thenStatusIsNull() {
-    GetAllApplicationsCommand command =
-        mapper.toGetAllApplicationsCommand(
+  void givenNullStatus_whenToGetAllApplicationsQuery_thenStatusIsNull() {
+    GetAllApplicationsQuery command =
+        mapper.toGetAllApplicationsQuery(
             null,
             "REF",
             "A",
@@ -74,9 +74,9 @@ class GetAllApplicationsCommandMapperTest {
   }
 
   @Test
-  void givenNullLaaReference_whenToGetAllApplicationsCommand_thenLaaReferenceIsNull() {
-    GetAllApplicationsCommand command =
-        mapper.toGetAllApplicationsCommand(
+  void givenNullLaaReference_whenToGetAllApplicationsQuery_thenLaaReferenceIsNull() {
+    GetAllApplicationsQuery command =
+        mapper.toGetAllApplicationsQuery(
             ApplicationStatus.APPLICATION_SUBMITTED,
             null,
             "A",
@@ -93,9 +93,9 @@ class GetAllApplicationsCommandMapperTest {
   }
 
   @Test
-  void givenNullClientFirstName_whenToGetAllApplicationsCommand_thenClientFirstNameIsNull() {
-    GetAllApplicationsCommand command =
-        mapper.toGetAllApplicationsCommand(
+  void givenNullClientFirstName_whenToGetAllApplicationsQuery_thenClientFirstNameIsNull() {
+    GetAllApplicationsQuery command =
+        mapper.toGetAllApplicationsQuery(
             ApplicationStatus.APPLICATION_SUBMITTED,
             "REF",
             null,
@@ -112,9 +112,9 @@ class GetAllApplicationsCommandMapperTest {
   }
 
   @Test
-  void givenNullClientLastName_whenToGetAllApplicationsCommand_thenClientLastNameIsNull() {
-    GetAllApplicationsCommand command =
-        mapper.toGetAllApplicationsCommand(
+  void givenNullClientLastName_whenToGetAllApplicationsQuery_thenClientLastNameIsNull() {
+    GetAllApplicationsQuery command =
+        mapper.toGetAllApplicationsQuery(
             ApplicationStatus.APPLICATION_SUBMITTED,
             "REF",
             "A",
@@ -131,9 +131,9 @@ class GetAllApplicationsCommandMapperTest {
   }
 
   @Test
-  void givenNullClientDateOfBirth_whenToGetAllApplicationsCommand_thenClientDateOfBirthIsNull() {
-    GetAllApplicationsCommand command =
-        mapper.toGetAllApplicationsCommand(
+  void givenNullClientDateOfBirth_whenToGetAllApplicationsQuery_thenClientDateOfBirthIsNull() {
+    GetAllApplicationsQuery command =
+        mapper.toGetAllApplicationsQuery(
             ApplicationStatus.APPLICATION_SUBMITTED,
             "REF",
             "A",
@@ -150,9 +150,9 @@ class GetAllApplicationsCommandMapperTest {
   }
 
   @Test
-  void givenNullUserId_whenToGetAllApplicationsCommand_thenUserIdIsNull() {
-    GetAllApplicationsCommand command =
-        mapper.toGetAllApplicationsCommand(
+  void givenNullUserId_whenToGetAllApplicationsQuery_thenUserIdIsNull() {
+    GetAllApplicationsQuery command =
+        mapper.toGetAllApplicationsQuery(
             ApplicationStatus.APPLICATION_SUBMITTED,
             "REF",
             "A",
@@ -169,9 +169,9 @@ class GetAllApplicationsCommandMapperTest {
   }
 
   @Test
-  void givenNullIsAutoGranted_whenToGetAllApplicationsCommand_thenIsAutoGrantedIsNull() {
-    GetAllApplicationsCommand command =
-        mapper.toGetAllApplicationsCommand(
+  void givenNullIsAutoGranted_whenToGetAllApplicationsQuery_thenIsAutoGrantedIsNull() {
+    GetAllApplicationsQuery command =
+        mapper.toGetAllApplicationsQuery(
             ApplicationStatus.APPLICATION_SUBMITTED,
             "REF",
             "A",
@@ -188,9 +188,9 @@ class GetAllApplicationsCommandMapperTest {
   }
 
   @Test
-  void givenNullMatterType_whenToGetAllApplicationsCommand_thenMatterTypeIsNull() {
-    GetAllApplicationsCommand command =
-        mapper.toGetAllApplicationsCommand(
+  void givenNullMatterType_whenToGetAllApplicationsQuery_thenMatterTypeIsNull() {
+    GetAllApplicationsQuery command =
+        mapper.toGetAllApplicationsQuery(
             ApplicationStatus.APPLICATION_SUBMITTED,
             "REF",
             "A",
@@ -207,9 +207,9 @@ class GetAllApplicationsCommandMapperTest {
   }
 
   @Test
-  void givenNullSortBy_whenToGetAllApplicationsCommand_thenSortByIsNull() {
-    GetAllApplicationsCommand command =
-        mapper.toGetAllApplicationsCommand(
+  void givenNullSortBy_whenToGetAllApplicationsQuery_thenSortByIsNull() {
+    GetAllApplicationsQuery command =
+        mapper.toGetAllApplicationsQuery(
             ApplicationStatus.APPLICATION_SUBMITTED,
             "REF",
             "A",
@@ -226,9 +226,9 @@ class GetAllApplicationsCommandMapperTest {
   }
 
   @Test
-  void givenNullOrderBy_whenToGetAllApplicationsCommand_thenOrderByIsNull() {
-    GetAllApplicationsCommand command =
-        mapper.toGetAllApplicationsCommand(
+  void givenNullOrderBy_whenToGetAllApplicationsQuery_thenOrderByIsNull() {
+    GetAllApplicationsQuery command =
+        mapper.toGetAllApplicationsQuery(
             ApplicationStatus.APPLICATION_SUBMITTED,
             "REF",
             "A",
@@ -245,9 +245,9 @@ class GetAllApplicationsCommandMapperTest {
   }
 
   @Test
-  void givenNullPage_whenToGetAllApplicationsCommand_thenPageIsNull() {
-    GetAllApplicationsCommand command =
-        mapper.toGetAllApplicationsCommand(
+  void givenNullPage_whenToGetAllApplicationsQuery_thenPageIsNull() {
+    GetAllApplicationsQuery command =
+        mapper.toGetAllApplicationsQuery(
             ApplicationStatus.APPLICATION_SUBMITTED,
             "REF",
             "A",
@@ -264,9 +264,9 @@ class GetAllApplicationsCommandMapperTest {
   }
 
   @Test
-  void givenNullPageSize_whenToGetAllApplicationsCommand_thenPageSizeIsNull() {
-    GetAllApplicationsCommand command =
-        mapper.toGetAllApplicationsCommand(
+  void givenNullPageSize_whenToGetAllApplicationsQuery_thenPageSizeIsNull() {
+    GetAllApplicationsQuery command =
+        mapper.toGetAllApplicationsQuery(
             ApplicationStatus.APPLICATION_SUBMITTED,
             "REF",
             "A",

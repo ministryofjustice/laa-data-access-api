@@ -3,7 +3,7 @@ package uk.gov.justice.laa.dstew.access.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import uk.gov.justice.laa.dstew.access.controller.application.GetAllApplicationsCommandMapper;
+import uk.gov.justice.laa.dstew.access.controller.application.GetAllApplicationsQueryMapper;
 import uk.gov.justice.laa.dstew.access.controller.application.GetAllApplicationsResponseMapper;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallapplications.GetAllApplicationsApplicationJpaGateway;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallapplications.GetAllApplicationsCaseworkerJpaGateway;
@@ -53,10 +53,10 @@ public class GetAllApplicationsConfig {
     return new GetAllApplicationsUseCase(appGateway, caseworkerGateway);
   }
 
-  /** Creates the {@link GetAllApplicationsCommandMapper} bean. */
+  /** Creates the {@link GetAllApplicationsQueryMapper} bean. */
   @Bean
-  public GetAllApplicationsCommandMapper getAllApplicationsCommandMapper() {
-    return new GetAllApplicationsCommandMapper();
+  public GetAllApplicationsQueryMapper getAllApplicationsQueryMapper() {
+    return new GetAllApplicationsQueryMapper();
   }
 
   /** Creates the {@link GetAllApplicationsResponseMapper} bean. */

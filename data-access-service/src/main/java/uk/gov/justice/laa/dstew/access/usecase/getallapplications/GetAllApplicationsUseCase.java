@@ -39,7 +39,7 @@ public class GetAllApplicationsUseCase {
    * @return the paged application summaries and pagination metadata
    */
   @AllowApiCaseworker
-  public GetAllApplicationsResult execute(GetAllApplicationsCommand command) {
+  public GetAllApplicationsResult execute(GetAllApplicationsQuery command) {
     int validatedPage = PaginationHelper.validatePage(command.page());
     int validatedPageSize = PaginationHelper.validatePageSize(command.pageSize());
 

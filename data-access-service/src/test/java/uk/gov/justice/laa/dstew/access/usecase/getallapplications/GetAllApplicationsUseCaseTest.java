@@ -25,7 +25,7 @@ import uk.gov.justice.laa.dstew.access.usecase.getallapplications.infrastructure
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domain.ApplicationSummaryDomainGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domain.LinkedApplicationSummaryDomainGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.getallapplications.GetAllApplicationsCommandGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.getallapplications.GetAllApplicationsQueryGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,31 +42,31 @@ class GetAllApplicationsUseCaseTest {
   }
 
   @Test
-  void givenFullyPopulatedCommand_whenExecuted_thenReturnsCorrectResult() {
-    GetAllApplicationsCommand command =
-        DataGenerator.createDefault(GetAllApplicationsCommandGenerator.class);
+  void givenFullyPopulatedQuery_whenExecuted_thenReturnsCorrectResult() {
+    GetAllApplicationsQuery query =
+        DataGenerator.createDefault(GetAllApplicationsQueryGenerator.class);
     ApplicationSummaryDomain domain =
         DataGenerator.createDefault(ApplicationSummaryDomainGenerator.class);
     Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of(domain));
 
-    when(caseworkerGateway.caseworkerExists(command.userId())).thenReturn(true);
+    when(caseworkerGateway.caseworkerExists(query.userId())).thenReturn(true);
     when(applicationGateway.findAllApplications(
-            eq(command.status()),
-            eq(command.laaReference()),
-            eq(command.clientFirstName()),
-            eq(command.clientLastName()),
-            eq(command.clientDateOfBirth()),
-            eq(command.userId()),
-            eq(command.matterType()),
-            eq(command.isAutoGranted()),
-            eq(command.sortBy()),
-            eq(command.orderBy()),
-            eq(command.page()),
-            eq(command.pageSize())))
+            eq(query.status()),
+            eq(query.laaReference()),
+            eq(query.clientFirstName()),
+            eq(query.clientLastName()),
+            eq(query.clientDateOfBirth()),
+            eq(query.userId()),
+            eq(query.matterType()),
+            eq(query.isAutoGranted()),
+            eq(query.sortBy()),
+            eq(query.orderBy()),
+            eq(query.page()),
+            eq(query.pageSize())))
         .thenReturn(page);
     when(applicationGateway.findLinkedApplicationsForPageIds(anyList())).thenReturn(List.of());
 
-    GetAllApplicationsResult result = useCase.execute(command);
+    GetAllApplicationsResult result = useCase.execute(query);
 
     assertThat(result.requestedPage()).isEqualTo(1);
     assertThat(result.requestedPageSize()).isEqualTo(10);
@@ -78,14 +78,14 @@ class GetAllApplicationsUseCaseTest {
 
   @Test
   void givenNullUserId_whenExecuted_thenSkipsCaseworkerCheck() {
-    GetAllApplicationsCommand command =
-        DataGenerator.createDefault(GetAllApplicationsCommandGenerator.class, b -> b.userId(null));
+    GetAllApplicationsQuery query =
+        DataGenerator.createDefault(GetAllApplicationsQueryGenerator.class, b -> b.userId(null));
     Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of());
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(page);
 
-    useCase.execute(command);
+    useCase.execute(query);
 
     verify(caseworkerGateway, never()).caseworkerExists(any());
   }
@@ -93,9 +93,8 @@ class GetAllApplicationsUseCaseTest {
   @Test
   void givenUserIdAndCaseworkerFound_whenExecuted_thenReturnsResult() {
     UUID userId = UUID.randomUUID();
-    GetAllApplicationsCommand command =
-        DataGenerator.createDefault(
-            GetAllApplicationsCommandGenerator.class, b -> b.userId(userId));
+    GetAllApplicationsQuery query =
+        DataGenerator.createDefault(GetAllApplicationsQueryGenerator.class, b -> b.userId(userId));
     Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of());
 
     when(caseworkerGateway.caseworkerExists(userId)).thenReturn(true);
@@ -103,7 +102,7 @@ class GetAllApplicationsUseCaseTest {
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(page);
 
-    GetAllApplicationsResult result = useCase.execute(command);
+    GetAllApplicationsResult result = useCase.execute(query);
 
     assertThat(result).isNotNull();
     verify(caseworkerGateway).caseworkerExists(userId);
@@ -112,14 +111,13 @@ class GetAllApplicationsUseCaseTest {
   @Test
   void givenUserIdAndCaseworkerNotFound_whenExecuted_thenThrowsValidationException() {
     UUID userId = UUID.randomUUID();
-    GetAllApplicationsCommand command =
-        DataGenerator.createDefault(
-            GetAllApplicationsCommandGenerator.class, b -> b.userId(userId));
+    GetAllApplicationsQuery query =
+        DataGenerator.createDefault(GetAllApplicationsQueryGenerator.class, b -> b.userId(userId));
 
     when(caseworkerGateway.caseworkerExists(userId)).thenReturn(false);
 
     assertThatExceptionOfType(ValidationException.class)
-        .isThrownBy(() -> useCase.execute(command))
+        .isThrownBy(() -> useCase.execute(query))
         .satisfies(
             e -> assertThat(e.errors()).anyMatch(err -> err.contains("Caseworker not found")));
 
@@ -130,15 +128,15 @@ class GetAllApplicationsUseCaseTest {
 
   @Test
   void givenEmptyPage_whenExecuted_thenLinkedAppsGatewayNeverCalled() {
-    GetAllApplicationsCommand command =
-        DataGenerator.createDefault(GetAllApplicationsCommandGenerator.class, b -> b.userId(null));
+    GetAllApplicationsQuery query =
+        DataGenerator.createDefault(GetAllApplicationsQueryGenerator.class, b -> b.userId(null));
     Page<ApplicationSummaryDomain> emptyPage = new PageImpl<>(List.of());
 
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(emptyPage);
 
-    GetAllApplicationsResult result = useCase.execute(command);
+    GetAllApplicationsResult result = useCase.execute(query);
 
     assertThat(result.applications().isEmpty()).isTrue();
     verify(applicationGateway, never()).findLinkedApplicationsForPageIds(anyList());
@@ -169,7 +167,7 @@ class GetAllApplicationsUseCaseTest {
     GetAllApplicationsResult result =
         useCase.execute(
             DataGenerator.createDefault(
-                GetAllApplicationsCommandGenerator.class, b -> b.userId(null)));
+                GetAllApplicationsQueryGenerator.class, b -> b.userId(null)));
 
     List<LinkedApplicationSummaryDomain> linked =
         result.applications().getContent().get(0).linkedApplications();
@@ -206,7 +204,7 @@ class GetAllApplicationsUseCaseTest {
     GetAllApplicationsResult result =
         useCase.execute(
             DataGenerator.createDefault(
-                GetAllApplicationsCommandGenerator.class, b -> b.userId(null)));
+                GetAllApplicationsQueryGenerator.class, b -> b.userId(null)));
 
     List<LinkedApplicationSummaryDomain> linked =
         result.applications().getContent().get(0).linkedApplications();
@@ -240,7 +238,7 @@ class GetAllApplicationsUseCaseTest {
     GetAllApplicationsResult result =
         useCase.execute(
             DataGenerator.createDefault(
-                GetAllApplicationsCommandGenerator.class, b -> b.userId(null)));
+                GetAllApplicationsQueryGenerator.class, b -> b.userId(null)));
 
     List<ApplicationSummaryDomain> content = result.applications().getContent();
     ApplicationSummaryDomain resultA =
@@ -254,12 +252,12 @@ class GetAllApplicationsUseCaseTest {
 
   @Test
   void givenInvalidPage_whenExecuted_thenThrowsIllegalArgumentException() {
-    GetAllApplicationsCommand command =
+    GetAllApplicationsQuery query =
         DataGenerator.createDefault(
-            GetAllApplicationsCommandGenerator.class, b -> b.userId(null).page(0));
+            GetAllApplicationsQueryGenerator.class, b -> b.userId(null).page(0));
 
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> useCase.execute(command))
+        .isThrownBy(() -> useCase.execute(query))
         .withMessageContaining("page must be greater than or equal to 1");
 
     verify(applicationGateway, never())
@@ -269,12 +267,12 @@ class GetAllApplicationsUseCaseTest {
 
   @Test
   void givenInvalidPageSize_whenExecuted_thenThrowsIllegalArgumentException() {
-    GetAllApplicationsCommand command =
+    GetAllApplicationsQuery query =
         DataGenerator.createDefault(
-            GetAllApplicationsCommandGenerator.class, b -> b.userId(null).pageSize(0));
+            GetAllApplicationsQueryGenerator.class, b -> b.userId(null).pageSize(0));
 
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> useCase.execute(command))
+        .isThrownBy(() -> useCase.execute(query))
         .withMessageContaining("pageSize must be greater than or equal to 1");
 
     verify(applicationGateway, never())
@@ -284,12 +282,12 @@ class GetAllApplicationsUseCaseTest {
 
   @Test
   void givenPageSizeExceedingMax_whenExecuted_thenThrowsIllegalArgumentException() {
-    GetAllApplicationsCommand command =
+    GetAllApplicationsQuery query =
         DataGenerator.createDefault(
-            GetAllApplicationsCommandGenerator.class, b -> b.userId(null).pageSize(101));
+            GetAllApplicationsQueryGenerator.class, b -> b.userId(null).pageSize(101));
 
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> useCase.execute(command))
+        .isThrownBy(() -> useCase.execute(query))
         .withMessageContaining("pageSize cannot be more than 100");
 
     verify(applicationGateway, never())
@@ -299,33 +297,32 @@ class GetAllApplicationsUseCaseTest {
 
   @Test
   void givenMaximumPageSize_whenExecuted_thenReturnsResult() {
-    GetAllApplicationsCommand command =
+    GetAllApplicationsQuery query =
         DataGenerator.createDefault(
-            GetAllApplicationsCommandGenerator.class, b -> b.userId(null).pageSize(100));
+            GetAllApplicationsQueryGenerator.class, b -> b.userId(null).pageSize(100));
     Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of());
 
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(page);
 
-    GetAllApplicationsResult result = useCase.execute(command);
+    GetAllApplicationsResult result = useCase.execute(query);
 
     assertThat(result.requestedPageSize()).isEqualTo(100);
   }
 
   @Test
   void givenDefaultPagination_whenExecuted_thenValidatedDefaultsAreInResult() {
-    GetAllApplicationsCommand command =
+    GetAllApplicationsQuery query =
         DataGenerator.createDefault(
-            GetAllApplicationsCommandGenerator.class,
-            b -> b.userId(null).page(null).pageSize(null));
+            GetAllApplicationsQueryGenerator.class, b -> b.userId(null).page(null).pageSize(null));
     Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of());
 
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(page);
 
-    GetAllApplicationsResult result = useCase.execute(command);
+    GetAllApplicationsResult result = useCase.execute(query);
 
     assertThat(result.requestedPage()).isEqualTo(1);
     assertThat(result.requestedPageSize()).isEqualTo(20);
