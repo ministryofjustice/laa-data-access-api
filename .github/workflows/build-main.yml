@@ -118,7 +118,7 @@ jobs:
 
   deploy-shared-mock-oauth2:
     runs-on: ubuntu-latest
-    needs: [ deploy-uat ]
+    needs: [ release ]
     environment: uat
     permissions:
       id-token: write

@@ -66,10 +66,13 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
 
 {{/*
   Define OAuth2/Entra ID environment variables for authentication
+
+  UAT/Testing: Always uses shared mock-oauth2 (NO real Entra ID)
+  Production: Uses real Azure Entra ID from secrets
 */}}
 {{- define "oauth2Config" }}
 {{- if and .Values.mockOAuth2 .Values.mockOAuth2.sharedInstance .Values.mockOAuth2.sharedInstance.enabled }}
-{{/* Use shared mock-oauth2 instance for testing */}}
+{{/* UAT/Testing: Use shared mock-oauth2 instance - NO Entra ID */}}
 - name: ENTRA_ISSUER_URI
   value: "http://{{ .Values.mockOAuth2.sharedInstance.serviceName }}.{{ .Values.mockOAuth2.sharedInstance.namespace }}.svc.cluster.local:9999/entra"
 - name: ENTRA_JWK_SET_URI
@@ -77,7 +80,7 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
 - name: ENTRA_AUD
   value: "laa-data-access-api"
 {{- else }}
-{{/* Use secrets - real Azure Entra ID or manually configured */}}
+{{/* Production: Use real Azure Entra ID from secrets */}}
 - name: ENTRA_ISSUER_URI
   valueFrom:
     secretKeyRef:
@@ -123,7 +126,7 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
 {{- if and .Values.featureFlags (hasKey .Values.featureFlags "enable_dev_token") }}
 {{/* Use value from values.yaml if explicitly set */}}
 - name: FEATURE_ENABLE_DEV_TOKEN
-  value: {{ .Values.featureFlags.enable_dev_token | quote }}
+  value: {{ .Values.featureFlags.enable_dev_token }}
 {{- else }}
 {{/* Default to secret value */}}
 - name: FEATURE_ENABLE_DEV_TOKEN
@@ -135,7 +138,7 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
 {{- if and .Values.featureFlags (hasKey .Values.featureFlags "disable_security") }}
 {{/* Use value from values.yaml if explicitly set */}}
 - name: FEATURE_DISABLE_SECURITY
-  value: {{ .Values.featureFlags.disable_security | quote }}
+  value: {{ .Values.featureFlags.disable_security }}
 {{- else }}
 {{/* Default to secret value */}}
 - name: FEATURE_DISABLE_SECURITY
@@ -148,7 +151,7 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
 {{- range $key, $value := .Values.featureFlags }}
 {{- if and (ne $key "enable_dev_token") (ne $key "disable_security") }}
 - name: FEATURE_{{ upper $key }}
-  value: {{ $value | quote }}
+  value: {{ $value }}
 {{- end }}
 {{- end }}
 {{- end }}
