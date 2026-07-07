@@ -69,32 +69,13 @@ public class MakeDecisionUseCase {
 
     Set<ProceedingDomain> mergedProceedings =
         application.proceedings().stream()
-            .map(
-                existing -> {
-                  MakeDecisionProceedingCommand procCmd = commandByProceedingId.get(existing.id());
-                  if (procCmd == null) {
-                    return existing;
-                  }
-                  return existing.toBuilder()
-                      .meritsDecision(
-                          MeritsDecisionDomain.builder()
-                              .decision(procCmd.decision())
-                              .reason(procCmd.reason())
-                              .justification(procCmd.justification())
-                              .modifiedAt(Instant.now())
-                              .build())
-                      .build();
-                })
+            .map(existing -> handleProceedingDomain(existing, commandByProceedingId))
             .collect(Collectors.toCollection(LinkedHashSet::new));
 
     // Build updated application domain
     ApplicationDomain updatedApplication =
         application.toBuilder()
-            .decision(
-                DecisionDomain.builder()
-                    .overallDecision(command.overallDecision())
-                    .modifiedAt(Instant.now())
-                    .build())
+            .decision(DecisionDomain.builder().overallDecision(command.overallDecision()).build())
             .isAutoGranted(command.autoGranted())
             .proceedings(mergedProceedings)
             .build();
@@ -116,6 +97,25 @@ public class MakeDecisionUseCase {
         application.caseworkerId(),
         command.overallDecision(),
         command.eventDescription());
+  }
+
+  private ProceedingDomain handleProceedingDomain(
+      ProceedingDomain existing, Map<UUID, MakeDecisionProceedingCommand> commandByProceedingId) {
+    MakeDecisionProceedingCommand procCmd = commandByProceedingId.get(existing.id());
+
+    if (procCmd == null) {
+      return existing;
+    }
+
+    return existing.toBuilder()
+        .meritsDecision(
+            MeritsDecisionDomain.builder()
+                .decision(procCmd.decision())
+                .reason(procCmd.reason())
+                .justification(procCmd.justification())
+                .modifiedAt(Instant.now())
+                .build())
+        .build();
   }
 
   private void handleGrantedDecision(MakeDecisionCommand command) {
@@ -143,17 +143,16 @@ public class MakeDecisionUseCase {
           List.of(
               "The Make Decision request must contain a certificate when overallDecision is GRANTED"));
     }
-    command
-        .proceedings()
-        .forEach(
-            proceeding -> {
-              if (proceeding.justification() == null || proceeding.justification().isEmpty()) {
-                throw new ValidationException(
-                    List.of(
-                        "The Make Decision request must contain a refusal justification for proceeding with id: "
-                            + proceeding.proceedingId()));
-              }
-            });
+    command.proceedings().forEach(this::validateProceedingCommand);
+  }
+
+  private void validateProceedingCommand(MakeDecisionProceedingCommand proceedingCommand) {
+    if (proceedingCommand.justification() == null || proceedingCommand.justification().isEmpty()) {
+      throw new ValidationException(
+          List.of(
+              "The Make Decision request must contain a refusal justification for proceeding with id: "
+                  + proceedingCommand.proceedingId()));
+    }
   }
 
   private void validateProceedings(ApplicationDomain application, MakeDecisionCommand command) {

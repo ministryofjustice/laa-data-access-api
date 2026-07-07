@@ -1,10 +1,10 @@
 package uk.gov.justice.laa.dstew.access.infrastructure.jpa.makedecision;
 
-import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
+import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
@@ -36,11 +36,9 @@ public class MakeDecisionGatewayMapper {
             ? DecisionStatus.valueOf(domain.decision().overallDecision().name())
             : null);
 
-    decisionEntity.setModifiedAt(domain.decision().modifiedAt());
     entity.setDecision(decisionEntity);
 
     entity.setIsAutoGranted(domain.isAutoGranted());
-    entity.setModifiedAt(Instant.now());
 
     if (entity.getProceedings() != null && domain.proceedings() != null) {
 
@@ -51,25 +49,25 @@ public class MakeDecisionGatewayMapper {
       domain
           .proceedings()
           .forEach(
-              proceedingDomain -> {
-                ProceedingEntity proceedingEntity = proceedingEntityMap.get(proceedingDomain.id());
-                if (proceedingEntity != null && proceedingDomain.meritsDecision() != null) {
-                  MeritsDecisionEntity meritsDecision =
-                      proceedingEntity.getMeritsDecision() != null
-                          ? proceedingEntity.getMeritsDecision()
-                          : new MeritsDecisionEntity();
-                  meritsDecision.setDecision(
-                      proceedingDomain.meritsDecision().decision() != null
-                          ? MeritsDecisionStatus.valueOf(
-                              proceedingDomain.meritsDecision().decision().name())
-                          : null);
-                  meritsDecision.setReason(proceedingDomain.meritsDecision().reason());
-                  meritsDecision.setJustification(
-                      proceedingDomain.meritsDecision().justification());
-                  meritsDecision.setModifiedAt(proceedingDomain.meritsDecision().modifiedAt());
-                  proceedingEntity.setMeritsDecision(meritsDecision);
-                }
-              });
+              proceedingDomain -> applyChangesToProceeding(proceedingEntityMap, proceedingDomain));
+    }
+  }
+
+  private void applyChangesToProceeding(
+      Map<UUID, ProceedingEntity> proceedingEntityMap, ProceedingDomain proceedingDomain) {
+    ProceedingEntity proceedingEntity = proceedingEntityMap.get(proceedingDomain.id());
+    if (proceedingEntity != null && proceedingDomain.meritsDecision() != null) {
+      MeritsDecisionEntity meritsDecision =
+          proceedingEntity.getMeritsDecision() != null
+              ? proceedingEntity.getMeritsDecision()
+              : new MeritsDecisionEntity();
+      meritsDecision.setDecision(
+          proceedingDomain.meritsDecision().decision() != null
+              ? MeritsDecisionStatus.valueOf(proceedingDomain.meritsDecision().decision().name())
+              : null);
+      meritsDecision.setReason(proceedingDomain.meritsDecision().reason());
+      meritsDecision.setJustification(proceedingDomain.meritsDecision().justification());
+      proceedingEntity.setMeritsDecision(meritsDecision);
     }
   }
 }
