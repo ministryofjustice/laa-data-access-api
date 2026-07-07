@@ -61,10 +61,9 @@ public class UpdateApplicationUseCase {
       } catch (IllegalArgumentException ex) {
         errors.add("Invalid application status: " + command.status());
       }
-
-      if (!errors.isEmpty()) {
-        throw new ValidationException(errors);
-      }
+    }
+    if (!errors.isEmpty()) {
+      throw new ValidationException(errors);
     }
   }
 }
