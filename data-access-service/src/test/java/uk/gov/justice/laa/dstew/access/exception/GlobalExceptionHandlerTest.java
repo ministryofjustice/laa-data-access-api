@@ -7,6 +7,7 @@ import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -17,7 +18,12 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class GlobalExceptionHandlerTest {
 
-  GlobalExceptionHandler globalExceptionHandler = new GlobalExceptionHandler();
+  private GlobalExceptionHandler globalExceptionHandler;
+
+  @BeforeEach
+  void setUp() {
+    globalExceptionHandler = new GlobalExceptionHandler();
+  }
 
   @Test
   void handleApplicationNotFound_returnsGenericNotFoundExceptionAndErrorMessage() {
