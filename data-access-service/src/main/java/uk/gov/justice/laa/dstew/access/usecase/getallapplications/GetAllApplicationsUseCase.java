@@ -35,32 +35,32 @@ public class GetAllApplicationsUseCase {
   /**
    * Retrieves a page of application summaries.
    *
-   * @param command the input command
+   * @param query the input query
    * @return the paged application summaries and pagination metadata
    */
   @AllowApiCaseworker
-  public GetAllApplicationsResult execute(GetAllApplicationsQuery command) {
-    int validatedPage = PaginationHelper.validatePage(command.page());
-    int validatedPageSize = PaginationHelper.validatePageSize(command.pageSize());
+  public GetAllApplicationsResult execute(GetAllApplicationsQuery query) {
+    int validatedPage = PaginationHelper.validatePage(query.page());
+    int validatedPageSize = PaginationHelper.validatePageSize(query.pageSize());
 
-    if (command.userId() != null && !caseworkerGateway.caseworkerExists(command.userId())) {
+    if (query.userId() != null && !caseworkerGateway.caseworkerExists(query.userId())) {
       throw new ValidationException(List.of("Caseworker not found"));
     }
 
     Page<ApplicationSummaryDomain> page =
         applicationGateway.findAllApplications(
-            command.status(),
-            command.laaReference(),
-            command.clientFirstName(),
-            command.clientLastName(),
-            command.clientDateOfBirth(),
-            command.userId(),
-            command.matterType(),
-            command.isAutoGranted(),
-            command.sortBy(),
-            command.orderBy(),
-            command.page(),
-            command.pageSize());
+            query.status(),
+            query.laaReference(),
+            query.clientFirstName(),
+            query.clientLastName(),
+            query.clientDateOfBirth(),
+            query.userId(),
+            query.matterType(),
+            query.isAutoGranted(),
+            query.sortBy(),
+            query.orderBy(),
+            query.page(),
+            query.pageSize());
 
     Page<ApplicationSummaryDomain> resolvedPage = page;
     if (!page.isEmpty()) {
@@ -87,9 +87,12 @@ public class GetAllApplicationsUseCase {
         byLeadId.getOrDefault(
             applicationId,
             byLeadId.values().stream()
-                .filter(g -> g.stream().anyMatch(d -> d.applicationId().equals(applicationId)))
+                .filter(
+                    linkedGroup ->
+                        linkedGroup.stream()
+                            .anyMatch(dto -> dto.applicationId().equals(applicationId)))
                 .findFirst()
                 .orElse(List.of()));
-    return group.stream().filter(d -> !d.applicationId().equals(applicationId)).toList();
+    return group.stream().filter(dto -> !dto.applicationId().equals(applicationId)).toList();
   }
 }
