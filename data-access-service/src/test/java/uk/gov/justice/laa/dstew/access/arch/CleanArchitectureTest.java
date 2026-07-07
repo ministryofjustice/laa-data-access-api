@@ -185,6 +185,56 @@ class CleanArchitectureTest {
   }
 
   @Test
+  void getAllNotesForApplicationUseCaseMustNotImportApiModels() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..usecase.getallnotesforapplication..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("uk.gov.justice.laa.dstew.access.model")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void getAllNotesForApplicationUseCaseMustNotImportJpaEntities() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..usecase.getallnotesforapplication..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..entity..")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void getAllNotesForApplicationJpaGatewayMustNotBeAnnotatedWithComponent() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..infrastructure.jpa.getallnotesforapplication..")
+            .should()
+            .beAnnotatedWith(org.springframework.stereotype.Component.class)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void getAllNotesForApplicationJpaGatewayMustNotBeAnnotatedWithTransactional() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..infrastructure.jpa.getallnotesforapplication..")
+            .should()
+            .beAnnotatedWith(jakarta.transaction.Transactional.class)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
   void dbProjectionTypesMustResideInDtoPackage() {
     ArchRule rule =
         classes()
