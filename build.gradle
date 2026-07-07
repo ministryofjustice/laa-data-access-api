@@ -19,6 +19,8 @@ ext['logback.version'] = '1.5.36'
 //        ✗ Detection of Error Condition Without Action (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17733746] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
 //        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
 ext['tomcat.version'] = '11.0.23'
+//[https://security.snyk.io/vuln/SNYK-JAVA-ORGPOSTGRESQL-17874248] in org.postgresql:postgresql@42.7.11 introduced by org.postgresql:postgresql@42.7.11
+ext['postgresql.version'] = '42.7.12'
 
 def requiredJavaVersion = 25
 def currentJavaVersion = JavaVersion.current().majorVersion.toInteger()
