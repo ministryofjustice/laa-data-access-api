@@ -38,7 +38,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   grafana:
-    image: grafana/grafana:11.6.0
+    image: grafana/grafana:13.1.0
     container_name: laa-grafana
     restart: unless-stopped
     ports:
