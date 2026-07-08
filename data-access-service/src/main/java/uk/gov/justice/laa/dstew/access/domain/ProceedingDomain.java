@@ -13,4 +13,5 @@ public record ProceedingDomain(
     boolean isLead,
     Map<String, Object> proceedingContent,
     String createdBy,
-    String updatedBy) {}
+    String updatedBy,
+    MeritsDecisionDomain meritsDecision) {}
