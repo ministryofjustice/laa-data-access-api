@@ -6,6 +6,7 @@ import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.as
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
@@ -443,5 +444,16 @@ public class GetIndividualsTest extends BaseHarnessTest {
     HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=1&pageSize=10");
     assertSecurityHeaders(result);
     assertForbidden(result);
+  }
+
+  @Test
+  void givenUnknownApplicationId_whenGetIndividualsWithClientDetails_thenReturnNotFound()
+      throws Exception {
+    HarnessResult result =
+        getUri(
+            TestConstants.URIs.GET_INDIVIDUALS
+                + "?include=CLIENT_DETAILS&individualType=CLIENT&applicationId="
+                + UUID.randomUUID());
+    assertNotFound(result);
   }
 }
