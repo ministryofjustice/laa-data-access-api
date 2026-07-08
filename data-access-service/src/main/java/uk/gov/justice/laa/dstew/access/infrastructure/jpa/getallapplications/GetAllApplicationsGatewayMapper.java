@@ -1,25 +1,25 @@
 package uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallapplications;
 
 import java.util.List;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationSummaryDomain;
-import uk.gov.justice.laa.dstew.access.domain.LinkedApplicationSummaryDomain;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.IndividualSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.ApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.LinkedApplicationSummaryReadModel;
 
-/** Maps JPA DTOs to domain records for the getAllApplications use case. */
+/** Maps JPA DTOs to read models for the getAllApplications use case. */
 public class GetAllApplicationsGatewayMapper {
 
   private static final String APPLICATION_TYPE_INITIAL = "INITIAL";
 
   /**
-   * Maps a {@link ApplicationSummaryDto} to an {@link ApplicationSummaryDomain}.
+   * Maps a {@link ApplicationSummaryDto} to an {@link ApplicationSummaryReadModel}.
    *
    * @param applicationSummaryDto the source DTO
-   * @return the domain record, or {@code null} if the input is {@code null}
+   * @return the read model, or {@code null} if the input is {@code null}
    */
-  public ApplicationSummaryDomain toApplicationSummaryDomain(
+  public ApplicationSummaryReadModel toApplicationSummaryReadModel(
       ApplicationSummaryDto applicationSummaryDto) {
     if (applicationSummaryDto == null) {
       return null;
@@ -33,8 +33,8 @@ public class GetAllApplicationsGatewayMapper {
                 .findFirst()
                 .orElse(null);
 
-    ApplicationSummaryDomain.ApplicationSummaryDomainBuilder builder =
-        ApplicationSummaryDomain.builder()
+    ApplicationSummaryReadModel.ApplicationSummaryReadModelBuilder builder =
+        ApplicationSummaryReadModel.builder()
             .id(applicationSummaryDto.getId())
             .submittedAt(applicationSummaryDto.getSubmittedAt())
             .isAutoGranted(applicationSummaryDto.getIsAutoGranted())
@@ -71,17 +71,17 @@ public class GetAllApplicationsGatewayMapper {
   }
 
   /**
-   * Maps a {@link LinkedApplicationSummaryDto} to a {@link LinkedApplicationSummaryDomain}.
+   * Maps a {@link LinkedApplicationSummaryDto} to a {@link LinkedApplicationSummaryReadModel}.
    *
    * @param linkedApplicationSummaryDto the source DTO
-   * @return the domain record, or {@code null} if the input is {@code null}
+   * @return the read model, or {@code null} if the input is {@code null}
    */
-  public LinkedApplicationSummaryDomain toLinkedApplicationSummaryDomain(
+  public LinkedApplicationSummaryReadModel toLinkedApplicationSummaryReadModel(
       LinkedApplicationSummaryDto linkedApplicationSummaryDto) {
     if (linkedApplicationSummaryDto == null) {
       return null;
     }
-    return LinkedApplicationSummaryDomain.builder()
+    return LinkedApplicationSummaryReadModel.builder()
         .applicationId(linkedApplicationSummaryDto.getApplicationId())
         .laaReference(linkedApplicationSummaryDto.getLaaReference())
         .isLead(linkedApplicationSummaryDto.getIsLead())

@@ -7,8 +7,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationSummaryDomain;
-import uk.gov.justice.laa.dstew.access.domain.LinkedApplicationSummaryDomain;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
@@ -16,6 +14,8 @@ import uk.gov.justice.laa.dstew.access.model.IndividualSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryDto;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.ApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.LinkedApplicationSummaryReadModel;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationSummaryDtoGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.LinkedApplicationSummaryDtoGenerator;
@@ -25,7 +25,7 @@ class GetAllApplicationsGatewayMapperTest {
   private final GetAllApplicationsGatewayMapper mapper = new GetAllApplicationsGatewayMapper();
 
   @Test
-  void givenFullyPopulatedDto_whenToApplicationSummaryDomain_thenAllFieldsMapped() {
+  void givenFullyPopulatedDto_whenToApplicationSummaryReadModel_thenAllFieldsMapped() {
     UUID id = UUID.randomUUID();
     Instant submittedAt = Instant.parse("2024-01-01T10:00:00Z");
     Instant modifiedAt = Instant.parse("2024-06-01T12:00:00Z");
@@ -57,10 +57,10 @@ class GetAllApplicationsGatewayMapperTest {
                     .isLead(true)
                     .individuals(List.of(client)));
 
-    ApplicationSummaryDomain domain = mapper.toApplicationSummaryDomain(dto);
+    ApplicationSummaryReadModel domain = mapper.toApplicationSummaryReadModel(dto);
 
-    ApplicationSummaryDomain expected =
-        ApplicationSummaryDomain.builder()
+    ApplicationSummaryReadModel expected =
+        ApplicationSummaryReadModel.builder()
             .id(id)
             .submittedAt(submittedAt)
             .isAutoGranted(true)
@@ -84,34 +84,34 @@ class GetAllApplicationsGatewayMapperTest {
   }
 
   @Test
-  void givenNullSubmittedAt_whenToApplicationSummaryDomain_thenSubmittedAtIsNull() {
+  void givenNullSubmittedAt_whenToApplicationSummaryReadModel_thenSubmittedAtIsNull() {
     ApplicationSummaryDto dto =
         DataGenerator.createDefault(
             ApplicationSummaryDtoGenerator.class, builder -> builder.submittedAt(null));
 
-    ApplicationSummaryDomain domain = mapper.toApplicationSummaryDomain(dto);
+    ApplicationSummaryReadModel domain = mapper.toApplicationSummaryReadModel(dto);
 
     assertThat(domain.submittedAt()).isNull();
   }
 
   @Test
-  void givenNullCaseworkerId_whenToApplicationSummaryDomain_thenCaseworkerIdIsNull() {
+  void givenNullCaseworkerId_whenToApplicationSummaryReadModel_thenCaseworkerIdIsNull() {
     ApplicationSummaryDto dto =
         DataGenerator.createDefault(
             ApplicationSummaryDtoGenerator.class, builder -> builder.caseworkerId(null));
 
-    ApplicationSummaryDomain domain = mapper.toApplicationSummaryDomain(dto);
+    ApplicationSummaryReadModel domain = mapper.toApplicationSummaryReadModel(dto);
 
     assertThat(domain.caseworkerId()).isNull();
   }
 
   @Test
-  void givenNoClientIndividual_whenToApplicationSummaryDomain_thenClientFieldsAreNull() {
+  void givenNoClientIndividual_whenToApplicationSummaryReadModel_thenClientFieldsAreNull() {
     ApplicationSummaryDto dto =
         DataGenerator.createDefault(
             ApplicationSummaryDtoGenerator.class, builder -> builder.individuals(List.of()));
 
-    ApplicationSummaryDomain domain = mapper.toApplicationSummaryDomain(dto);
+    ApplicationSummaryReadModel domain = mapper.toApplicationSummaryReadModel(dto);
 
     assertThat(domain.clientFirstName()).isNull();
     assertThat(domain.clientLastName()).isNull();
@@ -119,12 +119,12 @@ class GetAllApplicationsGatewayMapperTest {
   }
 
   @Test
-  void givenNullDto_whenToApplicationSummaryDomain_thenReturnsNull() {
-    assertThat(mapper.toApplicationSummaryDomain(null)).isNull();
+  void givenNullDto_whenToApplicationSummaryReadModel_thenReturnsNull() {
+    assertThat(mapper.toApplicationSummaryReadModel(null)).isNull();
   }
 
   @Test
-  void givenFullyPopulatedLinkedDto_whenToLinkedApplicationSummaryDomain_thenAllFieldsMapped() {
+  void givenFullyPopulatedLinkedDto_whenToLinkedApplicationSummaryReadModel_thenAllFieldsMapped() {
     UUID applicationId = UUID.randomUUID();
     UUID leadApplicationId = UUID.randomUUID();
 
@@ -138,10 +138,10 @@ class GetAllApplicationsGatewayMapperTest {
                     .isLead(true)
                     .leadApplicationId(leadApplicationId));
 
-    LinkedApplicationSummaryDomain domain = mapper.toLinkedApplicationSummaryDomain(dto);
+    LinkedApplicationSummaryReadModel domain = mapper.toLinkedApplicationSummaryReadModel(dto);
 
-    LinkedApplicationSummaryDomain expected =
-        LinkedApplicationSummaryDomain.builder()
+    LinkedApplicationSummaryReadModel expected =
+        LinkedApplicationSummaryReadModel.builder()
             .applicationId(applicationId)
             .laaReference("REF456")
             .isLead(true)
@@ -152,28 +152,28 @@ class GetAllApplicationsGatewayMapperTest {
   }
 
   @Test
-  void givenNullLinkedDto_whenToLinkedApplicationSummaryDomain_thenReturnsNull() {
-    assertThat(mapper.toLinkedApplicationSummaryDomain(null)).isNull();
+  void givenNullLinkedDto_whenToLinkedApplicationSummaryReadModel_thenReturnsNull() {
+    assertThat(mapper.toLinkedApplicationSummaryReadModel(null)).isNull();
   }
 
   @Test
-  void givenNullStatus_whenToApplicationSummaryDomain_thenStatusIsNull() {
+  void givenNullStatus_whenToApplicationSummaryReadModel_thenStatusIsNull() {
     ApplicationSummaryDto dto =
         DataGenerator.createDefault(
             ApplicationSummaryDtoGenerator.class, builder -> builder.status(null));
 
-    ApplicationSummaryDomain domain = mapper.toApplicationSummaryDomain(dto);
+    ApplicationSummaryReadModel domain = mapper.toApplicationSummaryReadModel(dto);
 
     assertThat(domain.status()).isNull();
   }
 
   @Test
-  void givenNullIndividualsList_whenToApplicationSummaryDomain_thenClientFieldsAreNull() {
+  void givenNullIndividualsList_whenToApplicationSummaryReadModel_thenClientFieldsAreNull() {
     ApplicationSummaryDto dto =
         DataGenerator.createDefault(
             ApplicationSummaryDtoGenerator.class, builder -> builder.individuals(null));
 
-    ApplicationSummaryDomain domain = mapper.toApplicationSummaryDomain(dto);
+    ApplicationSummaryReadModel domain = mapper.toApplicationSummaryReadModel(dto);
 
     assertThat(domain.clientFirstName()).isNull();
     assertThat(domain.clientLastName()).isNull();

@@ -4,12 +4,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationSummaryDomain;
-import uk.gov.justice.laa.dstew.access.domain.LinkedApplicationSummaryDomain;
-import uk.gov.justice.laa.dstew.access.domain.PagedResultDomain;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.usecase.getallapplications.infrastructure.GetAllApplicationsApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.getallapplications.infrastructure.GetAllApplicationsCaseworkerGateway;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.ApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.LinkedApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.shared.PagedResult;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -47,7 +47,7 @@ public class GetAllApplicationsUseCase {
       throw new ValidationException(List.of("Caseworker not found"));
     }
 
-    PagedResultDomain<ApplicationSummaryDomain> page =
+    PagedResult<ApplicationSummaryReadModel> page =
         applicationGateway.findAllApplications(
             query.status(),
             query.laaReference(),
@@ -62,15 +62,15 @@ public class GetAllApplicationsUseCase {
             query.page(),
             query.pageSize());
 
-    PagedResultDomain<ApplicationSummaryDomain> resolvedPage = page;
+    PagedResult<ApplicationSummaryReadModel> resolvedPage = page;
     if (!page.content().isEmpty()) {
-      List<UUID> pageIds = page.content().stream().map(ApplicationSummaryDomain::id).toList();
-      List<LinkedApplicationSummaryDomain> allLinked =
+      List<UUID> pageIds = page.content().stream().map(ApplicationSummaryReadModel::id).toList();
+      List<LinkedApplicationSummaryReadModel> allLinked =
           applicationGateway.findLinkedApplicationsForPageIds(pageIds);
-      Map<UUID, List<LinkedApplicationSummaryDomain>> byLeadId =
+      Map<UUID, List<LinkedApplicationSummaryReadModel>> byLeadId =
           allLinked.stream()
-              .collect(Collectors.groupingBy(LinkedApplicationSummaryDomain::leadApplicationId));
-      List<ApplicationSummaryDomain> resolved =
+              .collect(Collectors.groupingBy(LinkedApplicationSummaryReadModel::leadApplicationId));
+      List<ApplicationSummaryReadModel> resolved =
           page.content().stream()
               .map(
                   domain ->
@@ -78,15 +78,15 @@ public class GetAllApplicationsUseCase {
                           .linkedApplications(resolveLinkedApplications(domain.id(), byLeadId))
                           .build())
               .toList();
-      resolvedPage = new PagedResultDomain<>(resolved, page.totalElements());
+      resolvedPage = new PagedResult<>(resolved, page.totalElements());
     }
 
     return new GetAllApplicationsResult(resolvedPage, validatedPage, validatedPageSize);
   }
 
-  private List<LinkedApplicationSummaryDomain> resolveLinkedApplications(
-      UUID applicationId, Map<UUID, List<LinkedApplicationSummaryDomain>> byLeadId) {
-    List<LinkedApplicationSummaryDomain> group =
+  private List<LinkedApplicationSummaryReadModel> resolveLinkedApplications(
+      UUID applicationId, Map<UUID, List<LinkedApplicationSummaryReadModel>> byLeadId) {
+    List<LinkedApplicationSummaryReadModel> group =
         byLeadId.getOrDefault(
             applicationId,
             byLeadId.values().stream()

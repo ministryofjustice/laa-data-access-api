@@ -6,15 +6,15 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationSummaryDomain;
-import uk.gov.justice.laa.dstew.access.domain.LinkedApplicationSummaryDomain;
-import uk.gov.justice.laa.dstew.access.domain.PagedResultDomain;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortFields;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.specification.ApplicationSummarySpecification;
 import uk.gov.justice.laa.dstew.access.usecase.getallapplications.infrastructure.GetAllApplicationsApplicationGateway;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.ApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.LinkedApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.shared.PagedResult;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper;
 
 /**
@@ -41,7 +41,7 @@ public class GetAllApplicationsApplicationJpaGateway
   }
 
   @Override
-  public PagedResultDomain<ApplicationSummaryDomain> findAllApplications(
+  public PagedResult<ApplicationSummaryReadModel> findAllApplications(
       String status,
       String laaReference,
       String clientFirstName,
@@ -76,15 +76,16 @@ public class GetAllApplicationsApplicationJpaGateway
             clientLastName,
             clientDateOfBirth);
 
-    List<ApplicationSummaryDomain> content =
-        resultPage.map(gatewayMapper::toApplicationSummaryDomain).getContent();
-    return new PagedResultDomain<>(content, resultPage.getTotalElements());
+    List<ApplicationSummaryReadModel> content =
+        resultPage.map(gatewayMapper::toApplicationSummaryReadModel).getContent();
+    return new PagedResult<>(content, resultPage.getTotalElements());
   }
 
   @Override
-  public List<LinkedApplicationSummaryDomain> findLinkedApplicationsForPageIds(List<UUID> pageIds) {
+  public List<LinkedApplicationSummaryReadModel> findLinkedApplicationsForPageIds(
+      List<UUID> pageIds) {
     return applicationRepository.findAllLinkedApplicationsForPageIds(pageIds).stream()
-        .map(gatewayMapper::toLinkedApplicationSummaryDomain)
+        .map(gatewayMapper::toLinkedApplicationSummaryReadModel)
         .toList();
   }
 

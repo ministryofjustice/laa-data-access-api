@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.domain;
+package uk.gov.justice.laa.dstew.access.usecase.getallapplications.model;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 
-/** Domain record representing a summary of a single legal aid application. */
+/** Read model representing a summary of a single legal aid application. */
 @Builder(toBuilder = true)
-public record ApplicationSummaryDomain(
+public record ApplicationSummaryReadModel(
     UUID id,
     Instant submittedAt,
     Boolean isAutoGranted,
@@ -25,4 +25,4 @@ public record ApplicationSummaryDomain(
     String applicationType,
     Instant modifiedAt,
     Boolean isLead,
-    List<LinkedApplicationSummaryDomain> linkedApplications) {}
+    List<LinkedApplicationSummaryReadModel> linkedApplications) {}

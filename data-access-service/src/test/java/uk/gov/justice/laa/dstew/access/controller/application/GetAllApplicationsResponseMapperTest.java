@@ -10,9 +10,6 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationSummaryDomain;
-import uk.gov.justice.laa.dstew.access.domain.LinkedApplicationSummaryDomain;
-import uk.gov.justice.laa.dstew.access.domain.PagedResultDomain;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
@@ -20,9 +17,12 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.usecase.getallapplications.GetAllApplicationsResult;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.ApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.LinkedApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.shared.PagedResult;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.domain.ApplicationSummaryDomainGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.domain.LinkedApplicationSummaryDomainGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.getallapplications.ApplicationSummaryReadModelGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.getallapplications.LinkedApplicationSummaryReadModelGenerator;
 
 class GetAllApplicationsResponseMapperTest {
 
@@ -37,14 +37,14 @@ class GetAllApplicationsResponseMapperTest {
     Instant modifiedAt = Instant.parse("2024-06-01T12:00:00Z");
     LocalDate dob = LocalDate.of(1990, 5, 15);
 
-    LinkedApplicationSummaryDomain linked =
+    LinkedApplicationSummaryReadModel linked =
         DataGenerator.createDefault(
-            LinkedApplicationSummaryDomainGenerator.class,
+            LinkedApplicationSummaryReadModelGenerator.class,
             b -> b.applicationId(linkedAppId).laaReference("REF456").isLead(false));
 
-    ApplicationSummaryDomain domain =
+    ApplicationSummaryReadModel domain =
         DataGenerator.createDefault(
-            ApplicationSummaryDomainGenerator.class,
+            ApplicationSummaryReadModelGenerator.class,
             b ->
                 b.id(id)
                     .submittedAt(submittedAt)
@@ -64,7 +64,7 @@ class GetAllApplicationsResponseMapperTest {
                     .isLead(true)
                     .linkedApplications(List.of(linked)));
 
-    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(domain), 1);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 1, 10);
 
     ResponseEntity<ApplicationSummaryResponse> response =
@@ -104,10 +104,10 @@ class GetAllApplicationsResponseMapperTest {
 
   @Test
   void givenNullCaseworkerId_whenToGetAllApplicationsResponse_thenAssignedToIsNull() {
-    ApplicationSummaryDomain domain =
+    ApplicationSummaryReadModel domain =
         DataGenerator.createDefault(
-            ApplicationSummaryDomainGenerator.class, b -> b.caseworkerId(null));
-    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
+            ApplicationSummaryReadModelGenerator.class, b -> b.caseworkerId(null));
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(domain), 1);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 1, 10);
 
     ApplicationSummaryResponse body = mapper.toGetAllApplicationsResponse(result).getBody();
@@ -118,10 +118,10 @@ class GetAllApplicationsResponseMapperTest {
 
   @Test
   void givenNullSubmittedAt_whenToGetAllApplicationsResponse_thenSubmittedAtIsNull() {
-    ApplicationSummaryDomain domain =
+    ApplicationSummaryReadModel domain =
         DataGenerator.createDefault(
-            ApplicationSummaryDomainGenerator.class, b -> b.submittedAt(null));
-    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
+            ApplicationSummaryReadModelGenerator.class, b -> b.submittedAt(null));
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(domain), 1);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 1, 10);
 
     ApplicationSummaryResponse body = mapper.toGetAllApplicationsResponse(result).getBody();
@@ -132,10 +132,10 @@ class GetAllApplicationsResponseMapperTest {
 
   @Test
   void givenNullCategoryOfLaw_whenToGetAllApplicationsResponse_thenCategoryOfLawIsNull() {
-    ApplicationSummaryDomain domain =
+    ApplicationSummaryReadModel domain =
         DataGenerator.createDefault(
-            ApplicationSummaryDomainGenerator.class, b -> b.categoryOfLaw(null));
-    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
+            ApplicationSummaryReadModelGenerator.class, b -> b.categoryOfLaw(null));
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(domain), 1);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 1, 10);
 
     ApplicationSummaryResponse body = mapper.toGetAllApplicationsResponse(result).getBody();
@@ -146,10 +146,10 @@ class GetAllApplicationsResponseMapperTest {
 
   @Test
   void givenNullMatterType_whenToGetAllApplicationsResponse_thenMatterTypeIsNull() {
-    ApplicationSummaryDomain domain =
+    ApplicationSummaryReadModel domain =
         DataGenerator.createDefault(
-            ApplicationSummaryDomainGenerator.class, b -> b.matterType(null));
-    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
+            ApplicationSummaryReadModelGenerator.class, b -> b.matterType(null));
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(domain), 1);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 1, 10);
 
     ApplicationSummaryResponse body = mapper.toGetAllApplicationsResponse(result).getBody();
@@ -160,10 +160,10 @@ class GetAllApplicationsResponseMapperTest {
 
   @Test
   void givenEmptyLinkedApplications_whenToGetAllApplicationsResponse_thenLinkedIsEmpty() {
-    ApplicationSummaryDomain domain =
+    ApplicationSummaryReadModel domain =
         DataGenerator.createDefault(
-            ApplicationSummaryDomainGenerator.class, b -> b.linkedApplications(List.of()));
-    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
+            ApplicationSummaryReadModelGenerator.class, b -> b.linkedApplications(List.of()));
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(domain), 1);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 1, 10);
 
     ApplicationSummaryResponse body = mapper.toGetAllApplicationsResponse(result).getBody();
@@ -174,7 +174,7 @@ class GetAllApplicationsResponseMapperTest {
 
   @Test
   void givenEmptyApplicationsPage_whenToGetAllApplicationsResponse_thenPagingHasZeroTotals() {
-    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(), 0);
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(), 0);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 2, 5);
 
     ApplicationSummaryResponse body = mapper.toGetAllApplicationsResponse(result).getBody();
@@ -189,9 +189,10 @@ class GetAllApplicationsResponseMapperTest {
 
   @Test
   void givenNullStatus_whenToGetAllApplicationsResponse_thenStatusIsNull() {
-    ApplicationSummaryDomain domain =
-        DataGenerator.createDefault(ApplicationSummaryDomainGenerator.class, b -> b.status(null));
-    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
+    ApplicationSummaryReadModel domain =
+        DataGenerator.createDefault(
+            ApplicationSummaryReadModelGenerator.class, b -> b.status(null));
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(domain), 1);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 1, 10);
 
     ApplicationSummaryResponse body = mapper.toGetAllApplicationsResponse(result).getBody();

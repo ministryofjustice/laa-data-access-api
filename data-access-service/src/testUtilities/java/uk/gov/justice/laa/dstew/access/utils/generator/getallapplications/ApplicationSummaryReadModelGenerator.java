@@ -1,27 +1,28 @@
-package uk.gov.justice.laa.dstew.access.utils.generator.domain;
+package uk.gov.justice.laa.dstew.access.utils.generator.getallapplications;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationSummaryDomain;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.ApplicationSummaryReadModel;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
-/** Generates {@link ApplicationSummaryDomain} instances for use in tests. */
-public class ApplicationSummaryDomainGenerator
+/** Generator for {@link ApplicationSummaryReadModel} test data. */
+public class ApplicationSummaryReadModelGenerator
     extends BaseGenerator<
-        ApplicationSummaryDomain, ApplicationSummaryDomain.ApplicationSummaryDomainBuilder> {
+        ApplicationSummaryReadModel,
+        ApplicationSummaryReadModel.ApplicationSummaryReadModelBuilder> {
 
   /** Constructs the generator. */
-  public ApplicationSummaryDomainGenerator() {
+  public ApplicationSummaryReadModelGenerator() {
     super(
-        ApplicationSummaryDomain::toBuilder,
-        ApplicationSummaryDomain.ApplicationSummaryDomainBuilder::build);
+        ApplicationSummaryReadModel::toBuilder,
+        ApplicationSummaryReadModel.ApplicationSummaryReadModelBuilder::build);
   }
 
   @Override
-  public ApplicationSummaryDomain createDefault() {
-    return ApplicationSummaryDomain.builder()
+  public ApplicationSummaryReadModel createDefault() {
+    return ApplicationSummaryReadModel.builder()
         .id(UUID.randomUUID())
         .submittedAt(Instant.now())
         .isAutoGranted(false)

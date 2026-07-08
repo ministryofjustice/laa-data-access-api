@@ -3,9 +3,9 @@ package uk.gov.justice.laa.dstew.access.usecase.getallapplications.infrastructur
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationSummaryDomain;
-import uk.gov.justice.laa.dstew.access.domain.LinkedApplicationSummaryDomain;
-import uk.gov.justice.laa.dstew.access.domain.PagedResultDomain;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.ApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.LinkedApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.shared.PagedResult;
 
 /** Gateway interface for paginated application queries in the getAllApplications use case. */
 public interface GetAllApplicationsApplicationGateway {
@@ -21,7 +21,7 @@ public interface GetAllApplicationsApplicationGateway {
    * @param pageSize number of results per page
    * @return page of domain summaries
    */
-  PagedResultDomain<ApplicationSummaryDomain> findAllApplications(
+  PagedResult<ApplicationSummaryReadModel> findAllApplications(
       String status,
       String laaReference,
       String clientFirstName,
@@ -41,5 +41,5 @@ public interface GetAllApplicationsApplicationGateway {
    * @param pageIds the IDs of applications in the current page
    * @return list of linked-application domain records
    */
-  List<LinkedApplicationSummaryDomain> findLinkedApplicationsForPageIds(List<UUID> pageIds);
+  List<LinkedApplicationSummaryReadModel> findLinkedApplicationsForPageIds(List<UUID> pageIds);
 }

@@ -16,15 +16,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationSummaryDomain;
-import uk.gov.justice.laa.dstew.access.domain.LinkedApplicationSummaryDomain;
-import uk.gov.justice.laa.dstew.access.domain.PagedResultDomain;
 import uk.gov.justice.laa.dstew.access.usecase.getallapplications.infrastructure.GetAllApplicationsApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.getallapplications.infrastructure.GetAllApplicationsCaseworkerGateway;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.ApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.LinkedApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.shared.PagedResult;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.domain.ApplicationSummaryDomainGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.domain.LinkedApplicationSummaryDomainGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.getallapplications.ApplicationSummaryReadModelGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.getallapplications.GetAllApplicationsQueryGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.getallapplications.LinkedApplicationSummaryReadModelGenerator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,9 +44,9 @@ class GetAllApplicationsUseCaseTest {
   void givenFullyPopulatedQuery_whenExecuted_thenReturnsCorrectResult() {
     GetAllApplicationsQuery query =
         DataGenerator.createDefault(GetAllApplicationsQueryGenerator.class);
-    ApplicationSummaryDomain domain =
-        DataGenerator.createDefault(ApplicationSummaryDomainGenerator.class);
-    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
+    ApplicationSummaryReadModel domain =
+        DataGenerator.createDefault(ApplicationSummaryReadModelGenerator.class);
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(domain), 1);
 
     when(caseworkerGateway.caseworkerExists(query.userId())).thenReturn(true);
     when(applicationGateway.findAllApplications(
@@ -77,7 +77,7 @@ class GetAllApplicationsUseCaseTest {
   void givenNullUserId_whenExecuted_thenSkipsCaseworkerCheck() {
     GetAllApplicationsQuery query =
         DataGenerator.createDefault(GetAllApplicationsQueryGenerator.class, b -> b.userId(null));
-    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(), 0);
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(), 0);
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(page);
@@ -92,7 +92,7 @@ class GetAllApplicationsUseCaseTest {
     UUID userId = UUID.randomUUID();
     GetAllApplicationsQuery query =
         DataGenerator.createDefault(GetAllApplicationsQueryGenerator.class, b -> b.userId(userId));
-    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(), 0);
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(), 0);
 
     when(caseworkerGateway.caseworkerExists(userId)).thenReturn(true);
     when(applicationGateway.findAllApplications(
@@ -127,7 +127,7 @@ class GetAllApplicationsUseCaseTest {
   void givenEmptyPage_whenExecuted_thenLinkedAppsGatewayNeverCalled() {
     GetAllApplicationsQuery query =
         DataGenerator.createDefault(GetAllApplicationsQueryGenerator.class, b -> b.userId(null));
-    PagedResultDomain<ApplicationSummaryDomain> emptyPage = new PagedResultDomain<>(List.of(), 0);
+    PagedResult<ApplicationSummaryReadModel> emptyPage = new PagedResult<>(List.of(), 0);
 
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
@@ -144,16 +144,16 @@ class GetAllApplicationsUseCaseTest {
     UUID leadId = UUID.randomUUID();
     UUID associateId = UUID.randomUUID();
 
-    ApplicationSummaryDomain lead =
+    ApplicationSummaryReadModel lead =
         DataGenerator.createDefault(
-            ApplicationSummaryDomainGenerator.class, b -> b.id(leadId).isLead(true));
+            ApplicationSummaryReadModelGenerator.class, b -> b.id(leadId).isLead(true));
 
-    LinkedApplicationSummaryDomain associateLink =
+    LinkedApplicationSummaryReadModel associateLink =
         DataGenerator.createDefault(
-            LinkedApplicationSummaryDomainGenerator.class,
+            LinkedApplicationSummaryReadModelGenerator.class,
             b -> b.applicationId(associateId).isLead(false).leadApplicationId(leadId));
 
-    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(lead), 1);
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(lead), 1);
 
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
@@ -166,7 +166,7 @@ class GetAllApplicationsUseCaseTest {
             DataGenerator.createDefault(
                 GetAllApplicationsQueryGenerator.class, b -> b.userId(null)));
 
-    List<LinkedApplicationSummaryDomain> linked =
+    List<LinkedApplicationSummaryReadModel> linked =
         result.applications().content().get(0).linkedApplications();
     assertThat(linked).hasSize(1);
     assertThat(linked.get(0).applicationId()).isEqualTo(associateId);
@@ -177,21 +177,20 @@ class GetAllApplicationsUseCaseTest {
     UUID leadId = UUID.randomUUID();
     UUID associateId = UUID.randomUUID();
 
-    ApplicationSummaryDomain associate =
+    ApplicationSummaryReadModel associate =
         DataGenerator.createDefault(
-            ApplicationSummaryDomainGenerator.class, b -> b.id(associateId).isLead(false));
+            ApplicationSummaryReadModelGenerator.class, b -> b.id(associateId).isLead(false));
 
-    LinkedApplicationSummaryDomain leadLink =
+    LinkedApplicationSummaryReadModel leadLink =
         DataGenerator.createDefault(
-            LinkedApplicationSummaryDomainGenerator.class,
+            LinkedApplicationSummaryReadModelGenerator.class,
             b -> b.applicationId(leadId).isLead(true).leadApplicationId(leadId));
-    LinkedApplicationSummaryDomain associateLink =
+    LinkedApplicationSummaryReadModel associateLink =
         DataGenerator.createDefault(
-            LinkedApplicationSummaryDomainGenerator.class,
+            LinkedApplicationSummaryReadModelGenerator.class,
             b -> b.applicationId(associateId).isLead(false).leadApplicationId(leadId));
 
-    PagedResultDomain<ApplicationSummaryDomain> page =
-        new PagedResultDomain<>(List.of(associate), 1);
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(associate), 1);
 
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
@@ -204,7 +203,7 @@ class GetAllApplicationsUseCaseTest {
             DataGenerator.createDefault(
                 GetAllApplicationsQueryGenerator.class, b -> b.userId(null)));
 
-    List<LinkedApplicationSummaryDomain> linked =
+    List<LinkedApplicationSummaryReadModel> linked =
         result.applications().content().get(0).linkedApplications();
     assertThat(linked).hasSize(1);
     assertThat(linked.get(0).applicationId()).isEqualTo(leadId);
@@ -216,18 +215,17 @@ class GetAllApplicationsUseCaseTest {
     UUID leadB = UUID.randomUUID();
     UUID assocA = UUID.randomUUID();
 
-    ApplicationSummaryDomain appA =
-        DataGenerator.createDefault(ApplicationSummaryDomainGenerator.class, b -> b.id(leadA));
-    ApplicationSummaryDomain appB =
-        DataGenerator.createDefault(ApplicationSummaryDomainGenerator.class, b -> b.id(leadB));
+    ApplicationSummaryReadModel appA =
+        DataGenerator.createDefault(ApplicationSummaryReadModelGenerator.class, b -> b.id(leadA));
+    ApplicationSummaryReadModel appB =
+        DataGenerator.createDefault(ApplicationSummaryReadModelGenerator.class, b -> b.id(leadB));
 
-    LinkedApplicationSummaryDomain linkA =
+    LinkedApplicationSummaryReadModel linkA =
         DataGenerator.createDefault(
-            LinkedApplicationSummaryDomainGenerator.class,
+            LinkedApplicationSummaryReadModelGenerator.class,
             b -> b.applicationId(assocA).isLead(false).leadApplicationId(leadA));
 
-    PagedResultDomain<ApplicationSummaryDomain> page =
-        new PagedResultDomain<>(List.of(appA, appB), 2);
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(appA, appB), 2);
 
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
@@ -239,10 +237,10 @@ class GetAllApplicationsUseCaseTest {
             DataGenerator.createDefault(
                 GetAllApplicationsQueryGenerator.class, b -> b.userId(null)));
 
-    List<ApplicationSummaryDomain> content = result.applications().content();
-    ApplicationSummaryDomain resultA =
+    List<ApplicationSummaryReadModel> content = result.applications().content();
+    ApplicationSummaryReadModel resultA =
         content.stream().filter(d -> d.id().equals(leadA)).findFirst().orElseThrow();
-    ApplicationSummaryDomain resultB =
+    ApplicationSummaryReadModel resultB =
         content.stream().filter(d -> d.id().equals(leadB)).findFirst().orElseThrow();
     assertThat(resultA.linkedApplications()).hasSize(1);
     assertThat(resultA.linkedApplications().get(0).applicationId()).isEqualTo(assocA);
@@ -299,7 +297,7 @@ class GetAllApplicationsUseCaseTest {
     GetAllApplicationsQuery query =
         DataGenerator.createDefault(
             GetAllApplicationsQueryGenerator.class, b -> b.userId(null).pageSize(100));
-    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(), 0);
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(), 0);
 
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
@@ -315,7 +313,7 @@ class GetAllApplicationsUseCaseTest {
     GetAllApplicationsQuery query =
         DataGenerator.createDefault(
             GetAllApplicationsQueryGenerator.class, b -> b.userId(null).page(null).pageSize(null));
-    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(), 0);
+    PagedResult<ApplicationSummaryReadModel> page = new PagedResult<>(List.of(), 0);
 
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))

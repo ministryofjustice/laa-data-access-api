@@ -3,8 +3,6 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
-import uk.gov.justice.laa.dstew.access.domain.ApplicationSummaryDomain;
-import uk.gov.justice.laa.dstew.access.domain.LinkedApplicationSummaryDomain;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
@@ -14,6 +12,8 @@ import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.usecase.getallapplications.GetAllApplicationsResult;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.ApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.LinkedApplicationSummaryReadModel;
 
 /**
  * Maps a {@link GetAllApplicationsResult} to a {@link ResponseEntity} containing an {@link
@@ -45,7 +45,7 @@ public class GetAllApplicationsResponseMapper {
     return ResponseEntity.ok(response);
   }
 
-  private ApplicationSummary toApplicationSummary(ApplicationSummaryDomain domain) {
+  private ApplicationSummary toApplicationSummary(ApplicationSummaryReadModel domain) {
     ApplicationSummary app = new ApplicationSummary();
     app.setApplicationId(domain.id());
     app.setSubmittedAt(
@@ -73,7 +73,7 @@ public class GetAllApplicationsResponseMapper {
   }
 
   private LinkedApplicationSummaryResponse toLinkedApplicationSummaryResponse(
-      LinkedApplicationSummaryDomain domain) {
+      LinkedApplicationSummaryReadModel domain) {
     LinkedApplicationSummaryResponse response = new LinkedApplicationSummaryResponse();
     response.setApplicationId(domain.applicationId());
     response.setLaaReference(domain.laaReference());
