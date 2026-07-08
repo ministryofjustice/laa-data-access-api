@@ -9,6 +9,7 @@ import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationContentGenerator;
 
+/** Generator for {@link ApplicationDomain} test instances. */
 public class ApplicationDomainGenerator
     extends BaseGenerator<ApplicationDomain, ApplicationDomain.ApplicationDomainBuilder> {
 
@@ -17,6 +18,7 @@ public class ApplicationDomainGenerator
   private final ProceedingDomainGenerator proceedingDomainGenerator =
       new ProceedingDomainGenerator();
 
+  /** Constructs the generator. */
   public ApplicationDomainGenerator() {
     super(ApplicationDomain::toBuilder, ApplicationDomain.ApplicationDomainBuilder::build);
   }
@@ -30,14 +32,15 @@ public class ApplicationDomainGenerator
     Map<String, Object> appContent = mapper.convertValue(contentGen.createDefault(), Map.class);
 
     return ApplicationDomain.builder()
-        .id(UUID.randomUUID()) // post-save state: id populated
+        .id(UUID.randomUUID())
+        .version(0L)
         .status("APPLICATION_IN_PROGRESS")
         .laaReference("REF7327")
         .officeCode("OFFICE001")
         .applicationContent(appContent)
         .individuals(Set.of(individualDomainGenerator.createDefault()))
         .schemaVersion(1)
-        .createdAt(Instant.now()) // post-save state: createdAt populated
+        .createdAt(Instant.now())
         .modifiedAt(Instant.now())
         .applyApplicationId(UUID.randomUUID())
         .submittedAt(Instant.parse("2024-01-01T12:00:00Z"))
@@ -47,6 +50,7 @@ public class ApplicationDomainGenerator
         .isAutoGranted(false)
         .proceedings(Set.of(proceedingDomainGenerator.createDefault()))
         .caseworkerId(UUID.randomUUID())
+        .decision(new DecisionDomainGenerator().createDefault())
         .build();
   }
 }

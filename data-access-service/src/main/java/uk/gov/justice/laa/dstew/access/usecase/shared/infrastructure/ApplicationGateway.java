@@ -5,7 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 
-/** Gateway interface for application persistence operations in the createApplication use case. */
+/** Gateway interface for application persistence operations. */
 public interface ApplicationGateway {
 
   /**
