@@ -126,7 +126,7 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
 {{- if and .Values.featureFlags (hasKey .Values.featureFlags "enable_dev_token") }}
 {{/* Use value from values.yaml if explicitly set */}}
 - name: FEATURE_ENABLE_DEV_TOKEN
-  value: {{ .Values.featureFlags.enable_dev_token }}
+  value: {{ .Values.featureFlags.enable_dev_token | quote }}
 {{- else }}
 {{/* Default to secret value */}}
 - name: FEATURE_ENABLE_DEV_TOKEN
@@ -138,7 +138,7 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
 {{- if and .Values.featureFlags (hasKey .Values.featureFlags "disable_security") }}
 {{/* Use value from values.yaml if explicitly set */}}
 - name: FEATURE_DISABLE_SECURITY
-  value: {{ .Values.featureFlags.disable_security }}
+  value: {{ .Values.featureFlags.disable_security | quote }}
 {{- else }}
 {{/* Default to secret value */}}
 - name: FEATURE_DISABLE_SECURITY
@@ -151,7 +151,7 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
 {{- range $key, $value := .Values.featureFlags }}
 {{- if and (ne $key "enable_dev_token") (ne $key "disable_security") }}
 - name: FEATURE_{{ upper $key }}
-  value: {{ $value }}
+  value: {{ $value | quote }}
 {{- end }}
 {{- end }}
 {{- end }}
