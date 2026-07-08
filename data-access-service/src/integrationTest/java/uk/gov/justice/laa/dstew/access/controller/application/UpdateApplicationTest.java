@@ -127,6 +127,45 @@ public class UpdateApplicationTest extends BaseHarnessTest {
   }
 
   @Test
+  public void
+      givenUpdateRequestWithNullStatus_whenUpdateApplication_thenReturnOK_andPreservesExistingStatus()
+          throws Exception {
+    // given
+    ApplicationEntity applicationEntity =
+        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+    ApplicationStatus originalStatus = applicationEntity.getStatus();
+
+    Map<String, Object> expectedContent =
+        objectMapper.convertValue(
+            DataGenerator.createDefault(ApplicationContentGenerator.class), Map.class);
+
+    ApplicationUpdateRequest applicationUpdateRequest =
+        DataGenerator.createDefault(
+            ApplicationUpdateRequestGenerator.class,
+            builder -> builder.applicationContent(expectedContent).status(null));
+
+    // when
+    HarnessResult result =
+        patchUri(
+            TestConstants.URIs.UPDATE_APPLICATION,
+            applicationUpdateRequest,
+            applicationEntity.getId());
+
+    // then
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertNoContent(result);
+
+    ApplicationEntity actual =
+        applicationRepository.findById(applicationEntity.getId()).orElseThrow();
+    assertThat(actual.getStatus()).isEqualTo(originalStatus);
+    assertThat(expectedContent)
+        .usingRecursiveComparison()
+        .ignoringCollectionOrder()
+        .isEqualTo(actual.getApplicationContent());
+  }
+
+  @Test
   public void givenUpdateRequestWithWrongId_whenUpdateApplication_thenReturnNotFound()
       throws Exception {
     // given

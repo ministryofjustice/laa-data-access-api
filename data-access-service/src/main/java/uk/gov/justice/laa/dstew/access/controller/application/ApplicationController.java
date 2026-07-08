@@ -52,8 +52,8 @@ import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.AssignCaseworker
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.createnote.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.GetApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.usecase.updateapplication.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.updateapplication.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
 /** Controller for handling /api/v0/applications requests. */
