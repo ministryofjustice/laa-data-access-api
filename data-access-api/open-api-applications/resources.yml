@@ -2,7 +2,7 @@ paths:
   /api/v0/applications:
     get:
       tags:
-        - application
+        - application-query
       summary: Get applications
       operationId: getApplications
       parameters:
@@ -85,7 +85,7 @@ paths:
         '500': { description: Internal server error }
     post:
       tags:
-        - application
+        - application-command
       summary: Create an application
       operationId: createApplication
       parameters:
@@ -108,7 +108,7 @@ paths:
   /api/v0/applications/{id}:
     get:
       tags:
-        - application
+        - application-query
       summary: Get an application by id
       operationId: getApplicationById
       parameters:
@@ -133,7 +133,7 @@ paths:
         '500': { description: Internal server error }
     patch:
       tags:
-        - application
+        - application-command
       summary: Update an application
       operationId: updateApplication
       parameters:
@@ -163,7 +163,7 @@ paths:
   /api/v0/applications/{id}/history-search:
     get:
       tags:
-        - application
+        - application-query
       summary: Get a list of events associated with an application
       operationId: getApplicationHistory
       parameters:
@@ -198,7 +198,7 @@ paths:
   /api/v0/applications/assign:
     post:
       tags:
-        - application
+        - application-command
       operationId: assignCaseworker
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
@@ -221,7 +221,7 @@ paths:
   /api/v0/applications/{id}/unassign:
     post:
       tags:
-        - application
+        - application-command
       operationId: unassignCaseworker
       summary: Unassign a caseworker from an application
       parameters:
@@ -250,7 +250,7 @@ paths:
   /api/v0/applications/{id}/notes:
     get:
       tags:
-        - application
+        - application-query
       operationId: getApplicationNotes
       summary: Get notes for an application in ascending date order
       parameters:
@@ -275,7 +275,7 @@ paths:
         '500': { description: Internal server error }
     post:
       tags:
-        - application
+        - application-command
       operationId: createApplicationNotes
       summary: Create notes for an application
       parameters:
@@ -304,7 +304,7 @@ paths:
   /api/v0/applications/{id}/decision:
     patch:
       tags:
-        - application
+        - application-command
       operationId: makeDecision
       summary: Make a decision request for an application
       parameters:
@@ -333,7 +333,7 @@ paths:
   /api/v0/applications/{id}/certificate:
     get:
       tags:
-        - application
+        - application-query
       operationId: getCertificate
       summary: Get the certificate information for an application (if it exists)
       parameters:
@@ -362,7 +362,7 @@ paths:
   /api/v0/applications/{id}/upload-document:
     post:
       tags:
-        - application
+        - application-command
       summary: Upload a document to document storage and return the file ID
       operationId: uploadDocument
       parameters:
@@ -401,7 +401,7 @@ paths:
   /api/v0/applications/{id}/download-document/{documentId}:
     get:
       tags:
-        - application
+        - application-query
       summary: Get a download URL for a document in document storage
       operationId: downloadDocument
       parameters:
@@ -432,7 +432,7 @@ paths:
   /api/v0/applications/{id}/update-document:
     put:
       tags:
-        - application
+        - application-command
       summary: Update an existing document in document storage and return the file ID
       operationId: updateDocument
       parameters:
@@ -470,7 +470,7 @@ paths:
   /api/v0/applications/{id}/delete-document:
     delete:
       tags:
-        - application
+        - application-command
       summary: Delete document from document storage
       operationId: deleteDocument
       parameters:
@@ -505,7 +505,7 @@ paths:
   /api/v0/sds/health:
     get:
       tags:
-        - sds
+        - sds-query
       summary: Check SDS Api health
       operationId: getSdsHealth
       responses:
