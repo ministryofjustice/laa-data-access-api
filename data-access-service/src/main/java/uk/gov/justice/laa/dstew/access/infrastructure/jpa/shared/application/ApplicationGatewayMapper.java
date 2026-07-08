@@ -5,10 +5,16 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
+import uk.gov.justice.laa.dstew.access.domain.DecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
+import uk.gov.justice.laa.dstew.access.domain.MeritsDecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
+import uk.gov.justice.laa.dstew.access.domain.enums.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.domain.enums.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
+import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
@@ -71,6 +77,7 @@ public class ApplicationGatewayMapper {
   public ApplicationDomain toApplicationDomain(ApplicationEntity application) {
     return ApplicationDomain.builder()
         .id(application.getId())
+        .version(application.getVersion())
         .status(application.getStatus() != null ? application.getStatus().name() : null)
         .laaReference(application.getLaaReference())
         .officeCode(application.getOfficeCode())
@@ -99,6 +106,47 @@ public class ApplicationGatewayMapper {
                     .collect(Collectors.toCollection(LinkedHashSet::new)))
         .caseworkerId(
             application.getCaseworker() != null ? application.getCaseworker().getId() : null)
+        .decision(toDecisionDomain(application.getDecision()))
+        .build();
+  }
+
+  /**
+   * Maps a {@link DecisionEntity} to a {@link DecisionDomain}, nullable-safe.
+   *
+   * @param decision the JPA decision entity; may be {@code null}
+   * @return the domain, or {@code null} if {@code decision} is {@code null}
+   */
+  public DecisionDomain toDecisionDomain(DecisionEntity decision) {
+    if (decision == null) {
+      return null;
+    }
+    return DecisionDomain.builder()
+        .overallDecision(
+            decision.getOverallDecision() != null
+                ? DecisionStatus.valueOf(decision.getOverallDecision().name())
+                : null)
+        .modifiedAt(decision.getModifiedAt())
+        .build();
+  }
+
+  /**
+   * Maps a {@link MeritsDecisionEntity} to a {@link MeritsDecisionDomain}, nullable-safe.
+   *
+   * @param meritsDecision the JPA merits decision entity; may be {@code null}
+   * @return the domain, or {@code null} if {@code meritsDecision} is {@code null}
+   */
+  public MeritsDecisionDomain toMeritsDecisionDomain(MeritsDecisionEntity meritsDecision) {
+    if (meritsDecision == null) {
+      return null;
+    }
+    return MeritsDecisionDomain.builder()
+        .decision(
+            meritsDecision.getDecision() != null
+                ? MeritsDecisionStatus.valueOf(meritsDecision.getDecision().name())
+                : null)
+        .reason(meritsDecision.getReason())
+        .justification(meritsDecision.getJustification())
+        .modifiedAt(meritsDecision.getModifiedAt())
         .build();
   }
 
@@ -145,6 +193,7 @@ public class ApplicationGatewayMapper {
         .proceedingContent(proceeding.getProceedingContent())
         .createdBy(proceeding.getCreatedBy())
         .updatedBy(proceeding.getUpdatedBy())
+        .meritsDecision(toMeritsDecisionDomain(proceeding.getMeritsDecision()))
         .build();
   }
 }
