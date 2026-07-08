@@ -71,7 +71,6 @@ portForward:
 # Mock OAuth2 Server - Use shared instance
 # All PR/feature environments share ONE mock-oauth2 instance
 mockOAuth2:
-  enabled: false  # Don't deploy per-PR instance
   sharedInstance:
     enabled: true  # Use the shared instance
     serviceName: laa-data-access-mock-oauth2-shared

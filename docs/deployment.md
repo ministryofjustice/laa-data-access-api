@@ -239,13 +239,20 @@ Default namespace is `laa-data-access-api-uat`.
 Check the shared mock-oauth2 deployment:
 
 ```bash
-kubectl get pods -n laa-data-access-api-uat -l app.kubernetes.io/name=shared-mock-oauth2
+kubectl get pods -n laa-data-access-api-uat -l app.kubernetes.io/name=mock-oauth2-shared
 kubectl get svc -n laa-data-access-api-uat laa-data-access-mock-oauth2-shared
 ```
 
 ### Getting test tokens
 
-For PR deployments, port-forward the shared service and generate tokens:
+PR and feature deployments run with the `preview` Spring profile, where security is enabled. You can authenticate in two ways:
+
+1. **Quick option — dev token _(temporary)_:** paste `swagger-caseworker-token` straight into the Swagger UI "Authorize" dialog (or send it as `Authorization: Bearer swagger-caseworker-token`). This works because `preview` deployments set `FEATURE_ENABLE_DEV_TOKEN=true`. No port-forward needed.
+2. **Real JWT — shared mock-oauth2 (recommended):** fetch a signed token from the shared server. This exercises the full JWT validation path and matches how the API is authenticated everywhere else.
+
+> ⚠️ **The `swagger-caseworker-token` dev token is temporary** and is planned for removal (expected ~late July 2026) once teams are comfortable with the shared mock-oauth2 flow. Use the mock-oauth2 token (option 2) for anything you'll rely on.
+
+To fetch a real token, port-forward the shared service and generate one:
 
 ```bash
 # Port-forward the shared mock-oauth2
@@ -256,6 +263,17 @@ kubectl -n laa-data-access-api-uat port-forward svc/laa-data-access-mock-oauth2-
 ```
 
 The script now defaults to the shared mock-oauth2 service. Tokens will have the correct issuer (`http://laa-data-access-mock-oauth2-shared:9999/entra`) that matches PR deployment expectations.
+
+With the port-forward running, the token endpoint is `http://localhost:9999/entra/token`. To fetch a token directly instead of using the script, include the `Host` header so the token's issuer matches what the deployed API expects (the script sets this for you):
+
+```bash
+curl -X POST http://localhost:9999/entra/token \
+  -H "Host: laa-data-access-mock-oauth2-shared:9999" \
+  -d grant_type=client_credentials \
+  -d client_id=test \
+  -d client_secret=test \
+  -d scope=api://laa-data-access-api/.default
+```
 
 See the [Authentication section in README.md](../README.md) for full details on using tokens.
 

@@ -248,11 +248,29 @@ curl -X GET "http://localhost:8080/api/v0/caseworkers" \
 
 ### UAT/Deployed Environments (PR and Feature Deployments)
 
-All PR and feature deployments in UAT use a **shared mock-oauth2 server** that is automatically deployed when code merges to `main`.
+PR and feature deployments run with the `preview` profile (security enabled). There are **two ways to authenticate**:
+
+| Option | When to use | How |
+|---|---|---|
+| **Dev token** _(temporary)_ | Quick manual testing / Swagger UI while teams adopt the new flow | Use `swagger-caseworker-token` directly — no port-forward, no script |
+| **Real JWT** (shared mock-oauth2) | **Recommended** — matches how the API is authenticated everywhere else | Fetch a signed token from the shared mock-oauth2 server (steps below) |
+
+> **The `swagger-caseworker-token` dev token is temporary** and will be removed once teams are comfortable with the shared mock-oauth2 flow. Prefer **Option 2** for anything you'll rely on.
+
+#### Option 1: Dev token (quickest, temporary)
+
+`preview` deployments set `FEATURE_ENABLE_DEV_TOKEN=true`, so you can authenticate with the fixed dev token — no port-forward or script needed:
+
+- **Swagger UI:** paste `swagger-caseworker-token` into the "Authorize" dialog
+- **curl:** `-H "Authorization: Bearer swagger-caseworker-token"`
+
+_This is a convenience for the transition period only — see the removal note above._
+
+#### Option 2: Real JWT from the shared mock-oauth2 server
+
+All PR and feature deployments share a **mock-oauth2 server** that is automatically deployed when code merges to `main`.
 
 **Service name:** `laa-data-access-mock-oauth2-shared`
-
-#### Getting a token for your PR deployment
 
 1. **Port-forward the shared mock-oauth2 service** (in a separate terminal):
    ```bash
@@ -260,7 +278,7 @@ All PR and feature deployments in UAT use a **shared mock-oauth2 server** that i
      svc/laa-data-access-mock-oauth2-shared 9999:9999
    ```
 
-2. **Fetch a test token** (the script now defaults to the shared instance):
+2. **Fetch a test token** (the script defaults to the shared instance):
    ```bash
    ./scripts/get-token.sh uat --copy --decode
    ```
@@ -272,9 +290,9 @@ All PR and feature deployments in UAT use a **shared mock-oauth2 server** that i
 
 **Note:** The issuer in the token will be `http://laa-data-access-mock-oauth2-shared:9999/entra`, which matches what your PR deployment expects.
 
-**Advanced:** If you need a token from a different mock-oauth2 service (e.g., a specific PR's instance), you can override:
+**Advanced:** The `uat` command already defaults to the shared service (`laa-data-access-mock-oauth2-shared`), so no override is needed for the normal case. Only set `OAUTH_ISSUER_HOST` if you need a token from a *different* mock-oauth2 service, substituting its service name:
 ```bash
-OAUTH_ISSUER_HOST=pr-123-mock-oauth2:9999 ./scripts/get-token.sh uat --copy
+OAUTH_ISSUER_HOST=<service-name>:9999 ./scripts/get-token.sh uat --copy
 ```
 
 ---
