@@ -40,7 +40,6 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.applications.GetAllNotesForApplicationService;
 import uk.gov.justice.laa.dstew.access.service.applications.GetCertificateService;
-import uk.gov.justice.laa.dstew.access.service.applications.MakeDecisionService;
 import uk.gov.justice.laa.dstew.access.service.applications.SdsService;
 import uk.gov.justice.laa.dstew.access.service.applications.UnassignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.service.applications.UpdateApplicationService;
@@ -52,6 +51,8 @@ import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicati
 import uk.gov.justice.laa.dstew.access.usecase.createnote.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.getallapplications.GetAllApplicationsUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.GetApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
 
 /** Controller for handling /api/v0/applications requests. */
 @RequiredArgsConstructor
@@ -71,7 +72,8 @@ public class ApplicationController implements ApplicationApi {
   private final AssignCaseworkerUseCase assignCaseworkerUseCase;
   private final AssignCaseworkerCommandMapper assignCaseworkerCommandMapper;
   private final UnassignCaseworkerService unassignCaseworkerService;
-  private final MakeDecisionService makeDecisionService;
+  private final MakeDecisionUseCase makeDecisionUseCase;
+  private final MakeDecisionCommandMapper makeDecisionCommandMapper;
   private final GetAllNotesForApplicationService getNotesService;
   private final CreateNoteUseCase createNoteUseCase;
   private final CreateNoteCommandMapper createNoteCommandMapper;
@@ -186,9 +188,8 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   public ResponseEntity<Void> makeDecision(
       @NotNull ServiceName serviceName, UUID applicationId, @Valid MakeDecisionRequest request) {
-
-    makeDecisionService.makeDecision(applicationId, request);
-
+    makeDecisionUseCase.execute(
+        makeDecisionCommandMapper.toMakeDecisionCommand(applicationId, request));
     return ResponseEntity.noContent().build();
   }
 
