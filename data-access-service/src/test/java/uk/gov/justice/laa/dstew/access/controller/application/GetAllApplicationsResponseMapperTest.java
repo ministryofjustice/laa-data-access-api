@@ -9,11 +9,10 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.http.ResponseEntity;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationSummaryDomain;
 import uk.gov.justice.laa.dstew.access.domain.LinkedApplicationSummaryDomain;
+import uk.gov.justice.laa.dstew.access.domain.PagedResultDomain;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
@@ -65,7 +64,7 @@ class GetAllApplicationsResponseMapperTest {
                     .isLead(true)
                     .linkedApplications(List.of(linked)));
 
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of(domain));
+    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 1, 10);
 
     ResponseEntity<ApplicationSummaryResponse> response =
@@ -108,7 +107,7 @@ class GetAllApplicationsResponseMapperTest {
     ApplicationSummaryDomain domain =
         DataGenerator.createDefault(
             ApplicationSummaryDomainGenerator.class, b -> b.caseworkerId(null));
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of(domain));
+    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 1, 10);
 
     ApplicationSummaryResponse body = mapper.toGetAllApplicationsResponse(result).getBody();
@@ -122,7 +121,7 @@ class GetAllApplicationsResponseMapperTest {
     ApplicationSummaryDomain domain =
         DataGenerator.createDefault(
             ApplicationSummaryDomainGenerator.class, b -> b.submittedAt(null));
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of(domain));
+    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 1, 10);
 
     ApplicationSummaryResponse body = mapper.toGetAllApplicationsResponse(result).getBody();
@@ -136,7 +135,7 @@ class GetAllApplicationsResponseMapperTest {
     ApplicationSummaryDomain domain =
         DataGenerator.createDefault(
             ApplicationSummaryDomainGenerator.class, b -> b.categoryOfLaw(null));
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of(domain));
+    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 1, 10);
 
     ApplicationSummaryResponse body = mapper.toGetAllApplicationsResponse(result).getBody();
@@ -150,7 +149,7 @@ class GetAllApplicationsResponseMapperTest {
     ApplicationSummaryDomain domain =
         DataGenerator.createDefault(
             ApplicationSummaryDomainGenerator.class, b -> b.matterType(null));
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of(domain));
+    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 1, 10);
 
     ApplicationSummaryResponse body = mapper.toGetAllApplicationsResponse(result).getBody();
@@ -164,7 +163,7 @@ class GetAllApplicationsResponseMapperTest {
     ApplicationSummaryDomain domain =
         DataGenerator.createDefault(
             ApplicationSummaryDomainGenerator.class, b -> b.linkedApplications(List.of()));
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of(domain));
+    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 1, 10);
 
     ApplicationSummaryResponse body = mapper.toGetAllApplicationsResponse(result).getBody();
@@ -175,7 +174,7 @@ class GetAllApplicationsResponseMapperTest {
 
   @Test
   void givenEmptyApplicationsPage_whenToGetAllApplicationsResponse_thenPagingHasZeroTotals() {
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of());
+    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(), 0);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 2, 5);
 
     ApplicationSummaryResponse body = mapper.toGetAllApplicationsResponse(result).getBody();
@@ -192,7 +191,7 @@ class GetAllApplicationsResponseMapperTest {
   void givenNullStatus_whenToGetAllApplicationsResponse_thenStatusIsNull() {
     ApplicationSummaryDomain domain =
         DataGenerator.createDefault(ApplicationSummaryDomainGenerator.class, b -> b.status(null));
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of(domain));
+    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
     GetAllApplicationsResult result = new GetAllApplicationsResult(page, 1, 10);
 
     ApplicationSummaryResponse body = mapper.toGetAllApplicationsResponse(result).getBody();

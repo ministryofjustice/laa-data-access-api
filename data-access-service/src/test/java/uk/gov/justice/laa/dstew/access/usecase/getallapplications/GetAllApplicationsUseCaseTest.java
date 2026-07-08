@@ -16,10 +16,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationSummaryDomain;
 import uk.gov.justice.laa.dstew.access.domain.LinkedApplicationSummaryDomain;
+import uk.gov.justice.laa.dstew.access.domain.PagedResultDomain;
 import uk.gov.justice.laa.dstew.access.usecase.getallapplications.infrastructure.GetAllApplicationsApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.getallapplications.infrastructure.GetAllApplicationsCaseworkerGateway;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -47,7 +46,7 @@ class GetAllApplicationsUseCaseTest {
         DataGenerator.createDefault(GetAllApplicationsQueryGenerator.class);
     ApplicationSummaryDomain domain =
         DataGenerator.createDefault(ApplicationSummaryDomainGenerator.class);
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of(domain));
+    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(domain), 1);
 
     when(caseworkerGateway.caseworkerExists(query.userId())).thenReturn(true);
     when(applicationGateway.findAllApplications(
@@ -70,17 +69,15 @@ class GetAllApplicationsUseCaseTest {
 
     assertThat(result.requestedPage()).isEqualTo(1);
     assertThat(result.requestedPageSize()).isEqualTo(10);
-    assertThat(result.applications().getTotalElements()).isEqualTo(1);
-    assertThat(result.applications().getContent().get(0))
-        .usingRecursiveComparison()
-        .isEqualTo(domain);
+    assertThat(result.applications().totalElements()).isEqualTo(1);
+    assertThat(result.applications().content().get(0)).usingRecursiveComparison().isEqualTo(domain);
   }
 
   @Test
   void givenNullUserId_whenExecuted_thenSkipsCaseworkerCheck() {
     GetAllApplicationsQuery query =
         DataGenerator.createDefault(GetAllApplicationsQueryGenerator.class, b -> b.userId(null));
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of());
+    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(), 0);
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(page);
@@ -95,7 +92,7 @@ class GetAllApplicationsUseCaseTest {
     UUID userId = UUID.randomUUID();
     GetAllApplicationsQuery query =
         DataGenerator.createDefault(GetAllApplicationsQueryGenerator.class, b -> b.userId(userId));
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of());
+    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(), 0);
 
     when(caseworkerGateway.caseworkerExists(userId)).thenReturn(true);
     when(applicationGateway.findAllApplications(
@@ -130,7 +127,7 @@ class GetAllApplicationsUseCaseTest {
   void givenEmptyPage_whenExecuted_thenLinkedAppsGatewayNeverCalled() {
     GetAllApplicationsQuery query =
         DataGenerator.createDefault(GetAllApplicationsQueryGenerator.class, b -> b.userId(null));
-    Page<ApplicationSummaryDomain> emptyPage = new PageImpl<>(List.of());
+    PagedResultDomain<ApplicationSummaryDomain> emptyPage = new PagedResultDomain<>(List.of(), 0);
 
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
@@ -138,7 +135,7 @@ class GetAllApplicationsUseCaseTest {
 
     GetAllApplicationsResult result = useCase.execute(query);
 
-    assertThat(result.applications().isEmpty()).isTrue();
+    assertThat(result.applications().content().isEmpty()).isTrue();
     verify(applicationGateway, never()).findLinkedApplicationsForPageIds(anyList());
   }
 
@@ -156,7 +153,7 @@ class GetAllApplicationsUseCaseTest {
             LinkedApplicationSummaryDomainGenerator.class,
             b -> b.applicationId(associateId).isLead(false).leadApplicationId(leadId));
 
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of(lead));
+    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(lead), 1);
 
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
@@ -170,7 +167,7 @@ class GetAllApplicationsUseCaseTest {
                 GetAllApplicationsQueryGenerator.class, b -> b.userId(null)));
 
     List<LinkedApplicationSummaryDomain> linked =
-        result.applications().getContent().get(0).linkedApplications();
+        result.applications().content().get(0).linkedApplications();
     assertThat(linked).hasSize(1);
     assertThat(linked.get(0).applicationId()).isEqualTo(associateId);
   }
@@ -193,7 +190,8 @@ class GetAllApplicationsUseCaseTest {
             LinkedApplicationSummaryDomainGenerator.class,
             b -> b.applicationId(associateId).isLead(false).leadApplicationId(leadId));
 
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of(associate));
+    PagedResultDomain<ApplicationSummaryDomain> page =
+        new PagedResultDomain<>(List.of(associate), 1);
 
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
@@ -207,7 +205,7 @@ class GetAllApplicationsUseCaseTest {
                 GetAllApplicationsQueryGenerator.class, b -> b.userId(null)));
 
     List<LinkedApplicationSummaryDomain> linked =
-        result.applications().getContent().get(0).linkedApplications();
+        result.applications().content().get(0).linkedApplications();
     assertThat(linked).hasSize(1);
     assertThat(linked.get(0).applicationId()).isEqualTo(leadId);
   }
@@ -228,7 +226,8 @@ class GetAllApplicationsUseCaseTest {
             LinkedApplicationSummaryDomainGenerator.class,
             b -> b.applicationId(assocA).isLead(false).leadApplicationId(leadA));
 
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of(appA, appB));
+    PagedResultDomain<ApplicationSummaryDomain> page =
+        new PagedResultDomain<>(List.of(appA, appB), 2);
 
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
@@ -240,7 +239,7 @@ class GetAllApplicationsUseCaseTest {
             DataGenerator.createDefault(
                 GetAllApplicationsQueryGenerator.class, b -> b.userId(null)));
 
-    List<ApplicationSummaryDomain> content = result.applications().getContent();
+    List<ApplicationSummaryDomain> content = result.applications().content();
     ApplicationSummaryDomain resultA =
         content.stream().filter(d -> d.id().equals(leadA)).findFirst().orElseThrow();
     ApplicationSummaryDomain resultB =
@@ -300,7 +299,7 @@ class GetAllApplicationsUseCaseTest {
     GetAllApplicationsQuery query =
         DataGenerator.createDefault(
             GetAllApplicationsQueryGenerator.class, b -> b.userId(null).pageSize(100));
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of());
+    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(), 0);
 
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
@@ -316,7 +315,7 @@ class GetAllApplicationsUseCaseTest {
     GetAllApplicationsQuery query =
         DataGenerator.createDefault(
             GetAllApplicationsQueryGenerator.class, b -> b.userId(null).page(null).pageSize(null));
-    Page<ApplicationSummaryDomain> page = new PageImpl<>(List.of());
+    PagedResultDomain<ApplicationSummaryDomain> page = new PagedResultDomain<>(List.of(), 0);
 
     when(applicationGateway.findAllApplications(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))

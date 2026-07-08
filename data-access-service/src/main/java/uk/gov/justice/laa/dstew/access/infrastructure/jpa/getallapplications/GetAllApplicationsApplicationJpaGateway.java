@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationSummaryDomain;
 import uk.gov.justice.laa.dstew.access.domain.LinkedApplicationSummaryDomain;
+import uk.gov.justice.laa.dstew.access.domain.PagedResultDomain;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortFields;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -40,7 +41,7 @@ public class GetAllApplicationsApplicationJpaGateway
   }
 
   @Override
-  public Page<ApplicationSummaryDomain> findAllApplications(
+  public PagedResultDomain<ApplicationSummaryDomain> findAllApplications(
       String status,
       String laaReference,
       String clientFirstName,
@@ -75,7 +76,9 @@ public class GetAllApplicationsApplicationJpaGateway
             clientLastName,
             clientDateOfBirth);
 
-    return resultPage.map(gatewayMapper::toApplicationSummaryDomain);
+    List<ApplicationSummaryDomain> content =
+        resultPage.map(gatewayMapper::toApplicationSummaryDomain).getContent();
+    return new PagedResultDomain<>(content, resultPage.getTotalElements());
   }
 
   @Override

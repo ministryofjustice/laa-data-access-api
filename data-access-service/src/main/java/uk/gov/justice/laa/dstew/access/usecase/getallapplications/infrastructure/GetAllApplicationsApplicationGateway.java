@@ -3,9 +3,9 @@ package uk.gov.justice.laa.dstew.access.usecase.getallapplications.infrastructur
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.data.domain.Page;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationSummaryDomain;
 import uk.gov.justice.laa.dstew.access.domain.LinkedApplicationSummaryDomain;
+import uk.gov.justice.laa.dstew.access.domain.PagedResultDomain;
 
 /** Gateway interface for paginated application queries in the getAllApplications use case. */
 public interface GetAllApplicationsApplicationGateway {
@@ -21,7 +21,7 @@ public interface GetAllApplicationsApplicationGateway {
    * @param pageSize number of results per page
    * @return page of domain summaries
    */
-  Page<ApplicationSummaryDomain> findAllApplications(
+  PagedResultDomain<ApplicationSummaryDomain> findAllApplications(
       String status,
       String laaReference,
       String clientFirstName,

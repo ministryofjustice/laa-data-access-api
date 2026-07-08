@@ -4,9 +4,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.springframework.data.domain.Page;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationSummaryDomain;
 import uk.gov.justice.laa.dstew.access.domain.LinkedApplicationSummaryDomain;
+import uk.gov.justice.laa.dstew.access.domain.PagedResultDomain;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.usecase.getallapplications.infrastructure.GetAllApplicationsApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.getallapplications.infrastructure.GetAllApplicationsCaseworkerGateway;
@@ -47,7 +47,7 @@ public class GetAllApplicationsUseCase {
       throw new ValidationException(List.of("Caseworker not found"));
     }
 
-    Page<ApplicationSummaryDomain> page =
+    PagedResultDomain<ApplicationSummaryDomain> page =
         applicationGateway.findAllApplications(
             query.status(),
             query.laaReference(),
@@ -62,20 +62,23 @@ public class GetAllApplicationsUseCase {
             query.page(),
             query.pageSize());
 
-    Page<ApplicationSummaryDomain> resolvedPage = page;
-    if (!page.isEmpty()) {
-      List<UUID> pageIds = page.getContent().stream().map(ApplicationSummaryDomain::id).toList();
+    PagedResultDomain<ApplicationSummaryDomain> resolvedPage = page;
+    if (!page.content().isEmpty()) {
+      List<UUID> pageIds = page.content().stream().map(ApplicationSummaryDomain::id).toList();
       List<LinkedApplicationSummaryDomain> allLinked =
           applicationGateway.findLinkedApplicationsForPageIds(pageIds);
       Map<UUID, List<LinkedApplicationSummaryDomain>> byLeadId =
           allLinked.stream()
               .collect(Collectors.groupingBy(LinkedApplicationSummaryDomain::leadApplicationId));
-      resolvedPage =
-          page.map(
-              domain ->
-                  domain.toBuilder()
-                      .linkedApplications(resolveLinkedApplications(domain.id(), byLeadId))
-                      .build());
+      List<ApplicationSummaryDomain> resolved =
+          page.content().stream()
+              .map(
+                  domain ->
+                      domain.toBuilder()
+                          .linkedApplications(resolveLinkedApplications(domain.id(), byLeadId))
+                          .build())
+              .toList();
+      resolvedPage = new PagedResultDomain<>(resolved, page.totalElements());
     }
 
     return new GetAllApplicationsResult(resolvedPage, validatedPage, validatedPageSize);

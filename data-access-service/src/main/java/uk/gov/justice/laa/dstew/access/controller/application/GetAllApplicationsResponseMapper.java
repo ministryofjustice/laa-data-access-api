@@ -30,12 +30,12 @@ public class GetAllApplicationsResponseMapper {
   public ResponseEntity<ApplicationSummaryResponse> toGetAllApplicationsResponse(
       GetAllApplicationsResult result) {
     List<ApplicationSummary> applications =
-        result.applications().getContent().stream().map(this::toApplicationSummary).toList();
+        result.applications().content().stream().map(this::toApplicationSummary).toList();
 
     PagingResponse pagingResponse = new PagingResponse();
     pagingResponse.setPage(result.requestedPage());
     pagingResponse.pageSize(result.requestedPageSize());
-    pagingResponse.totalRecords((int) result.applications().getTotalElements());
+    pagingResponse.totalRecords((int) result.applications().totalElements());
     pagingResponse.itemsReturned(applications.size());
 
     ApplicationSummaryResponse response = new ApplicationSummaryResponse();
