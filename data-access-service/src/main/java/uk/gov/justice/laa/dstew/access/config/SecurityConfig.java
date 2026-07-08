@@ -41,7 +41,6 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
-import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
@@ -98,8 +97,7 @@ public class SecurityConfig {
   @Bean
   SecurityFilterChain securityFilterChain(
       final HttpSecurity http,
-      @Autowired(required = false) @Qualifier("devTokenFilter") OncePerRequestFilter devTokenFilter,
-      @Autowired(required = false) BearerTokenResolver bearerTokenResolver)
+      @Autowired(required = false) @Qualifier("devTokenFilter") OncePerRequestFilter devTokenFilter)
       throws Exception {
 
     if (devTokenFilter != null) {
@@ -122,18 +120,10 @@ public class SecurityConfig {
                     .anyRequest()
                     .authenticated())
         .oauth2ResourceServer(
-            oauth2 -> {
-              // Explicitly wire the dev-token-aware resolver when present so that dev tokens
-              // (e.g. "swagger-caseworker-token") are never handed to the JWT decoder. Relying on
-              // Spring's automatic BearerTokenResolver bean detection is fragile and, when it does
-              // not apply, produces a "401 Unauthorized: ... Malformed token" for dev tokens.
-              if (bearerTokenResolver != null) {
-                oauth2.bearerTokenResolver(bearerTokenResolver);
-              }
-              oauth2
-                  .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
-                  .authenticationEntryPoint(authenticationEntryPoint());
-            })
+            oauth2 ->
+                oauth2
+                    .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                    .authenticationEntryPoint(authenticationEntryPoint()))
         .csrf(AbstractHttpConfigurer::disable)
         .exceptionHandling(
             exception -> exception.authenticationEntryPoint(authenticationEntryPoint()));
