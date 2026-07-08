@@ -22,14 +22,14 @@ public class GetAllIndividualsResponseMapper {
   public ResponseEntity<IndividualsResponse> toGetAllIndividualsResponse(
       GetAllIndividualsResult result) {
     List<IndividualResponse> individualResponses =
-        result.individuals().getContent().stream()
+        result.individuals().content().stream()
             .map(individual -> toIndividualResponse(individual, result.clientDetails()))
             .toList();
 
     PagingResponse pagingResponse = new PagingResponse();
     pagingResponse.setPage(result.requestedPage());
     pagingResponse.pageSize(result.requestedPageSize());
-    pagingResponse.totalRecords((int) result.individuals().getTotalElements());
+    pagingResponse.totalRecords((int) result.individuals().totalElements());
     pagingResponse.itemsReturned(individualResponses.size());
 
     IndividualsResponse response = new IndividualsResponse();

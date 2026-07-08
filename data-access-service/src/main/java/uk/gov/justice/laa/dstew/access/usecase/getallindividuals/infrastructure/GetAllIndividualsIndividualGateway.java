@@ -1,8 +1,8 @@
 package uk.gov.justice.laa.dstew.access.usecase.getallindividuals.infrastructure;
 
 import java.util.UUID;
-import org.springframework.data.domain.Page;
 import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
+import uk.gov.justice.laa.dstew.access.usecase.getallindividuals.PagedResult;
 
 /** Gateway interface for paginated individual queries. */
 public interface GetAllIndividualsIndividualGateway {
@@ -16,5 +16,6 @@ public interface GetAllIndividualsIndividualGateway {
    * @param pageSize page size
    * @return page of matching individuals
    */
-  Page<IndividualDomain> findAll(UUID applicationId, String individualType, int page, int pageSize);
+  PagedResult<IndividualDomain> findAll(
+      UUID applicationId, String individualType, int page, int pageSize);
 }

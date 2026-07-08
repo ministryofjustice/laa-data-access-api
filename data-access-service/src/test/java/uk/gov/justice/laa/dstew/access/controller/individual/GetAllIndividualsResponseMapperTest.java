@@ -7,15 +7,13 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
 import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.usecase.getallindividuals.GetAllIndividualsResult;
+import uk.gov.justice.laa.dstew.access.usecase.getallindividuals.PagedResult;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.domain.IndividualDomainGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.getallindividuals.ApplicationClientDetailsDomainGenerator;
@@ -32,7 +30,7 @@ class GetAllIndividualsResponseMapperTest {
   @Test
   void givenBasicIndividuals_whenToGetAllIndividualsResponse_thenBasicFieldsMapped() {
     IndividualDomain individual = DataGenerator.createDefault(IndividualDomainGenerator.class);
-    Page<IndividualDomain> page = new PageImpl<>(List.of(individual), PageRequest.of(0, 10), 1);
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(individual), 1);
     GetAllIndividualsResult result =
         GetAllIndividualsResult.builder()
             .individuals(page)
@@ -73,7 +71,7 @@ class GetAllIndividualsResponseMapperTest {
         DataGenerator.createDefault(
             IndividualDomainGenerator.class, builder -> builder.id(individualId));
     var clientDetails = DataGenerator.createDefault(ApplicationClientDetailsDomainGenerator.class);
-    Page<IndividualDomain> page = new PageImpl<>(List.of(individual), PageRequest.of(0, 10), 1);
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(individual), 1);
     GetAllIndividualsResult result =
         GetAllIndividualsResult.builder()
             .individuals(page)
@@ -106,7 +104,7 @@ class GetAllIndividualsResponseMapperTest {
         DataGenerator.createDefault(
             ApplicationClientDetailsDomainGenerator.class,
             builder -> builder.appliedPreviously(null));
-    Page<IndividualDomain> page = new PageImpl<>(List.of(individual));
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(individual), 1);
     GetAllIndividualsResult result =
         GetAllIndividualsResult.builder()
             .individuals(page)
@@ -129,7 +127,7 @@ class GetAllIndividualsResponseMapperTest {
         DataGenerator.createDefault(
             ApplicationClientDetailsDomainGenerator.class,
             builder -> builder.correspondenceAddress(null));
-    Page<IndividualDomain> page = new PageImpl<>(List.of(individual));
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(individual), 1);
     GetAllIndividualsResult result =
         GetAllIndividualsResult.builder()
             .individuals(page)
@@ -146,7 +144,7 @@ class GetAllIndividualsResponseMapperTest {
 
   @Test
   void givenEmptyIndividualsPage_whenToGetAllIndividualsResponse_thenEmptyListWithCorrectPaging() {
-    Page<IndividualDomain> page = new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 20), 0);
+    PagedResult<IndividualDomain> page = new PagedResult<>(Collections.emptyList(), 0);
     GetAllIndividualsResult result =
         GetAllIndividualsResult.builder()
             .individuals(page)
@@ -171,7 +169,7 @@ class GetAllIndividualsResponseMapperTest {
         List.of(
             DataGenerator.createDefault(IndividualDomainGenerator.class),
             DataGenerator.createDefault(IndividualDomainGenerator.class));
-    Page<IndividualDomain> page = new PageImpl<>(individuals, PageRequest.of(0, 10), 25);
+    PagedResult<IndividualDomain> page = new PagedResult<>(individuals, 25);
     GetAllIndividualsResult result =
         GetAllIndividualsResult.builder()
             .individuals(page)
@@ -194,7 +192,7 @@ class GetAllIndividualsResponseMapperTest {
   void givenNullIndividualType_whenToGetAllIndividualsResponse_thenTypeIsNull() {
     IndividualDomain individual =
         DataGenerator.createDefault(IndividualDomainGenerator.class, builder -> builder.type(null));
-    Page<IndividualDomain> page = new PageImpl<>(List.of(individual));
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(individual), 1);
     GetAllIndividualsResult result =
         GetAllIndividualsResult.builder()
             .individuals(page)

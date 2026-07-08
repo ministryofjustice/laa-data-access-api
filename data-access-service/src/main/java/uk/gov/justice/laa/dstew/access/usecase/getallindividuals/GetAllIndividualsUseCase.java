@@ -5,7 +5,6 @@ import static uk.gov.justice.laa.dstew.access.utils.PaginationHelper.validatePag
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationClientDetailsDomain;
 import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
@@ -36,7 +35,7 @@ public class GetAllIndividualsUseCase {
     int resolvedPage = validatePage(query.page());
     int resolvedPageSize = validatePageSize(query.pageSize());
 
-    Page<IndividualDomain> individuals =
+    PagedResult<IndividualDomain> individuals =
         individualGateway.findAll(
             query.applicationId(), query.individualType(), resolvedPage, resolvedPageSize);
 

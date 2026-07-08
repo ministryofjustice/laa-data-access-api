@@ -14,8 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationClientDetailsDomain;
 import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
 import uk.gov.justice.laa.dstew.access.usecase.getallindividuals.infrastructure.GetAllIndividualsApplicationGateway;
@@ -41,13 +39,13 @@ class GetAllIndividualsUseCaseTest {
   @Test
   void givenNoFilters_whenExecuted_thenReturnsAllIndividualsWithoutClientDetails() {
     IndividualDomain individual = DataGenerator.createDefault(IndividualDomainGenerator.class);
-    Page<IndividualDomain> page = new PageImpl<>(List.of(individual));
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(individual), 1);
     when(individualGateway.findAll(null, null, 1, 10)).thenReturn(page);
 
     GetAllIndividualsResult result =
         useCase.execute(GetAllIndividualsQuery.builder().page(1).pageSize(10).build());
 
-    assertThat(result.individuals().getContent()).hasSize(1);
+    assertThat(result.individuals().content()).hasSize(1);
     assertThat(result.clientDetails()).isNull();
     assertThat(result.requestedPage()).isEqualTo(1);
     assertThat(result.requestedPageSize()).isEqualTo(10);
@@ -58,7 +56,7 @@ class GetAllIndividualsUseCaseTest {
   @Test
   void givenApplicationIdFilter_whenExecuted_thenPassesApplicationIdToGateway() {
     UUID appId = UUID.randomUUID();
-    Page<IndividualDomain> page = new PageImpl<>(List.of());
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(), 0);
     when(individualGateway.findAll(appId, null, 1, 10)).thenReturn(page);
 
     useCase.execute(
@@ -69,7 +67,7 @@ class GetAllIndividualsUseCaseTest {
 
   @Test
   void givenIndividualTypeFilter_whenExecuted_thenPassesTypeStringToGateway() {
-    Page<IndividualDomain> page = new PageImpl<>(List.of());
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(), 0);
     when(individualGateway.findAll(null, "CLIENT", 1, 10)).thenReturn(page);
 
     useCase.execute(
@@ -81,7 +79,7 @@ class GetAllIndividualsUseCaseTest {
   @Test
   void givenBothFilters_whenExecuted_thenPassesBothToGateway() {
     UUID appId = UUID.randomUUID();
-    Page<IndividualDomain> page = new PageImpl<>(List.of());
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(), 0);
     when(individualGateway.findAll(appId, "CLIENT", 1, 10)).thenReturn(page);
 
     useCase.execute(
@@ -99,7 +97,7 @@ class GetAllIndividualsUseCaseTest {
   void givenClientTypeAndClientDetailsInclude_whenExecuted_thenClientDetailsFetched() {
     UUID appId = UUID.randomUUID();
     IndividualDomain individual = DataGenerator.createDefault(IndividualDomainGenerator.class);
-    Page<IndividualDomain> page = new PageImpl<>(List.of(individual));
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(individual), 1);
     ApplicationClientDetailsDomain clientDetails =
         DataGenerator.createDefault(ApplicationClientDetailsDomainGenerator.class);
     when(individualGateway.findAll(appId, "CLIENT", 1, 10)).thenReturn(page);
@@ -122,7 +120,7 @@ class GetAllIndividualsUseCaseTest {
 
   @Test
   void givenNullPage_whenExecuted_thenDefaultPageUsed() {
-    Page<IndividualDomain> page = new PageImpl<>(List.of());
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(), 0);
     when(individualGateway.findAll(null, null, 1, 20)).thenReturn(page);
 
     GetAllIndividualsResult result = useCase.execute(GetAllIndividualsQuery.builder().build());
@@ -133,7 +131,7 @@ class GetAllIndividualsUseCaseTest {
 
   @Test
   void givenSecondPage_whenExecuted_thenRequestedPageIsTwo() {
-    Page<IndividualDomain> page = new PageImpl<>(List.of());
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(), 0);
     when(individualGateway.findAll(null, null, 2, 10)).thenReturn(page);
 
     GetAllIndividualsResult result =
@@ -145,7 +143,7 @@ class GetAllIndividualsUseCaseTest {
 
   @Test
   void givenMaxPageSize_whenExecuted_thenRequestedPageSizeIs100() {
-    Page<IndividualDomain> page = new PageImpl<>(List.of());
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(), 0);
     when(individualGateway.findAll(null, null, 1, 100)).thenReturn(page);
 
     GetAllIndividualsResult result =
@@ -205,7 +203,7 @@ class GetAllIndividualsUseCaseTest {
 
   @Test
   void givenClientTypeButNullInclude_whenExecuted_thenApplicationGatewayNotCalled() {
-    Page<IndividualDomain> page = new PageImpl<>(List.of());
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(), 0);
     when(individualGateway.findAll(null, "CLIENT", 1, 10)).thenReturn(page);
 
     GetAllIndividualsResult result =
@@ -219,7 +217,7 @@ class GetAllIndividualsUseCaseTest {
   @Test
   void givenAppliedPreviouslyFalse_whenExecuted_thenClientDetailsHasAppliedPreviouslyFalse() {
     UUID appId = UUID.randomUUID();
-    Page<IndividualDomain> page = new PageImpl<>(List.of());
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(), 0);
     ApplicationClientDetailsDomain clientDetails =
         DataGenerator.createDefault(
             ApplicationClientDetailsDomainGenerator.class,
@@ -243,7 +241,7 @@ class GetAllIndividualsUseCaseTest {
   @Test
   void givenNullApplicantFields_whenExecuted_thenApplicantSourcedClientDetailFieldsAreNull() {
     UUID appId = UUID.randomUUID();
-    Page<IndividualDomain> page = new PageImpl<>(List.of());
+    PagedResult<IndividualDomain> page = new PagedResult<>(List.of(), 0);
     ApplicationClientDetailsDomain clientDetails =
         DataGenerator.createDefault(
             ApplicationClientDetailsDomainGenerator.class,

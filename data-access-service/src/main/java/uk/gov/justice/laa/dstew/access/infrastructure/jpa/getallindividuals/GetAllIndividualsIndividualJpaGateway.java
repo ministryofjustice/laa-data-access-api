@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
 import uk.gov.justice.laa.dstew.access.specification.IndividualSpecification;
+import uk.gov.justice.laa.dstew.access.usecase.getallindividuals.PagedResult;
 import uk.gov.justice.laa.dstew.access.usecase.getallindividuals.infrastructure.GetAllIndividualsIndividualGateway;
 
 /** JPA implementation of {@link GetAllIndividualsIndividualGateway}. */
@@ -32,7 +33,7 @@ public class GetAllIndividualsIndividualJpaGateway implements GetAllIndividualsI
   }
 
   @Override
-  public Page<IndividualDomain> findAll(
+  public PagedResult<IndividualDomain> findAll(
       UUID applicationId, String individualType, int page, int pageSize) {
     IndividualType typeEnum =
         individualType != null ? IndividualType.valueOf(individualType) : null;
@@ -40,6 +41,8 @@ public class GetAllIndividualsIndividualJpaGateway implements GetAllIndividualsI
         IndividualSpecification.filterApplicationId(applicationId)
             .and(IndividualSpecification.filterIndividualType(typeEnum));
     Pageable pageable = createPageable(page, pageSize);
-    return individualRepository.findAll(spec, pageable).map(gatewayMapper::toDomain);
+    Page<IndividualDomain> springPage =
+        individualRepository.findAll(spec, pageable).map(gatewayMapper::toDomain);
+    return new PagedResult<>(springPage.getContent(), springPage.getTotalElements());
   }
 }
