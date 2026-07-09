@@ -325,4 +325,54 @@ class CleanArchitectureTest {
             .allowEmptyShould(true);
     rule.check(classes);
   }
+
+  @Test
+  void getCertificateUseCaseMustNotImportApiModels() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..usecase.getcertificate..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("uk.gov.justice.laa.dstew.access.model")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void getCertificateUseCaseMustNotImportJpaEntities() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..usecase.getcertificate..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..entity..")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void getCertificateJpaGatewayMustNotBeAnnotatedWithComponent() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..infrastructure.jpa.getcertificate..")
+            .should()
+            .beAnnotatedWith(org.springframework.stereotype.Component.class)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void getCertificateJpaGatewayMustNotBeAnnotatedWithTransactional() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..infrastructure.jpa.getcertificate..")
+            .should()
+            .beAnnotatedWith(jakarta.transaction.Transactional.class)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
 }

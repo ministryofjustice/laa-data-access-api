@@ -41,7 +41,6 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.applications.GetAllApplicationsService;
-import uk.gov.justice.laa.dstew.access.service.applications.GetCertificateService;
 import uk.gov.justice.laa.dstew.access.service.applications.SdsService;
 import uk.gov.justice.laa.dstew.access.service.applications.UnassignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.service.domainevents.GetDomainEventService;
@@ -52,6 +51,7 @@ import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicati
 import uk.gov.justice.laa.dstew.access.usecase.createnote.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.getallnotesforapplication.GetAllNotesForApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.GetApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.getcertificate.GetCertificateUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.updateapplication.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.utils.PaginationHelper.PaginatedResult;
@@ -69,7 +69,7 @@ public class ApplicationController implements ApplicationApi {
   private final GetApplicationUseCase getApplicationUseCase;
   private final GetApplicationResponseMapper getApplicationResponseMapper;
   private final GetAllApplicationsService applicationSummaryService;
-  private final GetCertificateService certificateService;
+  private final GetCertificateUseCase getCertificateUseCase;
   private final AssignCaseworkerUseCase assignCaseworkerUseCase;
   private final AssignCaseworkerCommandMapper assignCaseworkerCommandMapper;
   private final UnassignCaseworkerService unassignCaseworkerService;
@@ -232,7 +232,7 @@ public class ApplicationController implements ApplicationApi {
   @LogMethodResponse
   public ResponseEntity<Map<String, Object>> getCertificate(
       @NotNull ServiceName serviceName, UUID applicationId) {
-    return ResponseEntity.ok(certificateService.getCertificate(applicationId));
+    return ResponseEntity.ok(getCertificateUseCase.execute(applicationId).certificateContent());
   }
 
   @Hidden
