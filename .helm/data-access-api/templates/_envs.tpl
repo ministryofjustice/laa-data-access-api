@@ -83,6 +83,26 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
     secretKeyRef:
       name: laa-data-access-api-secrets
       key: ENTRA_AUD
+- name: AUTH_CLIENT_ID
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_CLIENT_ID
+- name: AUTH_CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_CLIENT_SECRET
+- name: AUTH_SCOPE
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_SCOPE
+- name: AUTH_TENANT_ID
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_TENANT_ID
 {{- end }}
 
 {{/*
@@ -99,4 +119,48 @@ For the main branch, extract DB environment variables from rds-postgresql-instan
     secretKeyRef:
       name: laa-data-access-api-secrets
       key: FEATURE_DISABLE_SECURITY
+{{- if .Values.featureFlags }}
+{{- range $key, $value := .Values.featureFlags }}
+- name: FEATURE_{{ upper $key }}
+  value: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+  Define additional environment variables for short-lived environments
+*/}}
+{{- define "extraEnvConfig" }}
+{{- if .Values.extraEnv }}
+{{- range $key, $value := .Values.extraEnv }}
+- name: {{ $key }}
+  value: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+  Define SDS API environment variables
+*/}}
+{{- define "sdsApiConfig" }}
+- name: SDS_API_URL
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_URL
+- name: SDS_API_BUCKET
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_BUCKET
+- name: SDS_API_CLIENT_REGISTRATION_ID
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_CLIENT_REGISTRATION_ID
+- name: SDS_API_PRINCIPAL_NAME
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_PRINCIPAL_NAME
 {{- end }}

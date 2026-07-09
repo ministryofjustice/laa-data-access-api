@@ -7,16 +7,16 @@ import java.util.Optional;
 import org.springframework.core.GenericTypeResolver;
 import org.springframework.stereotype.Component;
 
-/**
- * Registry to find a ResponseTransformer instance for a DTO class.
- */
+/** Registry to find a ResponseTransformer instance for a DTO class. */
 @Component
 class TransformerRegistry {
   private final Map<Class<?>, ResponseTransformer<?>> transformerByDtoClass = new HashMap<>();
 
   TransformerRegistry(final List<ResponseTransformer<?>> transformerList) {
     for (final var transformer : transformerList) {
-      final var dtoClass = GenericTypeResolver.resolveTypeArgument(transformer.getClass(), ResponseTransformer.class);
+      final var dtoClass =
+          GenericTypeResolver.resolveTypeArgument(
+              transformer.getClass(), ResponseTransformer.class);
       transformerByDtoClass.put(dtoClass, transformer);
     }
   }

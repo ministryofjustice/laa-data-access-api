@@ -7,18 +7,18 @@ import tools.jackson.databind.ObjectMapper;
 
 @Component
 public class SpringContext implements ApplicationContextAware {
-    private static ApplicationContext context;
+  private static ApplicationContext context;
 
-    @Override
-    public void setApplicationContext(ApplicationContext ctx) {
-        context = ctx;
-    }
+  @Override
+  public void setApplicationContext(ApplicationContext ctx) {
+    context = ctx;
+  }
 
-    private static <T> T getBean(Class<T> beanClass) {
-        return context.getBean(beanClass);
-    }
+  private static <T> T getBean(Class<T> beanClass) {
+    return context.getBean(beanClass);
+  }
 
-    public static ObjectMapper getObjectMapper() {
-        return getBean(ObjectMapper.class);
-    }
+  public static ObjectMapper getObjectMapper() {
+    return getBean(ObjectMapper.class);
+  }
 }

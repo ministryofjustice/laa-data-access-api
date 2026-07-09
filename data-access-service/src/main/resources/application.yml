@@ -24,11 +24,26 @@ spring:
 
   security:
     oauth2:
+      client:
+        registration:
+          moj-identity:
+            client-id: ${AUTH_CLIENT_ID}
+            client-secret: ${AUTH_CLIENT_SECRET}
+            scope: ${AUTH_SCOPE}
+            authorization-grant-type: client_credentials
+        provider:
+          moj-identity:
+            token-uri: https://login.microsoftonline.com/${AUTH_TENANT_ID}/oauth2/v2.0/token
       resourceserver:
         jwt:
           issuer-uri: ${ENTRA_ISSUER_URI}
           jwk-set-uri: ${ENTRA_JWK_SET_URI}
           audience: ${ENTRA_AUD}
+
+  servlet:
+    multipart:
+      max-file-size: ${MAX_UPLOAD_FILE_SIZE:25MB}
+      max-request-size: ${MAX_UPLOAD_REQUEST_SIZE:25MB}
 
   flyway:
     enabled: true
@@ -39,36 +54,66 @@ spring:
 
 logging:
   level:
-    tomcat: INFO
-    root: INFO
-    org:
-      springframework:
-        web: INFO
-      hibernate: INFO
+    root: ${ROOT_LOGGING_LEVEL:INFO}
+    org.springframework: ${SPRING_LOGGING_LEVEL:INFO}
+    org.springframework.web: ${SPRING_LOGGING_LEVEL:INFO}
+    org.springframework.security: INFO
+    org.hibernate: INFO
+    org.hibernate.SQL: INFO
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO
     com.azure.spring: INFO
-    uk:
-      gov:
-        justice:
-          laa:
-            dstew:
-              access:
-                config: INFO
+    uk.gov.justice.laa.dstew.access: ${APP_LOGGING_LEVEL:INFO}
+    org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: WARN
+    org.springframework.boot.actuate: WARN
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        name: laa-data-access-api
+        version: ${info.app.version:unknown}
+        environment: ${sentry.environment:local}
+        node_name: ${HOSTNAME:unknown}
 
 jdbc:
   datasource-proxy:
     slow-query:
       enable-logging: true
       log-level: WARN
-      threshold: 0  # seconds; overridden per environment
+      threshold: 1  # seconds; overridden per environment
 
 management:
   endpoints.web.exposure.include: health,info,prometheus,metrics
   endpoint.health.show-details: always
   info.env.enabled: true
   metrics:
+    tags:
+      release: ${METRICS_RELEASE_TAG:local}
     distribution:
       percentile-histogram:
         jdbc.query: true
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    baggage:
+      enabled: true
+      remote-fields: X-Correlation-ID
+      correlation:
+        enabled: true
+        fields: correlationId
+  observations:
+    http:
+      server:
+        requests:
+          name: http.server.requests
+      client:
+        requests:
+          name: http.client.requests
+
+springdoc:
+  api-docs:
+    version: openapi_3_1
 
 sentry:
   enabled: ${SENTRY_ENABLED:false}
@@ -88,6 +133,13 @@ feature:
   enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}
   disable-security: ${FEATURE_DISABLE_SECURITY:false}
 
+app:
+  sds-api:
+    url: ${SDS_API_URL}
+    bucket-name: ${SDS_API_BUCKET}
+    client-registration-id: ${SDS_API_CLIENT_REGISTRATION_ID}
+    principal-name: ${SDS_API_PRINCIPAL_NAME}
+
 server:
   forward-headers-strategy: framework
 
@@ -103,3 +155,19 @@ aws:
     bucket-name: ${AWS_S3_BUCKET_NAME:laa-data-stewardship-access-bucket}
 
 # End of file
+
+---
+# Local profile configuration - overrides for local development
+spring:
+  config:
+    activate:
+      on-profile: local
+
+logging:
+  # Override structured logging for local development
+  structured:
+    format:
+      console: # Disables structured logging for local development
+  pattern:
+    console: "%clr(%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr{faint} %clr([%15.15t]){faint} %clr([correlationId=%X{correlationId}]){yellow} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx"
+

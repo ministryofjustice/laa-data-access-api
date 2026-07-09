@@ -6,10 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import uk.gov.justice.laa.dstew.access.entity.NoteEntity;
 
-/**
- * Manages the persistence of notes for an application.
- *
- */
+/** Manages the persistence of notes for an application. */
 @Repository
 public interface NoteRepository extends JpaRepository<NoteEntity, UUID> {
   List<NoteEntity> findByApplicationId(UUID applicationId);

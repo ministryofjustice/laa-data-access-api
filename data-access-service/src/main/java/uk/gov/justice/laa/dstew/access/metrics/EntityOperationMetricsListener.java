@@ -14,21 +14,23 @@ import org.hibernate.event.spi.PreInsertEventListener;
 import org.hibernate.event.spi.PreUpdateEvent;
 import org.hibernate.event.spi.PreUpdateEventListener;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * Listens to Hibernate entity lifecycle events and records metrics.
  *
- * <p>Tracks create, read, update, and delete operations on JPA entities
- * and exposes them as Micrometer counters for Prometheus monitoring.</p>
+ * <p>Tracks create, read, update, and delete operations on JPA entities and exposes them as
+ * Micrometer counters for Prometheus monitoring.
  */
 @Component
 @Slf4j
 @RequiredArgsConstructor
-public class EntityOperationMetricsListener implements
-    PostLoadEventListener,
-    PreInsertEventListener,
-    PreUpdateEventListener,
-    PreDeleteEventListener {
+@ExcludeFromGeneratedCodeCoverage
+public class EntityOperationMetricsListener
+    implements PostLoadEventListener,
+        PreInsertEventListener,
+        PreUpdateEventListener,
+        PreDeleteEventListener {
 
   private final MeterRegistry meterRegistry;
   private final ConcurrentHashMap<String, Counter> counterCache = new ConcurrentHashMap<>();
@@ -59,7 +61,7 @@ public class EntityOperationMetricsListener implements
   /**
    * Records a single entity operation metric.
    *
-   * @param entity    the entity being operated on
+   * @param entity the entity being operated on
    * @param operation the operation type: "create", "read", "update", or "delete"
    */
   private void recordEntityOperation(Object entity, String operation) {
@@ -70,13 +72,16 @@ public class EntityOperationMetricsListener implements
     String entityName = entity.getClass().getSimpleName();
     String cacheKey = entityName + ":" + operation;
 
-    counterCache.computeIfAbsent(cacheKey, key ->
-        Counter.builder("jpa.entities")
-            .description("JPA entity operations")
-            .tag("entity", entityName)
-            .tag("operation", operation)
-            .register(meterRegistry)
-    ).increment();
+    counterCache
+        .computeIfAbsent(
+            cacheKey,
+            key ->
+                Counter.builder("jpa.entities")
+                    .description("JPA entity operations")
+                    .tag("entity", entityName)
+                    .tag("operation", operation)
+                    .register(meterRegistry))
+        .increment();
 
     if (log.isDebugEnabled()) {
       log.debug("Entity operation recorded: entity={}, operation={}", entityName, operation);

@@ -3,11 +3,11 @@ package uk.gov.justice.laa.dstew.access.utils.generator.certificate;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 import uk.gov.justice.laa.dstew.access.utils.testDto.certificate.CertificateContent;
 
-public class CertificateContentGenerator extends
-  BaseGenerator<CertificateContent, CertificateContent.CertificateContentBuilder> {
+public class CertificateContentGenerator
+    extends BaseGenerator<CertificateContent, CertificateContent.CertificateContentBuilder> {
 
   public CertificateContentGenerator() {
-      super(CertificateContent::toBuilder, CertificateContent.CertificateContentBuilder::build);
+    super(CertificateContent::toBuilder, CertificateContent.CertificateContentBuilder::build);
   }
 
   @Override

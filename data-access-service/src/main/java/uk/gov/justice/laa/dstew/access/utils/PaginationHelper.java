@@ -4,10 +4,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/**
- * Helper class for pagination validation.
- */
+/** Helper class for pagination validation. */
 public final class PaginationHelper {
 
   private static final int DEFAULT_PAGE = 1;
@@ -16,6 +15,7 @@ public final class PaginationHelper {
   private static final int MIN_PAGE = 1;
   private static final int MIN_PAGE_SIZE = 1;
 
+  @ExcludeFromGeneratedCodeCoverage
   private PaginationHelper() {
     // Utility class, prevent instantiation
   }
@@ -99,7 +99,8 @@ public final class PaginationHelper {
       return DEFAULT_PAGE_SIZE;
     }
     if (pageSize < MIN_PAGE_SIZE) {
-      throw new IllegalArgumentException("pageSize must be greater than or equal to " + MIN_PAGE_SIZE);
+      throw new IllegalArgumentException(
+          "pageSize must be greater than or equal to " + MIN_PAGE_SIZE);
     }
     if (pageSize > MAX_PAGE_SIZE) {
       throw new IllegalArgumentException("pageSize cannot be more than " + MAX_PAGE_SIZE);

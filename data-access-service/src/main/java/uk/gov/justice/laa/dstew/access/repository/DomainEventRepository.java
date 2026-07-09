@@ -11,9 +11,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 
-/**
- * Repository for managing domain events entities.
- */
+/** Repository for managing domain events entities. */
 @Repository
 public interface DomainEventRepository extends
     JpaRepository<DomainEventEntity, UUID>, JpaSpecificationExecutor<DomainEventEntity> {
@@ -24,4 +22,8 @@ public interface DomainEventRepository extends
   @Transactional
   @Query("UPDATE DomainEventEntity d SET d.isPublished = true WHERE d.id IN  :eventIds")
   int setIsPublishedTrueForEventId(@Param("eventIds") List<UUID> eventIds);
+
+  List<DomainEventEntity> findByApplicationId(UUID applicationId);
+
+  List<DomainEventEntity> findAllByApplicationIdIn(List<UUID> applicationIds);
 }

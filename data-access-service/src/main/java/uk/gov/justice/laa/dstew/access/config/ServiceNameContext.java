@@ -5,9 +5,9 @@ import org.springframework.web.context.annotation.RequestScope;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 
 /**
- * Request-scoped context holder for storing the service name from the request header.
- * This is populated by the ServiceNameInterceptor and can be injected into services.
- * Being request-scoped, each HTTP request gets its own instance, avoiding ThreadLocal complexity.
+ * Request-scoped context holder for storing the service name from the request header. This is
+ * populated by the ServiceNameInterceptor and can be injected into services. Being request-scoped,
+ * each HTTP request gets its own instance, avoiding ThreadLocal complexity.
  */
 @Component
 @RequestScope

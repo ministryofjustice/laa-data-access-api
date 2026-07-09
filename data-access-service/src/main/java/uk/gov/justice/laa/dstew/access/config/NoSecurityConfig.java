@@ -19,9 +19,7 @@ class NoSecurityConfig {
 
   private static final Logger log = LoggerFactory.getLogger(NoSecurityConfig.class);
 
-  /**
-   * Log no security config on startup to make it clear security is not enabled.
-   */
+  /** Log no security config on startup to make it clear security is not enabled. */
   public NoSecurityConfig() {
     log.info("NoSecurityConfig enabled: security filter chain disabled.");
   }
@@ -43,21 +41,24 @@ class NoSecurityConfig {
 
   @Bean("entra")
   EffectiveAuthorizationProvider authProvider() {
-    return new EffectiveAuthorizationProvider() {
-      @Override
-      public boolean hasAppRole(String name) {
-        return true;
-      }
+    return new NoSecurityAuthProvider();
+  }
 
-      @Override
-      public boolean hasAnyAppRole(String... names) {
-        return true;
-      }
+  @ExcludeFromGeneratedCodeCoverage
+  private static class NoSecurityAuthProvider implements EffectiveAuthorizationProvider {
+    @Override
+    public boolean hasAppRole(String name) {
+      return true;
+    }
 
-      @Override
-      public boolean hasName() {
-        return true;
-      }
-    };
+    @Override
+    public boolean hasAnyAppRole(String... names) {
+      return true;
+    }
+
+    @Override
+    public boolean hasName() {
+      return true;
+    }
   }
 }

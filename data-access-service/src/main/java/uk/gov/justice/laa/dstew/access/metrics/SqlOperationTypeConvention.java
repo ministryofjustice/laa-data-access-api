@@ -9,8 +9,8 @@ import org.springframework.stereotype.Component;
  * Custom observation convention that adds an {@code operation_type} tag to SQL query metrics.
  *
  * <p>Parses the SQL query string to determine the operation type (select, insert, update, delete)
- * and adds it as a low-cardinality key value on the {@code jdbc.query} observation.
- * This preserves the operation-type breakdowns used by the Grafana dashboard panels.</p>
+ * and adds it as a low-cardinality key value on the {@code jdbc.query} observation. This preserves
+ * the operation-type breakdowns used by the Grafana dashboard panels.
  */
 @Component
 public class SqlOperationTypeConvention implements QueryObservationConvention {
@@ -24,7 +24,8 @@ public class SqlOperationTypeConvention implements QueryObservationConvention {
       operationType = determineOperationType(query);
     }
 
-    return QueryObservationConvention.super.getLowCardinalityKeyValues(context)
+    return QueryObservationConvention.super
+        .getLowCardinalityKeyValues(context)
         .and("operation_type", operationType);
   }
 
@@ -48,6 +49,4 @@ public class SqlOperationTypeConvention implements QueryObservationConvention {
     }
     return "other";
   }
-
-
 }

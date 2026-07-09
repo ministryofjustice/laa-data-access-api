@@ -1,7 +1,9 @@
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
 plugins {
     id 'java'
     id 'jacoco'
-    id 'io.freefair.lombok' version '9.2.0'
+    id 'io.freefair.lombok' version '9.4.0'
     id "com.gorylenko.gradle-git-properties" version "2.4.2"
     id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin'
     id 'com.avast.gradle.docker-compose' version '0.17.12'
@@ -11,25 +13,6 @@ plugins {
 def versions = [
         sentry : '8.28.0'
 ]
-
-configurations.all {
-    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
-    // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
-    // Fix for Spring Boot security vulnerabilities SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-15701836, 15701840 (Authentication Bypass)
-    // Fix for Spring Security vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORKSECURITY-15701796 (Cache Containing Sensitive Information)
-    // Fix for Spring Framework vulnerability SNYK-JAVA-ORGSPRINGFRAMEWORK-15701845 (Directory Traversal)
-    resolutionStrategy {
-        force 'com.fasterxml.jackson.core:jackson-core:2.21.2'
-        force 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
-        force 'tools.jackson.core:jackson-core:3.1.1'
-        force 'tools.jackson.core:jackson-databind:3.1.1'
-        force 'tools.jackson:jackson-bom:3.1.1'
-        force 'org.springframework.boot:spring-boot-actuator:3.5.12'
-        force 'org.springframework.boot:spring-boot-actuator-autoconfigure:3.5.12'
-        force 'org.springframework.security:spring-security-web:6.5.9'
-        force 'org.springframework:spring-webmvc:6.2.17'
-    }
-}
 
 sourceSets {
     testUtilities {
@@ -55,6 +38,25 @@ sourceSets {
 configurations {
     testUtilitiesImplementation.extendsFrom testImplementation
     testUtilitiesRuntimeOnly.extendsFrom testRuntimeOnly
+
+    testUtilitiesRuntimeElements {
+        canBeConsumed = true
+        canBeResolved = false
+        extendsFrom testUtilitiesImplementation, testUtilitiesRuntimeOnly
+        attributes {
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME))
+            attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.JAR))
+        }
+    }
+}
+
+tasks.register('testUtilitiesJar', Jar) {
+    archiveClassifier = 'test-utilities'
+    from sourceSets.testUtilities.output
+}
+
+artifacts {
+    testUtilitiesRuntimeElements(tasks.named('testUtilitiesJar'))
 }
 
 dockerCompose {
@@ -71,6 +73,57 @@ dockerCompose {
 test {
     useJUnitPlatform()
     finalizedBy jacocoTestReport
+}
+
+tasks.named('integrationTest') {
+    useJUnitPlatform()
+    jacoco {
+        destinationFile = layout.buildDirectory.file("jacoco/integrationTest.exec").get().asFile
+    }
+
+    testLogging {
+        events TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED
+        exceptionFormat = 'full'
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+    }
+}
+
+tasks.register('infrastructureTest', Test) {
+    description = 'Runs @SmokeTest-annotated tests against a live deployed environment'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    // Unconditionally use infrastructure mode — no flag needed
+    systemProperty 'test.mode', 'infrastructure'
+
+    filter {
+        includeTestsMatching 'uk.gov.justice.laa.dstew.access.controller.*'
+    }
+    useJUnitPlatform {
+        includeTags 'smoke'
+    }
+
+    ['LAA_SMOKE_ACCESS_API_URL',
+     'LAA_SMOKE_ACCESS_DB_URL',
+     'LAA_SMOKE_ACCESS_DB_USERNAME',
+     'LAA_SMOKE_ACCESS_DB_PASSWORD',
+     'FEATURE_DISABLE_SECURITY',
+     'FEATURE_ENABLE_DEV_TOKENS'].each { key ->
+        def value = System.getenv(key)
+        if (value) environment key, value
+    }
+
+    testLogging {
+        events TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED
+        exceptionFormat = 'full'
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+        showStandardStreams = true
+    }
 }
 
 jacoco {
@@ -92,16 +145,82 @@ jacocoTestReport {
     }
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it, exclude: ['**/AccessApp.class'])
+            fileTree(dir: it, exclude: ['**/AccessApp.class', '**/generated/**', '**/*Generated*.*', '**/export/generated/**', '**/*_.class'])
         }))
     }
 }
 
-dependencyManagement {
-    // Fix for SNYK-JAVA-TOOLSJACKSONCORE-15907550 (CVE) - updated to 3.1.1
-    imports {
-        mavenBom 'tools.jackson:jackson-bom:3.1.1'
+jacocoTestCoverageVerification {
+    dependsOn integrationTest
+
+    executionData(
+        layout.buildDirectory.file("jacoco/test.exec"),
+        layout.buildDirectory.file("jacoco/integrationTest.exec")
+    )
+
+    afterEvaluate {
+        classDirectories.setFrom(files(sourceSets.main.output.classesDirs.collect {
+            fileTree(dir: it, exclude: ['**/AccessApp.class', '**/generated/**', '**/*Generated*.*', '**/export/generated/**', '**/*_.class'])
+        }))
     }
+
+    violationRules {
+        failOnViolation = true
+
+        rule {
+            element = 'CLASS'
+            limit {
+                counter = 'LINE'
+                minimum = 0.9
+            }
+            limit {
+                counter = 'BRANCH'
+                minimum = 0.9
+            }
+        }
+    }
+}
+
+spotlessApply.mustRunAfter clean
+build.mustRunAfter spotlessApply
+tasks.named('integrationTest').configure { mustRunAfter build }
+jacocoTestCoverageVerification.mustRunAfter tasks.named('integrationTest')
+
+tasks.register('preflightCheck') {
+    description = 'Runs clean, spotlessApply, build, integrationTest and jacocoTestCoverageVerification'
+    group = 'verification'
+    dependsOn clean, spotlessApply, build, tasks.named('integrationTest'), jacocoTestCoverageVerification, combinedCoverageReport
+}
+
+tasks.register('combinedCoverageReport', JacocoReport) {
+    description = 'Generates a combined JaCoCo coverage report for unit tests and integration tests'
+    group = 'verification'
+    dependsOn test, tasks.named('integrationTest')
+
+    executionData(
+        layout.buildDirectory.file('jacoco/test.exec'),
+        layout.buildDirectory.file('jacoco/integrationTest.exec')
+    )
+
+    sourceDirectories.from(sourceSets.main.allJava.srcDirs)
+    classDirectories.from(files(sourceSets.main.output.classesDirs).asFileTree.matching {
+        exclude '**/AccessApp.class', '**/generated/**', '**/*Generated*.*', '**/export/generated/**', '**/*_.class'
+    })
+
+    reports {
+        xml.required = true
+        xml.outputLocation = layout.buildDirectory.file('reports/jacoco/combined/combined.xml')
+        html.required = true
+        html.outputLocation = layout.buildDirectory.dir('reports/jacoco/combined/html')
+        csv.required = false
+    }
+
+    doLast {
+        logger.lifecycle("Combined coverage report written to: ${reports.html.outputLocation.get().asFile.toURI()}")
+    }
+}
+
+dependencyManagement {
     dependencies {
         dependencySet(group: 'io.sentry', version: versions.sentry) {
             entry 'sentry-spring-boot-starter'
@@ -129,8 +248,22 @@ dependencies {
     // Remove explicit Spring Security and Spring Core versions - let Spring Boot 4 manage them
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
-    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation('org.springframework.boot:spring-boot-starter-security') {
+        exclude group: 'org.springframework.security', module: 'spring-security-config'
+        exclude group: 'org.springframework.security', module: 'spring-security-web'
+    }
+    implementation('org.springframework.boot:spring-boot-starter-oauth2-resource-server') {
+        exclude group: 'org.springframework.security', module: 'spring-security-web'
+    }
+    implementation 'org.springframework.security:spring-security-config'
+    implementation 'org.springframework.security:spring-security-web'
+    implementation 'org.springframework.data:spring-data-commons'
+    implementation 'org.springframework:spring-core'
+    implementation 'org.springframework:spring-expression'
+    implementation 'org.springframework:spring-web'
+    implementation 'org.springframework:spring-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation('org.springframework.boot:spring-boot-starter-web') {
         exclude group: 'com.google.code.gson', module: 'gson'
@@ -139,31 +272,25 @@ dependencies {
         exclude group: 'com.google.code.gson', module: 'gson'
     }
 
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789756
-    implementation 'io.netty:netty-codec-http:4.2.12.Final'
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-15789758
-    implementation 'io.netty:netty-codec-http2:4.2.12.Final'
-    //fix https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-15307781
-    implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.52'
-    // Fix for SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551 (CVE) - updated to 2.21.2
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.2'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.2'
     implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2') {
         exclude group: 'tools.jackson.core'
     }
-    implementation("org.springframework.boot:spring-boot-starter-flyway:4.0.1")
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-database-postgresql")
 
     // Source: https://mvnrepository.com/artifact/com.azure.spring/spring-cloud-azure-starter-active-directory
     // Note: Version 7.0.0 may not be compatible with Spring Boot 4, check for updated version
-    implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.0.0'
-    implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
+    implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.2.0'
 
     implementation 'io.micrometer:micrometer-registry-prometheus'
+    implementation 'io.micrometer:micrometer-tracing-bridge-brave'
     implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot:2.2.0'
+    implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
 
+    implementation 'com.networknt:json-schema-validator:3.0.0'
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+    annotationProcessor 'org.hibernate.orm:hibernate-processor:7.3.2.Final'
     implementation 'org.javers:javers-core:7.10.0'
 
     //aws sdk
@@ -174,19 +301,24 @@ dependencies {
     implementation("software.amazon.awssdk:dynamodb-enhanced")
 
     runtimeOnly 'org.postgresql:postgresql'
+    //[https://security.snyk.io/vuln/SNYK-JAVA-ORGPOSTGRESQL-17874248] in org.postgresql:postgresql@42.7.11 introduced by org.postgresql:postgresql@42.7.11
+    runtimeOnly 'org.postgresql:postgresql:42.7.12'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
 
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
     testImplementation 'org.instancio:instancio-junit:5.5.1'
     testImplementation 'net.datafaker:datafaker:2.5.2'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.1"
     testImplementation 'org.testcontainers:postgresql:1.21.3'
-    testImplementation 'org.springframework.boot:spring-boot-testcontainers:3.5.7'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     // https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide#test-code
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+    testImplementation 'org.wiremock:wiremock-standalone:3.12.1'
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.2'
 
     testImplementation platform('org.testcontainers:testcontainers-bom:1.19.7')
     testImplementation 'org.testcontainers:testcontainers'
@@ -197,13 +329,15 @@ dependencies {
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    // Security fix for SNYK-JAVA-ORGAPACHECOMMONS-10734078 (CVE-2025-48924)
-    implementation 'org.apache.commons:commons-lang3:3.18.0'
-
     // Sentry
     implementation platform("io.sentry:sentry-bom:$versions.sentry")
     implementation "io.sentry:sentry-logback:$versions.sentry"
     implementation "io.sentry:sentry-spring-boot-4:$versions.sentry"
+
+    // Structured Logging - ECS format
+    implementation 'co.elastic.logging:logback-ecs-encoder:1.6.0'
+    implementation 'ch.qos.logback:logback-classic'
+    implementation 'ch.qos.logback:logback-core'
 }
 configurations {
     // expose the runtimeClasspath to the integrationTest task

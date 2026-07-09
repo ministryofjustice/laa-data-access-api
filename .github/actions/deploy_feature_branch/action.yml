@@ -1,0 +1,213 @@
+name: "Deploy"
+description: 'Deploy docker image to namespace'
+inputs:
+  ecr-repository:
+    description: "ECR repository"
+    required: true
+  ecr-region:
+    description: "ECR region"
+    required: true
+  ecr-role-to-assume:
+    description: "ECR role to assume"
+    required: true
+  kube-cert:
+    description: "Kubernetes cluster authentication certificate"
+    required: true
+  kube-token:
+    description: "Kubernetes cluster authentication token"
+    required: true
+  kube-cluster:
+    description: "Kubernetes cluster name"
+    required: true
+  kube-namespace:
+    description: "Kubernetes cluster namespace"
+    required: true
+  app-environment:
+    description: "environment to which the app is being deployed [staging, production, etc]"
+    required: true
+  release-name-override:
+    description: "Optional Helm release name override"
+    required: false
+    default: ""
+  extra-env:
+    description: "Comma-separated extra environment variables key=value"
+    required: false
+    default: ""
+  image-tag:
+    description: "Docker image tag to deploy. Defaults to the git SHA."
+    required: false
+    default: ${{ github.sha }}
+
+outputs:
+  release-name:
+    description: "Release name used for deployment"
+    value: ${{ steps.helm_deploy.outputs.release-name }}
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: Run deploy prerequisites
+      id: deploy_prerequisites
+      uses: ./.github/actions/deploy_prerequisites
+      with:
+        kube-cert: ${{ inputs.kube-cert }}
+        kube-token: ${{ inputs.kube-token }}
+        kube-cluster: ${{ inputs.kube-cluster }}
+        kube-namespace: ${{ inputs.kube-namespace }}
+        ecr-role-to-assume: ${{ inputs.ecr-role-to-assume }}
+        ecr-region: ${{ inputs.ecr-region }}
+
+    - name: Get LAA IP allowlist
+      id: get_laa_ips
+      uses: ./.github/actions/get_laa_ips
+
+    - name: Resolve release name
+      id: resolve_release_name
+      shell: bash
+      env:
+        GIT_SHA: ${{ github.sha }}
+        RELEASE_NAME_OVERRIDE: ${{ inputs.release-name-override }}
+      run: |
+        set -euo pipefail
+        if [ -n "${RELEASE_NAME_OVERRIDE}" ]; then
+          RELEASE_NAME="${RELEASE_NAME_OVERRIDE}"
+        else
+          RELEASE_NAME="feat-env-${GIT_SHA:0:7}"
+        fi
+        echo "release-name=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"
+
+    - name: Deploy preview PostgreSQL
+      uses: ./.github/actions/deploy_ephemeral_postgres
+      with:
+        release-name: ${{ steps.resolve_release_name.outputs.release-name }}
+        kube-namespace: ${{ inputs.kube-namespace }}
+        values-file: .helm/bitnami_postgres/values.yaml
+        cleanup-stale-pvc: "true"
+
+    - name: Helm deployment
+      id: helm_deploy
+      shell: bash
+      env:
+        ECR_REPOSITORY: ${{ inputs.ecr-repository }}
+        ECR_REGION: ${{ inputs.ecr-region }}
+        ECR_REGISTRY: ${{ steps.deploy_prerequisites.outputs.ecr-registry }}
+        IMAGE_TAG: ${{ inputs.image-tag }}
+        KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+        APP_ENVIRONMENT: ${{ inputs.app-environment }}
+        VALUES_FILE: .helm/data-access-api/values/${{ inputs.app-environment }}.yaml
+        RELEASE_NAME: ${{ steps.resolve_release_name.outputs.release-name }}
+        EXTRA_ENV: ${{ inputs.extra-env }}
+      run: |
+        set -euo pipefail
+
+        if [ -z "${IMAGE_TAG}" ]; then
+          echo "image-tag input is required."
+          exit 1
+        fi
+
+        # Mirror Helm _helpers.tpl fullname logic:
+        # if release name contains "data-access-api", fullname = release name
+        # otherwise, fullname = release-name + "-data-access-api"
+        CHART_NAME="data-access-api"
+        if echo "$RELEASE_NAME" | grep -q "$CHART_NAME"; then
+          FULLNAME="$RELEASE_NAME"
+        else
+          FULLNAME="$RELEASE_NAME-$CHART_NAME"
+        fi
+        INGRESS_NAME="$FULLNAME"
+        INTERNAL_INGRESS_NAME="$FULLNAME-internal"
+        external_identifier="$INGRESS_NAME-$KUBE_NAMESPACE-green"
+        internal_identifier="$INTERNAL_INGRESS_NAME-$KUBE_NAMESPACE-green"
+
+        safe_release_name=$(echo "$RELEASE_NAME" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9-' '-')
+        safe_release_name=$(echo "$safe_release_name" | sed 's/^-*//; s/-*$//; s/--*/-/g')
+        hash_suffix=$(printf "%s" "$RELEASE_NAME" | shasum | cut -c1-8)
+        # Gatekeeper enforces a 57-char max per hostname label.
+        # Internal host label is the strictest: <host_base>-internal-<namespace>
+        max_host_base_length=$((57 - ${#KUBE_NAMESPACE} - 10))
+
+        if [ ${#safe_release_name} -gt $max_host_base_length ]; then
+          prefix_length=$((max_host_base_length - 9))
+          if [ $prefix_length -lt 1 ]; then
+            prefix_length=1
+          fi
+          trimmed_prefix="$(printf "%s" "$safe_release_name" | cut -c1-$prefix_length | sed 's/-*$//')"
+          if [ -n "$trimmed_prefix" ]; then
+            host_base="${trimmed_prefix}-$hash_suffix"
+          else
+            host_base="$hash_suffix"
+          fi
+        else
+          host_base="$safe_release_name"
+        fi
+
+        external_host="$host_base-$KUBE_NAMESPACE.cloud-platform.service.justice.gov.uk"
+        internal_host="$host_base-internal-$KUBE_NAMESPACE.internal-non-prod.cloud-platform.service.justice.gov.uk"
+
+        LAA_IPS="${{ steps.get_laa_ips.outputs.laa-ips }}"
+        echo "Environment: ${APP_ENVIRONMENT}"
+
+        
+        SPRING_PROFILE="preview"
+        
+
+        EXTRA_ENV_ARGS=()
+
+        validate_kv_pair() {
+          local pair="$1"
+          local type_name="$2"
+          pair=$(echo "$pair" | xargs)
+          [ -z "$pair" ] && return 1
+          if [[ "$pair" != *=* ]]; then
+            echo "Invalid ${type_name} '$pair'. Expected key=value format."
+            exit 1
+          fi
+          return 0
+        }
+
+        if [ -n "${EXTRA_ENV}" ]; then
+          IFS=',' read -r -a pairs <<< "${EXTRA_ENV}"
+          for pair in "${pairs[@]}"; do
+            if ! validate_kv_pair "$pair" "extra env"; then
+              continue
+            fi
+
+            key=${pair%%=*}
+            value=${pair#*=}
+            key=$(echo "$key" | xargs)
+            value=$(echo "$value" | xargs)
+
+            if [ -z "$key" ]; then
+              echo "Invalid extra env '$pair'. Key cannot be empty."
+              exit 1
+            fi
+
+            if [[ ! "$key" =~ ^[A-Z][A-Z0-9_]*$ ]]; then
+              echo "Invalid extra env key '$key'. Use uppercase letters, digits, and underscore only."
+              exit 1
+            fi
+
+            EXTRA_ENV_ARGS+=(--set-string "extraEnv.${key}=${value}")
+          done
+        fi
+
+
+        helm upgrade ${RELEASE_NAME} .helm/data-access-api \
+          --namespace ${KUBE_NAMESPACE} \
+          --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
+          --set image.tag="${IMAGE_TAG}" \
+          --set ingress.annotations."external-dns\.alpha\.kubernetes\.io/set-identifier"="$external_identifier" \
+          --set ingress.annotations."nginx\.ingress\.kubernetes\.io/whitelist-source-range"="$LAA_IPS" \
+          --set ingress.hosts="{$external_host}" \
+          --set ingressInternal.annotations."external-dns\.alpha\.kubernetes\.io/set-identifier"="$internal_identifier" \
+          --set ingressInternal.hosts="{$internal_host}" \
+          --set spring.profile="${SPRING_PROFILE}" \
+          --set aws.region="${ECR_REGION}" \
+          --set autoscaling.enabled=false \
+          "${EXTRA_ENV_ARGS[@]}" \
+          --values ${VALUES_FILE} \
+          --install \
+          --wait
+
+        echo "release-name=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"

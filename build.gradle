@@ -1,11 +1,29 @@
 plugins {
-    id 'net.researchgate.release' version '3.1.0'
     id("java")
+    id 'com.diffplug.spotless' version '7.0.2' apply false
 }
 
 repositories {
     mavenCentral()
 }
+
+ext['logback.version'] = '1.5.36'
+//[Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17733895] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        ✗ Always-Incorrect Control Flow Implementation (new) [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17734715] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        ✗ Always-Incorrect Control Flow Implementation (new) [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17734718] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        ✗ Improper Authentication (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17732890] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        ✗ Detection of Error Condition Without Action (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17733746] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+//        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
+ext['tomcat.version'] = '11.0.23'
+
+// ✗ Improperly Controlled Modification of Dynamically-Determined Object Attributes [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONCORE-17457695] (CVE-2026-54515)
+//        introduced by com.fasterxml.jackson.core:jackson-databind@2.21.4
+// Note: this overrides the Jackson 2.x BOM only; the Jackson 3.x BOM is controlled by 'jackson-bom.version'.
+ext['jackson-2-bom.version'] = '2.21.5'
 
 def requiredJavaVersion = 25
 def currentJavaVersion = JavaVersion.current().majorVersion.toInteger()
@@ -24,12 +42,10 @@ configurations {
 
 dependencies {
     jacocoAnt "org.jacoco:org.jacoco.ant:0.8.14"
-    compileOnly 'org.projectlombok:lombok:1.18.38'
-    annotationProcessor 'org.projectlombok:lombok:1.18.38'
-    testCompileOnly 'org.projectlombok:lombok:1.18.38'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.38'
-    implementation 'tools.jackson.core:jackson-core:3.1.1'
-    implementation 'tools.jackson.core:jackson-databind:3.1.1'
+    compileOnly 'org.projectlombok:lombok:1.18.46'
+    annotationProcessor 'org.projectlombok:lombok:1.18.46'
+    testCompileOnly 'org.projectlombok:lombok:1.18.46'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.46'
 }
 
 subprojects {
@@ -41,10 +57,18 @@ subprojects {
                 languageVersion = JavaLanguageVersion.of(25)
             }
         }
-    }
 
-    release {
-        tagTemplate = '$name-$version'
+        apply plugin: 'com.diffplug.spotless'
+
+        spotless {
+            java {
+                target 'src/*/java/**/*.java'
+                importOrder()
+                removeUnusedImports()
+                cleanthat()
+                googleJavaFormat('1.34.1')
+            }
+        }
     }
 
     afterEvaluate {
@@ -56,11 +80,47 @@ subprojects {
     }
 }
 
+allprojects {
+    // Keep lockfile count low: lock only the configurations that are actually resolved in CI/dev.
+    def lockedConfigs = [
+            "compileClasspath",
+            "runtimeClasspath",
+            "testCompileClasspath",
+            "testRuntimeClasspath",
+            "integrationTestCompileClasspath",
+            "integrationTestRuntimeClasspath"
+    ] as Set
+
+    configurations.configureEach { conf ->
+        if (lockedConfigs.contains(conf.name)) {
+            resolutionStrategy.activateDependencyLocking()
+        }
+
+    }
+}
+
+tasks.register('resolveAndLockAll', Exec) {
+    description = 'Resolves all locked configurations for every project and writes lock files.'
+    workingDir = rootDir
+    commandLine './gradlew', 'resolveAndLockAllInternal', '--write-locks'
+}
+
+tasks.register('resolveAndLockAllInternal') {
+    description = 'Internal task – use resolveAndLockAll instead.'
+    doLast {
+        allprojects.each { proj ->
+            proj.configurations
+                .findAll { it.canBeResolved }
+                .each { it.resolve() }
+        }
+    }
+}
+
 tasks.register('jacocoAggregatedReport', JacocoReport) {
     description = 'Generates JaCoCo report from data-access-service module'
     group = 'verification'
 
-    dependsOn ':data-access-service:test'
+    dependsOn ':data-access-service:test', ':data-access-service:integrationTest'
 
     jacocoClasspath = configurations.jacocoAnt
 

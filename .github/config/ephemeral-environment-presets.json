@@ -1,0 +1,14 @@
+{
+  "DEFAULT": {
+    "suffix": "pre-staging-default",
+    "extraEnv": ""
+  },
+  "DEV_TOKEN_DISABLED": {
+    "suffix": "dev-token-disabled",
+    "extraEnv": "FEATURE_ENABLE_DEV_TOKEN=false,FEATURE_DISABLE_SECURITY=false"
+  },
+  "DEV_TOKEN_ENABLED": {
+    "suffix": "dev-token-enabled",
+    "extraEnv": "FEATURE_ENABLE_DEV_TOKEN=true,FEATURE_DISABLE_SECURITY=false"
+  }
+}

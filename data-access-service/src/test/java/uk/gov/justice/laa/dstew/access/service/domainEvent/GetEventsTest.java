@@ -7,19 +7,17 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.service.EventHistoryService;
+import uk.gov.justice.laa.dstew.access.service.domainevents.GetDomainEventService;
 import uk.gov.justice.laa.dstew.access.utils.BaseServiceTest;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -27,30 +25,30 @@ import uk.gov.justice.laa.dstew.access.utils.generator.domainEvent.DomainEventGe
 
 public class GetEventsTest extends BaseServiceTest {
 
-  @Qualifier("eventHistoryServiceRdsImpl")
-  @Autowired
-  private EventHistoryService serviceUnderTest;
+  @Autowired private GetDomainEventService serviceUnderTest;
 
   @Test
   void givenExpectedDomainEvents_whenGetEvents_thenReturnDomainEventsInCreatedAtOrder() {
     // given
-    setSecurityContext(TestConstants.Roles.READER);
-    List<DomainEventEntity> generatedDomainEvents = domainEventFactory.createMultipleDefault(20);
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+    List<DomainEventEntity> generatedDomainEvents =
+        DataGenerator.createMultipleDefault(DomainEventGenerator.class, 20);
 
-    List<DomainEventEntity> expectedDomainEvents = generatedDomainEvents.stream()
-        .sorted((de1, de2) -> de2.getCreatedAt().compareTo(de1.getCreatedAt()))
-        .toList();
-    List<DomainEventEntity> orderedExpectedDomainEvents = generatedDomainEvents.stream()
-        .sorted(Comparator.comparing(DomainEventEntity::getCreatedAt))
-        .toList();
+    List<DomainEventEntity> expectedDomainEvents =
+        generatedDomainEvents.stream()
+            .sorted((de1, de2) -> de2.getCreatedAt().compareTo(de1.getCreatedAt()))
+            .toList();
+    List<DomainEventEntity> orderedExpectedDomainEvents =
+        generatedDomainEvents.stream()
+            .sorted((de1, de2) -> de1.getCreatedAt().compareTo(de2.getCreatedAt()))
+            .toList();
 
     when(domainEventRepository.findAll(any(Specification.class))).thenReturn(expectedDomainEvents);
 
     // when
-    List<ApplicationDomainEvent> actualDomainEvents = serviceUnderTest.getEvents(
-        UUID.randomUUID(),
-        List.of(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER)
-    );
+    List<ApplicationDomainEventResponse> actualDomainEvents =
+        serviceUnderTest.getEvents(
+            UUID.randomUUID(), List.of(DomainEventType.ASSIGN_APPLICATION_TO_CASEWORKER));
 
     // then
     verify(domainEventRepository).findAll(any(Specification.class));
@@ -65,10 +63,7 @@ public class GetEventsTest extends BaseServiceTest {
     // when
     // then
     assertThatExceptionOfType(AuthorizationDeniedException.class)
-        .isThrownBy(() -> serviceUnderTest.getEvents(
-            null,
-            null
-        ))
+        .isThrownBy(() -> serviceUnderTest.getEvents(null, null))
         .withMessageContaining("Access Denied");
     verify(domainEventRepository, never()).findAll(any(Specification.class), any(Pageable.class));
   }
@@ -79,26 +74,25 @@ public class GetEventsTest extends BaseServiceTest {
     // when
     // then
     assertThatExceptionOfType(AuthorizationDeniedException.class)
-        .isThrownBy(() -> serviceUnderTest.getEvents(
-            null,
-            null
-        ))
+        .isThrownBy(() -> serviceUnderTest.getEvents(null, null))
         .withMessageContaining("Access Denied");
-    verify(applicationSummaryRepository, never()).findAll();
+    verify(applicationRepository, never()).findAll();
   }
 
-  private void assertDomainEventsEqual(List<DomainEventEntity> expected, List<ApplicationDomainEvent> actual) {
+  private void assertDomainEventsEqual(
+      List<DomainEventEntity> expected, List<ApplicationDomainEventResponse> actual) {
     assertThat(expected.size()).isEqualTo(actual.size());
     for (int i = 0; i < expected.size(); i++) {
       assertDomainEventEqual(expected.get(i), actual.get(i));
     }
   }
 
-  private void assertDomainEventEqual(DomainEventEntity expected, ApplicationDomainEvent actual) {
+  private void assertDomainEventEqual(
+      DomainEventEntity expected, ApplicationDomainEventResponse actual) {
     assertThat(expected.getApplicationId()).isEqualTo(actual.getApplicationId());
     assertThat(expected.getCaseworkerId()).isEqualTo(actual.getCaseworkerId());
     assertThat(expected.getType().name()).isEqualTo(actual.getDomainEventType().name());
-    assertThat(expected.getData()).isEqualTo(actual.getEventDescription());
+    assertThat(actual.getEventDescription()).isEqualTo("Assigned application to caseworker");
     assertThat(expected.getCreatedAt()).isEqualTo(actual.getCreatedAt().toInstant());
     assertThat(expected.getCreatedBy()).isEqualTo(actual.getCreatedBy());
   }

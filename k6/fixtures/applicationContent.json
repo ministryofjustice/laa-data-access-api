@@ -1,0 +1,282 @@
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "submittedAt": "2025-01-01T10:00:00.000Z",
+  "status": "submitted",
+  "laaReference": "L-AAA-A00-0",
+  "lastNameAtBirth": "Smith",
+  "previousApplicationId": "AB123C",
+  "correspondenceAddressType": "Home",
+  "submitterEmail": "caseworker@example.com",
+  "office": {
+    "code": "1A001B",
+    "id": "00000000-0000-0000-0000-000000000001",
+    "createdAt": "2024-06-01T09:00:00.000Z",
+    "updatedAt": "2024-06-01T09:00:00.000Z",
+    "ccmsId": "123456",
+    "firmId": "00000000-0000-0000-0000-000000000002",
+    "schedules": [
+      {
+        "id": "00000000-0000-0000-0000-000000000003",
+        "contractNumber": "1234567",
+        "categoryOfLaw": "FAMILY"
+      }
+    ]
+  },
+  "applicationMerits": {
+    "involvedChildren": [],
+    "opponents": [
+      {
+        "opposable": {
+          "opposableType": "INDIVIDUAL",
+          "firstName": "Jane",
+          "lastName": "Doe",
+          "name": null
+        }
+      }
+    ],
+    "statementOfCase": null,
+    "domesticAbuseSummary": null,
+    "partiesMentalCapacity": null,
+    "latestIncident": null,
+    "allegation": null,
+    "undertaking": null,
+    "urgency": null,
+    "appeal": null,
+    "matterOpposition": null
+  },
+  "proceedings": [
+    {
+      "id": "00000000-0000-0000-0000-000000000010",
+      "categoryOfLawEnum": "FAMILY",
+      "matterTypeEnum": "SPECIAL_CHILDREN_ACT",
+      "leadProceeding": true,
+      "usedDelegatedFunctions": false,
+      "description": "Application for a care order under the Children Act 1989.",
+      "meaning": "Care order",
+      "usedDelegatedFunctionsOn": "2024-11-01",
+      "substantiveCostLimitation": "25000.0",
+      "substantiveLevelOfServiceNameEnum": "FULL_REPRESENTATION",
+      "legalAidApplicationId": "00000000-0000-0000-0000-000000000011",
+      "proceedingCaseId": 54321001,
+      "delegatedFunctionsCostLimitation": "2250.0",
+      "usedDelegatedFunctionsReportedOn": "2024-11-02",
+      "createdAt": "2024-11-01T10:00:00.000Z",
+      "updatedAt": "2024-11-01T10:00:00.000Z",
+      "name": "app_for_care_order_sca",
+      "categoryLawCode": "MAT",
+      "ccmsCode": "PB001",
+      "ccmsMatterCode": "ABCDE",
+      "clientInvolvementTypeCCMSCode": "A",
+      "clientInvolvementTypeDescription": "Applicant",
+      "emergencyLevelOfService": null,
+      "emergencyLevelOfServiceName": null,
+      "emergencyLevelOfServiceStage": null,
+      "substantiveLevelOfService": 3,
+      "substantiveLevelOfServiceStage": 5,
+      "acceptedEmergencyDefaults": null,
+      "acceptedSubstantiveDefaults": true,
+      "scaType": "core",
+      "relatedOrders": [],
+      "finalHearings": [],
+      "scopeLimitations": [
+        {
+          "id": "00000000-0000-0000-0000-000000000012",
+          "scopeLimitation": "AA001",
+          "scopeLimitationWording": "Issuance and representation in proceedings.",
+          "delegatedFunctions": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000020",
+      "categoryOfLawEnum": "FAMILY",
+      "matterTypeEnum": "SPECIAL_CHILDREN_ACT",
+      "leadProceeding": false,
+      "usedDelegatedFunctions": true,
+      "description": "Parental responsibility order.",
+      "meaning": "Parental responsibility",
+      "usedDelegatedFunctionsOn": "2024-11-01",
+      "substantiveCostLimitation": "15000.0",
+      "substantiveLevelOfServiceNameEnum": "Limited Case Work",
+      "legalAidApplicationId": "00000000-0000-0000-0000-000000000021",
+      "proceedingCaseId": 54321002,
+      "delegatedFunctionsCostLimitation": "2250.0",
+      "usedDelegatedFunctionsReportedOn": "2024-11-02",
+      "createdAt": "2024-11-01T10:00:00.000Z",
+      "updatedAt": "2024-11-01T10:00:00.000Z",
+      "name": "parental_responsibility_sca",
+      "categoryLawCode": "MAT",
+      "ccmsCode": "PB002",
+      "ccmsMatterCode": "FGHIJ",
+      "clientInvolvementTypeCCMSCode": "W",
+      "clientInvolvementTypeDescription": "A child subject of the proceeding",
+      "emergencyLevelOfService": null,
+      "emergencyLevelOfServiceName": null,
+      "emergencyLevelOfServiceStage": null,
+      "substantiveLevelOfService": 2,
+      "substantiveLevelOfServiceStage": 3,
+      "acceptedEmergencyDefaults": null,
+      "acceptedSubstantiveDefaults": false,
+      "scaType": "related",
+      "relatedOrders": [],
+      "finalHearings": [],
+      "scopeLimitations": [
+        {
+          "id": "00000000-0000-0000-0000-000000000022",
+          "scopeLimitation": "AA001",
+          "scopeLimitationWording": "Issuance and representation in proceedings.",
+          "delegatedFunctions": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000030",
+      "categoryOfLawEnum": "FAMILY",
+      "matterTypeEnum": "SPECIAL_CHILDREN_ACT",
+      "leadProceeding": false,
+      "usedDelegatedFunctions": false,
+      "description": "Emergency protection order discharge.",
+      "meaning": "Emergency protection order - discharge",
+      "usedDelegatedFunctionsOn": "2024-11-01",
+      "substantiveCostLimitation": "10000.0",
+      "substantiveLevelOfServiceNameEnum": "FULL_REPRESENTATION",
+      "legalAidApplicationId": "00000000-0000-0000-0000-000000000031",
+      "proceedingCaseId": 54321003,
+      "delegatedFunctionsCostLimitation": "2250.0",
+      "usedDelegatedFunctionsReportedOn": "2024-11-02",
+      "createdAt": "2024-11-01T10:00:00.000Z",
+      "updatedAt": "2024-11-01T10:00:00.000Z",
+      "name": "app_discharge_emergency_sca",
+      "categoryLawCode": "MAT",
+      "ccmsCode": "PB003",
+      "ccmsMatterCode": "KLMNO",
+      "clientInvolvementTypeCCMSCode": "D",
+      "clientInvolvementTypeDescription": "Defendant",
+      "emergencyLevelOfService": null,
+      "emergencyLevelOfServiceName": null,
+      "emergencyLevelOfServiceStage": null,
+      "substantiveLevelOfService": 1,
+      "substantiveLevelOfServiceStage": 2,
+      "acceptedEmergencyDefaults": null,
+      "acceptedSubstantiveDefaults": true,
+      "scaType": "core",
+      "relatedOrders": [],
+      "finalHearings": [],
+      "scopeLimitations": [
+        {
+          "id": "00000000-0000-0000-0000-000000000032",
+          "scopeLimitation": "AA001",
+          "scopeLimitationWording": "Issuance and representation in proceedings.",
+          "delegatedFunctions": false
+        }
+      ]
+    }
+  ],
+  "applicationRef": "L-AAA-A00-0",
+  "createdAt": "2025-01-01T09:00:00.000Z",
+  "updatedAt": "2025-01-01T09:00:00.000Z",
+  "applicantId": "00000000-0000-0000-0000-000000000040",
+  "hasOfflineAccounts": null,
+  "openBankingConsent": null,
+  "openBankingConsentChoiceAt": null,
+  "ownHome": null,
+  "propertyValue": null,
+  "sharedOwnership": null,
+  "outstandingMortgageAmount": null,
+  "percentageHome": null,
+  "providerStep": "submitted_applications",
+  "providerId": "00000000-0000-0000-0000-000000000041",
+  "draft": false,
+  "transactionPeriodStartOn": null,
+  "transactionPeriodFinishOn": null,
+  "transactionsGathered": null,
+  "completedAt": null,
+  "declarationAcceptedAt": null,
+  "providerStepParams": {},
+  "ownVehicle": null,
+  "substantiveApplicationDeadlineOn": null,
+  "substantiveApplication": null,
+  "hasDependants": null,
+  "officeId": "00000000-0000-0000-0000-000000000042",
+  "hasRestrictions": null,
+  "restrictionsDetails": null,
+  "noCreditTransactionTypesSelected": null,
+  "noDebitTransactionTypesSelected": null,
+  "providerReceivedCitizenConsent": null,
+  "discardedAt": null,
+  "inScopeOfLaspo": null,
+  "emergencyCostOverride": null,
+  "emergencyCostRequested": null,
+  "emergencyCostReasons": null,
+  "noCashIncome": null,
+  "noCashOutgoings": null,
+  "purgeableOn": null,
+  "allowedDocumentCategories": [],
+  "extraEmploymentInformation": null,
+  "extraEmploymentInformationDetails": null,
+  "fullEmploymentDetails": null,
+  "clientDeclarationConfirmedAt": "2025-01-01T08:00:00.000Z",
+  "substantiveCostOverride": null,
+  "substantiveCostRequested": null,
+  "substantiveCostReasons": null,
+  "applicantInReceiptOfHousingBenefit": null,
+  "copyCase": false,
+  "copyCaseId": "00000000-0000-0000-0000-000000000043",
+  "caseCloned": false,
+  "separateRepresentationRequired": false,
+  "plfCourtOrder": null,
+  "reviewed": {
+    "checkProviderAnswers": {
+      "status": "completed",
+      "at": "2025-01-01T09:30:00.000Z"
+    }
+  },
+  "dwpResultConfirmed": false,
+  "linkedApplicationCompleted": false,
+  "autoGrant": false,
+  "provider": {
+    "id": "00000000-0000-0000-0000-000000000050",
+    "name": "Example Legal Services Ltd",
+    "providerFirmId": 9876543
+  },
+  "applicant": {
+    "id": "00000000-0000-0000-0000-000000000060",
+    "firstName": "John",
+    "lastName": "Smith",
+    "dateOfBirth": "1980-05-15"
+  },
+  "partner": null,
+  "allLinkedApplications": [],
+  "benefitCheckResult": {
+    "result": "Yes",
+    "dwpReference": "1234567890"
+  },
+  "dwpOverride": null,
+  "legalFrameworkMeritsTaskList": {
+    "meansAssessment": "complete",
+    "meritsAssessment": "complete"
+  },
+  "stateMachine": {
+    "state": "submitted"
+  },
+  "hmrcResponses": [],
+  "employments": [],
+  "means": {
+    "id": "00000000-0000-0000-0000-000000000070"
+  },
+  "proceedingMerits": [
+    {
+      "id": "00000000-0000-0000-0000-000000000080",
+      "proceedingId": "00000000-0000-0000-0000-000000000010"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000081",
+      "proceedingId": "00000000-0000-0000-0000-000000000020"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000082",
+      "proceedingId": "00000000-0000-0000-0000-000000000030"
+    }
+  ]
+}
+

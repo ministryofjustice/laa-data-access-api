@@ -20,6 +20,7 @@ ingress:
   className: modsec-non-prod
   annotations:
     external-dns.alpha.kubernetes.io/aws-weight: "100"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     nginx.ingress.kubernetes.io/enable-modsecurity: "true"
     nginx.ingress.kubernetes.io/modsecurity-snippet: |
       SecRuleEngine On
@@ -32,6 +33,7 @@ ingressInternal:
   className: internal-non-prod
   annotations:
     external-dns.alpha.kubernetes.io/aws-weight: "100"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
   hosts: []
 
 resources:
@@ -58,3 +60,9 @@ grafana:
   enabled: true
 
 slowQueryThresholdSeconds: 1
+
+portForward:
+  enabled: true
+
+
+featureFlags: {}

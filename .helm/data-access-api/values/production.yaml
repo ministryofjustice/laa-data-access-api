@@ -24,6 +24,7 @@ ingressInternal:
   annotations:
     external-dns.alpha.kubernetes.io/set-identifier: "laa-data-access-api-internal-laa-data-access-api-prod-green"
     external-dns.alpha.kubernetes.io/aws-weight: "100"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
   hosts: 
     - "laa-data-access-api.internal.cloud-platform.service.justice.gov.uk"
 
@@ -51,3 +52,8 @@ grafana:
   enabled: true
 
 slowQueryThresholdSeconds: 1
+
+massGenerator:
+  enabled: false
+
+featureFlags: {}

@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.config;
 
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -20,6 +21,16 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProvider;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProviderBuilder;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
@@ -38,13 +49,14 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
 /**
- * Spring Security configuration if security is not disabled.
+ * Spring Security configuration if security is not disabled. Currently excluded from code coverage
+ * until we have OAuth mocking in place
  */
-@ExcludeFromGeneratedCodeCoverage
 @Configuration
 @EnableMethodSecurity
 @EnableWebSecurity
 @ConditionalOnProperty(prefix = "feature", name = "disable-security", havingValue = "false")
+@ExcludeFromGeneratedCodeCoverage
 public class SecurityConfig {
 
   @Value("${spring.security.oauth2.resourceserver.jwt.audience}")
@@ -55,6 +67,21 @@ public class SecurityConfig {
 
   @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
   private String jwkSetUri;
+
+  @Value("${spring.security.oauth2.client.registration.moj-identity.client-id}")
+  String clientId;
+
+  @Value("${spring.security.oauth2.client.registration.moj-identity.client-secret}")
+  String clientSecret;
+
+  @Value("${spring.security.oauth2.client.registration.moj-identity.scope}")
+  String scope;
+
+  @Value("${spring.security.oauth2.client.provider.moj-identity.token-uri}")
+  String oauth2TokenUri;
+
+  @Value("${app.sds-api.client-registration-id}")
+  private String clientRegistrationId;
 
   private static final String AUTHORITY_PREFIX = "APPROLE_";
 
@@ -70,58 +97,69 @@ public class SecurityConfig {
   @Bean
   SecurityFilterChain securityFilterChain(
       final HttpSecurity http,
-      @Autowired(required = false) @Qualifier("devTokenFilter") OncePerRequestFilter devTokenFilter) throws Exception {
+      @Autowired(required = false) @Qualifier("devTokenFilter") OncePerRequestFilter devTokenFilter)
+      throws Exception {
 
     if (devTokenFilter != null) {
       http.addFilterBefore(devTokenFilter, BearerTokenAuthenticationFilter.class);
     }
 
-    http
-        .authorizeHttpRequests(authorize -> authorize
-            .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus", "/actuator/metrics/**").permitAll()
-            .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-            .requestMatchers("/api/**").authenticated()
-            .anyRequest().authenticated())
-        .oauth2ResourceServer(oauth2 -> oauth2
-            .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
-            .authenticationEntryPoint(authenticationEntryPoint())
-        )
+    http.authorizeHttpRequests(
+            authorize ->
+                authorize
+                    .requestMatchers(
+                        "/actuator/health",
+                        "/actuator/info",
+                        "/actuator/prometheus",
+                        "/actuator/metrics/**")
+                    .permitAll()
+                    .requestMatchers("/swagger-ui/**", "/v3/api-docs/**")
+                    .permitAll()
+                    .requestMatchers("/api/**")
+                    .authenticated()
+                    .anyRequest()
+                    .authenticated())
+        .oauth2ResourceServer(
+            oauth2 ->
+                oauth2
+                    .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                    .authenticationEntryPoint(authenticationEntryPoint()))
         .csrf(AbstractHttpConfigurer::disable)
-        .exceptionHandling(exception -> exception
-            .authenticationEntryPoint(authenticationEntryPoint())
-        );
+        .exceptionHandling(
+            exception -> exception.authenticationEntryPoint(authenticationEntryPoint()));
     return http.build();
   }
 
   /**
-   * Configures a {@link JwtAuthenticationConverter} to extract authorities from the APP_ROLES_CLAIM.
+   * Configures a {@link JwtAuthenticationConverter} to extract authorities from the
+   * APP_ROLES_CLAIM.
    *
    * @return a configured JwtAuthenticationConverter bean
    */
   @Bean
   public JwtAuthenticationConverter jwtAuthenticationConverter() {
-    JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+    JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter =
+        new JwtGrantedAuthoritiesConverter();
     grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
     grantedAuthoritiesConverter.setAuthoritiesClaimName("roles");
 
     JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
-      var authorities = grantedAuthoritiesConverter.convert(jwt);
-      if (authorities == null || authorities.isEmpty()) {
-        // Add default roles
-        return Set.of(
-            new SimpleGrantedAuthority("APPROLE_LAA_CASEWORKER")
-        );
-      }
-      return authorities;
-    });
+    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(
+        jwt -> {
+          var authorities = grantedAuthoritiesConverter.convert(jwt);
+          if (authorities == null || authorities.isEmpty()) {
+            authorities = new HashSet<>();
+          }
+          authorities.add(new SimpleGrantedAuthority("APPROLE_LAA_CASEWORKER"));
+          return authorities;
+        });
     return jwtAuthenticationConverter;
   }
 
   /**
    * Configures a {@link JwtDecoder} bean that validates JWT tokens using the provided JWK set URI,
-   * issuer, and audience. The decoder ensures that the token contains the required audience and
-   * is issued by the expected issuer.
+   * issuer, and audience. The decoder ensures that the token contains the required audience and is
+   * issued by the expected issuer.
    *
    * @return a configured JwtDecoder bean
    */
@@ -129,22 +167,22 @@ public class SecurityConfig {
   public JwtDecoder jwtDecoder() {
     NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
 
-    OAuth2TokenValidator<Jwt> audienceValidator = token -> {
-      if (token.getAudience().contains(audience) && token.getClaimAsString(APP_ROLES_CLAIM) != null) {
-        return OAuth2TokenValidatorResult.success();
-      }
-      return OAuth2TokenValidatorResult.failure(
-          new OAuth2Error("invalid_token", "The required audience is missing", null)
-      );
-    };
+    OAuth2TokenValidator<Jwt> audienceValidator =
+        token -> {
+          if (token.getAudience().contains(audience)) {
+            return OAuth2TokenValidatorResult.success();
+          }
+          return OAuth2TokenValidatorResult.failure(
+              new OAuth2Error("invalid_token", "The required audience is missing", null));
+        };
     OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(issuerUri);
     jwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(withIssuer, audienceValidator));
     return jwtDecoder;
   }
 
   /**
-   * Configures an {@link AuthenticationEntryPoint} that handles authentication failures by logging the reason
-   * and sending a 401 Unauthorized response with an appropriate message.
+   * Configures an {@link AuthenticationEntryPoint} that handles authentication failures by logging
+   * the reason and sending a 401 Unauthorized response with an appropriate message.
    *
    * @return a configured AuthenticationEntryPoint bean
    */
@@ -165,31 +203,70 @@ public class SecurityConfig {
    */
   @Bean("entra")
   public EffectiveAuthorizationProvider authProvider() {
-    return new EffectiveAuthorizationProvider() {
-      @Override
-      public boolean hasAppRole(String name) {
-        return getAuthorities().contains(AUTHORITY_PREFIX + name);
-      }
+    return new SecurityContextEffectiveAuthorizationProvider();
+  }
 
-      @Override
-      public boolean hasAnyAppRole(String... names) {
-        final var authorities = getAuthorities();
-        return Arrays.stream(names)
-            .anyMatch(name -> authorities.contains(AUTHORITY_PREFIX + name));
-      }
+  /**
+   * OAuth2AuthorizedClientManager bean for managing OAuth2 clients.
+   *
+   * @return the OAuth2AuthorizedClientManager
+   */
+  @Bean
+  public OAuth2AuthorizedClientManager oauth2AuthorizedClientManager() {
+    ClientRegistration identity =
+        ClientRegistration.withRegistrationId(clientRegistrationId)
+            .clientId(clientId)
+            .clientSecret(clientSecret)
+            .scope(scope)
+            .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+            .tokenUri(oauth2TokenUri)
+            .build();
 
-      @Override
-      public boolean hasName() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.isAuthenticated() && !auth.getName().isBlank();
-      }
+    ClientRegistrationRepository clientRegistrationRepository =
+        new InMemoryClientRegistrationRepository(identity);
 
-      private Set<String> getAuthorities() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return (auth != null && auth.isAuthenticated()) ? auth.getAuthorities().stream()
-            .map(GrantedAuthority::getAuthority)
-            .collect(Collectors.toUnmodifiableSet()) : Set.of();
-      }
-    };
+    OAuth2AuthorizedClientService clientService =
+        new InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository);
+
+    OAuth2AuthorizedClientProvider authorizedClientProvider =
+        OAuth2AuthorizedClientProviderBuilder.builder().clientCredentials().build();
+
+    AuthorizedClientServiceOAuth2AuthorizedClientManager authorizedClientManager =
+        new AuthorizedClientServiceOAuth2AuthorizedClientManager(
+            clientRegistrationRepository, clientService);
+    authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
+
+    return authorizedClientManager;
+  }
+
+  /** Gives methods to check the SecurityContext for roles and username. */
+  @ExcludeFromGeneratedCodeCoverage
+  private class SecurityContextEffectiveAuthorizationProvider
+      implements EffectiveAuthorizationProvider {
+    @Override
+    public boolean hasAppRole(String name) {
+      return getAuthorities().contains(AUTHORITY_PREFIX + name);
+    }
+
+    @Override
+    public boolean hasAnyAppRole(String... names) {
+      final var authorities = getAuthorities();
+      return Arrays.stream(names).anyMatch(name -> authorities.contains(AUTHORITY_PREFIX + name));
+    }
+
+    @Override
+    public boolean hasName() {
+      Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+      return auth != null && auth.isAuthenticated() && !auth.getName().isBlank();
+    }
+
+    private Set<String> getAuthorities() {
+      Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+      return (auth != null && auth.isAuthenticated())
+          ? auth.getAuthorities().stream()
+              .map(GrantedAuthority::getAuthority)
+              .collect(Collectors.toUnmodifiableSet())
+          : Set.of();
+    }
   }
 }

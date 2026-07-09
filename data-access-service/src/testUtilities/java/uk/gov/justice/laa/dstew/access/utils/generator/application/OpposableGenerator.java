@@ -1,10 +1,9 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
-import uk.gov.justice.laa.dstew.access.model.Opposable;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.Opposable;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
-public class OpposableGenerator extends
-    BaseGenerator<Opposable, Opposable.OpposableBuilder> {
+public class OpposableGenerator extends BaseGenerator<Opposable, Opposable.OpposableBuilder> {
 
   public OpposableGenerator() {
     super(Opposable::toBuilder, Opposable.OpposableBuilder::build);
@@ -12,11 +11,6 @@ public class OpposableGenerator extends
 
   @Override
   public Opposable createDefault() {
-    return Opposable.builder()
-        .opposableType("ApplicationMeritsTask::Individual")
-        .firstName("John")
-        .lastName("Smith")
-        .name("Acme Ltd")
-        .build();
+    return Opposable.builder().firstName("John").lastName("Smith").name("Acme Ltd").build();
   }
 }

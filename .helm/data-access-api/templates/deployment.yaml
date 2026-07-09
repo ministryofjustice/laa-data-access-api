@@ -64,5 +64,9 @@ spec:
             {{ include "featureConfig" . | nindent 12 }}
             {{ include "oauth2Config" . | nindent 12 }}
             {{ include "sentryConfig" . | nindent 12 }}
+            {{ include "sdsApiConfig" . | nindent 12 }}
+            {{ include "extraEnvConfig" . | nindent 12 }}
             - name: SLOW_QUERY_THRESHOLD_SECONDS
               value: "{{ .Values.slowQueryThresholdSeconds | default 0 }}"
+            - name: METRICS_RELEASE_TAG
+              value: "{{ .Release.Name }}"

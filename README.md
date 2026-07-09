@@ -2,7 +2,7 @@
 
 ## Overview
 
-Source code for LAA Digital's Access Data Stewardship API, owned by the Access Data Stewardship team..
+Source code for LAA Digital's Access Data Stewardship API, owned by the Access Data Stewardship team.
 
 This API will provide a trusted API source of truth for the Civil Applications and Civil Decide projects for data
 related to applications, proceedings, delegated functions, scope limitations, cost limitations and level of service.
@@ -10,7 +10,7 @@ related to applications, proceedings, delegated functions, scope limitations, co
 ### Add GitHub Token
 Generate a Github PAT (Personal Access Token) to access the required plugin, via https://github.com/settings/tokens
 
-Specify the Note field, e.g. “Token to allow access to LAA Gradle plugin”
+Specify the Note field, e.g. “Token to allow access to LAA Gradle plugin”.
 
 If you don't already have one, create a `gradle.properties` file in your home directory at `~/.gradle/gradle.properties`.
 
@@ -60,6 +60,10 @@ export ENTRA_JWK_SET_URI=https://dummy-jwk-set-uri
 export ENTRA_AUD=dummy-aud
 export FEATURE_ENABLE_DEV_TOKEN=true
 export FEATURE_DISABLE_SECURITY=true
+export SDS_API_URL=https://dummy-sds-api-url
+export SDS_API_BUCKET=dummy-sds-api-bucket-name
+export SDS_API_CLIENT_REGISTRATION_ID=dummy-sds-api-client-registration-id
+export SDS_API_PRINCIPAL_NAME=dummy-sds-api-principal-name
 ```
 
 This will ensure that where-ever you run the application from locally (IntelliJ, any terminal window, etc)
@@ -93,6 +97,19 @@ Note that completing the build and unit tests currently requires:
 Execute
 
 `./gradlew integrationTest`
+
+### Run infrastructure smoke tests
+
+Infrastructure smoke tests run the built Docker image against a real Postgres database and
+verify the live HTTP API. See [`docs/infrastructure-smoke-tests.md`](docs/infrastructure-smoke-tests.md)
+for full details.
+
+The script is useful for testing the application locally. 
+The smoke tests will also run in CI eventually.
+
+```bash
+./scripts/run-infrastructure-smoke-tests.sh
+```
 
 ### Run application
 
@@ -159,6 +176,26 @@ If FEATURE_ENABLE_DEV_TOKEN is set to true, you can use the following token for 
 Authorization: Bearer swagger-caseworker-token
 ```
 
+### Dependency lock files
+
+Gradle [dependency locking](https://docs.gradle.org/current/userguide/dependency_locking.html) is enabled for this
+project. Lock files (`gradle.lockfile`) exist in the root and each subproject directory, recording the exact resolved
+versions of every dependency.
+
+**Why lock files exist:** They ensure that builds are reproducible across different machines and CI environments. Without
+them, Gradle may resolve dynamic or transitive dependency versions differently over time, leading to inconsistent builds.
+
+**What happens when lock files don't match:** If a dependency version changes (e.g. a new dependency is added, upgraded,
+or removed) but the lock files have not been updated, the build will **fail** with a dependency verification error. This
+is intentional — it forces an explicit decision to accept the new set of resolved dependencies.
+
+**To regenerate lock files** after changing dependencies, run:
+
+- `./gradlew resolveAndLockAll` 
+
+This resolves all configurations across every subproject and writes updated lock files automatically. The updated
+`gradle.lockfile` files should be committed alongside the dependency change.
+
 ### Useful gradle commands
 
 Prior to pushing code, it's useful to run the following commands to check code style:
@@ -198,6 +235,27 @@ The following actuator endpoints have been configured:
 - http://localhost:8080/actuator
 - http://localhost:8080/actuator/health
 - http://localhost:8080/actuator/info
+
+### Run the data generator
+
+Each deployment to UAT will also deploy data-access-mass-generator as a separate pod. Initially it is scaled to 0, 
+however you can start the pod and connect to it via kubectl to be able to create performance testing data in that PR's database.
+
+This is also available for the main deployment in UAT.
+
+To start the pod, run the following command:
+
+```bash
+export KUBE_NAMESPACE=<uat namespace>
+export RELEASE_NAME=<release name for the pod - you can find this in the deployment action>
+
+./scripts/run-mass-generator-pod.sh <-- this will scale up the generator pod. When it is available it will connect to its shell
+
+(in the shell run) java -jar mass-generator.jar <number of applications>
+```
+
+Once the command is complete, exit the shell and the pod will be scaled back to 0. 
+You can check the database to see the generated data or use swagger to execute endpoints.
 
 ## Additional information
 

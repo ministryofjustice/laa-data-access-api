@@ -14,7 +14,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
  * <p>The YAML config {@code management.metrics.distribution.percentile-histogram.jdbc.query: true}
  * does not take effect for observation-created timers. This MeterFilter applies the histogram
  * configuration programmatically, ensuring {@code jdbc_query_seconds_bucket} metrics are published
- * for use by Grafana's {@code histogram_quantile()} queries.</p>
+ * for use by Grafana's {@code histogram_quantile()} queries.
  */
 @ExcludeFromGeneratedCodeCoverage
 @Configuration
@@ -24,8 +24,8 @@ public class JdbcQueryMetricsConfig {
   MeterFilter jdbcQueryHistogramFilter() {
     return new MeterFilter() {
       @Override
-      public DistributionStatisticConfig configure(Meter.@NonNull Id id,
-                                                   @NonNull DistributionStatisticConfig config) {
+      public DistributionStatisticConfig configure(
+          Meter.@NonNull Id id, @NonNull DistributionStatisticConfig config) {
         if (id.getName().startsWith("jdbc.query")) {
           return DistributionStatisticConfig.builder()
               .percentilesHistogram(true)

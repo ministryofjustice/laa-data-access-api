@@ -1,0 +1,56 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "timezone": "Europe/London",
+  "prConcurrentLimit": 4,
+  "prHourlyLimit": 4,
+  "prCreation": "immediate",
+  "labels": ["dependencies"],
+  "semanticCommits": "enabled",
+  "commitMessagePrefix": "chore(deps):",
+  "minimumReleaseAge": "7 days",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 5am on monday"],
+    "commitMessageAction": "update",
+    "labels": ["dependencies", "lockfile-maintenance"]
+  },
+  "packageRules": [
+    {
+      "description": "Group Gradle Dependencies (excluding internal packages)",
+      "matchManagers": ["gradle"],
+      "groupName": "gradle-updates",
+      "additionalBranchPrefix": "gradle-",
+      "minimumReleaseAge": "7 days",
+      "labels": ["dependencies", "gradle"],
+      "matchPackageNames": [
+        "!/^uk\\.gov\\.justice\\.laa\\.dstew\\.access/"
+      ]
+    },
+    {
+      "description": "Group internal Gradle packages separately",
+      "groupName": "internal-packages",
+      "minimumReleaseAge": "7 days",
+      "labels": ["dependencies", "gradle"],
+      "matchPackageNames": [
+        "/^uk\\.gov\\.justice\\.laa\\.dstew\\.access/"
+      ]
+    },
+    {
+      "description": "Group GitHub Actions",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "minimumReleaseAge": "7 days",
+      "labels": ["dependencies", "github_actions"]
+    },
+    {
+      "description": "Group Docker Dependencies",
+      "matchDatasources": ["docker"],
+      "groupName": "docker-updates",
+      "minimumReleaseAge": "7 days",
+      "labels": ["dependencies", "docker_compose"]
+    }
+  ]
+}

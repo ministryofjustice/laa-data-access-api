@@ -7,10 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/**
- * Model to represent linked application summary.
- *
- */
+/** Model to represent linked application summary. */
 @Builder(toBuilder = true)
 @Data
 @AllArgsConstructor

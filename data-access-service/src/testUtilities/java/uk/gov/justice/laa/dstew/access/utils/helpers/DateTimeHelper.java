@@ -4,11 +4,10 @@ import java.time.Instant;
 import java.time.InstantSource;
 
 public class DateTimeHelper {
-    private DateTimeHelper(){
-    }
+  private DateTimeHelper() {}
 
-    public static Instant GetSystemInstanceWithoutNanoseconds() {
-        var instant = InstantSource.system().instant();
-        return instant.minusNanos(instant.getNano());
-    }
+  public static Instant GetSystemInstanceWithoutNanoseconds() {
+    var instant = InstantSource.system().instant();
+    return instant.minusNanos(instant.getNano());
+  }
 }

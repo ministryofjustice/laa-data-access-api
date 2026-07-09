@@ -1,28 +1,46 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
+import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
+
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import org.assertj.core.api.Assertions;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.ProblemDetail;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MvcResult;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
+import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
-import uk.gov.justice.laa.dstew.access.model.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
-import uk.gov.justice.laa.dstew.access.utils.BaseIntegrationTest;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationMerits;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.InvolvedChild;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingLinkedChild;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingMerits;
 import uk.gov.justice.laa.dstew.access.utils.EnumParsingUtils;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
@@ -32,384 +50,636 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationMe
 import uk.gov.justice.laa.dstew.access.utils.generator.decision.DecisionEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.merit.MeritsDecisionsEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingsEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
+import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
+import uk.gov.justice.laa.dstew.access.utils.harness.SmokeTest;
 
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.Set;
-import java.util.UUID;
+public class GetApplicationTest extends BaseHarnessTest {
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertForbidden;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNoCacheHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertUnauthorised;
+  @SmokeTest
+  @ParameterizedTest
+  @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
+  void givenApplicationDataAndIncorrectHeader_whenGetApplications_thenReturnBadRequest(
+      String serviceName) throws Exception {
+    verifyBadServiceNameHeader(serviceName);
+  }
 
-@ActiveProfiles("test")
-public class GetApplicationTest extends BaseIntegrationTest {
+  @SmokeTest
+  @Test
+  void givenApplicationDataAndNoHeader_whenGetApplication_thenReturnBadRequest() throws Exception {
+    verifyBadServiceNameHeader(null);
+  }
 
-    @ParameterizedTest
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    @ValueSource(strings = {"", "invalid-header", "CIVIL-APPLY", "civil_apply"})
-    void givenApplicationDataAndIncorrectHeader_whenGetApplications_thenReturnBadRequest(
-            String serviceName
-    ) throws Exception {
-        verifyBadServiceNameHeader(serviceName);
-    }
+  private void verifyBadServiceNameHeader(String serviceName) throws Exception {
+    HarnessResult result =
+        getUri(
+            TestConstants.URIs.GET_APPLICATION, ServiceNameHeader(serviceName), UUID.randomUUID());
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    void givenApplicationDataAndNoHeader_whenGetApplication_thenReturnBadRequest() throws Exception {
-        verifyBadServiceNameHeader(null);
-    }
+    applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
+  }
 
-    private void verifyBadServiceNameHeader(String serviceName) throws Exception {
+  @SmokeTest
+  @Test
+  public void givenExistingApplication_whenGetApplication_thenReturnOKWithCorrectData()
+      throws Exception {
+    // given
+    // Build the full aggregate: proceeding → meritsDecision, application → proceeding + decision
+    MeritsDecisionEntity meritsDecision =
+        DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class);
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, ServiceNameHeader(serviceName), UUID.randomUUID());
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class, builder -> builder.meritsDecision(meritsDecision));
 
-        applicationAsserts.assertErrorGeneratedByBadHeader(result, serviceName);
-    }
+    DecisionEntity decision = DataGenerator.createDefault(DecisionEntityGenerator.class);
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    public void givenExistingApplication_whenGetApplication_thenReturnOKWithCorrectData() throws Exception {
-        // given
-        ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class, builder ->
-                builder.caseworker(BaseIntegrationTest.CaseworkerJohnDoe).linkedApplications(Set.of()));
-
-        ProceedingEntity proceeding = persistedDataGenerator.createAndPersist(ProceedingsEntityGenerator.class, builder -> {
-            builder.applicationId(application.getId());
-        });
-
-        DecisionEntity decision = persistedDataGenerator.createAndPersist(DecisionEntityGenerator.class, builder -> {
-            builder.meritsDecisions(Set.of(DataGenerator.createDefault(MeritsDecisionsEntityGenerator.class, mBuilder -> {
-                mBuilder.proceeding(proceeding);
-            })));
-        });
-
-        application.setDecision(decision);
-      ApplicationEntity savedApplication = applicationRepository.saveAndFlush(application);
-      clearCache();
-
-        // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        ApplicationResponse actualApplication = deserialise(result, ApplicationResponse.class);
-
-        // then
-        assertContentHeaders(result);
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertOK(result);
-        ApplicationResponse expectedApplication = createApplication(savedApplication, proceeding, decision);
-        assertThat(actualApplication).isEqualTo(expectedApplication);
-    }
-
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    public void givenApplicationNotExist_whenGetApplication_thenReturnNotFound() throws Exception {
-        // given
-        UUID notExistApplicationId = UUID.randomUUID();
-
-        // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, notExistApplicationId);
-
-        // then
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertNotFound(result);
-        assertEquals("application/problem+json", result.getResponse().getContentType());
-        ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
-        assertEquals("No application found with id: " + notExistApplicationId, problemDetail.getDetail());
-
-    }
-
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.UNKNOWN)
-    public void givenUnknownRole_whenGetApplication_thenReturnForbidden() throws Exception {
-        // given
-        ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-
-        // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
-
-        // then
-        assertSecurityHeaders(result);
-        assertForbidden(result);
-    }
-
-    @Test
-    public void givenNoUser_whenGetApplication_thenReturnUnauthorised() throws Exception {
-        // given
-        ApplicationEntity expectedApplication = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-
-        // when
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
-
-        // then
-        assertSecurityHeaders(result);
-        assertUnauthorised(result);
-    }
-
-
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    void givenApplicationWithOpponents_whenGetApplication_thenReturnsOpponents() throws Exception {
-
-        // default contains opponent data
-        ApplicationEntity application = persistedDataGenerator.createAndPersist(
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(
             ApplicationEntityGenerator.class,
-            builder -> builder
-                .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
-                .createdAt(Instant.now().minusSeconds(10000))
-                .modifiedAt(Instant.now())
-        );
+            builder ->
+                builder
+                    .caseworker(CaseworkerJohnDoe)
+                    .linkedApplications(Set.of())
+                    .proceedings(new HashSet<>(Set.of(proceeding)))
+                    .decision(decision));
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+    // Refresh to get DB-generated IDs on proceedings
+    ApplicationEntity savedApplication =
+        applicationRepository.findById(application.getId()).orElseThrow();
+    ProceedingEntity savedProceeding = savedApplication.getProceedings().iterator().next();
 
-        assertContentHeaders(result);
-        assertSecurityHeaders(result);
-        assertNoCacheHeaders(result);
-        assertOK(result);
+    ApplicationResponse expectedApplication =
+        createApplication(savedApplication, savedProceeding, savedApplication.getDecision());
 
-        Assertions.assertThat(response.getOpponents()).isNotNull();
-        Assertions.assertThat(response.getOpponents()).hasSize(1);
+    // when
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse actualApplication = deserialise(result, ApplicationResponse.class);
 
-        var mapped = response.getOpponents().get(0);
-        Assertions.assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
-        Assertions.assertThat(mapped.getFirstName()).isEqualTo("John");
-        Assertions.assertThat(mapped.getLastName()).isEqualTo("Smith");
-        Assertions.assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
-    }
+    // then
+    assertContentHeaders(result);
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertOK(result);
 
+    assertThat(actualApplication)
+        .usingRecursiveComparison()
+        .ignoringFields("lastUpdated")
+        .isEqualTo(expectedApplication);
+    assertThat(actualApplication.getLastUpdated()).isNotNull();
+  }
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    void givenApplicationWithEmptyOpponents_whenGetApplication_thenReturnsEmptyList() throws Exception {
+  @Test
+  public void givenApplicationNotExist_whenGetApplication_thenReturnNotFound() throws Exception {
+    // given
+    UUID notExistApplicationId = UUID.randomUUID();
 
-        ApplicationContent applicationContent =
-            DataGenerator.createDefault(ApplicationContentGenerator.class,
-                builder -> builder
-                    .applicationMerits(DataGenerator.createDefault(ApplicationMeritsGenerator.class,
-                        meritsBuilder -> meritsBuilder.opponents(List.of())
-                    )));
+    // when
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, notExistApplicationId);
 
-        ApplicationEntity application = persistedDataGenerator.createAndPersist(
+    // then
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertNotFound(result);
+    assertEquals("application/problem+json", result.getResponse().getHeader("Content-Type"));
+    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
+    assertEquals(
+        "No application found with id: " + notExistApplicationId, problemDetail.getDetail());
+  }
+
+  @Test
+  public void givenUnknownRole_whenGetApplication_thenReturnForbidden() throws Exception {
+    // given
+    withToken(TestConstants.Tokens.UNKNOWN);
+    ApplicationEntity expectedApplication =
+        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+
+    // when
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
+
+    // then
+    assertSecurityHeaders(result);
+    assertForbidden(result);
+  }
+
+  @Test
+  public void givenNoUser_whenGetApplication_thenReturnUnauthorised() throws Exception {
+    // given
+    withNoToken();
+    ApplicationEntity expectedApplication =
+        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+
+    // when
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, expectedApplication.getId());
+
+    // then
+    assertSecurityHeaders(result);
+    assertUnauthorised(result);
+  }
+
+  @Test
+  void givenApplicationWithOpponents_whenGetApplication_thenReturnsOpponents() throws Exception {
+
+    // default contains opponent data
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(
             ApplicationEntityGenerator.class,
-            builder -> builder
-                .applicationContent(objectMapper.convertValue(applicationContent, Map.class))
-        );
+            builder ->
+                builder
+                    .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+                    .createdAt(Instant.now().minusSeconds(10000))
+                    .modifiedAt(Instant.now()));
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
-        assertOK(result);
-        Assertions.assertThat(response.getOpponents()).isNotNull();
-        Assertions.assertThat(response.getOpponents()).isEmpty();
-    }
+    assertContentHeaders(result);
+    assertSecurityHeaders(result);
+    assertNoCacheHeaders(result);
+    assertOK(result);
 
+    assertThat(response.getOpponents()).isNotNull();
+    assertThat(response.getOpponents()).hasSize(1);
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    void givenApplicationWithoutOpponentsSection_whenGetApplication_thenOpponentsIsEmpty() throws Exception {
+    var mapped = response.getOpponents().get(0);
+    assertThat(mapped.getOpponentType()).isEqualTo("ApplicationMeritsTask::Individual");
+    assertThat(mapped.getFirstName()).isEqualTo("John");
+    assertThat(mapped.getLastName()).isEqualTo("Smith");
+    assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
+  }
 
-        Map<String, Object> content = Map.of(
-            "someOtherKey", "value"
-        );
+  @Test
+  void givenApplicationWithEmptyStringEnums_whenGetApplication_thenCategoryOfLawIsNull()
+      throws Exception {
 
-        ApplicationEntity application = persistedDataGenerator.createAndPersist(
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder ->
+                builder.proceedingContent(
+                    Map.of(
+                        "meaning", "hearing",
+                        "matterTypeEnum", "",
+                        "categoryOfLawEnum", "",
+                        "usedDelegatedFunctionsOn", "2025-05-06",
+                        "substantiveCostLimitation", "23.45",
+                        "substantiveLevelOfServiceNameEnum", "service")));
+
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(
             ApplicationEntityGenerator.class,
-            builder -> builder.applicationContent(content)
-        );
+            builder ->
+                builder
+                    .linkedApplications(Set.of())
+                    .proceedings(new HashSet<>(Set.of(proceeding))));
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+    // when
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
-        assertOK(result);
-        Assertions.assertThat(response.getOpponents()).isEmpty();
-    }
+    // then
+    assertOK(result);
+    assertThat(response.getProceedings()).hasSize(1);
+    assertThat(response.getProceedings().get(0).getCategoryOfLaw()).isNull();
+    assertThat(response.getProceedings().get(0).getMatterType()).isNull();
+  }
 
+  @Test
+  void givenApplicationWithEmptyOpponents_whenGetApplication_thenReturnsEmptyList()
+      throws Exception {
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    void givenOpponentWithMissingFirstName_whenGetApplication_thenReturnsRemainingFields() throws Exception {
+    ApplicationContent applicationContent =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            builder ->
+                builder.applicationMerits(
+                    DataGenerator.createDefault(
+                        ApplicationMeritsGenerator.class,
+                        meritsBuilder -> meritsBuilder.opponents(List.of()))));
 
-        // leaving this here as a TODO as it does something specific that the test harness currently does not,
-        // i.e. test that a key in the JSON completely missing does not break the functionality.
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder.applicationContent(
+                    objectMapper.convertValue(applicationContent, Map.class)));
 
-        Map<String, Object> opposable = Map.of(
-            "opposableType", "ApplicationMeritsTask::Individual",
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+
+    assertOK(result);
+    assertThat(response.getOpponents()).isNotNull();
+    assertThat(response.getOpponents()).isEmpty();
+  }
+
+  @Test
+  void givenApplicationWithoutOpponentsSection_whenGetApplication_thenOpponentsIsEmpty()
+      throws Exception {
+
+    Map<String, Object> content = Map.of("someOtherKey", "value");
+
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class, builder -> builder.applicationContent(content));
+
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+
+    assertOK(result);
+    assertThat(response.getOpponents()).isEmpty();
+  }
+
+  @Test
+  void givenOpponentWithMissingFirstName_whenGetApplication_thenReturnsRemainingFields()
+      throws Exception {
+
+    // leaving this here as a TODO as it does something specific that the test harness currently
+    // does not,
+    // i.e. test that a key in the JSON completely missing does not break the functionality.
+
+    Map<String, Object> opposable =
+        Map.of(
             // firstName intentionally missing
             "lastName", "Smith",
-            "name", "Acme Ltd"
-        );
+            "name", "Acme Ltd");
 
-        Map<String, Object> opponent = Map.of(
-            "opposable", opposable
-        );
+    Map<String, Object> opponent =
+        Map.of("opposableType", "ApplicationMeritsTask::Individual", "opposable", opposable);
 
-        Map<String, Object> merits = Map.of(
-            "opponents", List.of(opponent)
-        );
+    Map<String, Object> merits = Map.of("opponents", List.of(opponent));
 
-        Map<String, Object> content = Map.of(
-            "applicationMerits", merits
-        );
+    Map<String, Object> content = Map.of("applicationMerits", merits);
 
-        ApplicationEntity application = persistedDataGenerator.createAndPersist(
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class, builder -> builder.applicationContent(content));
+
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+
+    assertOK(result);
+
+    assertThat(response.getOpponents()).isNotNull();
+    assertThat(response.getOpponents()).hasSize(1);
+
+    var mapped = response.getOpponents().get(0);
+    assertThat(mapped.getOpponentType()).isEqualTo("ApplicationMeritsTask::Individual");
+    assertThat(mapped.getFirstName()).isNull();
+    assertThat(mapped.getLastName()).isEqualTo("Smith");
+    assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
+  }
+
+  @Test
+  void givenApplicationWithSubmitterEmail_whenGetApplication_thenReturnsProviderWithContactEmail()
+      throws Exception {
+
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
+
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+
+    assertOK(result);
+    assertThat(response.getProvider()).isNotNull();
+    assertThat(response.getProvider().getOfficeCode()).isEqualTo("officeCode");
+    assertThat(response.getProvider().getContactEmail()).isEqualTo("test@example.com");
+  }
+
+  @Test
+  void
+      givenApplicationWithoutSubmitterEmail_whenGetApplication_thenReturnsProviderWithoutContactEmail()
+          throws Exception {
+
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(
             ApplicationEntityGenerator.class,
-            builder -> builder.applicationContent(content)
-        );
+            builder -> builder.applicationContent(Map.of("someOtherKey", "value")));
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
-        assertOK(result);
+    assertOK(result);
+    assertThat(response.getProvider()).isNotNull();
+    assertThat(response.getProvider().getOfficeCode()).isEqualTo("officeCode");
+    assertThat(response.getProvider().getContactEmail()).isNull();
+  }
 
-        Assertions.assertThat(response.getOpponents()).isNotNull();
-        Assertions.assertThat(response.getOpponents()).hasSize(1);
+  @Test
+  void
+      givenApplicationWithInvolvedChildren_whenGetApplication_thenProceedingContainsInvolvedChildren()
+          throws Exception {
+    // given
+    UUID applyProceedingId = UUID.randomUUID();
+    UUID childId = ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_ID;
 
-        var mapped = response.getOpponents().get(0);
-        Assertions.assertThat(mapped.getOpposableType()).isEqualTo("ApplicationMeritsTask::Individual");
-        Assertions.assertThat(mapped.getFirstName()).isNull();
-        Assertions.assertThat(mapped.getLastName()).isEqualTo("Smith");
-        Assertions.assertThat(mapped.getOrganisationName()).isEqualTo("Acme Ltd");
-    }
+    ApplicationContent applicationContent =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            builder ->
+                builder.proceedingMerits(
+                    List.of(
+                        ProceedingMerits.builder()
+                            .proceedingId(applyProceedingId)
+                            .proceedingLinkedChildren(
+                                List.of(
+                                    ProceedingLinkedChild.builder()
+                                        .involvedChildId(childId)
+                                        .build()))
+                            .build())));
 
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
 
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    void givenApplicationWithSubmitterEmail_whenGetApplication_thenReturnsProviderWithContactEmail() throws Exception {
-
-        ApplicationEntity application = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        ApplicationResponse response = deserialise(result, ApplicationResponse.class);
-
-        assertOK(result);
-        Assertions.assertThat(response.getProvider()).isNotNull();
-        Assertions.assertThat(response.getProvider().getOfficeCode()).isEqualTo("officeCode");
-        Assertions.assertThat(response.getProvider().getContactEmail()).isEqualTo("test@example.com");
-    }
-
-    @Test
-    @WithMockUser(authorities = TestConstants.Roles.CASEWORKER)
-    void givenApplicationWithoutSubmitterEmail_whenGetApplication_thenReturnsProviderWithoutContactEmail() throws Exception {
-
-        ApplicationEntity application = persistedDataGenerator.createAndPersist(
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(
             ApplicationEntityGenerator.class,
-            builder -> builder.applicationContent(Map.of("someOtherKey", "value"))
-        );
+            builder ->
+                builder
+                    .proceedings(new HashSet<>(Set.of(proceeding)))
+                    .applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
 
-        MvcResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
-        ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+    // when
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse response = deserialise(result, ApplicationResponse.class);
 
-        assertOK(result);
-        Assertions.assertThat(response.getProvider()).isNotNull();
-        Assertions.assertThat(response.getProvider().getOfficeCode()).isEqualTo("officeCode");
-        Assertions.assertThat(response.getProvider().getContactEmail()).isNull();
+    // then
+    assertOK(result);
+    assertThat(response.getProceedings()).isNotNull().hasSize(1);
+    ApplicationProceedingResponse proceedingResponse = response.getProceedings().getFirst();
+    assertThat(proceedingResponse.getInvolvedChildren()).isNotNull().hasSize(1);
+    InvolvedChildResponse involvedChild = proceedingResponse.getInvolvedChildren().getFirst();
+    assertThat(involvedChild.getFullName())
+        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_FULL_NAME);
+    assertThat(involvedChild.getDateOfBirth())
+        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_DATE_OF_BIRTH);
+  }
+
+  @Test
+  void
+      givenApplicationWithUnresolvableChildId_whenGetApplication_thenProceedingHasEmptyInvolvedChildren()
+          throws Exception {
+    // given - proceedingMerits references a childId that does not exist in involvedChildren
+    UUID applyProceedingId = UUID.randomUUID();
+    UUID nonExistentChildId = UUID.randomUUID();
+
+    ApplicationContent applicationContent =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            builder ->
+                builder.proceedingMerits(
+                    List.of(
+                        ProceedingMerits.builder()
+                            .proceedingId(applyProceedingId)
+                            .proceedingLinkedChildren(
+                                List.of(
+                                    ProceedingLinkedChild.builder()
+                                        .involvedChildId(nonExistentChildId)
+                                        .build()))
+                            .build())));
+
+    ProceedingEntity proceeding =
+        DataGenerator.createDefault(
+            ProceedingsEntityGenerator.class,
+            builder -> builder.applyProceedingId(applyProceedingId));
+
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .proceedings(new HashSet<>(Set.of(proceeding)))
+                    .applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
+
+    // when
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+
+    // then
+    assertOK(result);
+    assertThat(response.getProceedings()).isNotNull().hasSize(1);
+    ApplicationProceedingResponse proceedingResponse = response.getProceedings().getFirst();
+    assertThat(proceedingResponse.getInvolvedChildren()).isEmpty();
+  }
+
+  @Test
+  void
+      givenApplicationWithNoProceedingMerits_whenGetApplication_thenProceedingHasEmptyInvolvedChildren()
+          throws Exception {
+    // given - default applicationContent has no proceedingMerits
+    ProceedingEntity proceeding = DataGenerator.createDefault(ProceedingsEntityGenerator.class);
+
+    ApplicationContent applicationContent =
+        DataGenerator.createDefault(
+            ApplicationContentGenerator.class,
+            builder -> builder.proceedingMerits(Collections.emptyList()));
+
+    ApplicationEntity application =
+        persistedDataGenerator.createAndPersist(
+            ApplicationEntityGenerator.class,
+            builder ->
+                builder
+                    .proceedings(new HashSet<>(Set.of(proceeding)))
+                    .applicationContent(objectMapper.convertValue(applicationContent, Map.class)));
+
+    // when
+    HarnessResult result = getUri(TestConstants.URIs.GET_APPLICATION, application.getId());
+    ApplicationResponse response = deserialise(result, ApplicationResponse.class);
+
+    // then
+    assertOK(result);
+    assertThat(response.getProceedings()).isNotNull().hasSize(1);
+    ApplicationProceedingResponse proceedingResponse = response.getProceedings().getFirst();
+    assertThat(proceedingResponse.getInvolvedChildren()).isEmpty();
+  }
+
+  private ApplicationResponse createApplication(
+      ApplicationEntity applicationEntity, ProceedingEntity proceeding, DecisionEntity decision) {
+    ApplicationResponse application = new ApplicationResponse();
+    application.setApplicationId(applicationEntity.getId());
+    application.setStatus(applicationEntity.getStatus());
+    application.setLaaReference(applicationEntity.getLaaReference());
+    if (applicationEntity.getCaseworker() != null) {
+      application.setAssignedTo(applicationEntity.getCaseworker().getId());
+    }
+    application.setLastUpdated(
+        OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt(), ZoneOffset.UTC));
+    application.setLastUpdated(
+        OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt(), ZoneOffset.UTC));
+    application.setSubmittedAt(
+        applicationEntity.getSubmittedAt() != null
+            ? OffsetDateTime.ofInstant(applicationEntity.getSubmittedAt(), ZoneOffset.UTC)
+            : null);
+    application.setUsedDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
+    application.setAutoGrant(applicationEntity.getIsAutoGranted());
+    if (applicationEntity.getDecision() != null) {
+      application.setDecisionStatus(applicationEntity.getDecision().getOverallDecision());
+    }
+    application.isLead(applicationEntity.isLead());
+
+    // Extract provider with both officeCode and contactEmail
+    String officeCode = applicationEntity.getOfficeCode();
+    String contactEmail = extractContactEmail(applicationEntity.getApplicationContent());
+
+    if (officeCode != null || contactEmail != null) {
+      ProviderResponse providerResponse = new ProviderResponse();
+      providerResponse.setOfficeCode(officeCode);
+      providerResponse.setContactEmail(contactEmail);
+      application.setProvider(providerResponse);
     }
 
-    private ApplicationResponse createApplication(ApplicationEntity applicationEntity,
-                                          ProceedingEntity proceeding,
-                                          DecisionEntity decision) {
-        ApplicationResponse application = new ApplicationResponse();
-        application.setApplicationId(applicationEntity.getId());
-        application.setStatus(applicationEntity.getStatus());
-        application.setLaaReference(applicationEntity.getLaaReference());
-        if (applicationEntity.getCaseworker() != null) {
-            application.setAssignedTo(applicationEntity.getCaseworker().getId());
-        }
-        application.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt(), ZoneOffset.UTC));
-        application.setLastUpdated(OffsetDateTime.ofInstant(applicationEntity.getUpdatedAt(), ZoneOffset.UTC));
-        application.setSubmittedAt(
-            applicationEntity.getSubmittedAt() != null
-                ? OffsetDateTime.ofInstant(applicationEntity.getSubmittedAt(), ZoneOffset.UTC)
-                : null
-        );
-        application.setUsedDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
-        application.setAutoGrant(applicationEntity.getIsAutoGranted());
-        if (applicationEntity.getDecision() != null) {
-            application.setOverallDecision(applicationEntity.getDecision().getOverallDecision());
-        }
-        application.isLead(applicationEntity.isLead());
-
-        // Extract provider with both officeCode and contactEmail
-        String officeCode = applicationEntity.getOfficeCode();
-        String contactEmail = extractContactEmail(applicationEntity.getApplicationContent());
-
-        if (officeCode != null || contactEmail != null) {
-            ProviderResponse providerResponse = new ProviderResponse();
-            providerResponse.setOfficeCode(officeCode);
-            providerResponse.setContactEmail(contactEmail);
-            application.setProvider(providerResponse);
-        }
-
-        Map<String, Object> applicationMerits = applicationEntity.getApplicationContent() != null
-            ? (Map<String, Object>) applicationEntity.getApplicationContent().get("applicationMerits")
+    Map<String, Object> applicationMerits =
+        applicationEntity.getApplicationContent() != null
+            ? (Map<String, Object>)
+                applicationEntity.getApplicationContent().get("applicationMerits")
             : null;
 
-        List<ScopeLimitationResponse> scopeLimitations = null;
-        if (proceeding.getProceedingContent().get("scopeLimitations") != null) {
-            scopeLimitations = ((List<Map<String, Object>>) proceeding.getProceedingContent().get("scopeLimitations"))
-                .stream()
-                .map(sl -> ScopeLimitationResponse.builder()
-                    .scopeLimitation(sl.get("meaning") != null ? sl.get("meaning").toString() : null)
-                    .scopeDescription(sl.get("description") != null ? sl.get("description").toString() : null)
-                    .build())
-                .toList();
-        }
+    List<ScopeLimitationResponse> scopeLimitations = null;
+    if (proceeding.getProceedingContent().get("scopeLimitations") != null) {
+      scopeLimitations =
+          ((List<Map<String, Object>>) proceeding.getProceedingContent().get("scopeLimitations"))
+              .stream()
+                  .map(
+                      sl ->
+                          ScopeLimitationResponse.builder()
+                              .scopeLimitation(
+                                  sl.get("meaning") != null ? sl.get("meaning").toString() : null)
+                              .scopeDescription(
+                                  sl.get("description") != null
+                                      ? sl.get("description").toString()
+                                      : null)
+                              .build())
+                  .toList();
+    }
 
-        application.setProceedings(List.of(
-                ApplicationProceedingResponse.builder()
+    application.setProceedings(
+        List.of(
+            ApplicationProceedingResponse.builder()
                 .proceedingId(proceeding.getId())
                 .proceedingDescription(proceeding.getDescription())
                 .proceedingType(proceeding.getProceedingContent().get("meaning").toString())
-                .categoryOfLaw(EnumParsingUtils.convertToCategoryOfLaw((String) proceeding.getProceedingContent().get("categoryOfLaw")))
-                .matterType(EnumParsingUtils.convertToMatterType(proceeding.getProceedingContent().get("matterType").toString()))
-                .levelOfService(proceeding.getProceedingContent().get("substantiveLevelOfServiceName").toString())
-                .substantiveCostLimitation(proceeding.getProceedingContent().get("substantiveCostLimitation").toString())
-                .delegatedFunctionsDate(LocalDate.parse(proceeding.getProceedingContent().get("usedDelegatedFunctionsOn").toString()))
-                .meritsDecision(decision.getMeritsDecisions().iterator().next().getDecision())
-                // .involvedChildren((List<Object>) applicationMerits.get("involvedChildren"))
+                .categoryOfLaw(
+                    EnumParsingUtils.convertToCategoryOfLaw(
+                        (String) proceeding.getProceedingContent().get("categoryOfLawEnum")))
+                .matterType(
+                    EnumParsingUtils.convertToMatterType(
+                        proceeding.getProceedingContent().get("matterTypeEnum").toString()))
+                .levelOfService(
+                    proceeding
+                        .getProceedingContent()
+                        .get("substantiveLevelOfServiceNameEnum")
+                        .toString())
+                .substantiveCostLimitation(
+                    Double.parseDouble(
+                        proceeding
+                            .getProceedingContent()
+                            .get("substantiveCostLimitation")
+                            .toString()))
+                .delegatedFunctionsDate(
+                    LocalDate.parse(
+                        proceeding
+                            .getProceedingContent()
+                            .get("usedDelegatedFunctionsOn")
+                            .toString()))
+                .meritsDecision(
+                    proceeding.getMeritsDecision() != null
+                        ? proceeding.getMeritsDecision().getDecision()
+                        : null)
+                .involvedChildren(
+                    resolveInvolvedChildren(
+                        proceeding.getApplyProceedingId(),
+                        applicationEntity.getApplicationContent()))
                 .scopeLimitations(scopeLimitations)
-                .build()
-        ));
+                .build()));
 
-        application.setOpponents(applicationEntity.getApplicationContent() != null
+    application.setOpponents(
+        applicationEntity.getApplicationContent() != null
             ? applicationEntity.getApplicationContent().get("applicationMerits") != null
                 ? extractOpponents(applicationEntity.getApplicationContent())
                 : List.of()
-            : List.of()
-        );
+            : List.of());
 
-        application.setVersion(applicationEntity.getVersion());
-        return application;
+    application.setVersion(applicationEntity.getVersion());
+    return application;
+  }
+
+  private List<InvolvedChildResponse> resolveInvolvedChildren(
+      UUID applyProceedingId, Map<String, Object> applicationContent) {
+    if (applyProceedingId == null || applicationContent == null) {
+      return Collections.emptyList();
+    }
+    ApplicationContent content =
+        objectMapper.convertValue(applicationContent, ApplicationContent.class);
+
+    List<ProceedingMerits> proceedingMeritsList = content.getProceedingMerits();
+    if (proceedingMeritsList == null || proceedingMeritsList.isEmpty()) {
+      return Collections.emptyList();
     }
 
-    private List<OpponentResponse> extractOpponents(Map<String, Object> applicationContent) {
-        Map<String, Object> merits = (Map<String, Object>) applicationContent.get("applicationMerits");
-        List<Map<String, Object>> opponents = (List<Map<String, Object>>) merits.get("opponents");
+    ApplicationMerits merits = content.getApplicationMerits();
+    List<InvolvedChild> allChildren =
+        merits != null && merits.getInvolvedChildren() != null
+            ? merits.getInvolvedChildren()
+            : Collections.emptyList();
 
-        return opponents.stream().map(opponent -> {
-            Map<String, Object> opposable = (Map<String, Object>) opponent.get("opposable");
-            return OpponentResponse.builder()
-                    .opposableType(opposable.get("opposableType").toString())
-                    .firstName(opposable.get("firstName") != null ? opposable.get("firstName").toString() : null)
-                    .lastName(opposable.get("lastName") != null ? opposable.get("lastName").toString() : null)
-                    .organisationName(opposable.get("name") != null ? opposable.get("name").toString() : null)
-                    .build();
-        }).toList();
-    }
+    return proceedingMeritsList.stream()
+        .filter(pm -> applyProceedingId.equals(pm.getProceedingId()))
+        .findFirst()
+        .map(
+            pm -> {
+              if (pm.getProceedingLinkedChildren() == null) {
+                return Collections.<InvolvedChildResponse>emptyList();
+              }
+              return pm.getProceedingLinkedChildren().stream()
+                  .map(ProceedingLinkedChild::getInvolvedChildId)
+                  .filter(Objects::nonNull)
+                  .map(
+                      id ->
+                          allChildren.stream()
+                              .filter(c -> id.equals(c.getId()))
+                              .findFirst()
+                              .orElse(null))
+                  .filter(Objects::nonNull)
+                  .map(
+                      c ->
+                          new InvolvedChildResponse()
+                              .fullName(c.getFullName())
+                              .dateOfBirth(c.getDateOfBirth()))
+                  .toList();
+            })
+        .orElse(Collections.emptyList());
+  }
 
-    private static String extractContactEmail(Map<String, Object> content) {
-        if (content == null) {
-            return null;
-        }
-        Object submitterEmail = content.get("submitterEmail");
-        return submitterEmail instanceof String ? (String) submitterEmail : null;
+  private List<OpponentResponse> extractOpponents(Map<String, Object> applicationContent) {
+    Map<String, Object> merits = (Map<String, Object>) applicationContent.get("applicationMerits");
+    List<Map<String, Object>> opponents = (List<Map<String, Object>>) merits.get("opponents");
+
+    return opponents.stream()
+        .map(
+            opponent -> {
+              Map<String, Object> opposable = (Map<String, Object>) opponent.get("opposable");
+              return OpponentResponse.builder()
+                  .opponentType(opponent.get("opposableType").toString())
+                  .firstName(
+                      opposable.get("firstName") != null
+                          ? opposable.get("firstName").toString()
+                          : null)
+                  .lastName(
+                      opposable.get("lastName") != null
+                          ? opposable.get("lastName").toString()
+                          : null)
+                  .organisationName(
+                      opposable.get("name") != null ? opposable.get("name").toString() : null)
+                  .build();
+            })
+        .toList();
+  }
+
+  private static String extractContactEmail(Map<String, Object> content) {
+    if (content == null) {
+      return null;
     }
+    Object submitterEmail = content.get("submitterEmail");
+    return submitterEmail instanceof String ? (String) submitterEmail : null;
+  }
 }

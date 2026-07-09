@@ -16,7 +16,8 @@ public class GenericEnumConvertor<E extends Enum> {
   }
 
   /**
-   * Converts a string value to the corresponding enum constant, ignoring case and trimming whitespace.
+   * Converts a string value to the corresponding enum constant, ignoring case and trimming
+   * whitespace.
    *
    * @param value the string value to convert
    * @return the corresponding enum constant, or null if no match is found
@@ -28,11 +29,8 @@ public class GenericEnumConvertor<E extends Enum> {
     }
 
     return Arrays.stream(enumType.getEnumConstants())
-        .filter(enumConstant -> enumConstant
-            .name()
-            .equalsIgnoreCase(value.trim()))
+        .filter(enumConstant -> enumConstant.name().equalsIgnoreCase(value.trim()))
         .findFirst()
         .orElse(null);
-
   }
 }

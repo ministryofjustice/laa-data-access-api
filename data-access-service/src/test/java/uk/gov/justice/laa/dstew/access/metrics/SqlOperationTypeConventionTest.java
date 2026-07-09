@@ -23,10 +23,12 @@ class SqlOperationTypeConventionTest {
     QueryContext context = new QueryContext();
     context.setQueries(List.of(query));
     KeyValues lowCardinalityKeyValues = convention.getLowCardinalityKeyValues(context);
-    String cardinalValue = lowCardinalityKeyValues.stream()
-        .filter(kv -> kv.getKey().equals("operation_type"))
-        .map(KeyValue::getValue)
-        .findFirst().orElseThrow();
+    String cardinalValue =
+        lowCardinalityKeyValues.stream()
+            .filter(kv -> kv.getKey().equals("operation_type"))
+            .map(KeyValue::getValue)
+            .findFirst()
+            .orElseThrow();
     assertEquals(expected, cardinalValue);
   }
 
@@ -39,8 +41,7 @@ class SqlOperationTypeConventionTest {
         Arguments.of("  SELECT * FROM table", "select"),
         Arguments.of("MERGE INTO table USING source ON condition", "merge"),
         Arguments.of("ALTER TABLE foo ADD col int", "other"),
-        Arguments.of("", "other")
-    );
+        Arguments.of("", "other"));
   }
 
   @Test
@@ -48,10 +49,12 @@ class SqlOperationTypeConventionTest {
     QueryContext context = new QueryContext();
     context.setQueries(null);
     KeyValues lowCardinalityKeyValues = convention.getLowCardinalityKeyValues(context);
-    String cardinalValue = lowCardinalityKeyValues.stream()
-        .filter(kv -> kv.getKey().equals("operation_type"))
-        .map(KeyValue::getValue)
-        .findFirst().orElseThrow();
+    String cardinalValue =
+        lowCardinalityKeyValues.stream()
+            .filter(kv -> kv.getKey().equals("operation_type"))
+            .map(KeyValue::getValue)
+            .findFirst()
+            .orElseThrow();
     assertEquals("other", cardinalValue);
   }
 
@@ -60,10 +63,12 @@ class SqlOperationTypeConventionTest {
     QueryContext context = new QueryContext();
     context.setQueries(Collections.emptyList());
     KeyValues lowCardinalityKeyValues = convention.getLowCardinalityKeyValues(context);
-    String cardinalValue = lowCardinalityKeyValues.stream()
-        .filter(kv -> kv.getKey().equals("operation_type"))
-        .map(KeyValue::getValue)
-        .findFirst().orElseThrow();
+    String cardinalValue =
+        lowCardinalityKeyValues.stream()
+            .filter(kv -> kv.getKey().equals("operation_type"))
+            .map(KeyValue::getValue)
+            .findFirst()
+            .orElseThrow();
     assertEquals("other", cardinalValue);
   }
 }

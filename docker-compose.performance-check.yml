@@ -1,0 +1,94 @@
+# docker-compose.performance-check.yml
+#
+# Brings up Postgres + the API service together for local performance testing with k6.
+#
+# Resource limits are sized to approximate an AWS t3.medium (2 vCPU, 4 GB RAM):
+#   - api:      1.5 vCPU  / 2 GB RAM  (Spring Boot JVM needs headroom)
+#   - postgres: 0.5 vCPU  / 1 GB RAM
+#
+# Security is disabled so k6 can hit the API without a real bearer token.
+# DO NOT use this compose file in any environment with real data.
+#
+# Usage:
+#   docker-compose -f docker-compose.performance-check.yml up --build
+#   k6 run k6/performance-test.js
+#
+# To tear down and remove the volume:
+#   docker-compose -f docker-compose.performance-check.yml down -v
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: perf-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: laa_data_access_api
+      POSTGRES_USER: laa_user
+      POSTGRES_PASSWORD: laa_password
+    volumes:
+      - perf_pgdata:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U laa_user -d laa_data_access_api"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: perf-api
+    restart: unless-stopped
+    ports:
+      - "9080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: main
+      DB_URL: jdbc:postgresql://perf-postgres:5432/laa_data_access_api
+      DB_USERNAME: laa_user
+      DB_PASSWORD: laa_password
+      SPRING_DATASOURCE_URL: jdbc:postgresql://perf-postgres:5432/laa_data_access_api
+      SPRING_DATASOURCE_USERNAME: laa_user
+      SPRING_DATASOURCE_PASSWORD: laa_password
+      METRICS_RELEASE_TAG: perf-local
+      # Entra / OAuth2 — set these in your shell or a .env file before running
+      ENTRA_ISSUER_URI: ${ENTRA_ISSUER_URI:-https://dummy-issuer}
+      ENTRA_JWK_SET_URI: ${ENTRA_JWK_SET_URI:-https://dummy-jwk-set-uri}
+      ENTRA_AUD: ${ENTRA_AUD:-dummy-aud}
+      # Optional feature flags
+      FEATURE_ENABLE_DEV_TOKEN: true
+      FEATURE_DISABLE_SECURITY: false
+      # Sentry (disabled locally by default)
+      SENTRY_ENABLED: ${SENTRY_ENABLED:-false}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-local}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  perf_pgdata:
+

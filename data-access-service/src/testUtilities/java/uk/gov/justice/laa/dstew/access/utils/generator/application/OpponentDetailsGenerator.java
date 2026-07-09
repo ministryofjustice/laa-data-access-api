@@ -1,10 +1,10 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
-import uk.gov.justice.laa.dstew.access.model.OpponentDetails;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.OpponentDetails;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 
-public class OpponentDetailsGenerator extends
-    BaseGenerator<OpponentDetails, OpponentDetails.OpponentDetailsBuilder> {
+public class OpponentDetailsGenerator
+    extends BaseGenerator<OpponentDetails, OpponentDetails.OpponentDetailsBuilder> {
 
   private final OpposableGenerator opposableGenerator = new OpposableGenerator();
 
@@ -15,6 +15,7 @@ public class OpponentDetailsGenerator extends
   @Override
   public OpponentDetails createDefault() {
     return OpponentDetails.builder()
+        .opposableType("ApplicationMeritsTask::Individual")
         .opposable(opposableGenerator.createDefault())
         .build();
   }
