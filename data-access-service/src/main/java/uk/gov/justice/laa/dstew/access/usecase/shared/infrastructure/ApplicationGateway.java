@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
@@ -42,4 +43,17 @@ public interface ApplicationGateway {
    * @return a list of IDs that could not be found (empty if all were present)
    */
   List<UUID> findMissingApplyApplicationIds(List<UUID> applyApplicationIds);
+
+  /**
+   * Updates an existing application's status and content, then returns the saved domain.
+   *
+   * <p>Implementations load the managed entity, apply field changes, set modifiedAt to current
+   * instant, and persist. This preserves optimistic locking semantics.
+   *
+   * @param id the application UUID
+   * @param status the new status; if null, status remains unchanged
+   * @param applicationContent the new application content
+   * @return the updated application domain with modifiedAt set to current instant
+   */
+  ApplicationDomain update(UUID id, String status, Map<String, Object> applicationContent);
 }
