@@ -20,39 +20,45 @@ public class EventHistoryPublisher {
   }
 
   /**
-   * Processes a single domain event asynchronously: uploads to S3 and saves to DynamoDB.
-   * Does NOT update the published status - caller is responsible for that if needed.
+   * Processes a single domain event asynchronously: uploads to S3 and saves to DynamoDB. Does NOT
+   * update the published status - caller is responsible for that if needed.
    *
    * @param event the event to process
    * @return a CompletableFuture containing the event's UUID if successful, or empty if failed
    */
   public CompletableFuture<Optional<UUID>> processDomainEventAsync(Event event) {
-    return processEventAsync(event)
-        .thenApply(Optional::ofNullable);
+    return processEventAsync(event).thenApply(Optional::ofNullable);
   }
 
   /**
-   * Core async processing for a single event: upload to S3 and save to DynamoDB.
-   * Returns the event UUID if successful, null otherwise.
+   * Core async processing for a single event: upload to S3 and save to DynamoDB. Returns the event
+   * UUID if successful, null otherwise.
    */
   private CompletableFuture<UUID> processEventAsync(Event event) {
     return CompletableFuture.supplyAsync(() -> uploadedS3Url(event))
-        .thenCompose(s3Url -> {
-          if (s3Url == null) {
-            return CompletableFuture.completedFuture(null);
-          }
-          return dynamoDbService.saveDomainEvent(event, s3Url)
-              .thenApply(__ -> event.domainEventId())
-              .whenComplete((__, throwable) -> {
-                if (throwable == null) {
-                  log.info("Domain event with id '{}' saved successfully", event.applicationId());
-                } else {
-                  log.error("Failed to process event with ID {}", event.domainEventId(), throwable);
-                }
-              });
-        });
+        .thenCompose(
+            s3Url -> {
+              if (s3Url == null) {
+                return CompletableFuture.completedFuture(null);
+              }
+              return dynamoDbService
+                  .saveDomainEvent(event, s3Url)
+                  .thenApply(__ -> event.domainEventId())
+                  .whenComplete(
+                      (__, throwable) -> {
+                        if (throwable == null) {
+                          log.info(
+                              "Domain event with id '{}' saved successfully",
+                              event.applicationId());
+                        } else {
+                          log.error(
+                              "Failed to process event with ID {}",
+                              event.domainEventId(),
+                              throwable);
+                        }
+                      });
+            });
   }
-
 
   /**
    * Uploads the event data to S3 and returns the S3 URL if successful.
@@ -62,7 +68,9 @@ public class EventHistoryPublisher {
    */
   private @Nullable String uploadedS3Url(Event event) {
     S3UploadResult s3UploadResult =
-        s3Service.upload(event.requestPayload(), "laa-data-stewardship-access-bucket",
+        s3Service.upload(
+            event.requestPayload(),
+            "laa-data-stewardship-access-bucket",
             event.applicationId() + "/" + event.domainEventId());
     if (!s3UploadResult.isSuccess()) {
       log.error("S3 Upload failed for event id '{}'", event.domainEventId());
@@ -76,6 +84,4 @@ public class EventHistoryPublisher {
     }
     return s3Url;
   }
-
-
 }

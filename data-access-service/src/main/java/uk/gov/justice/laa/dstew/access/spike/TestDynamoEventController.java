@@ -27,25 +27,32 @@ public class TestDynamoEventController {
   private final S3Service s3Service;
   private final EventHistoryOutboxPattern eventHistoryOutboxPattern;
 
-  public TestDynamoEventController(DynamoDbService dynamoDbService, S3Service s3Service,
-                                   EventHistoryOutboxPattern eventHistoryOutboxPattern) {
+  public TestDynamoEventController(
+      DynamoDbService dynamoDbService,
+      S3Service s3Service,
+      EventHistoryOutboxPattern eventHistoryOutboxPattern) {
     this.dynamoDbService = dynamoDbService;
     this.s3Service = s3Service;
     this.eventHistoryOutboxPattern = eventHistoryOutboxPattern;
   }
 
-  @PostMapping(value = "/events", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+  @PostMapping(
+      value = "/events",
+      consumes = MediaType.APPLICATION_JSON_VALUE,
+      produces = MediaType.APPLICATION_JSON_VALUE)
   public void saveEvent(@RequestBody Event event) {
-    S3UploadResult s3UploadResult = s3Service.upload(event, "laa-data-stewardship-access-bucket", event.applicationId());
-    CompletableFuture<Event> eventCompletableFuture = dynamoDbService.saveDomainEvent(event, s3UploadResult.getS3Url());
-    eventCompletableFuture.whenComplete((event1, throwable) -> {
-      if (throwable != null) {
-        System.err.println("Failed to save event: " + throwable.getMessage());
-      } else {
-        System.out.println("Event saved successfully: " + event1);
-
-      }
-    });
+    S3UploadResult s3UploadResult =
+        s3Service.upload(event, "laa-data-stewardship-access-bucket", event.applicationId());
+    CompletableFuture<Event> eventCompletableFuture =
+        dynamoDbService.saveDomainEvent(event, s3UploadResult.getS3Url());
+    eventCompletableFuture.whenComplete(
+        (event1, throwable) -> {
+          if (throwable != null) {
+            System.err.println("Failed to save event: " + throwable.getMessage());
+          } else {
+            System.out.println("Event saved successfully: " + event1);
+          }
+        });
   }
 
   @GetMapping(value = "bucket/download", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -59,25 +66,28 @@ public class TestDynamoEventController {
   @GetMapping(value = "dynamo/events", produces = MediaType.APPLICATION_JSON_VALUE)
   public List<DomainEventDynamoDB> getAllEvents() {
     return dynamoDbService.getAllEvents();
-
   }
 
   @GetMapping(value = "dynamo/events/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-  public List<Event> getEvents(@PathVariable String id,
-                               @RequestParam(required = false) List<DomainEventType> eventTypes,
-                               @RequestParam(required = false) String caseworkerId) {
+  public List<Event> getEvents(
+      @PathVariable String id,
+      @RequestParam(required = false) List<DomainEventType> eventTypes,
+      @RequestParam(required = false) String caseworkerId) {
     if (caseworkerId != null) {
-      return dynamoDbService.getDomainEventDynamoDBForCasework(id, caseworkerId, eventTypes != null ? eventTypes
-          .stream()
-          .findFirst().orElse(null) : null
-      );
+      return dynamoDbService.getDomainEventDynamoDBForCasework(
+          id,
+          caseworkerId,
+          eventTypes != null ? eventTypes.stream().findFirst().orElse(null) : null);
     }
 
     if (eventTypes != null) {
-      return dynamoDbService.getAllApplicationsByIdAndEventType(id, eventTypes).stream().map(Event::fromDynamoEntity).toList();
+      return dynamoDbService.getAllApplicationsByIdAndEventType(id, eventTypes).stream()
+          .map(Event::fromDynamoEntity)
+          .toList();
     }
-    return dynamoDbService.getAllApplicationsById(id).stream().map(Event::fromDynamoEntity).toList();
-
+    return dynamoDbService.getAllApplicationsById(id).stream()
+        .map(Event::fromDynamoEntity)
+        .toList();
   }
 
   /**
@@ -90,6 +100,4 @@ public class TestDynamoEventController {
     int amountToPublish = publishAmount == null ? 10 : publishAmount;
     eventHistoryOutboxPattern.processDomainEvents(amountToPublish);
   }
-
 }
-

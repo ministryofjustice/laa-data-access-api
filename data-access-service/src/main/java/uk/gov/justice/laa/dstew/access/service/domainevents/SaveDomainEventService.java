@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.service.domainevents;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -223,5 +224,9 @@ public class SaveDomainEventService {
             .build();
 
     saveDomainEvent(applicationId, caseworkerId, domainEventType, domainEventDetails);
+  }
+
+  public int updateEventsPublishedStatus(List<UUID> publishedEventIds) {
+    return domainEventRepository.setIsPublishedTrueForEventId(publishedEventIds);
   }
 }

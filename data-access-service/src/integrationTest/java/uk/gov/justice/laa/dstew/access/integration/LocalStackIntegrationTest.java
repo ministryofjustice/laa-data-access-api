@@ -45,13 +45,15 @@ import uk.gov.justice.laa.dstew.access.config.devlopment.LocalStackResourceIniti
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class LocalStackIntegrationTest {
   private static final Logger log = LoggerFactory.getLogger(LocalStackIntegrationTest.class);
-  private static final DockerImageName LOCALSTACK_IMAGE = DockerImageName.parse("localstack/localstack:3.2.0");
+  private static final DockerImageName LOCALSTACK_IMAGE =
+      DockerImageName.parse("localstack/localstack:3.2.0");
   private static final Region AWS_REGION = Region.EU_WEST_2;
 
   @Container
-  private static final LocalStackContainer localstack = new LocalStackContainer(LOCALSTACK_IMAGE)
-      .withServices(S3, DYNAMODB)
-      .withEnv("DEFAULT_REGION", AWS_REGION.toString());
+  private static final LocalStackContainer localstack =
+      new LocalStackContainer(LOCALSTACK_IMAGE)
+          .withServices(S3, DYNAMODB)
+          .withEnv("DEFAULT_REGION", AWS_REGION.toString());
 
   private static S3Client s3Client;
   private static DynamoDbClient dynamoDbClient;
@@ -60,28 +62,25 @@ public class LocalStackIntegrationTest {
   @BeforeAll
   static void setUp() {
     log.info("Starting LocalStack container...");
-    s3Client = S3Client.builder()
-        .endpointOverride(localstack.getEndpointOverride(S3))
-        .region(Region.of(localstack.getRegion()))
-        .credentialsProvider(StaticCredentialsProvider.create(
-            AwsBasicCredentials.create(
-                localstack.getAccessKey(),
-                localstack.getSecretKey()
-            )
-        )).build();
-    dynamoDbClient = DynamoDbClient.builder()
-        .endpointOverride(localstack.getEndpointOverride(DYNAMODB))
-        .region(Region.of(localstack.getRegion()))
-        .credentialsProvider(StaticCredentialsProvider.create(
-            AwsBasicCredentials.create(
-                localstack.getAccessKey(),
-                localstack.getSecretKey()
-            )
-        ))
-        .build();
-    enhancedClient = DynamoDbEnhancedClient.builder()
-        .dynamoDbClient(dynamoDbClient)
-        .build();
+    s3Client =
+        S3Client.builder()
+            .endpointOverride(localstack.getEndpointOverride(S3))
+            .region(Region.of(localstack.getRegion()))
+            .credentialsProvider(
+                StaticCredentialsProvider.create(
+                    AwsBasicCredentials.create(
+                        localstack.getAccessKey(), localstack.getSecretKey())))
+            .build();
+    dynamoDbClient =
+        DynamoDbClient.builder()
+            .endpointOverride(localstack.getEndpointOverride(DYNAMODB))
+            .region(Region.of(localstack.getRegion()))
+            .credentialsProvider(
+                StaticCredentialsProvider.create(
+                    AwsBasicCredentials.create(
+                        localstack.getAccessKey(), localstack.getSecretKey())))
+            .build();
+    enhancedClient = DynamoDbEnhancedClient.builder().dynamoDbClient(dynamoDbClient).build();
 
     log.info("LocalStack container started and clients configured.");
   }
@@ -98,7 +97,8 @@ public class LocalStackIntegrationTest {
     registry.add("cloud.aws.credentials.access-key", () -> "test");
     registry.add("cloud.aws.credentials.secret-key", () -> "test");
     registry.add("cloud.aws.stack-name", () -> "localstack");
-    registry.add("cloud.aws.endpoint-override", () -> localstack.getEndpointOverride(DYNAMODB).toString());
+    registry.add(
+        "cloud.aws.endpoint-override", () -> localstack.getEndpointOverride(DYNAMODB).toString());
   }
 
   @AfterAll
@@ -112,14 +112,15 @@ public class LocalStackIntegrationTest {
       dynamoDbClient.deleteTable(DeleteTableRequest.builder().tableName(tableName).build());
     }
 
-    CreateTableRequest request = LocalStackResourceInitializer
-        .getCreateTableRequest(tableName);
+    CreateTableRequest request = LocalStackResourceInitializer.getCreateTableRequest(tableName);
 
     try {
       dynamoDbClient.createTable(request);
     } catch (ResourceInUseException e) {
-      // Table already exists - make creation idempotent so tests can run against existing LocalStack
-      // (for example when Testcontainers can't create containers and we fallback to an existing compose-managed LocalStack).
+      // Table already exists - make creation idempotent so tests can run against existing
+      // LocalStack
+      // (for example when Testcontainers can't create containers and we fallback to an existing
+      // compose-managed LocalStack).
       // Continue to waiting for the table to be ACTIVE below.
     }
 
@@ -130,7 +131,9 @@ public class LocalStackIntegrationTest {
   private void waitForTableActive(String tableName) {
     for (int i = 0; i < 30; i++) {
       try {
-        DescribeTableResponse resp = dynamoDbClient.describeTable(DescribeTableRequest.builder().tableName(tableName).build());
+        DescribeTableResponse resp =
+            dynamoDbClient.describeTable(
+                DescribeTableRequest.builder().tableName(tableName).build());
         if (resp.table().tableStatus() == TableStatus.ACTIVE) {
           return;
         }
@@ -208,25 +211,28 @@ public class LocalStackIntegrationTest {
 
   @Test
   void dynamoDbCheckCanSaveAndRetrieveItem() {
-    dynamoDbClient.putItem(PutItemRequest.builder()
-        .tableName("events")
-        .item(Map.of(
-            "pk", AttributeValue.fromS("test-pk"),
-            "sk", AttributeValue.fromS("test-sk")))
-        .build());
+    dynamoDbClient.putItem(
+        PutItemRequest.builder()
+            .tableName("events")
+            .item(
+                Map.of(
+                    "pk", AttributeValue.fromS("test-pk"),
+                    "sk", AttributeValue.fromS("test-sk")))
+            .build());
 
-    Map<String, AttributeValue> item = dynamoDbClient.getItem(GetItemRequest.builder()
-        .tableName("events")
-        .key(Map.of(
-            "pk", AttributeValue.fromS("test-pk"),
-            "sk", AttributeValue.fromS("test-sk")))
-        .build()
-    ).item();
+    Map<String, AttributeValue> item =
+        dynamoDbClient
+            .getItem(
+                GetItemRequest.builder()
+                    .tableName("events")
+                    .key(
+                        Map.of(
+                            "pk", AttributeValue.fromS("test-pk"),
+                            "sk", AttributeValue.fromS("test-sk")))
+                    .build())
+            .item();
 
     Assertions.assertEquals("test-pk", item.get("pk").s());
     Assertions.assertEquals("test-sk", item.get("sk").s());
-
   }
-
-
 }

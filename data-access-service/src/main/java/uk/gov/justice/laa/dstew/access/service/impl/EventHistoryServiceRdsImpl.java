@@ -10,7 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.mapper.DomainEventMapper;
-import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.service.EventHistoryService;
@@ -28,14 +28,17 @@ public class EventHistoryServiceRdsImpl implements EventHistoryService {
    */
   @Override
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<ApplicationDomainEvent> getEvents(UUID applicationId,
-                                                @Valid List<DomainEventType> eventType) {
+  public List<ApplicationDomainEventResponse> getEvents(
+      UUID applicationId, @Valid List<DomainEventType> eventType) {
 
     var filterEventType = DomainEventSpecification.filterEventTypes(eventType);
-    Specification<DomainEventEntity> filter = DomainEventSpecification.filterApplicationId(applicationId)
-        .and(filterEventType);
-    Comparator<ApplicationDomainEvent> comparer = Comparator.comparing(ApplicationDomainEvent::getCreatedAt);
-    return domainEventRepository.findAll(filter).stream().map(mapper::toDomainEvent).sorted(comparer).toList();
+    Specification<DomainEventEntity> filter =
+        DomainEventSpecification.filterApplicationId(applicationId).and(filterEventType);
+    Comparator<ApplicationDomainEventResponse> comparer =
+        Comparator.comparing(ApplicationDomainEventResponse::getCreatedAt);
+    return domainEventRepository.findAll(filter).stream()
+        .map(mapper::toDomainEvent)
+        .sorted(comparer)
+        .toList();
   }
-
 }

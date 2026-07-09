@@ -7,7 +7,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
-import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEvent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.service.EventHistoryService;
 import uk.gov.justice.laa.dstew.access.spike.DynamoDbService;
@@ -23,20 +23,22 @@ public class EventHistoryServiceAwsImpl implements EventHistoryService {
    */
   @Override
   @PreAuthorize("@entra.hasAppRole('ApplicationReader')")
-  public List<ApplicationDomainEvent> getEvents(UUID applicationId,
-                                                @Valid List<DomainEventType> eventType) {
+  public List<ApplicationDomainEventResponse> getEvents(
+      UUID applicationId, @Valid List<DomainEventType> eventType) {
 
-    if(eventType == null || eventType.isEmpty()) {
+    if (eventType == null || eventType.isEmpty()) {
       return dynamoDbService.getAllApplicationsById(String.valueOf(applicationId)).stream()
           .map(Event::fromDynamoEntity)
           .map(Event::fromEvent)
-          .sorted(Comparator.comparing(ApplicationDomainEvent::getCreatedAt))
+          .sorted(Comparator.comparing(ApplicationDomainEventResponse::getCreatedAt))
           .toList();
     }
-    return dynamoDbService.getAllApplicationsByIdAndEventType(String.valueOf(applicationId), eventType).stream()
+    return dynamoDbService
+        .getAllApplicationsByIdAndEventType(String.valueOf(applicationId), eventType)
+        .stream()
         .map(Event::fromDynamoEntity)
         .map(Event::fromEvent)
-        .sorted(Comparator.comparing(ApplicationDomainEvent::getCreatedAt))
+        .sorted(Comparator.comparing(ApplicationDomainEventResponse::getCreatedAt))
         .toList();
   }
 }

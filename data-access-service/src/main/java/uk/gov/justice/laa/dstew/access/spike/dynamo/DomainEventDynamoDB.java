@@ -28,13 +28,12 @@ public class DomainEventDynamoDB {
   @DynamoDbSecondaryPartitionKey(indexNames = "gs-index-1")
   @DynamoDbAttribute("gs1pk")
   public String getGs1pk() {
-    return  (caseworkerId != null ? "CASEWORKER#" + caseworkerId : null);
+    return (caseworkerId != null ? "CASEWORKER#" + caseworkerId : null);
   }
 
   public void setGs1pk(String gs1pk) {
     // No-op: value is computed from caseworkerId
   }
-
 
   @DynamoDbSecondarySortKey(indexNames = "gs-index-1")
   @DynamoDbAttribute("gs1sk")
@@ -85,9 +84,4 @@ public class DomainEventDynamoDB {
   public void setSk(String sk) {
     // No-op: value is computed from type and createdAt
   }
-
-
-
-
-
 }

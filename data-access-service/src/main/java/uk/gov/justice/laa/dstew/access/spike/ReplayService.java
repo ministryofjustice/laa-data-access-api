@@ -14,9 +14,11 @@ public class ReplayService {
 
   DynamoDbService dynamoDbService;
   S3Service s3Service;
-  public ApplicationEntity getReplayApplication(UUID applicationId, Instant replayEndDateTime) {
-    List<DomainEventDynamoDB> allApplicationsById = dynamoDbService.getAllApplicationsByIdUntilTime(applicationId.toString(), replayEndDateTime);
-    return null;
 
+  public ApplicationEntity getReplayApplication(UUID applicationId, Instant replayEndDateTime) {
+    List<DomainEventDynamoDB> allApplicationsById =
+        dynamoDbService.getAllApplicationsByIdUntilTime(
+            applicationId.toString(), replayEndDateTime);
+    return null;
   }
 }

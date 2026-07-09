@@ -23,8 +23,8 @@ import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 
 /**
- * Component that initializes AWS resources (S3 bucket and DynamoDB table) when the application starts in the 'local' profile.
- * This is intended for development environments using LocalStack,
+ * Component that initializes AWS resources (S3 bucket and DynamoDB table) when the application
+ * starts in the 'local' profile. This is intended for development environments using LocalStack,
  * ensuring that necessary resources are available without manual setup.
  */
 @Component
@@ -39,14 +39,13 @@ public class LocalStackResourceInitializer {
   private final String tableName;
 
   /**
-   * Constructor for LocalStackResourceInitializer.
-   * Dependencies are injected by Spring, including the S3 and DynamoDB clients,
-   * and the bucket/table names from application properties.
+   * Constructor for LocalStackResourceInitializer. Dependencies are injected by Spring, including
+   * the S3 and DynamoDB clients, and the bucket/table names from application properties.
    *
-   * @param s3Client       the S3 client to interact with S3 resources.
+   * @param s3Client the S3 client to interact with S3 resources.
    * @param dynamoDbClient the DynamoDB client to interact with DynamoDB resources.
-   * @param bucketName     the name of the S3 bucket to ensure exists.
-   * @param tableName      the name of the DynamoDB table to ensure exists.
+   * @param bucketName the name of the S3 bucket to ensure exists.
+   * @param tableName the name of the DynamoDB table to ensure exists.
    */
   public LocalStackResourceInitializer(
       S3Client s3Client,
@@ -60,9 +59,9 @@ public class LocalStackResourceInitializer {
   }
 
   /**
-   * Method that runs after the application is ready.
-   * It checks for the existence of the specified S3 bucket and DynamoDB table, creating them if they do not exist.
-   * This ensures that the necessary AWS resources are available for development using LocalStack.
+   * Method that runs after the application is ready. It checks for the existence of the specified
+   * S3 bucket and DynamoDB table, creating them if they do not exist. This ensures that the
+   * necessary AWS resources are available for development using LocalStack.
    */
   @EventListener(ApplicationReadyEvent.class)
   public void initializeResources() {
@@ -89,15 +88,15 @@ public class LocalStackResourceInitializer {
       log.info("DynamoDB table '{}' already exists.", tableName);
     } catch (ResourceNotFoundException e) {
       log.info("DynamoDB table '{}' not found. Creating...", tableName);
-      CreateTableRequest request =
-          getCreateTableRequest(tableName);
+      CreateTableRequest request = getCreateTableRequest(tableName);
       dynamoDbClient.createTable(request);
       log.info("DynamoDB table '{}' created.", tableName);
     }
   }
 
   /**
-   * Helper method to construct a CreateTableRequest for DynamoDB with the specified global secondary indexes and table name.
+   * Helper method to construct a CreateTableRequest for DynamoDB with the specified global
+   * secondary indexes and table name.
    *
    * @param tableName the name of the DynamoDB table to create.
    * @return a CreateTableRequest configured with the necessary key schema.
@@ -107,45 +106,65 @@ public class LocalStackResourceInitializer {
         .tableName(tableName)
         .keySchema(
             KeySchemaElement.builder().attributeName("pk").keyType(KeyType.HASH).build(),
-            KeySchemaElement.builder().attributeName("sk").keyType(KeyType.RANGE).build()
-        )
+            KeySchemaElement.builder().attributeName("sk").keyType(KeyType.RANGE).build())
         .attributeDefinitions(
-            AttributeDefinition.builder().attributeName("pk").attributeType(ScalarAttributeType.S).build(),
-            AttributeDefinition.builder().attributeName("sk").attributeType(ScalarAttributeType.S).build(),
-            AttributeDefinition.builder().attributeName("gs1pk").attributeType(ScalarAttributeType.S).build(),
-            AttributeDefinition.builder().attributeName("gs1sk").attributeType(ScalarAttributeType.S).build(),
-            AttributeDefinition.builder().attributeName("gs2pk").attributeType(ScalarAttributeType.S).build(),
-            AttributeDefinition.builder().attributeName("gs2sk").attributeType(ScalarAttributeType.S).build()
-        )
-        .provisionedThroughput(ProvisionedThroughput.builder().readCapacityUnits(5L).writeCapacityUnits(5L).build())
-        .globalSecondaryIndexes(
-            getGlobalSecondaryIndex1(),
-            getGlobalSecondaryIndex2()
-        )
+            AttributeDefinition.builder()
+                .attributeName("pk")
+                .attributeType(ScalarAttributeType.S)
+                .build(),
+            AttributeDefinition.builder()
+                .attributeName("sk")
+                .attributeType(ScalarAttributeType.S)
+                .build(),
+            AttributeDefinition.builder()
+                .attributeName("gs1pk")
+                .attributeType(ScalarAttributeType.S)
+                .build(),
+            AttributeDefinition.builder()
+                .attributeName("gs1sk")
+                .attributeType(ScalarAttributeType.S)
+                .build(),
+            AttributeDefinition.builder()
+                .attributeName("gs2pk")
+                .attributeType(ScalarAttributeType.S)
+                .build(),
+            AttributeDefinition.builder()
+                .attributeName("gs2sk")
+                .attributeType(ScalarAttributeType.S)
+                .build())
+        .provisionedThroughput(
+            ProvisionedThroughput.builder().readCapacityUnits(5L).writeCapacityUnits(5L).build())
+        .globalSecondaryIndexes(getGlobalSecondaryIndex1(), getGlobalSecondaryIndex2())
         .build();
   }
 
   private static GlobalSecondaryIndex getGlobalSecondaryIndex1() {
     return GlobalSecondaryIndex.builder()
         .indexName("gs-index-1")
-        .provisionedThroughput(ProvisionedThroughput.builder().readCapacityUnits(5L).writeCapacityUnits(5L).build())
+        .provisionedThroughput(
+            ProvisionedThroughput.builder().readCapacityUnits(5L).writeCapacityUnits(5L).build())
         .keySchema(
             KeySchemaElement.builder().attributeName("gs1pk").keyType(KeyType.HASH).build(),
             KeySchemaElement.builder().attributeName("gs1sk").keyType(KeyType.RANGE).build())
-        .projection(projection -> projection.nonKeyAttributes("pk", "sk", "s3location")
-            .projectionType("INCLUDE"))
+        .projection(
+            projection ->
+                projection.nonKeyAttributes("pk", "sk", "s3location").projectionType("INCLUDE"))
         .build();
   }
 
   private static GlobalSecondaryIndex getGlobalSecondaryIndex2() {
     return GlobalSecondaryIndex.builder()
         .indexName("gs-index-2")
-        .provisionedThroughput(ProvisionedThroughput.builder().readCapacityUnits(5L).writeCapacityUnits(5L).build())
+        .provisionedThroughput(
+            ProvisionedThroughput.builder().readCapacityUnits(5L).writeCapacityUnits(5L).build())
         .keySchema(
             KeySchemaElement.builder().attributeName("gs2pk").keyType(KeyType.HASH).build(),
             KeySchemaElement.builder().attributeName("gs2sk").keyType(KeyType.RANGE).build())
-        .projection(projection -> projection.nonKeyAttributes("pk", "sk", "s3location", "createdAt")
-            .projectionType("INCLUDE"))
+        .projection(
+            projection ->
+                projection
+                    .nonKeyAttributes("pk", "sk", "s3location", "createdAt")
+                    .projectionType("INCLUDE"))
         .build();
   }
 }

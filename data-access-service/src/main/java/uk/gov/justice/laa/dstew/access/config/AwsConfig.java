@@ -16,9 +16,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.S3Configuration;
 
-/**
- * Configuration class for AWS-related beans and settings.
- */
+/** Configuration class for AWS-related beans and settings. */
 @Configuration
 public class AwsConfig {
 
@@ -35,7 +33,6 @@ public class AwsConfig {
   @Value("${aws.secret-key:}")
   private String awsSecretKey;
 
-
   /**
    * Create and configure a DynamoDbClient bean for interacting with DynamoDB.
    *
@@ -43,8 +40,7 @@ public class AwsConfig {
    */
   @Bean
   public DynamoDbClient dynamoDbClient() {
-    DynamoDbClientBuilder builder = DynamoDbClient.builder()
-        .region(Region.of(awsRegion));
+    DynamoDbClientBuilder builder = DynamoDbClient.builder().region(Region.of(awsRegion));
 
     // If an explicit endpoint is provided (localstack, etc.) configure it
     if (awsEndpoint != null && !awsEndpoint.isBlank()) {
@@ -57,9 +53,13 @@ public class AwsConfig {
   }
 
   private AwsCredentialsProvider getCredentialsProvider() {
-    // If explicit credentials are provided (local/dev), use them. Otherwise rely on the default provider
+    // If explicit credentials are provided (local/dev), use them. Otherwise rely on the default
+    // provider
     // which in Kubernetes will pick up IRSA or other environment/metadata credentials.
-    if (awsAccessKey != null && !awsAccessKey.isBlank() && awsSecretKey != null && !awsSecretKey.isBlank()) {
+    if (awsAccessKey != null
+        && !awsAccessKey.isBlank()
+        && awsSecretKey != null
+        && !awsSecretKey.isBlank()) {
       return StaticCredentialsProvider.create(
           AwsBasicCredentials.create(awsAccessKey, awsSecretKey));
     }
@@ -73,9 +73,7 @@ public class AwsConfig {
    */
   @Bean
   public DynamoDbEnhancedClient dynamoDbEnhancedClient() {
-    return DynamoDbEnhancedClient.builder()
-        .dynamoDbClient(dynamoDbClient())
-        .build();
+    return DynamoDbEnhancedClient.builder().dynamoDbClient(dynamoDbClient()).build();
   }
 
   /**
@@ -85,11 +83,11 @@ public class AwsConfig {
    */
   @Bean
   public S3Client s3Client() {
-    S3ClientBuilder builder = S3Client.builder()
-        .forcePathStyle(true)
-        .serviceConfiguration(S3Configuration.builder()
-            .build())
-        .region(Region.of(awsRegion));
+    S3ClientBuilder builder =
+        S3Client.builder()
+            .forcePathStyle(true)
+            .serviceConfiguration(S3Configuration.builder().build())
+            .region(Region.of(awsRegion));
     // If an explicit endpoint is provided (localstack, etc.) configure it
     if (awsEndpoint != null && !awsEndpoint.isBlank()) {
       builder = builder.endpointOverride(URI.create(awsEndpoint));
@@ -98,5 +96,4 @@ public class AwsConfig {
     builder.credentialsProvider(getCredentialsProvider());
     return builder.build();
   }
-
 }

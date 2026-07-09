@@ -61,4 +61,7 @@ public class DomainEventEntity {
   @Column(name = "service_name")
   @Enumerated(EnumType.STRING)
   private ServiceName serviceName;
+
+  @Column(name = "is_published")
+  private Boolean isPublished;
 }

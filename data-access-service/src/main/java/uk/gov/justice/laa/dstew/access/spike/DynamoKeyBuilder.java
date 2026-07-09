@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.spike;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 
-
 public final class DynamoKeyBuilder {
 
   private static final String DELIMITER = "#";
@@ -17,11 +16,7 @@ public final class DynamoKeyBuilder {
     return type.toLowerCase() + DELIMITER + id;
   }
 
-
-
   public static String sk(EventType eventType, Instant timestamp) {
     return eventType.name() + TIMESTAMP_FORMATTER.format(timestamp);
   }
-
 }
-

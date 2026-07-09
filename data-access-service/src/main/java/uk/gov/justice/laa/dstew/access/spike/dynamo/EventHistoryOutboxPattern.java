@@ -10,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
-import uk.gov.justice.laa.dstew.access.service.DomainEventService;
+import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
 import uk.gov.justice.laa.dstew.access.spike.Event;
 import uk.gov.justice.laa.dstew.access.spike.EventHistoryPublisher;
 
@@ -21,7 +21,7 @@ public class EventHistoryOutboxPattern {
 
   private final DomainEventRepository domainEventRepository;
   private final EventHistoryPublisher eventHistoryPublisher;
-  private final DomainEventService domainEventService;
+  private final SaveDomainEventService domainEventService;
 
   /**
    * Processes all unpublished domain events by uploading them to S3 and saving them to DynamoDB.
@@ -34,11 +34,12 @@ public class EventHistoryOutboxPattern {
     long startTime = System.currentTimeMillis();
 
     List<Event> events = getUnpublishedEvents(eventsToProcess);
-    List<CompletableFuture<UUID>> saveTasks = events.stream()
-        .parallel()
-        .map(eventHistoryPublisher::processDomainEventAsync)
-        .map(future -> future.thenApply(optUuid -> optUuid.orElse(null)))
-        .toList();
+    List<CompletableFuture<UUID>> saveTasks =
+        events.stream()
+            .parallel()
+            .map(eventHistoryPublisher::processDomainEventAsync)
+            .map(future -> future.thenApply(optUuid -> optUuid.orElse(null)))
+            .toList();
 
     if (saveTasks.isEmpty()) {
       log.info("No domain events ready for publication");
@@ -46,7 +47,8 @@ public class EventHistoryOutboxPattern {
     }
 
     long uploadTime = System.currentTimeMillis() - startTime;
-    log.info("S3 uploads completed for {} events in {} ms ({} uploads/second)",
+    log.info(
+        "S3 uploads completed for {} events in {} ms ({} uploads/second)",
         saveTasks.size(),
         uploadTime,
         String.format("%.2f", saveTasks.size() / (uploadTime / 1000.0)));
@@ -54,20 +56,27 @@ public class EventHistoryOutboxPattern {
     long dynamoStartTime = System.currentTimeMillis();
     CompletableFuture.allOf(saveTasks.toArray(new CompletableFuture[0]))
         .whenCompleteAsync(
-            (unused, throwable) -> handlePublicationResult(saveTasks, throwable, startTime, dynamoStartTime, uploadTime));
+            (unused, throwable) ->
+                handlePublicationResult(
+                    saveTasks, throwable, startTime, dynamoStartTime, uploadTime));
   }
 
-  private void handlePublicationResult(List<CompletableFuture<UUID>> saveTasks, Throwable throwable,
-                                       long startTime, long dynamoStartTime, long uploadTime) {
+  private void handlePublicationResult(
+      List<CompletableFuture<UUID>> saveTasks,
+      Throwable throwable,
+      long startTime,
+      long dynamoStartTime,
+      long uploadTime) {
     if (throwable != null) {
       log.error("One or more domain events failed during publication", throwable);
     }
 
-    List<UUID> publishedEventIds = saveTasks.stream()
-        .parallel() // Parallelize awaiting completions
-        .map(this::awaitCompletion)
-        .flatMap(Optional::stream)
-        .toList();
+    List<UUID> publishedEventIds =
+        saveTasks.stream()
+            .parallel() // Parallelize awaiting completions
+            .map(this::awaitCompletion)
+            .flatMap(Optional::stream)
+            .toList();
 
     if (publishedEventIds.isEmpty()) {
       log.warn("Domain events were uploaded but none saved successfully to DynamoDB");
@@ -75,20 +84,26 @@ public class EventHistoryOutboxPattern {
     }
 
     long dynamoTime = System.currentTimeMillis() - dynamoStartTime;
-    log.info("DynamoDB saves completed for {} events in {} ms ({} saves/second)",
+    log.info(
+        "DynamoDB saves completed for {} events in {} ms ({} saves/second)",
         publishedEventIds.size(),
         dynamoTime,
         String.format("%.2f", publishedEventIds.size() / (dynamoTime / 1000.0)));
 
-    updatePublishedStatusForBatch(publishedEventIds, startTime, uploadTime, dynamoTime, saveTasks.size());
+    updatePublishedStatusForBatch(
+        publishedEventIds, startTime, uploadTime, dynamoTime, saveTasks.size());
   }
 
   /**
-   * Updates the published status for a batch of events and logs summary statistics.
-   * Only called by the batch processing operation.
+   * Updates the published status for a batch of events and logs summary statistics. Only called by
+   * the batch processing operation.
    */
-  private void updatePublishedStatusForBatch(List<UUID> publishedEventIds, long startTime,
-                                             long uploadTime, long dynamoTime, int totalTasks) {
+  private void updatePublishedStatusForBatch(
+      List<UUID> publishedEventIds,
+      long startTime,
+      long uploadTime,
+      long dynamoTime,
+      int totalTasks) {
     long dbUpdateStart = System.currentTimeMillis();
     int updated = domainEventService.updateEventsPublishedStatus(publishedEventIds);
     long dbUpdateTime = System.currentTimeMillis() - dbUpdateStart;
@@ -96,14 +111,17 @@ public class EventHistoryOutboxPattern {
 
     log.info("========== Event Publication Summary ==========");
     log.info("Events processed: {}", updated);
-    log.info("S3 upload time: {} ms ({} uploads/second)",
+    log.info(
+        "S3 upload time: {} ms ({} uploads/second)",
         uploadTime,
         String.format("%.2f", totalTasks / (uploadTime / 1000.0)));
-    log.info("DynamoDB save time: {} ms ({} saves/second)",
+    log.info(
+        "DynamoDB save time: {} ms ({} saves/second)",
         dynamoTime,
         String.format("%.2f", publishedEventIds.size() / (dynamoTime / 1000.0)));
     log.info("Database update time: {} ms", dbUpdateTime);
-    log.info("Total execution time: {} ms ({} events/second)",
+    log.info(
+        "Total execution time: {} ms ({} events/second)",
         totalTime,
         String.format("%.2f", updated / (totalTime / 1000.0)));
   }
@@ -124,19 +142,16 @@ public class EventHistoryOutboxPattern {
   }
 
   /**
-   * Fetches unpublished events from the repository and converts them to Event objects.
-   * Temporarily using DomainEvent until EventHistory is implemented.
+   * Fetches unpublished events from the repository and converts them to Event objects. Temporarily
+   * using DomainEvent until EventHistory is implemented.
    *
    * @param eventsToProcess the maximum number of events to process
    * @return a list of unpublished Event objects
    */
   private @NonNull List<Event> getUnpublishedEvents(int eventsToProcess) {
-    return domainEventRepository.
-        findAllByIsPublishedFalse()
-        .stream()
+    return domainEventRepository.findAllByIsPublishedFalse().stream()
         .map(Event::convertToEvent)
         .limit(eventsToProcess)
         .toList();
   }
-
 }
