@@ -1,6 +1,6 @@
 plugins {
     id("java")
-    id 'com.diffplug.spotless' version '7.0.2' apply false
+    id 'com.diffplug.spotless' version '7.2.1' apply false
 }
 
 repositories {
@@ -45,7 +45,7 @@ configurations {
 }
 
 dependencies {
-    jacocoAnt "org.jacoco:org.jacoco.ant:0.8.14"
+    jacocoAnt "org.jacoco:org.jacoco.ant:0.8.15"
     compileOnly 'org.projectlombok:lombok:1.18.46'
     annotationProcessor 'org.projectlombok:lombok:1.18.46'
     testCompileOnly 'org.projectlombok:lombok:1.18.46'
@@ -78,7 +78,7 @@ subprojects {
     afterEvaluate {
         if (plugins.hasPlugin('checkstyle')) {
             checkstyle {
-                toolVersion = '10.26.0'
+                toolVersion = '10.26.1'
             }
         }
     }
