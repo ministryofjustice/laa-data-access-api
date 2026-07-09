@@ -20,6 +20,11 @@ ext['logback.version'] = '1.5.36'
 //        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
 ext['tomcat.version'] = '11.0.23'
 
+// ✗ Improperly Controlled Modification of Dynamically-Determined Object Attributes [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONCORE-17457695] (CVE-2026-54515)
+//        introduced by com.fasterxml.jackson.core:jackson-databind@2.21.4
+// Note: this overrides the Jackson 2.x BOM only; the Jackson 3.x BOM is controlled by 'jackson-bom.version'.
+ext['jackson-2-bom.version'] = '2.21.5'
+
 def requiredJavaVersion = 25
 def currentJavaVersion = JavaVersion.current().majorVersion.toInteger()
 
