@@ -45,39 +45,49 @@ public class GetAllApplicationsResponseMapper {
     return ResponseEntity.ok(response);
   }
 
-  private ApplicationSummary toApplicationSummary(ApplicationSummaryReadModel domain) {
+  private ApplicationSummary toApplicationSummary(ApplicationSummaryReadModel summaryReadModel) {
     ApplicationSummary app = new ApplicationSummary();
-    app.setApplicationId(domain.id());
+    app.setApplicationId(summaryReadModel.id());
     app.setSubmittedAt(
-        domain.submittedAt() != null ? domain.submittedAt().atOffset(ZoneOffset.UTC) : null);
-    app.setAutoGrant(domain.isAutoGranted());
+        summaryReadModel.submittedAt() != null
+            ? summaryReadModel.submittedAt().atOffset(ZoneOffset.UTC)
+            : null);
+    app.setAutoGrant(summaryReadModel.isAutoGranted());
     app.setCategoryOfLaw(
-        domain.categoryOfLaw() != null ? CategoryOfLaw.valueOf(domain.categoryOfLaw()) : null);
-    app.setMatterType(domain.matterType() != null ? MatterType.valueOf(domain.matterType()) : null);
-    app.setUsedDelegatedFunctions(domain.usedDelegatedFunctions());
-    app.setLaaReference(domain.laaReference());
-    app.setOfficeCode(domain.officeCode());
-    app.setStatus(domain.status() != null ? ApplicationStatus.valueOf(domain.status()) : null);
-    app.setAssignedTo(domain.caseworkerId());
-    app.setClientFirstName(domain.clientFirstName());
-    app.setClientLastName(domain.clientLastName());
-    app.setClientDateOfBirth(domain.clientDateOfBirth());
+        summaryReadModel.categoryOfLaw() != null
+            ? CategoryOfLaw.valueOf(summaryReadModel.categoryOfLaw())
+            : null);
+    app.setMatterType(
+        summaryReadModel.matterType() != null
+            ? MatterType.valueOf(summaryReadModel.matterType())
+            : null);
+    app.setUsedDelegatedFunctions(summaryReadModel.usedDelegatedFunctions());
+    app.setLaaReference(summaryReadModel.laaReference());
+    app.setOfficeCode(summaryReadModel.officeCode());
+    app.setStatus(
+        summaryReadModel.status() != null
+            ? ApplicationStatus.valueOf(summaryReadModel.status())
+            : null);
+    app.setAssignedTo(summaryReadModel.caseworkerId());
+    app.setClientFirstName(summaryReadModel.clientFirstName());
+    app.setClientLastName(summaryReadModel.clientLastName());
+    app.setClientDateOfBirth(summaryReadModel.clientDateOfBirth());
     app.setApplicationType(ApplicationType.INITIAL);
-    app.setLastUpdated(domain.modifiedAt().atOffset(ZoneOffset.UTC));
-    app.setIsLead(domain.isLead());
+    app.setLastUpdated(summaryReadModel.modifiedAt().atOffset(ZoneOffset.UTC));
+    app.setIsLead(summaryReadModel.isLead());
     app.setLinkedApplications(
-        domain.linkedApplications().stream()
+        summaryReadModel.linkedApplications().stream()
             .map(this::toLinkedApplicationSummaryResponse)
             .toList());
     return app;
   }
 
   private LinkedApplicationSummaryResponse toLinkedApplicationSummaryResponse(
-      LinkedApplicationSummaryReadModel domain) {
+      LinkedApplicationSummaryReadModel summaryReadModel) {
     LinkedApplicationSummaryResponse response = new LinkedApplicationSummaryResponse();
-    response.setApplicationId(domain.applicationId());
-    response.setLaaReference(domain.laaReference());
-    response.setIsLead(domain.isLead());
+    response.setApplicationId(summaryReadModel.applicationId());
+    response.setLaaReference(summaryReadModel.laaReference());
+    response.setIsLead(summaryReadModel.isLead());
     return response;
   }
 }

@@ -22,6 +22,6 @@ public class GetAllApplicationsCaseworkerJpaGateway implements GetAllApplication
 
   @Override
   public boolean caseworkerExists(UUID userId) {
-    return caseworkerRepository.countById(userId) > 0L;
+    return caseworkerRepository.existsById(userId);
   }
 }

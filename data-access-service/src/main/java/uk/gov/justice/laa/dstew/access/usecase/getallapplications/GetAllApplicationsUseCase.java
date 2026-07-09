@@ -87,15 +87,17 @@ public class GetAllApplicationsUseCase {
   private List<LinkedApplicationSummaryReadModel> resolveLinkedApplications(
       UUID applicationId, Map<UUID, List<LinkedApplicationSummaryReadModel>> byLeadId) {
     List<LinkedApplicationSummaryReadModel> group =
-        byLeadId.getOrDefault(
-            applicationId,
-            byLeadId.values().stream()
-                .filter(
-                    linkedGroup ->
-                        linkedGroup.stream()
-                            .anyMatch(dto -> dto.applicationId().equals(applicationId)))
-                .findFirst()
-                .orElse(List.of()));
+        byLeadId.containsKey(applicationId)
+            ? byLeadId.get(applicationId)
+            : findLinkedGroupForAssociate(applicationId, byLeadId);
     return group.stream().filter(dto -> !dto.applicationId().equals(applicationId)).toList();
+  }
+
+  private List<LinkedApplicationSummaryReadModel> findLinkedGroupForAssociate(
+      UUID applicationId, Map<UUID, List<LinkedApplicationSummaryReadModel>> byLeadId) {
+    return byLeadId.values().stream()
+        .filter(group -> group.stream().anyMatch(dto -> dto.applicationId().equals(applicationId)))
+        .findFirst()
+        .orElse(List.of());
   }
 }

@@ -7,6 +7,4 @@ import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
 
 /** Repository for managing caseworker entities. */
 @Repository
-public interface CaseworkerRepository extends JpaRepository<CaseworkerEntity, UUID> {
-  long countById(UUID id);
-}
+public interface CaseworkerRepository extends JpaRepository<CaseworkerEntity, UUID> {}

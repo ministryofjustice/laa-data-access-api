@@ -26,7 +26,7 @@ class GetAllApplicationsCaseworkerJpaGatewayTest {
   @Test
   void givenCaseworkerExists_whenCaseworkerExists_thenReturnsTrue() {
     UUID userId = UUID.randomUUID();
-    when(caseworkerRepository.countById(userId)).thenReturn(1L);
+    when(caseworkerRepository.existsById(userId)).thenReturn(true);
 
     assertThat(gateway.caseworkerExists(userId)).isTrue();
   }
@@ -34,7 +34,7 @@ class GetAllApplicationsCaseworkerJpaGatewayTest {
   @Test
   void givenCaseworkerDoesNotExist_whenCaseworkerExists_thenReturnsFalse() {
     UUID userId = UUID.randomUUID();
-    when(caseworkerRepository.countById(userId)).thenReturn(0L);
+    when(caseworkerRepository.existsById(userId)).thenReturn(false);
 
     assertThat(gateway.caseworkerExists(userId)).isFalse();
   }
