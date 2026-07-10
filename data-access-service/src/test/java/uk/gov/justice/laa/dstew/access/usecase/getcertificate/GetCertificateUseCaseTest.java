@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.service.applications;
+package uk.gov.justice.laa.dstew.access.usecase.getcertificate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
@@ -8,12 +8,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import uk.gov.justice.laa.dstew.access.domain.CertificateDomain;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.CertificateEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -22,13 +22,14 @@ import uk.gov.justice.laa.dstew.access.utils.TestConstants;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.certificate.CertificateEntityGenerator;
+import uk.gov.justice.laa.dstew.access.utils.generator.domain.CertificateDomainGenerator;
 
-public class GetCertificateTest extends BaseServiceTest {
+public class GetCertificateUseCaseTest extends BaseServiceTest {
 
-  @Autowired private GetCertificateService serviceUnderTest;
+  @Autowired private GetCertificateUseCase useCaseUnderTest;
 
   @Test
-  public void givenExistingCertificate_whenGetCertificate_thenReturnCertificateContent() {
+  public void givenExistingCertificate_whenExecute_thenReturnCertificateDomainWithCorrectContent() {
     // given
     ApplicationEntity applicationEntity =
         DataGenerator.createDefault(ApplicationEntityGenerator.class);
@@ -45,17 +46,24 @@ public class GetCertificateTest extends BaseServiceTest {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
     // when
-    Map<String, Object> result = serviceUnderTest.getCertificate(applicationId);
+    CertificateDomain result = useCaseUnderTest.execute(applicationId);
 
     // then
     assertThat(result).isNotNull();
-    assertThat(result).isEqualTo(certificateEntity.getCertificateContent());
+    assertThat(result)
+        .usingRecursiveComparison()
+        .comparingOnlyFields("certificateContent")
+        .isEqualTo(
+            DataGenerator.createDefault(
+                CertificateDomainGenerator.class,
+                b -> b.certificateContent(certificateEntity.getCertificateContent())));
+    assertThat(result.certificateContent()).isEqualTo(certificateEntity.getCertificateContent());
     verify(applicationRepository, times(1)).findById(applicationId);
     verify(certificateRepository, times(1)).findByApplicationId(applicationId);
   }
 
   @Test
-  public void givenApplicationNotExists_whenGetCertificate_thenThrowResourceNotFoundException() {
+  public void givenApplicationNotExists_whenExecute_thenThrowResourceNotFoundException() {
     // given
     UUID applicationId = UUID.randomUUID();
 
@@ -63,10 +71,9 @@ public class GetCertificateTest extends BaseServiceTest {
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    // when
-    // then
+    // when / then
     assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(() -> serviceUnderTest.getCertificate(applicationId))
+        .isThrownBy(() -> useCaseUnderTest.execute(applicationId))
         .withMessageContaining("No application found with id: " + applicationId);
 
     verify(applicationRepository, times(1)).findById(applicationId);
@@ -74,7 +81,7 @@ public class GetCertificateTest extends BaseServiceTest {
   }
 
   @Test
-  public void givenNoCertificateForApplication_whenGetCertificate_thenThrowNotFoundException() {
+  public void givenNoCertificateForApplication_whenExecute_thenThrowResourceNotFoundException() {
     // given
     ApplicationEntity applicationEntity =
         DataGenerator.createDefault(ApplicationEntityGenerator.class);
@@ -85,24 +92,22 @@ public class GetCertificateTest extends BaseServiceTest {
 
     setSecurityContext(TestConstants.Roles.CASEWORKER);
 
-    // when
-    // then
+    // when / then
     assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(() -> serviceUnderTest.getCertificate(applicationId))
+        .isThrownBy(() -> useCaseUnderTest.execute(applicationId))
         .withMessageContaining("No certificate found for application id: " + applicationId);
   }
 
   @Test
-  public void givenNoRole_whenGetCertificate_thenThrowAuthorizationDeniedException() {
+  public void givenNoRole_whenExecute_thenThrowAuthorizationDeniedException() {
     // given
     UUID applicationId = UUID.randomUUID();
 
     setSecurityContext(TestConstants.Roles.NO_ROLE);
 
-    // when
-    // then
+    // when / then
     assertThatExceptionOfType(AuthorizationDeniedException.class)
-        .isThrownBy(() -> serviceUnderTest.getCertificate(applicationId))
+        .isThrownBy(() -> useCaseUnderTest.execute(applicationId))
         .withMessageContaining("Access Denied");
 
     verify(applicationRepository, times(0)).findById(any(UUID.class));

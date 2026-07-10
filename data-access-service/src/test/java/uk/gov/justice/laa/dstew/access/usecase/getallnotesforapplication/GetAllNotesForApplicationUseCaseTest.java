@@ -16,15 +16,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.domain.NoteReadModel;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.usecase.getallnotesforapplication.infrastructure.GetAllNotesForApplicationApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.getallnotesforapplication.infrastructure.GetAllNotesForApplicationNoteGateway;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.getallnotesforapplication.NoteReadModelGenerator;
 
 @ExtendWith(MockitoExtension.class)
 class GetAllNotesForApplicationUseCaseTest {
 
-  @Mock private GetAllNotesForApplicationApplicationGateway applicationGateway;
+  @Mock private ApplicationGateway applicationGateway;
   @Mock private GetAllNotesForApplicationNoteGateway noteGateway;
 
   private GetAllNotesForApplicationUseCase useCase;
@@ -46,7 +46,7 @@ class GetAllNotesForApplicationUseCaseTest {
             NoteReadModelGenerator.class,
             b -> b.applicationId(applicationId).notes("second note").createdBy("user-b"));
 
-    when(applicationGateway.exists(applicationId)).thenReturn(true);
+    when(applicationGateway.applicationExists(applicationId)).thenReturn(true);
     when(noteGateway.findByApplicationIdOrderByCreatedAtAsc(applicationId))
         .thenReturn(List.of(note1, note2));
 
@@ -64,7 +64,7 @@ class GetAllNotesForApplicationUseCaseTest {
   void givenApplicationExistsWithNoNotes_whenExecuted_thenReturnsEmptyList() {
     UUID applicationId = UUID.randomUUID();
 
-    when(applicationGateway.exists(applicationId)).thenReturn(true);
+    when(applicationGateway.applicationExists(applicationId)).thenReturn(true);
     when(noteGateway.findByApplicationIdOrderByCreatedAtAsc(applicationId)).thenReturn(List.of());
 
     List<NoteReadModel> result = useCase.execute(applicationId);
@@ -77,7 +77,7 @@ class GetAllNotesForApplicationUseCaseTest {
   void givenApplicationDoesNotExist_whenExecuted_thenThrowsResourceNotFoundException() {
     UUID applicationId = UUID.randomUUID();
 
-    when(applicationGateway.exists(applicationId)).thenReturn(false);
+    when(applicationGateway.applicationExists(applicationId)).thenReturn(false);
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(applicationId))

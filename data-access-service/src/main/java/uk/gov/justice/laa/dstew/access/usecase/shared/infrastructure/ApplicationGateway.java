@@ -56,4 +56,15 @@ public interface ApplicationGateway {
    * @return the updated application domain with modifiedAt set to current instant
    */
   ApplicationDomain update(UUID id, String status, Map<String, Object> applicationContent);
+
+  /**
+   * Checks if an application with a specified id exists.
+   *
+   * <p>Implementations load the managed entity, apply field changes, set modifiedAt to current
+   * instant, and persist.
+   *
+   * @param applicationId the application UUID
+   * @return true if the application exists, false if not
+   */
+  boolean applicationExists(UUID applicationId);
 }
