@@ -64,5 +64,15 @@ slowQueryThresholdSeconds: 1
 portForward:
   enabled: true
 
+# Mock OAuth2 Server - Use shared instance for all UAT deployments
+mockOAuth2:
+  sharedInstance:
+    enabled: true  # Use the shared instance deployed by CI/CD
+    serviceName: laa-data-access-mock-oauth2-shared
+    namespace: laa-data-access-api-uat
 
-featureFlags: {}
+featureFlags:
+  # Enable dev token feature to allow swagger-caseworker-token
+  enable_dev_token: "true"
+  # Keep security enabled (JWT validation active)
+  disable_security: "false"

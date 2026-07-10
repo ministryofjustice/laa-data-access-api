@@ -488,7 +488,7 @@ public class MakeDecisionTest extends BaseHarnessTest {
                                 "justification",
                                 "reason")))
                     .autoGranted(true)
-                    .applicationVersion(1L));
+                    .applicationVersion(0L));
 
     // when
     HarnessResult result =

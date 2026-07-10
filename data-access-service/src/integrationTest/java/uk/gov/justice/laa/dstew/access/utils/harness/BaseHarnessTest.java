@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,7 +26,8 @@ import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
-import uk.gov.justice.laa.dstew.access.utils.TestConstants;
+import uk.gov.justice.laa.dstew.access.utils.SmokeTestTokenProvider;
+import uk.gov.justice.laa.dstew.access.utils.TestTokenFactory;
 import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
@@ -76,7 +78,10 @@ public abstract class BaseHarnessTest {
     return persistedDataGenerator.trackedApplicationIds();
   }
 
-  private String currentToken = TestConstants.Tokens.CASEWORKER;
+  /** Token factory for minting real signed JWTs from the mock OAuth2 server. */
+  protected TestTokenFactory tokenFactory;
+
+  protected String currentToken;
   private boolean omitToken = false;
 
   @Order(1)
@@ -95,7 +100,21 @@ public abstract class BaseHarnessTest {
     dbCleanliness = harnessProvider.getBean(DatabaseCleanlinessAssertion.class);
     tableRowCountAssertion = harnessProvider.getBean(TableRowCountAssertion.class);
 
-    currentToken = TestConstants.Tokens.CASEWORKER;
+    // In infrastructure mode, obtain tokens from the mock server running in Docker.
+    // In integration mode, use the in-process mock server via TestTokenFactory.
+    if (HarnessMode.isInfrastructure()) {
+      try {
+        currentToken = SmokeTestTokenProvider.getCaseworkerToken();
+      } catch (RuntimeException e) {
+        Assumptions.assumeTrue(
+            false,
+            "Skipping infrastructure test — mock OAuth server unavailable: " + e.getMessage());
+      }
+      tokenFactory = null; // Not available in infrastructure mode
+    } else {
+      tokenFactory = new TestTokenFactory(IntegrationTestContextProvider.mockOAuth2Server());
+      currentToken = tokenFactory.caseworkerToken();
+    }
     omitToken = false;
 
     // Belt-and-braces: clear any IDs left over from a previous test's failed
@@ -142,9 +161,27 @@ public abstract class BaseHarnessTest {
 
   // ── Auth helpers ──────────────────────────────────────────────────────────
 
+  protected String freshCaseworkerToken() {
+    return HarnessMode.isInfrastructure()
+        ? SmokeTestTokenProvider.getCaseworkerToken()
+        : tokenFactory.caseworkerToken();
+  }
+
   protected void withToken(String token) {
     this.currentToken = token;
     this.omitToken = false;
+  }
+
+  /** Use a properly-signed JWT with an unknown role (produces 403 Forbidden). */
+  protected void withUnknownToken() {
+    if (HarnessMode.isInfrastructure()) {
+      throw new UnsupportedOperationException(
+          "withUnknownToken() is not supported in infrastructure mode. "
+              + "The mock-oauth2-server running in Docker is configured with a fixed token callback. "
+              + "To test unauthorized roles in infrastructure mode, add a custom token callback "
+              + "to docker-compose.smoke-test.yml and fetch the token via SmokeTestTokenProvider.");
+    }
+    withToken(tokenFactory.unknownRoleToken());
   }
 
   protected void withNoToken() {
@@ -170,7 +207,7 @@ public abstract class BaseHarnessTest {
     }
 
     // Reset token state after each use
-    currentToken = TestConstants.Tokens.CASEWORKER;
+    currentToken = freshCaseworkerToken();
     omitToken = false;
 
     EntityExchangeResult<byte[]> raw = spec.exchange().expectBody().returnResult();
@@ -242,7 +279,7 @@ public abstract class BaseHarnessTest {
     }
 
     // Reset token state after each use
-    currentToken = TestConstants.Tokens.CASEWORKER;
+    currentToken = freshCaseworkerToken();
     omitToken = false;
 
     EntityExchangeResult<byte[]> raw = spec.bodyValue(body).exchange().expectBody().returnResult();
@@ -309,7 +346,7 @@ public abstract class BaseHarnessTest {
     }
 
     // Reset token state after each use
-    currentToken = TestConstants.Tokens.CASEWORKER;
+    currentToken = freshCaseworkerToken();
     omitToken = false;
 
     EntityExchangeResult<byte[]> raw = spec.bodyValue(body).exchange().expectBody().returnResult();

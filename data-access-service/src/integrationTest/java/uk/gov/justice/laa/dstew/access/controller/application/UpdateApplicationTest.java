@@ -212,7 +212,7 @@ public class UpdateApplicationTest extends BaseHarnessTest {
 
   @Test
   public void givenReaderRole_whenUpdateApplication_thenReturnForbidden() throws Exception {
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     ApplicationUpdateRequest applicationUpdateRequest =
         DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
 
@@ -228,7 +228,7 @@ public class UpdateApplicationTest extends BaseHarnessTest {
 
   @Test
   public void givenUnknownRole_whenUpdateApplication_thenReturnForbidden() throws Exception {
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     ApplicationUpdateRequest applicationUpdateRequest =
         DataGenerator.createDefault(ApplicationUpdateRequestGenerator.class);
 

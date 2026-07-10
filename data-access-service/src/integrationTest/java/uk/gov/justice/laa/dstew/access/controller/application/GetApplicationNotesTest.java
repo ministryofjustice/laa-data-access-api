@@ -125,7 +125,7 @@ public class GetApplicationNotesTest extends BaseHarnessTest {
   @Test
   public void givenUnknownRole_whenGetApplicationNotes_thenReturnForbidden() throws Exception {
     // given
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
 
     // when
     HarnessResult result = getUri(TestConstants.URIs.GET_NOTES, UUID.randomUUID());
