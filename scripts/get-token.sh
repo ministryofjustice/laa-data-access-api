@@ -12,19 +12,26 @@
 #   local       Local development (default) — mock server on port 9999
 #   smoke       Smoke test infrastructure   — mock server on port 9998
 #   uat         UAT/PR shared mock-oauth2 via kubectl port-forward on port 9999
-#               Default issuer: laa-data-access-mock-oauth2-shared:9999
+#               Defaults to the shared instance's in-cluster FQDN issuer:
+#               laa-data-access-mock-oauth2-shared.laa-data-access-api-uat.svc.cluster.local:9999
+#               (must match the deployment's ENTRA_ISSUER_URI). Override with --issuer if needed.
 #   custom      Use OAUTH_TOKEN_URL env var  — bring your own URL
 #
 # Options:
-#   -c, --copy      Copy the token to the clipboard (macOS: pbcopy)
-#   -d, --decode    Decode and pretty-print the token payload
-#   -h, --help      Show this help text
+#   -c, --copy          Copy the token to the clipboard (macOS: pbcopy)
+#   -d, --decode        Decode and pretty-print the token payload
+#   -i, --issuer HOST   Issuer host (and port) the token should be minted for. This must match
+#                       the deployment's ENTRA_ISSUER_URI exactly (full in-cluster FQDN), e.g.
+#                       laa-data-access-mock-oauth2-shared.laa-data-access-api-uat.svc.cluster.local:9999.
+#                       Overrides OAUTH_ISSUER_HOST. Defaults to the shared instance for UAT.
+#   -h, --help          Show this help text
 #
 # Examples:
 #   ./scripts/get-token.sh
 #   ./scripts/get-token.sh local --copy
 #   ./scripts/get-token.sh smoke --decode
 #   ./scripts/get-token.sh uat --copy
+#   ./scripts/get-token.sh uat --issuer laa-data-access-mock-oauth2-shared.laa-data-access-api-uat.svc.cluster.local:9999 --copy
 #   OAUTH_ISSUER_HOST=pr-123-data-access-api-mock-oauth2:9999 ./scripts/get-token.sh uat --copy
 #   OAUTH_TOKEN_URL=http://localhost:7777/entra/token ./scripts/get-token.sh custom
 #
@@ -32,9 +39,9 @@
 #   OAUTH_TOKEN_URL   Full token URL (used with the 'custom' environment)
 #   OAUTH_LOCAL_PORT  Local port used for UAT mock-oauth2 port-forward (default: 9999)
 #   OAUTH_ISSUER_HOST Host header used when token URL is port-forwarded but the issuer must be
-#                      the in-cluster mock-oauth2 service.
-#                      Default for UAT: laa-data-access-mock-oauth2-shared:9999 (shared instance)
-#                      Override for specific PR: pr-<number>-data-access-api-mock-oauth2:9999
+#                      the in-cluster mock-oauth2 service. Prefer the --issuer flag.
+#                      Must match the API's ENTRA_ISSUER_URI exactly (full in-cluster FQDN):
+#                        Default: laa-data-access-mock-oauth2-shared.laa-data-access-api-uat.svc.cluster.local:9999
 #   OAUTH_CLIENT_ID   OAuth client_id   (default: test)
 #   OAUTH_CLIENT_SECRET  OAuth client_secret  (default: test)
 #   OAUTH_SCOPE       OAuth scope  (default: api://laa-data-access-api/.default)
@@ -48,6 +55,7 @@ set -euo pipefail
 ENV="${1:-local}"
 COPY=false
 DECODE=false
+ISSUER_OVERRIDE=""
 
 # Shift past the first positional arg (environment) if it's not a flag
 if [[ "${ENV}" != -* ]]; then
@@ -57,20 +65,30 @@ else
 fi
 
 # Parse remaining options
-for arg in "$@"; do
-  case "${arg}" in
+while [[ $# -gt 0 ]]; do
+  case "${1}" in
     -c|--copy)   COPY=true ;;
     -d|--decode) DECODE=true ;;
+    -i|--issuer)
+      if [[ -z "${2:-}" || "${2}" == -* ]]; then
+        echo "ERROR: ${1} requires a value, e.g. --issuer laa-data-access-mock-oauth2-shared:9999" >&2
+        exit 1
+      fi
+      ISSUER_OVERRIDE="${2}"
+      shift
+      ;;
+    --issuer=*)  ISSUER_OVERRIDE="${1#*=}" ;;
     -h|--help)
       sed -n '2,/^# ---/p' "$0" | sed 's/^# \?//'
       exit 0
       ;;
     *)
-      echo "Unknown option: ${arg}" >&2
+      echo "Unknown option: ${1}" >&2
       echo "Run ./scripts/get-token.sh --help for usage." >&2
       exit 1
       ;;
   esac
+  shift
 done
 
 # ---------------------------------------------------------------------------
@@ -87,10 +105,18 @@ case "${ENV}" in
     ;;
   uat)
     OAUTH_LOCAL_PORT="${OAUTH_LOCAL_PORT:-9999}"
-    # Default to shared mock-oauth2 instance (deployed by CI/CD on merge to main)
-    OAUTH_ISSUER_HOST="${OAUTH_ISSUER_HOST:-laa-data-access-mock-oauth2-shared:9999}"
+    # Resolve the issuer host. Precedence: --issuer flag > OAUTH_ISSUER_HOST env var > default.
+    # The default matches the ENTRA_ISSUER_URI configured on the UAT deployments, which use the
+    # full in-cluster FQDN (NOT the short service name). Spring does an exact string match on the
+    # issuer, so the token's 'iss' must be byte-for-byte identical or the API returns 401.
+    DEFAULT_UAT_ISSUER_HOST="laa-data-access-mock-oauth2-shared.laa-data-access-api-uat.svc.cluster.local:9999"
+    if [[ -n "${ISSUER_OVERRIDE}" ]]; then
+      OAUTH_ISSUER_HOST="${ISSUER_OVERRIDE}"
+    else
+      OAUTH_ISSUER_HOST="${OAUTH_ISSUER_HOST:-${DEFAULT_UAT_ISSUER_HOST}}"
+    fi
     TOKEN_URL="${OAUTH_TOKEN_URL:-http://localhost:${OAUTH_LOCAL_PORT}/entra/token}"
-    ENV_LABEL="UAT shared mock-oauth2"
+    ENV_LABEL="UAT mock-oauth2 (issuer: ${OAUTH_ISSUER_HOST})"
     ;;
   custom)
     if [[ -z "${OAUTH_TOKEN_URL:-}" ]]; then
