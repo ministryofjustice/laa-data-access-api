@@ -258,17 +258,17 @@ To fetch a real token, port-forward the shared service and generate one:
 # Port-forward the shared mock-oauth2
 kubectl -n laa-data-access-api-uat port-forward svc/laa-data-access-mock-oauth2-shared 9999:9999
 
-# Get a token (in another terminal)
+# Get a token (in another terminal) — defaults to the correct FQDN issuer
 ./scripts/get-token.sh uat --copy
 ```
 
-The script now defaults to the shared mock-oauth2 service. Tokens will have the correct issuer (`http://laa-data-access-mock-oauth2-shared:9999/entra`) that matches PR deployment expectations.
+The token's issuer (`iss`) claim must match the deployment's `ENTRA_ISSUER_URI` **exactly**. The UAT deployments use the full in-cluster FQDN `http://laa-data-access-mock-oauth2-shared.laa-data-access-api-uat.svc.cluster.local:9999/entra` — **not** the short service name. Spring performs an exact string comparison, so using the short name (`laa-data-access-mock-oauth2-shared:9999`) returns a 401. The script defaults to the correct FQDN; use `--issuer` to override it.
 
 With the port-forward running, the token endpoint is `http://localhost:9999/entra/token`. To fetch a token directly instead of using the script, include the `Host` header so the token's issuer matches what the deployed API expects (the script sets this for you):
 
 ```bash
 curl -X POST http://localhost:9999/entra/token \
-  -H "Host: laa-data-access-mock-oauth2-shared:9999" \
+  -H "Host: laa-data-access-mock-oauth2-shared.laa-data-access-api-uat.svc.cluster.local:9999" \
   -d grant_type=client_credentials \
   -d client_id=test \
   -d client_secret=test \
@@ -276,6 +276,18 @@ curl -X POST http://localhost:9999/entra/token \
 ```
 
 See the [Authentication section in README.md](../README.md) for full details on using tokens.
+
+**Example: calling the `main` UAT deployment**
+
+The `main` branch is deployed at `https://main-laa-data-access-api-uat.cloud-platform.service.justice.gov.uk` and uses the shared mock-oauth2 instance (the script's default issuer already applies):
+
+```bash
+export TOKEN=$(./scripts/get-token.sh uat)
+
+curl -X GET "https://main-laa-data-access-api-uat.cloud-platform.service.justice.gov.uk/api/v0/caseworkers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Service-Name: CIVIL_APPLY"
+```
 
 ---
 

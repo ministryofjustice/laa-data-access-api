@@ -278,21 +278,46 @@ All PR and feature deployments share a **mock-oauth2 server** that is automatica
      svc/laa-data-access-mock-oauth2-shared 9999:9999
    ```
 
-2. **Fetch a test token** (the script defaults to the shared instance):
+2. **Fetch a test token** (the script defaults to the correct shared issuer):
    ```bash
    ./scripts/get-token.sh uat --copy --decode
    ```
+
+   > **What is the issuer?** The token's issuer (`iss`) claim **must match** the deployment's
+   > `ENTRA_ISSUER_URI` **exactly**. The UAT deployments use the full in-cluster FQDN
+   > `http://laa-data-access-mock-oauth2-shared.laa-data-access-api-uat.svc.cluster.local:9999/entra`,
+   > **not** the short service name. Spring does an exact string match, so a mismatch (e.g. using
+   > `laa-data-access-mock-oauth2-shared:9999`) returns a 401. The script now defaults to the
+   > correct FQDN; use `--issuer` only to override it.
 
 **Then use the token:**
 - The token is now in your clipboard (from the `--copy` flag)
 - Paste it into Swagger UI's "Authorize" dialog
 - Or use it with curl commands
 
-**Note:** The issuer in the token will be `http://laa-data-access-mock-oauth2-shared:9999/entra`, which matches what your PR deployment expects.
+**Note:** By default the issuer in the token will be `http://laa-data-access-mock-oauth2-shared.laa-data-access-api-uat.svc.cluster.local:9999/entra`, which matches what the UAT deployments expect. The issuer can be checked using `--decode`.
 
-**Advanced:** The `uat` command already defaults to the shared service (`laa-data-access-mock-oauth2-shared`), so no override is needed for the normal case. Only set `OAUTH_ISSUER_HOST` if you need a token from a *different* mock-oauth2 service, substituting its service name:
+**Example: testing the `main` deployment**
+
+The `main` branch is deployed to UAT and uses the shared mock-oauth2 instance, so the default issuer already applies:
+
 ```bash
-OAUTH_ISSUER_HOST=<service-name>:9999 ./scripts/get-token.sh uat --copy
+# 1. Port-forward the shared mock-oauth2 (separate terminal)
+kubectl -n laa-data-access-api-uat port-forward \
+  svc/laa-data-access-mock-oauth2-shared 9999:9999
+
+# 2. Mint a token (uses the correct FQDN issuer by default)
+export TOKEN=$(./scripts/get-token.sh uat)
+
+# 3. Call the main deployment
+curl -X GET "https://main-laa-data-access-api-uat.cloud-platform.service.justice.gov.uk/api/v0/caseworkers" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Service-Name: CIVIL_APPLY"
+```
+
+**Targeting a different mock-oauth2 service:** If a deployment trusts a different issuer, pass its exact `ENTRA_ISSUER_URI` host to `--issuer`:
+```bash
+./scripts/get-token.sh uat --issuer <issuer-host>:9999 --copy
 ```
 
 ---
@@ -344,13 +369,35 @@ export TOKEN=$(./scripts/get-token.sh local)  # or 'uat'
 
 **Problem: Token works locally but not in UAT**
 
-Cause: Issuer mismatch - local tokens won't work in UAT
+Cause: Issuer mismatch — local tokens won't work in UAT. The UAT deployments trust the full in-cluster FQDN issuer, so the token's `iss` must match exactly.
 
 Solution:
 ```bash
-# Must get a UAT-specific token with correct OAUTH_ISSUER_HOST
-OAUTH_ISSUER_HOST=<service-name>:9999 ./scripts/get-token.sh uat --copy
+# Use the uat environment — it defaults to the correct FQDN issuer
+./scripts/get-token.sh uat --copy --decode
+
+# Only override if a deployment trusts a different issuer:
+./scripts/get-token.sh uat --issuer <issuer-host>:9999 --copy
 ```
+
+**Problem: The token's `iss` isn't what you expect (e.g. a leftover value from another branch/spike)**
+
+Cause: A stale `OAUTH_ISSUER_HOST` environment variable is exported in your shell. The script's precedence is `--issuer` flag > `OAUTH_ISSUER_HOST` env var > default, so an exported `OAUTH_ISSUER_HOST` silently overrides the correct FQDN default.
+
+Solution:
+```bash
+# Check whether it's set in your current shell
+echo "$OAUTH_ISSUER_HOST"
+
+# Clear it, then fetch a fresh token
+unset OAUTH_ISSUER_HOST
+./scripts/get-token.sh uat --decode
+
+# If it keeps coming back, it's persisted in a shell rc file — remove/comment it out there
+grep -Rn "OAUTH_ISSUER_HOST" ~/.zshrc ~/.zprofile ~/.bashrc ~/.bash_profile 2>/dev/null
+```
+
+> **Tip:** Opening a fresh terminal (without the exported variable) is a quick way to confirm this is the cause.
 
 ---
 
@@ -362,7 +409,7 @@ OAUTH_ISSUER_HOST=<service-name>:9999 ./scripts/get-token.sh uat --copy
 | **Smoke Test** | `./scripts/get-token.sh smoke --copy` | 9998 |
 | **UAT/PR** | `./scripts/get-token.sh uat --copy` | 9999 (via port-forward) |
 
-**Note:** The `uat` environment now defaults to the shared mock-oauth2 service (`laa-data-access-mock-oauth2-shared:9999`).
+**Note:** The `uat` environment defaults to the shared instance's full FQDN issuer (`laa-data-access-mock-oauth2-shared.laa-data-access-api-uat.svc.cluster.local:9999`), which matches the deployments' `ENTRA_ISSUER_URI`. Override with `--issuer` only if a deployment trusts a different issuer.
 
 **Required Headers for API Calls:**
 - `Authorization: Bearer <token>`
