@@ -1,0 +1,20 @@
+# Shared Mock OAuth2 Server
+# Deployed ONCE to UAT namespace for use by all PR/feature deployments
+
+image:
+  repository: ghcr.io/navikt/mock-oauth2-server
+  tag: "2.1.10"
+  pullPolicy: IfNotPresent
+
+serviceName: laa-data-access-mock-oauth2-shared
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 20m
+    memory: 128Mi
+
+# Token expiry in seconds (86400 = 24 hours)
+tokenExpiry: 86400

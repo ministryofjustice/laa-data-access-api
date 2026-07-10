@@ -8,7 +8,7 @@ Flyway migration problems, security filter misconfiguration, and environment-spe
 issues.
 
 They are distinct from the standard integration test suite, which boots a local Spring context
-backed by Testcontainers.
+with Testcontainers-backed Postgres and the in-process mock OAuth2 server.
 
 ---
 
@@ -38,6 +38,8 @@ smoke tests, then tears everything down regardless of the outcome:
 
 ### Environment variables
 
+Mock OAuth2/token setup for these smoke tests is documented in the root [`README.md`](../README.md#mock-oauth2-and-test-tokens).
+
 The following variables default to the values used by `docker-compose.smoke-test.yml` but can be
 overridden before running the script:
 
@@ -47,6 +49,7 @@ overridden before running the script:
 | `LAA_SMOKE_ACCESS_DB_URL` | `jdbc:postgresql://localhost:6432/laa_data_access_api` |
 | `LAA_SMOKE_ACCESS_DB_USERNAME` | `laa_user` |
 | `LAA_SMOKE_ACCESS_DB_PASSWORD` | `laa_password` |
+| `LAA_SMOKE_OAUTH_TOKEN_URL` | `http://localhost:9998/entra/token` |
 
 ```bash
 LAA_SMOKE_ACCESS_API_URL=http://my-host:9000 ./scripts/run-infrastructure-smoke-tests.sh
@@ -60,20 +63,20 @@ LAA_SMOKE_ACCESS_API_URL=http://my-host:9000 ./scripts/run-infrastructure-smoke-
 
 The `infrastructureTest` task is a dedicated Gradle task that unconditionally sets
 `test.mode=infrastructure` as a JVM system property, restricts execution to `@SmokeTest`-annotated
-tests via `useJUnitPlatform { includeTags 'smoke' }`, and forwards the `LAA_ACCESS_*` environment
+tests via `useJUnitPlatform { includeTags 'smoke' }`, and forwards the `LAA_SMOKE_ACCESS_*` environment
 variables into the test JVM.
 
 This means running `./gradlew :data-access-service:infrastructureTest` always means
 "run smoke tests against a live environment" — no flags needed, no ambiguity.
 
-The `integrationTest` task is completely separate and always runs all integration tests against
-Testcontainers — it has no knowledge of infrastructure mode.
+The `integrationTest` task is completely separate and always runs integration tests against the local
+Spring/Testcontainers harness — it has no knowledge of infrastructure mode.
 
 ### `test.mode` system property
 
 The `infrastructureTest` task sets `systemProperty 'test.mode', 'infrastructure'` unconditionally.
 `HarnessExtension` reads this to switch from `IntegrationTestContextProvider` (local Spring context +
-Testcontainers) to `InfrastructureTestContextProvider` (thin JPA context + `WebTestClient` pointed at
+Testcontainers-backed Postgres) to `InfrastructureTestContextProvider` (thin JPA context + `WebTestClient` pointed at
 the live app).
 
 When running `integrationTest`, no `test.mode` property is set and `HarnessExtension` defaults to
@@ -85,7 +88,7 @@ Bootstraps only what is needed to support the tests against the live infrastruct
 
 - A `DataSource` connecting to the running Postgres container
 - JPA repositories (via `@EnableJpaRepositories`) for test data setup and teardown
-- A `WebTestClient` targeting `LAA_ACCESS_API_URL`
+- A `WebTestClient` targeting `LAA_SMOKE_ACCESS_API_URL`
 - An `ObjectMapper` bean
 - Test utility components (`PersistedDataGenerator` etc.) via a targeted
   `@ComponentScan("...utils.generator")`
@@ -113,7 +116,7 @@ enabled and every test runs as usual — `@SmokeTest` has no effect.
 
 Apply `@SmokeTest` to a test class to include all of its tests in a smoke run:
 
-```java
+```text
 @SmokeTest
 public class GetCaseworkersTest extends BaseHarnessTest {
     // all tests in this class run in infrastructure mode
@@ -122,7 +125,7 @@ public class GetCaseworkersTest extends BaseHarnessTest {
 
 Or apply it to individual methods for finer-grained control:
 
-```java
+```text
 public class GetApplicationsTest extends BaseHarnessTest {
 
     @Test
@@ -148,4 +151,3 @@ classes in the interim.
 
 The `infrastructureTest` task's `includeTags 'smoke'` filter automatically selects all
 `@SmokeTest`-annotated tests — no changes to the script or build file are needed.
-
