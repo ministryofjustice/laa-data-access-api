@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Configuration;
 import uk.gov.justice.laa.dstew.access.controller.application.GetAllNotesForApplicationResponseMapper;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallnotesforapplication.GetAllNotesForApplicationGatewayMapper;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallnotesforapplication.GetAllNotesForApplicationNoteJpaGateway;
-import uk.gov.justice.laa.dstew.access.infrastructure.jpa.shared.application.ApplicationJpaGateway;
 import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
 import uk.gov.justice.laa.dstew.access.usecase.getallnotesforapplication.GetAllNotesForApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
@@ -16,7 +15,6 @@ import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.Application
 @RequiredArgsConstructor
 public class GetAllNotesForApplicationConfig {
 
-  private final ApplicationJpaGateway applicationJpaGateway;
   private final NoteRepository noteRepository;
 
   /**
@@ -27,16 +25,6 @@ public class GetAllNotesForApplicationConfig {
   @Bean
   public GetAllNotesForApplicationGatewayMapper getAllNotesForApplicationGatewayMapper() {
     return new GetAllNotesForApplicationGatewayMapper();
-  }
-
-  /**
-   * Creates the application gateway bean.
-   *
-   * @return application gateway
-   */
-  @Bean
-  public ApplicationGateway getAllNotesForApplicationApplicationGateway() {
-    return new GetAllNotesForApplicationApplicationJpaGateway(applicationJpaGateway);
   }
 
   /**
