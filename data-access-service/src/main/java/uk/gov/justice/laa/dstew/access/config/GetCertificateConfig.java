@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getcertificate.GetCertificateApplicationJpaGateway;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getcertificate.GetCertificateCertificateJpaGateway;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getcertificate.GetCertificateGatewayMapper;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.infrastructure.jpa.shared.application.ApplicationJpaGateway;
 import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
 import uk.gov.justice.laa.dstew.access.usecase.getcertificate.GetCertificateUseCase;
 
@@ -15,7 +15,7 @@ import uk.gov.justice.laa.dstew.access.usecase.getcertificate.GetCertificateUseC
 @RequiredArgsConstructor
 public class GetCertificateConfig {
 
-  private final ApplicationRepository applicationRepository;
+  private final ApplicationJpaGateway applicationJpaGateway;
   private final CertificateRepository certificateRepository;
 
   /** Creates the gateway mapper bean. */
@@ -27,7 +27,7 @@ public class GetCertificateConfig {
   /** Creates the application JPA gateway bean. */
   @Bean
   public GetCertificateApplicationJpaGateway getCertificateApplicationGateway() {
-    return new GetCertificateApplicationJpaGateway(applicationRepository);
+    return new GetCertificateApplicationJpaGateway(applicationJpaGateway);
   }
 
   /**

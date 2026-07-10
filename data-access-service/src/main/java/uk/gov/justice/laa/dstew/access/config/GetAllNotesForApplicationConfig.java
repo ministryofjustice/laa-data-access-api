@@ -7,7 +7,7 @@ import uk.gov.justice.laa.dstew.access.controller.application.GetAllNotesForAppl
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallnotesforapplication.GetAllNotesForApplicationApplicationJpaGateway;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallnotesforapplication.GetAllNotesForApplicationGatewayMapper;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallnotesforapplication.GetAllNotesForApplicationNoteJpaGateway;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.infrastructure.jpa.shared.application.ApplicationJpaGateway;
 import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
 import uk.gov.justice.laa.dstew.access.usecase.getallnotesforapplication.GetAllNotesForApplicationUseCase;
 
@@ -16,7 +16,7 @@ import uk.gov.justice.laa.dstew.access.usecase.getallnotesforapplication.GetAllN
 @RequiredArgsConstructor
 public class GetAllNotesForApplicationConfig {
 
-  private final ApplicationRepository applicationRepository;
+  private final ApplicationJpaGateway applicationJpaGateway;
   private final NoteRepository noteRepository;
 
   /**
@@ -37,7 +37,7 @@ public class GetAllNotesForApplicationConfig {
   @Bean
   public GetAllNotesForApplicationApplicationJpaGateway
       getAllNotesForApplicationApplicationGateway() {
-    return new GetAllNotesForApplicationApplicationJpaGateway(applicationRepository);
+    return new GetAllNotesForApplicationApplicationJpaGateway(applicationJpaGateway);
   }
 
   /**

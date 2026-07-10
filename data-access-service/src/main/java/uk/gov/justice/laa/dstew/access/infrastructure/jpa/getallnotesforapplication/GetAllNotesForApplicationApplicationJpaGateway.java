@@ -1,7 +1,7 @@
 package uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallnotesforapplication;
 
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.infrastructure.jpa.shared.application.ApplicationJpaGateway;
 import uk.gov.justice.laa.dstew.access.usecase.getallnotesforapplication.infrastructure.GetAllNotesForApplicationApplicationGateway;
 
 /**
@@ -10,20 +10,20 @@ import uk.gov.justice.laa.dstew.access.usecase.getallnotesforapplication.infrast
 public class GetAllNotesForApplicationApplicationJpaGateway
     implements GetAllNotesForApplicationApplicationGateway {
 
-  private final ApplicationRepository applicationRepository;
+  private final ApplicationJpaGateway applicationJpaGateway;
 
   /**
    * Constructs the gateway.
    *
-   * @param applicationRepository application repository
+   * @param applicationJpaGateway the JPA gateway for application operations
    */
   public GetAllNotesForApplicationApplicationJpaGateway(
-      ApplicationRepository applicationRepository) {
-    this.applicationRepository = applicationRepository;
+      ApplicationJpaGateway applicationJpaGateway) {
+    this.applicationJpaGateway = applicationJpaGateway;
   }
 
   @Override
   public boolean exists(UUID applicationId) {
-    return applicationRepository.existsById(applicationId);
+    return applicationJpaGateway.applicationExists(applicationId);
   }
 }
