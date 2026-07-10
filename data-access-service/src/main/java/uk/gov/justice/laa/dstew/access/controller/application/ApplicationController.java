@@ -38,8 +38,6 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.service.applications.GetCertificateService;
-import uk.gov.justice.laa.dstew.access.service.applications.GetAllApplicationsService;
 import uk.gov.justice.laa.dstew.access.service.applications.SdsService;
 import uk.gov.justice.laa.dstew.access.service.applications.UnassignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.service.domainevents.GetDomainEventService;
@@ -70,8 +68,6 @@ public class ApplicationController implements ApplicationApi {
   private final GetAllApplicationsUseCase getAllApplicationsUseCase;
   private final GetAllApplicationsQueryMapper getAllApplicationsQueryMapper;
   private final GetAllApplicationsResponseMapper getAllApplicationsResponseMapper;
-  private final GetCertificateService certificateService;
-  private final GetAllApplicationsService applicationSummaryService;
   private final GetCertificateUseCase getCertificateUseCase;
   private final AssignCaseworkerUseCase assignCaseworkerUseCase;
   private final AssignCaseworkerCommandMapper assignCaseworkerCommandMapper;
