@@ -4,19 +4,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import uk.gov.justice.laa.dstew.access.controller.application.GetAllNotesForApplicationResponseMapper;
-import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallnotesforapplication.GetAllNotesForApplicationApplicationJpaGateway;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallnotesforapplication.GetAllNotesForApplicationGatewayMapper;
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.getallnotesforapplication.GetAllNotesForApplicationNoteJpaGateway;
-import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
 import uk.gov.justice.laa.dstew.access.usecase.getallnotesforapplication.GetAllNotesForApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
 
 /** Spring configuration for the get-all-notes-for-application use case. */
 @Configuration
 @RequiredArgsConstructor
 public class GetAllNotesForApplicationConfig {
 
-  private final ApplicationRepository applicationRepository;
   private final NoteRepository noteRepository;
 
   /**
@@ -27,17 +25,6 @@ public class GetAllNotesForApplicationConfig {
   @Bean
   public GetAllNotesForApplicationGatewayMapper getAllNotesForApplicationGatewayMapper() {
     return new GetAllNotesForApplicationGatewayMapper();
-  }
-
-  /**
-   * Creates the application gateway bean.
-   *
-   * @return application gateway
-   */
-  @Bean
-  public GetAllNotesForApplicationApplicationJpaGateway
-      getAllNotesForApplicationApplicationGateway() {
-    return new GetAllNotesForApplicationApplicationJpaGateway(applicationRepository);
   }
 
   /**
@@ -56,16 +43,16 @@ public class GetAllNotesForApplicationConfig {
   /**
    * Creates the use case bean.
    *
-   * @param getAllNotesForApplicationApplicationJpaGateway application gateway
+   * @param applicationGateway application gateway
    * @param getAllNotesForApplicationNoteJpaGateway note gateway
    * @return use case
    */
   @Bean
   public GetAllNotesForApplicationUseCase getAllNotesForApplicationUseCase(
-      GetAllNotesForApplicationApplicationJpaGateway getAllNotesForApplicationApplicationJpaGateway,
+      ApplicationGateway applicationGateway,
       GetAllNotesForApplicationNoteJpaGateway getAllNotesForApplicationNoteJpaGateway) {
     return new GetAllNotesForApplicationUseCase(
-        getAllNotesForApplicationApplicationJpaGateway, getAllNotesForApplicationNoteJpaGateway);
+        applicationGateway, getAllNotesForApplicationNoteJpaGateway);
   }
 
   /**

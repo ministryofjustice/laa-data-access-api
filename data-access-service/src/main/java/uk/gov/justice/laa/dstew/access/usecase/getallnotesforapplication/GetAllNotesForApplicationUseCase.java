@@ -6,14 +6,14 @@ import lombok.RequiredArgsConstructor;
 import uk.gov.justice.laa.dstew.access.domain.NoteReadModel;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
-import uk.gov.justice.laa.dstew.access.usecase.getallnotesforapplication.infrastructure.GetAllNotesForApplicationApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.getallnotesforapplication.infrastructure.GetAllNotesForApplicationNoteGateway;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
 
 /** Orchestrates retrieval of all notes for an application. */
 @RequiredArgsConstructor
 public class GetAllNotesForApplicationUseCase {
 
-  private final GetAllNotesForApplicationApplicationGateway applicationGateway;
+  private final ApplicationGateway applicationGateway;
   private final GetAllNotesForApplicationNoteGateway noteGateway;
 
   /**
@@ -25,7 +25,7 @@ public class GetAllNotesForApplicationUseCase {
    */
   @AllowApiCaseworker
   public List<NoteReadModel> execute(UUID applicationId) {
-    if (!applicationGateway.exists(applicationId)) {
+    if (!applicationGateway.applicationExists(applicationId)) {
       throw new ResourceNotFoundException(
           String.format("No application found with id: %s", applicationId));
     }
