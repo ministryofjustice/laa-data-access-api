@@ -77,7 +77,8 @@ done
 
 # ---------------------------------------------------------------------------
 # 3. Run @SmokeTest-annotated tests in infrastructure mode
-#    LAA_ACCESS_* env vars are read by InfrastructureTestContextProvider.
+#    LAA_SMOKE_ACCESS_* env vars are read by InfrastructureTestContextProvider.
+#    LAA_SMOKE_OAUTH_TOKEN_URL is used by SmokeTestTokenProvider to obtain tokens.
 #    The infrastructureTest Gradle task sets test.mode=infrastructure
 #    unconditionally, so HarnessExtension selects InfrastructureTestContextProvider
 #    and the includeTags('smoke') filter ensures only @SmokeTest tests execute.
@@ -87,6 +88,7 @@ LAA_SMOKE_ACCESS_API_URL="${LAA_SMOKE_ACCESS_API_URL:-http://localhost:9000}" \
 LAA_SMOKE_ACCESS_DB_URL="${LAA_SMOKE_ACCESS_DB_URL:-jdbc:postgresql://localhost:6432/laa_data_access_api}" \
 LAA_SMOKE_ACCESS_DB_USERNAME="${LAA_SMOKE_ACCESS_DB_USERNAME:-laa_user}" \
 LAA_SMOKE_ACCESS_DB_PASSWORD="${LAA_SMOKE_ACCESS_DB_PASSWORD:-laa_password}" \
+LAA_SMOKE_OAUTH_TOKEN_URL="${LAA_SMOKE_OAUTH_TOKEN_URL:-http://localhost:9998/entra/token}" \
 ./gradlew :data-access-service:infrastructureTest \
   --continue \
   --console=plain \

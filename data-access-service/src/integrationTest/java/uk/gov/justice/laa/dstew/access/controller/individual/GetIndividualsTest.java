@@ -175,7 +175,7 @@ public class GetIndividualsTest extends BaseHarnessTest {
 
   @Test
   public void givenUnknownRole_whenGetIndividuals_thenReturnForbiddenResponse() throws Exception {
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     assertSecurityHeaders(result);
     assertForbidden(result);
@@ -395,7 +395,7 @@ public class GetIndividualsTest extends BaseHarnessTest {
   @Test
   public void givenUnknownRole_whenGetIndividualsWithFilters_thenReturnForbiddenResponse()
       throws Exception {
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     HarnessResult result =
         getUri(
             TestConstants.URIs.GET_INDIVIDUALS
@@ -408,7 +408,7 @@ public class GetIndividualsTest extends BaseHarnessTest {
 
   @Test
   public void givenWriterRole_whenGetIndividuals_thenReturnForbiddenResponse() throws Exception {
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     assertSecurityHeaders(result);
     assertForbidden(result);
@@ -417,7 +417,7 @@ public class GetIndividualsTest extends BaseHarnessTest {
   @Test
   public void givenWriterRole_whenGetIndividualsWithFilters_thenReturnForbiddenResponse()
       throws Exception {
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     HarnessResult result =
         getUri(
             TestConstants.URIs.GET_INDIVIDUALS
@@ -431,7 +431,7 @@ public class GetIndividualsTest extends BaseHarnessTest {
   @Test
   public void givenUserWithNoAuthorities_whenGetIndividuals_thenReturnForbiddenResponse()
       throws Exception {
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS);
     assertSecurityHeaders(result);
     assertForbidden(result);
@@ -440,7 +440,7 @@ public class GetIndividualsTest extends BaseHarnessTest {
   @Test
   public void givenUserWithNoAuthorities_whenGetIndividualsWithPaging_thenReturnForbiddenResponse()
       throws Exception {
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     HarnessResult result = getUri(TestConstants.URIs.GET_INDIVIDUALS + "?page=1&pageSize=10");
     assertSecurityHeaders(result);
     assertForbidden(result);

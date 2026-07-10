@@ -24,7 +24,6 @@ spring:
           jwk-set-uri: ${ENTRA_JWK_SET_URI}
           audience: ${ENTRA_AUD}
 
-
 logging:
   level:
     com.azure.spring: INFO

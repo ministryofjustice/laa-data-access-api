@@ -116,7 +116,7 @@ public class GetCertificateTest extends BaseHarnessTest {
   @Test
   public void givenUnknownRole_whenGetCertificate_thenReturnForbidden() throws Exception {
     // given
-    withToken(TestConstants.Tokens.UNKNOWN);
+    withUnknownToken();
     ApplicationEntity application =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 

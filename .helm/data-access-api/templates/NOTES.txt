@@ -8,3 +8,4 @@ URL(s):
 {{- range .Values.ingressInternal.hosts }}
   Internal hostname: https://{{ . }}
 {{- end }}
+

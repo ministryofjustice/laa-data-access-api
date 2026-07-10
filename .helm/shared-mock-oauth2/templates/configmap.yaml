@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.serviceName }}-config
+  labels:
+    {{- include "shared-mock-oauth2.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mock-oauth2
+data:
+  config.json: |
+    {
+      "interactiveLogin": false,
+      "tokenCallbacks": [
+        {
+          "issuerId": "entra",
+          "tokenExpiry": {{ .Values.tokenExpiry | default 86400 }},
+          "requestMappings": [
+            {
+              "requestParam": "grant_type",
+              "match": "client_credentials",
+              "claims": {
+                "sub": "uat-test-user",
+                "aud": ["laa-data-access-api"],
+                "roles": ["LAA_CASEWORKER"],
+                "LAA_APP_ROLES": "LAA_CASEWORKER"
+              }
+            }
+          ]
+        }
+      ]
+    }
