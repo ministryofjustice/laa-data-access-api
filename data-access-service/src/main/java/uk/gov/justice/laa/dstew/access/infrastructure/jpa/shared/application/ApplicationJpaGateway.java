@@ -80,4 +80,8 @@ public class ApplicationJpaGateway implements ApplicationGateway {
     ApplicationEntity saved = applicationRepository.save(entity);
     return mapper.toApplicationDomain(saved);
   }
+
+  public boolean applicationExists(UUID applicationId) {
+    return applicationRepository.findById(applicationId).isPresent();
+  }
 }

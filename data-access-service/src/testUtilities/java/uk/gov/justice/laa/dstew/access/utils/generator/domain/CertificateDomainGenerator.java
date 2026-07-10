@@ -19,7 +19,11 @@ public class CertificateDomainGenerator
     return CertificateDomain.builder()
         .id(UUID.randomUUID())
         .applicationId(UUID.randomUUID())
-        .certificateContent(Map.of("certificateNumber", "CERT-001", "issueDate", "2024-01-01"))
+        .certificateContent(
+            Map.of(
+                "certificateNumber", "TESTCERT001",
+                "issueDate", "2026-03-03",
+                "validUntil", "2027-03-03"))
         .createdBy("test-user")
         .updatedBy("test-user")
         .build();
