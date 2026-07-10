@@ -5,14 +5,14 @@ import lombok.RequiredArgsConstructor;
 import uk.gov.justice.laa.dstew.access.domain.CertificateDomain;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
-import uk.gov.justice.laa.dstew.access.usecase.getcertificate.infrastructure.GetCertificateApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.getcertificate.infrastructure.GetCertificateCertificateGateway;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
 
 /** Orchestrates retrieval of a certificate for a given application. */
 @RequiredArgsConstructor
 public class GetCertificateUseCase {
 
-  private final GetCertificateApplicationGateway applicationGateway;
+  private final ApplicationGateway applicationGateway;
   private final GetCertificateCertificateGateway certificateGateway;
 
   /**
