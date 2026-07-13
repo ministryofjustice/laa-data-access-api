@@ -25,6 +25,10 @@ ext['tomcat.version'] = '11.0.23'
 // Note: this overrides the Jackson 2.x BOM only; the Jackson 3.x BOM is controlled by 'jackson-bom.version'.
 ext['jackson-2-bom.version'] = '2.21.5'
 
+// Upgrade managed Log4j 2 dependencies from 2.25.4 to 2.25.5 to fix
+//  ✗ Improper Encoding or Escaping of Output (new) [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHELOGGINGLOG4J-17954276]
+ext['log4j2.version'] = '2.25.5'
+
 def requiredJavaVersion = 25
 def currentJavaVersion = JavaVersion.current().majorVersion.toInteger()
 
