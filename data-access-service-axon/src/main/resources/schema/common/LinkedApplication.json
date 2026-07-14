@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "LinkedApplication.json",
+  "title": "LinkedApplication",
+  "description": "Represents a linked application",
+  "type": "object",
+  "required": [
+    "leadApplicationId",
+    "associatedApplicationId"
+  ],
+  "properties": {
+    "leadApplicationId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "ID of the lead application"
+    },
+    "associatedApplicationId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "ID of the associated application"
+    }
+  },
+  "additionalProperties": false
+}
