@@ -84,6 +84,7 @@ public class ApplicationContentParser {
             : Collections.emptyList();
 
     return ParsedAppContentDetails.builder()
+        .applicationContent(applicationContent)
         .applyApplicationId(applicationContent.getId())
         .categoryOfLaw(getCategoryOfLaw(leadProceeding))
         .matterType(getMatterType(leadProceeding))

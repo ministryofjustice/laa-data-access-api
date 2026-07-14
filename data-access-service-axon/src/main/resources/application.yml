@@ -28,6 +28,10 @@ axon:
     general: jackson
     events: jackson
     messages: jackson
+  eventhandling:
+    processors:
+      application-projection:
+        mode: tracking
 
 management:
   endpoints:
