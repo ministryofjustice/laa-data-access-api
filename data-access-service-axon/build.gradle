@@ -1,0 +1,43 @@
+plugins {
+    id 'java'
+    id 'checkstyle'
+    id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin'
+}
+
+dependencies {
+    implementation(project(':data-access-api')) {
+        transitive = false
+    }
+
+    implementation 'org.axonframework:axon-spring-boot-starter:4.10.3'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.5'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.21.5'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-restclient'
+    testRuntimeOnly 'com.h2database:h2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    integrationTestImplementation 'org.springframework.boot:spring-boot-starter-test'
+    integrationTestImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    integrationTestImplementation 'org.springframework.boot:spring-boot-starter-restclient'
+    integrationTestImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    integrationTestImplementation 'org.testcontainers:testcontainers-junit-jupiter:2.0.5'
+    integrationTestImplementation 'org.testcontainers:testcontainers-postgresql:2.0.5'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+tasks.named('integrationTest') {
+    useJUnitPlatform()
+}
