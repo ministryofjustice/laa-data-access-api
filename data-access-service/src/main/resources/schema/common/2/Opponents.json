@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "Opponents.json",
+  "title": "Opponent",
+  "description": "Opponent information for the application",
+  "type": "object",
+  "required": [
+    "opponentType"
+  ],
+  "properties": {
+    "opponentType": {
+      "type": "string",
+      "description": "Opponent type"
+    },
+    "firstName": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Opponent first name"
+    },
+    "lastName": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Opponent last name"
+    },
+    "organisationName": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Opponent organisation name"
+    }
+  },
+  "additionalProperties": true
+}

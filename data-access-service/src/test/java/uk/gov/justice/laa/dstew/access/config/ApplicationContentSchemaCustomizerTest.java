@@ -32,6 +32,12 @@ class ApplicationContentSchemaCustomizerTest {
             "LinkedApplication",
             "Proceeding",
             "Applicant",
+            "ProviderV2",
+            "ClientV2",
+            "ProceedingsV2",
+            "OpponentsV2",
+            "ScopeLimitationV2",
+            "CorrespondenceAddressV2",
             "ApplyApplicationContentV1",
             "ApplyApplicationContentV2",
             "CssApplicationContent");
@@ -170,14 +176,14 @@ class ApplicationContentSchemaCustomizerTest {
 
   @Test
   void
-      givenOpenApiWithApplicationCreateRequest_whenCustomise_thenApplicationContentRewiredToApplyV1() {
+      givenOpenApiWithApplicationCreateRequest_whenCustomise_thenApplicationContentUsesOneOfWithAllVersions() {
     // given - ApplicationCreateRequest schema with a plain applicationContent property
     OpenAPI openApi = openApiWithApplicationCreateRequest();
 
     // when
     customizer.customise(openApi);
 
-    // then
+    // then - applicationContent uses oneOf with all schema versions
     @SuppressWarnings("unchecked")
     Schema<?> applicationContent =
         (Schema<?>)
@@ -187,8 +193,16 @@ class ApplicationContentSchemaCustomizerTest {
                 .get("ApplicationCreateRequest")
                 .getProperties()
                 .get("applicationContent");
-    assertThat(applicationContent.get$ref())
+    assertThat(applicationContent.getOneOf()).isNotNull();
+    assertThat(applicationContent.getOneOf()).hasSize(3);
+    assertThat(applicationContent.getOneOf().get(0).get$ref())
         .isEqualTo("#/components/schemas/ApplyApplicationContentV1");
+    assertThat(applicationContent.getOneOf().get(1).get$ref())
+        .isEqualTo("#/components/schemas/ApplyApplicationContentV2");
+    assertThat(applicationContent.getOneOf().get(2).get$ref())
+        .isEqualTo("#/components/schemas/CssApplicationContent");
+    assertThat(applicationContent.getDescription())
+        .isEqualTo("Application content conforming to one of the versioned schemas");
   }
 
   private OpenAPI openApiWithComponents() {

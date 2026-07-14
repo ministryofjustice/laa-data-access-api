@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "ApplyApplication.json",
-  "title": "ApplicationContent",
+  "title": "CivilApply",
   "description": "Schema for validating ApplicationContent",
   "type": "object",
   "required": ["id", "submittedAt"],
