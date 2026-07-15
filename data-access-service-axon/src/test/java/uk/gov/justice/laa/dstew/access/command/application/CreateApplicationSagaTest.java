@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreatedEvent;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationFinalisationDetails;
 
 import java.util.UUID;
 import org.axonframework.commandhandling.gateway.CommandGateway;
@@ -22,20 +23,18 @@ class CreateApplicationSagaTest {
   void givenClaimEvent_whenHandled_thenStartsSagaAndDispatchesFinalisation() {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    ApplicationCreatedEvent application =
-        applicationCreatedEvent(applyApplicationId, applicationId);
+    ApplicationFinalisationDetails details = applicationFinalisationDetails(applyApplicationId);
     fixture.setCallbackBehavior((command, metadata) -> ApplicationFinalisationResult.CREATED);
 
     fixture
         .givenNoPriorActivity()
         .whenAggregate(applyApplicationId.toString())
         .publishes(
-            new ApplyApplicationIdClaimedEvent(
-                applyApplicationId, applicationId, application, null))
+            new ApplyApplicationIdClaimedEvent(applyApplicationId, applicationId, details, null))
         .expectActiveSagas(1)
         .expectAssociationWith("applicationId", applicationId.toString())
         .expectDispatchedCommands(
-            new FinaliseApplicationCreationCommand(applicationId, application, null));
+            new FinaliseApplicationCreationCommand(applicationId, details, null));
   }
 
   @Test
@@ -44,12 +43,12 @@ class CreateApplicationSagaTest {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreatedEvent application =
         applicationCreatedEvent(applyApplicationId, applicationId);
+    ApplicationFinalisationDetails details = applicationFinalisationDetails(applyApplicationId);
 
     fixture
         .givenAggregate(applyApplicationId.toString())
         .published(
-            new ApplyApplicationIdClaimedEvent(
-                applyApplicationId, applicationId, application, null))
+            new ApplyApplicationIdClaimedEvent(applyApplicationId, applicationId, details, null))
         .whenAggregate(applicationId.toString())
         .publishes(application)
         .expectActiveSagas(0);
@@ -59,10 +58,9 @@ class CreateApplicationSagaTest {
   void givenFinalisationFails_whenClaimHandled_thenReleasesClaimAndEndsSaga() {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    ApplicationCreatedEvent application =
-        applicationCreatedEvent(applyApplicationId, applicationId);
+    ApplicationFinalisationDetails details = applicationFinalisationDetails(applyApplicationId);
     FinaliseApplicationCreationCommand finalise =
-        new FinaliseApplicationCreationCommand(applicationId, application, null);
+        new FinaliseApplicationCreationCommand(applicationId, details, null);
     fixture.setCallbackBehavior(
         (command, metadata) -> {
           if (command instanceof FinaliseApplicationCreationCommand) {
@@ -75,8 +73,7 @@ class CreateApplicationSagaTest {
         .givenNoPriorActivity()
         .whenAggregate(applyApplicationId.toString())
         .publishes(
-            new ApplyApplicationIdClaimedEvent(
-                applyApplicationId, applicationId, application, null))
+            new ApplyApplicationIdClaimedEvent(applyApplicationId, applicationId, details, null))
         .expectActiveSagas(0)
         .expectDispatchedCommands(
             finalise, new ReleaseApplyApplicationIdCommand(applyApplicationId, applicationId));
@@ -86,10 +83,9 @@ class CreateApplicationSagaTest {
   void givenCompensationFails_whenClaimHandled_thenStillEndsSaga() {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    ApplicationCreatedEvent application =
-        applicationCreatedEvent(applyApplicationId, applicationId);
+    ApplicationFinalisationDetails details = applicationFinalisationDetails(applyApplicationId);
     FinaliseApplicationCreationCommand finalise =
-        new FinaliseApplicationCreationCommand(applicationId, application, null);
+        new FinaliseApplicationCreationCommand(applicationId, details, null);
     ReleaseApplyApplicationIdCommand release =
         new ReleaseApplyApplicationIdCommand(applyApplicationId, applicationId);
     fixture.setCallbackBehavior(
@@ -101,8 +97,7 @@ class CreateApplicationSagaTest {
         .givenNoPriorActivity()
         .whenAggregate(applyApplicationId.toString())
         .publishes(
-            new ApplyApplicationIdClaimedEvent(
-                applyApplicationId, applicationId, application, null))
+            new ApplyApplicationIdClaimedEvent(applyApplicationId, applicationId, details, null))
         .expectActiveSagas(0)
         .expectDispatchedCommands(finalise, release);
   }
@@ -111,10 +106,9 @@ class CreateApplicationSagaTest {
   void givenFinalisationWasAlreadyCommitted_whenClaimRedelivered_thenEndsWithoutCompensation() {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    ApplicationCreatedEvent application =
-        applicationCreatedEvent(applyApplicationId, applicationId);
+    ApplicationFinalisationDetails details = applicationFinalisationDetails(applyApplicationId);
     FinaliseApplicationCreationCommand finalise =
-        new FinaliseApplicationCreationCommand(applicationId, application, null);
+        new FinaliseApplicationCreationCommand(applicationId, details, null);
     fixture.setCallbackBehavior(
         (command, metadata) -> ApplicationFinalisationResult.ALREADY_CREATED);
 
@@ -122,8 +116,7 @@ class CreateApplicationSagaTest {
         .givenNoPriorActivity()
         .whenAggregate(applyApplicationId.toString())
         .publishes(
-            new ApplyApplicationIdClaimedEvent(
-                applyApplicationId, applicationId, application, null))
+            new ApplyApplicationIdClaimedEvent(applyApplicationId, applicationId, details, null))
         .expectActiveSagas(0)
         .expectDispatchedCommands(finalise);
   }

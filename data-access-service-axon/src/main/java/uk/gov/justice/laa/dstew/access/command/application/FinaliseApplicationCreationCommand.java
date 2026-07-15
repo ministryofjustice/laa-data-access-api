@@ -6,5 +6,5 @@ import org.axonframework.modelling.command.TargetAggregateIdentifier;
 /** Creates the Application aggregate after its Apply identifier has been claimed. */
 public record FinaliseApplicationCreationCommand(
     @TargetAggregateIdentifier UUID applicationId,
-    ApplicationCreatedEvent applicationCreatedEvent,
+    ApplicationFinalisationDetails applicationFinalisationDetails,
     UUID leadApplicationId) {}

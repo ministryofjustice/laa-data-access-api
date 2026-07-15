@@ -44,20 +44,21 @@ public class CreateApplicationCommandHandler {
   @CommandHandler
   public UUID handle(CreateApplicationCommand command) throws Exception {
     ParsedAppContentDetails parsed = applicationContentParser.parse(command.applicationContent());
-    ApplicationCreatedEvent event = toEvent(command, parsed);
-    claimApplyApplicationId(event, resolveLeadApplicationId(parsed));
+    ApplicationFinalisationDetails details = toFinalisationDetails(command, parsed);
+    claimApplyApplicationId(command.applicationId(), details, resolveLeadApplicationId(parsed));
     return command.applicationId();
   }
 
-  private void claimApplyApplicationId(ApplicationCreatedEvent event, UUID leadApplicationId)
+  private void claimApplyApplicationId(
+      UUID applicationId, ApplicationFinalisationDetails details, UUID leadApplicationId)
       throws Exception {
     try {
       applyApplicationIdRepository
-          .load(event.applyApplicationId().toString())
-          .execute(aggregate -> aggregate.claim(event, leadApplicationId));
+          .load(details.applyApplicationId().toString())
+          .execute(aggregate -> aggregate.claim(applicationId, details, leadApplicationId));
     } catch (AggregateNotFoundException exception) {
       applyApplicationIdRepository.newInstance(
-          () -> new ApplyApplicationIdAggregate(event, leadApplicationId));
+          () -> new ApplyApplicationIdAggregate(applicationId, details, leadApplicationId));
     }
   }
 
@@ -98,10 +99,9 @@ public class CreateApplicationCommandHandler {
         "No linked application found with Apply Application ID: " + applyApplicationId);
   }
 
-  private ApplicationCreatedEvent toEvent(
+  private ApplicationFinalisationDetails toFinalisationDetails(
       CreateApplicationCommand command, ParsedAppContentDetails parsed) {
-    return new ApplicationCreatedEvent(
-        command.applicationId(),
+    return new ApplicationFinalisationDetails(
         command.status(),
         command.laaReference(),
         parsed.applicationContent(),

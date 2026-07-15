@@ -41,23 +41,45 @@ public class ApplicationAggregate {
   @CommandHandler
   @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
   ApplicationFinalisationResult handle(FinaliseApplicationCreationCommand command) {
+    ApplicationFinalisationDetails details = command.applicationFinalisationDetails();
     if (applicationId != null) {
-      if (applyApplicationId.equals(command.applicationCreatedEvent().applyApplicationId())) {
+      if (applyApplicationId.equals(details.applyApplicationId())) {
         return ApplicationFinalisationResult.ALREADY_CREATED;
       }
       throw new IllegalStateException(
           "Application ID " + applicationId + " is already owned by another Apply application");
     }
-    apply(command.applicationCreatedEvent());
+    apply(applicationCreatedEvent(command.applicationId(), details));
     if (command.leadApplicationId() != null) {
       apply(
           new ApplicationLinkedEvent(
               applicationId,
               command.leadApplicationId(),
-              command.applicationCreatedEvent().serialisedRequest(),
-              command.applicationCreatedEvent().occurredAt()));
+              details.serialisedRequest(),
+              details.occurredAt()));
     }
     return ApplicationFinalisationResult.CREATED;
+  }
+
+  private ApplicationCreatedEvent applicationCreatedEvent(
+      UUID applicationId, ApplicationFinalisationDetails details) {
+    return new ApplicationCreatedEvent(
+        applicationId,
+        details.status(),
+        details.laaReference(),
+        details.applicationContent(),
+        details.individuals(),
+        details.schemaVersion(),
+        details.applicationType(),
+        details.applyApplicationId(),
+        details.submittedAt(),
+        details.officeCode(),
+        details.usedDelegatedFunctions(),
+        details.categoryOfLaw(),
+        details.matterType(),
+        details.proceedings(),
+        details.serialisedRequest(),
+        details.occurredAt());
   }
 
   @EventSourcingHandler

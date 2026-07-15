@@ -23,7 +23,9 @@ public class CreateApplicationSaga {
     SagaLifecycle.associateWith("applicationId", event.applicationId().toString());
     commandGateway.send(
         new FinaliseApplicationCreationCommand(
-            event.applicationId(), event.applicationCreatedEvent(), event.leadApplicationId()),
+            event.applicationId(),
+            event.applicationFinalisationDetails(),
+            event.leadApplicationId()),
         (commandMessage, resultMessage) -> {
           if (resultMessage.isExceptional()) {
             releaseClaim(event);

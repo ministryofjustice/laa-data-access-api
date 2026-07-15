@@ -1,6 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
-import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreatedEvent;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationFinalisationDetails;
 
 import java.util.UUID;
 import org.axonframework.test.aggregate.AggregateTestFixture;
@@ -21,33 +21,31 @@ class ApplyApplicationIdAggregateTest {
   void givenUnclaimedApplyApplicationId_whenClaimed_thenRecordsApplicationId() {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    ApplicationCreatedEvent application =
-        applicationCreatedEvent(applyApplicationId, applicationId);
+    ApplicationFinalisationDetails details = applicationFinalisationDetails(applyApplicationId);
 
     fixture
         .givenNoPriorActivity()
-        .whenConstructing(() -> new ApplyApplicationIdAggregate(application, null))
+        .whenConstructing(() -> new ApplyApplicationIdAggregate(applicationId, details, null))
         .expectEvents(
-            new ApplyApplicationIdClaimedEvent(
-                applyApplicationId, applicationId, application, null));
+            new ApplyApplicationIdClaimedEvent(applyApplicationId, applicationId, details, null));
   }
 
   @Test
   void givenClaimedApplyApplicationId_whenClaimedAgain_thenRejectsDuplicate() {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    ApplicationCreatedEvent claimedApplication =
-        applicationCreatedEvent(applyApplicationId, applicationId);
+    ApplicationFinalisationDetails claimedDetails =
+        applicationFinalisationDetails(applyApplicationId);
 
     fixture
         .given(
             new ApplyApplicationIdClaimedEvent(
-                applyApplicationId, applicationId, claimedApplication, null))
+                applyApplicationId, applicationId, claimedDetails, null))
         .whenInvoking(
             applyApplicationId.toString(),
             aggregate ->
                 aggregate.claim(
-                    applicationCreatedEvent(applyApplicationId, UUID.randomUUID()), null))
+                    UUID.randomUUID(), applicationFinalisationDetails(applyApplicationId), null))
         .expectException(ValidationException.class)
         .expectNoEvents();
   }
@@ -58,35 +56,32 @@ class ApplyApplicationIdAggregateTest {
     UUID originalApplicationId = UUID.randomUUID();
     UUID retriedApplicationId = UUID.randomUUID();
     UUID leadApplicationId = UUID.randomUUID();
-    ApplicationCreatedEvent originalApplication =
-        applicationCreatedEvent(applyApplicationId, originalApplicationId);
-    ApplicationCreatedEvent retriedApplication =
-        applicationCreatedEvent(applyApplicationId, retriedApplicationId);
+    ApplicationFinalisationDetails originalDetails =
+        applicationFinalisationDetails(applyApplicationId);
+    ApplicationFinalisationDetails retriedDetails =
+        applicationFinalisationDetails(applyApplicationId);
 
     fixture
         .given(
             new ApplyApplicationIdClaimedEvent(
-                applyApplicationId, originalApplicationId, originalApplication, null),
+                applyApplicationId, originalApplicationId, originalDetails, null),
             new ApplyApplicationIdReleasedEvent(applyApplicationId, originalApplicationId))
         .whenInvoking(
             applyApplicationId.toString(),
-            aggregate -> aggregate.claim(retriedApplication, leadApplicationId))
+            aggregate -> aggregate.claim(retriedApplicationId, retriedDetails, leadApplicationId))
         .expectEvents(
             new ApplyApplicationIdClaimedEvent(
-                applyApplicationId, retriedApplicationId, retriedApplication, leadApplicationId));
+                applyApplicationId, retriedApplicationId, retriedDetails, leadApplicationId));
   }
 
   @Test
   void givenClaimedApplyApplicationId_whenReleasedByItsOwner_thenRecordsRelease() {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    ApplicationCreatedEvent application =
-        applicationCreatedEvent(applyApplicationId, applicationId);
+    ApplicationFinalisationDetails details = applicationFinalisationDetails(applyApplicationId);
 
     fixture
-        .given(
-            new ApplyApplicationIdClaimedEvent(
-                applyApplicationId, applicationId, application, null))
+        .given(new ApplyApplicationIdClaimedEvent(applyApplicationId, applicationId, details, null))
         .when(new ReleaseApplyApplicationIdCommand(applyApplicationId, applicationId))
         .expectEvents(new ApplyApplicationIdReleasedEvent(applyApplicationId, applicationId));
   }

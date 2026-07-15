@@ -21,15 +21,20 @@ public class ApplyApplicationIdAggregate {
 
   /** Creates the claim and its event stream. */
   ApplyApplicationIdAggregate(
-      ApplicationCreatedEvent applicationCreatedEvent, UUID leadApplicationId) {
-    apply(claimedEvent(applicationCreatedEvent, leadApplicationId));
+      UUID applicationId,
+      ApplicationFinalisationDetails applicationFinalisationDetails,
+      UUID leadApplicationId) {
+    apply(claimedEvent(applicationId, applicationFinalisationDetails, leadApplicationId));
   }
 
-  void claim(ApplicationCreatedEvent applicationCreatedEvent, UUID leadApplicationId) {
+  void claim(
+      UUID applicationId,
+      ApplicationFinalisationDetails applicationFinalisationDetails,
+      UUID leadApplicationId) {
     if (claimed) {
       throw new DuplicateApplyApplicationIdException(applyApplicationId);
     }
-    apply(claimedEvent(applicationCreatedEvent, leadApplicationId));
+    apply(claimedEvent(applicationId, applicationFinalisationDetails, leadApplicationId));
   }
 
   /** Returns the owning Application only while this identifier is actively claimed. */
@@ -58,11 +63,13 @@ public class ApplyApplicationIdAggregate {
   }
 
   private ApplyApplicationIdClaimedEvent claimedEvent(
-      ApplicationCreatedEvent applicationCreatedEvent, UUID leadApplicationId) {
+      UUID applicationId,
+      ApplicationFinalisationDetails applicationFinalisationDetails,
+      UUID leadApplicationId) {
     return new ApplyApplicationIdClaimedEvent(
-        applicationCreatedEvent.applyApplicationId(),
-        applicationCreatedEvent.applicationId(),
-        applicationCreatedEvent,
+        applicationFinalisationDetails.applyApplicationId(),
+        applicationId,
+        applicationFinalisationDetails,
         leadApplicationId);
   }
 
